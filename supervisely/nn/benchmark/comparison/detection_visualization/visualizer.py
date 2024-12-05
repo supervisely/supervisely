@@ -1,7 +1,5 @@
-import datetime
-from pathlib import Path
-
-import supervisely.nn.benchmark.comparison.detection_visualization.text_templates as vis_texts
+import supervisely.nn.benchmark.comparison.detection_visualization.text_templates as texts
+from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
@@ -13,7 +11,6 @@ from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics imp
     PrecisionRecallF1,
     Speedtest,
 )
-from supervisely.nn.benchmark.visualization.renderer import Renderer
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
     GalleryWidget,
@@ -22,22 +19,9 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class DetectionComparisonVisualizer:
-    def __init__(self, comparison):
-        self.comparison = comparison
-        self.api = comparison.api
-        self.vis_texts = vis_texts
-
-        self._create_widgets()
-        layout = self._create_layout()
-
-        self.renderer = Renderer(layout, str(Path(self.comparison.workdir, "visualizations")))
-
-    def visualize(self):
-        return self.renderer.visualize()
-
-    def upload_results(self, team_id: int, remote_dir: str, progress=None):
-        return self.renderer.upload_results(self.api, team_id, remote_dir, progress)
+class DetectionComparisonVisualizer(BaseComparisonVisualizer):
+    vis_texts = texts
+    ann_opacity = 0.5
 
     def _create_widgets(self):
         # Modal Gellery
@@ -52,6 +36,7 @@ class DetectionComparisonVisualizer:
 
         # Overview
         overview = Overview(self.vis_texts, self.comparison.eval_results)
+        overview.team_id = self.comparison.team_id
         self.header = self._create_header()
         self.overviews = self._create_overviews(overview)
         self.overview_md = overview.overview_md
@@ -232,30 +217,6 @@ class DetectionComparisonVisualizer:
         )
         return layout
 
-    def _create_header(self) -> MarkdownWidget:
-        me = self.api.user.get_my_info().login
-        current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
-        header_main_text = " ∣ ".join(  #  vs. or | or ∣
-            eval_res.name for eval_res in self.comparison.eval_results
-        )
-        header_text = self.vis_texts.markdown_header.format(header_main_text, me, current_date)
-        header = MarkdownWidget("markdown_header", "Header", text=header_text)
-        return header
-
-    def _create_overviews(self, vm: Overview) -> ContainerWidget:
-        grid_cols = 2
-        if len(vm.overview_widgets) > 2:
-            grid_cols = 3
-        if len(vm.overview_widgets) % 4 == 0:
-            grid_cols = 4
-        return ContainerWidget(
-            vm.overview_widgets,
-            name="overview_container",
-            title="Overview",
-            grid=True,
-            grid_cols=grid_cols,
-        )
-
     def _create_key_metrics(self) -> MarkdownWidget:
         key_metrics_text = self.vis_texts.markdown_key_metrics.format(
             self.vis_texts.definitions.average_precision,
@@ -277,22 +238,3 @@ class DetectionComparisonVisualizer:
         return MarkdownWidget(
             "markdown_outcome_counts_diff", "Outcome Counts Differences", text=outcome_counts_text
         )
-
-    def _create_explore_modal_table(self, columns_number=3):
-        # TODO: table for each evaluation?
-        all_predictions_modal_gallery = GalleryWidget(
-            "all_predictions_modal_gallery", is_modal=True, columns_number=columns_number
-        )
-        all_predictions_modal_gallery.set_project_meta(
-            self.comparison.eval_results[0].dt_project_meta
-        )
-        return all_predictions_modal_gallery
-
-    def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
-        diff_modal_gallery = GalleryWidget(
-            "diff_predictions_modal_gallery", is_modal=True, columns_number=columns_number
-        )
-        return diff_modal_gallery
-
-    def _create_clickable_label(self):
-        return MarkdownWidget("clickable_label", "", text=self.vis_texts.clickable_label)

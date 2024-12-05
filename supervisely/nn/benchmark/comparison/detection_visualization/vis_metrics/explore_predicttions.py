@@ -57,10 +57,10 @@ class ExplorePredictions(BaseVisMetrics):
                 anns = api.annotation.download_batch(dataset_info.id, images_ids)
                 annotations.append(anns)
                 skip_tags_filtering.append(True)
-            metas.append(eval_res.dt_project_meta)
+            metas.append(eval_res.pred_project_meta)
             assert ds_name is not None, "Failed to get GT dataset name for gallery"
 
-            dataset_info = api.dataset.get_info_by_name(eval_res.dt_project_id, ds_name)
+            dataset_info = api.dataset.get_info_by_name(eval_res.pred_project_id, ds_name)
 
             assert names is not None, "Failed to get GT image names for gallery"
             image_infos = eval_res.api.image.get_list(
@@ -74,7 +74,7 @@ class ExplorePredictions(BaseVisMetrics):
             anns = eval_res.api.annotation.download_batch(dataset_info.id, images_ids)
             annotations.append(anns)
             skip_tags_filtering.append(False)
-            min_conf = min(min_conf, eval_res.f1_optimal_conf)
+            min_conf = min(min_conf, eval_res.mp.f1_optimal_conf)
 
         images = list(i for x in zip(*images) for i in x)
         annotations = list(i for x in zip(*annotations) for i in x)
@@ -89,7 +89,7 @@ class ExplorePredictions(BaseVisMetrics):
         res["layoutTemplate"] = [{"skipObjectTagsFiltering": True, "columnTitle": "Ground Truth"}]
         # for i in range(len(self.eval_results)):
         for idx, eval_res in enumerate(self.eval_results, 1):
-            res["layoutTemplate"].append({"columnTitle": f"[{idx}] {eval_res.model_name}"})
+            res["layoutTemplate"].append({"columnTitle": f"[{idx}] {eval_res.name}"})
 
         click_data = res.setdefault("clickData", {})
         explore = click_data.setdefault("explore", {})
@@ -114,7 +114,7 @@ class ExplorePredictions(BaseVisMetrics):
                 images_ids.append(current_images_ids)
                 names = current_images_names
 
-            dataset_infos = api.dataset.get_list(eval_res.dt_project_id)
+            dataset_infos = api.dataset.get_list(eval_res.pred_project_id)
             dataset_infos = [ds for ds in dataset_infos if ds.name in ds_names]
             dataset_infos = sorted(dataset_infos, key=lambda x: ds_names.index(x.name))
             current_images_infos = []
@@ -125,7 +125,7 @@ class ExplorePredictions(BaseVisMetrics):
             current_images_infos = sorted(current_images_infos, key=lambda x: names.index(x.name))
             images_ids.append([image_info.id for image_info in current_images_infos])
 
-            min_conf = min(min_conf, eval_res.f1_optimal_conf)
+            min_conf = min(min_conf, eval_res.mp.f1_optimal_conf)
 
         explore["imagesIds"] = list(i for x in zip(*images_ids) for i in x)
         explore["filters"] = [{"type": "tag", "tagId": "confidence", "value": [min_conf, 1]}]

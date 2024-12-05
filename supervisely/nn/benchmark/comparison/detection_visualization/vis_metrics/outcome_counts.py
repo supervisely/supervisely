@@ -95,7 +95,7 @@ class OutcomeCounts(BaseVisMetrics):
         tp_counts = [eval_result.mp.TP_count for eval_result in self.eval_results][::-1]
         fn_counts = [eval_result.mp.FN_count for eval_result in self.eval_results][::-1]
         fp_counts = [eval_result.mp.FP_count for eval_result in self.eval_results][::-1]
-        model_names = [f"[{i}] {e.model_name}" for i, e in enumerate(self.eval_results, 1)][::-1]
+        model_names = [f"[{i}] {e.name}" for i, e in enumerate(self.eval_results, 1)][::-1]
         counts = [tp_counts, fn_counts, fp_counts]
         names = ["TP", "FN", "FP"]
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
@@ -121,7 +121,7 @@ class OutcomeCounts(BaseVisMetrics):
         fig = go.Figure()
 
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
-        model_names = [f"[{i}] {e.model_name}" for i, e in enumerate(self.eval_results, 1)][::-1]
+        model_names = [f"[{i}] {e.name}" for i, e in enumerate(self.eval_results, 1)][::-1]
         model_names.append("Common")
 
         diff_tps, common_tps = self.common_and_diff_tp
@@ -261,7 +261,7 @@ class OutcomeCounts(BaseVisMetrics):
         res["layoutTemplate"] = [None, None, None]
         res["clickData"] = {}
         for i, eval_result in enumerate(self.eval_results, 1):
-            model_name = f"[{i}] {eval_result.model_name}"
+            model_name = f"[{i}] {eval_result.name}"
             for outcome, matches_data in eval_result.click_data.outcome_counts.items():
                 key = f"{model_name}_{outcome}"
                 outcome_dict = res["clickData"].setdefault(key, {})
@@ -276,7 +276,7 @@ class OutcomeCounts(BaseVisMetrics):
                 title = f"{model_name}. {outcome}: {len(obj_ids)} object{'s' if len(obj_ids) > 1 else ''}"
                 outcome_dict["title"] = title
                 outcome_dict["imagesIds"] = list(img_ids)
-                thr = eval_result.f1_optimal_conf
+                thr = eval_result.mp.f1_optimal_conf
                 if outcome == "FN":
                     outcome_dict["filters"] = [
                         {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
@@ -325,7 +325,7 @@ class OutcomeCounts(BaseVisMetrics):
             _update_outcome_dict("Common", outcome, outcome_dict, common_ids)
 
             for i, diff_ids in enumerate(diff_ids, 1):
-                name = f"[{i}] {self.eval_results[i - 1].model_name}"
+                name = f"[{i}] {self.eval_results[i - 1].name}"
                 key = f"{name}_{outcome}"
                 outcome_dict = res["clickData"].setdefault(key, {})
 

@@ -62,9 +62,9 @@ class ModelComparison:
             eval_cls = self._get_eval_cls(str(local_path))
             eval_result = eval_cls(local_path / "evaluation")
             eval_result.report_path = Path(eval_dir, "visualizations", "template.vue").as_posix()
+            eval_result.color = rgb2hex(colors[i])
 
             self.eval_results.append(eval_result)
-            eval_result.color = rgb2hex(colors[i])
 
         self._validate_eval_data()
 
@@ -88,7 +88,7 @@ class ModelComparison:
                 next_img_names = set(eval_result.mp.per_image_metrics.index)
             else:
                 next_img_names = set(
-                    [img.get("file_name") for img in eval_result.cocoGt.imgs.values()]
+                    [img.get("file_name") for img in eval_result.coco_gt.imgs.values()]
                 )
             if not img_names is None:
                 assert img_names == next_img_names, "Images are different in the evaluations."
