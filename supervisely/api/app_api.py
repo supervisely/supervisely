@@ -1485,6 +1485,7 @@ class AppApi(TaskApi):
         show_disabled=False,
         session_name=None,
         statuses: List[TaskApi.Status] = None,
+        with_shared: bool = False,
     ) -> List[SessionInfo]:
         infos_json = self.get_list_all_pages(
             method="apps.list",
@@ -1493,6 +1494,7 @@ class AppApi(TaskApi):
                 "filter": [{"field": "moduleId", "operator": "=", "value": module_id}],
                 # "onlyRunning": only_running,
                 "showDisabled": show_disabled,
+                "withShared": with_shared,
             },
             convert_json_info_cb=lambda x: x,
             # validate_total=False,
@@ -1500,12 +1502,8 @@ class AppApi(TaskApi):
         if len(infos_json) == 0:
             # raise KeyError(f"App [module_id = {module_id}] not found in team {team_id}")
             return []
-        if len(infos_json) > 1:
-            raise KeyError(
-                f"Apps list in team is broken: app [module_id = {module_id}] added to team {team_id} multiple times"
-            )
         dev_tasks = []
-        sessions = infos_json[0]["tasks"]
+        sessions = [task for info_json in infos_json for task in info_json["tasks"]]
 
         str_statuses = []
         if statuses is not None:
