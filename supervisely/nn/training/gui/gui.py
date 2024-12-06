@@ -6,7 +6,7 @@ training workflows in Supervisely.
 """
 
 import supervisely.io.env as sly_env
-from supervisely import Api
+from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
@@ -62,6 +62,7 @@ class TrainGUI:
         self.workspace_id = sly_env.workspace_id()
         self.project_id = sly_env.project_id()  # from app options?
         self.project_info = self._api.project.get_info_by_id(self.project_id)
+        self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
 
         # 1. Project selection + Train/val split
         self.input_selector = InputSelector(self.project_info, self.app_options)

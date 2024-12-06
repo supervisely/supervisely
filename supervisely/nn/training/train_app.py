@@ -277,6 +277,16 @@ class TrainApp:
         """
         return self.gui.project_info
 
+    @property
+    def project_meta(self) -> ProjectMeta:
+        """
+        Returns the project metadata.
+
+        :return: Project metadata.
+        :rtype: ProjectMeta
+        """
+        return self.gui.project_meta
+
     # ----------------------------------------- #
 
     # Model
@@ -318,7 +328,7 @@ class TrainApp:
         :return: Model metadata.
         :rtype: dict
         """
-        project_meta_json = self.sly_project.meta.to_json()
+        project_meta_json = self.project_meta.to_json()
         model_meta = {
             "classes": [
                 item for item in project_meta_json["classes"] if item["title"] in self.classes
@@ -345,7 +355,9 @@ class TrainApp:
         :return: List of selected classes.
         :rtype: List[str]
         """
-        return self.gui.classes_selector.get_selected_classes()
+        selected_classes = set(self.gui.classes_selector.get_selected_classes())
+        # remap classes with project_meta order
+        return [x for x in self.project_meta.obj_classes.keys() if x in selected_classes]
 
     @property
     def num_classes(self) -> int:
