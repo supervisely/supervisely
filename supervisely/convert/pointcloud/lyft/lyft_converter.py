@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 from pathlib import Path
 from typing import Dict, Optional, Union
@@ -8,17 +9,22 @@ from supervisely import (
     Api,
     ObjClass,
     PointcloudAnnotation,
+    PointcloudEpisodeAnnotation,
+    PointcloudEpisodeFrame,
+    PointcloudEpisodeObject,
+    PointcloudFigure,
     ProjectMeta,
     generate_free_name,
     logger,
     is_development,
     LabelingInterface,
+    silent_remove,
 )
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
-from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively, silent_remove
-from .lyft_helper import process_pointcloud_msg
+from . import lyft_helper
 
 
 class LyftPointcloudConverter(PointcloudConverter):
@@ -42,6 +48,7 @@ class LyftPointcloudConverter(PointcloudConverter):
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._total_msg_count = 0
+        self._is_pcd_episode = False
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.LYFT
@@ -51,38 +58,55 @@ class LyftPointcloudConverter(PointcloudConverter):
         return ".bin"
 
     def validate_format(self) -> bool:
+        try:
+            from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
+        except ImportError:
+            logger.error(
+                'Please run "pip install lyft_dataset_sdk" ' "to install the official devkit first."
+            )
+            return
+
         def _filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
 
-        lyft_files = list_files_recursively(self._input_data, filter_fn=_filter_fn)        
-        if len(lyft_files) == 0:
+        bin_files = list_files_recursively(self._input_data, filter_fn=_filter_fn)
+
+        if len(bin_files) == 0:
             return False
         else:
-            pointcloud = np.fromfile(lyft_files[0], dtype=np.float32)
+            # check if pointclouds have 5 columns (x, y, z, intensity, ring)
+            pointcloud = np.fromfile(bin_files[0], dtype=np.float32)
             if pointcloud % 5 != 0:
                 return False
+        
+        json_path = self._input_data # todo: find the json folder
+        lyft = Lyft(data_path=self._input_data, json_path=json_path, verbose=False)
+        for scene in lyft_helper.get_available_scenes(lyft):
+            sample_datas = lyft_helper.extract_data_from_scene(lyft, scene)
+            if sample_datas is None:
+                return
+            for sample_data in sample_datas:
+                item_path = sample_data['lidar_path']
+                ann_data = sample_data['ann_data']
+                related_images = [img_path for sensor, img_path in sample_data['ann_data'].items() if "CAM" in sensor]
+                custom_data = sample_data.get("custom_data", {}) # todo: implement
+                item = self.Item(item_path, ann_data, related_images, custom_data)
+                self._items.append(item)
 
-        self._items = []
-        for file_path in lyft_files:
-            item = self.Item(file_path)
-            self._items.append(item)
         return self.items_count > 0
 
     def convert(self, item: PointcloudConverter.Item, meta: ProjectMeta):
-        pointcloud = np.fromfile(item.item_path, dtype=np.float32).reshape(-1, 5)
+        item_path = item.item_path
+        save_path = item_path[:-4] + ".pcd"
         timestamp = os.path.getmtime(item.item_path)
-        time_to_data = defaultdict(dict)
-
-        process_pointcloud_msg(
-            time_to_data, pointcloud, timestamp, Path(item.item_path), meta, is_ann=False
-        )
-
+        time_to_data = lyft_helper.convert_bin_to_pcd(item_path, save_path, timestamp)
+        raise NotImplementedError("Implement the conversion function")
         return time_to_data
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
-        self._upload_dataset(api, dataset_id, log_progress)
+        self._upload_dataset(api, dataset_id, log_progress, is_episodes=self._is_pcd_episode)
 
-    def _upload_dataset(self, api: Api, dataset_id: int, log_progress=True):
+    def _upload_dataset(self, api: Api, dataset_id: int, log_progress=True, is_episodes=False):
         obj_cls = ObjClass("object", Cuboid3d)
         self._meta = ProjectMeta(obj_classes=[obj_cls])
         meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
@@ -115,13 +139,16 @@ class LyftPointcloudConverter(PointcloudConverter):
         else:
             progress_cb = None
 
-        existing_names = set([pcd.name for pcd in api.pointcloud.get_list(current_dataset_id)])
         for idx, item in enumerate(self._items):
             current_dataset = dataset_info if not multiple_items else datasets[idx]
             current_dataset_id = current_dataset.id
-
             time_to_data = self.convert(item, meta)
-            for time, data in time_to_data.items():
+
+            existing_names = set([pcd.name for pcd in api.pointcloud.get_list(current_dataset_id)])
+            ann_episode = PointcloudEpisodeAnnotation()
+            frame_to_pointcloud_ids = {}
+
+            for idx, (time, data) in enumerate(time_to_data.items()):
                 pcd_path = data["pcd"].as_posix()
                 ann_path = data["ann"].as_posix() if data["ann"] is not None else None
                 pcd_meta = data["meta"]
@@ -129,11 +156,34 @@ class LyftPointcloudConverter(PointcloudConverter):
                 pcd_name = generate_free_name(
                     existing_names, f"{time}.pcd", with_ext=True, extend_used_names=True
                 )
-                info = api.pointcloud.upload_path(current_dataset_id, pcd_name, pcd_path, pcd_meta)
+                if is_episodes:
+                    pcd_meta["frame"] = idx
+                upload_fn = (
+                    api.pointcloud_episode.upload_path
+                    if is_episodes
+                    else api.pointcloud.upload_path
+                )
+                info = upload_fn(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 pcd_id = info.id
+                frame_to_pointcloud_ids[idx] = pcd_id
 
-                ann = PointcloudAnnotation()
-                api.pointcloud.annotation.append(pcd_id, ann)
+                if ann_path is not None:
+                    ann = PointcloudAnnotation.load_json_file(ann_path, meta)
+                    if is_episodes:
+                        objects = ann_episode.objects
+                        figures = []
+                        for fig in ann.figures:
+                            obj_cls = meta.get_obj_class(fig.parent_object.obj_class.name)
+                            if obj_cls is not None:
+                                obj = PointcloudEpisodeObject(obj_cls)
+                                objects = objects.add(obj)
+                                figure = PointcloudFigure(obj, fig.geometry, frame_index=idx)
+                                figures.append(figure)
+                        frames = ann_episode.frames
+                        frames = frames.add(PointcloudEpisodeFrame(idx, figures))
+                        ann_episode = ann_episode.clone(objects=objects, frames=frames)
+                    else:
+                        api.pointcloud.annotation.append(pcd_id, ann)
 
                 silent_remove(pcd_path)
                 if ann_path is not None:
@@ -141,11 +191,14 @@ class LyftPointcloudConverter(PointcloudConverter):
                 if log_progress:
                     progress_cb(1)
 
+            if is_episodes:
+                ann_episode = ann_episode.clone(frames_count=len(time_to_data))
+                api.pointcloud_episode.annotation.append(
+                    current_dataset_id, ann_episode, frame_to_pointcloud_ids
+                )
+
+            logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+
         if log_progress:
             if is_development():
                 progress.close()
-
-        logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
-
-
-# @ TODO: Implement the episodes, implement annotation conversion
