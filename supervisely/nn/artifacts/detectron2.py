@@ -1,5 +1,6 @@
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
@@ -16,6 +17,7 @@ class Detectron2(BaseTrainArtifacts):
         self._weights_ext = ".pth"
         self._config_file = "model_config.yaml"
         self._pattern = re_compile(r"^/detectron2/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["instance segmentation"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

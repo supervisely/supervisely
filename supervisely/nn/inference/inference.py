@@ -13,6 +13,7 @@ from dataclasses import asdict
 from functools import partial, wraps
 from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from urllib.request import urlopen
 
 import numpy as np
 import requests
@@ -25,10 +26,13 @@ import supervisely.app.development as sly_app_development
 import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
+import supervisely.io.fs as sly_fs
+import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
 from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
 from supervisely._utils import (
     add_callback,
+    get_filename_from_headers,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -59,7 +63,13 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.utils import CheckpointInfo, DeployInfo, ModelPrecision, RuntimeType
+from supervisely.nn.utils import (
+    CheckpointInfo,
+    DeployInfo,
+    ModelPrecision,
+    ModelSource,
+    RuntimeType,
+)
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -74,6 +84,12 @@ except ImportError:
 
 
 class Inference:
+    FRAMEWORK_NAME: str = None
+    """Name of framework to register models in Supervisely"""
+    MODELS: str = None
+    """Path to file with list of models"""
+    APP_OPTIONS: str = None
+    """Path to file with app options"""
     DEFAULT_BATCH_SIZE = 16
 
     def __init__(
@@ -85,6 +101,7 @@ class Inference:
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
         multithread_inference: Optional[bool] = True,
+        use_serving_gui_template: Optional[bool] = False,
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
@@ -92,8 +109,10 @@ class Inference:
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
+        self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
         self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
+        self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
         self._deploy_params: dict = None
@@ -117,6 +136,7 @@ class Inference:
         self._custom_inference_settings = custom_inference_settings
 
         self._use_gui = use_gui
+        self._use_serving_gui_template = use_serving_gui_template
         self._gui = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
@@ -124,20 +144,48 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        if use_gui:
+        if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
             original_initialize_custom_gui_method = getattr(
                 Inference, "initialize_custom_gui", None
             )
-            if initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
+            if self._use_serving_gui_template:
+                if self.FRAMEWORK_NAME is None:
+                    raise ValueError("FRAMEWORK_NAME is not defined")
+                self._gui = GUI.ServingGUITemplate(
+                    self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS
+                )
+                self._user_layout = self._gui.widgets
+                self._user_layout_card = self._gui.card
+            elif initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
                 self._gui = GUI.ServingGUI()
                 self._user_layout = self.initialize_custom_gui()
             else:
-                self.initialize_gui()
+                initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+                original_initialize_custom_gui_method = getattr(
+                    Inference, "initialize_custom_gui", None
+                )
+                if (
+                    initialize_custom_gui_method.__func__
+                    is not original_initialize_custom_gui_method
+                ):
+                    self._gui = GUI.ServingGUI()
+                    self._user_layout = self.initialize_custom_gui()
+                else:
+                    self.initialize_gui()
 
-            def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+            def on_serve_callback(
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+            ):
                 Progress("Deploying model ...", 1)
-                if isinstance(self.gui, GUI.ServingGUI):
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    deploy_params = self.get_params_from_gui()
+                    model_files = self._download_model_files(
+                        deploy_params["model_source"], deploy_params["model_files"]
+                    )
+                    deploy_params["model_files"] = model_files
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
                     self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
@@ -146,9 +194,11 @@ class Inference:
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
 
-            def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+            def on_change_model_callback(
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+            ):
                 self.shutdown_model()
-                if isinstance(self.gui, GUI.ServingGUI):
+                if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
                     self._api_request_model_layout.unlock()
                     self._api_request_model_layout.hide()
                     self.update_gui(self._model_served)
@@ -198,7 +248,7 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def update_gui(self, is_model_deployed: bool = True) -> None:
-        if isinstance(self.gui, GUI.ServingGUI):
+        if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
             if is_model_deployed:
                 self._user_layout_card.lock()
             else:
@@ -211,6 +261,8 @@ class Inference:
             self._api_request_model_layout.show()
 
     def get_params_from_gui(self) -> dict:
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            return self.gui.get_params_from_gui()
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
@@ -237,6 +289,25 @@ class Inference:
         )
 
     def _initialize_app_layout(self):
+        self._api_request_model_info = Editor(
+            height_lines=12,
+            language_mode="json",
+            readonly=True,
+            restore_default_button=False,
+            auto_format=True,
+        )
+        self._api_request_model_layout = Card(
+            title="Model was deployed from API request with the following settings",
+            content=self._api_request_model_info,
+        )
+        self._api_request_model_layout.hide()
+
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            self._app_layout = Container(
+                [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
+            )
+            return
+
         if hasattr(self, "_user_layout"):
             self._user_layout_card = Card(
                 title="Select Model",
@@ -251,20 +322,9 @@ class Inference:
                 content=self._gui,
                 lock_message="Model is deployed. To change the model, stop the serving first.",
             )
-        self._api_request_model_info = Editor(
-            height_lines=12,
-            language_mode="json",
-            readonly=True,
-            restore_default_button=False,
-            auto_format=True,
-        )
-        self._api_request_model_layout = Card(
-            title="Model was deployed from API request with the following settings",
-            content=self._api_request_model_info,
-        )
-        self._api_request_model_layout.hide()
+
         self._app_layout = Container(
-            [self._user_layout_card, self._api_request_model_layout, self.get_ui()]
+            [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
         )
 
     def support_custom_models(self) -> bool:
@@ -427,7 +487,74 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _download_model_files(self, model_source: str, model_files: List[str]) -> dict:
+        if model_source == ModelSource.PRETRAINED:
+            return self._download_pretrained_model(model_files)
+        elif model_source == ModelSource.CUSTOM:
+            return self._download_custom_model(model_files)
+
+    def _download_pretrained_model(self, model_files: dict):
+        """
+        Downloads the pretrained model data.
+        """
+        local_model_files = {}
+
+        for file in model_files:
+            file_url = model_files[file]
+            file_path = os.path.join(self.model_dir, file)
+            if file_url.startswith("http"):
+                with urlopen(file_url) as f:
+                    file_size = f.length
+                    file_name = get_filename_from_headers(file_url)
+                    file_path = os.path.join(self.model_dir, file_name)
+                    if file_name is None:
+                        file_name = file
+                    with self.gui.download_progress(
+                        message=f"Downloading: '{file_name}'",
+                        total=file_size,
+                        unit="bytes",
+                        unit_scale=True,
+                    ) as download_pbar:
+                        self.gui.download_progress.show()
+                        sly_fs.download(
+                            url=file_url, save_path=file_path, progress=download_pbar.update
+                        )
+                    local_model_files[file] = file_path
+            else:
+                local_model_files[file] = file_url
+        self.gui.download_progress.hide()
+        return local_model_files
+
+    def _download_custom_model(self, model_files: dict):
+        """
+        Downloads the custom model data.
+        """
+
+        team_id = env.team_id()
+        local_model_files = {}
+
+        for file in model_files:
+            file_url = model_files[file]
+            file_info = self.api.file.get_info_by_path(team_id, file_url)
+            file_size = file_info.sizeb
+            file_name = os.path.basename(file_url)
+            file_path = os.path.join(self.model_dir, file_name)
+            with self.gui.download_progress(
+                message=f"Downloading: '{file_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(
+                    team_id, file_url, file_path, progress_cb=download_pbar.update
+                )
+            local_model_files[file] = file_path
+        self.gui.download_progress.hide()
+        return local_model_files
+
     def _load_model(self, deploy_params: dict):
+        self.model_source = deploy_params.get("model_source")
         self.device = deploy_params.get("device")
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
@@ -438,6 +565,64 @@ class Inference:
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
+
+    def _load_model_headless(
+        self,
+        model_files: dict,
+        model_source: str,
+        model_info: dict,
+        device: str,
+        runtime: str,
+        **kwargs,
+    ):
+        deploy_params = {
+            "model_files": model_files,
+            "model_source": model_source,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+            **kwargs,
+        }
+        if model_source == ModelSource.CUSTOM:
+            self._set_model_meta_custom_model(model_info)
+            self._set_checkpoint_info_custom_model(deploy_params)
+        self._load_model(deploy_params)
+        if self._model_meta is None:
+            self._set_model_meta_from_classes()
+
+    def _set_model_meta_custom_model(self, model_info: dict):
+        model_meta = model_info.get("model_meta")
+        if model_meta is None:
+            return
+        if isinstance(model_meta, dict):
+            self._model_meta = ProjectMeta.from_json(model_meta)
+        elif isinstance(model_meta, str):
+            remote_artifacts_dir = model_info["artifacts_dir"]
+            model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
+            model_meta_path = self.download(model_meta_url)
+            model_meta = sly_json.load_json_file(model_meta_path)
+            self._model_meta = ProjectMeta.from_json(model_meta)
+        else:
+            raise ValueError(
+                "model_meta should be a dict or a name of '.json' file in experiment artifacts folder in Team Files"
+            )
+        self._get_confidence_tag_meta()
+        self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
+
+    def _set_checkpoint_info_custom_model(self, deploy_params: dict):
+        model_info = deploy_params.get("model_info", {})
+        model_files = deploy_params.get("model_files", {})
+        if model_info:
+            checkpoint_name = os.path.basename(model_files.get("checkpoint"))
+            self.checkpoint_info = CheckpointInfo(
+                checkpoint_name=checkpoint_name,
+                model_name=model_info.get("model_name"),
+                architecture=model_info.get("framework_name"),
+                custom_checkpoint_path=os.path.join(
+                    model_info.get("artifacts_dir"), checkpoint_name
+                ),
+                model_source=ModelSource.CUSTOM,
+            )
 
     def shutdown_model(self):
         self._model_served = False
@@ -453,7 +638,7 @@ class Inference:
         pass
 
     def get_classes(self) -> List[str]:
-        raise NotImplementedError("Have to be implemented in child class after inheritance")
+        return self.classes
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -550,6 +735,14 @@ class Inference:
         self._model_meta = ProjectMeta(classes)
         self._get_confidence_tag_meta()
 
+    def _set_model_meta_from_classes(self):
+        classes = self.get_classes()
+        if not classes:
+            raise ValueError("Can't create model meta. Please, set the `self.classes` attribute.")
+        shape = self._get_obj_class_shape()
+        self._model_meta = ProjectMeta([ObjClass(name, shape) for name in classes])
+        self._get_confidence_tag_meta()
+
     @property
     def task_id(self) -> int:
         return self._task_id
@@ -574,10 +767,16 @@ class Inference:
         for prediction in predictions:
             if (
                 not classes_whitelist in (None, "all")
+                and hasattr(prediction, "class_name")
                 and prediction.class_name not in classes_whitelist
             ):
                 continue
-            label = self._create_label(prediction)
+            if "classes_whitelist" in inspect.signature(self._create_label).parameters:
+                # pylint: disable=unexpected-keyword-arg
+                # pylint: disable=too-many-function-args
+                label = self._create_label(prediction, classes_whitelist)
+            else:
+                label = self._create_label(prediction)
             if label is None:
                 # for example empty mask
                 continue
@@ -1064,7 +1263,9 @@ class Inference:
             tracker = None
 
         results = []
-        batch_size = state.get("batch_size", self.get_batch_size())
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
@@ -1117,7 +1318,9 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring images...", extra={"state": state})
-        batch_size = state.get("batch_size", self.get_batch_size())
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
         output_project_id = state.get("output_project_id", None)
         images_infos = api.image.get_info_by_id_batch(images_ids)
         images_infos_dict = {im_info.id: im_info for im_info in images_infos}
@@ -1385,7 +1588,9 @@ class Inference:
             project_info = api.project.get_info_by_id(state["projectId"])
         dataset_ids = state.get("dataset_ids", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
-        batch_size = state.get("batch_size", self.get_batch_size())
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
 
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
         if dataset_ids is not None:
@@ -2008,7 +2213,9 @@ class Inference:
             )
             images_ids = request.state.state["images_ids"]
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2045,7 +2252,9 @@ class Inference:
         def inference_video_id(response: Response, request: Request):
             logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2131,7 +2340,9 @@ class Inference:
         def inference_video_id_async(response: Response, request: Request):
             logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2173,7 +2384,9 @@ class Inference:
             if project_info.type != str(ProjectType.IMAGES):
                 raise ValueError("Only images projects are supported.")
             # check batch size
-            batch_size = request.state.state.get("batch_size", self.get_batch_size())
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {
@@ -2400,7 +2613,15 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                self._load_model(deploy_params)
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    model_files = self._download_model_files(
+                        deploy_params["model_source"], deploy_params["model_files"]
+                    )
+                    deploy_params["model_files"] = model_files
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
+                    self._load_model(deploy_params)
+
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")
@@ -2529,16 +2750,51 @@ def clean_up_cuda():
         logger.debug("Error in clean_up_cuda.", exc_info=True)
 
 
+def _fix_classes_names(meta: ProjectMeta, ann: Annotation):
+    def _replace_strip(s, chars: str, replacement: str = "_") -> str:
+        replace_pattern = f"^[{re.escape(chars)}]+|[{re.escape(chars)}]+$"
+        return re.sub(replace_pattern, replacement, s)
+
+    replaced_classes_in_meta = []
+    for obj_class in meta.obj_classes:
+        obj_class_name = _replace_strip(obj_class.name, " ", "")
+        if obj_class_name != obj_class.name:
+            new_obj_class = obj_class.clone(name=obj_class_name)
+            meta = meta.delete_obj_class(obj_class.name)
+            meta = meta.add_obj_class(new_obj_class)
+            replaced_classes_in_meta.append((obj_class.name, obj_class_name))
+    replaced_classes_in_ann = set()
+    new_labels = []
+    for label in ann.labels:
+        obj_class = label.obj_class
+        obj_class_name = _replace_strip(obj_class.name, " ", "")
+        if obj_class_name != obj_class.name:
+            new_obj_class = obj_class.clone(name=obj_class_name)
+            label = label.clone(obj_class=new_obj_class)
+            replaced_classes_in_ann.add((obj_class.name, obj_class_name))
+        new_labels.append(label)
+    ann = ann.clone(labels=new_labels)
+    return meta, ann, replaced_classes_in_meta, list(replaced_classes_in_ann)
+
+
 def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     """Update project meta and annotation to match each other
     If obj class or tag meta from annotation conflicts with project meta
     add suffix to obj class or tag meta.
     Return tuple of updated project meta, annotation and boolean flag if meta was changed."""
-    obj_classes_suffixes = {"_nn"}
-    tag_meta_suffixes = {"_nn"}
+    obj_classes_suffixes = ["_nn"]
+    tag_meta_suffixes = ["_nn"]
     ann_obj_classes = {}
     ann_tag_metas = {}
     meta_changed = False
+
+    meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
+    if replaced_classes_in_meta:
+        meta_changed = True
+        logger.warning(
+            "Some classes names were fixed in project meta",
+            extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
+        )
 
     # get all obj classes and tag metas from annotation
     for label in ann.labels:
@@ -2549,7 +2805,8 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
         ann_tag_metas[tag.meta.name] = tag.meta
 
     # check if obj classes are in project meta
-    # if not, add them with suffix
+    # if not, add them.
+    # if shape is different, add them with suffix
     changed_obj_classes = {}
     for ann_obj_class in ann_obj_classes.values():
         if meta.get_obj_class(ann_obj_class.name) is None:

@@ -3,6 +3,7 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import os
 from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
@@ -11,17 +12,18 @@ from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.api.api import Api
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import file_exists, mkdir, touch
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.fs import mkdir, touch, touch_async
+from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import tqdm_sly
 from supervisely.video import video as sly_video
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -1166,6 +1168,78 @@ class VideoProject(Project):
             progress_cb=progress_cb,
         )
 
+    @staticmethod
+    async def download_async(
+        api: Api,
+        project_id: int,
+        dest_dir: str,
+        semaphore: asyncio.Semaphore = None,
+        dataset_ids: List[int] = None,
+        download_videos: bool = True,
+        save_video_info: bool = False,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        include_custom_data: bool = False,
+    ) -> None:
+        """
+        Download video project from Supervisely to the given directory asynchronously.
+
+        :param api: Supervisely Api class object.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Project ID in Supervisely.
+        :type project_id: :class:`int`
+        :param dest_dir: Directory to download video project.
+        :type dest_dir: :class:`str`
+        :param semaphore: Semaphore to limit the number of concurrent downloads of items.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param dataset_ids: Datasets IDs in Supervisely to download.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param download_videos: Download videos from Supervisely video project in dest_dir or not.
+        :type download_videos: :class:`bool`, optional
+        :param save_video_info: Save video infos or not.
+        :type save_video_info: :class:`bool`, optional
+        :param log_progress: Log download progress or not.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: :class:`tqdm`, optional
+        :param include_custom_data: Include custom data in the download.
+        :type include_custom_data: :class:`bool`, optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            save_directory = "/home/admin/work/supervisely/source/video_project"
+            project_id = 8888
+
+            loop = sly.utils.get_or_create_event_loop()
+            coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
+                future.result()
+            else:
+                loop.run_until_complete(coroutine)
+        """
+        await download_video_project_async(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            semaphore=semaphore,
+            dataset_ids=dataset_ids,
+            download_videos=download_videos,
+            save_video_info=save_video_info,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            include_custom_data=include_custom_data,
+        )
+
 
 def download_video_project(
     api: Api,
@@ -1458,3 +1532,219 @@ def upload_video_project(
             raise e
 
     return project.id, project.name
+
+
+async def download_video_project_async(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    semaphore: Optional[asyncio.Semaphore] = None,
+    dataset_ids: Optional[List[int]] = None,
+    download_videos: Optional[bool] = True,
+    save_video_info: Optional[bool] = False,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    include_custom_data: Optional[bool] = False,
+) -> None:
+    """
+    Download video project to the local directory.
+
+    :param api: Supervisely API address and token.
+    :type api: Api
+    :param project_id: Project ID to download
+    :type project_id: int
+    :param dest_dir: Destination path to local directory.
+    :type dest_dir: str
+    :param semaphore: Semaphore to limit the number of simultaneous downloads of items.
+    :type semaphore: asyncio.Semaphore, optional
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :type dataset_ids: list(int), optional
+    :param download_videos: Include videos in the download.
+    :type download_videos: bool, optional
+    :param save_video_info: Include video info in the download.
+    :type save_video_info: bool, optional
+    :param log_progress: Show downloading logs in the output.
+    :type log_progress: bool
+    :param progress_cb: Function for tracking the download progress.
+    :type progress_cb: tqdm or callable, optional
+    :param include_custom_data: Include custom data in the download.
+    :type include_custom_data: bool, optional
+    :return: None.
+    :rtype: NoneType
+    :Usage example:
+
+     .. code-block:: python
+
+        import os
+        from dotenv import load_dotenv
+
+        from tqdm import tqdm
+        import supervisely as sly
+
+        os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+        os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+        api = sly.Api.from_env()
+
+        dest_dir = 'your/local/dest/dir'
+        project_id = 17758
+
+        loop = sly.utils.get_or_create_event_loop()
+        loop.run_until_complete(
+                        sly.download_async(api, project_id, dest_dir)
+                    )
+    """
+    if semaphore is None:
+        semaphore = api.get_default_semaphore()
+
+    key_id_map = KeyIdMap()
+
+    project_fs = VideoProject(dest_dir, OpenMode.CREATE)
+
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    project_fs.set_meta(meta)
+
+    if progress_cb is not None:
+        log_progress = False
+
+    datasets = []
+    if dataset_ids is not None:
+        for ds_id in dataset_ids:
+            datasets.append(api.dataset.get_info_by_id(ds_id))
+    else:
+        datasets = api.dataset.get_list(project_id, recursive=True)
+
+    for dataset in datasets:
+        dataset_fs = project_fs.create_dataset(dataset.name)
+        videos = api.video.get_list(dataset.id)
+
+        if log_progress is True:
+            progress_cb = tqdm_sly(
+                desc="Downloading videos from {!r}".format(dataset.name),
+                total=len(videos),
+            )
+
+        tasks = []
+        for video in videos:
+            task = _download_project_item_async(
+                api=api,
+                video=video,
+                semaphore=semaphore,
+                dataset=dataset,
+                dest_dir=dest_dir,
+                project_fs=project_fs,
+                key_id_map=key_id_map,
+                dataset_fs=dataset_fs,
+                include_custom_data=include_custom_data,
+                download_videos=download_videos,
+                save_video_info=save_video_info,
+                progress_cb=progress_cb,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+
+    project_fs.set_key_id_map(key_id_map)
+
+
+def _log_warning(
+    video: VideoInfo,
+    video_file_path: Optional[str] = None,
+    ann_json: Optional[dict] = None,
+    item_info: Optional[dict] = None,
+):
+    """
+    This function logs a warning with additional information for debugging.
+    It is used in the _download_project_item_async function.
+    """
+    logger.info(
+        "INFO FOR DEBUGGING",
+        extra={
+            "project_id": video.project_id,
+            "dataset_id": video.dataset_id,
+            "video_id": video.id,
+            "video_name": video.name,
+            "video_file_path": video_file_path,
+            "ann_json": ann_json,
+            "item_info": item_info,
+        },
+    )
+
+
+async def _download_project_item_async(
+    api: Api,
+    video: VideoInfo,
+    semaphore: asyncio.Semaphore,
+    dataset: DatasetInfo,
+    dest_dir: str,
+    project_fs: Project,
+    key_id_map: KeyIdMap,
+    dataset_fs: VideoDataset,
+    include_custom_data: bool,
+    download_videos: bool,
+    save_video_info: bool = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> None:
+    """
+    This function downloads a video item from the project in Supervisely platform asynchronously.
+    """
+
+    try:
+        ann_json = await api.video.annotation.download_async(video.id, video, semaphore=semaphore)
+        ann_json = ann_json[0]
+    except Exception as e:
+        _log_warning(video)
+        raise e
+
+    video_file_path = dataset_fs.generate_item_path(video.name)
+
+    if include_custom_data:
+        CUSTOM_DATA_DIR = os.path.join(dest_dir, dataset.name, "custom_data")
+        mkdir(CUSTOM_DATA_DIR)
+        custom_data_path = os.path.join(CUSTOM_DATA_DIR, f"{video.name}.json")
+        await dump_json_file_async(video.custom_data, custom_data_path)
+
+    if download_videos:
+        try:
+            video_file_size = video.file_meta.get("size")
+            if progress_cb is not None and video_file_size is not None:
+                item_progress = tqdm_sly(
+                    desc=f"Downloading '{video.name}'",
+                    total=int(video_file_size),
+                    unit="B",
+                    unit_scale=True,
+                    leave=False,
+                )
+                await api.video.download_path_async(
+                    video.id,
+                    video_file_path,
+                    semaphore=semaphore,
+                    progress_cb=item_progress,
+                    progress_cb_type="size",
+                )
+            else:
+                await api.video.download_path_async(video.id, video_file_path, semaphore=semaphore)
+        except Exception as e:
+            _log_warning(video, video_file_path)
+            raise e
+    else:
+        await touch_async(video_file_path)
+    item_info = video._asdict() if save_video_info else None
+    try:
+        video_ann = VideoAnnotation.from_json(ann_json, project_fs.meta, key_id_map)
+    except Exception as e:
+        _log_warning(video, ann_json=ann_json)
+        raise e
+    try:
+        await dataset_fs.add_item_file_async(
+            video.name,
+            video_file_path,
+            ann=video_ann,
+            _validate_item=False,
+            _use_hardlink=True,
+            item_info=item_info,
+        )
+    except Exception as e:
+        _log_warning(video, video_file_path, item_info)
+        raise e
+
+    if progress_cb is not None:
+        progress_cb(1)

@@ -571,3 +571,18 @@ def mininum_instance_version_for_sdk() -> str:
         postprocess_fn=lambda x: x,
         raise_not_found=False,
     )
+
+
+def semaphore_size() -> int:
+    """Returns semaphore size from environment variable using following
+        - SUPERVISELY_ASYNC_SEMAPHORE
+
+    :return: semaphore size
+    :rtype: int
+    """
+    return _parse_from_env(
+        name="semaphore_size",
+        keys=["SUPERVISELY_ASYNC_SEMAPHORE"],
+        postprocess_fn=lambda x: int(x),
+        raise_not_found=False,
+    )

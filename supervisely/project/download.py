@@ -1,3 +1,4 @@
+import asyncio
 import os
 import shutil
 from typing import Callable, List, Optional, Tuple, Union
@@ -5,7 +6,7 @@ from typing import Callable, List, Optional, Tuple, Union
 from tqdm import tqdm
 
 from supervisely import get_project_class
-from supervisely._utils import rand_str
+from supervisely._utils import get_or_create_event_loop, rand_str
 from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
@@ -19,7 +20,7 @@ from supervisely.io.fs import (
     get_directory_size,
     remove_dir,
 )
-from supervisely.io.json import load_json_file
+from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project import Project
 from supervisely.project.project import Dataset, OpenMode, ProjectType
 from supervisely.sly_logger import logger
@@ -177,29 +178,132 @@ def download(
     )
 
 
-def _get_cache_dir(project_id: int, dataset_name: str = None) -> str:
+def download_async(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    semaphore: Optional[asyncio.Semaphore] = None,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    **kwargs,
+) -> None:
+    project_info = api.project.get_info_by_id(project_id)
+
+    if progress_cb is not None:
+        log_progress = False
+
+    project_class = get_project_class(project_info.type)
+    if hasattr(project_class, "download_async"):
+        download_coro = project_class.download_async(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            semaphore=semaphore,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            **kwargs,
+        )
+        loop = get_or_create_event_loop()
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+            future.result()
+        else:
+            loop.run_until_complete(download_coro)
+    else:
+        raise NotImplementedError(f"Method download_async is not implemented for {project_class}")
+
+
+def download_async_or_sync(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
+    **kwargs,
+):
+    """
+    Download project asynchronously if possible, otherwise download synchronously.
+    Automatically detects project type.
+    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+
+    In case of error during asynchronous download, the function will switch to synchronous download.
+    """
+    project_info = kwargs.pop("project_info", None)
+    if not isinstance(project_info, ProjectInfo) or project_info.id != project_id:
+        project_info = api.project.get_info_by_id(project_id)
+
+    if progress_cb is not None:
+        log_progress = False
+
+    project_class = get_project_class(project_info.type)
+
+    switch_to_sync = False
+    if hasattr(project_class, "download_async"):
+        try:
+            download_coro = project_class.download_async(
+                api=api,
+                project_id=project_id,
+                dest_dir=dest_dir,
+                semaphore=semaphore,
+                dataset_ids=dataset_ids,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+                **kwargs,
+            )
+            loop = get_or_create_event_loop()
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+                future.result()
+            else:
+                loop.run_until_complete(download_coro)
+        except Exception as e:
+            if kwargs.get("resume_download", False) is False:
+                remove_dir(dest_dir)
+            logger.error(f"Failed to download project {project_id} asynchronously: {e}")
+            logger.warning("Switching to synchronous download")
+            switch_to_sync = True
+    else:
+        switch_to_sync = True
+
+    if switch_to_sync:
+        project_class.download(
+            api=api,
+            project_id=project_id,
+            dest_dir=dest_dir,
+            dataset_ids=dataset_ids,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+            **kwargs,
+        )
+
+
+def _get_cache_dir(project_id: int, dataset_path: str = None) -> str:
     p = os.path.join(apps_cache_dir(), str(project_id))
-    if dataset_name is not None:
-        p = os.path.join(p, dataset_name)
+    if dataset_path is not None:
+        p = os.path.join(p, dataset_path)
     return p
 
 
-def is_cached(project_id, dataset_name: str = None) -> bool:
-    return dir_exists(_get_cache_dir(project_id, dataset_name))
+def is_cached(project_id, dataset_path: str = None) -> bool:
+    return dir_exists(_get_cache_dir(project_id, dataset_path))
 
 
-def _split_by_cache(project_id: int, dataset_names: List[str]) -> Tuple[List, List]:
+def _split_by_cache(project_id: int, dataset_paths: List[str]) -> Tuple[List, List]:
     if not is_cached(project_id):
-        return dataset_names, []
-    to_download = [ds_name for ds_name in dataset_names if not is_cached(project_id, ds_name)]
-    cached = [ds_name for ds_name in dataset_names if is_cached(project_id, ds_name)]
+        return dataset_paths, []
+    to_download = [ds_path for ds_path in dataset_paths if not is_cached(project_id, ds_path)]
+    cached = [ds_path for ds_path in dataset_paths if is_cached(project_id, ds_path)]
     return to_download, cached
 
 
-def get_cache_size(project_id: int, dataset_name: str = None) -> int:
-    if not is_cached(project_id, dataset_name):
+def get_cache_size(project_id: int, dataset_path: str = None) -> int:
+    if not is_cached(project_id, dataset_path):
         return 0
-    cache_dir = _get_cache_dir(project_id, dataset_name)
+    cache_dir = _get_cache_dir(project_id, dataset_path)
     return get_directory_size(cache_dir)
 
 
@@ -254,7 +358,7 @@ def _validate_dataset(
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
-        if dataset.name == dataset_info.name:
+        if dataset.name.endswith(dataset_info.name):  # TODO: fix it later
             diff = set(items_infos_dict.keys()).difference(set(dataset.get_items_names()))
             if diff:
                 logger.debug(
@@ -305,10 +409,13 @@ def _validate(
     api: Api, project_info: ProjectInfo, project_meta: ProjectMeta, dataset_infos: List[DatasetInfo]
 ):
     project_id = project_info.id
-    to_download, cached = _split_by_cache(project_id, [info.name for info in dataset_infos])
+    to_download, cached = _split_by_cache(
+        project_id, [_get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
+    )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        if dataset_info.name in to_download:
+        ds_path = _get_dataset_path(api, dataset_infos, dataset_info.id)
+        if ds_path in to_download:
             continue
         if not _validate_dataset(
             api,
@@ -317,10 +424,10 @@ def _validate(
             project_meta,
             dataset_info,
         ):
-            to_download.add(dataset_info.name)
-            cached.remove(dataset_info.name)
+            to_download.add(ds_path)
+            cached.remove(ds_path)
             logger.info(
-                f"Dataset {dataset_info.name} of project {project_id} is not up to date and will be re-downloaded."
+                f"Dataset {ds_path} of project {project_id} is not up to date and will be re-downloaded."
             )
     return list(to_download), list(cached)
 
@@ -337,51 +444,40 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
     return kwargs
 
 
+def _add_resume_download_to_kwargs(kwargs: dict, project_type: str):
+    supported_force_projects = (str(ProjectType.IMAGES),)
+    if project_type in supported_force_projects:
+        kwargs["resume_download"] = True
+    return kwargs
+
+
 def _download_project_to_cache(
     api: Api,
     project_info: ProjectInfo,
     dataset_infos: List[DatasetInfo],
     log_progress: bool = True,
     progress_cb: Callable = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ):
     project_id = project_info.id
     project_type = project_info.type
     kwargs = _add_save_items_infos_to_kwargs(kwargs, project_type)
+    kwargs = _add_resume_download_to_kwargs(kwargs, project_type)
     cached_project_dir = _get_cache_dir(project_id)
     if len(dataset_infos) == 0:
         logger.debug("No datasets to download")
         return
-    elif is_cached(project_id):
-        temp_pr_dir = os.path.join(apps_cache_dir(), rand_str(10))
-        download(
-            api=api,
-            project_id=project_id,
-            dest_dir=temp_pr_dir,
-            dataset_ids=[info.id for info in dataset_infos],
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-            **kwargs,
-        )
-        existing_project = Project(cached_project_dir, OpenMode.READ)
-        for dataset in existing_project.datasets:
-            dataset: Dataset
-            dataset.directory
-            if dataset.name in [info.name for info in dataset_infos]:
-                continue
-            copy_dir_recursively(dataset.directory, os.path.join(temp_pr_dir, dataset.name))
-        remove_dir(cached_project_dir)
-        shutil.move(temp_pr_dir, cached_project_dir)
-    else:
-        download(
-            api=api,
-            project_id=project_id,
-            dest_dir=cached_project_dir,
-            dataset_ids=[info.id for info in dataset_infos],
-            log_progress=log_progress,
-            progress_cb=progress_cb,
-            **kwargs,
-        )
+    download_async_or_sync(
+        api=api,
+        project_id=project_id,
+        dest_dir=cached_project_dir,
+        dataset_ids=[info.id for info in dataset_infos],
+        log_progress=log_progress,
+        progress_cb=progress_cb,
+        semaphore=semaphore,
+        **kwargs,
+    )
 
 
 def download_to_cache(
@@ -391,6 +487,7 @@ def download_to_cache(
     dataset_ids: List[int] = None,
     log_progress: bool = True,
     progress_cb=None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ) -> Tuple[List, List]:
     """
@@ -410,6 +507,7 @@ def download_to_cache(
     :type log_progress: bool, optional
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
 
     :return: Tuple where the first list contains names of downloaded datasets and the second list contains
     names of cached datasets
@@ -421,27 +519,53 @@ def download_to_cache(
         raise ValueError("dataset_infos and dataset_ids cannot be specified at the same time")
     if dataset_infos is None:
         if dataset_ids is None:
-            dataset_infos = api.dataset.get_list(project_id)
+            dataset_infos = api.dataset.get_list(project_id, recursive=True)
         else:
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
-    name_to_info = {info.name: info for info in dataset_infos}
+    path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
     to_download, cached = _validate(api, project_info, project_meta, dataset_infos)
     if progress_cb is not None:
-        cached_items_n = sum(name_to_info[ds_name].items_count for ds_name in cached)
+        cached_items_n = sum(path_to_info[ds_path].items_count for ds_path in cached)
         progress_cb(cached_items_n)
     _download_project_to_cache(
         api=api,
         project_info=project_info,
-        dataset_infos=[name_to_info[name] for name in to_download],
+        dataset_infos=[path_to_info[ds_path] for ds_path in to_download],
         log_progress=log_progress,
         progress_cb=progress_cb,
+        semaphore=semaphore,
         **kwargs,
     )
     return to_download, cached
 
 
+def _get_dataset_parents(api, dataset_infos, dataset_id):
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    if this_dataset_info.parent_id is None:
+        return []
+    parent = _get_dataset_parents(
+        api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
+    )
+    this_parent_name = dataset_infos_dict.get(
+        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
+    ).name
+    return [*parent, this_parent_name]
+
+
+def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
+    parents = _get_dataset_parents(api, dataset_infos, dataset_id)
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    return Dataset._get_dataset_path(this_dataset_info.name, parents)
+
+
 def copy_from_cache(
-    project_id: int, dest_dir: str, dataset_names: List[str] = None, progress_cb: Callable = None
+    project_id: int,
+    dest_dir: str,
+    dataset_names: List[str] = None,
+    progress_cb: Callable = None,
+    dataset_paths: List[str] = None,
 ):
     """
     Copy project or dataset from cache to the specified directory.
@@ -451,31 +575,35 @@ def copy_from_cache(
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
-    :param dataset_name: Name of the dataset to copy. If not specified, the whole project will be copied.
+    :param dataset_name: List of dataset paths to copy. If not specified, the whole project will be copied.
     :type dataset_name: str, optional
     :param progress_cb: Function for tracking copying progress. Will be called with number of bytes copied.
     :type progress_cb: tqdm or callable, optional
+    :param dataset_paths: List of dataset paths to copy. If not specified, all datasets will be copied.
+    :type dataset_paths: list(str), optional
 
     :return: None.
     :rtype: NoneType
     """
     if not is_cached(project_id):
         raise RuntimeError(f"Project {project_id} is not cached")
-    if dataset_names is not None:
-        for dataset_name in dataset_names:
-            if not is_cached(project_id, dataset_name):
-                raise RuntimeError(f"Dataset {dataset_name} of project {project_id} is not cached")
+    if dataset_names is not None or dataset_paths is not None:
+        if dataset_names is not None:
+            dataset_paths = dataset_names
+        for dataset_path in dataset_paths:
+            if not is_cached(project_id, dataset_path):
+                raise RuntimeError(f"Dataset {dataset_path} of project {project_id} is not cached")
     cache_dir = _get_cache_dir(project_id)
-    if dataset_names is None:
+    if dataset_paths is None:
         copy_dir_recursively(cache_dir, dest_dir, progress_cb)
     else:
         # copy meta
         copy_file(os.path.join(cache_dir, "meta.json"), os.path.join(dest_dir, "meta.json"))
         # copy datasets
-        for dataset_name in dataset_names:
+        for dataset_path in dataset_paths:
             copy_dir_recursively(
-                os.path.join(cache_dir, dataset_name),
-                os.path.join(dest_dir, dataset_name),
+                os.path.join(cache_dir, dataset_path),
+                os.path.join(dest_dir, dataset_path),
                 progress_cb,
             )
 
@@ -487,6 +615,7 @@ def download_using_cache(
     dataset_ids: Optional[List[int]] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
     **kwargs,
 ) -> None:
     """
@@ -505,6 +634,8 @@ def download_using_cache(
     :type log_progress: bool
     :param progress_cb: Function for tracking download progress. Will be called with number of items downloaded.
     :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore for limiting the number of concurrent downloads if using async download.
+    :type semaphore: asyncio.Semaphore, optional
 
     :return: None.
     :rtype: NoneType
@@ -515,6 +646,7 @@ def download_using_cache(
         dataset_ids=dataset_ids,
         log_progress=log_progress,
         progress_cb=progress_cb,
+        semaphore=semaphore,
         **kwargs,
     )
     copy_from_cache(project_id, dest_dir, [*downloaded, *cached])

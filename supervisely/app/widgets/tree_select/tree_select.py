@@ -200,6 +200,8 @@ class TreeSelect(Widget):
         :rtype: Union[List[TreeSelect.Item], TreeSelect.Item]
         """
         res = StateJson()[self.widget_id]["value"]
+        if res is None:
+            return None
         if isinstance(res, list):
             return [TreeSelect.Item.from_json(item) for item in res]
         return TreeSelect.Item.from_json(res)

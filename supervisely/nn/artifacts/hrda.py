@@ -1,3 +1,5 @@
+from typing import List
+
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
 
@@ -13,6 +15,7 @@ class HRDA(BaseTrainArtifacts):
         # self._task_type = "semantic segmentation"
         # self._weights_ext = ".pth"
         # self._config_file = "config.py"
+        # self._available_task_types: List[str] = ["semantic segmentation"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         raise NotImplementedError

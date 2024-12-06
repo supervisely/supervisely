@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.linalg
 
 """
 Table for the 0.95 quantile of the chi-square distribution with N degrees of
@@ -215,6 +214,8 @@ class KalmanFilterXYWH(object):
             Returns the measurement-corrected state distribution.
 
         """
+        import scipy.linalg  # pylint: disable=import-error
+
         projected_mean, projected_cov = self.project(mean, covariance)
 
         chol_factor, lower = scipy.linalg.cho_factor(projected_cov, lower=True, check_finite=False)
@@ -254,6 +255,8 @@ class KalmanFilterXYWH(object):
             squared Mahalanobis distance between (mean, covariance) and
             `measurements[i]`.
         """
+        import scipy.linalg  # pylint: disable=import-error
+
         mean, covariance = self.project(mean, covariance)
         if only_position:
             mean, covariance = mean[:2], covariance[:2, :2]
@@ -428,6 +431,8 @@ class KalmanFilterXYAH(object):
             Returns the measurement-corrected state distribution.
 
         """
+        import scipy.linalg  # pylint: disable=import-error
+
         projected_mean, projected_cov = self.project(mean, covariance)
 
         chol_factor, lower = scipy.linalg.cho_factor(projected_cov, lower=True, check_finite=False)
@@ -471,6 +476,8 @@ class KalmanFilterXYAH(object):
             `measurements[i]`.
 
         """
+        import scipy.linalg  # pylint: disable=import-error
+
         mean, covariance = self.project(mean, covariance)
         if only_position:
             mean, covariance = mean[:2], covariance[:2, :2]

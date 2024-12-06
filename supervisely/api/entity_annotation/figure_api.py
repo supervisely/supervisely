@@ -3,13 +3,25 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections import defaultdict
-from typing import Dict, Generator, List, NamedTuple, Optional, Tuple
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
@@ -57,7 +69,7 @@ class FigureInfo(NamedTuple):
     meta: dict
     area: str
     track_id: str
-    priority: int
+    priority: Optional[int] = None
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -577,17 +589,25 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         return self.download_geometries_batch([figure_id])
 
-    def download_geometries_batch(self, ids: List[int]) -> List[dict]:
+    def download_geometries_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[dict]:
         """
         Download figure geometries with given IDs from storage.
 
         :param ids: List of figure IDs in Supervisely.
         :type ids: List[int]
+        :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
         """
         geometries = {}
         for idx, part in self._download_geometries_generator(ids):
+            if progress_cb is not None:
+                progress_cb(len(part.content))
             geometry_json = json.loads(part.content)
             geometries[idx] = geometry_json
 
@@ -636,3 +656,81 @@ class FigureApi(RemoveableBulkModuleApi):
                 )
             encoder = MultipartEncoder(fields=fields)
             self._api.post("figures.bulk.upload.geometry", encoder)
+
+    async def _download_geometries_generator_async(
+        self, ids: List[int], semaphore: Optional[asyncio.Semaphore] = None
+    ) -> AsyncGenerator[Tuple[int, bytes], None, None]:
+        """
+        Private method. Download figures geometries with given IDs from storage asynchronously.
+
+        :param ids: List of figure IDs in Supervisely.
+        :type ids: List[int]
+        :return: Async generator with pairs of figure ID and figure geometry.
+        :rtype: AsyncGenerator[Tuple[int, bytes], None, None]
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        for batch_ids in batched(ids):
+            async with semaphore:
+                response = await self._api.post_async(
+                    "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
+                )
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                yield figure_id, part.content
+
+    async def download_geometries_batch_async(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> List[dict]:
+        """
+        Download figure geometries with given IDs from storage asynchronously.
+
+        :param ids: List of figure IDs in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
+        :type progress_cb: Union[tqdm, Callable], optional
+        :param semaphore: Semaphore to limit the number of concurrent downloads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :return: List of figure geometries in Supervisely JSON format.
+        :rtype: List[dict]
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import asyncio
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                figure_ids = [642155547, 642155548, 642155549]
+                loop = sly.utils.get_or_create_event_loop()
+                geometries = loop.run_until_complete(
+                    api.figure.download_geometries_batch_async(
+                        figure_ids,
+                        progress_cb=tqdm(total=len(figure_ids), desc="Downloading geometries"),
+                        semaphore=asyncio.Semaphore(15),
+                    )
+                )
+        """
+        geometries = {}
+        async for idx, part in self._download_geometries_generator_async(ids, semaphore):
+            if progress_cb is not None:
+                progress_cb(len(part))
+            geometry_json = json.loads(part)
+            geometries[idx] = geometry_json
+
+        if len(geometries) != len(ids):
+            raise RuntimeError("Not all geometries were downloaded")
+        ordered_results = [geometries[i] for i in ids]
+        return ordered_results
