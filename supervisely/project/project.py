@@ -4604,10 +4604,10 @@ async def _download_project_item_async(
     """Download image and annotation from Supervisely API and save it to the local filesystem.
     Uses parameters from the parent function _download_project_async.
     """
-    logger.debug(
-        f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
-    )
     if save_images:
+        logger.debug(
+            f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
+        )
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
