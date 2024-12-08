@@ -7,7 +7,7 @@ class BaseTrainLogger:
         self._on_train_finished_callbacks = []
         self._on_epoch_started_callbacks = []
         self._on_epoch_finished_callbacks = []
-        self._on_step_callbacks = []
+        self._on_step_finished_callbacks = []
         self.epoch_idx = 0
         self.step_idx = 0
 
@@ -28,9 +28,9 @@ class BaseTrainLogger:
         for callback in self._on_epoch_finished_callbacks:
             callback()
 
-    def on_step_end(self):
+    def step_finished(self):
         self.step_idx += 1
-        for callback in self._on_step_callbacks:
+        for callback in self._on_step_finished_callbacks:
             callback()
 
     def add_on_train_started_callback(self, callback: Callable):
@@ -45,8 +45,8 @@ class BaseTrainLogger:
     def add_on_epoch_finish_callback(self, callback: Callable):
         self._on_epoch_finished_callbacks.append(callback)
 
-    def add_on_step_callback(self, callback: Callable):
-        self._on_step_callbacks.append(callback)
+    def add_on_step_finished_callback(self, callback: Callable):
+        self._on_step_finished_callbacks.append(callback)
 
     def log(self, logs: dict, idx: int):
         raise NotImplementedError
@@ -56,3 +56,6 @@ class BaseTrainLogger:
 
     def log_epoch(self, logs: dict):
         raise NotImplementedError
+    
+    def close(self):
+        pass

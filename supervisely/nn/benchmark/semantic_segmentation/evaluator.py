@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pickle
 import shutil
@@ -24,16 +26,39 @@ from supervisely.sly_logger import logger
 class SemanticSegmentationEvalResult(BaseEvalResult):
     mp_cls = MetricProvider
 
-    def _read_eval_data(self):
-        self.eval_data = pickle.load(open(Path(self.directory, "eval_data.pkl"), "rb"))
-        self.inference_info = load_json_file(Path(self.directory, "inference_info.json"))
-        speedtest_info_path = Path(self.directory).parent / "speedtest" / "speedtest.json"
-        self.speedtest_info = None
+    def _read_files(self, path: str) -> None:
+        """Read all necessary files from the directory"""
+
+        eval_data_path = Path(path) / "eval_data.pkl"
+        if eval_data_path.exists():
+            with open(Path(path, "eval_data.pkl"), "rb") as f:
+                self.eval_data = pickle.load(f)
+
+        inference_info_path = Path(path) / "inference_info.json"
+        if inference_info_path.exists():
+            self.inference_info = load_json_file(str(inference_info_path))
+
+        speedtest_info_path = Path(path).parent / "speedtest" / "speedtest.json"
         if speedtest_info_path.exists():
-            self.speedtest_info = load_json_file(speedtest_info_path)
+            self.speedtest_info = load_json_file(str(speedtest_info_path))
+
+    def _prepare_data(self) -> None:
+        """Prepare data to allow easy access to the most important parts"""
 
         self.mp = MetricProvider(self.eval_data)
-        # self.mp.calculate()
+
+    @classmethod
+    def from_evaluator(
+        cls, evaulator: SemanticSegmentationEvaluator
+    ) -> SemanticSegmentationEvalResult:
+        """Method to customize loading of the evaluation result."""
+        eval_result = cls()
+        eval_result.eval_data = evaulator.eval_data
+        eval_result.prepare_data()
+        return eval_result
+
+    def get_key_metrics(self):
+        return self.mp.json_metrics()
 
 
 class SemanticSegmentationEvaluator(BaseEvaluator):

@@ -10,10 +10,12 @@ class TrainValSplitsSelector:
     lock_message = "Select input options to unlock"
 
     def __init__(self, api: Api, project_id: int, app_options: dict = {}):
+        self.display_widgets = []
         self.api = api
         self.project_id = project_id
-        self.train_val_splits = TrainValSplits(project_id)
 
+        # GUI Components
+        self.train_val_splits = TrainValSplits(project_id)
         train_val_dataset_ids = {"train": [], "val": []}
         for _, dataset in api.dataset.tree(project_id):
             if dataset.name.lower() == "train" or dataset.name.lower() == "training":
@@ -39,17 +41,14 @@ class TrainValSplitsSelector:
             self.validator_text.hide()
 
         self.button = Button("Select")
-        container = Container(
-            [
-                self.train_val_splits,
-                self.validator_text,
-                self.button,
-            ]
-        )
+        self.display_widgets.extend([self.train_val_splits, self.validator_text, self.button])
+        # -------------------------------- #
+
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             lock_message=self.lock_message,
             collapsable=app_options.get("collapsable", False),
         )
