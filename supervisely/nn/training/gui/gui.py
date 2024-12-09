@@ -400,7 +400,7 @@ class TrainGUI:
 
             app_state = {
                 "input": {"project_id": 43192},
-                "train_val_splits": {
+                "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
