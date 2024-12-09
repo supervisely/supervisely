@@ -1,3 +1,5 @@
+from typing import List
+
 import supervisely.nn.benchmark.comparison.detection_visualization.text_templates as texts
 from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics import (
@@ -11,6 +13,9 @@ from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics imp
     PrecisionRecallF1,
     Speedtest,
 )
+from supervisely.nn.benchmark.object_detection.evaluator import (
+    ObjectDetectionEvalResult,
+)
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
     GalleryWidget,
@@ -22,6 +27,10 @@ from supervisely.nn.benchmark.visualization.widgets import (
 class DetectionComparisonVisualizer(BaseComparisonVisualizer):
     vis_texts = texts
     ann_opacity = 0.5
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.eval_results: List[ObjectDetectionEvalResult]
 
     def _create_widgets(self):
         # Modal Gellery

@@ -1,10 +1,17 @@
+from typing import List
+
 import supervisely.nn.benchmark.comparison.semantic_segmentation.text_templates as texts
 from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
+    ClasswiseErrorAnalysis,
+    FrequentlyConfused,
     IntersectionErrorOverUnion,
     Overview,
     RenormalizedErrorOverUnion,
     Speedtest,
+)
+from supervisely.nn.benchmark.semantic_segmentation.evaluator import (
+    SemanticSegmentationEvalResult,
 )
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
@@ -16,6 +23,10 @@ from supervisely.nn.benchmark.visualization.widgets import (
 class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
     vis_texts = texts
     ann_opacity = 0.7
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.eval_results: List[SemanticSegmentationEvalResult]
 
     def _create_widgets(self):
         # Modal Gellery
@@ -34,7 +45,7 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         overview = Overview(self.vis_texts, self.comparison.eval_results)
         overview.team_id = self.comparison.team_id
         self.header = self._create_header()
-        self.overviews = self._create_overviews(overview)
+        self.overviews = self._create_overviews(overview, grid_cols=2)
         self.overview_md = overview.overview_md
         self.key_metrics_md = self._create_key_metrics()
         self.key_metrics_table = overview.get_table_widget(
@@ -51,6 +62,16 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         reou = RenormalizedErrorOverUnion(self.vis_texts, self.comparison.eval_results)
         self.reou_md = reou.md
         self.reou_chart = reou.chart
+
+        # ClasswiseErrorAnalysis
+        classwise_ea = ClasswiseErrorAnalysis(self.vis_texts, self.comparison.eval_results)
+        self.classwise_ea_md = classwise_ea.md
+        self.classwise_ea_chart = classwise_ea.chart
+
+        # FrequentlyConfused
+        frequently_confused = FrequentlyConfused(self.vis_texts, self.comparison.eval_results)
+        self.frequently_confused_md = frequently_confused.md
+        self.frequently_confused_chart = frequently_confused.chart
 
         # # SpeedTest
         self.speedtest_present = not speedtest.is_empty()
@@ -82,6 +103,12 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             # RenormalizedErrorOverUnion
             (1, self.reou_md),
             (0, self.reou_chart),
+            # ClasswiseErrorAnalysis
+            (1, self.classwise_ea_md),
+            (0, self.classwise_ea_chart),
+            # FrequentlyConfused
+            (1, self.frequently_confused_md),
+            (0, self.frequently_confused_chart),
         ]
         if self.speedtest_present:
             is_anchors_widgets.extend(

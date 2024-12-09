@@ -1,5 +1,6 @@
 import datetime
 from pathlib import Path
+from typing import Optional
 
 from supervisely.api.module_api import ApiField
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
@@ -58,14 +59,15 @@ class BaseComparisonVisualizer:
         header = MarkdownWidget("markdown_header", "Header", text=header_text)
         return header
 
-    def _create_overviews(self, vm: Overview) -> ContainerWidget:
+    def _create_overviews(self, vm: Overview, grid_cols: Optional[int] = None) -> ContainerWidget:
         """Creates overview widgets"""
-        grid_cols = 2
         overview_widgets = vm.overview_widgets
-        if len(overview_widgets) > 2:
-            grid_cols = 3
-        if len(overview_widgets) % 4 == 0:
-            grid_cols = 4
+        if grid_cols is None:
+            grid_cols = 2
+            if len(overview_widgets) > 2:
+                grid_cols = 3
+            if len(overview_widgets) % 4 == 0:
+                grid_cols = 4
         return ContainerWidget(
             overview_widgets,
             name="overview_container",

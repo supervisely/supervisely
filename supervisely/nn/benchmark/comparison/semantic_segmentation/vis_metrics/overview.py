@@ -199,7 +199,6 @@ class Overview(BaseVisMetrics):
                 )
             )
         fig.update_layout(
-            showlegend=False,
             polar=dict(
                 radialaxis=dict(
                     range=[0, 105],
