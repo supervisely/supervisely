@@ -57,7 +57,8 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
         eval_result._prepare_data()
         return eval_result
 
-    def get_key_metrics(self):
+    @property
+    def key_metrics(self):
         return self.mp.json_metrics()
 
 

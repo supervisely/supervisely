@@ -92,7 +92,7 @@ class BaseBenchmark:
     @property
     def key_metrics(self):
         eval_results = self.get_eval_result()
-        return eval_results.get_key_metrics()
+        return eval_results.key_metrics
 
     def run_evaluation(
         self,
@@ -490,9 +490,9 @@ class BaseBenchmark:
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.get_eval_result()
-        vis = self.visualizer_cls(
+        vis = self.visualizer_cls(  # pylint: disable=not-callable
             self.api, [eval_result], self.get_layout_results_dir(), self.pbar
-        )  # pylint: disable=not-callable
+        )
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
             vis.visualize()
             p.update(1)

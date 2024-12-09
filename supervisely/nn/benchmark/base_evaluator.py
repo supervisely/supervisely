@@ -79,6 +79,10 @@ class BaseEvalResult:
     def _prepare_data(self) -> None:
         """Prepare data to allow easy access to the data"""
         raise NotImplementedError()
+    
+    @property
+    def key_metrics(self):
+        raise NotImplementedError()
 
 
 class BaseEvaluator:
