@@ -128,7 +128,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
-    def append(self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
+    def append(
+        self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None, volume_info=None
+    ):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
 
@@ -159,13 +161,14 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         else:
             figures = ann.figures
 
-        info = self._api.volume.get_info_by_id(volume_id)
+        if volume_info is None:
+            volume_info = self._api.volume.get_info_by_id(volume_id)
         self._append(
             self._api.volume.tag,
             self._api.volume.object,
             self._api.volume.figure,
-            info.project_id,
-            info.dataset_id,
+            volume_info.project_id,
+            volume_info.dataset_id,
             volume_id,
             ann.tags,
             ann.objects,

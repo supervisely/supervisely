@@ -95,6 +95,7 @@ class ProjectInfo(NamedTuple):
     settings: dict
     import_settings: dict
     version: dict
+    created_by_id: int
 
     @property
     def image_preview_url(self):
@@ -169,6 +170,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         backup_archive={},
                         team_id=2,
                         import_settings={}
+                        version={'id': 260, 'version': 3}
                         )
         """
         return [
@@ -191,6 +193,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.SETTINGS,
             ApiField.IMPORT_SETTINGS,
             ApiField.VERSION,
+            ApiField.CREATED_BY_ID,
         ]
 
     @staticmethod
@@ -427,7 +430,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
 
         fields = [
-            x for x in self.info_sequence() if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS)
+            x for x in self.info_sequence() if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS, ApiField.CREATED_BY_ID)
         ]
 
         info = super().get_info_by_name(parent_id, name, fields)
