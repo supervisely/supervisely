@@ -66,7 +66,7 @@ class HyperparametersSelector:
             export_runtimes.append(self.export_tensorrt_checkbox)
             export_runtime_names.append(tensorrt_name)
         if export_onnx_supported or export_tensorrt_supported:
-            export_field_description = ",".join(export_runtime_names)
+            export_field_description = ", ".join(export_runtime_names)
             runtime_container = Container(export_runtimes)
             self.export_field = Field(
                 title="Export model",

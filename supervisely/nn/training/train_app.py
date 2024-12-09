@@ -1152,7 +1152,8 @@ class TrainApp:
         elif isinstance(checkpoints, str):
             checkpoints = [
                 sly_fs.get_file_name_with_ext(checkpoint)
-                for checkpoint in sly_fs.list_dir_recursively(checkpoints, [".pt", ".pth"])
+                for checkpoint in listdir(checkpoints)
+                if sly_fs.get_file_ext(checkpoint) in [".pt", ".pth"]
             ]
             if best_checkpoint not in checkpoints:
                 reason = (
@@ -1268,8 +1269,10 @@ class TrainApp:
         # If checkpoints returned as directory
         if isinstance(checkpoints, str):
             checkpoint_paths = []
-            for checkpoint_path in sly_fs.list_files_recursively(checkpoints, [".pt", ".pth"]):
-                checkpoint_paths.append(checkpoint_path)
+            for checkpoint_path in listdir(checkpoints):
+                checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+                if checkpoint_ext in [".pt", ".pth"]:
+                    checkpoint_paths.append(join(checkpoints, checkpoint_path))
         elif isinstance(checkpoints, list):
             checkpoint_paths = checkpoints
         else:
