@@ -15,7 +15,12 @@ class Speedtest(BaseVisMetrics):
         return not any(eval_result.speedtest_info for eval_result in self.eval_results)
 
     def multiple_batche_sizes(self) -> bool:
-        return len(self.eval_result.speedtest_info["speedtest"]) > 1
+        for eval_result in self.eval_results:
+            if eval_result.speedtest_info is None:
+                continue
+            if len(eval_result.speedtest_info["speedtest"]) > 1:
+                return True
+        return False
 
     @property
     def latency(self) -> List[Union[int, str]]:
