@@ -17,38 +17,40 @@ from supervisely import (
     generate_free_name,
     logger,
     is_development,
-    LabelingInterface,
-    silent_remove,
 )
+from supervisely.io.fs import silent_remove
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively, silent_remove
-from . import lyft_helper
+from supervisely.convert.pointcloud.lyft import lyft_helper
 
 
-class LyftPointcloudConverter(PointcloudConverter):
+class LyftConverter(PointcloudConverter):
     class Item(PointcloudConverter.Item):
         def __init__(
             self,
             item_path,
             ann_data: str = None,
+            scene_name: str = None,
             related_images: list = None,
             custom_data: dict = None,
         ):
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._type = "point_cloud"
+            self.scene_name = scene_name
 
     def __init__(
         self,
         input_data: str,
-        labeling_interface: Optional[Union[LabelingInterface, str]],
+        labeling_interface: str,
         upload_as_links: bool,
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._total_msg_count = 0
         self._is_pcd_episode = False
+        self.meta_needs_update = False
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.LYFT
@@ -76,63 +78,86 @@ class LyftPointcloudConverter(PointcloudConverter):
         else:
             # check if pointclouds have 5 columns (x, y, z, intensity, ring)
             pointcloud = np.fromfile(bin_files[0], dtype=np.float32)
-            if pointcloud % 5 != 0:
+            if pointcloud.shape[0] % 5 != 0:
                 return False
-        
-        json_path = self._input_data # todo: find the json folder
+
+        # @TODO: move code below to validate_ann_file method
+        json_path = self._input_data + "/data/"  # todo: find the json folder
         lyft = Lyft(data_path=self._input_data, json_path=json_path, verbose=False)
-        for scene in lyft_helper.get_available_scenes(lyft):
+
+        available_scenes = [scene for scene in lyft_helper.get_available_scenes(lyft)]
+        for scene in available_scenes:
             sample_datas = lyft_helper.extract_data_from_scene(lyft, scene)
             if sample_datas is None:
-                return
+                logger.warning(f"Failed to extract sample data from scene: {scene['name']}.")
+                continue
             for sample_data in sample_datas:
-                item_path = sample_data['lidar_path']
-                ann_data = sample_data['ann_data']
-                related_images = [img_path for sensor, img_path in sample_data['ann_data'].items() if "CAM" in sensor]
-                custom_data = sample_data.get("custom_data", {}) # todo: implement
-                item = self.Item(item_path, ann_data, related_images, custom_data)
+                item_path = sample_data["lidar_path"]
+                ann_data = sample_data["ann_data"]
+                # related_images = lyft_helper.get_related_images(ann_data)
+                custom_data = sample_data.get("custom_data", {})  # todo: implement
+                scene_name = scene["name"]
+                item = self.Item(item_path, ann_data, scene_name, custom_data=custom_data)
                 self._items.append(item)
+            break
 
         return self.items_count > 0
 
     def convert(self, item: PointcloudConverter.Item, meta: ProjectMeta):
-        item_path = item.item_path
-        save_path = item_path[:-4] + ".pcd"
-        timestamp = os.path.getmtime(item.item_path)
-        time_to_data = lyft_helper.convert_bin_to_pcd(item_path, save_path, timestamp)
-        raise NotImplementedError("Implement the conversion function")
+        time_to_data = {}
+        time = item.ann_data["timestamp"]
+        time_to_data[time] = {}
+        save_path = item.path[:-4] + ".pcd"
+        lyft_helper.convert_bin_to_pcd(item.path, save_path)
+        time_to_data[time]["pcd"] = save_path
+
+        ann_path = item.path[:-4] + ".json"
+        label = lyft_helper.lyft_annotation_to_BEVBox3D(item.ann_data)
+
+        meta_class_names = [obj_class.name for obj_class in meta.obj_classes]
+        classes_to_add = set()
+        for l in label:
+            if l.label_class not in meta_class_names:
+                classes_to_add.add(l.label_class)
+
+        if len(classes_to_add) > 0:
+            meta = meta.add_obj_classes(
+                [ObjClass(objclass, Cuboid3d) for objclass in classes_to_add]
+            )
+            self._meta = meta
+            self.meta_needs_update = True
+        lyft_helper.convert_label_to_annotation(label, ann_path, meta)  # to move, causes issues
+        time_to_data[time]["ann"] = ann_path
+
+        paths_to_infos = lyft_helper.write_related_image_info(item._related_images, item.ann_data)
+        time_to_data[time]["related_images"] = paths_to_infos
         return time_to_data
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         self._upload_dataset(api, dataset_id, log_progress, is_episodes=self._is_pcd_episode)
 
     def _upload_dataset(self, api: Api, dataset_id: int, log_progress=True, is_episodes=False):
-        obj_cls = ObjClass("object", Cuboid3d)
-        self._meta = ProjectMeta(obj_classes=[obj_cls])
+        self._meta = ProjectMeta()
         meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
         multiple_items = self.items_count > 1
-        datasets = []
         dataset_info = api.dataset.get_info_by_id(dataset_id)
+        scene_name_to_dataset = {}
 
         if multiple_items:
             logger.info(
-                f"Found {self.items_count} pointcloud files in the input data."
+                f"Found {self.items_count} pointcloud files in the input data. "
                 "Will create dataset in parent dataset for each file."
             )
-            nested_datasets = api.dataset.get_list(dataset_info.project_id, parent_id=dataset_id)
-            existing_ds_names = set([ds.name for ds in nested_datasets])
-
-            for item in self._items:
-                ds_name = generate_free_name(existing_ds_names, get_file_name(item.path))
+            scene_names = set([item.scene_name for item in self._items])
+            for name in scene_names:
                 ds = api.dataset.create(
                     dataset_info.project_id,
-                    ds_name,
+                    name,
                     change_name_if_conflict=True,
                     parent_id=dataset_id,
                 )
-                existing_ds_names.add(ds.name)
-                datasets.append(ds)
+                scene_name_to_dataset[name] = ds
 
         if log_progress:
             progress, progress_cb = self.get_progress(self._total_msg_count, "Uploading...")
@@ -140,18 +165,24 @@ class LyftPointcloudConverter(PointcloudConverter):
             progress_cb = None
 
         for idx, item in enumerate(self._items):
-            current_dataset = dataset_info if not multiple_items else datasets[idx]
+            current_dataset = scene_name_to_dataset.get(item.scene_name, None)
+            if current_dataset is None:
+                raise RuntimeError("Dataset not found for scene name: {}".format(item.scene_name))
+
             current_dataset_id = current_dataset.id
             time_to_data = self.convert(item, meta)
+            if self.meta_needs_update:
+                meta = api.project.update_meta(current_dataset.project_id, self._meta)
+                self._meta = meta
 
             existing_names = set([pcd.name for pcd in api.pointcloud.get_list(current_dataset_id)])
             ann_episode = PointcloudEpisodeAnnotation()
             frame_to_pointcloud_ids = {}
 
             for idx, (time, data) in enumerate(time_to_data.items()):
-                pcd_path = data["pcd"].as_posix()
-                ann_path = data["ann"].as_posix() if data["ann"] is not None else None
-                pcd_meta = data["meta"]
+                pcd_path = data["pcd"]
+                ann_path = data["ann"] or None
+                pcd_meta = data.get("meta", None)  # todo ask about this
 
                 pcd_name = generate_free_name(
                     existing_names, f"{time}.pcd", with_ext=True, extend_used_names=True
