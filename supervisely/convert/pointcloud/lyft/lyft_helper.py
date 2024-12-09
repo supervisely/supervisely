@@ -62,7 +62,6 @@ def extract_data_from_scene(lyft, scene):
     dataset_data = []
 
     num_samples = scene["nbr_samples"] - 1  # TODO: fix, dont skip first frame
-    progress = Progress("Extracting data from scene", num_samples)
     for i in range(num_samples):
         new_token = my_sample["next"]
         my_sample = lyft.get("sample", new_token)
@@ -140,7 +139,6 @@ def extract_data_from_scene(lyft, scene):
                 data["ann_data"][f"{sensor}_imsize"] = (cam_width, cam_height)
             else:
                 logger.debug(f"pass {sensor} - isn't a camera")
-        progress.iter_done_report()
         dataset_data.append(data)
     return dataset_data
 
