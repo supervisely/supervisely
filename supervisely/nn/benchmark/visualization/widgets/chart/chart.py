@@ -13,10 +13,14 @@ class ChartWidget(BaseWidget):
         self,
         name: str,
         figure,  # plotly figure
+        switchable: bool = False,
+        switch_key: str = "switch_key",
+        radiogroup_id: str = None,
     ) -> None:
         super().__init__(name)
-        self.radio_group = "radio_group"  # TODO: fix
-        self.switch_key = "switch_key"  # TODO: fix
+        self.switchable = switchable
+        self.switch_key = switch_key
+        self.radiogroup_id = radiogroup_id
 
         self.figure = figure
         self.click_data = None
@@ -47,7 +51,8 @@ class ChartWidget(BaseWidget):
     def _get_template_data(self):
         return {
             "widget_id": self.id,
-            "radio_group": self.radio_group,
+            "radio_group": self.radiogroup_id,
+            "switchable": self.switchable,
             "switch_key": self.switch_key,
             "init_data_source": self.data_source,
             "click_handled": self.click_data is not None,
@@ -69,4 +74,7 @@ class ChartWidget(BaseWidget):
         }
 
     def get_state(self) -> Dict:
-        return {}
+        res = {}
+        if self.switchable:
+            res[self.radiogroup_id] = self.switch_key
+        return res

@@ -125,6 +125,9 @@ class Card(Widget):
         StateJson()[self.widget_id]["collapsed"] = self._collapsed
         StateJson().send_changes()
 
+    def is_collapsed(self) -> bool:
+        return StateJson()[self.widget_id]["collapsed"]
+
     def lock(self, message: Optional[str] = None) -> None:
         """Locks the card, changes the lock message if specified.
 

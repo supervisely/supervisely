@@ -13,6 +13,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
+from math import ceil
 from pathlib import Path
 from time import sleep
 from typing import (
@@ -3126,6 +3127,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         links: Optional[List[str]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
+        force_metadata_for_links: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
@@ -3153,6 +3155,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 - 'skip': Ignores uploading the new images if there is a conflict; the original image's ImageInfo list will be returned instead.
                 - 'rename': (default) Renames the new images to prevent name conflicts.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param force_metadata_for_links: Specifies whether to force retrieving metadata for images from links.
+                                         If False, metadata fields in the response can be empty (if metadata has not been retrieved yet).
+        :type force_metadata_for_links: Optional[bool]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -3215,6 +3220,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 links=links,
                 progress_cb=progress_cb,
                 conflict_resolution=conflict_resolution,
+                force_metadata_for_links=force_metadata_for_links,
             )
             image_infos.extend(image_infos_by_links)
 
@@ -3223,9 +3229,150 @@ class ImageApi(RemoveableBulkModuleApi):
         self._api.annotation.upload_anns(image_ids, anns)
 
         uploaded_image_infos = self.get_list(
-            dataset_id, filters=[{"field": "id", "operator": "in", "value": image_ids}]
+            dataset_id,
+            filters=[
+                {
+                    ApiField.FIELD: ApiField.ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: image_ids,
+                }
+            ],
+            force_metadata_for_links=force_metadata_for_links,
         )
         return uploaded_image_infos
+
+    def group_images_for_multiview(
+        self,
+        image_ids: List[int],
+        group_name: str,
+        multiview_tag_name: Optional[str] = None,
+    ) -> None:
+        """
+        Group images for multi-view by tag with given name. If tag does not exist in project, will create it first.
+
+        Note:
+            * All images must belong to the same project.
+            * Tag must be of type ANY_STRING and applicable to images.
+            * Recommended number of images in group is 6-12.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param group_name: Group name. Images will be assigned by group tag with this value.
+        :type group_name: str
+        :param multiview_tag_name: Multiview tag name in Supervisely.
+                                If None, will use default 'multiview' tag name.
+                                If tag does not exist in project, will create it first.
+        :type multiview_tag_name: str, optional
+        :return: :class:`None<None>`
+
+        :rtype: :class:`NoneType<NoneType>`
+        :raises ValueError: if tag is not of type ANY_STRING or not applicable to images
+
+        :Usage example:
+
+         .. code-block:: python
+
+            # ? option 1
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            BATCH_SIZE = 6
+            image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
+
+            # group images for multiview
+            for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
+                api.image.group_images_for_multiview(ids, group_name)
+
+
+            # ? option 2 (with sly.ApiContext)
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            BATCH_SIZE = 6
+            image_ids = [2389126, 2389127, 2389128, 2389129, 2389130, 2389131, ...]
+            project_id = 111111 # change to your project id
+
+
+            # * make sure that `with_settings=True` is set to get project settings from server
+            project_meta_json = api.project.get_meta(project_id, with_settings=True)
+            project_meta = sly.ProjectMeta.from_json(project_meta_json)
+
+            # create custom tag meta (optional)
+            multiview_tag_name = 'cars'
+            tag_meta = sly.TagMeta(multiview_tag_name, sly.TagValueType.ANY_STRING)
+            project_meta = project_meta.add_tag_meta(tag_meta)
+            project_meta = api.project.update_meta(project_id, project_meta) # update meta on server
+
+            # group images for multiview
+            with sly.ApiContext(api, project_id=project_id, project_meta=project_meta):
+                for group_name, ids in enumerate(sly.batched(image_ids, batch_size=BATCH_SIZE)):
+                    api.image.group_images_for_multiview(ids, group_name, multiview_tag_name)
+
+        """
+
+        # ============= Api Context ===================================
+        # using context for optimization (avoiding extra API requests)
+        context = self._api.optimization_context
+        project_meta = context.get("project_meta")
+        project_id = context.get("project_id")
+        if project_id is None:
+            project_id = self.get_project_id(image_ids[0])
+            context["project_id"] = project_id
+        if project_meta is None:
+            project_meta = ProjectMeta.from_json(
+                self._api.project.get_meta(project_id, with_settings=True)
+            )
+            context["project_meta"] = project_meta
+        # =============================================================
+
+        need_update_project_meta = False
+        multiview_tag_name = multiview_tag_name or _MULTIVIEW_TAG_NAME
+        multiview_tag_meta = project_meta.get_tag_meta(multiview_tag_name)
+
+        if multiview_tag_meta is None:
+            multiview_tag_meta = TagMeta(
+                multiview_tag_name,
+                TagValueType.ANY_STRING,
+                applicable_to=TagApplicableTo.IMAGES_ONLY,
+            )
+            project_meta = project_meta.add_tag_meta(multiview_tag_meta)
+            need_update_project_meta = True
+        elif multiview_tag_meta.sly_id is None:
+            logger.warning(f"`sly_id` is None for group tag, trying to get it from server")
+            need_update_project_meta = True
+
+        if multiview_tag_meta.value_type != TagValueType.ANY_STRING:
+            raise ValueError(f"Tag '{multiview_tag_name}' is not of type ANY_STRING.")
+        elif multiview_tag_meta.applicable_to == TagApplicableTo.OBJECTS_ONLY:
+            raise ValueError(f"Tag '{multiview_tag_name}' is not applicable to images.")
+
+        if need_update_project_meta:
+            project_meta = self._api.project.update_meta(id=project_id, meta=project_meta)
+            context["project_meta"] = project_meta
+            multiview_tag_meta = project_meta.get_tag_meta(multiview_tag_name)
+
+        if not project_meta.project_settings.multiview_enabled:
+            if multiview_tag_name == _MULTIVIEW_TAG_NAME:
+                self._api.project.set_multiview_settings(project_id)
+            else:
+                self._api.project._set_custom_grouping_settings(
+                    id=project_id,
+                    group_images=True,
+                    tag_name=multiview_tag_name,
+                    sync=False,
+                )
+            project_meta = ProjectMeta.from_json(
+                self._api.project.get_meta(project_id, with_settings=True)
+            )
+            context["project_meta"] = project_meta
+
+        self.add_tag_batch(image_ids, multiview_tag_meta.sly_id, group_name)
 
     def upload_medical_images(
         self,
@@ -3559,11 +3706,12 @@ class ImageApi(RemoveableBulkModuleApi):
         range_start: Optional[int] = None,
         range_end: Optional[int] = None,
         headers: Optional[dict] = None,
+        chunk_size: Optional[int] = None,
     ) -> AsyncGenerator:
         """
         Download Image with given ID asynchronously.
         If is_stream is True, returns stream of bytes, otherwise returns response object.
-        For streaming, returns tuple of chunk and hash.
+        For streaming, returns tuple of chunk and hash. Chunk size is 8 MB by default.
 
         :param id: Image ID in Supervisely.
         :type id: int
@@ -3575,10 +3723,15 @@ class ImageApi(RemoveableBulkModuleApi):
         :type range_end: int, optional
         :param headers: Headers for request.
         :type headers: dict, optional
+        :param chunk_size: Size of chunk for streaming. Default is 8 MB.
+        :type chunk_size: int, optional
         :return: Stream of bytes or response object.
         :rtype: AsyncGenerator
         """
         api_method_name = "images.download"
+
+        if chunk_size is None:
+            chunk_size = 8 * 1024 * 1024
 
         json_body = {ApiField.ID: id}
 
@@ -3590,6 +3743,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 headers=headers,
                 range_start=range_start,
                 range_end=range_end,
+                chunk_size=chunk_size,
             ):
                 yield chunk, hhash
         else:
@@ -4011,3 +4165,180 @@ class ImageApi(RemoveableBulkModuleApi):
             tasks.append(task)
         results = await asyncio.gather(*tasks)
         return results
+
+    async def download_bytes_generator_async(
+        self,
+        dataset_id: int,
+        img_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        check_hash: bool = False,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> AsyncGenerator[Tuple[int, bytes]]:
+        """
+        Downloads Image bytes with given ID in batch asynchronously.
+        Yields tuple of Image ID and bytes of downloaded image.
+        Uses bulk download API method.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param img_ids: List of Image IDs in Supervisely.
+        :type img_ids: :class:`List[int]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param check_hash: If True, checks hash of downloaded bytes. Default is False.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :return: Tuple of Image ID and bytes of downloaded image.
+        :rtype: :class:`Tuple[int, bytes]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 123456
+            img_ids = [770918, 770919, 770920, 770921, ... , 770992]
+            tasks = []
+            for batch in batched(img_ids, 50):
+                task = api.image.download_bytes_batch_async(dataset_id, batch)
+                tasks.append(task)
+            results = await asyncio.gather(*tasks)
+        """
+        api_method_name = "images.bulk.download"
+        json_body = {
+            ApiField.DATASET_ID: dataset_id,
+            ApiField.IMAGE_IDS: img_ids,
+        }
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            response = await self._api.post_async(
+                api_method_name,
+                json=json_body,
+                headers=headers,
+            )
+        decoder = MultipartDecoder.from_response(response)
+        for part in decoder.parts:
+            content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+            # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+            # The regex has 2 capture group: one for the prefix and one for the actual name value.
+            img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+            if check_hash:
+                hhash = part.headers.get("x-content-checksum-sha256", None)
+                if hhash is not None:
+                    downloaded_bytes_hash = get_bytes_hash(part)
+                    if hhash != downloaded_bytes_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            elif progress_cb is not None and progress_cb_type == "size":
+                progress_cb(len(part.content))
+
+            yield img_id, part.content
+
+    async def get_list_generator_async(
+        self,
+        dataset_id: int = None,
+        filters: Optional[List[Dict[str, str]]] = None,
+        sort: Optional[str] = "id",
+        sort_order: Optional[str] = "asc",
+        force_metadata_for_links: Optional[bool] = True,
+        only_labelled: Optional[bool] = False,
+        fields: Optional[List[str]] = None,
+        per_page: Optional[int] = 500,
+        semaphore: Optional[List[asyncio.Semaphore]] = None,
+        **kwargs,
+    ) -> AsyncGenerator[List[ImageInfo]]:
+        """
+        Yields list of images in dataset asynchronously page by page.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param filters: Filters for images.
+        :type filters: List[Dict[str, str]], optional
+        :param sort: Sort images by field.
+        :type sort: str, optional
+        :param sort_order: Sort order for images.
+        :type sort_order: str, optional
+        :param force_metadata_for_links: If True, forces metadata for links.
+        :type force_metadata_for_links: bool, optional
+        :param only_labelled: If True, returns only labelled images.
+        :type only_labelled: bool, optional
+        :param fields: List of fields to return.
+        :type fields: List[str], optional
+        :param per_page: Number of images to return per page.
+        :type per_page: int, optional
+        :param semaphore: Semaphore for limiting the number of simultaneous requests.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param kwargs: Additional arguments.
+        :return: List of images in dataset.
+        :rtype: AsyncGenerator[List[ImageInfo]]
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+                    import asyncio
+
+                    os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                    os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                    api = sly.Api.from_env()
+
+                    loop = sly.utils.get_or_create_event_loop()
+                    images = loop.run_until_complete(api.image.get_list_async(123456, per_page=600))
+        """
+
+        method = "images.list"
+        dataset_info = kwargs.get("dataset_info", None)
+
+        if dataset_info is None:
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+
+        total_pages = ceil(dataset_info.items_count / per_page)
+
+        data = {
+            ApiField.DATASET_ID: dataset_info.id,
+            ApiField.PROJECT_ID: dataset_info.project_id,
+            ApiField.SORT: sort,
+            ApiField.SORT_ORDER: sort_order,
+            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.FILTER: filters or [],
+            ApiField.PER_PAGE: per_page,
+        }
+        if fields is not None:
+            data[ApiField.FIELDS] = fields
+        if only_labelled:
+            data[ApiField.FILTERS] = [
+                {
+                    "type": "objects_class",
+                    "data": {
+                        "from": 1,
+                        "to": 9999,
+                        "include": True,
+                        "classId": None,
+                    },
+                }
+            ]
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async for page in self.get_list_page_generator_async(method, data, total_pages, semaphore):
+            yield page

@@ -98,7 +98,7 @@ class PrCurve(BaseVisMetric):
             pr_curve[pr_curve == -1] = np.nan
             pr_curve = np.nanmean(pr_curve, axis=-1)
 
-            name = f"[{i}] {eval_result.name}"
+            name = f"[{i}] {eval_result.model_name}"
             color = ",".join(map(str, hex2rgb(eval_result.color))) + ",0.1"
             line = go.Scatter(
                 x=eval_result.mp.recThrs,

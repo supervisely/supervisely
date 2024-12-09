@@ -391,7 +391,7 @@ class CustomModelsSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> List[Dict]:
+    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> Dict[str, List[ModelRow]]:
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_train_info(train_info):
@@ -485,10 +485,15 @@ class CustomModelsSelector(Widget):
             "checkpoint_url": checkpoint_url,
         }
 
+        # if model_name is not None:
+        #     model_params["model_name"] = model_name
+
         if config_path is not None:
             model_params["config_url"] = config_path
 
         return model_params
+
+    # def get_selected_model_params_v2(self) -> Union[Dict, None]:
 
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:
