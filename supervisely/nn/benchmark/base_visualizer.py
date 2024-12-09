@@ -61,6 +61,7 @@ class BaseVisMetric(BaseVisMetrics):
 
 class BaseVisualizer:
     cv_task = None
+    report_name = "Model Evaluation Report.lnk"
 
     def __init__(
         self,
@@ -141,7 +142,7 @@ class BaseVisualizer:
     def visualize(self):
         if self.renderer is None:
             layout = self._create_layout()
-            self.renderer = Renderer(layout, self.workdir)
+            self.renderer = Renderer(layout, self.workdir, report_name=self.report_name)
         return self.renderer.visualize()
 
     def upload_results(self, team_id: int, remote_dir: str, progress=None):

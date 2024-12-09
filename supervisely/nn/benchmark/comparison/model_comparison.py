@@ -123,8 +123,15 @@ class ModelComparison:
     def get_report_link(self) -> str:
         if self.remote_dir is None:
             raise ValueError("Results are not uploaded yet.")
-        report_link = self.remote_dir.rstrip("/") + "/template.vue"
-        return report_link
+        return self.visualizer.renderer._get_report_link(self.api, self.team_id, self.remote_dir)
+
+    @property
+    def report(self):
+        return self.visualizer.renderer.report
+
+    @property
+    def lnk(self):
+        return self.visualizer.renderer.lnk
 
     def _load_eval_data(self, src_path: str, dst_path: str) -> None:
         dir_name = Path(src_path).name

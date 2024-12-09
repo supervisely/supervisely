@@ -483,7 +483,10 @@ class BaseBenchmark:
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.evaluator.get_eval_result()
-        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)  # pylint: disable=not-callable
+        layout_dir = self.get_layout_results_dir()
+        vis = self.visualizer_cls(  # pylint: disable=not-callable
+            self.api, [eval_result], layout_dir, self.pbar
+        )
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
             vis.visualize()
             p.update(1)
@@ -531,48 +534,28 @@ class BaseBenchmark:
         return diff_project_info, is_existed
 
     def upload_visualizations(self, dest_dir: str):
-        layout_dir = self.get_layout_results_dir()
-        assert not fs.dir_empty(
-            layout_dir
-        ), f"The layout dir {layout_dir!r} is empty. You should run visualizations before uploading results."
+        return self.visualizer_cls.upload_results(self.team_id, dest_dir, self.pbar)
 
-        # self.api.file.remove_dir(self.team_id, dest_dir, silent=True)
+    @property
+    def report(self):
+        return self.visualizer.renderer.report
 
-        remote_dir = dest_dir
-        with self.pbar(
-            message="Visualizations: Uploading layout",
-            total=get_directory_size(layout_dir),
-            unit="B",
-            unit_scale=True,
-        ) as p:
-            remote_dir = self.api.file.upload_directory(
-                self.team_id,
-                layout_dir,
-                dest_dir,
-                replace_if_conflict=True,
-                change_name_if_conflict=False,
-                progress_size_cb=p,
-            )
-
-        logger.info(f"Uploaded to: {remote_dir!r}")
-
-        template_path = os.path.join(remote_dir, "template.vue")
-        vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
-        report_link = f"{self.api.server_address}/model-benchmark?id={vue_template_info.id}"
-        logger.info(f"Open url: {report_link}")
-
-        return remote_dir
+    @property
+    def lnk(self):
+        return self.visualizer.renderer.lnk
 
     def upload_report_link(self, remote_dir: str):
         template_path = os.path.join(remote_dir, "template.vue")
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
 
         report_link = "/model-benchmark?id=" + str(vue_template_info.id)
-        local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")
+
+        lnk_name = "Model Evaluation Report.lnk"
+        local_path = os.path.join(self.get_layout_results_dir(), lnk_name)
         with open(local_path, "w") as file:
             file.write(report_link)
 
-        remote_path = os.path.join(remote_dir, "open.lnk")
+        remote_path = os.path.join(remote_dir, lnk_name)
         file_info = self.api.file.upload(self.team_id, local_path, remote_path)
 
         logger.info(f"Report link: {report_link}")

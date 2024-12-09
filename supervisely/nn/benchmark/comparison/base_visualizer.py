@@ -18,6 +18,7 @@ from supervisely.project.project_meta import ProjectMeta
 class BaseComparisonVisualizer:
     vis_texts = None
     ann_opacity = None
+    report_name = "Model Comparison Report.lnk"
 
     def __init__(self, comparison):
         self.comparison = comparison
@@ -34,7 +35,11 @@ class BaseComparisonVisualizer:
         self._create_widgets()
         layout = self._create_layout()
 
-        self.renderer = Renderer(layout, str(Path(self.comparison.workdir, "visualizations")))
+        self.renderer = Renderer(
+            layout,
+            str(Path(self.comparison.workdir, "visualizations")),
+            report_name=self.report_name,
+        )
 
     def visualize(self):
         return self.renderer.visualize()
