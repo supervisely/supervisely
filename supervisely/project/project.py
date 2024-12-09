@@ -4605,6 +4605,9 @@ async def _download_project_item_async(
     Uses parameters from the parent function _download_project_async.
     """
     if save_images:
+        logger.debug(
+            f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
+        )
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
@@ -4667,6 +4670,9 @@ async def _download_project_items_batch_async(
         img_ids = [img_info.id for img_info in img_infos]
         imgs_bytes = [None] * len(img_ids)
         temp_dict = {}
+        logger.debug(
+            f"Downloading {len(img_ids)} images in bulk with _download_project_items_batch_async"
+        )
         async for img_id, img_bytes in api.image.download_bytes_generator_async(
             dataset_id,
             img_ids,
