@@ -4,7 +4,17 @@
 # docs
 from __future__ import annotations
 
-from typing import Dict, Generator, List, Literal, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
@@ -14,6 +24,7 @@ from supervisely.api.module_api import (
     UpdateableModule,
     _get_single_item,
 )
+from supervisely.project.project_type import ProjectType
 
 
 class DatasetInfo(NamedTuple):
@@ -60,6 +71,7 @@ class DatasetInfo(NamedTuple):
     team_id: int
     workspace_id: int
     parent_id: Union[int, None]
+    custom_data: dict
 
     @property
     def image_preview_url(self):
@@ -134,6 +146,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             ApiField.TEAM_ID,
             ApiField.WORKSPACE_ID,
             ApiField.PARENT_ID,
+            ApiField.CUSTOM_DATA,
         ]
 
     @staticmethod
@@ -164,7 +177,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type project_id: int
         :param filters: List of params to sort output Datasets.
         :type filters: List[dict], optional
-        :recursive: If True, returns all Datasets from the given Project including nested Datasets.
+        :param recursive: If True, returns all Datasets from the given Project including nested Datasets.
         :type recursive: bool, optional
         :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the Project,
             otherwise the search will be performed in the specified Dataset.
@@ -361,6 +374,83 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             )
         return dataset_info
 
+    def update(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        custom_data: Optional[Dict[Any, Any]] = None,
+    ) -> DatasetInfo:
+        """Update Dataset information by given ID.
+
+        :param id: Dataset ID in Supervisely.
+        :type id: int
+        :param name: New Dataset name.
+        :type name: str, optional
+        :param description: New Dataset description.
+        :type description: str, optional
+        :param custom_data: New custom data.
+        :type custom_data: Dict[Any, Any], optional
+        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`DatasetInfo`
+
+        :Usage example:
+
+             .. code-block:: python
+
+                import supervisely as sly
+
+                dataset_id = 384126
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                new_ds = api.dataset.update(dataset_id, name='new_ds', description='new description')
+        """
+        fields = [name, description, custom_data]  # Extend later if needed.
+        if all(f is None for f in fields):
+            raise ValueError(f"At least one of the fields must be specified: {fields}")
+
+        payload = {
+            ApiField.ID: id,
+            ApiField.NAME: name,
+            ApiField.DESCRIPTION: description,
+            ApiField.CUSTOM_DATA: custom_data,
+        }
+
+        payload = {k: v for k, v in payload.items() if v is not None}
+
+        response = self._api.post(self._get_update_method(), payload)
+        return self._convert_json_info(response.json())
+
+    def update_custom_data(self, id: int, custom_data: Dict[Any, Any]) -> DatasetInfo:
+        """Update custom data for Dataset by given ID.
+        Custom data is a dictionary that can store any additional information about the Dataset.
+
+        :param id: Dataset ID in Supervisely.
+        :type id: int
+        :param custom_data: New custom data.
+        :type custom_data: Dict[Any, Any]
+        :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`DatasetInfo`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            dataset_id = 384126
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            new_ds = api.dataset.update_custom_data(dataset_id, custom_data={'key': 'value'})
+        """
+        return self.update(id, custom_data=custom_data)
+
     def _get_update_method(self):
         """ """
         return "datasets.editInfo"
@@ -418,6 +508,13 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             raise RuntimeError(
                 'Can not match "ids" and "new_names" lists, len(ids) != len(new_names)'
             )
+        project_info = self._api.project.get_info_by_id(dst_project_id)
+        if project_info.type == str(ProjectType.IMAGES):
+            items_api = self._api.image
+        elif project_info.type == str(ProjectType.VIDEOS):
+            items_api = self._api.video
+        else:
+            raise RuntimeError(f"Unsupported project type: {project_info.type}")
 
         new_datasets = []
         for idx, dataset_id in enumerate(ids):
@@ -425,16 +522,16 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             new_dataset_name = dataset.name
             if new_names is not None:
                 new_dataset_name = new_names[idx]
-            src_images = self._api.image.get_list(dataset.id)
-            src_image_ids = [image.id for image in src_images]
+            src_items = items_api.get_list(dataset.id)
+            src_item_ids = [item.id for item in src_items]
             new_dataset = self._api.dataset.create(
                 dst_project_id,
                 new_dataset_name,
                 dataset.description,
                 change_name_if_conflict=change_name_if_conflict,
             )
-            self._api.image.copy_batch(
-                new_dataset.id, src_image_ids, change_name_if_conflict, with_annotations
+            items_api.copy_batch(
+                new_dataset.id, src_item_ids, change_name_if_conflict, with_annotations
             )
             new_datasets.append(new_dataset)
         return new_datasets
@@ -918,3 +1015,60 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                     yield from yield_tree(children, new_path)
 
         yield from yield_tree(self.get_tree(project_id), [])
+
+    def get_nested(self, project_id: int, dataset_id: int) -> List[DatasetInfo]:
+        """Returns a list of all nested datasets in the specified dataset.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :param dataset_id: Dataset ID for which the nested datasets are returned.
+        :type dataset_id: int
+
+        :return: List of nested datasets.
+        :rtype: List[DatasetInfo]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+            dataset_id = 456
+
+            datasets = api.dataset.get_nested(project_id, dataset_id)
+            for dataset in datasets:
+                print(dataset.name, dataset.id) # Output: ds1 123
+
+        """
+        tree = self.get_tree(project_id)
+
+        nested = []
+
+        def recurse(tree: Dict[DatasetInfo, Dict], needed_dataset: bool = False):
+            for dataset_info, children in tree.items():
+                if needed_dataset:
+                    nested.append(dataset_info)
+
+                recurse(children, needed_dataset or dataset_info.id == dataset_id)
+
+        recurse(tree)
+        return nested
+
+    def exists(self, project_id: int, name: str, parent_id: int = None) -> bool:
+        """
+        Checks if the dataset with the given name exists in the project.
+        If parent_id is not None, the search will be performed in the specified Dataset.
+
+        :param project_id: Project ID in which the Dataset is located.
+        :type project_id: int
+        :param name: Dataset name.
+        :type name: str
+        :param parent_id: Parent Dataset ID. If the Dataset is not nested, then the value is None.
+        :type parent_id: Union[int, None]
+        :return: True if the dataset exists, False otherwise.
+        :rtype: bool
+        """
+        return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None

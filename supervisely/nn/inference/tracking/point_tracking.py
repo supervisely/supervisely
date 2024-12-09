@@ -282,11 +282,21 @@ class PointTracking(Inference):
                 video_interface.frames_indexes[-1],
             ]
 
-            self.cache.run_cache_task_manually(
-                api,
-                [range_of_frames],
-                video_id=video_interface.video_id,
-            )
+            if self.cache.is_persistent:
+                # if cache is persistent, run cache task for whole video
+                self.cache.run_cache_task_manually(
+                    api,
+                    None,
+                    video_id=video_interface.video_id,
+                )
+            else:
+                # if cache is not persistent, run cache task for range of frames
+                self.cache.run_cache_task_manually(
+                    api,
+                    [range_of_frames],
+                    video_id=video_interface.video_id,
+                )
+
             api.logger.info("Start tracking.")
 
             def _upload_loop(q: Queue, stop_event: Event, video_interface: TrackerInterface):
@@ -297,6 +307,7 @@ class PointTracking(Inference):
                             items.append(q.get_nowait())
                         if len(items) > 0:
                             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
+                            continue
                         if stop_event.is_set():
                             video_interface._notify(True, task="stop tracking")
                             return

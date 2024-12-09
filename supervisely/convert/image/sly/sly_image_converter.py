@@ -1,36 +1,40 @@
 import os
-from typing import List
+from typing import Dict, Optional
 
 import supervisely.convert.image.sly.sly_image_helper as sly_image_helper
-from supervisely import Annotation, Dataset, OpenMode, Project, ProjectMeta, logger
+from supervisely import (
+    Annotation,
+    Dataset,
+    Label,
+    OpenMode,
+    Project,
+    ProjectMeta,
+    Rectangle,
+    logger,
+)
+from supervisely._utils import generate_free_name, is_development
+from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import (
-    JUNK_FILES,
-    dirs_filter,
-    file_exists,
-    get_file_ext
-)
+from supervisely.convert.image.image_helper import validate_image_bounds
+from supervisely.io.fs import dirs_filter, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
 from supervisely.project.project_settings import LabelingInterface
 
+DATASET_ITEMS = "items"
+NESTED_DATASETS = "datasets"
+
 
 class SLYImageConverter(ImageConverter):
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface = labeling_interface
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._project_structure = None
+        self._supports_links = True
 
     def __str__(self):
         return AvailableImageConverters.SLY
-
-    def validate_labeling_interface(self) -> bool:
-        return self._labeling_interface in [
-            LabelingInterface.DEFAULT,
-            LabelingInterface.IMAGE_MATTING,
-        ]
 
     @property
     def ann_ext(self) -> str:
@@ -39,6 +43,14 @@ class SLYImageConverter(ImageConverter):
     @property
     def key_file_ext(self) -> str:
         return ".json"
+
+    def validate_labeling_interface(self) -> bool:
+        return self._labeling_interface in [
+            LabelingInterface.DEFAULT,
+            LabelingInterface.IMAGE_MATTING,
+            LabelingInterface.FISHEYE,
+            LabelingInterface.MULTIVIEW,
+        ]
 
     def generate_meta_from_annotation(self, ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         ann_json = load_json_file(ann_path)
@@ -63,6 +75,8 @@ class SLYImageConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links and self._supports_links:
+            self._download_remote_ann_files()
         if self.read_sly_project(self._input_data):
             return True
 
@@ -81,9 +95,7 @@ class SLYImageConverter(ImageConverter):
                         continue
 
                 ext = get_file_ext(full_path)
-                if file in JUNK_FILES:  # add better check
-                    continue
-                elif ext in self.ann_ext:
+                if ext in self.ann_ext:
                     if dir_name == "meta":
                         img_meta_dict[file] = full_path
                     else:
@@ -119,14 +131,16 @@ class SLYImageConverter(ImageConverter):
         self,
         item: ImageConverter.Item,
         meta: ProjectMeta = None,
-        renamed_classes: dict = None,
-        renamed_tags: dict = None,
+        renamed_classes: Optional[Dict[str, str]] = None,
+        renamed_tags: Optional[Dict[str, str]] = None,
     ) -> Annotation:
         """Convert to Supervisely format."""
         if meta is None:
             meta = self._meta
 
         if item.ann_data is None:
+            if self._upload_as_links:
+                item.set_shape([None, None])
             return item.create_empty_annotation()
 
         try:
@@ -135,19 +149,28 @@ class SLYImageConverter(ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            return Annotation.from_json(ann_json, meta)
+            img_size = list(ann_json["size"].values())
+            labels = validate_image_bounds(
+                [Label.from_json(obj, meta) for obj in ann_json["objects"]],
+                Rectangle.from_size(img_size),
+            )
+            return Annotation.from_json(ann_json, meta).clone(labels=labels)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()
 
     def read_sly_project(self, input_data: str) -> bool:
         try:
             self._items = []
+            project = {}
+            ds_cnt = 0
             self._meta = None
             logger.debug("Trying to find Supervisely project format in the input data")
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
-                logger.info("Found multiple Supervisely projects")
+                logger.info("Found multiple possible Supervisely projects in the input data")
+            else:
+                logger.info("Possible Supervisely project found in the input data")
             meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
@@ -156,6 +179,7 @@ class SLYImageConverter(ImageConverter):
                 else:
                     meta = meta.merge(project_fs.meta)
                 for dataset in project_fs.datasets:
+                    ds_items = []
                     for name in dataset.get_items_names():
                         img_path, ann_path = dataset.get_item_paths(name)
                         meta_path = dataset.get_item_meta_path(name)
@@ -165,9 +189,23 @@ class SLYImageConverter(ImageConverter):
                                 item.ann_data = ann_path
                         if file_exists(meta_path):
                             item.set_meta_data(meta_path)
-                        self._items.append(item)
+                        ds_items.append(item)
+                    if len(ds_items) > 0:
+                        parts = dataset.name.split("/")
+                        curr_ds = project.setdefault(
+                            parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+                        )
+                        for part in parts[1:]:
+                            curr_ds = curr_ds[NESTED_DATASETS].setdefault(
+                                part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+                            )
+                        curr_ds[DATASET_ITEMS].extend(ds_items)
+                        ds_cnt += 1
+                        self._items.extend(ds_items)
             if self.items_count > 0:
                 self._meta = meta
+                if ds_cnt > 1:  # multiple datasets
+                    self._project_structure = project
                 return True
             else:
                 return False
@@ -178,6 +216,8 @@ class SLYImageConverter(ImageConverter):
     def read_sly_dataset(self, input_data: str) -> bool:
         try:
             self._items = []
+            project = {}
+            ds_cnt = 0
             self._meta = None
             logger.debug("Trying to read Supervisely datasets")
 
@@ -191,10 +231,11 @@ class SLYImageConverter(ImageConverter):
             meta = ProjectMeta()
             dataset_dirs = [d for d in dirs_filter(input_data, _check_function)]
             for dataset_dir in dataset_dirs:
-                dataset_ds = Dataset(dataset_dir, OpenMode.READ)
-                for name in dataset_ds.get_items_names():
-                    img_path, ann_path = dataset_ds.get_item_paths(name)
-                    meta_path = dataset_ds.get_item_meta_path(name)
+                dataset_fs = Dataset(dataset_dir, OpenMode.READ)
+                ds_items = []
+                for name in dataset_fs.get_items_names():
+                    img_path, ann_path = dataset_fs.get_item_paths(name)
+                    meta_path = dataset_fs.get_item_meta_path(name)
                     item = self.Item(img_path)
                     if file_exists(ann_path):
                         meta = self.generate_meta_from_annotation(ann_path, meta)
@@ -202,13 +243,79 @@ class SLYImageConverter(ImageConverter):
                             item.ann_data = ann_path
                     if file_exists(meta_path):
                         item.set_meta_data(meta_path)
-                    self._items.append(item)
+                    ds_items.append(item)
+                if len(ds_items) > 0:
+                    parts = dataset_fs.name.split("/")
+                    curr_ds = project.setdefault(parts[0], {DATASET_ITEMS: [], NESTED_DATASETS: {}})
+                    for part in parts[1:]:
+                        curr_ds = curr_ds[NESTED_DATASETS].setdefault(
+                            part, {DATASET_ITEMS: [], NESTED_DATASETS: {}}
+                        )
+                    curr_ds[DATASET_ITEMS].extend(ds_items)
+                    ds_cnt += 1
+                    self._items.extend(ds_items)
 
             if self.items_count > 0:
                 self._meta = meta
+                if ds_cnt > 1:  # multiple datasets
+                    self._project_structure = project
                 return True
             else:
                 return False
         except Exception as e:
             logger.debug(f"Failed to read Supervisely datasets: {repr(e)}")
             return False
+
+    def upload_dataset(
+        self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True
+    ) -> None:
+
+        if self._project_structure:
+            self.upload_project(api, dataset_id, batch_size, log_progress)
+        else:
+            super().upload_dataset(api, dataset_id, batch_size, log_progress)
+
+    def upload_project(
+        self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True
+    ) -> None:
+        dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+        project_id = dataset_info.project_id
+        existing_datasets = api.dataset.get_list(project_id, recursive=True)
+        existing_datasets = {ds.name for ds in existing_datasets}
+
+        if log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading project")
+        else:
+            progress, progress_cb = None, None
+
+        logger.info("Uploading project structure")
+        def _upload_project(
+            project_structure: Dict,
+            project_id: int,
+            dataset_id: int,
+            parent_id: Optional[int] = None,
+            first_dataset=False,
+        ):
+            for ds_name, value in project_structure.items():
+                ds_name = generate_free_name(existing_datasets, ds_name, extend_used_names=True)
+                if first_dataset:
+                    first_dataset = False
+                    api.dataset.update(dataset_id, ds_name)  # rename first dataset
+                else:
+                    dataset_id = api.dataset.create(project_id, ds_name, parent_id=parent_id).id
+
+                items = value.get(DATASET_ITEMS, [])
+                nested_datasets = value.get(NESTED_DATASETS, {})
+                logger.info(f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}")
+                if items:
+                    super(SLYImageConverter, self).upload_dataset(
+                        api, dataset_id, batch_size, entities=items, progress_cb=progress_cb
+                    )
+
+                if nested_datasets:
+                    _upload_project(nested_datasets, project_id, dataset_id, dataset_id)
+
+        _upload_project(self._project_structure, project_id, dataset_id, first_dataset=True)
+
+        if is_development() and progress is not None:
+            progress.close()

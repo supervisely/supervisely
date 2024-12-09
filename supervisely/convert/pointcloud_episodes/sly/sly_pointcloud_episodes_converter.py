@@ -1,6 +1,5 @@
 import imghdr
 import os
-from typing import List
 
 import supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_helper as sly_episodes_helper
 from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, logger
@@ -14,14 +13,6 @@ from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[PointcloudEpisodeConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._labeling_interface: str = labeling_interface
-        self._annotation = None
-        self._frame_pointcloud_map = None
-        self._frame_count = None
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.SLY
@@ -80,11 +71,17 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                     continue
 
                 ext = get_file_ext(full_path)
+                recognized_ext = imghdr.what(full_path)
                 if file in JUNK_FILES:
                     continue
                 elif ext in self.ann_ext:
                     rimg_json_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif recognized_ext:
+                    if ext.lower() == ".pcd":
+                        logger.warning(
+                            f"File '{file}' has been recognized as '.{recognized_ext}' format. Skipping."
+                        )
+                        continue
                     rimg_dict[file] = full_path
                     if ext not in used_img_ext:
                         used_img_ext.append(ext)

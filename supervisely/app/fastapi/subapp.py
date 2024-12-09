@@ -1,4 +1,5 @@
 import os
+import inspect
 import signal
 import sys
 from contextlib import suppress
@@ -48,8 +49,6 @@ from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 
 # from supervisely.app.fastapi.request import Request
-
-IS_RUNNING = False
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
@@ -109,6 +108,8 @@ class Event:
                     elif tool_option == "erase":
                         is_fill = False
                         is_erase = True
+                    else:
+                        raise ValueError(f"Unknown tool option: {tool_option}")
                 else:
                     is_fill = False
                     is_erase = False
@@ -202,6 +203,7 @@ class Event:
                 figure_id: int,
                 figure_class_id: int,
                 figure_class_title: str,
+                image_id: int,
                 video_id: int,
                 frame: int,
                 object_id: int,
@@ -217,6 +219,7 @@ class Event:
                 self.workspace_id = workspace_id
                 self.project_id = project_id
                 self.figure_id = figure_id
+                self.image_id = image_id
                 self.figure_class_id = figure_class_id
                 self.figure_class_title = figure_class_title
                 self.video_id = video_id
@@ -239,9 +242,10 @@ class Event:
                     figure_id=data.get(ApiField.FIGURE_ID),
                     figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
                     figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    image_id=data.get(ApiField.ENTITY_ID),
                     video_id=data.get(ApiField.ENTITY_ID),
                     frame=data.get(ApiField.FRAME),
-                    object_id=data.get("annotationObjectId"),  # there is no such field in ApiField
+                    object_id=data.get(ApiField.ANNOTATION_OBJECT_ID),
                     tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
                     session_id=data.get(ApiField.SESSION_ID),
                     tool=data.get(ApiField.LABELING_TOOL),
@@ -250,6 +254,300 @@ class Event:
                     previous_figure=data.get(
                         "previousFigure", None
                     ),  # there is no such field in ApiField
+                )
+
+        class ImageChanged:
+            """This event is triggered when the user changes the image in the Image Labeling Tooolbox."""
+
+            endpoint = "/manual_selected_image_changed"
+
+            def __init__(
+                self,
+                dataset_id: int,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                image_id: int,
+                figure_id: int,
+                figure_class_id: int,
+                figure_class_title: str,
+                tool_class_id: int,
+                session_id: str,
+                tool: str,
+                user_id: int,
+                job_id: int,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.image_id = image_id
+                self.figure_id = figure_id
+                self.figure_class_id = figure_class_id
+                self.figure_class_title = figure_class_title
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+
+            @classmethod
+            def from_json(cls, data: dict):
+                return cls(
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    image_id=data.get(ApiField.IMAGE_ID),
+                    figure_id=data.get(ApiField.FIGURE_ID),
+                    figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                )
+
+    class FigureCreated:
+        endpoint = "/figure_created"
+
+        def __init__(
+            self,
+            dataset_id: int,
+            team_id: int,
+            workspace_id: int,
+            project_id: int,
+            figure_id: int,
+            figure_class_id: int,
+            figure_class_title: str,
+            image_id: int,
+            video_id: int,
+            frame: int,
+            object_id: int,
+            tool_class_id: int,
+            session_id: str,
+            tool: str,
+            user_id: int,
+            job_id: int,
+            tool_state: dict,
+            figure_state: dict,
+        ):
+            self.dataset_id = dataset_id
+            self.team_id = team_id
+            self.workspace_id = workspace_id
+            self.project_id = project_id
+            self.figure_id = figure_id
+            self.figure_class_id = figure_class_id
+            self.figure_class_title = figure_class_title
+            self.image_id = image_id
+            self.video_id = video_id
+            self.frame = frame
+            self.object_id = object_id
+            self.tool_class_id = tool_class_id
+            self.session_id = session_id
+            self.tool = tool
+            self.user_id = user_id
+            self.job_id = job_id
+            self.tool_state = tool_state
+            self.figure_state = figure_state
+
+        @classmethod
+        def from_json(cls, data: dict):
+            return cls(
+                dataset_id=data.get(ApiField.DATASET_ID),
+                team_id=data.get(ApiField.TEAM_ID),
+                workspace_id=data.get(ApiField.WORKSPACE_ID),
+                project_id=data.get(ApiField.PROJECT_ID),
+                figure_id=data.get(ApiField.FIGURE_ID),
+                figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                image_id=data.get(ApiField.IMAGE_ID),
+                video_id=data.get(ApiField.ENTITY_ID),
+                frame=data.get(ApiField.FRAME),
+                object_id=data.get(ApiField.ANNOTATION_OBJECT_ID),
+                tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                session_id=data.get(ApiField.SESSION_ID),
+                tool=data.get(ApiField.LABELING_TOOL),
+                user_id=data.get(ApiField.USER_ID),
+                job_id=data.get(ApiField.JOB_ID),
+                tool_state=data.get(ApiField.JOB_ID),
+                figure_state=data.get(ApiField.FIGURE_STATE),
+            )
+
+    class Tools:
+        class Rectangle:
+            class FigureChanged:
+                endpoint = "/tools_rectangle_figure_changed"
+
+                def __init__(
+                    self,
+                    dataset_id: int,
+                    team_id: int,
+                    workspace_id: int,
+                    project_id: int,
+                    figure_id: int,
+                    figure_class_id: int,
+                    figure_class_title: str,
+                    image_id: int,
+                    tool_class_id: int,
+                    session_id: str,
+                    tool: str,
+                    user_id: int,
+                    job_id: int,
+                    tool_state: dict,
+                    figure_state: dict,
+                ):
+                    self.dataset_id = dataset_id
+                    self.team_id = team_id
+                    self.workspace_id = workspace_id
+                    self.project_id = project_id
+                    self.figure_id = figure_id
+                    self.figure_class_id = figure_class_id
+                    self.figure_class_title = figure_class_title
+                    self.image_id = image_id
+                    self.tool_class_id = tool_class_id
+                    self.session_id = session_id
+                    self.tool = tool
+                    self.user_id = user_id
+                    self.job_id = job_id
+                    self.tool_state = tool_state
+                    self.figure_state = figure_state
+
+                @classmethod
+                def from_json(cls, data: dict):
+                    return cls(
+                        dataset_id=data.get(ApiField.DATASET_ID),
+                        team_id=data.get(ApiField.TEAM_ID),
+                        workspace_id=data.get(ApiField.WORKSPACE_ID),
+                        project_id=data.get(ApiField.PROJECT_ID),
+                        figure_id=data.get(ApiField.FIGURE_ID),
+                        figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                        figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                        image_id=data.get(ApiField.IMAGE_ID),
+                        tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                        session_id=data.get(ApiField.SESSION_ID),
+                        tool=data.get(ApiField.LABELING_TOOL),
+                        user_id=data.get(ApiField.USER_ID),
+                        job_id=data.get(ApiField.JOB_ID),
+                        tool_state=data.get(ApiField.JOB_ID),
+                        figure_state=data.get(ApiField.FIGURE_STATE),
+                    )
+
+    class Entity:
+        class FrameChanged:
+            endpoint = "/entity_frame_changed"
+
+            def __init__(
+                self,
+                dataset_id: int,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                figure_id: int,
+                figure_class_id: int,
+                figure_class_title: str,
+                video_id: int,
+                frame: int,
+                object_id: int,
+                tool_class_id: int,
+                session_id: str,
+                tool: str,
+                user_id: int,
+                job_id: int,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.figure_id = figure_id
+                self.figure_class_id = figure_class_id
+                self.figure_class_title = figure_class_title
+                self.video_id = video_id
+                self.frame = frame
+                self.object_id = object_id
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+
+            @classmethod
+            def from_json(cls, data: dict):
+                return cls(
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    figure_id=data.get(ApiField.FIGURE_ID),
+                    figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    video_id=data.get(ApiField.ENTITY_ID),
+                    frame=data.get(ApiField.FRAME),
+                    object_id=data.get(ApiField.ANNOTATION_OBJECT_ID),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                )
+
+    class JobEntity:
+        class StatusChanged:
+            endpoint = "/job_entity_status_changed"
+
+            def __init__(
+                self,
+                dataset_id: int,
+                team_id: int,
+                workspace_id: int,
+                project_id: int,
+                figure_id: int,
+                figure_class_id: int,
+                figure_class_title: str,
+                image_id: int,
+                entity_id: int,
+                tool_class_id: int,
+                session_id: str,
+                tool: str,
+                user_id: int,
+                job_id: int,
+                job_entity_status: str,
+            ):
+                self.dataset_id = dataset_id
+                self.team_id = team_id
+                self.workspace_id = workspace_id
+                self.project_id = project_id
+                self.figure_id = figure_id
+                self.figure_class_id = figure_class_id
+                self.figure_class_title = figure_class_title
+                self.image_id = image_id
+                self.entity_id = entity_id
+                self.tool_class_id = tool_class_id
+                self.session_id = session_id
+                self.tool = tool
+                self.user_id = user_id
+                self.job_id = job_id
+                self.job_entity_status = job_entity_status
+
+            @classmethod
+            def from_json(cls, data: dict):
+                return cls(
+                    dataset_id=data.get(ApiField.DATASET_ID),
+                    team_id=data.get(ApiField.TEAM_ID),
+                    workspace_id=data.get(ApiField.WORKSPACE_ID),
+                    project_id=data.get(ApiField.PROJECT_ID),
+                    figure_id=data.get(ApiField.FIGURE_ID),
+                    figure_class_id=data.get(ApiField.FIGURE_CLASS_ID),
+                    figure_class_title=data.get(ApiField.FIGURE_CLASS_TITLE),
+                    image_id=data.get(ApiField.IMAGE_ID),
+                    entity_id=data.get(ApiField.ENTITY_ID),
+                    tool_class_id=data.get(ApiField.TOOL_CLASS_ID),
+                    session_id=data.get(ApiField.SESSION_ID),
+                    tool=data.get(ApiField.LABELING_TOOL),
+                    user_id=data.get(ApiField.USER_ID),
+                    job_id=data.get(ApiField.JOB_ID),
+                    job_entity_status=data.get(ApiField.JOB_ENTITY_STATUS),
                 )
 
 
@@ -464,7 +762,7 @@ def _init(
             await StateJson.from_request(request)
 
         if not ("application/json" not in request.headers.get("Content-Type", "")):
-            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://dev.supervise.ly'}
+            # {'command': 'inference_batch_ids', 'context': {}, 'state': {'dataset_id': 49711, 'batch_ids': [3120204], 'settings': None}, 'user_api_key': 'XXX', 'api_token': 'XXX', 'instance_type': None, 'server_address': 'https://app.supervisely.com'}
             content = await request.json()
 
             request.state.context = content.get("context")
@@ -542,14 +840,15 @@ class Application(metaclass=Singleton):
     def __init__(
         self,
         layout: "Widget" = None,
-        templates_dir: str = None,
-        static_dir: str = None,
+        templates_dir: Optional[str] = None,
+        static_dir: Optional[str] = None,
         hot_reload: bool = False,  # whether to use hot reload during debug or not (has no effect in production)
         session_info_extra_content: "Widget" = None,
         session_info_solid: bool = False,
+        ready_check_function: Optional[
+            Callable
+        ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
     ):
-        global IS_RUNNING
-
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -559,6 +858,7 @@ class Application(metaclass=Singleton):
         self._stop_event = ThreadingEvent()
         # for backward compatibility
         self._graceful_stop_event: Optional[ThreadingEvent] = None
+        self.set_ready_check_function(ready_check_function)
 
         def set_stop_event():
             self._stop_event.set()
@@ -611,8 +911,6 @@ class Application(metaclass=Singleton):
         else:
             logger.info("Application is running on localhost in development mode")
 
-        IS_RUNNING = True
-
         self._process_id = os.getpid()
         logger.info(f"Application PID is {self._process_id}")
         self._fastapi: FastAPI = _init(
@@ -650,13 +948,26 @@ class Application(metaclass=Singleton):
 
         server = self.get_server()
 
+        @server.get("/livez")
+        @server.get("/is_alive")
         @server.post("/is_running")
         async def is_running(request: Request):
+            is_running = True
             if is_production():
                 # @TODO: set task status to running
-                return {"running": IS_RUNNING, "mode": "production"}
+                return {"running": is_running, "mode": "production"}
             else:
-                return {"running": IS_RUNNING, "mode": "development"}
+                return {"running": is_running, "mode": "development"}
+
+        @server.get("/readyz")
+        @server.get("/is_ready")
+        async def is_ready(response: Response, request: Request):
+            is_ready = True
+            if self._ready_check_function is not None:
+                is_ready = self._ready_check_function()
+            if is_ready is False:
+                raise HTTPException(status_code=503, detail="Service not ready")
+            return {"status": "ready"}
 
     def get_server(self):
         return self._fastapi
@@ -702,11 +1013,15 @@ class Application(metaclass=Singleton):
             self._graceful_stop_event.set()
         return suppress(self.StopException)
 
-    def event(self, event: Event) -> Callable:
+    def event(self, event: Event, use_state: bool = False) -> Callable:
         """Decorator to register posts to specific endpoints.
+        Supports both async and sync functions.
 
         :param event: event to register (e.g. `Event.Brush.LeftMouseReleased`)
         :type event: Event
+        :param use_state: if set to True, data will be extracted from request.state.state,
+            otherwise from request.state.context, defaults to False
+        :type use_state: bool, optional
         :return: decorator
         :rtype: Callable
 
@@ -727,13 +1042,26 @@ class Application(metaclass=Singleton):
         def inner(func: Callable) -> Callable:
             server = self.get_server()
 
-            @server.post(event.endpoint)
-            def wrapper(request: Request):
-                return func(request.state.api, event.from_json(request.state.context))
+            if inspect.iscoroutinefunction(func):
+
+                @server.post(event.endpoint)
+                async def wrapper(request: Request):
+                    data = request.state.state if use_state else request.state.context
+                    return await func(request.state.api, event.from_json(data))
+
+            else:
+
+                @server.post(event.endpoint)
+                def wrapper(request: Request):
+                    data = request.state.state if use_state else request.state.context
+                    return func(request.state.api, event.from_json(data))
 
             return wrapper
 
         return inner
+
+    def set_ready_check_function(self, func: Callable):
+        self._ready_check_function = func
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):

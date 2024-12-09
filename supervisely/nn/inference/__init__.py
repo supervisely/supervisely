@@ -1,4 +1,4 @@
-from supervisely.nn.inference.inference import Inference
+from supervisely.nn.inference.inference import Inference, Timer
 from supervisely.nn.inference.gui.gui import InferenceGUI, BaseInferenceGUI
 from supervisely.nn.inference.instance_segmentation.instance_segmentation import (
     InstanceSegmentation,
@@ -26,3 +26,5 @@ from supervisely.nn.inference.tracking.bbox_tracking import BBoxTracking
 from supervisely.nn.inference.tracking.mask_tracking import MaskTracking
 from supervisely.nn.inference.tracking.object_tracking_3d import ObjectTracking3D
 from supervisely.nn.inference.object_detection_3d import ObjectDetection3D
+from supervisely.nn.utils import CheckpointInfo, DeployInfo, RuntimeType, ModelSource, ModelPrecision
+from supervisely.nn.task_type import TaskType

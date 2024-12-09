@@ -1,21 +1,34 @@
 import os
-from typing import List
+from typing import Dict, Optional, Union
 
 import supervisely.convert.image.masks.image_with_masks_helper as helper
-from supervisely import Annotation, ProjectMeta, logger, ObjClass, Bitmap, ObjClassCollection
+from supervisely import (
+    Annotation,
+    ProjectMeta,
+    logger,
+    ObjClass,
+    Bitmap,
+    ObjClassCollection,
+    Rectangle,
+)
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import file_exists, dirs_with_marker, dir_exists, get_file_name, list_files, dirs_filter, remove_junk_from_dir, get_file_ext
 from supervisely.io.json import load_json_file
-
+from supervisely.project.project_settings import LabelingInterface
+from supervisely.convert.image.image_helper import validate_image_bounds
 
 class ImagesWithMasksConverter(ImageConverter):
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._classes_mapping = {}
-        self._labeling_interface = labeling_interface
 
     def __str__(self):
         return AvailableImageConverters.MASKS
@@ -54,7 +67,7 @@ class ImagesWithMasksConverter(ImageConverter):
             return False
         self._meta = key_file_result
 
-        # possible_dss 
+        # possible_dss
         def _search_for_dss(dir_path):
             if any([d in os.listdir(dir_path) for d in helper.MASK_DIRS]):
                 return True
@@ -137,8 +150,11 @@ class ImagesWithMasksConverter(ImageConverter):
                 instance_labels = helper.read_instance_labels(
                     instance_masks_paths, meta.obj_classes, renamed_classes
                 )
+            all_labels = validate_image_bounds(
+                semantic_labels + instance_labels, Rectangle.from_size(item.shape)
+            )
 
-            ann = ann.add_labels(labels=semantic_labels + instance_labels)
+            ann = ann.add_labels(labels=all_labels)
 
             return ann
         except Exception as e:

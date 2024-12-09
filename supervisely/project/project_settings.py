@@ -20,6 +20,8 @@ class LabelingInterface(str, StrEnum):
     MULTISPECTRAL = "multispectral"
     MULTIVIEW = "multi_view"
     IMAGE_MATTING = "image_matting"
+    FISHEYE = "fisheye"
+
 
 class ProjectSettingsJsonFields:
     MULTI_VIEW = "multiView"

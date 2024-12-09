@@ -1,5 +1,6 @@
 import os
 import re
+import subprocess
 
 import requests
 from pkg_resources import DistributionNotFound, get_distribution
@@ -13,17 +14,75 @@ def read(fname):
         return fin.read()
 
 
-response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
-version = response.json()["tag_name"]
+def get_common_commit_with_master():
+    result = subprocess.run(["git", "merge-base", "HEAD", "master"], stdout=subprocess.PIPE)
+    return result.stdout.decode("utf-8").strip()
+
+
+def get_previous_commit(sha: str):
+    result = subprocess.run(["git", "rev-parse", sha + "^"], stdout=subprocess.PIPE)
+    return result.stdout.decode("utf-8").strip()
+
+
+def get_branch():
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE)
+    return result.stdout.decode("utf-8").strip()
+
+
+def get_commit_tags(sha: str):
+    result = subprocess.run(["git", "tag", "--points-at", sha], stdout=subprocess.PIPE)
+    return [t for t in result.stdout.decode("utf-8").strip().split("\n") if t]
+
+
+def get_github_releases():
+    response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases")
+    response.raise_for_status()
+    return response.json()
+
+
+def get_release_commit(tag: str):
+    response = requests.get(
+        "https://api.github.com/repos/supervisely/supervisely/git/ref/tags/" + tag
+    )
+    response.raise_for_status()
+    return response.json()["object"]["sha"]
+
+
+def get_version():
+    version = os.getenv("RELEASE_VERSION", None)
+    if version is not None:
+        return version
+    branch_name = get_branch()
+    gh_releases = get_github_releases()
+    commit = get_common_commit_with_master()
+    release_commits = {}
+    while commit:
+        if get_commit_tags(commit):
+            for release in gh_releases:
+                release_commit = release_commits.setdefault(
+                    release["tag_name"], get_release_commit(release["tag_name"])
+                )
+                if release_commit == commit:
+                    if branch_name != "master":
+                        return release["tag_name"] + "+" + branch_name
+                    return release["tag_name"]
+        commit = get_previous_commit(commit)
+
+    response = requests.get("https://api.github.com/repos/supervisely/supervisely/releases/latest")
+    version = response.json()["tag_name"]
+    return version
+
+
+version = get_version()
 
 
 INSTALL_REQUIRES = [
-    "cachetools<5.0.0",
+    "cachetools>=4.2.3, <=5.5.0",
     "numpy>=1.19, <2.0.0",
-    "opencv-python>=4.5.5.62, <5.0.0.0",
+    "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
     "pillow>=5.4.1, <=10.2.0",
-    "protobuf>=3.14.0, <=3.20.3",
+    "protobuf>=3.19.5, <=3.20.3",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
@@ -36,12 +95,12 @@ INSTALL_REQUIRES = [
     "pydicom>=2.3.0, <3.0.0",
     "stringcase>=1.2.0, <2.0.0",
     "python-magic>=0.4.25, <1.0.0",
-    "trimesh>=3.11.2, <4.0.0",
+    "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.5.0",
+    "pydantic>=1.7.4, <=2.8.2",
     "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "fastapi>=0.79.0, <=0.109.0",
-    "websockets>=10.3, <11.0",
+    "websockets>=10.3, <=13.1",
     "jinja2>=3.0.3, <4.0.0",
     "psutil>=5.9.0, <6.0.0",
     "jsonpatch>=1.32, <2.0",
@@ -50,26 +109,29 @@ INSTALL_REQUIRES = [
     "tqdm>=4.62.3, <5.0.0",
     "pandas>=1.1.3, <=2.1.4",
     "async_asgi_testclient",
-    "PyYAML",
+    "PyYAML>=5.4.0",
     "distinctipy",
     "beautifulsoup4",
     "numerize",
     "ffmpeg-python==0.2.0",
-    "python-multipart==0.0.5",
+    "python-multipart>=0.0.5, <=0.0.12",
     "GitPython",
     "giturlparse",
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.0",
+    "urllib3>=1.26.15, <=2.2.2",
     "cacheout==0.14.1",
     "jsonschema>=2.6.0,<=4.20.0",
     "pyjwt>=2.1.0,<3.0.0",
+    "zstd",
+    "aiofiles",
+    "httpx[http2]==0.27.2",
 ]
 
 ALT_INSTALL_REQUIRES = {
-    "opencv-python>=4.5.5.62, <5.0.0.0": [
-        "opencv-python-headless",
+    "opencv-python>=4.6.0.66, <5.0.0.0": [
+        "opencv-python-headless>=4.8.1.78",
         "opencv-contrib-python",
         "opencv-contrib-python-headless",
     ],
@@ -125,13 +187,20 @@ setup(
         include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
     ),
     package_data={
-        "": ["*.html", "*.css", "*.js", "*.md"],
+        "": [
+            "*.html",
+            "*.css",
+            "*.js",
+            "*.md",
+            "versions.json",
+        ],
         "supervisely": [
             "video/*.sh",
             "app/development/*.sh",
             "imaging/colors.json.gz",
             "nn/tracker/bot_sort/configs/MOT17/*.yml",
             "nn/tracker/bot_sort/configs/MOT20/*.yml",
+            "nn/benchmark/*/*.yaml",
         ],
     },
     entry_points={
@@ -162,14 +231,14 @@ setup(
             "scikit-image>=0.17.1, <1.0.0",
             "matplotlib>=3.3.2, <4.0.0",
             "pascal-voc-writer>=0.1.4, <1.0.0",
-            "scipy>=1.5.2, <2.0.0",
+            "scipy>=1.8.0, <2.0.0",
             "pandas>=1.1.3, <1.4.0",
             "ruamel.yaml==0.17.21",
         ],
         "apps": [
             "uvicorn[standard]>=0.18.2, <1.0.0",
             "fastapi>=0.79.0, <1.0.0",
-            "websockets>=10.3, <11.0",
+            "websockets>=10.3, <=13.1",
             "jinja2>=3.0.3, <4.0.0",
             "psutil>=5.9.0, <6.0.0",
             "jsonpatch>=1.32, <2.0",
@@ -188,9 +257,28 @@ setup(
             "myst-parser==0.18.0",
         ],
         "sdk-no-usages": [
-            "grpcio>=1.34.1, <2.0.0",
+            "grpcio>=1.53.2, <2.0.0",
             "plotly>=4.11.0, <6.0.0",
             "psutil>=5.4.5, <6.0.0",
+        ],
+        "tracking": [
+            "yacs",
+            "matplotlib>=3.3.2, <4.0.0",
+            "scipy>=1.8.0, <2.0.0",
+            "lap",
+            "cython_bbox",
+            "termcolor",
+            "scikit-learn",
+            "faiss-gpu",
+            "tabulate",
+            "tensorboard",
+        ],
+        "model-benchmark": [
+            "pycocotools",
+            "scikit-learn",
+            "plotly==5.22.0",
+            "torch==1.13.0",
+            "torchvision==0.14.0",
         ],
         # legacy dependencies
         "plugins": [
@@ -204,17 +292,8 @@ setup(
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
         ],
-        "tracking": [
-            "yacs",
-            "matplotlib>=3.3.2, <4.0.0",
-            "scipy>=1.5.2, <2.0.0",
-            "lap",
-            "cython_bbox",
-            "termcolor",
-            "scikit-learn",
-            "faiss-gpu",
-            "tabulate",
-            "tensorboard",
+        "training": [
+            "tensorboardX",
         ],
     },
 )

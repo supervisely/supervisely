@@ -3,13 +3,25 @@
 # docs
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from collections import defaultdict
-from typing import Dict, Generator, List, NamedTuple, Optional, Tuple
+from typing import (
+    AsyncGenerator,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 from requests_toolbelt import MultipartDecoder, MultipartEncoder
+from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi, RemoveableBulkModuleApi
@@ -18,6 +30,29 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class FigureInfo(NamedTuple):
+    """
+    Represents detailed information about a figure in a scene within the labeling tool.
+    It is designed to handle multimodal data.
+
+    Attributes:
+        id (int): Unique identifier for the figure.
+        class_id (int): Identifier for the class of the figure.
+        updated_at (str): Timestamp of the last update.
+        created_at (str): Timestamp of creation.
+        entity_id (int): Identifier for the entity. Possible entities: image, video, volume, pointcloud, etc.
+        object_id (int): Identifier for the object (applicable to videos, volumes, pointclouds).
+        project_id (int): Identifier for the project.
+        dataset_id (int): Identifier for the dataset.
+        frame_index (int): Index of the frame (applicable to videos, volumes (as a slice_index), pointclouds).
+        geometry_type (str): Type of geometry.
+        geometry (dict): Geometry data.
+        geometry_meta (dict): Metadata for the geometry.
+        tags (list): List of tags associated with the figure.
+        meta (dict): Additional metadata.
+        area (str): Area information.
+        priority (int): Position of the figure relative to other overlapping or underlying figures.
+    """
+
     id: int
     class_id: int
     updated_at: str
@@ -33,6 +68,7 @@ class FigureInfo(NamedTuple):
     tags: list
     meta: dict
     area: str
+    priority: Optional[int] = None
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -43,7 +79,7 @@ class FigureInfo(NamedTuple):
         :rtype: :class: `sly.Rectangle`
         """
         if self.geometry_meta is not None:
-            return Rectangle(*self.geometry_meta["bbox"])
+            return Rectangle(*self.geometry_meta["bbox"], sly_id=self.id)
 
 
 class FigureApi(RemoveableBulkModuleApi):
@@ -95,6 +131,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.TAGS,
             ApiField.META,
             ApiField.AREA,
+            ApiField.PRIORITY,
         ]
 
     @staticmethod
@@ -178,6 +215,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "priority",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -327,6 +365,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "priority",
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -373,11 +412,49 @@ class FigureApi(RemoveableBulkModuleApi):
                 figure_id = resp_obj[ApiField.ID]
                 key_id_map.add_figure(key, figure_id)
 
-    def download(
+    def create_bulk(
         self,
-        dataset_id: int,
-        image_ids: List[int] = None,
-        skip_geometry: bool = False,
+        figures_json: List[dict],
+        entity_id: int = None,
+        dataset_id: int = None,
+        batch_size=200,
+    ) -> List[int]:
+        """
+        Create figures in Supervisely in bulk.
+        To optimize creation of a large number of figures use dataset ID instead of entity ID.
+        In this case figure jsons list can contain figures from different entities for the same dataset.
+        Every figure json must contain corresponding entity ID.
+
+        *NOTE*: Geometries for AlphaMask must be uploaded separately via `upload_geometries_batch` method.
+
+        :param figures_json: List of figures in Supervisely JSON format.
+        :type figures_json: List[dict]
+        :param entity_id: Entity ID.
+        :type entity_id: int
+        :param dataset_id: Dataset ID.
+        :type dataset_id: int
+        :return: List of figure IDs.
+        """
+        figure_ids = []
+        if len(figures_json) == 0:
+            return figure_ids
+
+        if entity_id is None and dataset_id is None:
+            raise ValueError("Either entity_id or dataset_id must be provided")
+        if dataset_id is not None:
+            body = {ApiField.DATASET_ID: dataset_id}
+        else:
+            body = {ApiField.ENTITY_ID: entity_id}
+
+        for batch_jsons in batched(figures_json, batch_size):
+            body[ApiField.FIGURES] = batch_jsons
+            response = self._api.post("figures.bulk.add", body)
+            for resp_obj in response.json():
+                figure_ids.append(resp_obj[ApiField.ID])
+        return figure_ids
+
+    def download(
+        self, dataset_id: int, image_ids: List[int] = None, skip_geometry: bool = False
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -385,9 +462,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param image_ids: Specify the list of image IDs within the given dataset ID. If image_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
-
         :type image_ids: List[int], optional
-        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api requets speed increase in the large datasets.
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
@@ -408,6 +484,7 @@ class FigureApi(RemoveableBulkModuleApi):
             "tags",
             "meta",
             "area",
+            "priority",
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != "geometry"]
@@ -415,7 +492,13 @@ class FigureApi(RemoveableBulkModuleApi):
         if image_ids is None:
             filters = []
         else:
-            filters = [{ApiField.FIELD: ApiField.ENTITY_ID, "operator": "in", "value": image_ids}]
+            filters = [
+                {
+                    ApiField.FIELD: ApiField.ENTITY_ID,
+                    "operator": "in",
+                    "value": image_ids,
+                }
+            ]
         data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
@@ -469,17 +552,25 @@ class FigureApi(RemoveableBulkModuleApi):
         """
         return self.download_geometries_batch([figure_id])
 
-    def download_geometries_batch(self, ids: List[int]) -> List[dict]:
+    def download_geometries_batch(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[dict]:
         """
         Download figure geometries with given IDs from storage.
 
         :param ids: List of figure IDs in Supervisely.
         :type ids: List[int]
+        :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
         """
         geometries = {}
         for idx, part in self._download_geometries_generator(ids):
+            if progress_cb is not None:
+                progress_cb(len(part.content))
             geometry_json = json.loads(part.content)
             geometries[idx] = geometry_json
 
@@ -521,7 +612,88 @@ class FigureApi(RemoveableBulkModuleApi):
             for figure_id, geometry in zip(batch_ids, batch_geometries):
                 fields.append((ApiField.FIGURE_ID, str(figure_id)))
                 fields.append(
-                    (ApiField.GEOMETRY, (str(figure_id), geometry, "application/octet-stream"))
+                    (
+                        ApiField.GEOMETRY,
+                        (str(figure_id), geometry, "application/octet-stream"),
+                    )
                 )
             encoder = MultipartEncoder(fields=fields)
             self._api.post("figures.bulk.upload.geometry", encoder)
+
+    async def _download_geometries_generator_async(
+        self, ids: List[int], semaphore: Optional[asyncio.Semaphore] = None
+    ) -> AsyncGenerator[Tuple[int, bytes], None, None]:
+        """
+        Private method. Download figures geometries with given IDs from storage asynchronously.
+
+        :param ids: List of figure IDs in Supervisely.
+        :type ids: List[int]
+        :return: Async generator with pairs of figure ID and figure geometry.
+        :rtype: AsyncGenerator[Tuple[int, bytes], None, None]
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        for batch_ids in batched(ids):
+            async with semaphore:
+                response = await self._api.post_async(
+                    "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
+                )
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                yield figure_id, part.content
+
+    async def download_geometries_batch_async(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> List[dict]:
+        """
+        Download figure geometries with given IDs from storage asynchronously.
+
+        :param ids: List of figure IDs in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Progress bar to show the download progress. Shows the number of bytes downloaded.
+        :type progress_cb: Union[tqdm, Callable], optional
+        :param semaphore: Semaphore to limit the number of concurrent downloads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :return: List of figure geometries in Supervisely JSON format.
+        :rtype: List[dict]
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import asyncio
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                figure_ids = [642155547, 642155548, 642155549]
+                loop = sly.utils.get_or_create_event_loop()
+                geometries = loop.run_until_complete(
+                    api.figure.download_geometries_batch_async(
+                        figure_ids,
+                        progress_cb=tqdm(total=len(figure_ids), desc="Downloading geometries"),
+                        semaphore=asyncio.Semaphore(15),
+                    )
+                )
+        """
+        geometries = {}
+        async for idx, part in self._download_geometries_generator_async(ids, semaphore):
+            if progress_cb is not None:
+                progress_cb(len(part))
+            geometry_json = json.loads(part)
+            geometries[idx] = geometry_json
+
+        if len(geometries) != len(ids):
+            raise RuntimeError("Not all geometries were downloaded")
+        ordered_results = [geometries[i] for i in ids]
+        return ordered_results

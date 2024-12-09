@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Dict, Optional, Union
 
 import yaml
 
@@ -18,19 +18,24 @@ from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.yolo import yolo_helper
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
+from supervisely.project.project_settings import LabelingInterface
 
 
 class YOLOConverter(ImageConverter):
 
-    def __init__(self, input_data: str, labeling_interface: str) -> None:
-        self._input_data: str = input_data
-        self._items: List[ImageConverter.Item] = []
-        self._meta: ProjectMeta = None
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
         self._yaml_info: dict = None
         self._with_keypoint = False
         self._class_index_to_geometry: dict = {}
         self._coco_classes_dict: dict = {}
-        self._labeling_interface = labeling_interface
         self._num_kpts = None
         self._num_dims = None
 

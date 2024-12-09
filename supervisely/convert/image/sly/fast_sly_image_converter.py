@@ -1,14 +1,28 @@
 import os
 
-from supervisely import Annotation, Api, ProjectMeta, batched, is_development, logger
+from supervisely import (
+    Annotation,
+    Api,
+    ProjectMeta,
+    Label,
+    Rectangle,
+    batched,
+    is_development,
+    logger,
+)
 from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
 import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import get_file_ext
 from supervisely.io.json import load_json_file
+from supervisely.convert.image.image_helper import validate_image_bounds
 
 
 class FastSlyImageConverter(SLYImageConverter, ImageConverter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supports_links = False
 
     def validate_format(self) -> bool:
 
@@ -40,7 +54,6 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         self._meta = meta
         return detected_ann_cnt > 0
 
-
     def to_supervisely(
         self,
         item: ImageConverter.Item,
@@ -58,11 +71,15 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            return Annotation.from_json(ann_json, meta)
+            img_size = list(ann_json["size"].values())
+            labels = validate_image_bounds(
+                [Label.from_json(obj, meta) for obj in ann_json["objects"]],
+                Rectangle.from_size(img_size),
+            )
+            return Annotation.from_json(ann_json, meta).clone(labels=labels)
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
             return None
-
 
     def upload_dataset(
         self,

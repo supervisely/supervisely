@@ -11,12 +11,10 @@ from supervisely.video.video import validate_ext as validate_video_ext
 
 
 class SLYVideoConverter(VideoConverter):
-    def __init__(self, input_data: str, labeling_interface: str):
-        self._input_data: str = input_data
-        self._items: List[VideoConverter.Item] = []
-        self._meta: ProjectMeta = None
-        self._key_id_map: KeyIdMap = None
-        self._labeling_interface: str = labeling_interface
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supports_links = True
 
     def __str__(self) -> str:
         return AvailableVideoConverters.SLY
@@ -51,6 +49,8 @@ class SLYVideoConverter(VideoConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links and self._supports_links:
+            self._download_remote_ann_files()
         detected_ann_cnt = 0
         videos_list, ann_dict = [], {}
         for root, _, files in os.walk(self._input_data):
@@ -109,6 +109,8 @@ class SLYVideoConverter(VideoConverter):
             meta = self._meta
 
         if item.ann_data is None:
+            if self._upload_as_links:
+                return None
             return item.create_empty_annotation()
 
         try:
@@ -119,5 +121,5 @@ class SLYVideoConverter(VideoConverter):
                 ann_json = sly_video_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return VideoAnnotation.from_json(ann_json, meta)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return item.create_empty_annotation()

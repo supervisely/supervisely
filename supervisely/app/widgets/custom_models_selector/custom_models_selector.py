@@ -1,9 +1,10 @@
 import os
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Callable, Dict, List, Union
 
-from supervisely import env
+from supervisely import env, logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
 from supervisely.api.file_api import FileApi, FileInfo
@@ -76,7 +77,6 @@ class CustomModelsSelector(Widget):
 
             # col 2 project
             self._training_project_name = train_info.project_name
-
             project_info = self._api.project.get_info_by_name(
                 task_info["workspaceId"], self._training_project_name
             )
@@ -209,11 +209,15 @@ class CustomModelsSelector(Widget):
             for checkpoint_info in self._checkpoints:
                 if isinstance(checkpoint_info, dict):
                     checkpoint_selector_items.append(
-                        Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
+                        Select.Item(
+                            value=checkpoint_info["path"], label=checkpoint_info["name"]
+                        )
                     )
                 elif isinstance(checkpoint_info, FileInfo):
                     checkpoint_selector_items.append(
-                        Select.Item(value=checkpoint_info.path, label=checkpoint_info.name)
+                        Select.Item(
+                            value=checkpoint_info.path, label=checkpoint_info.name
+                        )
                     )
 
             checkpoint_selector = Select(items=checkpoint_selector_items)
@@ -237,7 +241,11 @@ class CustomModelsSelector(Widget):
         self._api = Api.from_env()
 
         self._team_id = team_id
-        table_rows = self._generate_table_rows(train_infos)
+
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(self._generate_table_rows, train_infos)
+            table_rows = future.result()
+
         self._show_custom_checkpoint_path = show_custom_checkpoint_path
         self._custom_checkpoint_task_types = custom_checkpoint_task_types
 
@@ -274,7 +282,9 @@ class CustomModelsSelector(Widget):
             )
 
             file_api = FileApi(self._api)
-            self._model_path_input = Input(placeholder="Path to model file in Team Files")
+            self._model_path_input = Input(
+                placeholder="Path to model file in Team Files"
+            )
 
             @self._model_path_input.value_changed
             def change_folder(value):
@@ -312,7 +322,9 @@ class CustomModelsSelector(Widget):
 
             self.custom_tab_widgets.hide()
 
-            self.show_custom_checkpoint_path_checkbox = Checkbox("Use custom checkpoint", False)
+            self.show_custom_checkpoint_path_checkbox = Checkbox(
+                "Use custom checkpoint", False
+            )
 
             @self.show_custom_checkpoint_path_checkbox.value_changed
             def show_custom_checkpoint_path_checkbox_changed(is_checked):
@@ -387,10 +399,12 @@ class CustomModelsSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> List[Dict]:
+    def _generate_table_rows(
+        self, train_infos: List[TrainInfo]
+    ) -> Dict[str, List[ModelRow]]:
         """Method to generate table rows from remote path to training app save directory"""
-        table_rows = defaultdict(list)
-        for train_info in train_infos:
+
+        def process_train_info(train_info):
             try:
                 model_row = CustomModelsSelector.ModelRow(
                     api=self._api,
@@ -398,11 +412,32 @@ class CustomModelsSelector(Widget):
                     train_info=train_info,
                     task_type=train_info.task_type,
                 )
-                table_rows[train_info.task_type].append(model_row)
-            except:
-                continue
-        table_rows = dict(table_rows)
+                return train_info.task_type, model_row
+            except Exception as e:
+                logger.warn(f"Failed to process train info: {train_info}")
+                return None, None
+
+        table_rows = defaultdict(list)
+
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(process_train_info, train_info): train_info
+                for train_info in train_infos
+            }
+
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    task_type, model_row = result
+                    if task_type is not None and model_row is not None:
+                        table_rows[task_type].append(model_row)
+
+        self._sort_table_rows(table_rows)
         return table_rows
+
+    def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
+        for task_type in table_rows:
+            table_rows[task_type].sort(key=lambda row: row.task_id, reverse=True)
 
     def _filter_task_types(self, task_types: List[str]):
         sorted_tt = []
@@ -413,7 +448,8 @@ class CustomModelsSelector(Widget):
         if "pose estimation" in task_types:
             sorted_tt.append("pose estimation")
         other_tasks = sorted(
-            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
+            set(task_types)
+            - set(["object detection", "instance segmentation", "pose estimation"])
         )
         sorted_tt.extend(other_tasks)
         return sorted_tt
@@ -459,10 +495,15 @@ class CustomModelsSelector(Widget):
             "checkpoint_url": checkpoint_url,
         }
 
+        # if model_name is not None:
+        #     model_params["model_name"] = model_name
+
         if config_path is not None:
             model_params["config_url"] = config_path
 
         return model_params
+
+    # def get_selected_model_params_v2(self) -> Union[Dict, None]:
 
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:
@@ -495,7 +536,9 @@ class CustomModelsSelector(Widget):
 
     def set_custom_checkpoint_task_type(self, task_type: str) -> None:
         if self.use_custom_checkpoint_path():
-            available_task_types = self.custom_checkpoint_task_type_selector.get_labels()
+            available_task_types = (
+                self.custom_checkpoint_task_type_selector.get_labels()
+            )
             if task_type not in available_task_types:
                 raise ValueError(f'"{task_type}" is not available task type')
             self.custom_checkpoint_task_type_selector.set_value(task_type)

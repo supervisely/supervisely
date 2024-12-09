@@ -1,5 +1,8 @@
+import random
+import string
 from abc import abstractmethod
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
@@ -9,7 +12,7 @@ import requests
 
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import silent_remove
 from supervisely.io.json import dump_json_file
@@ -48,7 +51,6 @@ class BaseTrainArtifacts:
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
         self._metadata_file_name: str = "train_info.json"
-        self._http_session = requests.Session()
 
         self._app_name: str = None
         self._framework_folder: str = None
@@ -57,6 +59,7 @@ class BaseTrainArtifacts:
         self._weights_ext: str = None
         self._config_file: str = None
         self._pattern: str = None
+        self._available_task_types: List[str] = []
 
     @property
     def team_id(self) -> int:
@@ -311,7 +314,8 @@ class BaseTrainArtifacts:
             ]
 
         def _upload_metadata(json_data: dict) -> None:
-            json_data_path = self._metadata_file_name
+            random_string = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            json_data_path = f"{random_string}.txt"
             dump_json_file(json_data, json_data_path)
             self._api.file.upload(
                 self._team_id,
@@ -321,8 +325,16 @@ class BaseTrainArtifacts:
             silent_remove(json_data_path)
 
         checkpoint_file_infos = _get_checkpoint_file_infos(weights_folder)
+        if hasattr(self, "_legacy_weights_folder"):
+            if self._legacy_weights_folder is not None:
+                legacy_checkpoint_file_infos = _get_checkpoint_file_infos(
+                    self._legacy_weights_folder
+                )
+                if len(legacy_checkpoint_file_infos) > 0:
+                    checkpoint_file_infos.extend(legacy_checkpoint_file_infos)
+
         if len(checkpoint_file_infos) == 0:
-            logger.info(f"No checkpoints found in '{artifacts_folder}'")
+            logger.info(f"No checkpoints found in '{weights_folder}'")
             return None
 
         logger.info(f"Generating '{self._metadata_file_name}' for '{artifacts_folder}'")
@@ -342,22 +354,31 @@ class BaseTrainArtifacts:
         }
         if config_path is not None:
             train_json["config_path"] = config_path
-        _upload_metadata(train_json)
-        logger.info(f"Metadata for '{artifacts_folder}' was generated")
+        is_valid = self._validate_train_json(train_json)
+        if is_valid:
+            _upload_metadata(train_json)
+            logger.info(f"Metadata for '{artifacts_folder}' was generated")
+        else:
+            logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+            train_json = None
         return train_json
 
-    def _fetch_json_from_url(self, metadata_url: str):
+    def _fetch_json_from_path(self, remote_path: str):
         try:
-            response = self._http_session.get(metadata_url)
+            response = self._api.post(
+                "file-storage.download",
+                {ApiField.TEAM_ID: self.team_id, ApiField.PATH: remote_path},
+                stream=True,
+            )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logger.debug(f"Failed to fetch train metadata from '{metadata_url}': {e}")
+            logger.debug(f"Failed to fetch train metadata from '{remote_path}': {e}")
             return None
 
         try:
             response_json = response.json()
         except JSONDecodeError as e:
-            logger.debug(f"Failed to decode JSON from '{metadata_url}': {e}")
+            logger.debug(f"Failed to decode JSON from '{remote_path}': {e}")
             return None
 
         checkpoints = response_json.get("checkpoints", [])
@@ -394,12 +415,16 @@ class BaseTrainArtifacts:
             start_find_time = time()
             for file_info in file_infos:
                 if file_info.path == metadata_path:
-                    json_data = self._fetch_json_from_url(file_info.full_storage_url)
+                    json_data = self._fetch_json_from_path(file_info.path)
                     break
             end_find_time = time()
             logger.debug(
                 f"Fetch metadata for {metadata_path}: '{format(end_find_time - start_find_time, '.6f')}' sec"
             )
+            is_valid = self._validate_train_json(json_data)
+            if not is_valid:
+                logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+                json_data = None
         return json_data
 
     def _validate_sort(self, sort: Literal["desc", "asc"]):
@@ -417,18 +442,57 @@ class BaseTrainArtifacts:
                 folders[artifacts_folder].append(file_info)
         return folders
 
+    def _validate_train_json(self, train_json) -> bool:
+        if not isinstance(train_json, dict):
+            # Invalid train_json format
+            return False
+        required_fields = [
+            "app_name",
+            "task_id",
+            "artifacts_folder",
+            "session_link",
+            "task_type",
+            "project_name",
+            "checkpoints",
+        ]
+        if self.app_name == "Train MMDetection" or self.app_name == "Train MMDetection 3.0":
+            required_fields.append("config_path")
+
+        for field in required_fields:
+            if field not in train_json:
+                # Missing 'field' in train_json
+                return False
+            else:
+                value = train_json.get(field)
+                if value is None:
+                    logger.debug(f"Field '{field}' is None")
+                    # 'field' is None
+                    return False
+        return True
+
     def _create_train_infos(self, folders):
         train_infos = []
-        for artifacts_folder, file_infos in folders.items():
+
+        def process_folder(artifacts_folder, file_infos):
             metadata_path = join(artifacts_folder, self._metadata_file_name)
             file_paths = [file_info.path for file_info in file_infos]
             train_json = self._get_train_json(
                 artifacts_folder, metadata_path, file_infos, file_paths
             )
-            if train_json is None:
-                continue
-            train_info = TrainInfo(**train_json)
-            train_infos.append(train_info)
+            if train_json:
+                return TrainInfo(**train_json)
+            return None
+
+        with ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(process_folder, folder, infos): folder
+                for folder, infos in folders.items()
+            }
+            for future in as_completed(futures):
+                train_info = future.result()
+                if train_info:
+                    train_infos.append(train_info)
+
         return train_infos
 
     def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
@@ -444,8 +508,21 @@ class BaseTrainArtifacts:
         start_time = time()
         parsed_infos = self._get_file_infos()
         folders = self._group_files_by_folder(parsed_infos)
-        train_infos = self._create_train_infos(folders)
+
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(self._create_train_infos, folders)
+            train_infos = future.result()
+
         end_time = time()
         train_infos = self.sort_train_infos(train_infos, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return train_infos
+
+    def get_available_task_types(self) -> List[str]:
+        """
+        Get available task types.
+
+        :return: The list of available task types.
+        :rtype: List[str]
+        """
+        return self._available_task_types

@@ -11,6 +11,7 @@ from supervisely import logger
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.renamer import Renamer
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.geometry.graph import GraphNodes
 from supervisely.imaging.color import hex2rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
 

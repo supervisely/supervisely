@@ -1,0 +1,17 @@
+<div>
+  <sly-tree-select
+    :value="state.{{{widget.widget_id}}}.value"
+    {% if widget._changes_handled == true %}
+    @input="state.{{{widget.widget_id}}}.value = $event; post('/{{{widget.widget_id}}}/value_changed')"
+    {% else %}
+    @input="state.{{{widget.widget_id}}}.value = $event"
+    {% endif %}
+    :options="state.{{{widget.widget_id}}}.options"
+    :items="data.{{{widget.widget_id}}}.items"
+    {% if widget._width is not none %}
+    :style="{ width: `${data.{{{widget.widget_id}}}.width}px` }"
+    {% endif %}
+    :disabled="data.{{{widget.widget_id}}}.disabled"
+  >
+  </sly-tree-select>
+</div>
