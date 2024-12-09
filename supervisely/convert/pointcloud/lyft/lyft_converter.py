@@ -23,7 +23,10 @@ from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively, silent_remove
+from supervisely.io.json import load_json_file
 from supervisely.convert.pointcloud.lyft import lyft_helper
+from supervisely.api.api import ApiField
+from datetime import datetime
 
 
 class LyftConverter(PointcloudConverter):
@@ -94,10 +97,10 @@ class LyftConverter(PointcloudConverter):
             for sample_data in sample_datas:
                 item_path = sample_data["lidar_path"]
                 ann_data = sample_data["ann_data"]
-                # related_images = lyft_helper.get_related_images(ann_data)
+                related_images = lyft_helper.get_related_images(ann_data)
                 custom_data = sample_data.get("custom_data", {})  # todo: implement
                 scene_name = scene["name"]
-                item = self.Item(item_path, ann_data, scene_name, custom_data=custom_data)
+                item = self.Item(item_path, ann_data, scene_name, related_images, custom_data)
                 self._items.append(item)
             break
 
@@ -105,7 +108,9 @@ class LyftConverter(PointcloudConverter):
 
     def convert(self, item: PointcloudConverter.Item, meta: ProjectMeta):
         time_to_data = {}
-        time = item.ann_data["timestamp"]
+        timestamp = item.ann_data["timestamp"]
+        time = datetime.utcfromtimestamp(timestamp / 1e6).isoformat() + "Z"
+        item.ann_data["timestamp"] = time
         time_to_data[time] = {}
         save_path = item.path[:-4] + ".pcd"
         lyft_helper.convert_bin_to_pcd(item.path, save_path)
@@ -145,10 +150,7 @@ class LyftConverter(PointcloudConverter):
         scene_name_to_dataset = {}
 
         if multiple_items:
-            logger.info(
-                f"Found {self.items_count} pointcloud files in the input data. "
-                "Will create dataset in parent dataset for each file."
-            )
+            logger.info(f"Found {self.items_count} pointcloud files in the input data.")
             scene_names = set([item.scene_name for item in self._items])
             for name in scene_names:
                 ds = api.dataset.create(
@@ -175,18 +177,16 @@ class LyftConverter(PointcloudConverter):
                 meta = api.project.update_meta(current_dataset.project_id, self._meta)
                 self._meta = meta
 
-            existing_names = set([pcd.name for pcd in api.pointcloud.get_list(current_dataset_id)])
+            # existing_names = set([pcd.name for pcd in api.pointcloud.get_list(current_dataset_id)])
             ann_episode = PointcloudEpisodeAnnotation()
             frame_to_pointcloud_ids = {}
 
             for idx, (time, data) in enumerate(time_to_data.items()):
                 pcd_path = data["pcd"]
                 ann_path = data["ann"] or None
-                pcd_meta = data.get("meta", None)  # todo ask about this
+                pcd_meta = data.get("meta", {})  # todo ask about this
+                related_images = data.get("related_images", {})
 
-                pcd_name = generate_free_name(
-                    existing_names, f"{time}.pcd", with_ext=True, extend_used_names=True
-                )
                 if is_episodes:
                     pcd_meta["frame"] = idx
                 upload_fn = (
@@ -194,6 +194,7 @@ class LyftConverter(PointcloudConverter):
                     if is_episodes
                     else api.pointcloud.upload_path
                 )
+                pcd_name = get_file_name(pcd_path)
                 info = upload_fn(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 pcd_id = info.id
                 frame_to_pointcloud_ids[idx] = pcd_id
@@ -216,9 +217,30 @@ class LyftConverter(PointcloudConverter):
                     else:
                         api.pointcloud.annotation.append(pcd_id, ann)
 
+                rimage_infos = []
+                camera_names = []
+                for img_path, rimg_ann_path in related_images:
+                    meta_json = load_json_file(rimg_ann_path)
+                    img = api.pointcloud.upload_related_image(img_path)
+
+                    camera_names.append(meta_json[ApiField.META]["deviceId"])
+                    rimage_infos.append(
+                        {
+                            ApiField.ENTITY_ID: pcd_id,
+                            ApiField.NAME: meta_json[ApiField.NAME],
+                            ApiField.HASH: img,
+                            ApiField.META: meta_json[ApiField.META],
+                        }
+                    )
+                if len(rimage_infos) > 0:
+                    api.pointcloud.add_related_images(rimage_infos, camera_names)
+
                 silent_remove(pcd_path)
                 if ann_path is not None:
                     silent_remove(ann_path)
+                if related_images is not None:
+                    for _, ann in related_images:
+                        silent_remove(ann)
                 if log_progress:
                     progress_cb(1)
 
@@ -228,7 +250,7 @@ class LyftConverter(PointcloudConverter):
                     current_dataset_id, ann_episode, frame_to_pointcloud_ids
                 )
 
-            logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+            logger.info(f"Dataset ID:{current_dataset_id} has been successfully updated.")
 
         if log_progress:
             if is_development():

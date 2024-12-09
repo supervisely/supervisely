@@ -278,9 +278,10 @@ def convert_bin_to_pcd(bin_file, save_filepath):
 
 
 def get_related_images(ann_data):
-    sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
-    return [
-        (sensor, img_path)
-        for sensor, img_path in ann_data.items()
-        if "CAM" in sensor and not any([sensor.endswith(s) for s in sensors_to_skip])
-    ]
+    # sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
+    # return [
+    #     (sensor, img_path)
+    #     for sensor, img_path in ann_data.items()
+    #     if "CAM" in sensor and not any([sensor.endswith(s) for s in sensors_to_skip])
+    # ]
+    return [(sensor, img_path) for sensor, img_path in ann_data.items() if "CAM" in sensor]
