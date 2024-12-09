@@ -40,7 +40,7 @@ We provide a comprehensive model performance analysis using a set of metrics, in
 
 - **Pixel accuracy**: reflects the percent of image pixels which were correctly classified.
 - **Precision**: reflects the number of correctly predicted positive segmentations divided by the total number of predicted positive segmentations.
-- **Recall8**: reflects the number of correctly predicted positive segmentations divided by the number of all samples that should have been segmented as positive.
+- **Recall**: reflects the number of correctly predicted positive segmentations divided by the number of all samples that should have been segmented as positive.
 - **F1-score**: reflects the tradeoff between precision and recall. It is equivalent to the Dice coefficient and calculated as a harmonic mean of precision and recall.
 - **Intersection over union (IoU, also known as the Jaccard index)**: measures the overlap between ground truth mask and predicted mask. It is calculated as the ratio of the intersection of the two masks areas to their combined areas.
 - **Boundary intersection over union**: a segmentation consistency measure that first computes the sets of ground truth  and predicted masks pixels that are located within the distance d from each contour and then computes intersection over union of these two sets. Pixel distance parameter d (pixel width of the boundary region) controls the sensitivity of the metric, it is usually set as 2% of the image diagonal for normal resolution images and 0.5% of the image diagonal for high resolution images.
