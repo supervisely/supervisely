@@ -142,137 +142,20 @@ In terms of localization, segment error is more fundamental than extent, while e
     docs_url
 )
 
-markdown_outcome_counts = (
-    """## Outcome Counts
+markdown_eou_per_class = """## Classwise Segmentation Error Analysis
 
-This chart is used to evaluate the overall model performance by breaking down all predictions into <abbr title="{}">True Positives</abbr> (TP), <abbr title="{}">False Positives</abbr> (FP), and <abbr title="{}">False Negatives</abbr> (FN). This helps to visually assess the type of errors the model often encounters.
-
-"""
-    + clickable_label
-)
-
-markdown_outcome_counts_diff = (
-    """### Outcome Counts Differences
-
-This chart compares the outcomes between different models. It helps identify where the models agree and disagree in their predictions. The 'Common' bar represents cases where the models made identical predictions, regardless of whether those predictions were correct or incorrect. The individual model bars show instances where that particular model made unique predictions that differed from other models.
-
-"""
-    + clickable_label
-)
-
-markdown_precision_per_class_title = """### Precision by Class"""
-
-markdown_recall_per_class_title = """### Recall by Class"""
-
-markdown_f1_per_class_title = """### F1-score by Class"""
-
-markdown_R = """## Recall
-
-This section measures the ability of the model to detect **all relevant instances in the dataset**. In other words, it answers the question: "Of all instances in the dataset, how many of them is the model managed to find out?"
-
-To measure this, we calculate **Recall**. Recall counts errors, when the model does not detect an object that actually is present in a dataset and should be detected. Recall is calculated as the portion of correct predictions (true positives) over all instances in the dataset (true positives + false negatives).
+This section contains information about classwise segmentation error decomposition. For each model, each column of the chart represents a certain class from the training dataset, demonstrating model performance in terms of segmenting this specific class on images and what model lacked in order to show the perfect performance.
 """
 
-notification_recall = {
-    "title": "Recall = {}",
-    "description": "The model correctly found <b>{} of {}</b> total instances in the dataset.",
-}
+markdown_frequently_confused_empty = """### Frequently Confused Classes
 
-markdown_R_perclass = (
-    """### Per-class Recall
-
-This chart further analyzes Recall, breaking it down to each class in separate.
-
-Since the overall recall is calculated as an average across all classes, we provide a chart showing the recall for each individual class. This illustrates how much each class contributes to the overall recall.
-
-_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
-
-"""
-    + clickable_label
-)
-
-
-markdown_P = """## Precision
-
-This section measures the accuracy of all predictions made by the model. In other words, it answers the question: "Of all predictions made by the model, how many of them are actually correct?".
-
-To measure this, we calculate **Precision**. Precision counts errors, when the model predicts an object (bounding box), but the image has no objects of the predicted class in this place. Precision is calculated as a portion of correct predictions (true positives) over all model's predictions (true positives + false positives).
+No frequently confused class pairs found
 """
 
-notification_precision = {
-    "title": "Precision = {}",
-    "description": "The model correctly predicted <b>{} of {}</b> predictions made by the model in total.",
-}
+markdown_frequently_confused = """## Frequently Confused Classes
 
-markdown_P_perclass = (
-    """### Per-class Precision
-
-This chart further analyzes Precision, breaking it down to each class in separate.
-
-Since the overall precision is computed as an average across all classes, we provide a chart showing the precision for each class individually. This illustrates how much each class contributes to the overall precision.
-
-_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
-
+The bar chart below reveals pairs of classes which were most frequently confused for each model. Each column of the chart demonstrates the probability of confusion of a given pair of classes. It is necessary to remember that this probability is not symmetric: the probability of confusing class A with class B is not equal to the probability of confusing class B with class A.
 """
-    + clickable_label
-)
-
-
-markdown_PR = (
-    """## Recall vs. Precision
-
-This section compares Precision and Recall in one graph, identifying **imbalance** between these two.
-
-_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
-
-"""
-    + clickable_label
-)
-
-markdown_PRF1 = """## Precision, Recall, F1-score
-
-This section compares Precision, Recall, and F1-score metrics. The first graph identifies imbalance between these metrics. On the next charts, you can see each metric separately, broken down by class.
-
-_Bars in the chart are sorted by <abbr title="{}">F1-score</abbr> to keep a unified order of classes between different charts._
-"""
-
-markdown_pr_curve = """## mAP & Precision-Recall Curve
-
-Precision-Recall curve is an overall performance indicator. It helps to visually assess both precision and recall for all predictions made by the model on the whole dataset. This gives you an understanding of how precision changes as you attempt to increase recall, providing a view of **trade-offs between precision and recall** <abbr title="{}">(?)</abbr>. Ideally, a high-quality model will maintain strong precision as recall increases. This means that as you move from left to right on the curve, there should not be a significant drop in precision. Such a model is capable of finding many relevant instances, maintaining a high level of precision.
-"""
-
-markdown_trade_offs = """- A system with high recall but low precision generates many results, but most of its predictions are incorrect or redundant (false positives).
-
-- Conversely, a system with high precision but low recall produces very few results, but most of its predictions are accurate.
-
-- The ideal system achieves both high precision and high recall, meaning it returns many results with a high accuracy rate.
-"""
-
-markdown_what_is_pr_curve = """1. **Sort predictions**: Arrange all bounding box predictions by their <abbr title="{}">confidence scores</abbr> in descending order.
-
-2. **Classify outcomes**: For each prediction, determine if it is a <abbr title="{}">true positive</abbr> (TP) or a <abbr title="{}">false positive</abbr> (FP) and record these classifications in a table.
-
-3. **Calculate cumulative metrics**: As you move through each prediction, calculate the cumulative precision and recall. Add these values to the table.
-
-4. **Plot points**: Each row in the table now represents a point on a graph, with cumulative recall on the x-axis and cumulative precision on the y-axis. Initially, this creates a zig-zag line because of variations between predictions.
-
-5. **Smooth the curve**: The true PR curve is derived by plotting only the maximum precision value for each recall level across all thresholds. This means you connect only the highest points of precision for each segment of recall, smoothing out the zig-zags and forming a curve that typically slopes downward as recall increases.
-"""
-
-
-notification_ap = {
-    "title": "mAP = {}",
-    "description": "",
-}
-
-markdown_pr_by_class = (
-    """### Precision-Recall Curve by Class
-
-In this plot, you can evaluate PR curve for each class individually.
-
-"""
-    + clickable_label
-)
 
 markdown_confusion_matrix = (
     """## Confusion Matrix
@@ -284,21 +167,6 @@ The diagonal elements represent the number of correct predictions for each class
 """
     + clickable_label
 )
-
-
-markdown_frequently_confused = (
-    """### Frequently Confused Classes
-
-This chart displays the most frequently confused pairs of classes. In general, it finds out which classes visually seem very similar to the model.
-
-The chart calculates the **probability of confusion** between different pairs of classes. For instance, if the probability of confusion for the pair "{} - {}" is {}, this means that when the model predicts either "{}" or "{}", there is a {}% chance that the model might mistakenly predict one instead of the other.
-
-The measure is class-symmetric, meaning that the probability of confusing a {} with a {} is equal to the probability of confusing a {} with a {}.
-
-"""
-    + clickable_label
-)
-
 
 markdown_localization_accuracy = """## Localization Accuracy (IoU)
 
