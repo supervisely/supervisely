@@ -54,7 +54,7 @@ class SemanticSegmentationEvalResult(BaseEvalResult):
         """Method to customize loading of the evaluation result."""
         eval_result = cls()
         eval_result.eval_data = evaulator.eval_data
-        eval_result.prepare_data()
+        eval_result._prepare_data()
         return eval_result
 
     def get_key_metrics(self):

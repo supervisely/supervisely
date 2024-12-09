@@ -85,7 +85,7 @@ class ObjectDetectionEvalResult(BaseEvalResult):
         eval_result.eval_data = evaulator.eval_data
         eval_result.coco_gt = evaulator.cocoGt
         eval_result.coco_dt = evaulator.cocoDt
-        eval_result.prepare_data()
+        eval_result._prepare_data()
         return eval_result
 
     def get_key_metrics(self):
