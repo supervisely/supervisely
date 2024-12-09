@@ -6,7 +6,7 @@ training workflows in Supervisely.
 """
 
 import supervisely.io.env as sly_env
-from supervisely import Api
+from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
@@ -17,7 +17,7 @@ from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplits
 from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, RuntimeType
 
 
 class TrainGUI:
@@ -62,6 +62,7 @@ class TrainGUI:
         self.workspace_id = sly_env.workspace_id()
         self.project_id = sly_env.project_id()  # from app options?
         self.project_info = self._api.project.get_info_by_id(self.project_id)
+        self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
 
         # 1. Project selection + Train/val split
         self.input_selector = InputSelector(self.project_info, self.app_options)
@@ -399,7 +400,7 @@ class TrainGUI:
 
             app_state = {
                 "input": {"project_id": 43192},
-                "train_val_splits": {
+                "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
@@ -415,13 +416,18 @@ class TrainGUI:
                         "enable": True,
                         "speed_test": True
                     },
-                    "cache_project": True
+                    "cache_project": True,
+                "export": {
+                    "enable": True,
+                    "ONNXRuntime": True,
+                    "TensorRT": True
+                    },
                 }
             }
         """
         app_state = self.validate_app_state(app_state)
 
-        options = app_state["options"]
+        options = app_state.get("options", {})
         input_settings = app_state["input"]
         train_val_splits_settings = app_state["train_val_split"]
         classes_settings = app_state["classes"]
@@ -444,7 +450,7 @@ class TrainGUI:
         :type options: dict
         """
         # Set Input
-        self.input_selector.set_cache(options["cache_project"])
+        self.input_selector.set_cache(options.get("cache_project", True))
         self.input_selector_cb()
         # ----------------------------------------- #
 
@@ -527,13 +533,22 @@ class TrainGUI:
         """
         self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
-        model_benchmark_settings = options["model_benchmark"]
-        self.hyperparameters_selector.set_model_benchmark_checkbox_value(
-            model_benchmark_settings["enable"]
-        )
-        self.hyperparameters_selector.set_speedtest_checkbox_value(
-            model_benchmark_settings["speed_test"]
-        )
+        model_benchmark_settings = options.get("model_benchmark", None)
+        if model_benchmark_settings is not None:
+            self.hyperparameters_selector.set_model_benchmark_checkbox_value(
+                model_benchmark_settings["enable"]
+            )
+            self.hyperparameters_selector.set_speedtest_checkbox_value(
+                model_benchmark_settings["speed_test"]
+            )
+        export_weights_settings = options.get("export", None)
+        if export_weights_settings is not None:
+            self.hyperparameters_selector.set_export_onnx_checkbox_value(
+                export_weights_settings.get(RuntimeType.ONNXRUNTIME, False)
+            )
+            self.hyperparameters_selector.set_export_tensorrt_checkbox_value(
+                export_weights_settings.get(RuntimeType.TENSORRT, False)
+            )
         self.hyperparameters_selector_cb()
 
     # ----------------------------------------- #
