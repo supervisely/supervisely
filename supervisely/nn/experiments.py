@@ -47,7 +47,7 @@ class ExperimentInfo:
     """Date and time when the experiment was started"""
     evaluation_report_id: int
     """ID of the evaluation report"""
-    eval_metrics: dict
+    evaluation_metrics: dict
     """Evaluation metrics"""
 
 

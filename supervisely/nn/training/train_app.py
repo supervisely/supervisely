@@ -1402,7 +1402,7 @@ class TrainApp:
             "artifacts_dir": remote_dir,
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "evaluation_report_id": evaluation_report_id,
-            "eval_metrics": eval_metrics,
+            "evaluation_metrics": eval_metrics,
         }
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
