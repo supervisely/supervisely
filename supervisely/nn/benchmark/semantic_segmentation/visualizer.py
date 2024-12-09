@@ -144,15 +144,14 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.acknowledgement_md = acknowledgement.md
 
         # SpeedTest
-        self.speedtest_present = False
-        self.speedtest_multiple_batch_sizes = False
         speedtest = Speedtest(self.vis_texts, self.eval_result)
-        if not speedtest.is_empty():
-            self.speedtest_present = True
+        self.speedtest_present = not speedtest.is_empty()
+        self.speedtest_multiple_batch_sizes = False
+        if self.speedtest_present:
             self.speedtest_md_intro = speedtest.intro_md
             self.speedtest_intro_table = speedtest.intro_table
-            if speedtest.multiple_batche_sizes():
-                self.speedtest_multiple_batch_sizes = True
+            self.speedtest_multiple_batch_sizes = speedtest.multiple_batche_sizes()
+            if self.speedtest_multiple_batch_sizes:
                 self.speedtest_batch_inference_md = speedtest.batch_size_md
                 self.speedtest_chart = speedtest.chart
 

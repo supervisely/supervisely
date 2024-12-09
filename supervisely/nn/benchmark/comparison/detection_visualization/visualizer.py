@@ -134,6 +134,7 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
 
         # SpeedTest
         self.speedtest_present = False
+        self.speedtest_multiple_batch_sizes = False
         if not speedtest.is_empty():
             self.speedtest_present = True
             self.speedtest_md_intro = speedtest.md_intro
@@ -142,8 +143,10 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
             self.speed_inference_time_table = speedtest.inference_time_table
             self.speed_fps_md = speedtest.fps_md
             self.speed_fps_table = speedtest.fps_table
-            self.speed_batch_inference_md = speedtest.batch_inference_md
-            self.speed_chart = speedtest.chart
+            self.speedtest_multiple_batch_sizes = speedtest.multiple_batche_sizes()
+            if self.speedtest_multiple_batch_sizes:
+                self.speed_batch_inference_md = speedtest.batch_inference_md
+                self.speed_chart = speedtest.chart
 
     def _create_layout(self):
         is_anchors_widgets = [
@@ -210,10 +213,11 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
                     (0, self.speed_inference_time_table),
                     (0, self.speed_fps_md),
                     (0, self.speed_fps_table),
-                    (0, self.speed_batch_inference_md),
-                    (0, self.speed_chart),
                 ]
             )
+            if self.speedtest_multiple_batch_sizes:
+                is_anchors_widgets.append((0, self.speed_batch_inference_md))
+                is_anchors_widgets.append((0, self.speed_chart))
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:

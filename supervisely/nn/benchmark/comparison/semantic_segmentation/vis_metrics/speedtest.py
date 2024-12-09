@@ -14,6 +14,9 @@ class Speedtest(BaseVisMetrics):
     def is_empty(self) -> bool:
         return not any(eval_result.speedtest_info for eval_result in self.eval_results)
 
+    def multiple_batche_sizes(self) -> bool:
+        return len(self.eval_result.speedtest_info["speedtest"]) > 1
+
     @property
     def latency(self) -> List[Union[int, str]]:
         latency = []

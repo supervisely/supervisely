@@ -222,10 +222,9 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         # Speedtest init here for overview
         speedtest = Speedtest(self.vis_texts, self.eval_result)
-        self.speedtest_present = False
+        self.speedtest_present = not speedtest.is_empty()
         self.speedtest_batch_sizes_cnt = speedtest.num_batche_sizes
-        if not speedtest.is_empty():
-            self.speedtest_present = True
+        if self.speedtest_present:
             self.speedtest_md_intro = speedtest.intro_md
             self.speedtest_table_md = speedtest.table_md
             self.speedtest_table = speedtest.table

@@ -75,6 +75,8 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
 
         # # SpeedTest
         self.speedtest_present = not speedtest.is_empty()
+        self.speedtest_multiple_batch_sizes = False
+
         if self.speedtest_present:
             self.speedtest_md_intro = speedtest.md_intro
             self.speedtest_intro_table = speedtest.intro_table
@@ -82,8 +84,10 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             self.speed_inference_time_table = speedtest.inference_time_table
             self.speed_fps_md = speedtest.fps_md
             self.speed_fps_table = speedtest.fps_table
-            self.speed_batch_inference_md = speedtest.batch_inference_md
-            self.speed_chart = speedtest.chart
+            self.speedtest_multiple_batch_sizes = speedtest.multiple_batche_sizes()
+            if self.speedtest_multiple_batch_sizes:
+                self.speed_batch_inference_md = speedtest.batch_inference_md
+                self.speed_chart = speedtest.chart
 
     def _create_layout(self):
         is_anchors_widgets = [
@@ -120,10 +124,11 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
                     (0, self.speed_inference_time_table),
                     (0, self.speed_fps_md),
                     (0, self.speed_fps_table),
-                    (0, self.speed_batch_inference_md),
-                    (0, self.speed_chart),
                 ]
             )
+            if self.speedtest_multiple_batch_sizes:
+                is_anchors_widgets.append((0, self.speed_batch_inference_md))
+                is_anchors_widgets.append((0, self.speed_chart))
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:
@@ -137,9 +142,6 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         return layout
 
     def _create_key_metrics(self) -> MarkdownWidget:
-        key_metrics_text = self.vis_texts.markdown_key_metrics.format(
-            self.vis_texts.definitions.average_precision,
-            self.vis_texts.definitions.confidence_threshold,
-            self.vis_texts.definitions.confidence_score,
+        return MarkdownWidget(
+            "markdown_key_metrics", "Key Metrics", text=self.vis_texts.markdown_key_metrics
         )
-        return MarkdownWidget("markdown_key_metrics", "Key Metrics", text=key_metrics_text)
