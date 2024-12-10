@@ -1635,14 +1635,13 @@ class AppApi(TaskApi):
                     convert_json_info_cb=lambda x: x,
                 )
             )
-        dev_tasks = []
-
+        session_infos = []
         for session in sessions:
             if session_name is not None and session["meta"]["name"] != session_name:
                 continue
             session["moduleId"] = module_id
-            dev_tasks.append(SessionInfo.from_json(session))
-        return dev_tasks
+            session_infos.append(SessionInfo.from_json(session))
+        return session_infos
 
     def start(
         self,
