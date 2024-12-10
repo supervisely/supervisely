@@ -14,8 +14,9 @@ from supervisely import logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
-from supervisely.io.fs import silent_remove
+from supervisely.io.fs import silent_remove, get_file_name_with_ext
 from supervisely.io.json import dump_json_file
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class TrainInfo(NamedTuple):
@@ -53,6 +54,7 @@ class BaseTrainArtifacts:
         self._metadata_file_name: str = "train_info.json"
 
         self._app_name: str = None
+        self._framework_name: str = None
         self._framework_folder: str = None
         self._weights_folder: str = None
         self._task_type: str = None
@@ -277,6 +279,7 @@ class BaseTrainArtifacts:
         project_name: str,
         task_type: str = None,
         config_path: str = None,
+        return_type: Literal["train_info", "experiment_info"] = "train_info",
     ):
         """
         Generate the metadata for the given parameters.
@@ -297,6 +300,8 @@ class BaseTrainArtifacts:
         :type task_type: str, optional
         :param config_path: Path to config file. Default is None.
         :type config_path: str, optional
+        :param return_type: The return type. Default is "train_info".
+        :type return_type: str, optional
         :return: The generated metadata.
         :rtype: dict
         """
@@ -343,24 +348,73 @@ class BaseTrainArtifacts:
         else:
             session_link = f"/apps/sessions/{task_id}"
 
-        train_json = {
-            "app_name": app_name,
-            "task_id": task_id,
-            "artifacts_folder": artifacts_folder,
-            "session_link": session_link,
-            "task_type": task_type,
-            "project_name": project_name,
-            "checkpoints": checkpoint_file_infos,
-        }
-        if config_path is not None:
-            train_json["config_path"] = config_path
-        is_valid = self._validate_train_json(train_json)
-        if is_valid:
-            _upload_metadata(train_json)
-            logger.info(f"Metadata for '{artifacts_folder}' was generated")
+        if return_type == "experiment_info":
+            best_checkpoint = None
+            checkpoints = []
+            for file in checkpoint_file_infos:
+                checkpoints.append(join(weights_folder, file.name))
+                if "best" in file.name:
+                    best_checkpoint = file.name
+
+            if best_checkpoint is None:
+                best_checkpoint = get_file_name_with_ext(checkpoints[-1])
+
+            model_files = {}
+            config = self._config_file
+            if config is not None:
+                config_path = self.get_config_path(artifacts_folder)
+                config_path = config.replace(artifacts_folder, "")
+                model_files = {"config": config_path}
+
+            task_info = self._api.task.get_info_by_id(task_id)
+            workspace_id = task_info["workspaceId"]
+
+            project_id = None
+            project = self._api.project.get_info_by_name(workspace_id, project_name)
+            if project is not None:
+                project_id = project.id
+            datetime = task_info["startedAt"]
+
+            train_json = {
+                "experiment_name": f"Unknown {self._framework_name} experiment",
+                "framework_name": self._framework_name,
+                "model_name": f"Unknown {self._framework_name} model",
+                "task_type": task_type,
+                "project_id": project_id,
+                "task_id": task_id,
+                "model_files": model_files,
+                "checkpoints": checkpoints,
+                "best_checkpoint": best_checkpoint,
+                "export": None,
+                "app_state": None,
+                "model_meta": None,
+                "train_val_split": None,
+                "hyperparameters": None,
+                "artifacts_dir": artifacts_folder,
+                "datetime": datetime,
+                "evaluation_report_id": None,
+                "evaluation_metrics": {},
+            }
+            return train_json
         else:
-            logger.warn(f"Invalid metadata for '{artifacts_folder}'")
-            train_json = None
+            train_json = {
+                "app_name": app_name,
+                "task_id": task_id,
+                "artifacts_folder": artifacts_folder,
+                "session_link": session_link,
+                "task_type": task_type,
+                "project_name": project_name,
+                "checkpoints": checkpoint_file_infos,
+            }
+            if config_path is not None:
+                train_json["config_path"] = config_path
+            is_valid = self._validate_train_json(train_json)
+            if is_valid:
+                _upload_metadata(train_json)
+                logger.info(f"Metadata for '{artifacts_folder}' was generated")
+            else:
+                logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+                train_json = None
         return train_json
 
     def _fetch_json_from_path(self, remote_path: str):
@@ -393,9 +447,10 @@ class BaseTrainArtifacts:
         metadata_path: str,
         file_infos: List[FileInfo],
         file_paths: List[str],
+        return_type: Literal["train_info", "experiment_info"] = "train_info",
     ) -> Dict[str, Any]:
         json_data = None
-        if metadata_path not in file_paths:
+        if metadata_path not in file_paths or return_type == "experiment_info":
             weights_folder = self.get_weights_path(artifacts_folder)
             task_type = self.get_task_type(artifacts_folder)
             task_id = self.get_task_id(artifacts_folder)
@@ -410,6 +465,7 @@ class BaseTrainArtifacts:
                 project_name=project_name,
                 task_type=task_type,
                 config_path=config_path,
+                return_type=return_type,
             )
         else:
             start_find_time = time()
@@ -470,22 +526,25 @@ class BaseTrainArtifacts:
                     return False
         return True
 
-    def _create_train_infos(self, folders):
+    def _create_train_infos(self, folders, return_type):
         train_infos = []
 
-        def process_folder(artifacts_folder, file_infos):
+        def process_folder(artifacts_folder, file_infos, return_type):
             metadata_path = join(artifacts_folder, self._metadata_file_name)
             file_paths = [file_info.path for file_info in file_infos]
             train_json = self._get_train_json(
-                artifacts_folder, metadata_path, file_infos, file_paths
+                artifacts_folder, metadata_path, file_infos, file_paths, return_type
             )
             if train_json:
-                return TrainInfo(**train_json)
+                if return_type == "train_info":
+                    return TrainInfo(**train_json)
+                else:
+                    return ExperimentInfo(**train_json)
             return None
 
         with ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(process_folder, folder, infos): folder
+                executor.submit(process_folder, folder, infos, return_type): folder
                 for folder, infos in folders.items()
             }
             for future in as_completed(futures):
@@ -495,7 +554,11 @@ class BaseTrainArtifacts:
 
         return train_infos
 
-    def get_list(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
+    def get_list(
+        self,
+        sort: Literal["desc", "asc"] = "desc",
+        return_type: Literal["train_info", "experiment_info"] = "train_info",
+    ) -> List[TrainInfo]:
         """
         Return list of custom training infos
 
@@ -510,7 +573,7 @@ class BaseTrainArtifacts:
         folders = self._group_files_by_folder(parsed_infos)
 
         with ThreadPoolExecutor() as executor:
-            future = executor.submit(self._create_train_infos, folders)
+            future = executor.submit(self._create_train_infos, folders, return_type)
             train_infos = future.result()
 
         end_time = time()

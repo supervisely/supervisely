@@ -73,9 +73,12 @@ class ExperimentSelector(Widget):
 
             # col 3 project
             self._training_project_id = experiment_info.project_id
-            self._training_project_info = self._api.project.get_info_by_id(
-                self._training_project_id
-            )
+            if self._training_project_id is None:
+                self._training_project_info = None
+            else:
+                self._training_project_info = self._api.project.get_info_by_id(
+                    self._training_project_id
+                )
 
             # col 4 checkpoints
             self._checkpoints = experiment_info.checkpoints

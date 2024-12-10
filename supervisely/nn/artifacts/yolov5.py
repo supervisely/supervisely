@@ -10,6 +10,7 @@ class YOLOv5(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5"
+        self._framework_name = "YOLOv5"
         self._framework_folder = "/yolov5_train"
         self._weights_folder = "weights"
         self._task_type = "object detection"
@@ -39,6 +40,7 @@ class YOLOv5v2(YOLOv5):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5 2.0"
+        self._framework_name = "YOLOv5 2.0"
         self._framework_folder = "/yolov5_2.0_train"
         self._weights_folder = "weights"
         self._task_type = "object detection"
