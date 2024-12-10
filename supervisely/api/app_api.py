@@ -1569,8 +1569,6 @@ class AppApi(TaskApi):
         :return: list of sessions
         :rtype: List[SessionInfo]
 
-        :raises KeyError: if app [module_id] added to team multiple times
-
         :Usage example:
 
          .. code-block:: python
@@ -1612,11 +1610,6 @@ class AppApi(TaskApi):
                 f"Apps list in team is broken: app [module_id = {module_id}] added to team {team_id} multiple times"
             )
         sessions = []
-
-        str_statuses = []
-        if statuses is not None:
-            str_statuses = [str(s) for s in statuses]
-
         for app in infos_json:
             data = {
                 ApiField.TEAM_ID: team_id,
@@ -1632,13 +1625,15 @@ class AppApi(TaskApi):
                     {
                         ApiField.FIELD: ApiField.STATUS,
                         ApiField.OPERATOR: "in",
-                        ApiField.VALUE: str_statuses,
+                        ApiField.VALUE: [str(s) for s in statuses],
                     }
                 ]
-            sessions += self.get_list_all_pages(
-                method="apps.tasks.list",
-                data=data,
-                convert_json_info_cb=lambda x: x,
+            sessions.extend(
+                self.get_list_all_pages(
+                    method="apps.tasks.list",
+                    data=data,
+                    convert_json_info_cb=lambda x: x,
+                )
             )
         dev_tasks = []
 
