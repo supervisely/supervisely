@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -12,6 +14,18 @@ from supervisely.nn.benchmark.utils import calculate_metrics, read_coco_datasets
 
 class InstanceSegmentationEvalResult(ObjectDetectionEvalResult):
     mp_cls = MetricProvider
+
+    @classmethod
+    def from_evaluator(
+        cls, evaulator: InstanceSegmentationEvaluator
+    ) -> InstanceSegmentationEvalResult:
+        """Method to customize loading of the evaluation result."""
+        eval_result = cls()
+        eval_result.eval_data = evaulator.eval_data
+        eval_result.coco_gt = evaulator.cocoGt
+        eval_result.coco_dt = evaulator.cocoDt
+        eval_result._prepare_data()
+        return eval_result
 
 
 class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):

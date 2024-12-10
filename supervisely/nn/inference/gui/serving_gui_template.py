@@ -30,7 +30,7 @@ class ServingGUITemplate(ServingGUI):
     def __init__(
         self,
         framework_name: str,
-        models: Optional[str] = None,
+        models: Optional[list] = None,
         app_options: Optional[str] = None,
     ):
         if not isinstance(framework_name, str):
@@ -41,7 +41,7 @@ class ServingGUITemplate(ServingGUI):
         self.team_id = sly_env.team_id()
 
         self.framework_name = framework_name
-        self.models = self._load_models(models) if models else []
+        self.models = models
         self.app_options = self._load_app_options(app_options) if app_options else {}
 
         base_widgets = self._initialize_layout()
@@ -176,39 +176,6 @@ class ServingGUITemplate(ServingGUI):
             "device": self.device,
             "runtime": self.runtime,
         }
-
-    # Loaders
-    def _load_models(self, models: str) -> List[Dict[str, Any]]:
-        """
-        Loads models from the provided file or list of model configurations.
-        """
-        if isinstance(models, str):
-            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
-                models = sly_json.load_json_file(models)
-            else:
-                raise ValueError("File not found or invalid file format.")
-        else:
-            raise ValueError(
-                "Invalid models file. Please provide a valid '.json' file with list of model configurations."
-            )
-
-        if not isinstance(models, list):
-            raise ValueError("models parameters must be a list of dicts")
-        for item in models:
-            if not isinstance(item, dict):
-                raise ValueError(f"Each item in models must be a dict.")
-            model_meta = item.get("meta")
-            if model_meta is None:
-                raise ValueError(
-                    "Model metadata not found. Please update provided models parameter to include key 'meta'."
-                )
-            model_files = model_meta.get("model_files")
-            if model_files is None:
-                raise ValueError(
-                    "Model files not found in model metadata. "
-                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
-                )
-        return models
 
     def _load_app_options(self, app_options: str = None) -> Dict[str, Any]:
         """

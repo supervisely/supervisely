@@ -9,6 +9,7 @@ from supervisely.app.widgets import (
     Field,
     Text,
 )
+from supervisely.nn.utils import RuntimeType
 
 
 class HyperparametersSelector:
@@ -17,55 +18,75 @@ class HyperparametersSelector:
     lock_message = "Select model to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
+        self.display_widgets = []
         self.app_options = app_options
+
+        # GUI Components
         self.editor = Editor(
             hyperparameters, height_lines=50, language_mode="yaml", auto_format=True
         )
+        self.display_widgets.extend([self.editor])
 
-        # Model Benchmark
-        self.run_model_benchmark_checkbox = Checkbox(
-            content="Run Model Benchmark evaluation", checked=True
-        )
-        self.run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
-
-        self.model_benchmark_field = Field(
-            Container(
-                widgets=[
-                    self.run_model_benchmark_checkbox,
-                    self.run_speedtest_checkbox,
-                ]
-            ),
-            title="Model Evaluation Benchmark",
-            description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
-        )
-        docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
-        self.model_benchmark_learn_more = Text(
-            f"Learn more about Model Benchmark in the {docs_link}.", status="info"
-        )
-
+        # Optional Model Benchmark
         if app_options.get("model_benchmark", True):
-            self.model_benchmark_field.show()
-            self.model_benchmark_learn_more.show()
-        else:
-            self.model_benchmark_field.hide()
-            self.model_benchmark_learn_more.hide()
+            # Model Benchmark
+            self.run_model_benchmark_checkbox = Checkbox(
+                content="Run Model Benchmark evaluation", checked=True
+            )
+            self.run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
+
+            self.model_benchmark_field = Field(
+                title="Model Evaluation Benchmark",
+                description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
+                content=Container([self.run_model_benchmark_checkbox, self.run_speedtest_checkbox]),
+            )
+            docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
+            self.model_benchmark_learn_more = Text(
+                f"Learn more about Model Benchmark in the {docs_link}.", status="info"
+            )
+            self.display_widgets.extend(
+                [self.model_benchmark_field, self.model_benchmark_learn_more]
+            )
+        # -------------------------------- #
+
+        # Optional Export Weights
+        export_onnx_supported = app_options.get("export_onnx_supported", False)
+        export_tensorrt_supported = app_options.get("export_tensorrt_supported", False)
+
+        onnx_name = "ONNX"
+        tensorrt_name = "TensorRT engine"
+        export_runtimes = []
+        export_runtime_names = []
+        if export_onnx_supported:
+            self.export_onnx_checkbox = Checkbox(content=f"Export to {onnx_name}")
+            export_runtimes.append(self.export_onnx_checkbox)
+            export_runtime_names.append(onnx_name)
+        if export_tensorrt_supported:
+            self.export_tensorrt_checkbox = Checkbox(content=f"Export to {tensorrt_name}")
+            export_runtimes.append(self.export_tensorrt_checkbox)
+            export_runtime_names.append(tensorrt_name)
+        if export_onnx_supported or export_tensorrt_supported:
+            export_field_description = ", ".join(export_runtime_names)
+            runtime_container = Container(export_runtimes)
+            self.export_field = Field(
+                title="Export model",
+                description=f"Export best checkpoint to the following formats: {export_field_description}.",
+                content=runtime_container,
+            )
+            self.display_widgets.extend([self.export_field])
+        # -------------------------------- #
 
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        container = Container(
-            [
-                self.editor,
-                self.model_benchmark_field,
-                self.model_benchmark_learn_more,
-                self.validator_text,
-                self.button,
-            ]
-        )
+        self.display_widgets.extend([self.validator_text, self.button])
+        # -------------------------------- #
+
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             lock_message=self.lock_message,
             collapsable=app_options.get("collapsable", False),
         )
@@ -73,11 +94,14 @@ class HyperparametersSelector:
 
     @property
     def widgets_to_disable(self) -> list:
-        return [
-            self.editor,
-            self.run_model_benchmark_checkbox,
-            self.run_speedtest_checkbox,
-        ]
+        widgets = [self.editor]
+        if self.app_options.get("model_benchmark", True):
+            widgets.extend([self.run_model_benchmark_checkbox, self.run_speedtest_checkbox])
+        if self.app_options.get("export_onnx_supported", False):
+            widgets.append(self.export_onnx_checkbox)
+        if self.app_options.get("export_tensorrt_supported", False):
+            widgets.append(self.export_tensorrt_checkbox)
+        return widgets
 
     def set_hyperparameters(self, hyperparameters: Union[str, dict]) -> None:
         self.editor.set_text(hyperparameters)
@@ -112,6 +136,31 @@ class HyperparametersSelector:
             self.run_speedtest_checkbox.show()
         else:
             self.run_speedtest_checkbox.hide()
+
+    def get_export_onnx_checkbox_value(self) -> bool:
+        if self.app_options.get("export_onnx_supported", False):
+            return self.export_onnx_checkbox.is_checked()
+        return False
+
+    def set_export_onnx_checkbox_value(self, value: bool) -> None:
+        if value:
+            self.export_onnx_checkbox.check()
+        else:
+            self.export_onnx_checkbox.uncheck()
+
+    def get_export_tensorrt_checkbox_value(self) -> bool:
+        if self.app_options.get("export_tensorrt_supported", False):
+            return self.export_tensorrt_checkbox.is_checked()
+        return False
+
+    def set_export_tensorrt_checkbox_value(self, value: bool) -> None:
+        if value:
+            self.export_tensorrt_checkbox.check()
+        else:
+            self.export_tensorrt_checkbox.uncheck()
+
+    def is_export_required(self) -> bool:
+        return self.get_export_onnx_checkbox_value() or self.get_export_tensorrt_checkbox_value()
 
     def validate_step(self) -> bool:
         return True

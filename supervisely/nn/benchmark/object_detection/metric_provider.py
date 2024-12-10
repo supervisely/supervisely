@@ -164,6 +164,13 @@ class MetricProvider:
             f"AP{iou_name}_by_class": ap_custom_by_class,
         }
 
+    def key_metrics(self):
+        iou_name = int(self.iou_threshold * 100)
+        json_metrics = self.json_metrics()
+        json_metrics.pop("AP_by_class")
+        json_metrics.pop(f"AP{iou_name}_by_class")
+        return json_metrics
+
     def metric_table(self):
         table = self.json_metrics()
         iou_name = int(self.iou_threshold * 100)
