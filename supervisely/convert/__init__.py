@@ -45,6 +45,7 @@ from supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_convert
     SLYPointcloudEpisodesConverter,
 )
 from supervisely.convert.pointcloud_episodes.bag.bag_converter import BagEpisodesConverter
+from supervisely.convert.pointcloud_episodes.lyft.lyft_converter import LyftEpisodesConverter
 
 # Video
 from supervisely.convert.video.mot.mot_converter import MOTConverter

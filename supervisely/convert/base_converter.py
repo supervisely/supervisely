@@ -60,6 +60,7 @@ class AvailablePointcloudConverters:
 class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
     BAG = "rosbag"
+    LYFT = "lyft"
 
 
 class AvailableVolumeConverters:

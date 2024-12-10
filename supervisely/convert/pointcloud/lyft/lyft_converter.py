@@ -111,7 +111,7 @@ class LyftConverter(PointcloudConverter):
                 item = self.Item(item_path, ann_data, scene_name, related_images, custom_data)
                 self._items.append(item)
             progress.iter_done_report()
-            break
+            break  # ! remove
         t = t.get_sec()
         logger.info(
             f"Lyft annotation extraction took {t:.2f} sec ({(t / self.items_count):.3f} sec per sample)"
@@ -286,3 +286,7 @@ class LyftConverter(PointcloudConverter):
         if log_progress:
             if is_development():
                 progress.close()
+
+
+# @TODO: fix annotation objects being present only on the last frame for poincloud episodes
+# @TODO: don't create nested dataset for pointcloud episodes. or do?
