@@ -4,6 +4,7 @@ import supervisely.nn.benchmark.comparison.semantic_segmentation.text_templates 
 from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics import (
     ClasswiseErrorAnalysis,
+    ExplorePredictions,
     FrequentlyConfused,
     IntersectionErrorOverUnion,
     Overview,
@@ -53,6 +54,17 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
         )
         self.overview_chart = overview.chart_widget
 
+        # Explore Predictions
+        columns_number = len(self.comparison.eval_results) + 1  # +1 for GT
+        self.explore_predictions_modal_gallery = self._create_explore_modal_table(columns_number)
+        explore_predictions = ExplorePredictions(
+            self.vis_texts,
+            self.comparison.eval_results,
+            explore_modal_table=self.explore_predictions_modal_gallery,
+        )
+        self.explore_predictions_md = explore_predictions.difference_predictions_md
+        self.explore_predictions_gallery = explore_predictions.explore_gallery
+
         # IntersectionErrorOverUnion
         iou_eou = IntersectionErrorOverUnion(self.vis_texts, self.comparison.eval_results)
         self.iou_eou_md = iou_eou.md
@@ -99,8 +111,8 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
             (0, self.key_metrics_table),
             (0, self.overview_chart),
             # Explore Predictions
-            # (1, self.explore_predictions_md),
-            # (0, self.explore_predictions_gallery),
+            (1, self.explore_predictions_md),
+            (0, self.explore_predictions_gallery),
             # IntersectionErrorOverUnion
             (1, self.iou_eou_md),
             (0, self.iou_eou_chart),
@@ -136,7 +148,7 @@ class SemanticSegmentationComparisonVisualizer(BaseComparisonVisualizer):
 
         sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
         layout = ContainerWidget(
-            widgets=[sidebar, self.explore_modal, self.diff_modal],
+            widgets=[sidebar, self.explore_modal, self.explore_predictions_modal_gallery],
             name="main_container",
         )
         return layout
