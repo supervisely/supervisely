@@ -43,23 +43,21 @@ class FrequentlyConfused(BaseVisMetrics):
         all_models_cmat = np.zeros((model_cnt, len(classes), len(classes)))
         for model_idx, eval_result in enumerate(self.eval_results):
             cmat, _ = eval_result.mp.confusion_matrix
-            all_models_cmat[model_idx] = cmat.copy()
+            all_models_cmat[model_idx] = cmat[::-1].copy()
 
         sum_cmat = all_models_cmat.sum(axis=0)
         np.fill_diagonal(sum_cmat, 0)
         sum_cmat_flat = sum_cmat.flatten()
         sorted_indices = np.argsort(sum_cmat_flat)[::-1]
-        n_pairs = 10
+        n_pairs = min(10, len(classes) * (len(classes) - 1))
         sorted_indices = sorted_indices[:n_pairs]
         rows = sorted_indices // len(classes)
         cols = sorted_indices % len(classes)
+        labels = [f"{classes[rows[i]]}-{classes[cols[i]]}" for i in range(n_pairs)]
         for model_idx, eval_result in enumerate(self.eval_results):
             cmat = all_models_cmat[model_idx]
-            probs, indexes_2d = eval_result.mp.get_frequently_confused(cmat, n_pairs=n_pairs)
+            probs = cmat[rows, cols] 
             probs = probs * 100
-            labels = [
-                f"{classes[rows[i]]}{self._keypair_sep}{classes[cols[i]]}" for i in range(n_pairs)
-            ]
             fig.add_trace(
                 go.Bar(
                     name=eval_result.name,
