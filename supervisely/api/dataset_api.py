@@ -263,6 +263,21 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             raise KeyError(f"Dataset with id={id} not found in your account")
         return info
 
+    def _get_effective_new_name(
+        self, project_id: int, name: str, change_name_if_conflict: bool, parent_id: int = None
+    ):
+        return (
+            self._get_free_name(
+                exist_check_fn=lambda name: self.get_info_by_name(
+                    project_id, name, parent_id=parent_id
+                )
+                is not None,
+                name=name,
+            )
+            if change_name_if_conflict
+            else name
+        )
+
     def create(
         self,
         project_id: int,
@@ -306,9 +321,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             print(len(new_ds_info)) # 2
         """
         effective_name = self._get_effective_new_name(
-            parent_id=project_id,
+            project_id=project_id,
             name=name,
             change_name_if_conflict=change_name_if_conflict,
+            parent_id=parent_id,
         )
         response = self._api.post(
             "datasets.add",
