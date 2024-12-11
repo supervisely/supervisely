@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import scipy
 
 
 def one_hot(segmentation, num_classes):
@@ -18,12 +17,16 @@ def single_one_hot(segmentation, cls):
 
 
 def get_single_contiguous_segment(one_hot_segmentation):
+    import scipy  # pylint: disable=import-error
+
     kernel = np.ones((3, 3), dtype=one_hot_segmentation.dtype)
     seg = scipy.ndimage.label(one_hot_segmentation, structure=kernel)[0]
     return [np.where(seg == l) for l in range(1, seg.max() + 1)]
 
 
 def get_contiguous_segments(one_hot_segmentation):
+    import scipy  # pylint: disable=import-error
+
     kernel = np.ones((3, 3), dtype=one_hot_segmentation.dtype)
     segments_tensor = np.stack(
         [scipy.ndimage.label(seg, structure=kernel)[0] for seg in one_hot_segmentation]

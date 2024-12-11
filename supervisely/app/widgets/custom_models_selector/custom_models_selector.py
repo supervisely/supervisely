@@ -209,11 +209,15 @@ class CustomModelsSelector(Widget):
             for checkpoint_info in self._checkpoints:
                 if isinstance(checkpoint_info, dict):
                     checkpoint_selector_items.append(
-                        Select.Item(value=checkpoint_info["path"], label=checkpoint_info["name"])
+                        Select.Item(
+                            value=checkpoint_info["path"], label=checkpoint_info["name"]
+                        )
                     )
                 elif isinstance(checkpoint_info, FileInfo):
                     checkpoint_selector_items.append(
-                        Select.Item(value=checkpoint_info.path, label=checkpoint_info.name)
+                        Select.Item(
+                            value=checkpoint_info.path, label=checkpoint_info.name
+                        )
                     )
 
             checkpoint_selector = Select(items=checkpoint_selector_items)
@@ -278,7 +282,9 @@ class CustomModelsSelector(Widget):
             )
 
             file_api = FileApi(self._api)
-            self._model_path_input = Input(placeholder="Path to model file in Team Files")
+            self._model_path_input = Input(
+                placeholder="Path to model file in Team Files"
+            )
 
             @self._model_path_input.value_changed
             def change_folder(value):
@@ -316,7 +322,9 @@ class CustomModelsSelector(Widget):
 
             self.custom_tab_widgets.hide()
 
-            self.show_custom_checkpoint_path_checkbox = Checkbox("Use custom checkpoint", False)
+            self.show_custom_checkpoint_path_checkbox = Checkbox(
+                "Use custom checkpoint", False
+            )
 
             @self.show_custom_checkpoint_path_checkbox.value_changed
             def show_custom_checkpoint_path_checkbox_changed(is_checked):
@@ -391,7 +399,9 @@ class CustomModelsSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(self, train_infos: List[TrainInfo]) -> Dict[str, List[ModelRow]]:
+    def _generate_table_rows(
+        self, train_infos: List[TrainInfo]
+    ) -> Dict[str, List[ModelRow]]:
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_train_info(train_info):
@@ -438,7 +448,8 @@ class CustomModelsSelector(Widget):
         if "pose estimation" in task_types:
             sorted_tt.append("pose estimation")
         other_tasks = sorted(
-            set(task_types) - set(["object detection", "instance segmentation", "pose estimation"])
+            set(task_types)
+            - set(["object detection", "instance segmentation", "pose estimation"])
         )
         sorted_tt.extend(other_tasks)
         return sorted_tt
@@ -484,10 +495,15 @@ class CustomModelsSelector(Widget):
             "checkpoint_url": checkpoint_url,
         }
 
+        # if model_name is not None:
+        #     model_params["model_name"] = model_name
+
         if config_path is not None:
             model_params["config_url"] = config_path
 
         return model_params
+
+    # def get_selected_model_params_v2(self) -> Union[Dict, None]:
 
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:
@@ -520,7 +536,9 @@ class CustomModelsSelector(Widget):
 
     def set_custom_checkpoint_task_type(self, task_type: str) -> None:
         if self.use_custom_checkpoint_path():
-            available_task_types = self.custom_checkpoint_task_type_selector.get_labels()
+            available_task_types = (
+                self.custom_checkpoint_task_type_selector.get_labels()
+            )
             if task_type not in available_task_types:
                 raise ValueError(f'"{task_type}" is not available task type')
             self.custom_checkpoint_task_type_selector.set_value(task_type)

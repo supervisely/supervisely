@@ -1,5 +1,6 @@
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
@@ -15,6 +16,7 @@ class UNet(BaseTrainArtifacts):
         self._weights_ext = ".pth"
         self._config_file = "train_args.json"
         self._pattern = re_compile(r"^/unet/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["semantic segmentation"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

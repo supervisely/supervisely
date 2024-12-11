@@ -11,3 +11,5 @@ from supervisely.nn.prediction_dto import (
     PredictionSegmentation,
 )
 from supervisely.nn.task_type import TaskType
+from supervisely.nn.utils import ModelSource, RuntimeType
+from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
