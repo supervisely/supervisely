@@ -74,6 +74,8 @@ class BaseBenchmark:
         self.train_info = None
         self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
+        self._eval_results = None
+        self.report_id = None
         self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
@@ -86,6 +88,11 @@ class BaseBenchmark:
     @property
     def hardware(self) -> str:
         return self._hardware
+
+    @property
+    def key_metrics(self):
+        eval_results = self.get_eval_result()
+        return eval_results.key_metrics
 
     def run_evaluation(
         self,
@@ -482,8 +489,10 @@ class BaseBenchmark:
                 f"Visualizer class is not defined in {self.__class__.__name__}. "
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
-        eval_result = self.evaluator.get_eval_result()
-        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)  # pylint: disable=not-callable
+        eval_result = self.get_eval_result()
+        vis = self.visualizer_cls(  # pylint: disable=not-callable
+            self.api, [eval_result], self.get_layout_results_dir(), self.pbar
+        )
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
             vis.visualize()
             p.update(1)
@@ -566,6 +575,7 @@ class BaseBenchmark:
     def upload_report_link(self, remote_dir: str):
         template_path = os.path.join(remote_dir, "template.vue")
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
+        self.report_id = vue_template_info.id
 
         report_link = "/model-benchmark?id=" + str(vue_template_info.id)
         local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")
@@ -608,3 +618,8 @@ class BaseBenchmark:
             return sum(ds.items_count for ds in self.gt_dataset_infos)
         else:
             return self.gt_project_info.items_count
+
+    def get_eval_result(self):
+        if self._eval_results is None:
+            self._eval_results = self.evaluator.get_eval_result()
+        return self._eval_results
