@@ -149,10 +149,7 @@ class LyftConverter(PointcloudConverter):
 
         # * Check if label has any classes that are not in the meta
         meta_class_names = [obj_class.name for obj_class in meta.obj_classes]
-        classes_to_add = set()
-        for l in label:
-            if l.label_class not in meta_class_names:
-                classes_to_add.add(l.label_class)
+        classes_to_add = {l.label_class for l in label if l.label_class not in meta_class_names}
 
         # * Add new classes to the meta if needed
         if len(classes_to_add) > 0:
@@ -269,24 +266,19 @@ class LyftConverter(PointcloudConverter):
             silent_remove(pcd_path)
             if ann_path is not None:
                 silent_remove(ann_path)
-            if rimages is not None:
-                for _, ann in rimages:
-                    silent_remove(ann)
+            for _, ann in rimages:
+                silent_remove(ann)
             if log_progress:
                 progress_cb(1)
 
-        if is_episodes:
-            ann_episode = ann_episode.clone(frames_count=self.items_count)
-            api.pointcloud_episode.annotation.append(
-                current_dataset_id, ann_episode, frame_to_pointcloud_ids
-            )
+            if is_episodes:
+                ann_episode = ann_episode.clone(frames_count=self.items_count)
+                api.pointcloud_episode.annotation.append(
+                    current_dataset_id, ann_episode, frame_to_pointcloud_ids
+                )
 
         logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
 
         if log_progress:
             if is_development():
                 progress.close()
-
-
-# @TODO: fix annotation objects being present only on the last frame for poincloud episodes
-# @TODO: don't create nested dataset for pointcloud episodes. or do?
