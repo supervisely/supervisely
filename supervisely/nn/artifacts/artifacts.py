@@ -53,6 +53,7 @@ class BaseTrainArtifacts:
         self._metadata_file_name: str = "train_info.json"
 
         self._app_name: str = None
+        self._framework_name: str = None
         self._framework_folder: str = None
         self._weights_folder: str = None
         self._task_type: str = None
@@ -90,6 +91,16 @@ class BaseTrainArtifacts:
         :rtype: str
         """
         return self._app_name
+
+    @property
+    def framework_name(self):
+        """
+        Framework name.
+
+        :return: The framework name.
+        :rtype: str
+        """
+        return self._framework_name
 
     @property
     def framework_folder(self):

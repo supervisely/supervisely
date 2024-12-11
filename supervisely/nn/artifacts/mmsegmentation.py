@@ -10,6 +10,7 @@ class MMSegmentation(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMSegmentation"
+        self._framework_name = "MMSegmentation"
         self._framework_folder = "/mmsegmentation"
         self._weights_folder = "checkpoints/data"
         self._task_type = "instance segmentation"

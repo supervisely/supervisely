@@ -10,6 +10,7 @@ class UNet(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train UNet"
+        self._framework_name = "UNet"
         self._framework_folder = "/unet"
         self._weights_folder = "checkpoints"
         self._task_type = "semantic segmentation"
