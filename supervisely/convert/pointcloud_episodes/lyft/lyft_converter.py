@@ -14,17 +14,18 @@ from supervisely.project.project_settings import LabelingInterface
 class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
     """Converter for LYFT pointcloud episodes format."""
 
-    class Item(LyftConverter.Item):
+    class Item(LyftConverter.Item):  # to remove?
+
         def __init__(
             self,
             item_path,
             ann_data: str = None,
-            scene_name: str = None,
             related_images: list = None,
             custom_data: dict = None,
+            scene_name: str = None,
         ):
-            super().__init__(item_path, ann_data, scene_name, related_images, custom_data)
-            self.scene_name = scene_name
+            super().__init__(item_path, ann_data, related_images, custom_data, scene_name)
+            self._scene_name = scene_name
 
         def create_empty_annotation(self) -> PointcloudEpisodeAnnotation:
             return PointcloudEpisodeAnnotation()

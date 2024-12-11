@@ -1,36 +1,19 @@
 import os
-from typing import Dict, Any, List
+from typing import List
 import numpy as np
 import open3d as o3d
-from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-from supervisely import logger, Progress
-from supervisely.io import json
-from supervisely import fs
-
-# from supervisely.pointcloud_annotation import (
-#     PointcloudAnnotation,
-#     PointcloudObjectCollection,
-#     PointcloudFigure,
-#     PointcloudObject,
-# )
 import shutil
 from pyquaternion import Quaternion
 
 from supervisely import (
-    Api,
-    ObjClass,
     PointcloudAnnotation,
-    PointcloudEpisodeAnnotation,
-    PointcloudEpisodeFrame,
-    PointcloudEpisodeObject,
     PointcloudObject,
     PointcloudFigure,
-    ProjectMeta,
-    generate_free_name,
-    is_development,
     logger,
+    fs
 )
-
+from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
+from supervisely.io import json
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )

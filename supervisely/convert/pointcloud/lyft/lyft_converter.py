@@ -1,9 +1,6 @@
-import os
-import json
 import numpy as np
 from pathlib import Path
-from typing import Dict, Optional, Union
-from collections import defaultdict
+from typing import Dict, Optional
 
 from supervisely import (
     Api,
@@ -14,7 +11,6 @@ from supervisely import (
     PointcloudEpisodeObject,
     PointcloudFigure,
     ProjectMeta,
-    generate_free_name,
     logger,
     is_development,
     Progress,
@@ -22,8 +18,8 @@ from supervisely import (
 from supervisely.io.fs import silent_remove
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
-from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively, silent_remove
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.io.fs import get_file_name, list_files_recursively, silent_remove
 from supervisely.io.json import load_json_file
 from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.api.api import ApiField
@@ -44,7 +40,7 @@ class LyftConverter(PointcloudConverter):
         ):
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._type = "point_cloud"
-            self.scene_name = scene_name
+            self._scene_name = scene_name
 
     def __init__(
         self,
@@ -56,7 +52,7 @@ class LyftConverter(PointcloudConverter):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
         self._total_msg_count = 0
         self._is_pcd_episode = False
-        self.meta_needs_update = False
+        self._meta_needs_update = False
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.LYFT
@@ -74,19 +70,19 @@ class LyftConverter(PointcloudConverter):
             )
             return
 
-        def _filter_fn(file_path):
-            return get_file_ext(file_path).lower() == self.key_file_ext
-
-        lidar_dir = self._input_data + "/lidar/"
-        bin_files = list_files_recursively(lidar_dir, filter_fn=_filter_fn)
+        lidar_dir = self._input_data + "/lidar/"  # valida
+        bin_files = list_files_recursively(
+            lidar_dir, [self.key_file_ext], ignore_valid_extensions_case=True
+        )
+        list_files_recursively
 
         if len(bin_files) == 0:
             return False
-        else:
-            # check if pointclouds have 5 columns (x, y, z, intensity, ring)
-            pointcloud = np.fromfile(bin_files[0], dtype=np.float32)
-            if pointcloud.shape[0] % 5 != 0:
-                return False
+
+        # check if pointclouds have 5 columns (x, y, z, intensity, ring)
+        pointcloud = np.fromfile(bin_files[0], dtype=np.float32)
+        if pointcloud.shape[0] % 5 != 0:
+            return False
 
         json_dir = self._input_data + "/data/"  # todo: find the json folder
         t = TinyTimer()
@@ -96,7 +92,7 @@ class LyftConverter(PointcloudConverter):
         t = TinyTimer()
         available_scenes = [scene for scene in lyft_helper.get_available_scenes(lyft)]
         progress = Progress(
-            f"Extracting annotations from available scenes...", len(available_scenes)
+            f"Extracting annotations from available scenes...", len(available_scenes)  # убрать
         )
         for scene in available_scenes:
             scene_name = scene["name"]
@@ -141,11 +137,11 @@ class LyftConverter(PointcloudConverter):
         item.ann_data["timestamp"] = time
 
         # * Convert pointcloud from ".bin" to ".pcd"
-        pcd_path = item.path[:-4] + ".pcd"
+        pcd_path = str(Path(item.path).with_suffix(".pcd"))
         lyft_helper.convert_bin_to_pcd(item.path, pcd_path)
 
         # * Convert annotation to json
-        ann_path = item.path[:-4] + ".json"
+        ann_path = str(Path(item.path).with_suffix(".json"))
         label = lyft_helper.lyft_annotation_to_BEVBox3D(item.ann_data)
 
         # * Check if label has any classes that are not in the meta
@@ -158,7 +154,7 @@ class LyftConverter(PointcloudConverter):
                 [ObjClass(objclass, Cuboid3d) for objclass in classes_to_add]
             )
             self._meta = meta
-            self.meta_needs_update = True
+            self._meta_needs_update = True
 
         # * Convert label to annotation and write it to a json
         lyft_helper.convert_label_to_annotation(label, ann_path, meta)
@@ -173,16 +169,16 @@ class LyftConverter(PointcloudConverter):
 
     def _upload_dataset(self, api: Api, dataset_id: int, log_progress=True, is_episodes=False):
         self._meta = ProjectMeta()
-        meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
+        meta, _, _ = self.merge_metas_with_conflicts(api, dataset_id)  # todo
 
-        multiple_items = self.items_count > 1
+        multiple_items = self.items_count > 1  # ! scene names
         dataset_info = api.dataset.get_info_by_id(dataset_id)
         scene_name_to_dataset = {}
         frame_to_pointcloud_ids = {}
 
         if multiple_items:
             logger.info(f"Found {self.items_count} pointcloud files in the input data.")
-            scene_names = set([item.scene_name for item in self._items])
+            scene_names = set([item._scene_name for item in self._items])
             for name in scene_names:
                 ds = api.dataset.create(
                     dataset_info.project_id,
@@ -193,25 +189,25 @@ class LyftConverter(PointcloudConverter):
                 scene_name_to_dataset[name] = ds
 
         if log_progress:
-            progress, progress_cb = self.get_progress(self._total_msg_count, "Uploading...")
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading...")
         else:
             progress_cb = None
 
         for idx, item in enumerate(self._items):
             # * Get the current dataset for the scene
-            current_dataset = scene_name_to_dataset.get(item.scene_name, None)
+            current_dataset = scene_name_to_dataset.get(item._scene_name, None)
             if current_dataset is None:
-                raise RuntimeError("Dataset not found for scene name: {}".format(item.scene_name))
+                raise RuntimeError("Dataset not found for scene name: {}".format(item._scene_name))
             current_dataset_id = current_dataset.id
 
             # * Convert the item to supervisely format and update meta if needed
             pcd_path, ann_path, rimages = self.convert(item, meta)
-            if self.meta_needs_update:
+            if self._meta_needs_update:
                 meta = api.project.update_meta(current_dataset.project_id, self._meta)
                 self._meta = meta
-                self.meta_needs_update = False
+                self._meta_needs_update = False
 
-            ann_episode = PointcloudEpisodeAnnotation()
+            ann_episode = PointcloudEpisodeAnnotation()  # to move
             pcd_meta = {}
 
             # * Upload pointcloud
@@ -231,7 +227,7 @@ class LyftConverter(PointcloudConverter):
                 if is_episodes:
                     objects = ann_episode.objects
                     figures = []
-                    for fig in ann.figures:
+                    for fig in ann.figures:  # todo
                         obj_cls = meta.get_obj_class(fig.parent_object.obj_class.name)
                         if obj_cls is not None:
                             obj = PointcloudEpisodeObject(obj_cls)
@@ -264,7 +260,7 @@ class LyftConverter(PointcloudConverter):
                 api.pointcloud.add_related_images(rimage_infos, camera_names)
 
             # * Clean up
-            silent_remove(pcd_path)
+            silent_remove(pcd_path)  # check if overwriting
             if ann_path is not None:
                 silent_remove(ann_path)
             for _, ann in rimages:
