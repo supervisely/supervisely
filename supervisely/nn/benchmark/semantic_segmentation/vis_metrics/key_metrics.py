@@ -35,7 +35,7 @@ class KeyMetrics(SemanticSegmVisMetric):
         data = {"columns": columns, "columnsOptions": columns_options, "content": content}
 
         table = TableWidget(
-            name=self.TABLE,
+            name="table_key_metrics",
             data=data,
             fix_columns=1,
             width="60%",
