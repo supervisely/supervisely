@@ -242,7 +242,8 @@ class ExperimentSelector(Widget):
             for path, name in zip(self._checkpoints_paths, self._checkpoints_names):
                 checkpoint_selector_items.append(Select.Item(value=path, label=name))
             checkpoint_selector = Select(items=checkpoint_selector_items)
-            checkpoint_selector.set_value(self._best_checkpoint)
+            if self._best_checkpoint_value is not None:
+                checkpoint_selector.set_value(self._best_checkpoint)
             return checkpoint_selector
 
         def _create_session_widget(self) -> Text:

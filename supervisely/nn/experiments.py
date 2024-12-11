@@ -1,3 +1,4 @@
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, fields
 from json import JSONDecodeError
@@ -127,9 +128,13 @@ def build_experiment_info_list_from_train_infos(
     def build_experiment_info_from_train_info(
         api: Api, framework_cls: BaseTrainArtifacts, train_info: TrainInfo
     ) -> ExperimentInfo:
-        checkpoints = [
-            join(framework_cls.weights_folder, chk.name) for chk in train_info.checkpoints
-        ]
+
+        checkpoints = []
+        for chk in train_info.checkpoints:
+            if framework_cls.weights_folder:
+                checkpoints.append(join(framework_cls.weights_folder, chk.name))
+            else:
+                checkpoints.append(chk.name)
 
         best_checkpoint = next(
             (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
@@ -147,6 +152,10 @@ def build_experiment_info_list_from_train_infos(
         if train_info.config_path:
             model_files["config"] = Path(train_info.config_path).name
 
+        input_datetime = task_info["startedAt"]
+        parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+        date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
         experiment_info_data = {
             "experiment_name": f"Unknown {framework_cls.framework_name} experiment",
             "framework_name": framework_cls.framework_name,
@@ -163,7 +172,7 @@ def build_experiment_info_list_from_train_infos(
             "train_val_split": None,
             "hyperparameters": None,
             "artifacts_dir": train_info.artifacts_folder,
-            "datetime": task_info["startedAt"],
+            "datetime": date_time,
             "evaluation_report_id": None,
             "evaluation_metrics": {},
         }
