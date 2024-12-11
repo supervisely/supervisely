@@ -42,6 +42,7 @@ from supervisely.io.fs import (
     dir_empty,
     dir_exists,
     ensure_base_path,
+    file_exists,
     get_file_name_with_ext,
     list_dir_recursively,
     list_files,
@@ -2281,6 +2282,8 @@ class Project:
         target_classes: Optional[List[str]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         segmentation_type: Optional[str] = "semantic",
+        bg_name: Optional[str] = "__bg__",
+        bg_color: Optional[List[int]] = None,
     ) -> None:
         """
         Makes a copy of the :class:`Project<Project>`, converts annotations to
@@ -2296,13 +2299,17 @@ class Project:
         :param inplace: Modifies source project If True. Must be False If dst_project_dir is specified.
         :type inplace: :class:`bool`, optional
         :param target_classes: Classes list to include to destination project. If segmentation_type="semantic",
-                               background class "__bg__" will be added automatically.
+                               background class will be added automatically (by default "__bg__").
         :type target_classes: :class:`list` [ :class:`str` ], optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class "__bg__"
-                                  will be added automatically and instances will be converted to non overlapping semantic segmentation mask.
+        :param segmentation_type: One of: {"semantic", "instance"}. If segmentation_type="semantic", background class
+                                  will be added automatically (by default "__bg__") and instances will be converted to non overlapping semantic segmentation mask.
         :type segmentation_type: :class:`str`
+        :param bg_name: Default background class name, used for semantic segmentation.
+        :type bg_name: :class:`str`, optional
+        :param bg_color: Default background class color, used for semantic segmentation.
+        :type bg_color: :class:`list`, optional. Default is [0, 0, 0]
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -2319,8 +2326,9 @@ class Project:
             seg_project = sly.Project(seg_project_path, sly.OpenMode.READ)
         """
 
-        _bg_class_name = "__bg__"
-        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=[0, 0, 0])
+        _bg_class_name = bg_name
+        bg_color = bg_color or [0, 0, 0]
+        _bg_obj_class = ObjClass(_bg_class_name, Bitmap, color=bg_color)
 
         if dst_project_dir is None and inplace is False:
             raise ValueError(
@@ -2388,7 +2396,11 @@ class Project:
 
                 seg_path = None
                 if inplace is False:
-                    dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    if file_exists(img_path):
+                        dst_dataset.add_item_file(item_name, img_path, seg_ann)
+                    else:
+                        # if local project has no images
+                        dst_dataset._add_ann_by_type(item_name, seg_ann)
                     seg_path = dst_dataset.get_seg_path(item_name)
                 else:
                     # replace existing annotation
@@ -3422,6 +3434,7 @@ class Project:
         save_image_meta: bool = False,
         images_ids: Optional[List[int]] = None,
         resume_download: Optional[bool] = False,
+        **kwargs,
     ) -> None:
         """
         Download project from Supervisely to the given directory in asynchronous mode.
@@ -3476,6 +3489,12 @@ class Project:
                 else:
                     loop.run_until_complete(coroutine)
         """
+        if kwargs.pop("cache", None) is not None:
+            logger.warning(
+                "Cache is not supported in async mode and will be ignored. "
+                "Use resume_download parameter instead to optimize download process."
+            )
+
         await _download_project_async(
             api=api,
             project_id=project_id,
@@ -3721,11 +3740,12 @@ def _download_project(
                     batch, image_names, batch_imgs_bytes, ann_jsons
                 ):
                     dataset_fs: Dataset
-
+                    # to fix already downloaded images that doesn't have info files
+                    dataset_fs.delete_item(name)
                     dataset_fs.add_item_raw_bytes(
                         item_name=name,
                         item_raw_bytes=img_bytes if save_images is True else None,
-                        ann=dataset_fs.get_ann(name) if ann is None else ann,
+                        ann=dataset_fs.get_ann(name, meta) if ann is None else ann,
                         img_info=img_info if save_image_info is True else None,
                     )
 
@@ -4389,13 +4409,41 @@ async def _download_project_async(
     only_image_tags: Optional[bool] = False,
     save_image_info: Optional[bool] = False,
     save_images: Optional[bool] = True,
-    progress_cb: Optional[Callable] = None,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    **kwargs,
 ):
+    """
+    Download image project to the local directory asynchronously.
+    Uses queue and semaphore to control the number of parallel downloads.
+    Every image goes through size check to decide if it should be downloaded in bulk or one by one.
+    Checked images are split into two lists: small and large. Small images are downloaded in bulk, large images are downloaded one by one.
+    As soon as the task is created, it is put into the queue. Workers take tasks from the queue and execute them.
+
+    """
+    # to switch between single and bulk download
+    switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
+    # batch size for bulk download
+    batch_size = kwargs.get("batch_size", 100)
+    # number of workers
+    num_workers = kwargs.get("num_workers", 5)
+
     if semaphore is None:
         semaphore = api.get_default_semaphore()
+
+    async def worker(queue: asyncio.Queue, semaphore: asyncio.Semaphore):
+        while True:
+            task = await queue.get()
+            if task is None:
+                break
+            async with semaphore:
+                await task
+            queue.task_done()
+
+    queue = asyncio.Queue()
+    workers = [asyncio.create_task(worker(queue, semaphore)) for _ in range(num_workers)]
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4436,16 +4484,25 @@ async def _download_project_async(
         force_metadata_for_links = False
         if save_images is False and only_image_tags is True:
             force_metadata_for_links = True
-        all_images = api.image.get_list(
-            dataset_id, force_metadata_for_links=force_metadata_for_links
+        all_images = api.image.get_list_generator_async(
+            dataset_id, force_metadata_for_links=force_metadata_for_links, dataset_info=dataset
         )
-        images = [image for image in all_images if images_ids is None or image.id in images_ids]
+        small_images = []
+        large_images = []
+        async for image_batch in all_images:
+            for image in image_batch:
+                if images_ids is None or image.id in images_ids:
+                    if image.size < switch_size:
+                        small_images.append(image)
+                    else:
+                        large_images.append(image)
 
         ds_progress = progress_cb
         if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Downloading images from {!r}".format(dataset.name),
-                total=len(images),
+                total=len(small_images) + len(large_images),
+                leave=False,
             )
 
         with ApiContext(
@@ -4454,18 +4511,42 @@ async def _download_project_async(
             dataset_id=dataset_id,
             project_meta=meta,
         ):
-            tasks = []
-            for image in images:
-                try:
-                    existing = dataset_fs.get_item_info(image.name)
-                except:
-                    existing = None
-                else:
-                    if existing.updated_at == image.updated_at:
-                        if ds_progress is not None:
-                            ds_progress(1)
-                        continue
 
+            async def check_items(check_list: List[sly.ImageInfo]):
+                to_download = []
+                for image in check_list:
+                    try:
+                        existing = dataset_fs.get_item_info(image.name)
+                    except:
+                        pass
+                    else:
+                        if existing.updated_at == image.updated_at:
+                            if ds_progress is not None:
+                                ds_progress(1)
+                            continue
+                    to_download.append(image)
+                return to_download
+
+            small_images = await check_items(small_images)
+            large_images = await check_items(large_images)
+            if len(small_images) == 1:
+                large_images.append(small_images.pop())
+            for images_batch in batched(small_images, batch_size=batch_size):
+                task = _download_project_items_batch_async(
+                    api=api,
+                    dataset_id=dataset_id,
+                    img_infos=images_batch,
+                    meta=meta,
+                    dataset_fs=dataset_fs,
+                    id_to_tagmeta=id_to_tagmeta,
+                    semaphore=semaphore,
+                    save_images=save_images,
+                    save_image_info=save_image_info,
+                    only_image_tags=only_image_tags,
+                    progress_cb=ds_progress,
+                )
+                await queue.put(task)
+            for image in large_images:
                 task = _download_project_item_async(
                     api=api,
                     img_info=image,
@@ -4478,11 +4559,15 @@ async def _download_project_async(
                     only_image_tags=only_image_tags,
                     progress_cb=ds_progress,
                 )
-                tasks.append(task)
-            await asyncio.gather(*tasks)
+                await queue.put(task)
+
+        await queue.join()
+
+        all_images = small_images + large_images
+
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
-            for image_info in images:
+            for image_info in all_images:
                 if image_info.meta:
                     sly.fs.mkdir(meta_dir)
                     sly.json.dump_json_file(
@@ -4494,6 +4579,10 @@ async def _download_project_async(
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
+
+    for _ in range(num_workers):
+        await queue.put(None)
+    await asyncio.gather(*workers)
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:
@@ -4516,6 +4605,9 @@ async def _download_project_item_async(
     Uses parameters from the parent function _download_project_async.
     """
     if save_images:
+        logger.debug(
+            f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
+        )
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
@@ -4545,8 +4637,7 @@ async def _download_project_item_async(
         tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
         ann_json = tmp_ann.to_json()
 
-    if dataset_fs.item_exists(img_info.name):
-        dataset_fs.delete_item(img_info.name)
+    dataset_fs.delete_item(img_info.name)
     await dataset_fs.add_item_raw_bytes_async(
         item_name=img_info.name,
         item_raw_bytes=img_bytes if save_images is True else None,
@@ -4555,6 +4646,83 @@ async def _download_project_item_async(
     )
     if progress_cb is not None:
         progress_cb(1)
+
+
+async def _download_project_items_batch_async(
+    api: sly.Api,
+    dataset_id: int,
+    img_infos: List[sly.ImageInfo],
+    meta: ProjectMeta,
+    dataset_fs: Dataset,
+    id_to_tagmeta: Dict[int, sly.TagMeta],
+    semaphore: asyncio.Semaphore,
+    save_images: bool,
+    save_image_info: bool,
+    only_image_tags: bool,
+    progress_cb: Optional[Callable],
+):
+    """
+    Download images and annotations from Supervisely API and save them to the local filesystem.
+    Uses parameters from the parent function _download_project_async.
+    It is used for batch download of images and annotations with the bulk download API methods.
+    """
+    if save_images:
+        img_ids = [img_info.id for img_info in img_infos]
+        imgs_bytes = [None] * len(img_ids)
+        temp_dict = {}
+        logger.debug(
+            f"Downloading {len(img_ids)} images in bulk with _download_project_items_batch_async"
+        )
+        async for img_id, img_bytes in api.image.download_bytes_generator_async(
+            dataset_id,
+            img_ids,
+            semaphore=semaphore,
+            check_hash=True,
+        ):
+            temp_dict[img_id] = img_bytes
+        # to be sure that the order is correct
+        for idx, img_id in enumerate(img_ids):
+            imgs_bytes[idx] = temp_dict[img_id]
+        for img_info, img_bytes in zip(img_infos, imgs_bytes):
+            if None in [img_info.height, img_info.width]:
+                width, height = sly.image.get_size_from_bytes(img_bytes)
+                img_info = img_info._replace(height=height, width=width)
+    else:
+        imgs_bytes = [None] * len(img_infos)
+
+    if only_image_tags is False:
+        ann_infos = await api.annotation.download_bulk_async(
+            dataset_id,
+            img_ids,
+            semaphore=semaphore,
+            force_metadata_for_links=not save_images,
+        )
+        tmps_anns = [Annotation.from_json(ann_info.annotation, meta) for ann_info in ann_infos]
+        ann_jsons = []
+        for tmp_ann in tmps_anns:
+            if None in tmp_ann.img_size:
+                tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+            ann_jsons.append(tmp_ann.to_json())
+    else:
+        ann_jsons = []
+        for img_info in img_infos:
+            tags = TagCollection.from_api_response(
+                img_info.tags,
+                meta.tag_metas,
+                id_to_tagmeta,
+            )
+            tmp_ann = Annotation(img_size=(img_info.height, img_info.width), img_tags=tags)
+            ann_jsons.append(tmp_ann.to_json())
+    for img_info, ann_json, img_bytes in zip(img_infos, ann_jsons, imgs_bytes):
+        dataset_fs.delete_item(img_info.name)
+        await dataset_fs.add_item_raw_bytes_async(
+            item_name=img_info.name,
+            item_raw_bytes=img_bytes,
+            ann=dataset_fs.get_ann(img_info.name, meta) if ann_json is None else ann_json,
+            img_info=img_info if save_image_info is True else None,
+        )
+        if progress_cb is not None:
+            progress_cb(1)
 
 
 DatasetDict = Project.DatasetDict

@@ -13,6 +13,7 @@ from dataclasses import asdict
 from functools import partial, wraps
 from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from urllib.request import urlopen
 
 import numpy as np
 import requests
@@ -25,10 +26,13 @@ import supervisely.app.development as sly_app_development
 import supervisely.imaging.image as sly_image
 import supervisely.io.env as env
 import supervisely.io.fs as fs
+import supervisely.io.fs as sly_fs
+import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
 from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
 from supervisely._utils import (
     add_callback,
+    get_filename_from_headers,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -59,7 +63,13 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
-from supervisely.nn.utils import CheckpointInfo, DeployInfo, ModelPrecision, RuntimeType
+from supervisely.nn.utils import (
+    CheckpointInfo,
+    DeployInfo,
+    ModelPrecision,
+    ModelSource,
+    RuntimeType,
+)
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
@@ -74,7 +84,16 @@ except ImportError:
 
 
 class Inference:
-    DEFAULT_BATCH_SIZE = 16
+    FRAMEWORK_NAME: str = None
+    """Name of framework to register models in Supervisely"""
+    MODELS: str = None
+    """Path to file with list of models"""
+    APP_OPTIONS: str = None
+    """Path to file with app options"""
+    DEFAULT_BATCH_SIZE: str = 16
+    """Default batch size for inference"""
+    INFERENCE_SETTINGS: str = None
+    """Path to file with custom inference settings"""
 
     def __init__(
         self,
@@ -85,6 +104,7 @@ class Inference:
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
         multithread_inference: Optional[bool] = True,
+        use_serving_gui_template: Optional[bool] = False,
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
@@ -92,8 +112,10 @@ class Inference:
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
+        self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
         self.max_batch_size: int = None  # set it only if a model has a limit on the batch size
+        self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
         self._deploy_params: dict = None
@@ -106,8 +128,12 @@ class Inference:
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
         self._hardware: str = None
+        self.pretrained_models = self._load_models_json(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
-            custom_inference_settings = {}
+            if self.INFERENCE_SETTINGS is not None:
+                custom_inference_settings = self.INFERENCE_SETTINGS
+            else:
+                custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, "r") as f:
@@ -117,6 +143,7 @@ class Inference:
         self._custom_inference_settings = custom_inference_settings
 
         self._use_gui = use_gui
+        self._use_serving_gui_template = use_serving_gui_template
         self._gui = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
@@ -124,20 +151,48 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        if use_gui:
+        if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
             original_initialize_custom_gui_method = getattr(
                 Inference, "initialize_custom_gui", None
             )
-            if initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
+            if self._use_serving_gui_template:
+                if self.FRAMEWORK_NAME is None:
+                    raise ValueError("FRAMEWORK_NAME is not defined")
+                self._gui = GUI.ServingGUITemplate(
+                    self.FRAMEWORK_NAME, self.pretrained_models, self.APP_OPTIONS
+                )
+                self._user_layout = self._gui.widgets
+                self._user_layout_card = self._gui.card
+            elif initialize_custom_gui_method.__func__ is not original_initialize_custom_gui_method:
                 self._gui = GUI.ServingGUI()
                 self._user_layout = self.initialize_custom_gui()
             else:
-                self.initialize_gui()
+                initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
+                original_initialize_custom_gui_method = getattr(
+                    Inference, "initialize_custom_gui", None
+                )
+                if (
+                    initialize_custom_gui_method.__func__
+                    is not original_initialize_custom_gui_method
+                ):
+                    self._gui = GUI.ServingGUI()
+                    self._user_layout = self.initialize_custom_gui()
+                else:
+                    self.initialize_gui()
 
-            def on_serve_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+            def on_serve_callback(
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+            ):
                 Progress("Deploying model ...", 1)
-                if isinstance(self.gui, GUI.ServingGUI):
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    deploy_params = self.get_params_from_gui()
+                    model_files = self._download_model_files(
+                        deploy_params["model_source"], deploy_params["model_files"]
+                    )
+                    deploy_params["model_files"] = model_files
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
                     deploy_params = self.get_params_from_gui()
                     self._load_model(deploy_params)
                 else:  # GUI.InferenceGUI
@@ -146,9 +201,11 @@ class Inference:
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
 
-            def on_change_model_callback(gui: Union[GUI.InferenceGUI, GUI.ServingGUI]):
+            def on_change_model_callback(
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+            ):
                 self.shutdown_model()
-                if isinstance(self.gui, GUI.ServingGUI):
+                if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
                     self._api_request_model_layout.unlock()
                     self._api_request_model_layout.hide()
                     self.update_gui(self._model_served)
@@ -189,6 +246,38 @@ class Inference:
                 )
                 device = "cpu"
 
+    def _load_models_json(self, models: str) -> List[Dict[str, Any]]:
+        """
+        Loads models from the provided file or list of model configurations.
+        """
+        if isinstance(models, str):
+            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
+                models = sly_json.load_json_file(models)
+            else:
+                raise ValueError("File not found or invalid file format.")
+        else:
+            raise ValueError(
+                "Invalid models file. Please provide a valid '.json' file with list of model configurations."
+            )
+
+        if not isinstance(models, list):
+            raise ValueError("models parameters must be a list of dicts")
+        for item in models:
+            if not isinstance(item, dict):
+                raise ValueError(f"Each item in models must be a dict.")
+            model_meta = item.get("meta")
+            if model_meta is None:
+                raise ValueError(
+                    "Model metadata not found. Please update provided models parameter to include key 'meta'."
+                )
+            model_files = model_meta.get("model_files")
+            if model_files is None:
+                raise ValueError(
+                    "Model files not found in model metadata. "
+                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
+                )
+        return models
+
     def get_ui(self) -> Widget:
         if not self._use_gui:
             return None
@@ -198,7 +287,7 @@ class Inference:
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def update_gui(self, is_model_deployed: bool = True) -> None:
-        if isinstance(self.gui, GUI.ServingGUI):
+        if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
             if is_model_deployed:
                 self._user_layout_card.lock()
             else:
@@ -211,6 +300,8 @@ class Inference:
             self._api_request_model_layout.show()
 
     def get_params_from_gui(self) -> dict:
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            return self.gui.get_params_from_gui()
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
     def initialize_gui(self) -> None:
@@ -237,6 +328,25 @@ class Inference:
         )
 
     def _initialize_app_layout(self):
+        self._api_request_model_info = Editor(
+            height_lines=12,
+            language_mode="json",
+            readonly=True,
+            restore_default_button=False,
+            auto_format=True,
+        )
+        self._api_request_model_layout = Card(
+            title="Model was deployed from API request with the following settings",
+            content=self._api_request_model_info,
+        )
+        self._api_request_model_layout.hide()
+
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            self._app_layout = Container(
+                [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
+            )
+            return
+
         if hasattr(self, "_user_layout"):
             self._user_layout_card = Card(
                 title="Select Model",
@@ -251,20 +361,9 @@ class Inference:
                 content=self._gui,
                 lock_message="Model is deployed. To change the model, stop the serving first.",
             )
-        self._api_request_model_info = Editor(
-            height_lines=12,
-            language_mode="json",
-            readonly=True,
-            restore_default_button=False,
-            auto_format=True,
-        )
-        self._api_request_model_layout = Card(
-            title="Model was deployed from API request with the following settings",
-            content=self._api_request_model_info,
-        )
-        self._api_request_model_layout.hide()
+
         self._app_layout = Container(
-            [self._user_layout_card, self._api_request_model_layout, self.get_ui()]
+            [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
         )
 
     def support_custom_models(self) -> bool:
@@ -427,7 +526,88 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _checkpoints_cache_dir(self):
+        return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
+
+    def _download_model_files(self, model_source: str, model_files: List[str]) -> dict:
+        if model_source == ModelSource.PRETRAINED:
+            return self._download_pretrained_model(model_files)
+        elif model_source == ModelSource.CUSTOM:
+            return self._download_custom_model(model_files)
+
+    def _download_pretrained_model(self, model_files: dict):
+        """
+        Downloads the pretrained model data.
+        """
+        local_model_files = {}
+        cache_dir = self._checkpoints_cache_dir()
+
+        for file in model_files:
+            file_url = model_files[file]
+            file_name = sly_fs.get_file_name_with_ext(file_url)
+            if file_url.startswith("http"):
+                with urlopen(file_url) as f:
+                    file_size = f.length
+                    file_name = get_filename_from_headers(file_url)
+                    if file_name is None:
+                        file_name = file
+                    file_path = os.path.join(self.model_dir, file_name)
+                    cached_path = os.path.join(cache_dir, file_name)
+                    if os.path.exists(cached_path):
+                        local_model_files[file] = cached_path
+                        logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
+                        continue
+                    if os.path.exists(file_path):
+                        local_model_files[file] = file_path
+                        logger.debug(f"Model: '{file_name}' was found in model dir")
+                        continue
+
+                    with self.gui.download_progress(
+                        message=f"Downloading: '{file_name}'",
+                        total=file_size,
+                        unit="bytes",
+                        unit_scale=True,
+                    ) as download_pbar:
+                        self.gui.download_progress.show()
+                        sly_fs.download(
+                            url=file_url, save_path=file_path, progress=download_pbar.update
+                        )
+                    local_model_files[file] = file_path
+            else:
+                local_model_files[file] = file_url
+        self.gui.download_progress.hide()
+        return local_model_files
+
+    def _download_custom_model(self, model_files: dict):
+        """
+        Downloads the custom model data.
+        """
+
+        team_id = env.team_id()
+        local_model_files = {}
+
+        for file in model_files:
+            file_url = model_files[file]
+            file_info = self.api.file.get_info_by_path(team_id, file_url)
+            file_size = file_info.sizeb
+            file_name = os.path.basename(file_url)
+            file_path = os.path.join(self.model_dir, file_name)
+            with self.gui.download_progress(
+                message=f"Downloading: '{file_name}'",
+                total=file_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as download_pbar:
+                self.gui.download_progress.show()
+                self.api.file.download(
+                    team_id, file_url, file_path, progress_cb=download_pbar.update
+                )
+            local_model_files[file] = file_path
+        self.gui.download_progress.hide()
+        return local_model_files
+
     def _load_model(self, deploy_params: dict):
+        self.model_source = deploy_params.get("model_source")
         self.device = deploy_params.get("device")
         self.runtime = deploy_params.get("runtime", RuntimeType.PYTORCH)
         self.model_precision = deploy_params.get("model_precision", ModelPrecision.FP32)
@@ -438,6 +618,74 @@ class Inference:
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
+
+    def _load_model_headless(
+        self,
+        model_files: dict,
+        model_source: str,
+        model_info: dict,
+        device: str,
+        runtime: str,
+        **kwargs,
+    ):
+        deploy_params = {
+            "model_files": model_files,
+            "model_source": model_source,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+            **kwargs,
+        }
+        if model_source == ModelSource.CUSTOM:
+            self._set_model_meta_custom_model(model_info)
+            self._set_checkpoint_info_custom_model(deploy_params)
+        self._load_model(deploy_params)
+        if self._model_meta is None:
+            self._set_model_meta_from_classes()
+
+    def _set_model_meta_custom_model(self, model_info: dict):
+        model_meta = model_info.get("model_meta")
+        if model_meta is None:
+            return
+        if isinstance(model_meta, dict):
+            self._model_meta = ProjectMeta.from_json(model_meta)
+        elif isinstance(model_meta, str):
+            remote_artifacts_dir = model_info["artifacts_dir"]
+            model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
+            model_meta_path = self.download(model_meta_url)
+            model_meta = sly_json.load_json_file(model_meta_path)
+            self._model_meta = ProjectMeta.from_json(model_meta)
+        else:
+            raise ValueError(
+                "model_meta should be a dict or a name of '.json' file in experiment artifacts folder in Team Files"
+            )
+        self._get_confidence_tag_meta()
+        self.classes = [obj_class.name for obj_class in self._model_meta.obj_classes]
+
+    def _set_checkpoint_info_custom_model(self, deploy_params: dict):
+        model_info = deploy_params.get("model_info", {})
+        model_files = deploy_params.get("model_files", {})
+        if model_info:
+            checkpoint_name = os.path.basename(model_files.get("checkpoint"))
+            checkpoint_file_path = os.path.join(
+                model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
+            )
+            checkpoint_file_info = self.api.file.get_info_by_path(
+                env.team_id(), checkpoint_file_path
+            )
+            if checkpoint_file_info is None:
+                checkpoint_url = None
+            else:
+                checkpoint_url = self.api.file.get_url(checkpoint_file_info.id)
+
+            self.checkpoint_info = CheckpointInfo(
+                checkpoint_name=checkpoint_name,
+                model_name=model_info.get("model_name"),
+                architecture=model_info.get("framework_name"),
+                checkpoint_url=checkpoint_url,
+                custom_checkpoint_path=checkpoint_file_path,
+                model_source=ModelSource.CUSTOM,
+            )
 
     def shutdown_model(self):
         self._model_served = False
@@ -453,7 +701,7 @@ class Inference:
         pass
 
     def get_classes(self) -> List[str]:
-        raise NotImplementedError("Have to be implemented in child class after inheritance")
+        return self.classes
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -548,6 +796,14 @@ class Inference:
         for name, rgb in zip(self.get_classes(), colors):
             classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
         self._model_meta = ProjectMeta(classes)
+        self._get_confidence_tag_meta()
+
+    def _set_model_meta_from_classes(self):
+        classes = self.get_classes()
+        if not classes:
+            raise ValueError("Can't create model meta. Please, set the `self.classes` attribute.")
+        shape = self._get_obj_class_shape()
+        self._model_meta = ProjectMeta([ObjClass(name, shape) for name in classes])
         self._get_confidence_tag_meta()
 
     @property
@@ -2420,7 +2676,15 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                self._load_model(deploy_params)
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    model_files = self._download_model_files(
+                        deploy_params["model_source"], deploy_params["model_files"]
+                    )
+                    deploy_params["model_files"] = model_files
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
+                    self._load_model(deploy_params)
+
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")

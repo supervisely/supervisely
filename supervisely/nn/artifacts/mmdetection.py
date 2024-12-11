@@ -1,10 +1,11 @@
+import random
+import string
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.io.fs import silent_remove
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
-import string
-import random
 
 
 class MMDetection(BaseTrainArtifacts):
@@ -12,6 +13,7 @@ class MMDetection(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection"
+        self._framework_name = "MMDetection"
         self._framework_folder = "/mmdetection"
         self._weights_folder = "checkpoints/data"
         self._task_type = None
@@ -19,6 +21,7 @@ class MMDetection(BaseTrainArtifacts):
         self._info_file = "info/ui_state.json"
         self._config_file = "config.py"
         self._pattern = re_compile(r"^/mmdetection/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["object detection", "instance segmentation"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
@@ -39,7 +42,7 @@ class MMDetection(BaseTrainArtifacts):
         task_type = "undefined"
         for file_info in self._get_file_infos():
             if file_info.path == info_path:
-                json_data = self._fetch_json_from_url(file_info.full_storage_url)
+                json_data = self._fetch_json_from_path(file_info.path)
                 task_type = json_data.get("task", "undefined")
                 break
         return task_type
@@ -56,12 +59,14 @@ class MMDetection3(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMDetection 3.0"
+        self._framework_name = "MMDetection 3.0"
         self._framework_folder = "/mmdetection-3"
         self._weights_folder = None
         self._task_type = None
         self._weights_ext = ".pth"
         self._config_file = "config.py"
         self._pattern = re_compile(r"^/mmdetection-3/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["object detection", "instance segmentation"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

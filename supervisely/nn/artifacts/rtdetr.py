@@ -1,5 +1,6 @@
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
@@ -9,12 +10,14 @@ class RTDETR(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train RT-DETR"
+        self._framework_name = "RT-DETR"
         self._framework_folder = "/RT-DETR"
         self._weights_folder = "weights"
         self._task_type = "object detection"
         self._weights_ext = ".pth"
         self._config_file = "config.yml"
         self._pattern = re_compile(r"^/RT-DETR/[^/]+/\d+/?$")
+        self._available_task_types: List[str] = ["object detection"]
 
     def get_task_id(self, artifacts_folder: str) -> str:
         return artifacts_folder.split("/")[-1]
