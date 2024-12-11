@@ -4,7 +4,7 @@ from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.avg
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.calibration_score import (
     CalibrationScore,
 )
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.explore_predicttions import (
+from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.explore_predictions import (
     ExplorePredictions,
 )
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.localization_accuracy import (

@@ -66,7 +66,7 @@ class FrequentlyConfused(BaseVisMetrics):
                     x=labels,
                     y=probs,
                     hovertemplate="%{x}: %{y:.2f}%<extra></extra>",
-                    marker=dict(color=eval_result.color),
+                    marker=dict(color=eval_result.color, line=dict(width=0.7)),
                 )
             )
 

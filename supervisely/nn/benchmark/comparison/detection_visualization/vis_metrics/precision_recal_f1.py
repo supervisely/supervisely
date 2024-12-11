@@ -141,7 +141,7 @@ class PrecisionRecallF1(BaseVisMetrics):
                     y=[precision, recall, f1],
                     name=model_name,
                     width=0.2 if classes_cnt >= 5 else None,
-                    marker=dict(color=eval_result.color),
+                    marker=dict(color=eval_result.color, line=dict(width=0.7)),
                 )
             )
 
@@ -150,7 +150,7 @@ class PrecisionRecallF1(BaseVisMetrics):
             xaxis_title="Metric",
             yaxis_title="Value",
             yaxis=dict(range=[0, 1.1]),
-            width=700 if classes_cnt < 5 else None,
+            width=700,
         )
 
         return fig
@@ -169,8 +169,8 @@ class PrecisionRecallF1(BaseVisMetrics):
                     y=sorted_by_f1["recall"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Recall",
-                    width=0.2 if classes_cnt < 5 else None,
-                    marker=dict(color=eval_result.color),
+                    width=0.2 if classes_cnt >= 5 else None,
+                    marker=dict(color=eval_result.color, line=dict(width=0.7)),
                 )
             )
 
@@ -226,8 +226,8 @@ class PrecisionRecallF1(BaseVisMetrics):
                     y=sorted_by_f1["precision"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} Precision",
-                    width=0.2 if classes_cnt < 5 else None,
-                    marker=dict(color=eval_result.color),
+                    width=0.2 if classes_cnt >= 5 else None,
+                    marker=dict(color=eval_result.color, line=dict(width=0.7)),
                 )
             )
 
@@ -255,8 +255,8 @@ class PrecisionRecallF1(BaseVisMetrics):
                     y=sorted_by_f1["f1"],
                     x=sorted_by_f1["category"],
                     name=f"{model_name} F1-score",
-                    width=0.2 if classes_cnt < 5 else None,
-                    marker=dict(color=eval_result.color),
+                    width=0.2 if classes_cnt >= 5 else None,
+                    marker=dict(color=eval_result.color, line=dict(width=0.7)),
                 )
             )
 
@@ -290,7 +290,11 @@ class PrecisionRecallF1(BaseVisMetrics):
             click_data["title"] = f"{model_name}, {objects_cnt} objects"
             click_data["imagesIds"] = list(img_ids)
             click_data["filters"] = [
-                {"type": "tag", "tagId": "confidence", "value": [eval_result.mp.f1_optimal_conf, 1]},
+                {
+                    "type": "tag",
+                    "tagId": "confidence",
+                    "value": [eval_result.mp.f1_optimal_conf, 1],
+                },
                 {"type": "tag", "tagId": "outcome", "value": "TP"},
                 {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},
             ]

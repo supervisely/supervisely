@@ -1,7 +1,7 @@
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.classwise_error_analysis import (
     ClasswiseErrorAnalysis,
 )
-from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.explore_predicttions import (
+from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.explore_predictions import (
     ExplorePredictions,
 )
 from supervisely.nn.benchmark.comparison.semantic_segmentation.vis_metrics.frequently_confused import (

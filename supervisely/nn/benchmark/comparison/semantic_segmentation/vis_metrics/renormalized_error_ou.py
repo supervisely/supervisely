@@ -41,7 +41,8 @@ class RenormalizedErrorOverUnion(BaseVisMetrics):
                         eval_result.mp.segment_renormed_eou,
                     ],
                     textposition="outside",
-                    marker=dict(color=eval_result.color),
+                    marker=dict(color=eval_result.color, line=dict(width=0.7)),
+                    width=0.4,
                 )
             )
 

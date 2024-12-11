@@ -95,7 +95,7 @@ class OutcomeCounts(BaseVisMetrics):
         tp_counts = [eval_result.mp.TP_count for eval_result in self.eval_results][::-1]
         fn_counts = [eval_result.mp.FN_count for eval_result in self.eval_results][::-1]
         fp_counts = [eval_result.mp.FP_count for eval_result in self.eval_results][::-1]
-        model_names = [f"[{i}] {e.name}" for i, e in enumerate(self.eval_results, 1)][::-1]
+        model_names = [f"[{i}] {e.short_name}" for i, e in enumerate(self.eval_results, 1)][::-1]
         counts = [tp_counts, fn_counts, fp_counts]
         names = ["TP", "FN", "FP"]
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
@@ -121,7 +121,7 @@ class OutcomeCounts(BaseVisMetrics):
         fig = go.Figure()
 
         colors = ["#8ACAA1", "#dd3f3f", "#F7ADAA"]
-        model_names = [f"[{i}] {e.name}" for i, e in enumerate(self.eval_results, 1)][::-1]
+        model_names = [f"[{i}] {e.short_name}" for i, e in enumerate(self.eval_results, 1)][::-1]
         model_names.append("Common")
 
         diff_tps, common_tps = self.common_and_diff_tp

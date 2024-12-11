@@ -41,8 +41,8 @@ class AveragePrecisionByClass(BaseVisMetrics):
                         x=eval_result.mp.cat_names,
                         y=ap_per_class,
                         name=trace_name,
-                        width=0.2,
-                        marker=dict(color=eval_result.color),
+                        width=0.2 if cls_cnt >= 5 else None,
+                        marker=dict(color=eval_result.color, line=dict(width=0.7)),
                     )
                 )
 
