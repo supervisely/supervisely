@@ -33,13 +33,14 @@ from supervisely import TinyTimer
 
 class LyftConverter(PointcloudConverter):
     class Item(PointcloudConverter.Item):
+
         def __init__(
             self,
             item_path,
             ann_data: str = None,
-            scene_name: str = None,
             related_images: list = None,
             custom_data: dict = None,
+            scene_name: str = None,
         ):
             super().__init__(item_path, ann_data, related_images, custom_data)
             self._type = "point_cloud"
@@ -108,7 +109,7 @@ class LyftConverter(PointcloudConverter):
                 ann_data = sample_data["ann_data"]
                 related_images = lyft_helper.get_related_images(ann_data)
                 custom_data = sample_data.get("custom_data", {})  # todo: implement
-                item = self.Item(item_path, ann_data, scene_name, related_images, custom_data)
+                item = self.Item(item_path, ann_data, related_images, custom_data, scene_name)
                 self._items.append(item)
             progress.iter_done_report()
             break  # ! remove
