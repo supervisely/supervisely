@@ -13,7 +13,7 @@ class TableWidget(BaseWidget):
         name: str,
         data: Dict = None,
         click_data: Any = None,
-        click_gellery_id: str = "",
+        click_gallery_id: str = "",
         fix_columns: int = 0,
         show_header_controls: bool = True,
         main_column: Optional[str] = None,
@@ -26,7 +26,7 @@ class TableWidget(BaseWidget):
         self.show_header_controls = show_header_controls
         self.main_column = main_column
         self.click_data = click_data
-        self.click_gellery_id = click_gellery_id
+        self.click_gallery_id = click_gallery_id
 
         if isinstance(width, int):
             width = f"width: {width}px"
@@ -54,6 +54,12 @@ class TableWidget(BaseWidget):
     def get_state(self) -> Dict:
         return {}
 
+    def set_click_data(self, click_gallery_id: str, click_data: Any) -> None:
+        self.click_handled = True
+        self.click_data = click_data
+        self.clickable = True
+        self.click_gallery_id = click_gallery_id
+
     def get_render_data(self) -> Dict:
         return {
             "widget_id": self.id,
@@ -61,7 +67,7 @@ class TableWidget(BaseWidget):
             "showHeaderControls": self.show_header_controls,
             "init_data_source": self.data_source,
             "table_click_data": self.click_data_source,
-            "table_gallery_id": self.click_gellery_id,
+            "table_gallery_id": self.click_gallery_id,
             "mainColumn": self.main_column,
             "clickable": self.clickable,
             "width": self.width or "",

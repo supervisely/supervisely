@@ -17,6 +17,7 @@ from tempfile import gettempdir
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
+import requests
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import env as sly_env
@@ -459,3 +460,20 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return loop
+
+
+def get_filename_from_headers(url):
+    try:
+        response = requests.head(url, allow_redirects=True)
+        if response.status_code >= 400 or "Content-Disposition" not in response.headers:
+            response = requests.get(url, stream=True)
+        content_disposition = response.headers.get("Content-Disposition")
+        if content_disposition:
+            filename = re.findall('filename="?([^"]+)"?', content_disposition)
+            if filename:
+                return filename[0]
+        filename = url.split("/")[-1] or "downloaded_file"
+        return filename
+    except Exception as e:
+        print(f"Error retrieving file name from headers: {e}")
+        return None
