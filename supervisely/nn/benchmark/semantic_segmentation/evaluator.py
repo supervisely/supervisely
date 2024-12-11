@@ -71,7 +71,13 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
         meta_path = Path(project_path) / "meta.json"
         meta = ProjectMeta.from_json(load_json_file(meta_path))
 
-        palette = [obj.color for obj in meta.obj_classes if obj.name in self.classes_whitelist]
+        palette = []
+        for cls_name in self.classes_whitelist:
+            obj_cls = meta.get_obj_class(cls_name)
+            if obj_cls is None:
+                palette.append((0, 0, 0))
+            else:
+                palette.append(obj_cls.color)
 
         return palette
 
@@ -97,7 +103,11 @@ class SemanticSegmentationEvaluator(BaseEvaluator):
                 continue
 
             palette = self._get_palette(src_dir)
-            bg_color = palette[self.classes_whitelist.index(self.bg_cls_name)]
+            bg_cls_idx = self.classes_whitelist.index(self.bg_cls_name)
+            try:
+                bg_color = palette[bg_cls_idx]
+            except IndexError:
+                bg_color = (0, 0, 0)
             output_dir.mkdir(parents=True)
             temp_seg_dir = src_dir + "_temp"
             if not os.path.exists(temp_seg_dir):
