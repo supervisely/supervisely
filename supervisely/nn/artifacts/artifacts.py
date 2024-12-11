@@ -1,9 +1,9 @@
-from datetime import datetime
 import random
 import string
 from abc import abstractmethod
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
@@ -15,7 +15,7 @@ from supervisely import logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
-from supervisely.io.fs import silent_remove, get_file_name_with_ext
+from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file
 from supervisely.nn.experiments import ExperimentInfo
 
@@ -580,7 +580,8 @@ class BaseTrainArtifacts:
             }
 
             experiment_info_fields = {
-                field.name for field in ExperimentInfo.__dataclass_fields__.values()
+                field.name
+                for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
             }
             for field in experiment_info_fields:
                 if field not in experiment_info_data:
