@@ -10,6 +10,7 @@ class RTDETR(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train RT-DETR"
+        self._framework_name = "RT-DETR"
         self._framework_folder = "/RT-DETR"
         self._weights_folder = "weights"
         self._task_type = "object detection"
