@@ -74,6 +74,8 @@ class BaseBenchmark:
         self.train_info = None
         self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
+        self.visualizer = None
+        self.remote_vis_dir = None
         self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
@@ -484,11 +486,11 @@ class BaseBenchmark:
             )
         eval_result = self.evaluator.get_eval_result()
         layout_dir = self.get_layout_results_dir()
-        vis = self.visualizer_cls(  # pylint: disable=not-callable
+        self.visualizer = self.visualizer_cls(  # pylint: disable=not-callable
             self.api, [eval_result], layout_dir, self.pbar
         )
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
-            vis.visualize()
+            self.visualizer.visualize()
             p.update(1)
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
@@ -534,7 +536,8 @@ class BaseBenchmark:
         return diff_project_info, is_existed
 
     def upload_visualizations(self, dest_dir: str):
-        return self.visualizer_cls.upload_results(self.team_id, dest_dir, self.pbar)
+        self.remote_vis_dir = self.visualizer.upload_results(self.team_id, dest_dir, self.pbar)
+        return self.remote_vis_dir
 
     @property
     def report(self):
@@ -560,6 +563,13 @@ class BaseBenchmark:
 
         logger.info(f"Report link: {report_link}")
         return file_info
+
+    def get_report_link(self) -> str:
+        if self.remote_vis_dir is None:
+            raise ValueError("Visualizations are not uploaded yet.")
+        return self.visualizer.renderer._get_report_link(
+            self.api, self.team_id, self.remote_vis_dir
+        )
 
     def _merge_metas(self, gt_project_id, pred_project_id):
         gt_meta = self.api.project.get_meta(gt_project_id)
