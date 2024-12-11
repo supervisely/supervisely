@@ -127,33 +127,26 @@ def build_experiment_info_list_from_train_infos(
     def build_experiment_info_from_train_info(
         api: Api, framework_cls: BaseTrainArtifacts, train_info: TrainInfo
     ) -> ExperimentInfo:
-
-        # Convert checkpoint files into absolute paths
         checkpoints = [
             join(framework_cls.weights_folder, chk.name) for chk in train_info.checkpoints
         ]
 
-        # Identify best checkpoint (if any), otherwise fallback to the last checkpoint
         best_checkpoint = next(
             (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
         )
         if not best_checkpoint and checkpoints:
             best_checkpoint = Path(checkpoints[-1]).name
 
-        # Retrieve task info and workspace
         task_info = api.task.get_info_by_id(train_info.task_id)
         workspace_id = task_info["workspaceId"]
 
-        # Retrieve project info (if available)
         project = api.project.get_info_by_name(workspace_id, train_info.project_name)
         project_id = project.id if project else None
 
-        # Prepare model files dictionary
         model_files = {}
         if train_info.config_path:
             model_files["config"] = Path(train_info.config_path).name
 
-        # Basic experiment info data
         experiment_info_data = {
             "experiment_name": f"Unknown {framework_cls.framework_name} experiment",
             "framework_name": framework_cls.framework_name,
@@ -175,7 +168,6 @@ def build_experiment_info_list_from_train_infos(
             "evaluation_metrics": {},
         }
 
-        # Ensure all fields of ExperimentInfo are present, set missing to None
         experiment_info_fields = {
             field.name for field in ExperimentInfo.__dataclass_fields__.values()
         }
