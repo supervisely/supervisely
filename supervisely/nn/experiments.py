@@ -2,13 +2,14 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import Any, Dict, List
+from typing import List
+from pathlib import Path
 
 import requests
 
 from supervisely import logger
 from supervisely.api.api import Api, ApiField
-from supervisely.api.file_api import FileInfo
+from supervisely.nn.artifacts.artifacts import TrainInfo, BaseTrainArtifacts
 
 
 @dataclass
@@ -112,9 +113,91 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             logger.error(f"TypeError for '{experiment_path}': {e}")
         return None
 
-    # Error
     with ThreadPoolExecutor() as executor:
         experiment_infos = list(executor.map(fetch_experiment_data, sorted_experiment_paths))
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
+
+
+def build_experiment_info_list_from_train_infos(
+    api: Api, framework_cls: BaseTrainArtifacts, train_infos: List[TrainInfo]
+) -> List[ExperimentInfo]:
+
+    def build_experiment_info_from_train_info(
+        api: Api, framework_cls: BaseTrainArtifacts, train_info: TrainInfo
+    ) -> ExperimentInfo:
+
+        # Convert checkpoint files into absolute paths
+        checkpoints = [
+            join(framework_cls.weights_folder, chk.name) for chk in train_info.checkpoints
+        ]
+
+        # Identify best checkpoint (if any), otherwise fallback to the last checkpoint
+        best_checkpoint = next(
+            (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
+        )
+        if not best_checkpoint and checkpoints:
+            best_checkpoint = Path(checkpoints[-1]).name
+
+        # Retrieve task info and workspace
+        task_info = api.task.get_info_by_id(train_info.task_id)
+        workspace_id = task_info["workspaceId"]
+
+        # Retrieve project info (if available)
+        project = api.project.get_info_by_name(workspace_id, train_info.project_name)
+        project_id = project.id if project else None
+
+        # Prepare model files dictionary
+        model_files = {}
+        if train_info.config_path:
+            model_files["config"] = Path(train_info.config_path).name
+
+        # Basic experiment info data
+        experiment_info_data = {
+            "experiment_name": f"Unknown {framework_cls.framework_name} experiment",
+            "framework_name": framework_cls.framework_name,
+            "model_name": f"Unknown {framework_cls.framework_name} model",
+            "task_type": train_info.task_type,
+            "project_id": project_id,
+            "task_id": train_info.task_id,
+            "model_files": model_files,
+            "checkpoints": checkpoints,
+            "best_checkpoint": best_checkpoint,
+            "export": None,
+            "app_state": None,
+            "model_meta": None,
+            "train_val_split": None,
+            "hyperparameters": None,
+            "artifacts_dir": train_info.artifacts_folder,
+            "datetime": task_info["startedAt"],
+            "evaluation_report_id": None,
+            "evaluation_metrics": {},
+        }
+
+        # Ensure all fields of ExperimentInfo are present, set missing to None
+        experiment_info_fields = {
+            field.name for field in ExperimentInfo.__dataclass_fields__.values()
+        }
+        for field in experiment_info_fields:
+            if field not in experiment_info_data:
+                experiment_info_data[field] = None
+
+        return ExperimentInfo(**experiment_info_data)
+
+    # Async version
+    with ThreadPoolExecutor() as executor:
+        experiment_infos = list(
+            executor.map(
+                lambda t: build_experiment_info_from_train_info(api, framework_cls, t), train_infos
+            )
+        )
+    return [info for info in experiment_infos if info is not None]
+
+    # Sync version
+    # Uncomment for debug
+    # experiment_infos = [
+    #     convert_traininfo_to_experimentinfo(api, framework_cls, train_info)
+    #     for train_info in train_infos
+    # ]
+    # return experiment_infos

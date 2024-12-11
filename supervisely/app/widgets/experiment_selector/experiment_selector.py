@@ -85,11 +85,16 @@ class ExperimentSelector(Widget):
 
             self._checkpoints_names = []
             self._checkpoints_paths = []
+            self._best_checkpoint_value = None
             for checkpoint_path in self._checkpoints:
                 self._checkpoints_names.append(get_file_name_with_ext(checkpoint_path))
                 self._checkpoints_paths.append(
                     os.path.join(experiment_info.artifacts_dir, checkpoint_path)
                 )
+                if experiment_info.best_checkpoint == get_file_name_with_ext(checkpoint_path):
+                    self._best_checkpoint = os.path.join(
+                        experiment_info.artifacts_dir, checkpoint_path
+                    )
 
             # col 5 session
             self._session_link = self._generate_session_link()
@@ -237,6 +242,7 @@ class ExperimentSelector(Widget):
             for path, name in zip(self._checkpoints_paths, self._checkpoints_names):
                 checkpoint_selector_items.append(Select.Item(value=path, label=name))
             checkpoint_selector = Select(items=checkpoint_selector_items)
+            checkpoint_selector.set_value(self._best_checkpoint)
             return checkpoint_selector
 
         def _create_session_widget(self) -> Text:
