@@ -1633,13 +1633,13 @@ class TrainApp:
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        report_file, report_id, eval_metrics = None, None, {}
+        lnk_file_info, report_id, eval_metrics = None, None, {}
         if self._inference_class is None:
-            logger.warn(
+            logger.warning(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return report_file, report_id, eval_metrics
+            return lnk_file_info, report_id, eval_metrics
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1652,7 +1652,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return report_file, report_id, eval_metrics
+            return lnk_file_info, report_id, eval_metrics
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -1794,19 +1794,13 @@ class TrainApp:
 
             # 7. Prepare visualizations, report and upload
             bm.visualize()
-            remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-            report_file = bm.upload_report_link(remote_dir)
+            _ = bm.upload_visualizations(eval_res_dir + "/visualizations/")
             report_id = bm.report_id
             eval_metrics = bm.key_metrics
+            lnk_file_info = bm.lnk
 
             # 8. UI updates
-            benchmark_report_template = self._api.file.get_info_by_path(
-                self._team_id, remote_dir + "template.vue"
-            )
-
-            self.gui.training_process.model_benchmark_report_thumbnail.set(
-                benchmark_report_template
-            )
+            self.gui.training_process.model_benchmark_report_thumbnail.set(bm.report)
             self.gui.training_process.model_benchmark_report_thumbnail.show()
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
@@ -1825,8 +1819,8 @@ class TrainApp:
                 if bm.dt_project_info:
                     self._api.project.remove(bm.dt_project_info.id)
             except Exception as e2:
-                return report_file, report_id, eval_metrics
-        return report_file, report_id, eval_metrics
+                return lnk_file_info, report_id, eval_metrics
+        return lnk_file_info, report_id, eval_metrics
 
     # ----------------------------------------- #
 
