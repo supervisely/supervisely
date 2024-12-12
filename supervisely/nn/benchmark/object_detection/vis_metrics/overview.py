@@ -24,9 +24,7 @@ class Overview(DetectionVisMetric):
         link_text = link_text.replace("_", "\_")
 
         model_name = self.eval_result.inference_info.get("model_name") or "Custom"
-        checkpoint_name = self.eval_result.inference_info.get("deploy_params", {}).get(
-            "checkpoint_name", ""
-        )
+        checkpoint_name = self.eval_result.checkpoint_name
 
         # Note about validation dataset
         classes_str, note_about_images, starter_app_info = self._get_overview_info()

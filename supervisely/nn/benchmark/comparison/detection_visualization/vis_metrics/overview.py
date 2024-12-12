@@ -69,9 +69,7 @@ class Overview(BaseVisMetrics):
                 link_text = url
             link_text = link_text.replace("_", "\_")
 
-            checkpoint_name = eval_result.inference_info.get("deploy_params", {}).get(
-                "checkpoint_name", ""
-            )
+            checkpoint_name = eval_result.checkpoint_name
             model_name = eval_result.name or "Custom"
 
             report = eval_result.api.file.get_info_by_path(self.team_id, eval_result.report_path)

@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union
 import yaml
 
 from supervisely.app.widgets import SlyTqdm
+from supervisely.io.fs import get_file_name_with_ext
 from supervisely.task.progress import tqdm_sly
 
 
@@ -87,10 +88,27 @@ class BaseEvalResult:
     def _prepare_data(self) -> None:
         """Prepare data to allow easy access to the data"""
         raise NotImplementedError()
-    
+
     @property
     def key_metrics(self):
         raise NotImplementedError()
+
+    @property
+    def checkpoint_name(self):
+        if self.inference_info is None:
+            return None
+
+        deploy_params = self.inference_info.get("deploy_params", {})
+        name = None
+        if deploy_params:
+            name = deploy_params.get("checkpoint_name")  # not TrainApp
+            if name is None:
+                name = deploy_params.get("model_files", {}).get("checkpoint")
+                if name is not None:
+                    name = get_file_name_with_ext(name)
+        if name is None:
+            name = self.inference_info.get("checkpoint_name", "")
+        return name
 
 
 class BaseEvaluator:
