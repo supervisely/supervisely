@@ -1814,9 +1814,6 @@ class TrainApp:
             logger.info(
                 f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
             )
-            logger.info(
-                f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
-            )
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             self.gui.training_process.validator_text.set(
@@ -1827,8 +1824,6 @@ class TrainApp:
             try:
                 if bm.dt_project_info:
                     self._api.project.remove(bm.dt_project_info.id)
-                if bm.diff_project_info:
-                    self._api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
                 return report_file, report_id, eval_metrics
         return report_file, report_id, eval_metrics
