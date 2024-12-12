@@ -23,11 +23,6 @@ class TrainingProcess:
 
     def __init__(self, app_options: Dict[str, Any]):
         self.display_widgets = []
-        self.success_message_text = (
-            "Training completed. Training artifacts were uploaded to Team Files. "
-            "You can find and open tensorboard logs in the artifacts folder via the "
-            "<a href='https://ecosystem.supervisely.com/apps/tensorboard-logs-viewer' target='_blank'>Tensorboard</a> app."
-        )
         self.app_options = app_options
 
         # GUI Components
@@ -63,24 +58,13 @@ class TrainingProcess:
         self.validator_text = Text("")
         self.validator_text.hide()
 
-        self.artifacts_thumbnail = FolderThumbnail()
-        self.artifacts_thumbnail.hide()
-
         self.display_widgets.extend(
             [
                 self.experiment_name_field,
                 button_container,
                 self.validator_text,
-                self.artifacts_thumbnail,
             ]
         )
-        # -------------------------------- #
-
-        # Optional Model Benchmark
-        if app_options.get("model_benchmark", False):
-            self.model_benchmark_report_thumbnail = ReportThumbnail()
-            self.model_benchmark_report_thumbnail.hide()
-            self.display_widgets.extend([self.model_benchmark_report_thumbnail])
         # -------------------------------- #
 
         self.container = Container(self.display_widgets)

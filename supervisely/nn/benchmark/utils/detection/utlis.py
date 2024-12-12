@@ -9,7 +9,7 @@ def try_set_conf_auto(session: SessionJSON, conf: float):
     default = session.get_default_inference_settings()
     for name in conf_names:
         if name in default:
-            session.inference_settings[name] = conf
+            session.inference_settings[name] = 0  # conf
             return True
     return False
 

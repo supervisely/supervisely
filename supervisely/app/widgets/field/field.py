@@ -58,14 +58,12 @@ class Field(Widget):
             image_url: Optional[str] = None,
         ) -> Field.Icon:
             if zmdi_class is None and image_url is None:
-                raise ValueError("One of the arguments has to be defined: zmdi_class or image_url")
+                raise ValueError(
+                    "One of the arguments has to be defined: zmdi_class or image_url"
+                )
             if zmdi_class is not None and image_url is not None:
                 raise ValueError(
                     "Only one of the arguments has to be defined: zmdi_class or image_url"
-                )
-            if image_url is not None and (color_rgb is not None or bg_color_rgb is not None):
-                raise ValueError(
-                    "Arguments color_rgb / bg_color_rgb can not be used with image_url at the same time"
                 )
 
             if image_url is None and color_rgb is None:
@@ -104,6 +102,7 @@ class Field(Widget):
                 res["bgColor"] = sly_color.rgb2hex(self._bg_color)
             if self._image_url is not None:
                 res["imageUrl"] = self._image_url
+                res["bgColor"] = sly_color.rgb2hex(self._bg_color)
             return res
 
     def __init__(
@@ -123,9 +122,13 @@ class Field(Widget):
         self._icon = icon
         self._content = content
         if self._title_url is not None and self._title is None:
-            raise ValueError("Title can not be specified only as url without text value")
+            raise ValueError(
+                "Title can not be specified only as url without text value"
+            )
         if self._description_url is not None and self._description is None:
-            raise ValueError("Description can not be specified only as url without text value")
+            raise ValueError(
+                "Description can not be specified only as url without text value"
+            )
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
