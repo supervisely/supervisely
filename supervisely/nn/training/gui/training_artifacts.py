@@ -117,7 +117,7 @@ class TrainingArtifacts:
                     self.trt_instruction.hide()
                     self.inference_demo_field.extend([self.trt_instruction])
 
-            demo_overview_link = self.app_options.get("overview", None)
+            demo_overview_link = model_demo.get("overview", None)
             self.inference_demo_field = Field(
                 title="How to run inference",
                 description="Instructions on how to use your checkpoints outside of Supervisely Platform",
