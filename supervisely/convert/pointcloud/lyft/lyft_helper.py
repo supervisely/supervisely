@@ -5,13 +5,7 @@ import open3d as o3d
 import shutil
 from pyquaternion import Quaternion
 
-from supervisely import (
-    PointcloudAnnotation,
-    PointcloudObject,
-    PointcloudFigure,
-    logger,
-    fs
-)
+from supervisely import PointcloudAnnotation, PointcloudObject, PointcloudFigure, logger, fs
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 from supervisely.io import json
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
@@ -40,13 +34,10 @@ def extract_data_from_scene(lyft, scene):
         return
 
     new_token = scene["first_sample_token"]
-    my_sample = lyft.get("sample", new_token)
-
     dataset_data = []
 
-    num_samples = scene["nbr_samples"] - 1  # TODO: fix, dont skip first frame
-    for i in range(num_samples):
-        new_token = my_sample["next"]
+    num_samples = scene["nbr_samples"]
+    for _ in range(num_samples):
         my_sample = lyft.get("sample", new_token)
 
         data = {}
@@ -59,8 +50,6 @@ def extract_data_from_scene(lyft, scene):
         sd_record_lid = lyft.get("sample_data", sensor_token)
         cs_record_lid = lyft.get("calibrated_sensor", sd_record_lid["calibrated_sensor_token"])
         ego_record_lid = lyft.get("ego_pose", sd_record_lid["ego_pose_token"])
-
-        assert os.path.exists(lidar_path)
 
         locs = np.array([b.center for b in boxes]).reshape(-1, 3)
         dims = np.array([b.wlh for b in boxes]).reshape(-1, 3)
@@ -123,6 +112,11 @@ def extract_data_from_scene(lyft, scene):
             else:
                 logger.debug(f"pass {sensor} - isn't a camera")
         dataset_data.append(data)
+
+        new_token = my_sample.get("next")
+        if not new_token:
+            break
+
     return dataset_data
 
 
@@ -163,14 +157,12 @@ def convert_scene_data(item_path, related_images_path, scene_data, meta):
     yield ann, (sly_path_img, json_save_path)
 
 
-def write_related_image_info(related_images: List[tuple[str, str]], ann_data):
-    path_to_info = []
+def generate_rimage_infos(related_images: List[tuple[str, str]], ann_data):
     sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
     for sensor, image_path in related_images:
         if not any([sensor.endswith(s) for s in sensors_to_skip]):
             image_name = fs.get_file_name_with_ext(image_path)
             sly_path_img = os.path.join(os.path.dirname(image_path), image_name)
-            # shutil.copy(src=image_path, dst=sly_path_img)
             img_info = {
                 "name": image_name,
                 "meta": {
@@ -186,10 +178,7 @@ def write_related_image_info(related_images: List[tuple[str, str]], ann_data):
                     },
                 },
             }
-            json_save_path = f"{sly_path_img}.json"
-            json.dump_json_file(img_info, json_save_path)
-            path_to_info.append((sly_path_img, json_save_path))
-    return path_to_info
+            yield sly_path_img, img_info
 
 
 def lyft_annotation_to_BEVBox3D(data):
@@ -211,17 +200,17 @@ def lyft_annotation_to_BEVBox3D(data):
     return objects
 
 
-def convert_label_to_annotation(label, ann_path, meta):
+def convert_label_to_annotation(label, meta, renamed_classes):
     geometries = _convert_label_to_geometry(label)
     figures = []
     objs = []
     for l, geometry in zip(label, geometries):  # by object in point cloud
-        pcobj = PointcloudObject(meta.get_obj_class(l.label_class))
+        class_name = renamed_classes.get(l.label_class, l.label_class)
+        pcobj = PointcloudObject(meta.get_obj_class(class_name))
         figures.append(PointcloudFigure(pcobj, geometry))
         objs.append(pcobj)
 
-    annotation = PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
-    json.dump_json_file(annotation.to_json(), ann_path)
+    return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
 
 def _convert_label_to_geometry(label):
