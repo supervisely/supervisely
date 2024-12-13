@@ -67,15 +67,17 @@ class Evaluator:
         import torch  # pylint: disable=import-error
 
         if torch.cuda.is_available():
-            GPU = True
-            logger.info("Using GPU for evaluation.")
             try:
                 # gpu-compatible numpy analogue
                 import cupy as np  # pylint: disable=import-error
 
                 global numpy
                 import numpy as numpy
+
+                GPU = True
+                logger.info("Using GPU for evaluation.")
             except:
+                GPU = False
                 logger.warning(
                     "Failed to import cupy. Use cupy official documentation to install this "
                     "module: https://docs.cupy.dev/en/stable/install.html"
