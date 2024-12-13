@@ -563,7 +563,7 @@ class TrainApp:
             self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
     def register_inference_class(
-        self, inference_class: Inference, inference_settings: dict = {}
+        self, inference_class: Inference, inference_settings: dict = None
     ) -> None:
         """
         Registers an inference class for the training application to do model benchmarking.
