@@ -3,6 +3,7 @@ import string
 from abc import abstractmethod
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
@@ -14,8 +15,9 @@ from supervisely import logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
-from supervisely.io.fs import silent_remove
+from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class TrainInfo(NamedTuple):
@@ -53,6 +55,7 @@ class BaseTrainArtifacts:
         self._metadata_file_name: str = "train_info.json"
 
         self._app_name: str = None
+        self._framework_name: str = None
         self._framework_folder: str = None
         self._weights_folder: str = None
         self._task_type: str = None
@@ -90,6 +93,16 @@ class BaseTrainArtifacts:
         :rtype: str
         """
         return self._app_name
+
+    @property
+    def framework_name(self):
+        """
+        Framework name.
+
+        :return: The framework name.
+        :rtype: str
+        """
+        return self._framework_name
 
     @property
     def framework_folder(self):
@@ -517,6 +530,84 @@ class BaseTrainArtifacts:
         train_infos = self.sort_train_infos(train_infos, sort)
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return train_infos
+
+    def get_list_experiment_info(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
+        def build_experiment_info_from_train_info(
+            api: Api, train_info: TrainInfo
+        ) -> ExperimentInfo:
+
+            checkpoints = []
+            for chk in train_info.checkpoints:
+                if self.weights_folder:
+                    checkpoints.append(join(self.weights_folder, chk.name))
+                else:
+                    checkpoints.append(chk.name)
+
+            best_checkpoint = next(
+                (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
+            )
+            if not best_checkpoint and checkpoints:
+                best_checkpoint = get_file_name_with_ext(checkpoints[-1])
+
+            task_info = api.task.get_info_by_id(train_info.task_id)
+            workspace_id = task_info["workspaceId"]
+
+            project = api.project.get_info_by_name(workspace_id, train_info.project_name)
+            project_id = project.id if project else None
+
+            model_files = {}
+            if train_info.config_path:
+                model_files["config"] = self.get_config_path(train_info.artifacts_folder).replace(
+                    train_info.artifacts_folder, ""
+                )
+
+            input_datetime = task_info["startedAt"]
+            parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+            date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+            experiment_info_data = {
+                "experiment_name": f"Unknown {self.framework_name} experiment",
+                "framework_name": self.framework_name,
+                "model_name": f"Unknown {self.framework_name} model",
+                "task_type": train_info.task_type,
+                "project_id": project_id,
+                "task_id": train_info.task_id,
+                "model_files": model_files,
+                "checkpoints": checkpoints,
+                "best_checkpoint": best_checkpoint,
+                "artifacts_dir": train_info.artifacts_folder,
+                "datetime": date_time,
+            }
+
+            experiment_info_fields = {
+                field.name
+                for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
+            }
+            for field in experiment_info_fields:
+                if field not in experiment_info_data:
+                    experiment_info_data[field] = None
+
+            return ExperimentInfo(**experiment_info_data)
+
+        train_infos = self.get_list(sort)
+
+        # Sync version
+        # Uncomment for debug
+        # experiment_infos = [
+        #     convert_traininfo_to_experimentinfo(api, framework_cls, train_info)
+        #     for train_info in train_infos
+        # ]
+        # return experiment_infos
+
+        # Async version
+        with ThreadPoolExecutor() as executor:
+            experiment_infos = list(
+                executor.map(
+                    lambda t: build_experiment_info_from_train_info(self._api, t),
+                    train_infos,
+                )
+            )
+        return [info for info in experiment_infos if info is not None]
 
     def get_available_task_types(self) -> List[str]:
         """
