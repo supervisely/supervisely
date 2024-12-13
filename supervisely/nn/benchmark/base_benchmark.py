@@ -618,5 +618,6 @@ class BaseBenchmark:
     def get_diff_project_info(self):
         eval_result = self.get_eval_result()
         if hasattr(eval_result, "diff_project_info"):
-            return eval_result.diff_project_info
+            self.diff_project_info = eval_result.diff_project_info
+            return self.diff_project_info
         return None
