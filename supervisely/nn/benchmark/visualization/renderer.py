@@ -20,6 +20,7 @@ class Renderer:
         layout: BaseWidget,
         base_dir: str = "./output",
         template: str = None,
+        report_name: str = "Model Evaluation Report.lnk",
     ) -> None:
         if template is None:
             template = (
@@ -28,6 +29,9 @@ class Renderer:
         self.main_template = template
         self.layout = layout
         self.base_dir = base_dir
+        self.report_name = report_name
+        self._report = None
+        self._lnk = None
 
         if Path(base_dir).exists():
             if not dir_empty(base_dir):
@@ -81,20 +85,31 @@ class Renderer:
                 change_name_if_conflict=True,
                 progress_size_cb=pbar,
             )
-        src = self.save_report_link(api, team_id, remote_dir)
-        api.file.upload(team_id=team_id, src=src, dst=remote_dir.rstrip("/") + "/open.lnk")
+        src = self._save_report_link(api, team_id, remote_dir)
+        dst = Path(remote_dir).joinpath(self.report_name)
+        self._lnk = api.file.upload(team_id=team_id, src=src, dst=str(dst))
         return remote_dir
 
-    def save_report_link(self, api: Api, team_id: int, remote_dir: str):
-        report_link = self.get_report_link(api, team_id, remote_dir)
-        pth = Path(self.base_dir).joinpath("open.lnk")
+    def _save_report_link(self, api: Api, team_id: int, remote_dir: str):
+        report_link = self._get_report_path(api, team_id, remote_dir)
+        pth = Path(self.base_dir).joinpath(self.report_name)
         with open(pth, "w") as f:
             f.write(report_link)
         return str(pth)
 
-    def get_report_link(self, api: Api, team_id: int, remote_dir: str):
-        template_path = remote_dir.rstrip("/") + "/" + "template.vue"
-        vue_template_info = api.file.get_info_by_path(team_id, template_path)
+    def _get_report_link(self, api: Api, team_id: int, remote_dir: str):
+        path = self._get_report_path(api, team_id, remote_dir)
+        return f"{api.server_address}{path}"
 
-        report_link = "/model-benchmark?id=" + str(vue_template_info.id)
-        return report_link
+    def _get_report_path(self, api: Api, team_id: int, remote_dir: str):
+        template_path = Path(remote_dir).joinpath("template.vue")
+        self._report = api.file.get_info_by_path(team_id, str(template_path))
+        return "/model-benchmark?id=" + str(self._report.id)
+
+    @property
+    def report(self):
+        return self._report
+
+    @property
+    def lnk(self):
+        return self._lnk

@@ -9,8 +9,8 @@ import shutil
 import subprocess
 from datetime import datetime
 from os import listdir
-from os.path import basename, isdir, isfile, join
-from typing import Any, Dict, List, Optional, Union
+from os.path import basename, exists, expanduser, isdir, isfile, join
+from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
 import httpx
@@ -50,9 +50,10 @@ from supervisely.nn.benchmark import (
     SemanticSegmentationEvaluator,
 )
 from supervisely.nn.inference import RuntimeType, SessionJSON
+from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
-from supervisely.nn.training.loggers.tensorboard_logger import tb_logger
+from supervisely.nn.training.loggers import setup_train_logger, train_logger
 from supervisely.nn.utils import ModelSource
 from supervisely.output import set_directory
 from supervisely.project.download import (
@@ -109,20 +110,24 @@ class TrainApp:
         self._remote_checkpoints_dir_name = "checkpoints"
         self._experiments_dir_name = "experiments"
         self._default_work_dir_name = "work_dir"
+        self._export_dir_name = "export"
         self._tensorboard_port = 6006
 
         if is_production():
+            self._app_name = sly_env.app_name()
             self.task_id = sly_env.task_id()
         else:
-            self.task_id = "debug-session"
+            self._app_name = sly_env.app_name(raise_not_found=False)
+            self.task_id = sly_env.task_id(raise_not_found=False)
+            if self.task_id is None:
+                self.task_id = "debug-session"
             logger.info("TrainApp is running in debug mode")
 
         self.framework_name = framework_name
         self._team_id = sly_env.team_id()
         self._workspace_id = sly_env.workspace_id()
-        self._app_name = sly_env.app_name(raise_not_found=False)
+        self._tensorboard_process = None
 
-        # TODO: read files
         self._models = self._load_models(models)
         self._hyperparameters = self._load_hyperparameters(hyperparameters)
         self._app_options = self._load_app_options(app_options)
@@ -139,7 +144,11 @@ class TrainApp:
         self.project_dir = join(self.work_dir, self._sly_project_dir_name)
         self.train_dataset_dir = join(self.project_dir, "train")
         self.val_dataset_dir = join(self.project_dir, "val")
+        self._model_cache_dir = join(expanduser("~"), ".cache", "supervisely", "checkpoints")
         self.sly_project = None
+        # -------------------------- #
+
+        # Train/Val splits
         self.train_split, self.val_split = None, None
         # -------------------------- #
 
@@ -165,6 +174,13 @@ class TrainApp:
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
         self._train_func = None
+
+        self._onnx_supported = self._app_options.get("export_onnx_supported", False)
+        self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
+        if self._onnx_supported:
+            self._convert_onnx_func = None
+        if self._tensorrt_supported:
+            self._convert_tensorrt_func = None
 
         # Benchmark parameters
         if self.is_model_benchmark_enabled:
@@ -263,6 +279,16 @@ class TrainApp:
         """
         return self.gui.project_info
 
+    @property
+    def project_meta(self) -> ProjectMeta:
+        """
+        Returns the project metadata.
+
+        :return: Project metadata.
+        :rtype: ProjectMeta
+        """
+        return self.gui.project_meta
+
     # ----------------------------------------- #
 
     # Model
@@ -304,7 +330,7 @@ class TrainApp:
         :return: Model metadata.
         :rtype: dict
         """
-        project_meta_json = self.sly_project.meta.to_json()
+        project_meta_json = self.project_meta.to_json()
         model_meta = {
             "classes": [
                 item for item in project_meta_json["classes"] if item["title"] in self.classes
@@ -331,7 +357,9 @@ class TrainApp:
         :return: List of selected classes.
         :rtype: List[str]
         """
-        return self.gui.classes_selector.get_selected_classes()
+        selected_classes = set(self.gui.classes_selector.get_selected_classes())
+        # remap classes with project_meta order
+        return [x for x in self.project_meta.obj_classes.keys() if x in selected_classes]
 
     @property
     def num_classes(self) -> int:
@@ -401,7 +429,7 @@ class TrainApp:
     # Output
     # ----------------------------------------- #
 
-    # region TRAIN START
+    # Wrappers
     @property
     def start(self):
         """
@@ -415,6 +443,34 @@ class TrainApp:
             return func
 
         return decorator
+
+    @property
+    def export_onnx(self):
+        """
+        Decorator for the export to ONNX function defined by user.
+        It wraps user-defined export function and prepares and finalizes the training process.
+        """
+
+        def decorator(func):
+            self._convert_onnx_func = func
+            return func
+
+        return decorator
+
+    @property
+    def export_tensorrt(self):
+        """
+        Decorator for the export to TensorRT function defined by user.
+        It wraps user-defined export function and prepares and finalizes the training process.
+        """
+
+        def decorator(func):
+            self._convert_tensorrt_func = func
+            return func
+
+        return decorator
+
+    # ----------------------------------------- #
 
     def _prepare(self) -> None:
         """
@@ -451,42 +507,67 @@ class TrainApp:
             raise ValueError(f"{reason}. Failed to upload artifacts")
 
         # Step 2. Preprocess artifacts
-        self._preprocess_artifacts(experiment_info)
+        experiment_info = self._preprocess_artifacts(experiment_info)
 
         # Step3. Postprocess splits
         splits_data = self._postprocess_splits()
 
         # Step 3. Upload artifacts
+        self._set_text_status("uploading")
         remote_dir, file_info = self._upload_artifacts()
 
         # Step 4. Run Model Benchmark
-        mb_eval_report, mb_eval_report_id = None, None
-
+        mb_eval_lnk_file_info, mb_eval_report, mb_eval_report_id, eval_metrics = (
+            None,
+            None,
+            None,
+            {},
+        )
         if self.is_model_benchmark_enabled:
             try:
-                mb_eval_report, mb_eval_report_id = self._run_model_benchmark(
+                self._set_text_status("benchmark")
+                (
+                    mb_eval_lnk_file_info,
+                    mb_eval_report,
+                    mb_eval_report_id,
+                    eval_metrics,
+                ) = self._run_model_benchmark(
                     self.output_dir, remote_dir, experiment_info, splits_data
                 )
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
-        # Step 4. Generate and upload additional files
-        self._generate_experiment_info(remote_dir, experiment_info, mb_eval_report_id)
+        # Step 5. [Optional] Convert weights
+        export_weights = {}
+        if self.gui.hyperparameters_selector.is_export_required():
+            try:
+                export_weights = self._export_weights(experiment_info)
+                export_weights = self._upload_export_weights(export_weights, remote_dir)
+            except Exception as e:
+                logger.error(f"Export weights failed: {e}")
+
+        # Step 6. Generate and upload additional files
+        self._set_text_status("metadata")
+        self._generate_experiment_info(
+            remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
+        )
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
         self._generate_model_meta(remote_dir, experiment_info)
 
-        # Step 5. Set output widgets
-        self._set_training_output(remote_dir, file_info)
+        # Step 7. Set output widgets
+        self._set_text_status("reset")
+        self._set_training_output(remote_dir, file_info, mb_eval_report)
+        self._set_ws_progress_status("completed")
 
-        # Step 6. Workflow output
+        # Step 8. Workflow output
         if is_production():
-            self._workflow_output(remote_dir, file_info, mb_eval_report)
+            self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
-        # region TRAIN END
-
-    def register_inference_class(self, inference_class: Any, inference_settings: dict = {}) -> None:
+    def register_inference_class(
+        self, inference_class: Inference, inference_settings: dict = None
+    ) -> None:
         """
         Registers an inference class for the training application to do model benchmarking.
 
@@ -878,6 +959,7 @@ class TrainApp:
         For Pretrained models:
             - The files that will be downloaded are specified in the `meta` key under `model_files`.
             - All files listed in the `model_files` key will be downloaded by provided link.
+            - If model files are already cached on agent, they will be copied to the model directory without downloading.
             Example of a pretrained model entry:
                 [
                     {
@@ -930,25 +1012,39 @@ class TrainApp:
             for file in model_files:
                 file_url = model_files[file]
                 file_path = join(self.model_dir, file)
-
+                file_name = sly_fs.get_file_name_with_ext(file_url)
                 if file_url.startswith("http"):
                     with urlopen(file_url) as f:
                         file_size = f.length
                         file_name = get_filename_from_headers(file_url)
+                        if file_name is None:
+                            file_name = file
                         file_path = join(self.model_dir, file_name)
-                    with self.progress_bar_secondary(
-                        message=f"Downloading '{file_name}' ",
-                        total=file_size,
-                        unit="bytes",
-                        unit_scale=True,
-                    ) as model_download_secondary_pbar:
-                        self.progress_bar_secondary.show()
-                        sly_fs.download(
-                            url=file_url,
-                            save_path=file_path,
-                            progress=model_download_secondary_pbar.update,
-                        )
-                    self.model_files[file] = file_path
+                        cached_path = join(self._model_cache_dir, file_name)
+                        if exists(cached_path):
+                            self.model_files[file] = cached_path
+                            logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
+                            model_download_main_pbar.update(1)
+                            continue
+                        if exists(file_path):
+                            self.model_files[file] = file_path
+                            logger.debug(f"Model: '{file_name}' was found in model dir")
+                            model_download_main_pbar.update(1)
+                            continue
+
+                        with self.progress_bar_secondary(
+                            message=f"Downloading '{file_name}' ",
+                            total=file_size,
+                            unit="bytes",
+                            unit_scale=True,
+                        ) as model_download_secondary_pbar:
+                            self.progress_bar_secondary.show()
+                            sly_fs.download(
+                                url=file_url,
+                                save_path=file_path,
+                                progress=model_download_secondary_pbar.update,
+                            )
+                        self.model_files[file] = file_path
                 else:
                     self.model_files[file] = file_url
                 model_download_main_pbar.update(1)
@@ -1070,7 +1166,8 @@ class TrainApp:
         elif isinstance(checkpoints, str):
             checkpoints = [
                 sly_fs.get_file_name_with_ext(checkpoint)
-                for checkpoint in sly_fs.list_dir_recursively(checkpoints, [".pt", ".pth"])
+                for checkpoint in listdir(checkpoints)
+                if sly_fs.get_file_ext(checkpoint) in [".pt", ".pth"]
             ]
             if best_checkpoint not in checkpoints:
                 reason = (
@@ -1177,6 +1274,7 @@ class TrainApp:
             config_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"]["config"])
             output_config_path = join(self.output_dir, config_name)
             shutil.move(experiment_info["model_files"]["config"], output_config_path)
+            experiment_info["model_files"]["config"] = output_config_path
             if self.is_model_benchmark_enabled:
                 self._benchmark_params["model_files"]["config"] = output_config_path
 
@@ -1185,8 +1283,10 @@ class TrainApp:
         # If checkpoints returned as directory
         if isinstance(checkpoints, str):
             checkpoint_paths = []
-            for checkpoint_path in sly_fs.list_files_recursively(checkpoints, [".pt", ".pth"]):
-                checkpoint_paths.append(checkpoint_path)
+            for checkpoint_path in listdir(checkpoints):
+                checkpoint_ext = sly_fs.get_file_ext(checkpoint_path)
+                if checkpoint_ext in [".pt", ".pth"]:
+                    checkpoint_paths.append(join(checkpoints, checkpoint_path))
         elif isinstance(checkpoints, list):
             checkpoint_paths = checkpoints
         else:
@@ -1194,6 +1294,7 @@ class TrainApp:
                 "Checkpoints should be a list of paths or a path to directory with checkpoints"
             )
 
+        new_checkpoint_paths = []
         best_checkpoints_name = experiment_info["best_checkpoint"]
         for checkpoint_path in checkpoint_paths:
             new_checkpoint_path = join(
@@ -1201,14 +1302,18 @@ class TrainApp:
                 sly_fs.get_file_name_with_ext(checkpoint_path),
             )
             shutil.move(checkpoint_path, new_checkpoint_path)
-            if self.is_model_benchmark_enabled:
-                if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
+            new_checkpoint_paths.append(new_checkpoint_path)
+            if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
+                experiment_info["best_checkpoint"] = new_checkpoint_path
+                if self.is_model_benchmark_enabled:
                     self._benchmark_params["model_files"]["checkpoint"] = new_checkpoint_path
+        experiment_info["checkpoints"] = new_checkpoint_paths
 
         # Prepare logs
         if sly_fs.dir_exists(self.log_dir):
             logs_dir = join(self.output_dir, "logs")
             shutil.copytree(self.log_dir, logs_dir)
+        return experiment_info
 
     # Generate experiment_info.json and app_state.json
     def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
@@ -1273,7 +1378,9 @@ class TrainApp:
         self,
         remote_dir: str,
         experiment_info: Dict,
+        eval_metrics: Dict = {},
         evaluation_report_id: Optional[int] = None,
+        export_weights: Dict = {},
     ) -> None:
         """
         Generates and uploads the experiment_info.json file to the output directory.
@@ -1282,8 +1389,12 @@ class TrainApp:
         :type remote_dir: str
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
+        :param eval_metrics: Evaluation metrics.
+        :type eval_metrics: dict
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
+        :param export_weights: Export data.
+        :type export_weights: dict
         """
         logger.debug("Updating experiment info")
 
@@ -1296,7 +1407,8 @@ class TrainApp:
             "task_id": self.task_id,
             "model_files": experiment_info["model_files"],
             "checkpoints": experiment_info["checkpoints"],
-            "best_checkpoint": experiment_info["best_checkpoint"],
+            "best_checkpoint": sly_fs.get_file_name_with_ext(experiment_info["best_checkpoint"]),
+            "export": export_weights,
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
             "train_val_split": self._train_val_split_file,
@@ -1304,7 +1416,7 @@ class TrainApp:
             "artifacts_dir": remote_dir,
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "evaluation_report_id": evaluation_report_id,
-            "eval_metrics": {},
+            "evaluation_metrics": eval_metrics,
         }
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
@@ -1484,30 +1596,87 @@ class TrainApp:
         file_info = self._api.file.get_info_by_path(self._team_id, join(remote_dir, "open_app.lnk"))
         return remote_dir, file_info
 
-    def _set_training_output(self, remote_dir: str, file_info: FileInfo) -> None:
+    def _set_training_output(
+        self, remote_dir: str, file_info: FileInfo, mb_eval_report=None
+    ) -> None:
         """
         Sets the training output in the GUI.
         """
+        self.gui.set_next_step()
         logger.info("All training artifacts uploaded successfully")
         self.gui.training_process.start_button.loading = False
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
         # self.gui.training_logs.tensorboard_button.disable()
 
+        # Set artifacts to GUI
         set_directory(remote_dir)
-        self.gui.training_process.artifacts_thumbnail.set(file_info)
-        self.gui.training_process.artifacts_thumbnail.show()
-        self.gui.training_process.success_message.show()
+        self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
+        self.gui.training_artifacts.artifacts_thumbnail.show()
+        self.gui.training_artifacts.artifacts_field.show()
+        # ---------------------------- #
+
+        # Set model benchmark to GUI
+        if self._app_options.get("model_benchmark", False):
+            if mb_eval_report is not None:
+                self.gui.training_artifacts.model_benchmark_report_thumbnail.set(mb_eval_report)
+                self.gui.training_artifacts.model_benchmark_report_thumbnail.show()
+                self.gui.training_artifacts.model_benchmark_report_field.show()
+            else:
+                self.gui.training_artifacts.model_benchmark_fail_text.show()
+                self.gui.training_artifacts.model_benchmark_report_field.show()
+        # ---------------------------- #
+
+        # Set instruction to GUI
+        demo_options = self._app_options.get("demo", {})
+        if demo_options:
+            # Show PyTorch demo if available
+            pytorch_demo = demo_options.get("pytorch")
+            if pytorch_demo:
+                self.gui.training_artifacts.pytorch_instruction.show()
+
+            # Show ONNX demo if supported and available
+            onnx_demo = demo_options.get("onnx")
+            if (
+                self._app_options.get("export_onnx_supported", False)
+                and self.gui.hyperparameters_selector.get_export_onnx_checkbox_value()
+                and onnx_demo
+            ):
+                self.gui.training_artifacts.onnx_instruction.show()
+
+            # Show TensorRT demo if supported and available
+            tensorrt_demo = demo_options.get("tensorrt")
+            if (
+                self._app_options.get("export_tensorrt_supported", False)
+                and self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value()
+                and tensorrt_demo
+            ):
+                self.gui.training_artifacts.trt_instruction.show()
+
+            # Show the inference demo widget if overview or any demo is available
+            demo_overview = self._app_options.get("overview", {})
+            if demo_overview or any([pytorch_demo, onnx_demo, tensorrt_demo]):
+                self.gui.training_artifacts.inference_demo_field.show()
+        # ---------------------------- #
+
+        # Set status to completed and unlock
+        self.gui.training_artifacts.validator_text.set(
+            self.gui.training_artifacts.success_message_text, "success"
+        )
+        self.gui.training_artifacts.validator_text.show()
+        self.gui.training_artifacts.card.unlock()
+        # ---------------------------- #
 
     # Model Benchmark
     def _get_eval_results_dir_name(self) -> str:
         """
         Returns the evaluation results path.
         """
-        task_info = self._api.task.get_info_by_id(self.task_id)
-        task_dir = f"{self.task_id}_{task_info['meta']['app']['name']}"
-        eval_res_dir = f"/model-benchmark/evaluation/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
-        eval_res_dir = self._api.storage.get_free_dir_name(self._team_id(), eval_res_dir)
+        task_dir = f"{self.task_id}_{self._app_name}"
+        eval_res_dir = (
+            f"/model-benchmark/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
+        )
+        eval_res_dir = self._api.storage.get_free_dir_name(self._team_id, eval_res_dir)
         return eval_res_dir
 
     def _run_model_benchmark(
@@ -1528,16 +1697,16 @@ class TrainApp:
         :type experiment_info: dict
         :param splits_data: Information about the train and val splits.
         :type splits_data: dict
-        :return: Evaluation report and report ID.
+        :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        report, report_id = None, None
+        lnk_file_info, report, report_id, eval_metrics = None, None, None, {}
         if self._inference_class is None:
-            logger.warn(
+            logger.warning(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return report, report_id
+            return lnk_file_info, report, report_id, eval_metrics
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1550,7 +1719,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return report, report_id
+            return lnk_file_info, report, report_id, eval_metrics
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -1559,23 +1728,16 @@ class TrainApp:
             best_filename = sly_fs.get_file_name_with_ext(best_checkpoint)
             remote_best_checkpoint = join(remote_checkpoints_dir, best_filename)
 
-            config_path = experiment_info["model_files"].get("config")
-            if config_path is not None:
-                remote_config_path = join(
-                    remote_artifacts_dir, sly_fs.get_file_name_with_ext(config_path)
-                )
-            else:
-                remote_config_path = None
-
             logger.info(f"Creating the report for the best model: {best_filename!r}")
             self.gui.training_process.validator_text.set(
-                f"Creating evaluation report for the best model: {best_filename!r}", "info"
+                f"Creating evaluation report for the best model: {best_filename!r}",
+                "info",
             )
             self.progress_bar_main(message="Starting Model Benchmark evaluation", total=1)
             self.progress_bar_main.show()
 
             # 0. Serve trained model
-            m = self._inference_class(
+            m: Inference = self._inference_class(
                 model_dir=self.model_dir,
                 use_gui=False,
                 custom_inference_settings=self._inference_settings,
@@ -1677,6 +1839,7 @@ class TrainApp:
 
             # 4. Evaluate
             bm._evaluate(gt_project_path, dt_project_path)
+            bm._dump_eval_inference_info(bm._eval_inference_info)
 
             # 5. Upload evaluation results
             eval_res_dir = self._get_eval_results_dir_name()
@@ -1684,49 +1847,40 @@ class TrainApp:
 
             # 6. Speed test
             if self.gui.hyperparameters_selector.get_speedtest_checkbox_value() is True:
+                self.progress_bar_secondary.show()
                 bm.run_speedtest(session, self.project_info.id)
-                self.progress_bar_secondary.hide()  # @TODO: add progress bar
+                self.progress_bar_secondary.hide()
                 bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
 
             # 7. Prepare visualizations, report and upload
             bm.visualize()
-            remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-            report = bm.upload_report_link(remote_dir)
-            report_id = report.id
+            _ = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+            lnk_file_info = bm.lnk
+            report = bm.report
+            report_id = bm.report.id
+            eval_metrics = bm.key_metrics
 
             # 8. UI updates
-            benchmark_report_template = self._api.file.get_info_by_path(
-                self._team_id, remote_dir + "template.vue"
-            )
-
-            self.gui.training_process.model_benchmark_report_thumbnail.set(
-                benchmark_report_template
-            )
-            self.gui.training_process.model_benchmark_report_thumbnail.show()
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
             logger.info("Model benchmark evaluation completed successfully")
             logger.info(
                 f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
             )
-            logger.info(
-                f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
-            )
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
-            self.gui.training_process.validator_text.set(
-                "Finalizing and uploading training artifacts...", "info"
-            )
+            self._set_text_status("finalizing")
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
             try:
                 if bm.dt_project_info:
                     self._api.project.remove(bm.dt_project_info.id)
-                if bm.diff_project_info:
-                    self._api.project.remove(bm.diff_project_info.id)
+                diff_project_info = bm.get_diff_project_info()
+                if diff_project_info:
+                    self._api.project.remove(diff_project_info.id)
             except Exception as e2:
-                return report, report_id
-        return report, report_id
+                return lnk_file_info, report, report_id, eval_metrics
+        return lnk_file_info, report, report_id, eval_metrics
 
     # ----------------------------------------- #
 
@@ -1772,6 +1926,7 @@ class TrainApp:
         team_files_dir: str,
         file_info: FileInfo,
         model_benchmark_report: Optional[FileInfo] = None,
+        model_benchmark_report_id: Optional[FileInfo] = None,
     ):
         """
         Adds the output data to the workflow.
@@ -1814,24 +1969,26 @@ class TrainApp:
                     f"File with checkpoints not found in Team Files. Cannot set workflow output."
                 )
 
-            if model_benchmark_report:
-                mb_relation_settings = WorkflowSettings(
-                    title="Model Benchmark",
-                    icon="assignment",
-                    icon_color="#674EA7",
-                    icon_bg_color="#CCCCFF",
-                    url=f"/model-benchmark?id={model_benchmark_report.id}",
-                    url_title="Open Report",
-                )
+            if self.is_model_benchmark_enabled:
+                if model_benchmark_report:
+                    mb_relation_settings = WorkflowSettings(
+                        title="Model Benchmark",
+                        icon="assignment",
+                        icon_color="#674EA7",
+                        icon_bg_color="#CCCCFF",
+                        url=f"/model-benchmark?id={model_benchmark_report_id}",
+                        url_title="Open Report",
+                    )
 
-                meta = WorkflowMeta(
-                    relation_settings=mb_relation_settings, node_settings=node_settings
-                )
-                self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
-            else:
-                logger.debug(
-                    f"File with model benchmark report not found in Team Files. Cannot set workflow output."
-                )
+                    meta = WorkflowMeta(
+                        relation_settings=mb_relation_settings,
+                        node_settings=node_settings,
+                    )
+                    self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
+                else:
+                    logger.debug(
+                        f"File with model benchmark report not found in Team Files. Cannot set workflow output."
+                    )
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #
@@ -1841,13 +1998,19 @@ class TrainApp:
         """
         Initialize training logger. Set up Tensorboard and callbacks.
         """
-        train_logger = self._app_options.get("train_logger", "")
-        if train_logger.lower() == "tensorboard":
-            tb_logger.set_log_dir(self.log_dir)
-            self._setup_logger_callbacks()
+        selected_logger = self._app_options.get("train_logger", "")
+        if selected_logger.lower() == "tensorboard":
+            setup_train_logger("tensorboard_logger")
+            train_logger.set_log_dir(self.log_dir)
             self._init_tensorboard()
+        else:
+            setup_train_logger("default_logger")
+        self._setup_logger_callbacks()
 
     def _init_tensorboard(self):
+        if self._tensorboard_process is not None:
+            logger.debug("Tensorboard server is already running")
+            return
         self._register_routes()
         args = [
             "tensorboard",
@@ -1910,10 +2073,7 @@ class TrainApp:
             """
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
-
-            train_logger = self._app_options.get("train_logger", "")
-            if train_logger == "tensorboard":
-                tb_logger.close()
+            train_logger.close()
 
         def start_epoch_callback(total_steps: int):
             """
@@ -1937,13 +2097,13 @@ class TrainApp:
             """
             step_pbar.update(1)
 
-        tb_logger.add_on_train_started_callback(start_training_callback)
-        tb_logger.add_on_train_finish_callback(finish_training_callback)
+        train_logger.add_on_train_started_callback(start_training_callback)
+        train_logger.add_on_train_finish_callback(finish_training_callback)
 
-        tb_logger.add_on_epoch_started_callback(start_epoch_callback)
-        tb_logger.add_on_epoch_finish_callback(finish_epoch_callback)
+        train_logger.add_on_epoch_started_callback(start_epoch_callback)
+        train_logger.add_on_epoch_finish_callback(finish_epoch_callback)
 
-        tb_logger.add_on_step_callback(step_callback)
+        train_logger.add_on_step_finished_callback(step_callback)
 
     # ----------------------------------------- #
     def _wrapped_start_training(self):
@@ -1962,9 +2122,12 @@ class TrainApp:
             message = "Error occurred during training initialization. Please check the logs for more details."
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._set_ws_progress_status("reset")
+            return
 
         try:
-            self.gui.training_process.validator_text.set("Preparing data for training...", "info")
+            self._set_text_status("preparing")
+            self._set_ws_progress_status("preparing")
             self._prepare()
         except Exception as e:
             message = (
@@ -1972,30 +2135,31 @@ class TrainApp:
             )
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._set_ws_progress_status("reset")
             return
 
         try:
-            self.gui.training_process.validator_text.set("Training is in progress...", "info")
+            self._set_text_status("training")
+            if self._app_options.get("train_logger", None) is None:
+                self._set_ws_progress_status("training")
             experiment_info = self._train_func()
         except Exception as e:
             message = "Error occurred during training. Please check the logs for more details."
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._set_ws_progress_status("reset")
             return
 
         try:
-            self.gui.training_process.validator_text.set(
-                "Finalizing and uploading training artifacts...", "info"
-            )
+            self._set_text_status("finalizing")
+            self._set_ws_progress_status("finalizing")
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
-            self.gui.training_process.validator_text.set(
-                self.gui.training_process.success_message_text, "success"
-            )
         except Exception as e:
             message = "Error occurred during finalizing and uploading training artifacts . Please check the logs for more details."
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
+            self._set_ws_progress_status("reset")
             return
 
     def _show_error(self, message: str, e=None):
@@ -2009,15 +2173,21 @@ class TrainApp:
         self._restore_train_widgets_state_on_error()
 
     def _set_train_widgets_state_on_start(self):
+        self.gui.training_artifacts.validator_text.hide()
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
         if self._app_options.get("device_selector", False):
             self.gui.training_process.select_device._select.disable()
             self.gui.training_process.select_device.disable()
 
+        if self._app_options.get("model_benchmark", False):
+            self.gui.training_artifacts.model_benchmark_report_thumbnail.hide()
+            self.gui.training_artifacts.model_benchmark_fail_text.hide()
+            self.gui.training_artifacts.model_benchmark_report_field.hide()
+
         self.gui.training_logs.card.unlock()
         self.gui.stepper.set_active_step(7)
-        self.gui.training_process.validator_text.set("Training is started...", "info")
+        self.gui.training_process.validator_text.set("Training has been started...", "info")
         self.gui.training_process.validator_text.show()
         self.gui.training_process.start_button.loading = True
 
@@ -2039,3 +2209,128 @@ class TrainApp:
             logger.error(f"Experiment name contains invalid characters: {invalid_chars}")
             raise ValueError(f"Experiment name contains invalid characters: {invalid_chars}")
         return True
+
+    def _set_text_status(
+        self,
+        status: Literal[
+            "reset",
+            "completed",
+            "training",
+            "finalizing",
+            "preparing",
+            "uploading",
+            "benchmark",
+            "metadata",
+            "export_onnx",
+            "export_trt",
+        ],
+    ):
+
+        if status == "reset":
+            self.gui.training_process.validator_text.set("", "text")
+        elif status == "completed":
+            self.gui.training_process.validator_text.set("Training completed", "success")
+        elif status == "training":
+            self.gui.training_process.validator_text.set("Training is in progress...", "info")
+        elif status == "finalizing":
+            self.gui.training_process.validator_text.set(
+                "Finalizing and preparing training artifacts...", "info"
+            )
+        elif status == "preparing":
+            self.gui.training_process.validator_text.set("Preparing data for training...", "info")
+        elif status == "export_onnx":
+            self.gui.training_process.validator_text.set(
+                f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
+            )
+        elif status == "export_trt":
+            self.gui.training_process.validator_text.set(
+                f"Converting to {RuntimeType.TENSORRT}", "info"
+            )
+        elif status == "uploading":
+            self.gui.training_process.validator_text.set("Uploading training artifacts...", "info")
+        elif status == "benchmark":
+            self.gui.training_process.validator_text.set(
+                "Running Model Benchmark evaluation...", "info"
+            )
+        elif status == "validating":
+            self.gui.training_process.validator_text.set("Validating experiment...", "info")
+        elif status == "metadata":
+            self.gui.training_process.validator_text.set("Generating training metadata...", "info")
+
+    def _set_ws_progress_status(
+        self,
+        status: Literal["reset", "completed", "training", "finalizing", "preparing"],
+    ):
+        message = ""
+        if status == "reset":
+            message = "Ready for training"
+        elif status == "completed":
+            message = "Training completed"
+        elif status == "training":
+            message = "Training is in progress..."
+        elif status == "finalizing":
+            message = "Finalizing and uploading training artifacts..."
+        elif status == "preparing":
+            message = "Preparing data for training..."
+
+        self.progress_bar_main.hide()
+        self.progress_bar_secondary.hide()
+        with self.progress_bar_main(message=message, total=1) as pbar:
+            pbar.update(1)
+        with self.progress_bar_secondary(message=message, total=1) as pbar:
+            pbar.update(1)
+
+    def _export_weights(self, experiment_info: dict) -> List[str]:
+        export_weights = {}
+        if (
+            self.gui.hyperparameters_selector.get_export_onnx_checkbox_value() is True
+            and self._convert_onnx_func is not None
+        ):
+            self._set_text_status("export_onnx")
+            onnx_path = self._convert_onnx_func(experiment_info)
+            export_weights[RuntimeType.ONNXRUNTIME] = onnx_path
+
+        if (
+            self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value() is True
+            and self._convert_tensorrt_func is not None
+        ):
+            self._set_text_status("export_trt")
+            tensorrt_path = self._convert_tensorrt_func(experiment_info)
+            export_weights[RuntimeType.TENSORRT] = tensorrt_path
+        return export_weights
+
+    def _upload_export_weights(
+        self, export_weights: Dict[str, str], remote_dir: str
+    ) -> Dict[str, str]:
+        with self.progress_bar_main(
+            message="Uploading export weights",
+            total=len(export_weights),
+        ) as export_upload_main_pbar:
+            self.progress_bar_main.show()
+            for path in export_weights.values():
+                file_name = sly_fs.get_file_name_with_ext(path)
+                file_size = sly_fs.get_file_size(path)
+                with self.progress_bar_secondary(
+                    message=f"Uploading '{file_name}' ",
+                    total=file_size,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as export_upload_secondary_pbar:
+                    self.progress_bar_secondary.show()
+                    destination_path = join(remote_dir, self._export_dir_name, file_name)
+                    self._api.file.upload(
+                        self._team_id,
+                        path,
+                        destination_path,
+                        export_upload_secondary_pbar,
+                    )
+                export_upload_main_pbar.update(1)
+
+        self.progress_bar_main.hide()
+        self.progress_bar_secondary.hide()
+
+        remote_export_weights = {
+            runtime: join(self._export_dir_name, sly_fs.get_file_name_with_ext(path))
+            for runtime, path in export_weights.items()
+        }
+        return remote_export_weights

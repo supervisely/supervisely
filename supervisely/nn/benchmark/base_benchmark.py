@@ -74,6 +74,10 @@ class BaseBenchmark:
         self.train_info = None
         self.evaluator_app_info = None
         self.evaluation_params = evaluation_params
+        self.visualizer = None
+        self.remote_vis_dir = None
+        self._eval_results = None
+        self.report_id = None
         self._validate_evaluation_params()
 
     def _get_evaluator_class(self) -> type:
@@ -86,6 +90,11 @@ class BaseBenchmark:
     @property
     def hardware(self) -> str:
         return self._hardware
+
+    @property
+    def key_metrics(self):
+        eval_results = self.get_eval_result()
+        return eval_results.key_metrics
 
     def run_evaluation(
         self,
@@ -372,7 +381,7 @@ class BaseBenchmark:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
             with self.pbar(
-                message="Evaluation: Downloading Pred annotations", total=self.num_items
+                message="Evaluation: Downloading prediction annotations", total=self.num_items
             ) as p:
                 download_project(
                     self.api,
@@ -482,10 +491,13 @@ class BaseBenchmark:
                 f"Visualizer class is not defined in {self.__class__.__name__}. "
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
-        eval_result = self.evaluator.get_eval_result()
-        vis = self.visualizer_cls(self.api, [eval_result], self.get_layout_results_dir(), self.pbar)  # pylint: disable=not-callable
+        eval_result = self.get_eval_result()
+        layout_dir = self.get_layout_results_dir()
+        self.visualizer = self.visualizer_cls(  # pylint: disable=not-callable
+            self.api, [eval_result], layout_dir, self.pbar
+        )
         with self.pbar(message="Visualizations: Rendering layout", total=1) as p:
-            vis.visualize()
+            self.visualizer.visualize()
             p.update(1)
 
     def _get_or_create_diff_project(self) -> Tuple[ProjectInfo, bool]:
@@ -531,52 +543,41 @@ class BaseBenchmark:
         return diff_project_info, is_existed
 
     def upload_visualizations(self, dest_dir: str):
-        layout_dir = self.get_layout_results_dir()
-        assert not fs.dir_empty(
-            layout_dir
-        ), f"The layout dir {layout_dir!r} is empty. You should run visualizations before uploading results."
+        self.remote_vis_dir = self.visualizer.upload_results(self.team_id, dest_dir, self.pbar)
+        return self.remote_vis_dir
 
-        # self.api.file.remove_dir(self.team_id, dest_dir, silent=True)
+    @property
+    def report(self):
+        return self.visualizer.renderer.report
 
-        remote_dir = dest_dir
-        with self.pbar(
-            message="Visualizations: Uploading layout",
-            total=get_directory_size(layout_dir),
-            unit="B",
-            unit_scale=True,
-        ) as p:
-            remote_dir = self.api.file.upload_directory(
-                self.team_id,
-                layout_dir,
-                dest_dir,
-                replace_if_conflict=True,
-                change_name_if_conflict=False,
-                progress_size_cb=p,
-            )
-
-        logger.info(f"Uploaded to: {remote_dir!r}")
-
-        template_path = os.path.join(remote_dir, "template.vue")
-        vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
-        report_link = f"{self.api.server_address}/model-benchmark?id={vue_template_info.id}"
-        logger.info(f"Open url: {report_link}")
-
-        return remote_dir
+    @property
+    def lnk(self):
+        return self.visualizer.renderer.lnk
 
     def upload_report_link(self, remote_dir: str):
         template_path = os.path.join(remote_dir, "template.vue")
         vue_template_info = self.api.file.get_info_by_path(self.team_id, template_path)
+        self.report_id = vue_template_info.id
 
         report_link = "/model-benchmark?id=" + str(vue_template_info.id)
-        local_path = os.path.join(self.get_layout_results_dir(), "open.lnk")
+
+        lnk_name = "Model Evaluation Report.lnk"
+        local_path = os.path.join(self.get_layout_results_dir(), lnk_name)
         with open(local_path, "w") as file:
             file.write(report_link)
 
-        remote_path = os.path.join(remote_dir, "open.lnk")
+        remote_path = os.path.join(remote_dir, lnk_name)
         file_info = self.api.file.upload(self.team_id, local_path, remote_path)
 
         logger.info(f"Report link: {report_link}")
         return file_info
+
+    def get_report_link(self) -> str:
+        if self.remote_vis_dir is None:
+            raise ValueError("Visualizations are not uploaded yet.")
+        return self.visualizer.renderer._get_report_link(
+            self.api, self.team_id, self.remote_vis_dir
+        )
 
     def _merge_metas(self, gt_project_id, pred_project_id):
         gt_meta = self.api.project.get_meta(gt_project_id)
@@ -608,3 +609,15 @@ class BaseBenchmark:
             return sum(ds.items_count for ds in self.gt_dataset_infos)
         else:
             return self.gt_project_info.items_count
+
+    def get_eval_result(self):
+        if self._eval_results is None:
+            self._eval_results = self.evaluator.get_eval_result()
+        return self._eval_results
+
+    def get_diff_project_info(self):
+        eval_result = self.get_eval_result()
+        if hasattr(eval_result, "diff_project_info"):
+            self.diff_project_info = eval_result.diff_project_info
+            return self.diff_project_info
+        return None

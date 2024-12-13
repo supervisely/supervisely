@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -13,6 +15,18 @@ from supervisely.nn.benchmark.utils import calculate_metrics, read_coco_datasets
 class InstanceSegmentationEvalResult(ObjectDetectionEvalResult):
     mp_cls = MetricProvider
 
+    @classmethod
+    def from_evaluator(
+        cls, evaulator: InstanceSegmentationEvaluator
+    ) -> InstanceSegmentationEvalResult:
+        """Method to customize loading of the evaluation result."""
+        eval_result = cls()
+        eval_result.eval_data = evaulator.eval_data
+        eval_result.coco_gt = evaulator.cocoGt
+        eval_result.coco_dt = evaulator.cocoDt
+        eval_result._prepare_data()
+        return eval_result
+
 
 class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
@@ -25,7 +39,7 @@ class InstanceSegmentationEvaluator(ObjectDetectionEvaluator):
         except AssertionError as e:
             raise ValueError(
                 f"{e}. Please make sure that your GT and DT projects are correct. "
-                "If GT project has nested datasets and DT project was crated with NN app, "
+                "If GT project has nested datasets and DT project was created with NN app, "
                 "try to use newer version of NN app."
             )
 

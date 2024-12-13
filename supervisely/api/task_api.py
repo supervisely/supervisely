@@ -821,10 +821,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
         return resp.json()
 
-    def set_output_report(self, task_id: int, file_id: int, file_name: str) -> Dict:
+    def set_output_report(
+        self, task_id: int, file_id: int, file_name: str, description: Optional[str] = "Report"
+    ) -> Dict:
         """set_output_report"""
         return self._set_custom_output(
-            task_id, file_id, file_name, description="Report", icon="zmdi zmdi-receipt"
+            task_id, file_id, file_name, description=description, icon="zmdi zmdi-receipt"
         )
 
     def _set_custom_output(

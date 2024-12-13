@@ -1,9 +1,7 @@
 from typing import List
 
 from supervisely._utils import abs_url
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.visualization.evaluation_result import EvalResult
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
@@ -12,7 +10,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class Overview(BaseVisMetric):
+class Overview(BaseVisMetrics):
 
     MARKDOWN_OVERVIEW = "markdown_overview"
     MARKDOWN_OVERVIEW_INFO = "markdown_overview_info"
@@ -62,7 +60,7 @@ class Overview(BaseVisMetric):
 
     @property
     def overview_widgets(self) -> List[MarkdownWidget]:
-        self.formats = []
+        all_formats = []
         for eval_result in self.eval_results:
 
             url = eval_result.inference_info.get("checkpoint_url")
@@ -71,14 +69,10 @@ class Overview(BaseVisMetric):
                 link_text = url
             link_text = link_text.replace("_", "\_")
 
-            checkpoint_name = eval_result.inference_info.get("deploy_params", {}).get(
-                "checkpoint_name", ""
-            )
-            model_name = eval_result.inference_info.get("model_name") or "Custom"
+            checkpoint_name = eval_result.checkpoint_name
+            model_name = eval_result.name or "Custom"
 
-            report = eval_result.api.file.get_info_by_path(
-                eval_result.team_id, eval_result.report_path
-            )
+            report = eval_result.api.file.get_info_by_path(self.team_id, eval_result.report_path)
             report_link = abs_url(f"/model-benchmark?id={report.id}")
 
             formats = [
@@ -91,11 +85,11 @@ class Overview(BaseVisMetric):
                 link_text,
                 report_link,
             ]
-            self.formats.append(formats)
+            all_formats.append(formats)
 
         text_template: str = getattr(self.vis_texts, self.MARKDOWN_OVERVIEW_INFO)
         widgets = []
-        for formats in self.formats:
+        for formats in all_formats:
             md = MarkdownWidget(
                 name=self.MARKDOWN_OVERVIEW_INFO,
                 title="Overview",
@@ -204,7 +198,7 @@ class Overview(BaseVisMetric):
         # Overall Metrics
         fig = go.Figure()
         for i, eval_result in enumerate(self.eval_results):
-            name = f"[{i + 1}] {eval_result.model_name}"
+            name = f"[{i + 1}] {eval_result.name}"
             base_metrics = eval_result.mp.base_metrics()
             r = list(base_metrics.values())
             theta = [eval_result.mp.metric_names[k] for k in base_metrics.keys()]
@@ -227,13 +221,8 @@ class Overview(BaseVisMetric):
                 angularaxis=dict(rotation=90, direction="clockwise"),
             ),
             dragmode=False,
-            # title="Overall Metrics",
-            # width=700,
-            # height=500,
-            # autosize=False,
+            height=500,
             margin=dict(l=25, r=25, t=25, b=25),
-        )
-        fig.update_layout(
             modebar=dict(
                 remove=[
                     "zoom2d",
@@ -245,6 +234,6 @@ class Overview(BaseVisMetric):
                     "autoScale2d",
                     "resetScale2d",
                 ]
-            )
+            ),
         )
         return fig

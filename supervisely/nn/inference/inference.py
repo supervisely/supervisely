@@ -90,7 +90,10 @@ class Inference:
     """Path to file with list of models"""
     APP_OPTIONS: str = None
     """Path to file with app options"""
-    DEFAULT_BATCH_SIZE = 16
+    DEFAULT_BATCH_SIZE: str = 16
+    """Default batch size for inference"""
+    INFERENCE_SETTINGS: str = None
+    """Path to file with custom inference settings"""
 
     def __init__(
         self,
@@ -125,8 +128,13 @@ class Inference:
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
         self._hardware: str = None
+        self.pretrained_models = self._load_models_json(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
-            custom_inference_settings = {}
+            if self.INFERENCE_SETTINGS is not None:
+                custom_inference_settings = self.INFERENCE_SETTINGS
+            else:
+                logger.debug("Custom inference settings are not provided.")
+                custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, "r") as f:
@@ -153,7 +161,7 @@ class Inference:
                 if self.FRAMEWORK_NAME is None:
                     raise ValueError("FRAMEWORK_NAME is not defined")
                 self._gui = GUI.ServingGUITemplate(
-                    self.FRAMEWORK_NAME, self.MODELS, self.APP_OPTIONS
+                    self.FRAMEWORK_NAME, self.pretrained_models, self.APP_OPTIONS
                 )
                 self._user_layout = self._gui.widgets
                 self._user_layout_card = self._gui.card
@@ -238,6 +246,38 @@ class Inference:
                     f"Device auto detection failed, set to default 'cpu', reason: {repr(e)}"
                 )
                 device = "cpu"
+
+    def _load_models_json(self, models: str) -> List[Dict[str, Any]]:
+        """
+        Loads models from the provided file or list of model configurations.
+        """
+        if isinstance(models, str):
+            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
+                models = sly_json.load_json_file(models)
+            else:
+                raise ValueError("File not found or invalid file format.")
+        else:
+            raise ValueError(
+                "Invalid models file. Please provide a valid '.json' file with list of model configurations."
+            )
+
+        if not isinstance(models, list):
+            raise ValueError("models parameters must be a list of dicts")
+        for item in models:
+            if not isinstance(item, dict):
+                raise ValueError(f"Each item in models must be a dict.")
+            model_meta = item.get("meta")
+            if model_meta is None:
+                raise ValueError(
+                    "Model metadata not found. Please update provided models parameter to include key 'meta'."
+                )
+            model_files = model_meta.get("model_files")
+            if model_files is None:
+                raise ValueError(
+                    "Model files not found in model metadata. "
+                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
+                )
+        return models
 
     def get_ui(self) -> Widget:
         if not self._use_gui:
@@ -487,6 +527,9 @@ class Inference:
     def load_model_meta(self, model_tab: str, local_weights_path: str):
         raise NotImplementedError("Have to be implemented in child class after inheritance")
 
+    def _checkpoints_cache_dir(self):
+        return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
+
     def _download_model_files(self, model_source: str, model_files: List[str]) -> dict:
         if model_source == ModelSource.PRETRAINED:
             return self._download_pretrained_model(model_files)
@@ -498,17 +541,28 @@ class Inference:
         Downloads the pretrained model data.
         """
         local_model_files = {}
+        cache_dir = self._checkpoints_cache_dir()
 
         for file in model_files:
             file_url = model_files[file]
-            file_path = os.path.join(self.model_dir, file)
+            file_name = sly_fs.get_file_name_with_ext(file_url)
             if file_url.startswith("http"):
                 with urlopen(file_url) as f:
                     file_size = f.length
                     file_name = get_filename_from_headers(file_url)
-                    file_path = os.path.join(self.model_dir, file_name)
                     if file_name is None:
                         file_name = file
+                    file_path = os.path.join(self.model_dir, file_name)
+                    cached_path = os.path.join(cache_dir, file_name)
+                    if os.path.exists(cached_path):
+                        local_model_files[file] = cached_path
+                        logger.debug(f"Model: '{file_name}' was found in checkpoint cache")
+                        continue
+                    if os.path.exists(file_path):
+                        local_model_files[file] = file_path
+                        logger.debug(f"Model: '{file_name}' was found in model dir")
+                        continue
+
                     with self.gui.download_progress(
                         message=f"Downloading: '{file_name}'",
                         total=file_size,
@@ -614,13 +668,23 @@ class Inference:
         model_files = deploy_params.get("model_files", {})
         if model_info:
             checkpoint_name = os.path.basename(model_files.get("checkpoint"))
+            checkpoint_file_path = os.path.join(
+                model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
+            )
+            checkpoint_file_info = self.api.file.get_info_by_path(
+                env.team_id(), checkpoint_file_path
+            )
+            if checkpoint_file_info is None:
+                checkpoint_url = None
+            else:
+                checkpoint_url = self.api.file.get_url(checkpoint_file_info.id)
+
             self.checkpoint_info = CheckpointInfo(
                 checkpoint_name=checkpoint_name,
                 model_name=model_info.get("model_name"),
                 architecture=model_info.get("framework_name"),
-                custom_checkpoint_path=os.path.join(
-                    model_info.get("artifacts_dir"), checkpoint_name
-                ),
+                checkpoint_url=checkpoint_url,
+                custom_checkpoint_path=checkpoint_file_path,
                 model_source=ModelSource.CUSTOM,
             )
 
