@@ -56,21 +56,17 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self._widgets = False
         self.ann_opacity = 0.4
 
-        diff_project_info, diff_dataset_infos, existed = self._get_or_create_diff_project()
+        diff_project_info, diff_dataset_infos, _ = self._get_or_create_diff_project()
         self.eval_result.diff_project_info = diff_project_info
         self.eval_result.diff_dataset_infos = diff_dataset_infos
         self.eval_result.matched_pair_data = {}
 
         self.gt_project_path = str(Path(self.workdir).parent / "gt_project")
         self.pred_project_path = str(Path(self.workdir).parent / "pred_project")
-        if not existed:
-            self.update_diff_annotations()
-        else:
-            self._init_match_data()
+        self.update_diff_annotations()
 
         # set filtered project meta
         self.eval_result.filtered_project_meta = self._get_filtered_project_meta(self.eval_result)
-
         self._get_sample_data_for_gallery()
 
     @property
@@ -392,7 +388,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
         pred_tag_list = []
         with self.pbar(
-            message="Visualizations: Creating diff_project", total=pred_project.total_items
+            message="Visualizations: Creating difference project", total=pred_project.total_items
         ) as progress:
             logger.debug(
                 "Creating diff project data",

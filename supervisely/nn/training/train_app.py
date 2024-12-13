@@ -114,15 +114,18 @@ class TrainApp:
         self._tensorboard_port = 6006
 
         if is_production():
+            self._app_name = sly_env.app_name()
             self.task_id = sly_env.task_id()
         else:
-            self.task_id = "debug-session"
+            self._app_name = sly_env.app_name(raise_not_found=False)
+            self.task_id = sly_env.task_id(raise_not_found=False)
+            if self.task_id is None:
+                self.task_id = "debug-session"
             logger.info("TrainApp is running in debug mode")
 
         self.framework_name = framework_name
         self._team_id = sly_env.team_id()
         self._workspace_id = sly_env.workspace_id()
-        self._app_name = sly_env.app_name(raise_not_found=False)
         self._tensorboard_process = None
 
         self._models = self._load_models(models)
@@ -1618,18 +1621,42 @@ class TrainApp:
             if mb_eval_report is not None:
                 self.gui.training_artifacts.model_benchmark_report_thumbnail.set(mb_eval_report)
                 self.gui.training_artifacts.model_benchmark_report_thumbnail.show()
-                self.gui.training_artifacts.mb_report_field.show()
+                self.gui.training_artifacts.model_benchmark_report_field.show()
+            else:
+                self.gui.training_artifacts.model_benchmark_fail_text.show()
+                self.gui.training_artifacts.model_benchmark_report_field.show()
         # ---------------------------- #
 
         # Set instruction to GUI
-        self.gui.training_artifacts.pytorch_instruction.show()
-        if self._app_options.get("export_onnx_supported", False):
-            if self.gui.hyperparameters_selector.get_export_onnx_checkbox_value():
+        demo_options = self._app_options.get("demo", {})
+        if demo_options:
+            # Show PyTorch demo if available
+            pytorch_demo = demo_options.get("pytorch")
+            if pytorch_demo:
+                self.gui.training_artifacts.pytorch_instruction.show()
+
+            # Show ONNX demo if supported and available
+            onnx_demo = demo_options.get("onnx")
+            if (
+                self._app_options.get("export_onnx_supported", False)
+                and self.gui.hyperparameters_selector.get_export_onnx_checkbox_value()
+                and onnx_demo
+            ):
                 self.gui.training_artifacts.onnx_instruction.show()
-        if self._app_options.get("export_tensorrt_supported", False):
-            if self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value():
+
+            # Show TensorRT demo if supported and available
+            tensorrt_demo = demo_options.get("tensorrt")
+            if (
+                self._app_options.get("export_tensorrt_supported", False)
+                and self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value()
+                and tensorrt_demo
+            ):
                 self.gui.training_artifacts.trt_instruction.show()
-        self.gui.training_artifacts.inference_instruction_field.show()
+
+            # Show the inference demo widget if overview or any demo is available
+            demo_overview = self._app_options.get("overview", {})
+            if demo_overview or any([pytorch_demo, onnx_demo, tensorrt_demo]):
+                self.gui.training_artifacts.inference_demo_field.show()
         # ---------------------------- #
 
         # Set status to completed and unlock
@@ -1834,8 +1861,6 @@ class TrainApp:
             eval_metrics = bm.key_metrics
 
             # 8. UI updates
-            # self.gui.training_artifacts.model_benchmark_report_thumbnail.set(bm.report)
-            # self.gui.training_artifacts.model_benchmark_report_thumbnail.show()
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
             logger.info("Model benchmark evaluation completed successfully")
@@ -1850,6 +1875,9 @@ class TrainApp:
             try:
                 if bm.dt_project_info:
                     self._api.project.remove(bm.dt_project_info.id)
+                diff_project_info = bm.get_diff_project_info()
+                if diff_project_info:
+                    self._api.project.remove(diff_project_info.id)
             except Exception as e2:
                 return lnk_file_info, report, report_id, eval_metrics
         return lnk_file_info, report, report_id, eval_metrics
@@ -2151,6 +2179,11 @@ class TrainApp:
         if self._app_options.get("device_selector", False):
             self.gui.training_process.select_device._select.disable()
             self.gui.training_process.select_device.disable()
+
+        if self._app_options.get("model_benchmark", False):
+            self.gui.training_artifacts.model_benchmark_report_thumbnail.hide()
+            self.gui.training_artifacts.model_benchmark_fail_text.hide()
+            self.gui.training_artifacts.model_benchmark_report_field.hide()
 
         self.gui.training_logs.card.unlock()
         self.gui.stepper.set_active_step(7)

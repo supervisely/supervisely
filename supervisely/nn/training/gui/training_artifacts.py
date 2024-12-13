@@ -12,6 +12,10 @@ from supervisely.app.widgets import (
     Text,
 )
 
+PYTORCH_ICON = "https://img.icons8.com/?size=100&id=jH4BpkMnRrU5&format=png&color=000000"
+ONNX_ICON = "https://artwork.lfaidata.foundation/projects/onnx/icon/color/onnx-icon-color.png"
+TRT_ICON = "https://img.icons8.com/?size=100&id=yqf95864UzeQ&format=png&color=000000"
+
 
 class TrainingArtifacts:
     title = "Training Artifacts"
@@ -30,9 +34,11 @@ class TrainingArtifacts:
         # GUI Components
         self.validator_text = Text("")
         self.validator_text.hide()
+        self.display_widgets.extend([self.validator_text])
 
+        # Outputs
         self.artifacts_thumbnail = FolderThumbnail()
-        # self.artifacts_thumbnail.hide()
+        self.artifacts_thumbnail.hide()
 
         self.artifacts_field = Field(
             title="Artifacts",
@@ -40,89 +46,86 @@ class TrainingArtifacts:
             content=self.artifacts_thumbnail,
         )
         self.artifacts_field.hide()
-
-        self.display_widgets.extend(
-            [
-                self.validator_text,
-                self.artifacts_field,
-            ]
-        )
-        # -------------------------------- #
+        self.display_widgets.extend([self.artifacts_field])
 
         # Optional Model Benchmark
         if app_options.get("model_benchmark", False):
             self.model_benchmark_report_thumbnail = ReportThumbnail()
             self.model_benchmark_report_thumbnail.hide()
 
-            self.mb_report_field = Field(
+            self.model_benchmark_fail_text = Text(
+                text="Model evaluation did not finish successfully. Please check the app logs for details.",
+                status="error",
+            )
+            self.model_benchmark_fail_text.hide()
+
+            self.model_benchmark_widgets = Container(
+                [self.model_benchmark_report_thumbnail, self.model_benchmark_fail_text]
+            )
+
+            self.model_benchmark_report_field = Field(
                 title="Model Benchmark",
                 description="Evaluation report of the trained model",
-                content=self.model_benchmark_report_thumbnail,
+                content=self.model_benchmark_widgets,
             )
-            self.mb_report_field.hide()
-
-            self.display_widgets.extend([self.mb_report_field])
+            self.model_benchmark_report_field.hide()
+            self.display_widgets.extend([self.model_benchmark_report_field])
         # -------------------------------- #
 
-        # Run inference outside of Supervisely
-        self.inference_instruction_field = []
+        # PyTorch, ONNX, TensorRT demo
+        self.inference_demo_field = []
+        model_demo = self.app_options.get("demo", None)
+        if model_demo is not None:
+            pytorch_demo_link = model_demo.get("pytorch", None)
+            if pytorch_demo_link is not None:
+                pytorch_icon = Field.Icon(image_url=PYTORCH_ICON, bg_color_rgb=[255, 255, 255])
+                self.pytorch_instruction = Field(
+                    title="PyTorch",
+                    description="Open file",
+                    description_url=pytorch_demo_link,
+                    icon=pytorch_icon,
+                    content=Empty(),
+                )
+                self.pytorch_instruction.hide()
+                self.inference_demo_field.extend([self.pytorch_instruction])
 
-        pytorch_icon_link = (
-            "https://img.icons8.com/?size=100&id=jH4BpkMnRrU5&format=png&color=000000"
-        )
-        pytorch_icon = Field.Icon(image_url=pytorch_icon_link, bg_color_rgb=[255, 255, 255])
+            onnx_demo_link = model_demo.get("onnx", None)
+            if onnx_demo_link is not None:
+                if self.app_options.get("export_onnx_supported", False):
+                    onnx_icon = Field.Icon(image_url=ONNX_ICON, bg_color_rgb=[255, 255, 255])
+                    self.onnx_instruction = Field(
+                        title="ONNX",
+                        description="Open file",
+                        description_url=onnx_demo_link,
+                        icon=onnx_icon,
+                        content=Empty(),
+                    )
+                    self.onnx_instruction.hide()
+                    self.inference_demo_field.extend([self.onnx_instruction])
 
-        onnx_icon_link = (
-            "https://artwork.lfaidata.foundation/projects/onnx/icon/color/onnx-icon-color.png"
-        )
-        onnx_icon = Field.Icon(image_url=onnx_icon_link, bg_color_rgb=[255, 255, 255])
+            trt_demo_link = model_demo.get("tensorrt", None)
+            if trt_demo_link is not None:
+                if self.app_options.get("export_tensorrt_supported", False):
+                    trt_icon = Field.Icon(image_url=TRT_ICON, bg_color_rgb=[255, 255, 255])
+                    self.trt_instruction = Field(
+                        title="TensorRT",
+                        description="Open file",
+                        description_url=trt_demo_link,
+                        icon=trt_icon,
+                        content=Empty(),
+                    )
+                    self.trt_instruction.hide()
+                    self.inference_demo_field.extend([self.trt_instruction])
 
-        trt_icon_link = "https://img.icons8.com/?size=100&id=yqf95864UzeQ&format=png&color=000000"
-        trt_icon = Field.Icon(image_url=trt_icon_link, bg_color_rgb=[255, 255, 255])
-
-        pytorch_link = "https://github.com/supervisely-ecosystem/RT-DETRv2/blob/main/supervisely_integration/demo/demo_torch.py"
-        self.pytorch_instruction = Field(
-            title="PyTorch",
-            description="Open file",
-            description_url=pytorch_link,
-            icon=pytorch_icon,
-            content=Empty(),
-        )
-        self.pytorch_instruction.hide()
-        self.inference_instruction_field.extend([self.pytorch_instruction])
-
-        if self.app_options.get("export_onnx_supported", False):
-            onnx_link = "https://github.com/supervisely-ecosystem/RT-DETRv2/blob/main/supervisely_integration/demo/demo_onnx.py"
-            self.onnx_instruction = Field(
-                title="ONNX",
-                description="Open file",
-                description_url=onnx_link,
-                icon=onnx_icon,
-                content=Empty(),
+            demo_overview_link = self.app_options.get("overview", None)
+            self.inference_demo_field = Field(
+                title="How to run inference",
+                description="Instructions on how to use your checkpoints outside of Supervisely Platform",
+                content=Flexbox(self.inference_demo_field),
+                title_url=demo_overview_link,
             )
-            self.onnx_instruction.hide()
-            self.inference_instruction_field.extend([self.onnx_instruction])
-
-        if self.app_options.get("export_tensorrt_supported", False):
-            trt_link = "https://github.com/supervisely-ecosystem/RT-DETRv2/blob/main/supervisely_integration/demo/demo_trt.py"
-            self.trt_instruction = Field(
-                title="TensorRT",
-                description="Open file",
-                description_url=trt_link,
-                icon=trt_icon,
-                content=Empty(),
-            )
-            self.trt_instruction.hide()
-            self.inference_instruction_field.extend([self.trt_instruction])
-
-        self.inference_instruction_field = Field(
-            title="How to run inference",
-            description="Instructions on how to use your checkpoints outside of Supervisely Platform",
-            content=Flexbox(self.inference_instruction_field),
-            title_url="https://github.com/supervisely-ecosystem/RT-DETRv2/blob/main/supervisely_integration/demo/README.md",
-        )
-        self.inference_instruction_field.hide()
-        self.display_widgets.extend([self.inference_instruction_field])
+            self.inference_demo_field.hide()
+            self.display_widgets.extend([self.inference_demo_field])
         # -------------------------------- #
 
         self.container = Container(self.display_widgets)

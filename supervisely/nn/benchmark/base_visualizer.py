@@ -179,19 +179,15 @@ class BaseVisualizer:
             diff_ds_infos.append(diff_dataset)
             return diff_dataset
 
+        is_existed = False
         project_name = self._generate_diff_project_name(self.eval_result.pred_project_info.name)
         workspace_id = self.eval_result.pred_project_info.workspace_id
-        project_info = self.api.project.get_info_by_name(
-            workspace_id, project_name, raise_error=False
+        project_info = self.api.project.create(
+            workspace_id, project_name, change_name_if_conflict=True
         )
-        is_existed = project_info is not None
-        if not is_existed:
-            project_info = self.api.project.create(
-                workspace_id, project_name, change_name_if_conflict=True
-            )
-            pred_datasets = {ds.id: ds for ds in self.eval_result.pred_dataset_infos}
-            for dataset in pred_datasets:
-                _get_or_create_diff_dataset(dataset, pred_datasets)
+        pred_datasets = {ds.id: ds for ds in self.eval_result.pred_dataset_infos}
+        for dataset in pred_datasets:
+            _get_or_create_diff_dataset(dataset, pred_datasets)
         return project_info, diff_ds_infos, is_existed
 
     def _generate_diff_project_name(self, pred_project_name):

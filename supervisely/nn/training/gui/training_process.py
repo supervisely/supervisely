@@ -29,12 +29,12 @@ class TrainingProcess:
         # Optional Select CUDA device
         if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice()
-            self.select_cuda_device_field = Field(
+            self.select_device_field = Field(
                 title="Select CUDA device",
                 description="The device on which the model will be trained",
                 content=self.select_device,
             )
-            self.display_widgets.extend([self.select_cuda_device_field])
+            self.display_widgets.extend([self.select_device_field])
         # -------------------------------- #
 
         self.experiment_name_input = Input("Enter experiment name")
@@ -80,7 +80,7 @@ class TrainingProcess:
     def widgets_to_disable(self) -> list:
         widgets = [self.experiment_name_input]
         if self.app_options.get("device_selector", False):
-            widgets.append(self.experiment_name_input)
+            widgets.extend([self.select_device, self.select_device_field])
         return widgets
 
     def validate_step(self) -> bool:

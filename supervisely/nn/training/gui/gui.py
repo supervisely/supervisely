@@ -51,7 +51,9 @@ class TrainGUI:
         if is_production():
             self.task_id = sly_env.task_id()
         else:
-            self.task_id = "debug-session"
+            self.task_id = sly_env.task_id(raise_not_found=False)
+            if self.task_id is None:
+                self.task_id = "debug-session"
 
         self.framework_name = framework_name
         self.models = models
