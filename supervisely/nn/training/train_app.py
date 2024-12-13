@@ -1857,7 +1857,7 @@ class TrainApp:
             _ = bm.upload_visualizations(eval_res_dir + "/visualizations/")
             lnk_file_info = bm.lnk
             report = bm.report
-            report_id = bm.report_id
+            report_id = bm.report.id
             eval_metrics = bm.key_metrics
 
             # 8. UI updates
