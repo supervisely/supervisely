@@ -1,6 +1,7 @@
 from typing import Literal
 
 import supervisely.io.env as sly_env
+from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
@@ -13,6 +14,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource
+from supervisely.nn.artifacts.utils import FrameworkMapper, FrameworkName
 
 
 class ModelSelector:
@@ -22,12 +24,21 @@ class ModelSelector:
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
         self.display_widgets = []
-        self.team_id = sly_env.team_id()  # get from project id
+        self.team_id = sly_env.team_id()
         self.models = models
 
         # GUI Components
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
+
         experiment_infos = get_experiment_infos(api, self.team_id, framework)
+        if app_options.get("legacy_checkpoints", False):
+            try:
+                framework_cls = FrameworkMapper.get_framework_cls(framework, self.team_id)
+                legacy_experiment_infos = framework_cls.get_list_experiment_info()
+                experiment_infos = experiment_infos + legacy_experiment_infos
+            except:
+                logger.warn(f"Legacy checkpoints are not available for '{framework}'")
+
         self.experiment_selector = ExperimentSelector(self.team_id, experiment_infos)
         self.model_source_tabs = RadioTabs(
             titles=[ModelSource.PRETRAINED, ModelSource.CUSTOM],

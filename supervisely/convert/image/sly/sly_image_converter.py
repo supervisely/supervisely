@@ -169,7 +169,7 @@ class SLYImageConverter(ImageConverter):
             project_dirs = [d for d in find_project_dirs(input_data)]
             if len(project_dirs) > 1:
                 logger.info("Found multiple possible Supervisely projects in the input data")
-            else:
+            elif len(project_dirs) == 1:
                 logger.info("Possible Supervisely project found in the input data")
             meta = None
             for project_dir in project_dirs:

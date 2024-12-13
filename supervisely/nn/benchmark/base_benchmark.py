@@ -381,7 +381,7 @@ class BaseBenchmark:
             logger.info(f"Found GT annotations in {gt_path}")
         if not os.path.exists(dt_path):
             with self.pbar(
-                message="Evaluation: Downloading Pred annotations", total=self.num_items
+                message="Evaluation: Downloading prediction annotations", total=self.num_items
             ) as p:
                 download_project(
                     self.api,
@@ -614,3 +614,10 @@ class BaseBenchmark:
         if self._eval_results is None:
             self._eval_results = self.evaluator.get_eval_result()
         return self._eval_results
+
+    def get_diff_project_info(self):
+        eval_result = self.get_eval_result()
+        if hasattr(eval_result, "diff_project_info"):
+            self.diff_project_info = eval_result.diff_project_info
+            return self.diff_project_info
+        return None

@@ -23,23 +23,18 @@ class TrainingProcess:
 
     def __init__(self, app_options: Dict[str, Any]):
         self.display_widgets = []
-        self.success_message_text = (
-            "Training completed. Training artifacts were uploaded to Team Files. "
-            "You can find and open tensorboard logs in the artifacts folder via the "
-            "<a href='https://ecosystem.supervisely.com/apps/tensorboard-logs-viewer' target='_blank'>Tensorboard</a> app."
-        )
         self.app_options = app_options
 
         # GUI Components
         # Optional Select CUDA device
         if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice()
-            self.select_cuda_device_field = Field(
+            self.select_device_field = Field(
                 title="Select CUDA device",
                 description="The device on which the model will be trained",
                 content=self.select_device,
             )
-            self.display_widgets.extend([self.select_cuda_device_field])
+            self.display_widgets.extend([self.select_device_field])
         # -------------------------------- #
 
         self.experiment_name_input = Input("Enter experiment name")
@@ -63,24 +58,13 @@ class TrainingProcess:
         self.validator_text = Text("")
         self.validator_text.hide()
 
-        self.artifacts_thumbnail = FolderThumbnail()
-        self.artifacts_thumbnail.hide()
-
         self.display_widgets.extend(
             [
                 self.experiment_name_field,
                 button_container,
                 self.validator_text,
-                self.artifacts_thumbnail,
             ]
         )
-        # -------------------------------- #
-
-        # Optional Model Benchmark
-        if app_options.get("model_benchmark", False):
-            self.model_benchmark_report_thumbnail = ReportThumbnail()
-            self.model_benchmark_report_thumbnail.hide()
-            self.display_widgets.extend([self.model_benchmark_report_thumbnail])
         # -------------------------------- #
 
         self.container = Container(self.display_widgets)
@@ -96,7 +80,7 @@ class TrainingProcess:
     def widgets_to_disable(self) -> list:
         widgets = [self.experiment_name_input]
         if self.app_options.get("device_selector", False):
-            widgets.append(self.experiment_name_input)
+            widgets.extend([self.select_device, self.select_device_field])
         return widgets
 
     def validate_step(self) -> bool:

@@ -2,13 +2,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import Any, Dict, List
+from typing import List
 
 import requests
 
 from supervisely import logger
 from supervisely.api.api import Api, ApiField
-from supervisely.api.file_api import FileInfo
 
 
 @dataclass
@@ -51,7 +50,9 @@ class ExperimentInfo:
     """Evaluation metrics"""
 
 
-def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
+def get_experiment_infos(
+    api: Api, team_id: int, framework_name: str
+) -> List[ExperimentInfo]:
     """
     Get experiments from the specified framework folder for Train v2
 
@@ -78,7 +79,9 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     experiments_folder = "/experiments"
     experiment_infos = []
 
-    file_infos = api.file.list(team_id, experiments_folder, recursive=True, return_type="fileinfo")
+    file_infos = api.file.list(
+        team_id, experiments_folder, recursive=True, return_type="fileinfo"
+    )
     sorted_experiment_paths = []
     for file_info in file_infos:
         if not file_info.path.endswith(metadata_name):
@@ -101,7 +104,9 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             required_fields = {field.name for field in fields(ExperimentInfo)}
             missing_fields = required_fields - response_json.keys()
             if missing_fields:
-                logger.debug(f"Missing fields: {missing_fields} for '{experiment_path}'")
+                logger.debug(
+                    f"Missing fields: {missing_fields} for '{experiment_path}'"
+                )
                 return None
             return ExperimentInfo(**response_json)
         except requests.exceptions.RequestException as e:
@@ -112,9 +117,10 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             logger.error(f"TypeError for '{experiment_path}': {e}")
         return None
 
-    # Error
     with ThreadPoolExecutor() as executor:
-        experiment_infos = list(executor.map(fetch_experiment_data, sorted_experiment_paths))
+        experiment_infos = list(
+            executor.map(fetch_experiment_data, sorted_experiment_paths)
+        )
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
