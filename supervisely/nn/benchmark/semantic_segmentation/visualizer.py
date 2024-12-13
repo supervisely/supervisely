@@ -93,6 +93,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         # key metrics
         key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
         self.key_metrics_md = key_metrics.md
+        self.key_metrics_table = key_metrics.table
         self.key_metrics_chart = key_metrics.chart
 
         # explore predictions
@@ -143,15 +144,14 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
         self.acknowledgement_md = acknowledgement.md
 
         # SpeedTest
-        self.speedtest_present = False
-        self.speedtest_multiple_batch_sizes = False
         speedtest = Speedtest(self.vis_texts, self.eval_result)
-        if not speedtest.is_empty():
-            self.speedtest_present = True
+        self.speedtest_present = not speedtest.is_empty()
+        self.speedtest_multiple_batch_sizes = False
+        if self.speedtest_present:
             self.speedtest_md_intro = speedtest.intro_md
             self.speedtest_intro_table = speedtest.intro_table
-            if speedtest.multiple_batche_sizes():
-                self.speedtest_multiple_batch_sizes = True
+            self.speedtest_multiple_batch_sizes = speedtest.multiple_batche_sizes()
+            if self.speedtest_multiple_batch_sizes:
                 self.speedtest_batch_inference_md = speedtest.batch_size_md
                 self.speedtest_chart = speedtest.chart
 
@@ -166,6 +166,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             (0, self.header),
             (1, self.overview_md),
             (1, self.key_metrics_md),
+            (0, self.key_metrics_table),
             (0, self.key_metrics_chart),
             (1, self.explore_predictions_md),
             (0, self.explore_predictions_gallery),

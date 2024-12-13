@@ -18,12 +18,6 @@ class Overview(BaseVisMetrics):
     CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
-        """
-        Class to create widgets for the overview block
-        overview_widgets property returns list of MarkdownWidget with information about the model
-        chart_widget property returns ChartWidget with Scatterpolar chart of the base metrics with each
-        evaluation result metrics displayed
-        """
         super().__init__(vis_texts, eval_results)
 
     @property
@@ -31,7 +25,7 @@ class Overview(BaseVisMetrics):
         info = []
         model_names = []
         for eval_result in self.eval_results:
-            model_name = eval_result.inference_info.get("model_name") or "Custom"
+            model_name = eval_result.name or "Custom"
             model_name = model_name.replace("_", "\_")
             model_names.append(model_name)
 
@@ -70,7 +64,7 @@ class Overview(BaseVisMetrics):
             link_text = link_text.replace("_", "\_")
 
             checkpoint_name = eval_result.checkpoint_name
-            model_name = eval_result.name or "Custom"
+            model_name = eval_result.inference_info.get("model_name") or "Custom"
 
             report = eval_result.api.file.get_info_by_path(self.team_id, eval_result.report_path)
             report_link = abs_url(f"/model-benchmark?id={report.id}")
@@ -102,26 +96,16 @@ class Overview(BaseVisMetrics):
     def get_table_widget(self, latency, fps) -> TableWidget:
         res = {}
 
-        metric_renames_map = {"f1": "F1-score"}
-
         columns = ["metrics"] + [f"[{i+1}] {r.name}" for i, r in enumerate(self.eval_results)]
 
-        all_metrics = [eval_result.mp.metric_table() for eval_result in self.eval_results]
+        all_metrics = [eval_result.mp.key_metrics() for eval_result in self.eval_results]
         res["content"] = []
 
-        same_iou_thr = False
-        if len(set([r.mp.iou_threshold for r in self.eval_results])) == 1:
-            if self.eval_results[0].mp.iou_threshold is not None:
-                same_iou_thr = True
-
-        for idx, metric in enumerate(all_metrics[0].keys()):
-            if idx == 3 and not same_iou_thr:
-                continue
-            metric_name = metric_renames_map.get(metric, metric)
+        for metric in all_metrics[0].keys():
             values = [m[metric] for m in all_metrics]
             values = [v if v is not None else "―" for v in values]
             values = [round(v, 2) if isinstance(v, float) else v for v in values]
-            row = [metric_name] + values
+            row = [metric] + values
             dct = {"row": row, "id": metric, "items": row}
             res["content"].append(dct)
 
@@ -199,14 +183,14 @@ class Overview(BaseVisMetrics):
         fig = go.Figure()
         for i, eval_result in enumerate(self.eval_results):
             name = f"[{i + 1}] {eval_result.name}"
-            base_metrics = eval_result.mp.base_metrics()
+            base_metrics = eval_result.mp.key_metrics().copy()
+            base_metrics["mPixel accuracy"] = round(base_metrics["mPixel accuracy"] * 100, 2)
             r = list(base_metrics.values())
-            theta = [eval_result.mp.metric_names[k] for k in base_metrics.keys()]
+            theta = list(base_metrics.keys())
             fig.add_trace(
                 go.Scatterpolar(
                     r=r + [r[0]],
                     theta=theta + [theta[0]],
-                    # fill="toself",
                     name=name,
                     marker=dict(color=eval_result.color),
                     hovertemplate=name + "<br>%{theta}: %{r:.2f}<extra></extra>",
@@ -215,7 +199,7 @@ class Overview(BaseVisMetrics):
         fig.update_layout(
             polar=dict(
                 radialaxis=dict(
-                    range=[0.0, 1.0],
+                    range=[0, 105],
                     ticks="outside",
                 ),
                 angularaxis=dict(rotation=90, direction="clockwise"),

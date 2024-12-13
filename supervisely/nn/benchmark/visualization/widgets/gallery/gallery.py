@@ -79,6 +79,7 @@ class GalleryWidget(BaseWidget):
                 column_index=idx % self.columns_number,
                 project_meta=project_metas[idx % self.columns_number],
                 ignore_tags_filtering=skip_tags_filtering[idx % self.columns_number],
+                call_update=idx == len(image_infos) - 1,
             )
 
     def _get_init_data(self):
