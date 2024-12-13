@@ -66,6 +66,12 @@ class Evaluator:
         global torch, np, GPU
         import torch  # pylint: disable=import-error
 
+        GPU = False
+        import numpy as np
+
+        global numpy
+        numpy = np
+        
         if torch.cuda.is_available():
             try:
                 # gpu-compatible numpy analogue
@@ -82,12 +88,6 @@ class Evaluator:
                     "Failed to import cupy. Use cupy official documentation to install this "
                     "module: https://docs.cupy.dev/en/stable/install.html"
                 )
-        else:
-            GPU = False
-            import numpy as np
-
-            global numpy
-            numpy = np
 
         self.progress = progress or tqdm_sly
         self.class_names = class_names
