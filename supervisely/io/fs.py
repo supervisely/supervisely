@@ -167,23 +167,28 @@ def list_dir_recursively(
 
 
 def list_files_recursively(
-    dir: str, valid_extensions: Optional[List[str]] = None, filter_fn=None
+    dir: str,
+    valid_extensions: Optional[List[str]] = None,
+    filter_fn=None,
+    ignore_valid_extensions_case: Optional[bool] = False,
 ) -> List[str]:
     """
     Recursively walks through directory and returns list with all file paths.
     Can be filtered by valid extensions and filter function.
 
-     :param dir: Target dir path.
-     :param dir: str
-     :param valid_extensions: List with valid file extensions.
-     :type valid_extensions: List[str], optional
-     :param filter_fn: Function with a single argument. Argument is a file path. Function determines whether to keep a given file path. Must return True or False.
-     :type filter_fn: Callable, optional
-     :returns: List with file paths
-     :rtype: :class:`List[str]`
-     :Usage example:
+    :param dir: Target dir path.
+    :param dir: str
+    :param valid_extensions: List with valid file extensions.
+    :type valid_extensions: List[str], optional
+    :param filter_fn: Function with a single argument. Argument is a file path. Function determines whether to keep a given file path. Must return True or False.
+    :type filter_fn: Callable, optional
+    :param ignore_valid_extensions_case: If True, validation of file extensions will be case insensitive.
+    :type ignore_valid_extensions_case: bool
+    :returns: List with file paths
+    :rtype: :class:`List[str]`
+    :Usage example:
 
-      .. code-block:: python
+     .. code-block:: python
 
          import supervisely as sly
 
@@ -198,12 +203,17 @@ def list_files_recursively(
             for filename in file_names:
                 yield os.path.join(dir_name, filename)
 
-    return [
-        file_path
-        for file_path in file_path_generator()
-        if (valid_extensions is None or get_file_ext(file_path) in valid_extensions)
-        and (filter_fn is None or filter_fn(file_path))
-    ]
+    valid_extensions = valid_extensions if ignore_valid_extensions_case is False else [ext.lower() for ext in valid_extensions]
+    files = []
+    for file_path in file_path_generator():
+        file_ext = get_file_ext(file_path)
+        if ignore_valid_extensions_case:
+            file_ext.lower()
+        if (
+            valid_extensions is None or file_ext in valid_extensions
+        ) and (filter_fn is None or filter_fn(file_path)):
+            files.append(file_path)
+    return files
 
 
 def list_files(
