@@ -77,7 +77,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
                 )
                 scene_name_to_dataset[name] = ds
         else:
-            scene_name_to_dataset[scene_names[0]] = dataset_info
+            scene_name_to_dataset[list(scene_names)[0]] = dataset_info
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Converting pointclouds...")
@@ -119,11 +119,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
             ann = self.to_supervisely(item, meta, renamed_classes)
             objects = ann_episode.objects
             figures = []
-            for (
-                fig
-            ) in (
-                ann.figures
-            ):  # todo figures must be extended from previous episodes, not as new objects
+            for fig in ann.figures:
                 obj_cls = meta.get_obj_class(fig.parent_object.obj_class.name)
                 if obj_cls is not None:
                     obj = PointcloudEpisodeObject(obj_cls)

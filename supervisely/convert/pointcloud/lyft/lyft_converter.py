@@ -44,8 +44,8 @@ class LyftConverter(PointcloudConverter):
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
-        self._total_msg_count = 0
         self._is_pcd_episode = False
+        self._lyft = None
 
     def __str__(self) -> str:
         return AvailablePointcloudConverters.LYFT
@@ -87,6 +87,7 @@ class LyftConverter(PointcloudConverter):
 
         t = TinyTimer()
         lyft = Lyft(data_path=self._input_data, json_path=json_dir, verbose=False)
+        self._lyft = lyft
         logger.info(f"LyftDataset initialization took {t.get_sec():.2f} sec")
 
         t = TinyTimer()
@@ -104,6 +105,7 @@ class LyftConverter(PointcloudConverter):
                 custom_data = sample_data.get("custom_data", {})
                 item = self.Item(item_path, ann_data, related_images, custom_data, scene_name)
                 self._items.append(item)
+            self._scene_to_sample_cnt[scene_name] = len(sample_datas)
             progress.iter_done_report()
             break  # ! remove
         t = t.get_sec()
@@ -175,10 +177,6 @@ class LyftConverter(PointcloudConverter):
             if current_dataset is None:
                 raise RuntimeError(f"Dataset not found for scene name: {item._scene_name}")
             current_dataset_id = current_dataset.id
-
-            # * Convert timestamp to ISO format
-            iso_time = datetime.utcfromtimestamp(item.ann_data["timestamp"] / 1e6).isoformat() + "Z"
-            item.ann_data["timestamp"] = iso_time
 
             # * Convert pointcloud from ".bin" to ".pcd"
             pcd_path = str(Path(item.path).with_suffix(".pcd"))

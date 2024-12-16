@@ -11,6 +11,9 @@ from supervisely.io import json
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
+from datetime import datetime
+from collections import defaultdict
+from uuid import uuid4
 
 
 def get_available_scenes(lyft):
@@ -26,6 +29,18 @@ def get_available_scenes(lyft):
         yield scene
 
 
+def get_all_instance_tokens(lyft, instance_token):
+    it = lyft.get("instance", instance_token)
+    first_ann_token = it["first_annotation_token"]
+    last_ann_token = it["last_annotation_token"]
+    ann_tokens = lyft.get("sample_annotation", first_ann_token)
+    while True:
+        yield ann_tokens["token"]
+        if ann_tokens["token"] == last_ann_token:
+            break
+        ann_tokens = lyft.get("sample_annotation", ann_tokens["next"])
+
+
 def extract_data_from_scene(lyft, scene):
     try:
         from lyft_dataset_sdk.utils.geometry_utils import transform_matrix
@@ -35,14 +50,14 @@ def extract_data_from_scene(lyft, scene):
 
     new_token = scene["first_sample_token"]
     dataset_data = []
-
     num_samples = scene["nbr_samples"]
-    for _ in range(num_samples):
+    for i in range(num_samples):
         my_sample = lyft.get("sample", new_token)
 
         data = {}
         data["ann_data"] = {}
         data["ann_data"]["timestamp"] = my_sample["timestamp"]
+        data["custom_data"] = lyft.get("log", scene["log_token"])
 
         sensor_token = my_sample["data"]["LIDAR_TOP"]
         lidar_path, boxes, _ = lyft.get_sample_data(sensor_token)
@@ -60,6 +75,8 @@ def extract_data_from_scene(lyft, scene):
         data["lidar_path"] = str(lidar_path)
         data["ann_data"]["names"] = names
         data["ann_data"]["gt_boxes"] = gt_boxes
+        instance_tokens = [lyft.get("sample_annotation", box.token) for box in boxes]
+        data["ann_data"]["instance_tokens"] = instance_tokens
 
         for sensor, sensor_token in my_sample["data"].items():
             if "CAM" in sensor:
@@ -120,41 +137,84 @@ def extract_data_from_scene(lyft, scene):
     return dataset_data
 
 
-def convert_scene_data(item_path, related_images_path, scene_data, meta):
-    for data in scene_data:
-        label = lyft_annotation_to_BEVBox3D(data["ann_data"])
-        ann = convert_label_to_annotation(label, meta)
+# def extract_anns_by_sample(lyft, current_sample):
+#     try:
+#         from lyft_dataset_sdk.utils.geometry_utils import transform_matrix
+#     except ImportError:
+#         logger.error("Please run pip install lyft_dataset_sdk")
+#         return
 
-        convert_bin_to_pcd(
-            data["lidar_path"], item_path
-        )  # automatically save pointcloud to itempath
-        os.makedirs(related_images_path, exist_ok=True)
+#     data = {}
+#     data["ann_data"] = {}
+#     data["ann_data"]["timestamp"] = (
+#         datetime.utcfromtimestamp(current_sample["timestamp"] / 1e6).isoformat() + "Z"
+#     )
 
-        # get related images info and dump jsons
-        sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
-        for sensor, image_path in data.items():
-            if "CAM" in sensor and not any([sensor.endswith(s) for s in sensors_to_skip]):
-                image_name = fs.get_file_name_with_ext(image_path)
-                sly_path_img = os.path.join(related_images_path, image_name)
-                shutil.copy(src=image_path, dst=sly_path_img)
-                img_info = {
-                    "name": image_name,
-                    "meta": {
-                        "deviceId": sensor,
-                        "timestamp": data["timestamp"],
-                        "sensorsData": {
-                            "extrinsicMatrix": list(
-                                data[f"{sensor}_extrinsic"].flatten().astype(float)
-                            ),
-                            "intrinsicMatrix": list(
-                                data[f"{sensor}_intrinsic"].flatten().astype(float)
-                            ),
-                        },
-                    },
-                }
-                json_save_path = f"{sly_path_img}.json"
-                json.dump_json_file(img_info, json_save_path)
-    yield ann, (sly_path_img, json_save_path)
+#     sensor_token = current_sample["data"]["LIDAR_TOP"]
+#     lidar_path, boxes, _ = lyft.get_sample_data(sensor_token)
+
+#     sd_record_lid = lyft.get("sample_data", sensor_token)
+#     cs_record_lid = lyft.get("calibrated_sensor", sd_record_lid["calibrated_sensor_token"])
+#     ego_record_lid = lyft.get("ego_pose", sd_record_lid["ego_pose_token"])
+
+#     locs = np.array([b.center for b in boxes]).reshape(-1, 3)
+#     dims = np.array([b.wlh for b in boxes]).reshape(-1, 3)
+#     rots = np.array([b.orientation.yaw_pitch_roll[0] for b in boxes]).reshape(-1, 1)
+#     names = np.array([b.name for b in boxes])
+
+#     gt_boxes = np.concatenate([locs, dims, -rots - np.pi / 2], axis=1)
+#     data["lidar_path"] = str(lidar_path)
+#     data["ann_data"]["names"] = names
+#     data["ann_data"]["gt_boxes"] = gt_boxes
+
+#     for sensor, sensor_token in current_sample["data"].items():
+#         if "CAM" in sensor:
+#             img_path, boxes, cam_intrinsic = lyft.get_sample_data(sensor_token)
+#             assert os.path.exists(img_path)
+#             data["ann_data"][sensor] = str(img_path)
+
+#             sd_record_cam = lyft.get("sample_data", sensor_token)
+#             cs_record_cam = lyft.get("calibrated_sensor", sd_record_cam["calibrated_sensor_token"])
+#             ego_record_cam = lyft.get("ego_pose", sd_record_cam["ego_pose_token"])
+#             cam_height = sd_record_cam["height"]
+#             cam_width = sd_record_cam["width"]
+
+#             lid_to_ego = transform_matrix(
+#                 cs_record_lid["translation"],
+#                 Quaternion(cs_record_lid["rotation"]),
+#                 inverse=False,
+#             )
+#             lid_ego_to_world = transform_matrix(
+#                 ego_record_lid["translation"],
+#                 Quaternion(ego_record_lid["rotation"]),
+#                 inverse=False,
+#             )
+#             world_to_cam_ego = transform_matrix(
+#                 ego_record_cam["translation"],
+#                 Quaternion(ego_record_cam["rotation"]),
+#                 inverse=True,
+#             )
+#             ego_to_cam = transform_matrix(
+#                 cs_record_cam["translation"],
+#                 Quaternion(cs_record_cam["rotation"]),
+#                 inverse=True,
+#             )
+
+#             velo_to_cam = np.dot(
+#                 ego_to_cam, np.dot(world_to_cam_ego, np.dot(lid_ego_to_world, lid_to_ego))
+#             )
+#             velo_to_cam_rot = velo_to_cam[:3, :3]
+#             velo_to_cam_trans = velo_to_cam[:3, 3]
+
+#             data["ann_data"][f"{sensor}_extrinsic"] = np.hstack(
+#                 (velo_to_cam_rot, velo_to_cam_trans.reshape(3, 1))
+#             )
+#             data["ann_data"][f"{sensor}_intrinsic"] = np.asarray(cs_record_cam["camera_intrinsic"])
+#             data["ann_data"][f"{sensor}_imsize"] = (cam_width, cam_height)
+#         else:
+#             logger.debug(f"pass {sensor} - isn't a camera")
+
+#     return data
 
 
 def generate_rimage_infos(related_images: List[tuple[str, str]], ann_data):
