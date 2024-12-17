@@ -1,163 +1,161 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <link
-      id="favicon"
-      rel="icon"
-      type="image/x-icon"
-      href="{{{__favicon__}}}"
-    />
-    <link
-      type="text/css"
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css"
-    />
-    <style>
-      #app-global-loading-icon {
-        background: white;
-        border-radius: 50%;
-        width: 75px;
-        height: 75px;
-        padding: 10px;
-        margin: 10px 0;
-        position: relative;
+
+<head>
+  <link id="favicon" rel="icon" type="image/x-icon" href="{{{__favicon__}}}" />
+  <link type="text/css" rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.css" />
+  <style>
+    #app-global-loading-icon {
+      background: white;
+      border-radius: 50%;
+      width: 75px;
+      height: 75px;
+      padding: 10px;
+      margin: 10px 0;
+      position: relative;
+    }
+
+    @keyframes app-loading-rotation {
+      0% {
+        transform: rotate(0deg);
       }
 
-      @keyframes app-loading-rotation {
-        0% {
-          transform: rotate(0deg);
-        }
-        100% {
-          transform: rotate(360deg);
-        }
+      100% {
+        transform: rotate(360deg);
       }
+    }
 
-      #app-global-loading-icon::after {
-        content: "";
-        box-sizing: border-box;
-        position: absolute;
-        left: 0;
-        top: 0;
-        transform: translate(-50%, -50%);
-        width: 95px;
-        height: 95px;
-        border-radius: 50%;
-        border: 3px solid transparent;
-        border-bottom-color: #fb4481;
-        animation: app-loading-rotation 1s linear infinite;
-      }
+    #app-global-loading-icon::after {
+      content: "";
+      box-sizing: border-box;
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: translate(-50%, -50%);
+      width: 95px;
+      height: 95px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-bottom-color: #fb4481;
+      animation: app-loading-rotation 1s linear infinite;
+    }
 
-      #app-global-loading-icon > img {
-        width: 75px;
-        border-radius: 50%;
-      }
+    #app-global-loading-icon>img {
+      width: 75px;
+      border-radius: 50%;
+    }
 
-      .extended-app-header .app-session-header-widget > div {
-        margin-bottom: 0;
-        padding-left: 20px;
-      }
+    .extended-app-header .app-session-header-widget>div {
+      margin-bottom: 0;
+      padding-left: 20px;
+    }
 
-      .app-session-header-solid {
-        background: white;
-        box-shadow: 0 5px 10px #0000000d;
-        border-bottom: 1px solid #dfe2e8;
-        position: relative;
-      }
-    </style>
-    <title>{{{app_name}}}</title>
-  </head>
+    .app-session-header-solid {
+      background: white;
+      box-shadow: 0 5px 10px #0000000d;
+      border-bottom: 1px solid #dfe2e8;
+      position: relative;
+    }
+  </style>
+  <title>{{{app_name}}}</title>
+</head>
 
-  <body style="background-color: #f4f7fe">
-    <center>
-      <div id="app-global-loading-icon">
-        <img src="https://app.supervise.ly/loading.gif" />
-      </div>
-    </center>
-    <script src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
-    <script
-      type="module"
-      src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"
-    ></script>
-    <script>
-      window.parent.postMessage('{ "showHeader": false }', "*");
-    </script>
-
-    {% for scripts in __widget_scripts__.values() %} {% if scripts is string %}
-    <script src="{{{ scripts }}}"></script>
-    {% else %} {% for scripts in scripts %}
-    <script src="{{{ scripts }}}"></script>
-    {% endfor %} {% endif %} {% endfor %}
-
-    <div id="sly-app">
-      <sly-app>
-        <template v-slot="{ post, state, data, session }">
-          <div
-            :style="{'padding': `${state.app_body_padding} ${state.app_body_padding} 0`, 'display': 'flex', 'flex-direction': 'row', 'place-items': 'center'}"
-            {%
-            if
-            __app_session_info_solid__
-            %}
-            {%
-            if
-            __app_session_info_extra_content__
-            %}
-            class="app-session-header-solid extended-app-header"
-            {%
-            else
-            %}
-            class="app-session-header-solid"
-            {%
-            endif
-            %}
-            {%
-            else
-            %}
-            {%
-            if
-            __app_session_info_extra_content__
-            %}
-            class="extended-app-header"
-            {%
-            endif
-            %}
-            {%
-            endif
-            %}
-          >
-            <sly-app-header
-              v-if="session"
-              :session="session"
-              :data="data"
-              :state="state"
-            ></sly-app-header>
-            {% if __app_session_info_extra_content__ %}
-            {{{__app_session_info_extra_content__}}} {% endif %}
-          </div>
-          <div
-            :style="{'padding': `0 ${state.app_body_padding} ${state.app_body_padding}`}"
-          >
-            {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
-            %} {% include 'main.html' %} {% endif %} {% include
-            'dialog_window.html' %}
-          </div>
-        </template>
-      </sly-app>
+<body style="background-color: #f4f7fe">
+  <center>
+    <div id="app-global-loading-icon">
+      <img src="https://app.supervise.ly/loading.gif" />
     </div>
+  </center>
+  <script
+    src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
+  <script type="module"
+    src="https://cdn.jsdelivr.net/gh/supervisely-ecosystem/supervisely-app-frontend-js@v{{{js_frontend_version}}}/SlyApp.js"></script>
+  <script>
+    window.parent.postMessage('{ "showHeader": false }', "*");
+  </script>
 
-    <!-- Offline session styles fix -->
-    <script>
-      let resizeCounter = 0;
-      let resizeInterval = setInterval(() => {
-        resizeCounter += 1;
-        window.dispatchEvent(new Event("resize"));
+  {% for scripts in __widget_scripts__.values() %} {% if scripts is string %}
+  <script src="{{{ scripts }}}"></script>
+  {% else %} {% for scripts in scripts %}
+  <script src="{{{ scripts }}}"></script>
+  {% endfor %} {% endif %} {% endfor %}
 
-        if (resizeCounter > 3) {
-          clearInterval(resizeInterval);
-        }
-      }, 2000);
-    </script>
-    <!-- Hot reload script -->
-    {% if HOTRELOAD %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}}
-    {% endif %}
-  </body>
+  <div id="sly-app">
+    <sly-app>
+      <template v-slot="{ post, state, data, session }">
+        <div
+          :style="{'padding': `${state.app_body_padding} ${state.app_body_padding} 0`, 'display': 'flex', 'flex-direction': 'row', 'place-items': 'center'}"
+          {% if __app_session_info_solid__ %} {% if __app_session_info_extra_content__ %}
+          class="app-session-header-solid extended-app-header" {% else %} class="app-session-header-solid" {% endif %}
+          {% else %} {% if __app_session_info_extra_content__ %} class="extended-app-header" {% endif %} {% endif %}>
+          <sly-app-header v-if="session" :session="session" :data="data" :state="state"></sly-app-header>
+          {% if __app_session_info_extra_content__ %}
+          {{{__app_session_info_extra_content__}}} {% endif %}
+        </div>
+        <div :style="{'padding': `0 ${state.app_body_padding} ${state.app_body_padding}`}">
+          {% if __no_html_mode__ %} {% include 'no_html_main.html' %} {% else
+          %} {% include 'main.html' %} {% endif %} {% include
+          'dialog_window.html' %}
+        </div>
+      </template>
+    </sly-app>
+  </div>
+
+  <!-- Offline session styles fix -->
+  <script>
+    let resizeCounter = 0;
+    let resizeInterval = setInterval(() => {
+      resizeCounter += 1;
+      window.dispatchEvent(new Event("resize"));
+
+      if (resizeCounter > 3) {
+        clearInterval(resizeInterval);
+      }
+    }, 2000);
+
+    let pyodide = null;
+    let mainScriptTxt = null;
+
+    async function loadMainPythonScript() {
+      pyodide = await loadPyodide();
+      await pyodide.loadPackage(["numpy", "opencv-python"]);
+
+      mainScriptTxt = await fetch("./main.py").then((response) => response.text());
+    }
+
+    let initPromise = null;
+
+    async function runPythonScript(...params) {
+      if (initPromise) {
+        await initPromise;
+        initPromise = null;
+      }
+
+      let result;
+      const timeStart = performance.now();
+
+      const fn = pyodide.runPython(mainScriptTxt);
+      if (typeof fn === "function") {
+        const newParams = params.map(p => pyodide.toPy(p));
+        result = fn(...newParams);
+      } else {
+        result = fn;
+      }
+
+      const timeEnd = performance.now();
+      console.log("Web Python script executed in", timeEnd - timeStart, "ms");
+
+      return result;
+    }
+
+    const runPythonScriptThrottled = _.throttle(runPythonScript, 50);
+
+    initPromise = loadMainPythonScript();
+  </script>
+  <!-- Hot reload script -->
+  {% if HOTRELOAD %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}}
+  {% endif %}
+</body>
+
 </html>
