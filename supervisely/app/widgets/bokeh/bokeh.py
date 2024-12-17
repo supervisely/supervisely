@@ -165,7 +165,7 @@ class Bokeh(Widget):
         def _html_response() -> None:
             return HTMLResponse(content=self.get_html())
 
-        JinjaWidgets().context.pop(self.widget_id, None)  # remove the widget from index.html
+        # JinjaWidgets().context.pop(self.widget_id, None)  # remove the widget from index.html
 
     @property
     def route_path(self) -> str:
