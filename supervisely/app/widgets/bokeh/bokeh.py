@@ -5,9 +5,6 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
-from bokeh.embed import components
-from bokeh.models import ColumnDataSource, CustomJS, LassoSelectTool
-from bokeh.plotting import figure
 from fastapi.responses import HTMLResponse
 
 from supervisely.app.widgets import Widget
@@ -21,7 +18,7 @@ class Bokeh(Widget):
 
     class Plot(ABC):
         @abstractmethod
-        def add(self, plot: figure) -> None:
+        def add(self, plot) -> None:
             pass
 
         @abstractmethod
@@ -71,7 +68,12 @@ class Bokeh(Widget):
             self._fill_alpha = fill_alpha
             self._line_color = line_color
 
-        def add(self, plot: figure) -> None:
+        def add(self, plot) -> None:
+            from bokeh.models import (  # pylint: disable=import-error
+                ColumnDataSource,
+                LassoSelectTool,
+            )
+
             data = dict(
                 x=self._x_coordinates,
                 y=self._y_coordinates,
@@ -98,7 +100,8 @@ class Bokeh(Widget):
             return renderer
 
         def register(self, route_path: str) -> None:
-            print(route_path)
+            from bokeh.models import CustomJS  # pylint: disable=import-error
+
             if not hasattr(self, "_source"):
                 raise ValueError("Plot must be added to a Bokeh plot before registering")
             callback = CustomJS(
@@ -141,6 +144,8 @@ class Bokeh(Widget):
         widget_id: Optional[str] = None,
         **kwargs,
     ):
+        from bokeh.plotting import figure  # pylint: disable=import-error
+
         self.widget_id = widget_id
         self._plots = plots
         self._plot = figure(width=width, height=height, tools=tools, toolbar_location="above")
@@ -190,6 +195,8 @@ class Bokeh(Widget):
             self._renderers.append(renderer)
 
     def _update_html(self) -> None:
+        from bokeh.embed import components  # pylint: disable=import-error
+
         script, self._div = components(self._plot, wrap_script=False)
         self._div_id = self._get_div_id(self._div)
         self._script = self._update_script(script)
