@@ -1,3 +1,4 @@
+import argparse
 import inspect
 import json
 import os
@@ -17,6 +18,7 @@ from urllib.request import urlopen
 
 import numpy as np
 import requests
+import uvicorn
 import yaml
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -24,8 +26,7 @@ from requests.structures import CaseInsensitiveDict
 
 import supervisely.app.development as sly_app_development
 import supervisely.imaging.image as sly_image
-import supervisely.io.env as env
-import supervisely.io.fs as fs
+import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
@@ -108,7 +109,7 @@ class Inference:
     ):
         if model_dir is None:
             model_dir = os.path.join(get_data_dir(), "models")
-            fs.mkdir(model_dir)
+            sly_fs.mkdir(model_dir)
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
@@ -128,7 +129,7 @@ class Inference:
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
         self._hardware: str = None
-        self.pretrained_models = self._load_models_json(self.MODELS) if self.MODELS else None
+        self.pretrained_models = self._load_json_file(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
                 custom_inference_settings = self.INFERENCE_SETTINGS
@@ -136,7 +137,7 @@ class Inference:
                 logger.debug("Custom inference settings are not provided.")
                 custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
-            if fs.file_exists(custom_inference_settings):
+            if sly_fs.file_exists(custom_inference_settings):
                 with open(custom_inference_settings, "r") as f:
                     custom_inference_settings = f.read()
             else:
@@ -146,11 +147,24 @@ class Inference:
         self._use_gui = use_gui
         self._use_serving_gui_template = use_serving_gui_template
         self._gui = None
+        self._args = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
+
+        self._is_local_deploy = sly_env.local_deploy()
+        if self._is_local_deploy:
+            self._args = self._parse_local_deployment_args()
+            self._use_gui = False
+            model_params, need_download = self._get_model_params_from_args(self._args)
+            if need_download:
+                local_model_files = self._download_model_files(
+                    model_params["model_source"], model_params["model_files"], False
+                )
+                model_params["model_files"] = local_model_files
+            self._load_model_headless(**model_params)
 
         if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -224,10 +238,10 @@ class Inference:
         self.get_info = self._check_serve_before_call(self.get_info)
 
         self.cache = InferenceImageCache(
-            maxsize=env.smart_cache_size(),
-            ttl=env.smart_cache_ttl(),
+            maxsize=sly_env.smart_cache_size(),
+            ttl=sly_env.smart_cache_ttl(),
             is_persistent=True,
-            base_folder=env.smart_cache_container_dir(),
+            base_folder=sly_env.smart_cache_container_dir(),
         )
 
     def get_batch_size(self):
@@ -247,19 +261,17 @@ class Inference:
                 )
                 device = "cpu"
 
-    def _load_models_json(self, models: str) -> List[Dict[str, Any]]:
+    def _load_json_file(self, file: str) -> List[Dict[str, Any]]:
         """
-        Loads models from the provided file or list of model configurations.
+        Loads dictionary from the provided file.
         """
-        if isinstance(models, str):
-            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
-                models = sly_json.load_json_file(models)
+        if isinstance(file, str):
+            if sly_fs.file_exists(file) and sly_fs.get_file_ext(file) == ".json":
+                models = sly_json.load_json_file(file)
             else:
                 raise ValueError("File not found or invalid file format.")
         else:
-            raise ValueError(
-                "Invalid models file. Please provide a valid '.json' file with list of model configurations."
-            )
+            raise ValueError("Invalid file. Please provide a valid '.json' file.")
 
         if not isinstance(models, list):
             raise ValueError("models parameters must be a list of dicts")
@@ -393,13 +405,13 @@ class Inference:
         else:
             progress = None
 
-        if fs.dir_exists(src_path) or fs.file_exists(
+        if sly_fs.dir_exists(src_path) or sly_fs.file_exists(
             src_path
         ):  # only during debug, has no effect in production
             dst_path = os.path.abspath(src_path)
             logger.info(f"File {dst_path} found.")
         elif src_path.startswith("/"):  # folder from Team Files
-            team_id = env.team_id()
+            team_id = sly_env.team_id()
 
             if src_path.endswith("/") and self.api.file.dir_exists(team_id, src_path):
 
@@ -435,7 +447,7 @@ class Inference:
                 def download_file(team_id, src_path, dst_path, progress_cb=None):
                     self.api.file.download(team_id, src_path, dst_path, progress_cb=progress_cb)
 
-                file_info = self.api.file.get_info_by_path(env.team_id(), src_path)
+                file_info = self.api.file.get_info_by_path(sly_env.team_id(), src_path)
                 if progress is None:
                     download_file(team_id, src_path, dst_path)
                 else:
@@ -450,8 +462,8 @@ class Inference:
                 logger.info(f"📥 File {basename} has been successfully downloaded from Team Files")
                 logger.info(f"File {basename} path: {dst_path}")
         else:  # external url
-            if not fs.dir_exists(os.path.dirname(dst_path)):
-                fs.mkdir(os.path.dirname(dst_path))
+            if not sly_fs.dir_exists(os.path.dirname(dst_path)):
+                sly_fs.mkdir(os.path.dirname(dst_path))
 
             def download_external_file(url, save_path, progress=None):
                 def download_content(save_path, progress_cb=None):
@@ -530,13 +542,15 @@ class Inference:
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
-    def _download_model_files(self, model_source: str, model_files: List[str]) -> dict:
+    def _download_model_files(
+        self, model_source: str, model_files: List[str], log_progress: bool = True
+    ) -> dict:
         if model_source == ModelSource.PRETRAINED:
-            return self._download_pretrained_model(model_files)
+            return self._download_pretrained_model(model_files, log_progress)
         elif model_source == ModelSource.CUSTOM:
-            return self._download_custom_model(model_files)
+            return self._download_custom_model(model_files, log_progress)
 
-    def _download_pretrained_model(self, model_files: dict):
+    def _download_pretrained_model(self, model_files: dict, log_progress: bool = True):
         """
         Downloads the pretrained model data.
         """
@@ -563,48 +577,55 @@ class Inference:
                         logger.debug(f"Model: '{file_name}' was found in model dir")
                         continue
 
-                    with self.gui.download_progress(
-                        message=f"Downloading: '{file_name}'",
-                        total=file_size,
-                        unit="bytes",
-                        unit_scale=True,
-                    ) as download_pbar:
-                        self.gui.download_progress.show()
-                        sly_fs.download(
-                            url=file_url, save_path=file_path, progress=download_pbar.update
-                        )
+                    if log_progress:
+                        with self.gui.download_progress(
+                            message=f"Downloading: '{file_name}'",
+                            total=file_size,
+                            unit="bytes",
+                            unit_scale=True,
+                        ) as download_pbar:
+                            self.gui.download_progress.show()
+                            sly_fs.download(
+                                url=file_url, save_path=file_path, progress=download_pbar.update
+                            )
+                    else:
+                        sly_fs.download(url=file_url, save_path=file_path)
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
-        self.gui.download_progress.hide()
+
+        if log_progress:
+            self.gui.download_progress.hide()
         return local_model_files
 
-    def _download_custom_model(self, model_files: dict):
+    def _download_custom_model(self, model_files: dict, log_progress: bool = True):
         """
         Downloads the custom model data.
         """
-
-        team_id = env.team_id()
+        team_id = sly_env.team_id()
         local_model_files = {}
-
         for file in model_files:
             file_url = model_files[file]
             file_info = self.api.file.get_info_by_path(team_id, file_url)
             file_size = file_info.sizeb
             file_name = os.path.basename(file_url)
             file_path = os.path.join(self.model_dir, file_name)
-            with self.gui.download_progress(
-                message=f"Downloading: '{file_name}'",
-                total=file_size,
-                unit="bytes",
-                unit_scale=True,
-            ) as download_pbar:
-                self.gui.download_progress.show()
-                self.api.file.download(
-                    team_id, file_url, file_path, progress_cb=download_pbar.update
-                )
+            if log_progress:
+                with self.gui.download_progress(
+                    message=f"Downloading: '{file_name}'",
+                    total=file_size,
+                    unit="bytes",
+                    unit_scale=True,
+                ) as download_pbar:
+                    self.gui.download_progress.show()
+                    self.api.file.download(
+                        team_id, file_url, file_path, progress_cb=download_pbar.update
+                    )
+            else:
+                self.api.file.download(team_id, file_url, file_path)
             local_model_files[file] = file_path
-        self.gui.download_progress.hide()
+        if log_progress:
+            self.gui.download_progress.hide()
         return local_model_files
 
     def _load_model(self, deploy_params: dict):
@@ -672,7 +693,7 @@ class Inference:
                 model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
             )
             checkpoint_file_info = self.api.file.get_info_by_path(
-                env.team_id(), checkpoint_file_path
+                sly_env.team_id(), checkpoint_file_path
             )
             if checkpoint_file_info is None:
                 checkpoint_url = None
@@ -1246,18 +1267,18 @@ class Inference:
         logger.debug("Inferring image_url...", extra={"state": state})
         settings = self._get_inference_settings(state)
         image_url = state["image_url"]
-        ext = fs.get_file_ext(image_url)
+        ext = sly_fs.get_file_ext(image_url)
         if ext == "":
             ext = ".jpg"
         image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
-        fs.download(image_url, image_path)
+        sly_fs.download(image_url, image_path)
         logger.debug("Inference settings:", extra=settings)
         logger.debug(f"Downloaded path: {image_path}")
         anns, slides_data = self._inference_auto(
             [image_path],
             settings=settings,
         )
-        fs.silent_remove(image_path)
+        sly_fs.silent_remove(image_path)
         return self._format_output(anns, slides_data)[0]
 
     def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
@@ -2190,17 +2211,17 @@ class Inference:
 
         if is_debug_with_sly_net():
             # advanced debug for Supervisely Team
-            logger.warn(
+            logger.warning(
                 "Serving is running in advanced development mode with Supervisely VPN Network"
             )
-            team_id = env.team_id()
+            team_id = sly_env.team_id()
             # sly_app_development.supervisely_vpn_network(action="down") # for debug
             sly_app_development.supervisely_vpn_network(action="up")
             task = sly_app_development.create_debug_task(team_id, port="8000")
             self._task_id = task["id"]
             os.environ["TASK_ID"] = str(self._task_id)
         else:
-            self._task_id = env.task_id() if is_production() else None
+            self._task_id = sly_env.task_id() if is_production() else None
 
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
@@ -2211,6 +2232,13 @@ class Inference:
 
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)
+
+        if self._is_local_deploy:
+            uvicorn.run(self._app)
+            if self._args.predict is None:
+                # self._inference_by_args()
+                self._app.shutdown()
+                # exit()
 
         @call_on_autostart()
         def autostart_func():
@@ -2707,6 +2735,163 @@ class Inference:
         def _get_deploy_info():
             return asdict(self._get_deploy_info())
 
+    def _parse_local_deployment_args(self):
+        parser = argparse.ArgumentParser(description="Run Inference Serving")
+
+        # Define command-line arguments
+        parser.add_argument("--model", type=str, required=True, help="Path to the model directory")
+        parser.add_argument(
+            "--checkpoint", type=str, required=False, help="Path to the checkpoint file"
+        )
+        parser.add_argument(
+            "--device",
+            type=str,
+            choices=["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+            default="cuda:0",
+            help="Device to use for inference (default: 'cuda:0')",
+        )
+        parser.add_argument(
+            "--runtime",
+            type=str,
+            choices=[RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT],
+            default=RuntimeType.PYTORCH,
+            help="Runtime type for inference (default: PYTORCH)",
+        )
+        parser.add_argument("--predict", type=int, required=False, help="ID of the project")
+
+        # Parse arguments
+        args = parser.parse_args()
+        if args.model is None:
+            raise ValueError("Argument '--model' is required for local deployment")
+        return args
+
+    def _get_pretrained_model_params_from_args(self):
+        model_files = None
+        model_source = None
+        model_info = None
+        need_download = True
+
+        model = self._args.model
+        for m in self.pretrained_models:
+            meta = m.get("meta", None)
+            if meta is None:
+                continue
+            model_name = meta.get("model_name", None)
+            if model_name is None:
+                continue
+            m_files = meta.get("model_files", None)
+            if m_files is None:
+                continue
+            checkpoint = m_files.get("checkpoint", None)
+            if checkpoint is None:
+                continue
+            if model == m["meta"]["model_name"]:
+                model_info = m
+                model_source = ModelSource.PRETRAINED
+                model_files = {"checkpoint": checkpoint}
+                config = m_files.get("config", None)
+                if config is not None:
+                    model_files["config"] = config
+                break
+
+        return model_files, model_source, model_info, need_download
+
+    def _get_custom_model_params_from_args(self):
+        model_files = None
+        model_source = None
+        model_info = None
+        need_download = False
+
+        if not os.path.isdir(self._args.model):
+            raise ValueError(f"The specified model directory does not exist: {self._args.model}")
+        if not os.path.isfile(self._args.checkpoint):
+            raise ValueError(
+                f"The specified checkpoint file does not exist: {self._args.checkpoint}"
+            )
+
+        # Check if model dir local or remote
+        artifacts_dir = self._args.model
+        checkpoint_path = self._args.checkpoint
+        model_source = ModelSource.CUSTOM
+        if os.path.isfile(checkpoint_path):
+            experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
+            model_info = self._load_json_file(experiment_path)
+            original_model_files = model_info.get("model_files")
+            if original_model_files is None:
+                raise ValueError("Invalid 'experiment_info.json'. Couldn't get 'model_files' key.")
+            model_files = {}
+            for k, v in original_model_files.items():
+                model_files[k] = os.path.join(artifacts_dir, v)
+            model_files["checkpoint"] = checkpoint_path
+        else:
+            need_download = True
+            team_id = sly_env.team_id(raise_not_found=False)
+            if team_id is None:
+                raise ValueError(
+                    "Team ID not found in env. It is required for remote custom checkpoints"
+                )
+
+            checkpoint_file_info = self._api.file.get_info_by_path(team_id, checkpoint_path)
+            if checkpoint_file_info is not None:
+                artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+                local_artifacts_dir = os.path.join(
+                    self.model_dir, "local_deploy", os.path.dirname(artifacts_dir)
+                )
+                sly_fs.mkdir(local_artifacts_dir, True)
+
+                file_infos = self._api.file.list(team_id, artifacts_dir, False, "fileinfo")
+                remote_paths = [f.path for f in file_infos if not f.is_dir]
+                local_paths = [os.path.join(local_artifacts_dir, f.name) for f in remote_paths]
+                self._api.file.download_bulk_async(team_id, remote_paths, local_paths)
+                model_info = self._load_json_file(
+                    os.path.join(local_artifacts_dir, "experiment_info.json")
+                )
+
+                original_model_files = model_info.get("model_files")
+                if original_model_files is None:
+                    raise ValueError(
+                        "Invalid 'experiment_info.json'. Couldn't get 'model_files' key."
+                    )
+                model_files = {}
+                for k, v in original_model_files.items():
+                    model_files[k] = os.path.join(artifacts_dir, v)
+                model_files["checkpoint"] = checkpoint_path
+            else:
+                raise ValueError(f"Couldn't find: '{checkpoint_path}' in Team ID: '{team_id}'")
+
+        return model_files, model_source, model_info, need_download
+
+    def _get_model_params_from_args(self):
+        # Ensure model directory exists
+        device = self._args.device if self._args.device else "cuda:0"
+        runtime = self._args.runtime if self._args.runtime else RuntimeType.PYTORCH
+
+        model_files, model_source, model_info, need_download = (
+            self._get_pretrained_model_params_from_args()
+        )
+        if model_source is None:
+            model_files, model_source, model_info, need_download = (
+                self._get_custom_model_params_from_args()
+            )
+
+        if model_source is None:
+            raise ValueError("Couldn't create 'model_source' from args")
+        if model_files is None:
+            raise ValueError("Couldn't create 'model_files' from args")
+        if model_info is None:
+            raise ValueError("Couldn't create 'model_info' from args")
+
+        model_params = {
+            "model_files": model_files,
+            "model_source": model_source,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+        }
+
+        print(model_params)
+        return model_params, need_download
+
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
     log_extra = {
@@ -2979,7 +3164,7 @@ class TempImageWriter:
     def __init__(self, format: str = "png"):
         self.format = format
         self.temp_dir = os.path.join(get_data_dir(), rand_str(10))
-        fs.mkdir(self.temp_dir)
+        sly_fs.mkdir(self.temp_dir)
 
     def write(self, image: np.ndarray):
         image_path = os.path.join(self.temp_dir, f"{rand_str(10)}.{self.format}")
@@ -2987,7 +3172,7 @@ class TempImageWriter:
         return image_path
 
     def clean(self):
-        fs.remove_dir(self.temp_dir)
+        sly_fs.remove_dir(self.temp_dir)
 
 
 def get_hardware_info(device: str) -> str:
