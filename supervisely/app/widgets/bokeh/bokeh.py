@@ -254,7 +254,7 @@ class Bokeh(Widget):
 
     def get_html(self) -> str:
         return f"""<div>
-            <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.2.min.js"></script>
+            <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-3.4.3.min.js"></script>
             <script type="text/javascript"> {self._script} </script>
             {self._div}
         </div>"""
