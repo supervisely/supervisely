@@ -133,6 +133,7 @@ class Inference:
             if self.INFERENCE_SETTINGS is not None:
                 custom_inference_settings = self.INFERENCE_SETTINGS
             else:
+                logger.debug("Custom inference settings are not provided.")
                 custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):

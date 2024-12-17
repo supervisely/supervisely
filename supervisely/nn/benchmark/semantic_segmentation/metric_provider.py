@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import numpy as np
 
@@ -65,7 +65,7 @@ class MetricProvider:
 
         # frequently confused classes
         self.frequently_confused = self.get_frequently_confused(
-            eval_data["confusion_matrix"].copy()
+            eval_data["confusion_matrix"].copy(), n_pairs=20
         )
 
     def json_metrics(self):
@@ -114,18 +114,17 @@ class MetricProvider:
         confusion_matrix = confusion_matrix[::-1]
         return confusion_matrix, class_names
 
-    def get_frequently_confused(self, confusion_matrix: np.ndarray):
-        n_pairs = 20
+    def get_frequently_confused(self, confusion_matrix: np.ndarray, n_pairs: Optional[int] = None):
 
-        non_diagonal_indexes = {}
+        non_diagonal_ids = {}
         for i, idx in enumerate(np.ndindex(confusion_matrix.shape)):
             if idx[0] != idx[1]:
-                non_diagonal_indexes[i] = idx
+                non_diagonal_ids[i] = idx
 
         indexes_1d = np.argsort(confusion_matrix, axis=None)
-        indexes_2d = [
-            non_diagonal_indexes[idx] for idx in indexes_1d if idx in non_diagonal_indexes
-        ][-n_pairs:]
+        indexes_2d = [non_diagonal_ids[idx] for idx in indexes_1d if idx in non_diagonal_ids]
+        if n_pairs is not None:
+            indexes_2d = indexes_2d[:n_pairs]
         indexes_2d = np.asarray(indexes_2d[::-1])
 
         rows = indexes_2d[:, 0]

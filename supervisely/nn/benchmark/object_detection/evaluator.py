@@ -104,7 +104,7 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         except AssertionError as e:
             raise ValueError(
                 f"{e}. Please make sure that your GT and DT projects are correct. "
-                "If GT project has nested datasets and DT project was crated with NN app, "
+                "If GT project has nested datasets and DT project was created with NN app, "
                 "try to use newer version of NN app."
             )
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)

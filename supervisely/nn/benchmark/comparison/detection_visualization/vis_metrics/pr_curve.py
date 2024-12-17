@@ -1,9 +1,7 @@
 import numpy as np
 
 from supervisely.imaging.color import hex2rgb
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
@@ -13,7 +11,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class PrCurve(BaseVisMetric):
+class PrCurve(BaseVisMetrics):
     MARKDOWN_PR_CURVE = "markdown_pr_curve"
     MARKDOWN_PR_TRADE_OFFS = "markdown_trade_offs"
     MARKDOWN_WHAT_IS_PR_CURVE = "markdown_what_is_pr_curve"
@@ -98,7 +96,7 @@ class PrCurve(BaseVisMetric):
             pr_curve[pr_curve == -1] = np.nan
             pr_curve = np.nanmean(pr_curve, axis=-1)
 
-            name = f"[{i}] {eval_result.model_name}"
+            name = f"[{i}] {eval_result.name}"
             color = ",".join(map(str, hex2rgb(eval_result.color))) + ",0.1"
             line = go.Scatter(
                 x=eval_result.mp.recThrs,

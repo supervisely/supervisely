@@ -1,7 +1,7 @@
-import datetime
-from pathlib import Path
+from typing import List
 
-import supervisely.nn.benchmark.comparison.detection_visualization.text_templates as vis_texts
+import supervisely.nn.benchmark.comparison.detection_visualization.text_templates as texts
+from supervisely.nn.benchmark.comparison.base_visualizer import BaseComparisonVisualizer
 from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics import (
     AveragePrecisionByClass,
     CalibrationScore,
@@ -13,7 +13,9 @@ from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics imp
     PrecisionRecallF1,
     Speedtest,
 )
-from supervisely.nn.benchmark.visualization.renderer import Renderer
+from supervisely.nn.benchmark.object_detection.evaluator import (
+    ObjectDetectionEvalResult,
+)
 from supervisely.nn.benchmark.visualization.widgets import (
     ContainerWidget,
     GalleryWidget,
@@ -22,22 +24,13 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class DetectionComparisonVisualizer:
-    def __init__(self, comparison):
-        self.comparison = comparison
-        self.api = comparison.api
-        self.vis_texts = vis_texts
+class DetectionComparisonVisualizer(BaseComparisonVisualizer):
+    vis_texts = texts
+    ann_opacity = 0.5
 
-        self._create_widgets()
-        layout = self._create_layout()
-
-        self.renderer = Renderer(layout, str(Path(self.comparison.workdir, "visualizations")))
-
-    def visualize(self):
-        return self.renderer.visualize()
-
-    def upload_results(self, team_id: int, remote_dir: str, progress=None):
-        return self.renderer.upload_results(self.api, team_id, remote_dir, progress)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.eval_results: List[ObjectDetectionEvalResult]
 
     def _create_widgets(self):
         # Modal Gellery
@@ -48,10 +41,11 @@ class DetectionComparisonVisualizer:
         self.clickable_label = self._create_clickable_label()
 
         # Speedtest init here for overview
-        speedtest = Speedtest(self.vis_texts, self.comparison.evaluation_results)
+        speedtest = Speedtest(self.vis_texts, self.comparison.eval_results)
 
         # Overview
-        overview = Overview(self.vis_texts, self.comparison.evaluation_results)
+        overview = Overview(self.vis_texts, self.comparison.eval_results)
+        overview.team_id = self.comparison.team_id
         self.header = self._create_header()
         self.overviews = self._create_overviews(overview)
         self.overview_md = overview.overview_md
@@ -61,11 +55,11 @@ class DetectionComparisonVisualizer:
         )
         self.overview_chart = overview.chart_widget
 
-        columns_number = len(self.comparison.evaluation_results) + 1  # +1 for GT
+        columns_number = len(self.comparison.eval_results) + 1  # +1 for GT
         self.explore_predictions_modal_gallery = self._create_explore_modal_table(columns_number)
         explore_predictions = ExplorePredictions(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_predictions_modal_gallery,
         )
         self.explore_predictions_md = explore_predictions.difference_predictions_md
@@ -74,7 +68,7 @@ class DetectionComparisonVisualizer:
         # Outcome Counts
         outcome_counts = OutcomeCounts(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_modal_table,
         )
         self.outcome_counts_md = self._create_outcome_counts_md()
@@ -83,7 +77,7 @@ class DetectionComparisonVisualizer:
         self.outcome_counts_comparison = outcome_counts.chart_widget_comparison
 
         # Precision-Recall Curve
-        pr_curve = PrCurve(self.vis_texts, self.comparison.evaluation_results)
+        pr_curve = PrCurve(self.vis_texts, self.comparison.eval_results)
         self.pr_curve_md = pr_curve.markdown_widget
         self.pr_curve_collapsed_widgets = pr_curve.collapsed_widget
         self.pr_curve_table = pr_curve.table_widget
@@ -92,7 +86,7 @@ class DetectionComparisonVisualizer:
         # Average Precision by Class
         avg_prec_by_class = AveragePrecisionByClass(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_modal_table,
         )
         self.avg_prec_by_class_md = avg_prec_by_class.markdown_widget
@@ -101,7 +95,7 @@ class DetectionComparisonVisualizer:
         # Precision, Recall, F1
         precision_recall_f1 = PrecisionRecallF1(
             self.vis_texts,
-            self.comparison.evaluation_results,
+            self.comparison.eval_results,
             explore_modal_table=self.explore_modal_table,
         )
         self.precision_recall_f1_md = precision_recall_f1.markdown_widget
@@ -118,14 +112,14 @@ class DetectionComparisonVisualizer:
         # TODO: ???
 
         # Localization Accuracy (IoU)
-        loc_acc = LocalizationAccuracyIoU(self.vis_texts, self.comparison.evaluation_results)
+        loc_acc = LocalizationAccuracyIoU(self.vis_texts, self.comparison.eval_results)
         self.loc_acc_header_md = loc_acc.header_md
         self.loc_acc_iou_distribution_md = loc_acc.iou_distribution_md
         self.loc_acc_chart = loc_acc.chart
         self.loc_acc_table = loc_acc.table_widget
 
         # Calibration Score
-        cal_score = CalibrationScore(self.vis_texts, self.comparison.evaluation_results)
+        cal_score = CalibrationScore(self.vis_texts, self.comparison.eval_results)
         self.cal_score_md = cal_score.header_md
         self.cal_score_md_2 = cal_score.header_md_2
         self.cal_score_collapse_tip = cal_score.collapse_tip
@@ -140,6 +134,7 @@ class DetectionComparisonVisualizer:
 
         # SpeedTest
         self.speedtest_present = False
+        self.speedtest_multiple_batch_sizes = False
         if not speedtest.is_empty():
             self.speedtest_present = True
             self.speedtest_md_intro = speedtest.md_intro
@@ -148,8 +143,10 @@ class DetectionComparisonVisualizer:
             self.speed_inference_time_table = speedtest.inference_time_table
             self.speed_fps_md = speedtest.fps_md
             self.speed_fps_table = speedtest.fps_table
-            self.speed_batch_inference_md = speedtest.batch_inference_md
-            self.speed_chart = speedtest.chart
+            self.speedtest_multiple_batch_sizes = speedtest.multiple_batche_sizes()
+            if self.speedtest_multiple_batch_sizes:
+                self.speed_batch_inference_md = speedtest.batch_inference_md
+                self.speed_chart = speedtest.chart
 
     def _create_layout(self):
         is_anchors_widgets = [
@@ -216,10 +213,11 @@ class DetectionComparisonVisualizer:
                     (0, self.speed_inference_time_table),
                     (0, self.speed_fps_md),
                     (0, self.speed_fps_table),
-                    (0, self.speed_batch_inference_md),
-                    (0, self.speed_chart),
                 ]
             )
+            if self.speedtest_multiple_batch_sizes:
+                is_anchors_widgets.append((0, self.speed_batch_inference_md))
+                is_anchors_widgets.append((0, self.speed_chart))
         anchors = []
         for is_anchor, widget in is_anchors_widgets:
             if is_anchor:
@@ -231,30 +229,6 @@ class DetectionComparisonVisualizer:
             name="main_container",
         )
         return layout
-
-    def _create_header(self) -> MarkdownWidget:
-        me = self.api.user.get_my_info().login
-        current_date = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
-        header_main_text = " ∣ ".join(  #  vs. or | or ∣
-            eval_res.name for eval_res in self.comparison.evaluation_results
-        )
-        header_text = self.vis_texts.markdown_header.format(header_main_text, me, current_date)
-        header = MarkdownWidget("markdown_header", "Header", text=header_text)
-        return header
-
-    def _create_overviews(self, vm: Overview) -> ContainerWidget:
-        grid_cols = 2
-        if len(vm.overview_widgets) > 2:
-            grid_cols = 3
-        if len(vm.overview_widgets) % 4 == 0:
-            grid_cols = 4
-        return ContainerWidget(
-            vm.overview_widgets,
-            name="overview_container",
-            title="Overview",
-            grid=True,
-            grid_cols=grid_cols,
-        )
 
     def _create_key_metrics(self) -> MarkdownWidget:
         key_metrics_text = self.vis_texts.markdown_key_metrics.format(
@@ -277,22 +251,3 @@ class DetectionComparisonVisualizer:
         return MarkdownWidget(
             "markdown_outcome_counts_diff", "Outcome Counts Differences", text=outcome_counts_text
         )
-
-    def _create_explore_modal_table(self, columns_number=3):
-        # TODO: table for each evaluation?
-        all_predictions_modal_gallery = GalleryWidget(
-            "all_predictions_modal_gallery", is_modal=True, columns_number=columns_number
-        )
-        all_predictions_modal_gallery.set_project_meta(
-            self.comparison.evaluation_results[0].dt_project_meta
-        )
-        return all_predictions_modal_gallery
-
-    def _create_diff_modal_table(self, columns_number=3) -> GalleryWidget:
-        diff_modal_gallery = GalleryWidget(
-            "diff_predictions_modal_gallery", is_modal=True, columns_number=columns_number
-        )
-        return diff_modal_gallery
-
-    def _create_clickable_label(self):
-        return MarkdownWidget("clickable_label", "", text=self.vis_texts.clickable_label)
