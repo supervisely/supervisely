@@ -2756,7 +2756,7 @@ class Inference:
     def _parse_local_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
-        # Define command-line arguments
+        # Deploy params
         parser.add_argument("--model", type=str, required=True, help="Path to the model directory")
         parser.add_argument(
             "--checkpoint", type=str, required=False, help="Path to the checkpoint file"
@@ -2775,7 +2775,31 @@ class Inference:
             default=RuntimeType.PYTORCH,
             help="Runtime type for inference (default: PYTORCH)",
         )
-        parser.add_argument("--predict", required=False, help="ID of the project")
+        # -------------------------- #
+
+        # Predict args
+        parser.add_argument(
+            "--predict-dir", type=str, required=False, help="Path to local directory with images"
+        )
+        parser.add_argument(
+            "--predict-project-id", type=int, required=False, help="ID of the project"
+        )
+        parser.add_argument(
+            "--predict-dataset-id", type=int, required=False, help="ID of the dataset"
+        )
+        # -------------------------- #
+
+        # Output args
+        parser.add_argument(
+            "--output", type=str, required=False, help="Name of a new project or dataset"
+        )
+        parser.add_argument(
+            "--output-dir",
+            type=str,
+            required=False,
+            help="Name of the output directory where predictions will be saved",
+        )
+        # -------------------------- #
 
         # Parse arguments
         args = parser.parse_args()
@@ -2922,9 +2946,19 @@ class Inference:
 
     def _inference_by_local_deploy_args(self):
         if isinstance(self._args.predict, int):
+            source_project = self.api.project.get_info_by_id(self._args.predict)
+            workspace_id = source_project.workspace_id
+            output_project = self.api.project.create(
+                workspace_id, self._args.output, change_name_if_conflict=True
+            )
+
             results = self._inference_project_id(
                 api=self.api,
-                state={"projectId": self._args.predict, "output_project_id": self._args.predict},
+                state={
+                    "projectId": self._args.predict,
+                    "dataset_ids": None,
+                    "output_project_id": output_project.id,
+                },
             )
         elif isinstance(self._args.predict, str):
             if sly_fs.file_exists(self._args.predict):
