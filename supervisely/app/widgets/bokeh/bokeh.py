@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-import os
 import re
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from bokeh.embed import components
 from bokeh.models import ColumnDataSource, CustomJS, LassoSelectTool
 from bokeh.plotting import figure
+from fastapi.responses import HTMLResponse
 
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
@@ -16,6 +17,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 class Bokeh(Widget):
     class Routes:
         VALUE_CHANGED = "value_changed"
+        GET_HTML_ROUTE = "bokeh.html"
 
     class Plot(ABC):
         @abstractmethod
@@ -143,14 +145,33 @@ class Bokeh(Widget):
         self._plots = plots
         self._plot = figure(width=width, height=height, tools=tools, toolbar_location="above")
         self._renderers = []
-        self._process_plots(plots)
 
         self._plot.xaxis.visible = x_axis_visible
         self._plot.yaxis.visible = y_axis_visible
         self._plot.grid.visible = grid_visible
+        self._process_plots(plots)
         self._update_html()
 
         super().__init__(widget_id=widget_id, file_path=__file__)
+
+        server = self._sly_app.get_server()
+
+        @server.get(self.html_route)
+        def _html_response() -> None:
+            return HTMLResponse(content=self.get_html())
+
+        JinjaWidgets().context.pop(self.widget_id, None)  # remove the widget from index.html
+
+    @property
+    def route_path(self) -> str:
+        return self.get_route_path(Bokeh.Routes.VALUE_CHANGED)
+
+    @property
+    def html_route(self) -> str:
+        return self.get_route_path(Bokeh.Routes.GET_HTML_ROUTE)
+
+    def get_html_route_with_timestamp(self) -> str:
+        return f"{self.html_route}?t={datetime.now().timestamp()}"
 
     def add_plots(self, plots: List[Plot]) -> None:
         self._plots.extend(plots)
@@ -171,7 +192,7 @@ class Bokeh(Widget):
     def _update_html(self) -> None:
         script, self._div = components(self._plot, wrap_script=False)
         self._div_id = self._get_div_id(self._div)
-        self._add_script(self._update_script(script))
+        self._script = self._update_script(script)
 
     @staticmethod
     def _generate_colors(x_coordinates: List[int], y_coordinates: List[int]) -> List[str]:
@@ -186,13 +207,6 @@ class Bokeh(Widget):
     @staticmethod
     def _generate_radii(x_coordinates: List[int], y_coordinates: List[int]) -> List[int]:
         return [1] * len(x_coordinates)
-
-    def _add_script(self, script: str) -> str:
-        local_save_path = os.path.join(os.path.dirname(__file__), "script.js")
-        with open(local_save_path, "w") as f:
-            f.write(script)
-        page_script_path = "./sly/css/app/widgets/bokeh/script.js"
-        JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = page_script_path
 
     def _get_div_id(self, div: str) -> str:
         match = re.search(r'id="([^"]+)"', div)
@@ -220,10 +234,6 @@ class Bokeh(Widget):
     def get_json_state(self):
         return {}
 
-    @property
-    def route_path(self) -> str:
-        return self.get_route_path(Bokeh.Routes.VALUE_CHANGED)
-
     def value_changed(self, func: Callable) -> Callable:
         server = self._sly_app.get_server()
         self._changes_handled = True
@@ -234,3 +244,10 @@ class Bokeh(Widget):
             func(res)
 
         return _click
+
+    def get_html(self) -> str:
+        return f"""<div>
+            <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-3.6.2.min.js"></script>
+            <script type="text/javascript"> {self._script} </script>
+            {self._div}
+        </div>"""
