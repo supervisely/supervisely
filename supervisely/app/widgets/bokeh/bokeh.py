@@ -176,7 +176,7 @@ class Bokeh(Widget):
         return self.get_route_path(Bokeh.Routes.GET_HTML_ROUTE)
 
     def get_html_route_with_timestamp(self) -> str:
-        return f"{self.html_route}?t={datetime.now().timestamp()}"
+        return f".{self.html_route}?t={datetime.now().timestamp()}"
 
     def add_plots(self, plots: List[Plot]) -> None:
         self._plots.extend(plots)
