@@ -32,8 +32,8 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
 class VolumeDataset(VideoDataset):
     item_dir_name = "volume"
-    interpolation_dir = "interpolation"
-    mask_dir = "mask"
+    interpolation_dir_name = "interpolation"
+    mask_dir_name = "mask"
     annotation_class = VolumeAnnotation
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
@@ -53,13 +53,13 @@ class VolumeDataset(VideoDataset):
         return self.annotation_class(volume_meta)
 
     def get_interpolation_dir(self, item_name):
-        return os.path.join(self.directory, self.interpolation_dir, item_name)
+        return os.path.join(self.directory, self.interpolation_dir_name, item_name)
 
     def get_interpolation_path(self, item_name, figure):
         return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
 
     def get_mask_dir(self, item_name):
-        return os.path.join(self.directory, self.mask_dir, item_name)
+        return os.path.join(self.directory, self.mask_dir_name, item_name)
 
     def get_mask_path(self, item_name, figure):
         return os.path.join(self.get_mask_dir(item_name), figure.key().hex + ".nrrd")
@@ -295,6 +295,12 @@ class VolumeProject(VideoProject):
         """
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
+        )
+
+    @staticmethod
+    async def download_async():
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for VolumeProject class now."
         )
 
 

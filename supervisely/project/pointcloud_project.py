@@ -858,6 +858,12 @@ class PointcloudProject(VideoProject):
             progress_cb=progress_cb,
         )
 
+    @staticmethod
+    async def download_async():
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for PointcloudProject class now."
+        )
+
 
 def download_pointcloud_project(
     api: Api,

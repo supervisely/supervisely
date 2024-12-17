@@ -63,6 +63,9 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     #: :class:`str`: Items data directory name
     item_dir_name = "pointcloud"
 
+    #: :class:`str`: KITTI items directory name
+    kitti_item_dir_name = "velodyne"
+
     #: :class:`str`: Annotations directory name
     ann_dir_name = "ann"
 
@@ -153,9 +156,10 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     def _read(self):
         if not dir_exists(self.item_dir):
-            raise NotADirectoryError(
-                f"Cannot read dataset {self.name}: {self.item_dir} directory not found"
-            )
+            message = f"Cannot read dataset '{self.name}': '{self.item_dir}' directory not found"
+            if dir_exists(os.path.join(self.directory, self.kitti_item_dir_name)):
+                message = f"Cannot read dataset '{self.name}'. The directory '{self.kitti_item_dir_name}' was found. This appears to be a KITTI dataset and will be skipped."
+            raise NotADirectoryError(message)
 
         try:
             item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
@@ -624,6 +628,12 @@ class PointcloudEpisodeProject(PointcloudProject):
             project_name=project_name,
             log_progress=log_progress,
             progress_cb=progress_cb,
+        )
+
+    @staticmethod
+    async def download_async():
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for PointcloudEpisodeProject class now."
         )
 
 
