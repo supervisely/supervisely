@@ -157,15 +157,15 @@ class Inference:
 
         self._is_local_deploy = sly_env.local_deploy()
         if self._is_local_deploy:
-            self._args = self._parse_local_deployment_args()
+            self._args = self._parse_local_deploy_args()
             self._use_gui = False
-            model_params, need_download = self._get_model_params_from_args()
+            deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
                 local_model_files = self._download_model_files(
-                    model_params["model_source"], model_params["model_files"], False
+                    deploy_params["model_source"], deploy_params["model_files"], False
                 )
-                model_params["model_files"] = local_model_files
-            self._load_model_headless(**model_params)
+                deploy_params["model_files"] = local_model_files
+            self._load_model_headless(**deploy_params)
 
         if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -2235,14 +2235,23 @@ class Inference:
         self._app.set_ready_check_function(self.is_model_deployed)
 
         if self._is_local_deploy:
+            # Start server
             server_thread = threading.Thread(target=self._run_server)
             server_thread.start()
             time.sleep(2)
-            self._inference_by_args()
-            self._app.shutdown()
-            self._uvicorn_server.shutdown()
-            time.sleep(2)
-            exit()
+
+            # Predict and shutdown
+            if self._args.predict is not None:
+                self._inference_by_local_deploy_args()
+                # Gracefully shut down the server
+                self._app.shutdown()
+                logger.info("Shutting down the server...")
+                if self._uvicorn_server:
+                    self._uvicorn_server.should_exit = True
+
+                server_thread.join()
+                logger.info("Server terminated.")
+                exit()
 
         @call_on_autostart()
         def autostart_func():
@@ -2739,7 +2748,7 @@ class Inference:
         def _get_deploy_info():
             return asdict(self._get_deploy_info())
 
-    def _parse_local_deployment_args(self):
+    def _parse_local_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Define command-line arguments
@@ -2844,7 +2853,7 @@ class Inference:
             if checkpoint_file_info is not None:
                 artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
                 local_artifacts_dir = os.path.join(
-                    self.model_dir, "local_deploy", os.path.dirname(artifacts_dir)
+                    self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
                 )
                 sly_fs.mkdir(local_artifacts_dir, True)
 
@@ -2870,7 +2879,7 @@ class Inference:
 
         return model_files, model_source, model_info, need_download
 
-    def _get_model_params_from_args(self):
+    def _get_deploy_params_from_args(self):
         # Ensure model directory exists
         device = self._args.device if self._args.device else "cuda:0"
         runtime = self._args.runtime if self._args.runtime else RuntimeType.PYTORCH
@@ -2890,7 +2899,7 @@ class Inference:
         if model_info is None:
             raise ValueError("Couldn't create 'model_info' from args")
 
-        model_params = {
+        deploy_params = {
             "model_files": model_files,
             "model_source": model_source,
             "model_info": model_info,
@@ -2898,15 +2907,15 @@ class Inference:
             "runtime": runtime,
         }
 
-        print(model_params)
-        return model_params, need_download
+        logger.info(f"Deploy parameters: {deploy_params}")
+        return deploy_params, need_download
 
     def _run_server(self):
-        config = uvicorn.Config(app=self._app)  # , host="0.0.0.0", port=8000)
+        config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
 
-    def _inference_by_args(self):
+    def _inference_by_local_deploy_args(self):
         if isinstance(self._args.predict, int):
             results = self._inference_project_id(
                 api=self.api,
@@ -2914,23 +2923,27 @@ class Inference:
             )
         elif isinstance(self._args.predict, str):
             if sly_fs.file_exists(self._args.predict):
-                ann: Annotation = self._inference_image_path(
-                    image_path=self._args.predict,
-                    settings={"settings": {"inference_mode": "full_image"}},
-                    data_to_return={},
-                )
                 img = sly_image.read(self._args.predict)
-                ann.draw(img)
-                pred_path = os.path.join(
-                    os.path.dirname(self._args.predict),
-                    "pred_" + os.path.basename(self._args.predict),
-                )
-                sly_image.write(pred_path, img)
+                settings = self._get_inference_settings({})
+                anns, _ = self._inference_auto([img], settings)
+                if len(anns) > 0:
+                    ann = anns[0]
+                    pred_ann_path = os.path.join(
+                        os.path.dirname(self._args.predict),
+                        "pred_" + os.path.basename(self._args.predict) + ".json",
+                    )
+                    sly_json.dump_json_file(ann.to_json(), pred_ann_path)
 
-            # elif sly_fs.dir_exists(self._args.predict):
-            #     results = self._inference_image_path(
-            #         {"batch_size": 1}, [UploadFile(file=self._args.predict)]
-            #     )
+                    # Save image for debug
+                    ann.draw_pretty(img)
+                    pred_path = os.path.join(
+                        os.path.dirname(self._args.predict),
+                        "pred_" + os.path.basename(self._args.predict),
+                    )
+                    sly_image.write(pred_path, img)
+
+        elif sly_fs.dir_exists(self._args.predict):
+            pass
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
