@@ -107,9 +107,14 @@ class Inference:
         multithread_inference: Optional[bool] = True,
         use_serving_gui_template: Optional[bool] = False,
     ):
+        self._is_local_deploy = sly_env.local_deploy()
         if model_dir is None:
-            model_dir = os.path.join(get_data_dir(), "models")
-            sly_fs.mkdir(model_dir)
+            if self._is_local_deploy is True:
+                model_dir = "~/.cache/supervisely/app_data"
+            else:
+                model_dir = os.path.join(get_data_dir(), "models")
+        sly_fs.mkdir(model_dir)
+
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
@@ -155,7 +160,6 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        self._is_local_deploy = sly_env.local_deploy()
         if self._is_local_deploy:
             self._args = self._parse_local_deploy_args()
             self._use_gui = False
@@ -2222,7 +2226,8 @@ class Inference:
             self._task_id = task["id"]
             os.environ["TASK_ID"] = str(self._task_id)
         else:
-            self._task_id = sly_env.task_id() if is_production() else None
+            if not self._is_local_deploy:
+                self._task_id = sly_env.task_id() if is_production() else None
 
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
