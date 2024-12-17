@@ -148,6 +148,7 @@ class Inference:
         self._use_serving_gui_template = use_serving_gui_template
         self._gui = None
         self._args = None
+        self._uvicorn_server = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
@@ -158,7 +159,7 @@ class Inference:
         if self._is_local_deploy:
             self._args = self._parse_local_deployment_args()
             self._use_gui = False
-            model_params, need_download = self._get_model_params_from_args(self._args)
+            model_params, need_download = self._get_model_params_from_args()
             if need_download:
                 local_model_files = self._download_model_files(
                     model_params["model_source"], model_params["model_files"], False
@@ -2234,11 +2235,14 @@ class Inference:
         self._app.set_ready_check_function(self.is_model_deployed)
 
         if self._is_local_deploy:
-            uvicorn.run(self._app)
-            if self._args.predict is None:
-                # self._inference_by_args()
-                self._app.shutdown()
-                # exit()
+            server_thread = threading.Thread(target=self._run_server)
+            server_thread.start()
+            time.sleep(2)
+            self._inference_by_args()
+            self._app.shutdown()
+            self._uvicorn_server.shutdown()
+            time.sleep(2)
+            exit()
 
         @call_on_autostart()
         def autostart_func():
@@ -2757,12 +2761,17 @@ class Inference:
             default=RuntimeType.PYTORCH,
             help="Runtime type for inference (default: PYTORCH)",
         )
-        parser.add_argument("--predict", type=int, required=False, help="ID of the project")
+        parser.add_argument("--predict", required=False, help="ID of the project")
 
         # Parse arguments
         args = parser.parse_args()
         if args.model is None:
             raise ValueError("Argument '--model' is required for local deployment")
+
+        if args.predict is not None:
+            if args.predict.isdigit():
+                args.predict = int(args.predict)
+
         return args
 
     def _get_pretrained_model_params_from_args(self):
@@ -2891,6 +2900,37 @@ class Inference:
 
         print(model_params)
         return model_params, need_download
+
+    def _run_server(self):
+        config = uvicorn.Config(app=self._app)  # , host="0.0.0.0", port=8000)
+        self._uvicorn_server = uvicorn.Server(config)
+        self._uvicorn_server.run()
+
+    def _inference_by_args(self):
+        if isinstance(self._args.predict, int):
+            results = self._inference_project_id(
+                api=self.api,
+                state={"projectId": self._args.predict, "output_project_id": self._args.predict},
+            )
+        elif isinstance(self._args.predict, str):
+            if sly_fs.file_exists(self._args.predict):
+                ann: Annotation = self._inference_image_path(
+                    image_path=self._args.predict,
+                    settings={"settings": {"inference_mode": "full_image"}},
+                    data_to_return={},
+                )
+                img = sly_image.read(self._args.predict)
+                ann.draw(img)
+                pred_path = os.path.join(
+                    os.path.dirname(self._args.predict),
+                    "pred_" + os.path.basename(self._args.predict),
+                )
+                sly_image.write(pred_path, img)
+
+            # elif sly_fs.dir_exists(self._args.predict):
+            #     results = self._inference_image_path(
+            #         {"batch_size": 1}, [UploadFile(file=self._args.predict)]
+            #     )
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
