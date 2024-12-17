@@ -144,6 +144,7 @@ class GridGalleryV2(Widget):
         title: str = "",
         column_index: int = None,
         ignore_tags_filtering: Union[bool, List[str]] = False,
+        call_update: bool = True,
     ):
         column_index = self.get_column_index(incoming_value=column_index)
         cell_uuid = str(
@@ -168,7 +169,8 @@ class GridGalleryV2(Widget):
             }
         )
 
-        self._update()
+        if call_update:
+            self._update()
         return cell_uuid
 
     def clean_up(self):

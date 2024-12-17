@@ -69,6 +69,7 @@ from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_requests_exception_async,
     process_unhandled_request,
+    RetryableRequestException,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -1011,6 +1012,7 @@ class Api:
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> httpx.Response:
         """
         Performs POST request to server with given parameters using httpx.
@@ -1031,6 +1033,8 @@ class Api:
         :type retries: int, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed.
         :type raise_error: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
@@ -1057,6 +1061,7 @@ class Api:
                     json=json,
                     params=params,
                     headers=headers,
+                    timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
@@ -1098,6 +1103,7 @@ class Api:
         params: httpx._types.QueryParamTypes,
         retries: Optional[int] = None,
         use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> httpx.Response:
         """
         Performs GET request to server with given parameters.
@@ -1110,6 +1116,8 @@ class Api:
         :type retries: int, optional
         :param use_public_api: Define if public API should be used. Default is True.
         :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
@@ -1131,7 +1139,12 @@ class Api:
         for retry_idx in range(retries):
             response = None
             try:
-                response = self.httpx_client.get(url, params=request_params, headers=self.headers)
+                response = self.httpx_client.get(
+                    url,
+                    params=request_params,
+                    headers=self.headers,
+                    timeout=timeout,
+                )
                 if response.status_code != httpx.codes.OK:
                     Api._raise_for_status_httpx(response)
                 return response
@@ -1170,7 +1183,7 @@ class Api:
         raise_error: Optional[bool] = False,
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
-        timeout: httpx._types.TimeoutTypes = 15,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> Generator:
         """
         Performs streaming GET or POST request to server with given parameters.
@@ -1271,16 +1284,20 @@ class Api:
                         Api._raise_for_status_httpx(resp)
 
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
-                    for chunk in resp.iter_raw(chunk_size):
-                        yield chunk, hhash
-                        total_streamed += len(chunk)
+                    try:
+                        for chunk in resp.iter_raw(chunk_size):
+                            yield chunk, hhash
+                            total_streamed += len(chunk)
+                    except Exception as e:
+                        raise RetryableRequestException(repr(e))
+
                     if expected_size != 0 and total_streamed != expected_size:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
                 if (
                     isinstance(e, httpx.HTTPStatusError)
                     and resp.status_code == 400
@@ -1325,6 +1342,7 @@ class Api:
         headers: Optional[Dict[str, str]] = None,
         retries: Optional[int] = None,
         raise_error: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> httpx.Response:
         """
         Performs POST request to server with given parameters using httpx.
@@ -1345,6 +1363,8 @@ class Api:
         :type retries: int, optional
         :param raise_error: Define, if you'd like to raise error if connection is failed.
         :type raise_error: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
         :return: Response object
         :rtype: :class:`httpx.Response`
         """
@@ -1371,6 +1391,7 @@ class Api:
                     json=json,
                     params=params,
                     headers=headers,
+                    timeout=timeout,
                 )
                 if response.status_code != httpx.codes.OK:
                     self._check_version()
@@ -1417,7 +1438,7 @@ class Api:
         range_end: Optional[int] = None,
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
-        timeout: httpx._types.TimeoutTypes = 15,
+        timeout: httpx._types.TimeoutTypes = 60,
     ) -> AsyncGenerator:
         """
         Performs asynchronous streaming GET or POST request to server with given parameters.
@@ -1437,7 +1458,7 @@ class Api:
         :type range_start: int, optional
         :param range_end: End byte position for streaming.
         :type range_end: int, optional
-        :param chunk_size: Size of the chunk to read from the stream.
+        :param chunk_size: Size of the chunk to read from the stream. Default is 8192.
         :type chunk_size: int, optional
         :param use_public_api: Define if public API should be used.
         :type use_public_api: bool, optional
@@ -1515,9 +1536,12 @@ class Api:
 
                     # received hash of the content to check integrity of the data stream
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
-                    async for chunk in resp.aiter_raw(chunk_size):
-                        yield chunk, hhash
-                        total_streamed += len(chunk)
+                    try:
+                        async for chunk in resp.aiter_raw(chunk_size):
+                            yield chunk, hhash
+                            total_streamed += len(chunk)
+                    except Exception as e:
+                        raise RetryableRequestException(repr(e))
 
                     if expected_size != 0 and total_streamed != expected_size:
                         raise ValueError(
@@ -1525,7 +1549,7 @@ class Api:
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
                 if (
                     isinstance(e, httpx.HTTPStatusError)
                     and resp.status_code == 400

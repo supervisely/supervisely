@@ -27,5 +27,5 @@ class ObjectDetectionBenchmark(BaseBenchmark):
     ):
         assert try_set_conf_auto(
             self.session, CONF_THRES
-        ), f"Unable to set the confidence threshold to {CONF_THRES} for evalation."
+        ), f"Unable to set the confidence threshold to {CONF_THRES} for evaluation."
         return super()._run_inference(output_project_id, batch_size, cache_project_on_agent)

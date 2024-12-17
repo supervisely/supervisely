@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pickle
 from pathlib import Path
@@ -18,24 +20,38 @@ from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdM
 class ObjectDetectionEvalResult(BaseEvalResult):
     mp_cls = MetricProvider
 
-    def _read_eval_data(self):
-        from pycocotools.coco import COCO  # pylint: disable=import-error
+    def _read_files(self, path: str) -> None:
+        """Read all necessary files from the directory"""
 
-        gt_path = str(Path(self.directory) / "cocoGt.json")
-        dt_path = str(Path(self.directory) / "cocoDt.json")
-        coco_gt, coco_dt = COCO(gt_path), COCO(dt_path)
-        self.coco_gt = coco_gt
-        self.coco_dt = coco_dt
-        self.eval_data = None
-        with open(Path(self.directory, "eval_data.pkl"), "rb") as f:
-            self.eval_data = pickle.load(f)
+        self.coco_gt = Path(path) / "cocoGt.json"
+        self.coco_dt = Path(path) / "cocoDt.json"
 
-        inference_info_path = Path(self.directory) / "inference_info.json"
-        self.inference_info = load_json_file(str(inference_info_path))
+        if self.coco_gt.exists() and self.coco_dt.exists():
+            self.coco_gt, self.coco_dt = read_coco_datasets(self.coco_gt, self.coco_dt)
 
-        speedtest_info_path = Path(self.directory).parent / "speedtest" / "speedtest.json"
+        eval_data_path = Path(path) / "eval_data.pkl"
+        if eval_data_path.exists():
+            with open(Path(path, "eval_data.pkl"), "rb") as f:
+                self.eval_data = pickle.load(f)
+
+        inference_info_path = Path(path) / "inference_info.json"
+        if inference_info_path.exists():
+            self.inference_info = load_json_file(str(inference_info_path))
+
+        speedtest_info_path = Path(path).parent / "speedtest" / "speedtest.json"
         if speedtest_info_path.exists():
             self.speedtest_info = load_json_file(str(speedtest_info_path))
+
+    def _prepare_data(self) -> None:
+        """Prepare data to allow easy access to the most important parts"""
+
+        from pycocotools.coco import COCO  # pylint: disable=import-error
+
+        if not hasattr(self, "coco_gt") or not hasattr(self, "coco_dt"):
+            raise ValueError("GT and DT datasets are not provided")
+
+        if not isinstance(self.coco_gt, COCO) and not isinstance(self.coco_dt, COCO):
+            self.coco_gt, self.coco_dt = read_coco_datasets(self.coco_gt, self.coco_dt)
 
         self.mp = MetricProvider(
             self.eval_data["matches"],
@@ -62,6 +78,20 @@ class ObjectDetectionEvalResult(BaseEvalResult):
 
         self.click_data = ClickData(self.mp.m, gt_id_mapper, dt_id_mapper)
 
+    @classmethod
+    def from_evaluator(cls, evaulator: ObjectDetectionEvaluator) -> ObjectDetectionEvalResult:
+        """Method to customize loading of the evaluation result."""
+        eval_result = cls()
+        eval_result.eval_data = evaulator.eval_data
+        eval_result.coco_gt = evaulator.cocoGt
+        eval_result.coco_dt = evaulator.cocoDt
+        eval_result._prepare_data()
+        return eval_result
+
+    @property
+    def key_metrics(self):
+        return self.mp.key_metrics()
+
 
 class ObjectDetectionEvaluator(BaseEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"
@@ -74,7 +104,7 @@ class ObjectDetectionEvaluator(BaseEvaluator):
         except AssertionError as e:
             raise ValueError(
                 f"{e}. Please make sure that your GT and DT projects are correct. "
-                "If GT project has nested datasets and DT project was crated with NN app, "
+                "If GT project has nested datasets and DT project was created with NN app, "
                 "try to use newer version of NN app."
             )
         self.cocoGt, self.cocoDt = read_coco_datasets(self.cocoGt_json, self.cocoDt_json)

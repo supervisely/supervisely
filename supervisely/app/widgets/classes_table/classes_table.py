@@ -283,7 +283,9 @@ class ClassesTable(Widget):
         StateJson().send_changes()
         self.loading = False
 
-    def read_project_from_id(self, project_id: int, dataset_ids: Optional[List[int]] = None) -> None:
+    def read_project_from_id(
+        self, project_id: int, dataset_ids: Optional[List[int]] = None
+    ) -> None:
         """Read remote project by id and update table data.
 
         :param project_id: Project id from which classes will be taken.
@@ -469,3 +471,15 @@ class ClassesTable(Widget):
         StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()
+
+    def set_dataset_ids(self, dataset_ids: List[int]) -> None:
+        """Sets dataset ids to filter classes.
+
+        :param dataset_ids: List of dataset ids to filter classes.
+        :type dataset_ids: List[int]
+        """
+        selected_classes = self.get_selected_classes()
+        self._dataset_ids = dataset_ids
+        self._update_meta(self._project_meta)
+        self.update_data()
+        self.select_classes(selected_classes)
