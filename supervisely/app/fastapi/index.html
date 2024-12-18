@@ -67,7 +67,9 @@
       <img src="https://app.supervise.ly/loading.gif" />
     </div>
   </center>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+  {% if __webpy_script__ %}
+  <script src="https://cdn.jsdelivr.net/pyodide/{{{pyodide_version}}}/full/pyodide.js"></script>
+  {% endif %}
   <script
     src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
   <script type="module"
@@ -208,8 +210,9 @@ with tarfile.open(tar_path, "r:") as tar_ref:
     }
 
     const runPythonScriptThrottled = _.throttle(runPythonScript, 50);
-
+    {% if __webpy_script__ %}
     initPromise = loadMainPythonScript();
+    {% endif %}
   </script>
   <!-- Hot reload script -->
   {% if HOTRELOAD %} {{{ hot_reload.script(url_for('hot-reload')) | safe }}}

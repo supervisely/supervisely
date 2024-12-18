@@ -17,6 +17,9 @@ js_bundle_version = "2.1.97"
 js_frontend_version = "v0.0.54"
 
 
+pyodide_version = "v0.25.0"
+
+
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
     def __init__(self, directory: typing.Union[str, PathLike] = "templates") -> None:
         super().__init__(directory)
