@@ -1631,11 +1631,14 @@ class Api:
         else:
             self._check_https_redirect()
             if self.server_address.startswith("https://"):
-                self._semaphore = asyncio.Semaphore(10)
-                logger.debug("Setting global API semaphore size to 10 for HTTPS")
+                size = 10
+                if "app.supervisely" in self.server_address:
+                    size = 7
+                logger.debug(f"Setting global API semaphore size to {size} for HTTPS")
             else:
-                self._semaphore = asyncio.Semaphore(5)
-                logger.debug("Setting global API semaphore size to 5 for HTTP")
+                size = 5
+                logger.debug(f"Setting global API semaphore size to {size} for HTTP")
+            self._semaphore = asyncio.Semaphore(size)
 
     def set_semaphore_size(self, size: int = None):
         """
