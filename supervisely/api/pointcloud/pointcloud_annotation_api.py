@@ -10,6 +10,7 @@ from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
 from supervisely.video_annotation.key_id_map import KeyIdMap
+import asyncio
 
 
 class PointcloudAnnotationAPI(EntityAnnotationAPI):
@@ -174,3 +175,73 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             ann.figures,
             key_id_map,
         )
+
+    async def download_async(
+        self,
+        pointcloud_id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> Dict:
+        """
+        Download information about PointcloudAnnotation by Point Cloud ID from API asynchronously.
+
+        :param pointcloud_id: Point Cloud ID in Supervisely.
+        :type pointcloud_id: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :return: Information about PointcloudAnnotation in json format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pointcloud_id = 198702499
+            loop = sly.utils.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.pointcloud.annotation.download_async(pointcloud_id))
+        """
+        return await self.download_bulk_async([pointcloud_id], semaphore)
+
+    async def download_bulk_async(
+        self,
+        pointcloud_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> Dict:
+        """
+        Download information about PointcloudAnnotation in bulk by Point Cloud IDs from API asynchronously.
+
+        :param pointcloud_ids: Point Cloud IDs in Supervisely.
+        :type pointcloud_ids: List[int]
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :return: Information about PointcloudAnnotations in json format
+        :rtype: :class:`dict`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pointcloud_ids = [198702499, 198702500, 198702501]
+            loop = sly.utils.get_or_create_event_loop()
+            ann_infos = loop.run_until_complete(api.pointcloud.annotation.download_bulk_async(pointcloud_ids))
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        json_data = {self._entity_ids_str: pointcloud_ids}
+
+        async with semaphore:
+            response = await self._api.post_async(
+                self._method_download_bulk,
+                json=json_data,
+            )
+            return response.json()
