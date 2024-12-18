@@ -142,6 +142,7 @@ sys.modules['${moduleName}'] = module
       const tarData = await response.arrayBuffer();
 
       const tarPath = `/virtual/${packageName}.tar`; // Path in the Pyodide file system
+      pyodide.FS.mkdir("/virtual");
       FS.writeFile(tarPath, new Uint8Array(tarData));
 
       const extractTo = `/virtual/${packageName}`; // Directory to extract contents
@@ -179,7 +180,7 @@ if extract_to not in sys.path:
         await micropip.install("fastapi")
       `);
 
-      setupAndImportPythonPackage("./sly_sdk.tar", "supervisely")
+      setupAndImportPythonPackage("./supervisely.tar", "supervisely")
 
       await loadDependency(pyodide, "./sly.py", "sly")
       await loadDependency(pyodide, "./gui.py", "gui")
