@@ -1,6 +1,7 @@
 # coding: utf-8
 
 # docs
+import asyncio
 from typing import Dict, List, NamedTuple, Optional
 
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
@@ -10,7 +11,6 @@ from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
 from supervisely.video_annotation.key_id_map import KeyIdMap
-import asyncio
 
 
 class PointcloudAnnotationAPI(EntityAnnotationAPI):
@@ -190,6 +190,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :type semaphore: asyncio.Semaphore, optional
         :return: Information about PointcloudAnnotation in json format
         :rtype: :class:`dict`
+
         :Usage example:
 
          .. code-block:: python
@@ -220,6 +221,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :type semaphore: asyncio.Semaphore, optional
         :return: Information about PointcloudAnnotations in json format
         :rtype: :class:`dict`
+
         :Usage example:
 
          .. code-block:: python

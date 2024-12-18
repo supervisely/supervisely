@@ -1,8 +1,9 @@
 # coding: utf-8
 
+import asyncio
 import os
 import re
-from typing import Callable, List, Literal, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
@@ -456,3 +457,84 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                         nrrd_paths.remove(nrrd_path)
                         keep_nrrd_paths.remove(nrrd_path)
         return stl_paths, nrrd_paths, keep_nrrd_paths
+
+    async def download_async(
+        self,
+        volume_id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        integer_coords: bool = True,
+    ) -> Dict:
+        """
+        Download information about VolumeAnnotation by volume ID from API asynchronously.
+
+        :param volume_id: Volume ID in Supervisely.
+        :type volume_id: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param integer_coords: Integer coordinates.
+        :type integer_coords: bool, optional
+        :return: Information about VolumeAnnotation in json format
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_id = 198702499
+            loop = sly.utils.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
+        """
+        return await self.download_bulk_async([volume_id], semaphore, integer_coords)
+
+    async def download_bulk_async(
+        self,
+        volume_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        integer_coords: bool = True,
+    ) -> Dict:
+        """
+        Download information about VolumeAnnotation in bulk by volume IDs from API asynchronously.
+
+        :param volume_ids: List of Volume IDs in Supervisely. All volumes must be from the same dataset.
+        :type volume_ids: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param integer_coords: Integer coordinates.
+        :type integer_coords: bool, optional
+        :return: Information about VolumeAnnotations in json format
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_ids = [198702499, 198702500, 198702501]
+            loop = sly.utils.get_or_create_event_loop()
+            ann_infos = loop.run_until_complete(api.volume.annotation.download_bulk_async(volume_ids))
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        json_data = {
+            self._entity_ids_str: volume_ids,
+            ApiField.INTEGER_COORDS: integer_coords,
+        }
+
+        async with semaphore:
+            response = await self._api.post_async(
+                self._method_download_bulk,
+                json=json_data,
+            )
+            return response.json()

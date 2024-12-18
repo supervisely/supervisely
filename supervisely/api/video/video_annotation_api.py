@@ -272,6 +272,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :return: Information about VideoAnnotation in json format
         :rtype: :class:`dict`
+
         :Usage example:
 
          .. code-block:: python
@@ -313,6 +314,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type integer_coords: bool, optional
         :return: Information about VideoAnnotations in json format
         :rtype: :class:`dict`
+        
         :Usage example:
 
          .. code-block:: python
