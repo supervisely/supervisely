@@ -32,8 +32,10 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 
 class VolumeDataset(VideoDataset):
     item_dir_name = "volume"
-    interpolation_dir_name = "interpolation"
-    mask_dir_name = "mask"
+    interpolation_dir = "interpolation"
+    interpolation_dir_name = interpolation_dir
+    mask_dir = "mask"
+    mask_dir_name = mask_dir
     annotation_class = VolumeAnnotation
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
