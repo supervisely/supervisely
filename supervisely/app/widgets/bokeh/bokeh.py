@@ -14,7 +14,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 class Bokeh(Widget):
     class Routes:
         VALUE_CHANGED = "value_changed"
-        GET_HTML_ROUTE = "bokeh.html"
+        HTML_ROUTE = "bokeh.html"
 
     class Plot(ABC):
         @abstractmethod
@@ -173,14 +173,21 @@ class Bokeh(Widget):
 
     @property
     def html_route(self) -> str:
-        return self.get_route_path(Bokeh.Routes.GET_HTML_ROUTE)
+        return self.get_route_path(Bokeh.Routes.HTML_ROUTE)
 
-    def get_html_route_with_timestamp(self) -> str:
+    @property
+    def html_route_with_timestamp(self) -> str:
         return f".{self.html_route}?t={datetime.now().timestamp()}"
 
     def add_plots(self, plots: List[Plot]) -> None:
         self._plots.extend(plots)
         self._process_plots(plots)
+        self._update_html()
+
+    def clear(self) -> None:
+        self._plots = []
+        self._renderers = []
+        self._plot.renderers = []
         self._update_html()
 
     def remove_plot(self, idx: int) -> None:
