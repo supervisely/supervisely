@@ -6,9 +6,15 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from fastapi.responses import HTMLResponse
-
+from pydantic import BaseModel
 from supervisely.app.widgets import Widget
-from supervisely.app.widgets_context import JinjaWidgets
+from supervisely._utils import is_production
+from supervisely.io.env import task_id
+from supervisely.api.api import Api
+
+
+class SelectedIds(BaseModel):
+    selected_ids: List[Any]
 
 
 class Bokeh(Widget):
@@ -104,6 +110,12 @@ class Bokeh(Widget):
 
             if not hasattr(self, "_source"):
                 raise ValueError("Plot must be added to a Bokeh plot before registering")
+
+            if is_production():
+                api = Api()
+                task_info = api.task.get_info_by_id(task_id())
+                if task_info is not None:
+                    route_path = f"/net/{task_info['meta']['sessionToken']}{route_path}"
             callback = CustomJS(
                 args=dict(source=self._source),
                 code="""
@@ -154,10 +166,10 @@ class Bokeh(Widget):
         self._plot.xaxis.visible = x_axis_visible
         self._plot.yaxis.visible = y_axis_visible
         self._plot.grid.visible = grid_visible
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
         self._process_plots(plots)
         self._update_html()
-
-        super().__init__(widget_id=widget_id, file_path=__file__)
 
         server = self._sly_app.get_server()
 
@@ -253,9 +265,8 @@ class Bokeh(Widget):
         self._changes_handled = True
 
         @server.post(self.route_path)
-        def _click(item: Dict[str, Any]) -> None:
-            res = item.get("selected_ids", [])
-            func(res)
+        def _click(selected_ids: SelectedIds) -> None:
+            func(selected_ids.selected_ids)
 
         return _click
 
