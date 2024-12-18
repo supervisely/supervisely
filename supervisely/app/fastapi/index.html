@@ -172,7 +172,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
-      await micropip.install(["{{ req }}"])
+      await micropip.install(["{{{ req }}}"])
       {% endfor %}
       {% endif %}
 
