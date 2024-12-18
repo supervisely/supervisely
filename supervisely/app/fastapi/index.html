@@ -166,7 +166,9 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       pyodide = await loadPyodide();
       await pyodide.loadPackage("micropip");
       const micropip = pyodide.pyimport("micropip");
-      await micropip.install(["typing_extensions==4.8", "fastapi"])
+      await micropip.install(["typing_extensions == 4.8"])
+      await micropip.install(["ssl"])
+      await micropip.install(["fastapi"])
       await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk")
       await loadDependency(pyodide, "./gui.py", "gui")
 
