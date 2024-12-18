@@ -159,22 +159,15 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 `;
       await pyodide.runPythonAsync(pythonCode);
 
-      console.log(`Package ${packageName} extracted and added to sys.path`);
+      console.log(`Package ${packageName} extracted to ${extractTo}`);
     }
 
     async function loadMainPythonScript() {
       pyodide = await loadPyodide();
-      // await pyodide.loadPackage(["numpy", "opencv-python"]);
       await pyodide.loadPackage("micropip");
-
-      await pyodide.runPythonAsync(`
-        import micropip
-        await micropip.install("fastapi")
-      `);
-
+      const micropip = pyodide.pyimport("micropip");
+      await micropip.install(["typing_extensions==4.8", "fastapi"])
       await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk")
-
-      await loadDependency(pyodide, "./sly.py", "sly")
       await loadDependency(pyodide, "./gui.py", "gui")
 
       mainScriptTxt = await fetch("./main.py").then((response) => response.text());
