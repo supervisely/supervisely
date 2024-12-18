@@ -737,6 +737,7 @@ class PointcloudProject(VideoProject):
         batch_size: Optional[int] = 10,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> PointcloudProject:
         """
         Download pointcloud project from Supervisely to the given directory.

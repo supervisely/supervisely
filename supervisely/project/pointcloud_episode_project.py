@@ -508,6 +508,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         batch_size: Optional[int] = 10,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> None:
         """
         Download pointcloud episodes project from Supervisely to the given directory.

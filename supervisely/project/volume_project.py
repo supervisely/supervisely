@@ -147,6 +147,7 @@ class VolumeProject(VideoProject):
         download_volumes: Optional[bool] = True,
         log_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> None:
         """
         Download volume project from Supervisely to the given directory.
