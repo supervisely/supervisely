@@ -172,7 +172,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
         await micropip.install("fastapi")
       `);
 
-      await setupAndImportPythonPackage("./supervisely.tar", "supervisely")
+      await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk")
 
       await loadDependency(pyodide, "./sly.py", "sly")
       await loadDependency(pyodide, "./gui.py", "gui")
