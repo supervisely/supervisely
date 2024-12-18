@@ -141,11 +141,10 @@ sys.modules['${moduleName}'] = module
       }
       const tarData = await response.arrayBuffer();
 
-      const tarPath = `/virtual/${packageName}.tar`; // Path in the Pyodide file system
-      pyodide.FS.mkdir("/virtual");
+      const tarPath = `${packageName}.tar`;
       FS.writeFile(tarPath, new Uint8Array(tarData));
 
-      const extractTo = `/virtual/${packageName}`; // Directory to extract contents
+      const extractTo = `./`;
       const pythonCode = `
 import tarfile
 import sys
@@ -154,16 +153,9 @@ import os
 tar_path = "${tarPath}"
 extract_to = "${extractTo}"
 
-# Create extraction directory if it doesn't exist
 os.makedirs(extract_to, exist_ok=True)
-
-# Extract TAR contents
 with tarfile.open(tar_path, "r:") as tar_ref:
     tar_ref.extractall(extract_to)
-
-# Add extracted package to sys.path
-if extract_to not in sys.path:
-    sys.path.insert(0, extract_to)
 `;
       await pyodide.runPythonAsync(pythonCode);
 
@@ -180,7 +172,7 @@ if extract_to not in sys.path:
         await micropip.install("fastapi")
       `);
 
-      setupAndImportPythonPackage("./supervisely.tar", "supervisely")
+      await setupAndImportPythonPackage("./supervisely.tar", "supervisely")
 
       await loadDependency(pyodide, "./sly.py", "sly")
       await loadDependency(pyodide, "./gui.py", "gui")
