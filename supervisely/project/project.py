@@ -2091,7 +2091,12 @@ class Project:
                     OpenMode.READ,
                     parents=parents,
                 )
-                self._datasets = self._datasets.add(current_dataset)
+                if current_dataset.name not in self._datasets._collection:
+                    self._datasets = self._datasets.add(current_dataset)
+                else:
+                    logger.debug(
+                        f"Dataset '{current_dataset.name}' already exists in project '{self.name}'. Skip adding to collection."
+                    )
             except Exception as ex:
                 logger.warning(ex)
 
