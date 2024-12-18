@@ -169,6 +169,13 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       await micropip.install(["typing_extensions == 4.8"])
       await micropip.install(["ssl"])
       await micropip.install(["fastapi"])
+
+      {% if pyodide_requirements %}
+      {% for req in pyodide_requirements %}
+      await micropip.install(["{{ req }}"])
+      {% endfor %}
+      {% endif %}
+
       await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk")
       await loadDependency(pyodide, "./gui.py", "gui")
 
