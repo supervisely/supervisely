@@ -118,9 +118,32 @@
     let pyodide = null;
     let mainScriptTxt = null;
 
+    async function loadDependency(pyodide, url, moduleName) {
+      const pythonCode = await fetch(url).then(response => response.text());
+      pyodide.runPython(`
+import sys
+from types import ModuleType
+
+# Dynamically create a module
+module = ModuleType('${moduleName}')
+exec('''${pythonCode}''', module.__dict__)
+sys.modules['${moduleName}'] = module
+`);
+      return pyodide.pyimport(moduleName);
+    }
+
     async function loadMainPythonScript() {
       pyodide = await loadPyodide();
       // await pyodide.loadPackage(["numpy", "opencv-python"]);
+      await pyodide.loadPackage("micropip");
+
+      await pyodide.runPythonAsync(`
+        import micropip
+        await micropip.install("fastapi")
+      `);
+
+      await loadDependency(pyodide, "./sly.py", "sly")
+      await loadDependency(pyodide, "./gui.py", "gui")
 
       mainScriptTxt = await fetch("./main.py").then((response) => response.text());
     }
