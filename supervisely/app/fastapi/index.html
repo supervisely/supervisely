@@ -132,6 +132,43 @@ sys.modules['${moduleName}'] = module
       return pyodide.pyimport(moduleName);
     }
 
+    async function setupAndImportPythonPackage(url, packageName) {
+      const FS = pyodide.FS;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch TAR file: ${response.statusText}`);
+      }
+      const tarData = await response.arrayBuffer();
+
+      const tarPath = `/virtual/${packageName}.tar`; // Path in the Pyodide file system
+      FS.writeFile(tarPath, new Uint8Array(tarData));
+
+      const extractTo = `/virtual/${packageName}`; // Directory to extract contents
+      const pythonCode = `
+import tarfile
+import sys
+import os
+
+tar_path = "${tarPath}"
+extract_to = "${extractTo}"
+
+# Create extraction directory if it doesn't exist
+os.makedirs(extract_to, exist_ok=True)
+
+# Extract TAR contents
+with tarfile.open(tar_path, "r:") as tar_ref:
+    tar_ref.extractall(extract_to)
+
+# Add extracted package to sys.path
+if extract_to not in sys.path:
+    sys.path.insert(0, extract_to)
+`;
+      await pyodide.runPythonAsync(pythonCode);
+
+      console.log(`Package ${packageName} extracted and added to sys.path`);
+    }
+
     async function loadMainPythonScript() {
       pyodide = await loadPyodide();
       // await pyodide.loadPackage(["numpy", "opencv-python"]);
@@ -141,6 +178,8 @@ sys.modules['${moduleName}'] = module
         import micropip
         await micropip.install("fastapi")
       `);
+
+      setupAndImportPythonPackage("./sly_sdk.tar", "supervisely")
 
       await loadDependency(pyodide, "./sly.py", "sly")
       await loadDependency(pyodide, "./gui.py", "gui")
