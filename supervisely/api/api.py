@@ -1632,7 +1632,7 @@ class Api:
             self._check_https_redirect()
             if self.server_address.startswith("https://"):
                 size = 10
-                if "app.supervisely" in self.server_address:
+                if "app.supervise" in self.server_address:
                     size = 7
                 logger.debug(f"Setting global API semaphore size to {size} for HTTPS")
             else:

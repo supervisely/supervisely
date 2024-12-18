@@ -31,6 +31,9 @@ from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
+KITTI_ITEM_DIR_NAME = "velodyne"
+
+
 class EpisodeItemPaths(NamedTuple):
     #: :class:`str`: Full pointcloud file path of item
     pointcloud_path: str
@@ -62,9 +65,6 @@ class EpisodeItemInfo(NamedTuple):
 class PointcloudEpisodeDataset(PointcloudDataset):
     #: :class:`str`: Items data directory name
     item_dir_name = "pointcloud"
-
-    #: :class:`str`: KITTI items directory name
-    kitti_item_dir_name = "velodyne"
 
     #: :class:`str`: Annotations directory name
     ann_dir_name = "ann"
@@ -157,8 +157,8 @@ class PointcloudEpisodeDataset(PointcloudDataset):
     def _read(self):
         if not dir_exists(self.item_dir):
             message = f"Cannot read dataset '{self.name}': '{self.item_dir}' directory not found"
-            if dir_exists(os.path.join(self.directory, self.kitti_item_dir_name)):
-                message = f"Cannot read dataset '{self.name}'. The directory '{self.kitti_item_dir_name}' was found. This appears to be a KITTI dataset and will be skipped."
+            if dir_exists(os.path.join(self.directory, KITTI_ITEM_DIR_NAME)):
+                message = f"Cannot read dataset '{self.name}'. The item directory '{KITTI_ITEM_DIR_NAME}' was found. This appears to be a KITTI dataset and will be skipped."
             raise NotADirectoryError(message)
 
         try:
