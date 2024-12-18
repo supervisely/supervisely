@@ -55,13 +55,13 @@ class VolumeDataset(VideoDataset):
         return self.annotation_class(volume_meta)
 
     def get_interpolation_dir(self, item_name):
-        return os.path.join(self.directory, self.interpolation_dir_name, item_name)
+        return os.path.join(self.directory, self.interpolation_dir, item_name)
 
     def get_interpolation_path(self, item_name, figure):
         return os.path.join(self.get_interpolation_dir(item_name), figure.key().hex + ".stl")
 
     def get_mask_dir(self, item_name):
-        return os.path.join(self.directory, self.mask_dir_name, item_name)
+        return os.path.join(self.directory, self.mask_dir, item_name)
 
     def get_mask_path(self, item_name, figure):
         return os.path.join(self.get_mask_dir(item_name), figure.key().hex + ".nrrd")
