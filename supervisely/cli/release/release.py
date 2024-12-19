@@ -14,6 +14,20 @@ import requests
 from giturlparse import parse
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
+from supervisely.io.fs import dir_exists, remove_dir
+
+
+class cd:
+    def __init__(self, new_path=None):
+        self.new_path = new_path
+
+    def __enter__(self):
+        self.old_path = os.getcwd()
+        if self.new_path is not None:
+            os.chdir(self.new_path)
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.old_path)
 
 
 def slug_is_valid(slug):
@@ -192,7 +206,14 @@ def archive_application(repo: git.Repo, config, slug):
     app_folder_name = re.sub("[ \/]", "-", app_folder_name)
     app_folder_name = re.sub("[\"'`,\[\]\(\)]", "", app_folder_name)
     working_dir_path = Path(repo.working_dir).absolute()
+    should_remove_dir = None
     if config.get("type", "app") == "client_side_app":
+        gui_folder_path = config["gui_folder_path"]
+        if not dir_exists(gui_folder_path):
+            should_remove_dir = gui_folder_path
+            # if gui folder is empty, need to render it
+            with cd(working_dir_path):
+                exec(open("render.py", "r").read())
         archive_path = archive_folder + "/archive.tar"
         write_mode = "w"
     else:
@@ -205,6 +226,9 @@ def archive_application(repo: git.Repo, config, slug):
                     path.absolute(),
                     Path(app_folder_name).joinpath(path.relative_to(working_dir_path)),
                 )
+    if should_remove_dir is not None:
+        # remove gui folder if it was rendered
+        remove_dir(should_remove_dir)
     return archive_path
 
 
