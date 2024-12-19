@@ -6,6 +6,7 @@ import re
 import shutil
 import string
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -18,16 +19,24 @@ from supervisely.io.fs import dir_exists, remove_dir
 
 
 class cd:
-    def __init__(self, new_path=None):
+    def __init__(self, new_path=None, add_to_path=False):
         self.new_path = new_path
+        self.add_to_path = add_to_path
+        self._should_remove_from_path = False
 
     def __enter__(self):
         self.old_path = os.getcwd()
         if self.new_path is not None:
             os.chdir(self.new_path)
+        if self.add_to_path and not self.new_path in sys.path:
+            sys.path.insert(0, self.new_path)
+            self._should_remove_from_path = True
+        return self
 
     def __exit__(self, etype, value, traceback):
         os.chdir(self.old_path)
+        if self._should_remove_from_path:
+            sys.path.remove(self.new_path)
 
 
 def slug_is_valid(slug):
