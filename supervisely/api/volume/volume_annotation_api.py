@@ -533,9 +533,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        json_response = []
-        async with semaphore:
-            for batch in batched(volume_ids):
+        async def fetch_with_semaphore(batch):
+            async with semaphore:
                 json_data = {
                     self._entity_ids_str: batch,
                     ApiField.INTEGER_COORDS: integer_coords,
@@ -544,7 +543,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                     self._method_download_bulk,
                     json=json_data,
                 )
-                json_response.extend(response.json())
                 if progress_cb is not None:
                     progress_cb(len(batch))
-            return json_response
+                return response.json()
+
+        tasks = [fetch_with_semaphore(batch) for batch in batched(volume_ids)]
+        responses = await asyncio.gather(*tasks)
+        json_response = [item for response in responses for item in response]
+        return json_response
