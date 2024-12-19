@@ -31,6 +31,9 @@ from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
+KITTI_ITEM_DIR_NAME = "velodyne"
+
+
 class EpisodeItemPaths(NamedTuple):
     #: :class:`str`: Full pointcloud file path of item
     pointcloud_path: str
@@ -153,9 +156,10 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     def _read(self):
         if not dir_exists(self.item_dir):
-            raise NotADirectoryError(
-                f"Cannot read dataset {self.name}: {self.item_dir} directory not found"
-            )
+            message = f"Cannot read dataset '{self.name}': '{self.item_dir}' directory not found"
+            if dir_exists(os.path.join(self.directory, KITTI_ITEM_DIR_NAME)):
+                message = f"Cannot read dataset '{self.name}'. The item directory '{KITTI_ITEM_DIR_NAME}' was found. This appears to be a KITTI dataset and will be skipped."
+            raise NotADirectoryError(message)
 
         try:
             item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
@@ -504,6 +508,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         batch_size: Optional[int] = 10,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> None:
         """
         Download pointcloud episodes project from Supervisely to the given directory.
@@ -624,6 +629,12 @@ class PointcloudEpisodeProject(PointcloudProject):
             project_name=project_name,
             log_progress=log_progress,
             progress_cb=progress_cb,
+        )
+
+    @staticmethod
+    async def download_async(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for PointcloudEpisodeProject class now."
         )
 
 

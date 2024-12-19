@@ -737,6 +737,7 @@ class PointcloudProject(VideoProject):
         batch_size: Optional[int] = 10,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> PointcloudProject:
         """
         Download pointcloud project from Supervisely to the given directory.
@@ -856,6 +857,12 @@ class PointcloudProject(VideoProject):
             project_name=project_name,
             log_progress=log_progress,
             progress_cb=progress_cb,
+        )
+
+    @staticmethod
+    async def download_async(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for PointcloudProject class now."
         )
 
 
