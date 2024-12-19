@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -12,7 +11,6 @@ from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnota
 from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
@@ -256,6 +254,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         semaphore: Optional[asyncio.Semaphore] = None,
         force_metadata_for_links: bool = True,
         integer_coords: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Dict:
         """
         Download information about VideoAnnotation by video ID from API asynchronously.
@@ -270,6 +269,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type force_metadata_for_links: bool, optional
         :param integer_coords: Integer coordinates.
         :type integer_coords: bool, optional
+        :param progress_cb: Progress callback to track download progress.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: Information about VideoAnnotation in json format
         :rtype: :class:`dict`
 
@@ -292,6 +293,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             semaphore,
             force_metadata_for_links,
             integer_coords,
+            progress_cb,
         )
 
     async def download_bulk_async(
@@ -300,7 +302,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         semaphore: Optional[asyncio.Semaphore] = None,
         force_metadata_for_links: bool = True,
         integer_coords: bool = True,
-    ) -> Dict:
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[Dict]:
         """
         Download information about VideoAnnotation in bulk by video IDs from API asynchronously.
 
@@ -312,9 +315,11 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type force_metadata_for_links: bool, optional
         :param integer_coords: Integer coordinates.
         :type integer_coords: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: Information about VideoAnnotations in json format
-        :rtype: :class:`dict`
-        
+        :rtype: :class:`list`
+
         :Usage example:
 
          .. code-block:: python
@@ -332,15 +337,19 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        json_data = {
-            self._entity_ids_str: video_ids,
-            ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-            ApiField.INTEGER_COORDS: integer_coords,
-        }
-
+        json_response = []
         async with semaphore:
-            response = await self._api.post_async(
-                self._method_download_bulk,
-                json=json_data,
-            )
-            return response.json()
+            for batch in batched(video_ids):
+                json_data = {
+                    self._entity_ids_str: batch,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    ApiField.INTEGER_COORDS: integer_coords,
+                }
+                response = await self._api.post_async(
+                    self._method_download_bulk,
+                    json=json_data,
+                )
+                json_response.extend(response.json())
+                if progress_cb is not None:
+                    progress_cb(len(batch))
+            return json_response

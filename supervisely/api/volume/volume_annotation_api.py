@@ -8,10 +8,10 @@ from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 import numpy as np
 from tqdm import tqdm
 
+from supervisely._utils import batched
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
-from supervisely.collection.key_indexed_collection import DuplicateKeyError
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import (
@@ -463,6 +463,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_id: int,
         semaphore: Optional[asyncio.Semaphore] = None,
         integer_coords: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Dict:
         """
         Download information about VolumeAnnotation by volume ID from API asynchronously.
@@ -473,6 +474,8 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type semaphore: asyncio.Semaphore, optional
         :param integer_coords: Integer coordinates.
         :type integer_coords: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
 
@@ -490,14 +493,15 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
         """
-        return await self.download_bulk_async([volume_id], semaphore, integer_coords)
+        return await self.download_bulk_async([volume_id], semaphore, integer_coords, progress_cb)
 
     async def download_bulk_async(
         self,
         volume_ids: List[int],
         semaphore: Optional[asyncio.Semaphore] = None,
         integer_coords: bool = True,
-    ) -> Dict:
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[Dict]:
         """
         Download information about VolumeAnnotation in bulk by volume IDs from API asynchronously.
 
@@ -507,8 +511,10 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type semaphore: asyncio.Semaphore, optional
         :param integer_coords: Integer coordinates.
         :type integer_coords: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
         :return: Information about VolumeAnnotations in json format
-        :rtype: :class:`dict`
+        :rtype: :class:`list`
 
         :Usage example:
 
@@ -527,14 +533,18 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        json_data = {
-            self._entity_ids_str: volume_ids,
-            ApiField.INTEGER_COORDS: integer_coords,
-        }
-
+        json_response = []
         async with semaphore:
-            response = await self._api.post_async(
-                self._method_download_bulk,
-                json=json_data,
-            )
-            return response.json()
+            for batch in batched(volume_ids):
+                json_data = {
+                    self._entity_ids_str: batch,
+                    ApiField.INTEGER_COORDS: integer_coords,
+                }
+                response = await self._api.post_async(
+                    self._method_download_bulk,
+                    json=json_data,
+                )
+                json_response.extend(response.json())
+                if progress_cb is not None:
+                    progress_cb(len(batch))
+            return json_response

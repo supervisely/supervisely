@@ -2,8 +2,11 @@
 
 # docs
 import asyncio
-from typing import Dict, List, NamedTuple, Optional
+from typing import Callable, Dict, List, Optional, Union
 
+from tqdm import tqdm
+
+from supervisely._utils import batched
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
@@ -180,6 +183,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         self,
         pointcloud_id: int,
         semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Dict:
         """
         Download information about PointcloudAnnotation by Point Cloud ID from API asynchronously.
@@ -188,6 +192,8 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :type pointcloud_id: int
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Progress callback to track download progress.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: Information about PointcloudAnnotation in json format
         :rtype: :class:`dict`
 
@@ -205,13 +211,14 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.pointcloud.annotation.download_async(pointcloud_id))
         """
-        return await self.download_bulk_async([pointcloud_id], semaphore)
+        return await self.download_bulk_async([pointcloud_id], semaphore, progress_cb)
 
     async def download_bulk_async(
         self,
         pointcloud_ids: List[int],
         semaphore: Optional[asyncio.Semaphore] = None,
-    ) -> Dict:
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[Dict]:
         """
         Download information about PointcloudAnnotation in bulk by Point Cloud IDs from API asynchronously.
 
@@ -219,8 +226,10 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         :type pointcloud_ids: List[int]
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Progress callback to track download progress.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: Information about PointcloudAnnotations in json format
-        :rtype: :class:`dict`
+        :rtype: :class:`list`
 
         :Usage example:
 
@@ -239,11 +248,15 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        json_data = {self._entity_ids_str: pointcloud_ids}
-
+        json_response = []
         async with semaphore:
-            response = await self._api.post_async(
-                self._method_download_bulk,
-                json=json_data,
-            )
-            return response.json()
+            for batch in batched(pointcloud_ids):
+                json_data = {self._entity_ids_str: batch}
+                response = await self._api.post_async(
+                    self._method_download_bulk,
+                    json=json_data,
+                )
+                json_response.extend(response.json())
+                if progress_cb is not None:
+                    progress_cb(len(batch))
+            return json_response
