@@ -218,6 +218,7 @@ def archive_application(repo: git.Repo, config, slug):
     should_remove_dir = None
     if config.get("type", "app") == "client_side_app":
         gui_folder_path = config["gui_folder_path"]
+        gui_folder_path = working_dir_path / gui_folder_path
         if not dir_exists(gui_folder_path):
             should_remove_dir = gui_folder_path
             # if gui folder is empty, need to render it
