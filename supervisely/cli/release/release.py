@@ -221,7 +221,7 @@ def archive_application(repo: git.Repo, config, slug):
         if not dir_exists(gui_folder_path):
             should_remove_dir = gui_folder_path
             # if gui folder is empty, need to render it
-            with cd(working_dir_path):
+            with cd(working_dir_path, add_to_path=True):
                 exec(open("render.py", "r").read())
         archive_path = archive_folder + "/archive.tar"
         write_mode = "w"
