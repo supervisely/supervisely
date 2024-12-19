@@ -223,7 +223,7 @@ def archive_application(repo: git.Repo, config, slug):
             # if gui folder is empty, need to render it
             with cd(str(working_dir_path), add_to_path=True):
                 exec(open("render.py", "r").read(), {"__name__": "__main__"})
-                file_paths.extend([Path(p) for p in list_files_recursively(str(gui_folder_path))])
+                file_paths.extend([Path(gui_folder_path, p).absolute() for p in list_files_recursively(str(gui_folder_path))])
         archive_path = archive_folder + "/archive.tar"
         write_mode = "w"
     else:
