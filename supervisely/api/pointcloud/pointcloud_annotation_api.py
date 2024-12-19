@@ -211,7 +211,11 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.pointcloud.annotation.download_async(pointcloud_id))
         """
-        return await self.download_bulk_async([pointcloud_id], semaphore, progress_cb)
+        return await self.download_bulk_async(
+            pointcloud_ids=[pointcloud_id],
+            semaphore=semaphore,
+            progress_cb=progress_cb,
+        )
 
     async def download_bulk_async(
         self,

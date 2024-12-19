@@ -493,7 +493,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
         """
-        return await self.download_bulk_async([volume_id], semaphore, integer_coords, progress_cb)
+        return await self.download_bulk_async(
+            volume_ids=[volume_id],
+            semaphore=semaphore,
+            integer_coords=integer_coords,
+            progress_cb=progress_cb,
+        )
 
     async def download_bulk_async(
         self,

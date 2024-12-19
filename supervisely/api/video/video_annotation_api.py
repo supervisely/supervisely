@@ -289,11 +289,11 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
         """
         return await self.download_bulk_async(
-            [video_id],
-            semaphore,
-            force_metadata_for_links,
-            integer_coords,
-            progress_cb,
+            video_ids=[video_id],
+            semaphore=semaphore,
+            force_metadata_for_links=force_metadata_for_links,
+            integer_coords=integer_coords,
+            progress_cb=progress_cb,
         )
 
     async def download_bulk_async(
