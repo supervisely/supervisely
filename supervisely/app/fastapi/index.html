@@ -163,6 +163,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       await micropip.install(["typing_extensions == 4.8"]) // needed for fastapi
       await micropip.install(["ssl"]) // needed for fastapi
       await micropip.install(["fastapi"]) // needed for sdk
+      pyodide.loadPackage("numpy")
 
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
