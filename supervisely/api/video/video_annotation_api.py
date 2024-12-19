@@ -302,6 +302,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         semaphore: Optional[asyncio.Semaphore] = None,
         force_metadata_for_links: bool = True,
         integer_coords: bool = True,
+        batch_size: int = 10,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> List[Dict]:
         """
@@ -315,6 +316,8 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type force_metadata_for_links: bool, optional
         :param integer_coords: Integer coordinates.
         :type integer_coords: bool, optional
+        :param batch_size: Batch size for parallel downloads. Default is 10 as an optimal value.
+        :type batch_size: int, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :return: Information about VideoAnnotations in json format
@@ -352,7 +355,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
                     progress_cb(len(batch))
                 return response.json()
 
-        tasks = [fetch_with_semaphore(batch) for batch in batched(video_ids)]
+        tasks = [fetch_with_semaphore(batch) for batch in batched(video_ids, batch_size=batch_size)]
         responses = await asyncio.gather(*tasks)
         json_response = [item for response in responses for item in response]
         return json_response
