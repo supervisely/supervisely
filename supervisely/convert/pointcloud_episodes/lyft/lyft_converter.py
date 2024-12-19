@@ -7,6 +7,13 @@ from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter impor
 )
 from supervisely.pointcloud_annotation.pointcloud_episode_annotation import (
     PointcloudEpisodeAnnotation,
+    PointcloudEpisodeObjectCollection,
+    PointcloudEpisodeFrameCollection,
+    PointcloudEpisodeTagCollection,
+    PointcloudFigure,
+)
+from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
+    PointcloudEpisodeTag,
 )
 from supervisely.project.project_settings import LabelingInterface
 
@@ -16,13 +23,17 @@ from typing import Dict, Optional
 from supervisely import (
     Api,
     ObjClass,
-    PointcloudEpisodeAnnotation,
-    PointcloudEpisodeFrame,
-    PointcloudEpisodeObject,
-    PointcloudFigure,
     ProjectMeta,
     logger,
     is_development,
+    PointcloudObject,
+    PointcloudEpisodeObject,
+    PointcloudFigure,
+    PointcloudEpisodeFrame,
+    TagMeta,
+    TagValueType,
+    VideoTagCollection,
+    VideoTag,
 )
 from supervisely.io import fs
 from supervisely.io.fs import get_file_name
@@ -30,6 +41,7 @@ from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.api.api import ApiField
 from datetime import datetime
 from supervisely.geometry.cuboid_3d import Cuboid3d
+from collections import defaultdict
 
 
 class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
@@ -50,17 +62,88 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.LYFT
 
+    def to_supervisely(
+        self,
+        items,
+        meta: ProjectMeta,
+        renamed_classes: dict = {},
+        renamed_tags: dict = {},
+    ):
+        from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
+
+        lyft: Lyft = self._lyft
+
+        scene_name_to_pcd_ep_ann = {}
+        # * Group items by scene name
+        scene_name_to_items = defaultdict(list)
+        for item in items:
+            scene_name_to_items[item._scene_name].append(item)
+
+        # * Iterate over each scene
+        for scene_name, items in scene_name_to_items.items():
+            token_to_obj = {}
+            frames = []
+            tags = []  # todo tags that belong to the whole scene if any
+            # * Iterate over each sample in the scene
+            for i, item in enumerate(items):
+                ann = item.ann_data
+                objs = lyft_helper.lyft_annotation_to_BEVBox3D(ann)
+                figures = []
+                for obj, instance_token in zip(objs, ann["instance_tokens"]):
+                    # get obj class by name
+                    class_name = instance_token["category_name"]
+                    obj_class_name = renamed_classes.get(class_name, class_name)
+                    obj_class = meta.get_obj_class(obj_class_name)
+
+                    # get pcd object's tags
+                    tag_names = [
+                        lyft.get("attribute", attr_token)["name"]
+                        for attr_token in instance_token["attribute_tokens"]
+                    ]
+                    tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+                    tag_metas = [
+                        meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
+                    ]
+                    obj_tags = [
+                        PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas
+                    ]  # todo: frame range?
+
+                    parent_obj_token = instance_token["prev"]
+                    pcd_ep_obj = PointcloudEpisodeObject(
+                        obj_class, PointcloudEpisodeTagCollection(obj_tags)
+                    )
+                    token_to_obj[instance_token["token"]] = pcd_ep_obj
+                    parent_object = token_to_obj.get(parent_obj_token, pcd_ep_obj)
+                    figures.append(
+                        PointcloudFigure(
+                            parent_object, lyft_helper._convert_BEVBox3D_to_geometry(obj), i
+                        )
+                    )
+                frame = PointcloudEpisodeFrame(i, figures)
+                frames.append(frame)
+            tag_collection = PointcloudEpisodeTagCollection(tags) if len(tags) > 0 else None
+            pcd_ep_ann = PointcloudEpisodeAnnotation(
+                len(frames),
+                PointcloudEpisodeObjectCollection(list(token_to_obj.values())),
+                PointcloudEpisodeFrameCollection(frames),
+                tag_collection,
+            )
+            scene_name_to_pcd_ep_ann[scene_name] = pcd_ep_ann
+        return scene_name_to_pcd_ep_ann
+
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         unique_names = {name for item in self._items for name in item.ann_data["names"]}
-        self._meta = ProjectMeta([ObjClass(name, Cuboid3d) for name in unique_names])
-        meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
+        tag_names = {tag["name"] for tag in self._lyft.attribute}
+        self._meta = ProjectMeta(
+            [ObjClass(name, Cuboid3d) for name in unique_names],
+            [TagMeta(tag, TagValueType.NONE) for tag in tag_names],
+        )
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         scene_names = set([item._scene_name for item in self._items])
 
         dataset_info = api.dataset.get_info_by_id(dataset_id)
         scene_name_to_dataset = {}
-        frame_to_pointcloud_ids = {}
-        ann_episode = PointcloudEpisodeAnnotation()
 
         multiple_scenes = len(scene_names) > 1
         if multiple_scenes:
@@ -84,83 +167,73 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
         else:
             progress_cb = None
 
-        scene = self._items[0]._scene_name
-        for idx, item in enumerate(self._items):
-            if item._scene_name != scene:
-                ann_episode = PointcloudEpisodeAnnotation()
-            # * Get the current dataset for the scene
-            current_dataset = scene_name_to_dataset.get(item._scene_name, None)
-            if current_dataset is None:
-                raise RuntimeError("Dataset not found for scene name: {}".format(item._scene_name))
-            current_dataset_id = current_dataset.id
+        scene_name_to_ann = self.to_supervisely(self._items, meta, renamed_classes, renamed_tags)
+        scene_name_to_item = defaultdict(list)
+        for item in self._items:
+            scene_name_to_item[item._scene_name].append(item)
 
-            # * Convert timestamp to ISO format
-            iso_time = datetime.utcfromtimestamp(item.ann_data["timestamp"] / 1e6).isoformat() + "Z"
-            item.ann_data["timestamp"] = iso_time
-
-            # * Convert pointcloud from ".bin" to ".pcd"
-            pcd_path = str(Path(item.path).with_suffix(".pcd"))
-            if fs.file_exists(pcd_path):
-                logger.warning(f"Overwriting file with path: {pcd_path}")
-            lyft_helper.convert_bin_to_pcd(item.path, pcd_path)
-
-            # * Upload pointcloud
-            pcd_meta = {}
-            pcd_meta["frame"] = idx
-
-            pcd_name = get_file_name(pcd_path)
-            info = api.pointcloud_episode.upload_path(
-                current_dataset_id, pcd_name, pcd_path, pcd_meta
-            )
-            pcd_id = info.id
-            frame_to_pointcloud_ids[idx] = pcd_id
-
-            # * Convert annotation and upload
-            ann = self.to_supervisely(item, meta, renamed_classes)
-            objects = ann_episode.objects
-            figures = []
-            for fig in ann.figures:
-                obj_cls = meta.get_obj_class(fig.parent_object.obj_class.name)
-                if obj_cls is not None:
-                    obj = PointcloudEpisodeObject(obj_cls)
-                    objects = objects.add(obj)
-                    figure = PointcloudFigure(obj, fig.geometry, frame_index=idx)
-                    figures.append(figure)
-            frames = ann_episode.frames
-            frames = frames.add(PointcloudEpisodeFrame(idx, figures))
-            ann_episode = ann_episode.clone(objects=objects, frames=frames)
-
-            # * Upload related images
-            image_jsons = []
-            camera_names = []
-            for img_path, rimage_info in lyft_helper.generate_rimage_infos(
-                item._related_images, item.ann_data
-            ):
-                img = api.pointcloud.upload_related_image(img_path)
-                image_jsons.append(
-                    {
-                        ApiField.ENTITY_ID: pcd_id,
-                        ApiField.NAME: rimage_info[ApiField.NAME],
-                        ApiField.HASH: img,
-                        ApiField.META: rimage_info[ApiField.META],
-                    }
+        for scene, items in scene_name_to_item.items():
+            # * Get the annotation for the scene
+            ann_episode = scene_name_to_ann[scene]
+            current_dataset_id = scene_name_to_dataset[item._scene_name].id
+            frame_to_pointcloud_ids = {}
+            for idx, item in enumerate(items):
+                # * Convert timestamp to ISO format
+                iso_time = (
+                    datetime.utcfromtimestamp(item.ann_data["timestamp"] / 1e6).isoformat() + "Z"
                 )
-                camera_names.append(rimage_info[ApiField.META]["deviceId"])
-            if len(image_jsons) > 0:
-                api.pointcloud.add_related_images(image_jsons, camera_names)
+                item.ann_data["timestamp"] = iso_time
 
-            sample_cnt = None
-            ann_episode = ann_episode.clone(frames_count=sample_cnt)
-            api.pointcloud_episode.annotation.append(
-                current_dataset_id, ann_episode, frame_to_pointcloud_ids
-            )
+                # * Convert pointcloud from ".bin" to ".pcd"
+                pcd_path = str(Path(item.path).with_suffix(".pcd"))
+                if fs.file_exists(pcd_path):
+                    logger.warning(f"Overwriting file with path: {pcd_path}")
+                lyft_helper.convert_bin_to_pcd(item.path, pcd_path)
 
-            # * Clean up
-            fs.silent_remove(pcd_path)
-            if log_progress:
-                progress_cb(1)
+                # * Upload pointcloud
+                pcd_meta = {}
+                pcd_meta["frame"] = idx
 
-        logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+                pcd_name = get_file_name(pcd_path)
+                info = api.pointcloud_episode.upload_path(
+                    current_dataset_id, pcd_name, pcd_path, pcd_meta
+                )
+                pcd_id = info.id
+                frame_to_pointcloud_ids[idx] = pcd_id
+
+                # * Upload related images
+                image_jsons = []
+                camera_names = []
+                for img_path, rimage_info in lyft_helper.generate_rimage_infos(
+                    item._related_images, item.ann_data
+                ):
+                    img = api.pointcloud_episode.upload_related_image(img_path)
+                    image_jsons.append(
+                        {
+                            ApiField.ENTITY_ID: pcd_id,
+                            ApiField.NAME: rimage_info[ApiField.NAME],
+                            ApiField.HASH: img,
+                            ApiField.META: rimage_info[ApiField.META],
+                        }
+                    )
+                    camera_names.append(rimage_info[ApiField.META]["deviceId"])
+                if len(image_jsons) > 0:
+                    api.pointcloud_episode.add_related_images(image_jsons, camera_names)
+
+                # * Clean up
+                fs.silent_remove(pcd_path)
+                if log_progress:
+                    progress_cb(1)
+
+            try:
+                api.pointcloud_episode.annotation.append(
+                    current_dataset_id, ann_episode, frame_to_pointcloud_ids
+                )
+            except Exception as e:
+                logger.warn(
+                    f"Failed to upload annotation for scene: {scene}. Message: {e.response.text}"
+                )
+            logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
 
         if log_progress:
             if is_development():

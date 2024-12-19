@@ -105,7 +105,7 @@ class LyftConverter(PointcloudConverter):
                 custom_data = sample_data.get("custom_data", {})
                 item = self.Item(item_path, ann_data, related_images, custom_data, scene_name)
                 self._items.append(item)
-            self._scene_to_sample_cnt[scene_name] = len(sample_datas)
+            # self._scene_to_sample_cnt[scene_name] = len(sample_datas)
             progress.iter_done_report()
             break  # ! remove
         t = t.get_sec()
@@ -119,8 +119,8 @@ class LyftConverter(PointcloudConverter):
         self,
         item: PointcloudConverter.Item,
         meta: ProjectMeta,
-        renamed_classes: dict = None,
-        renamed_tags: dict = None,
+        renamed_classes: dict = {},
+        renamed_tags: dict = {},
     ) -> PointcloudAnnotation:
         """
         Converts a point cloud item and its annotations to the supervisely formats.
@@ -143,7 +143,7 @@ class LyftConverter(PointcloudConverter):
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         unique_names = {name for item in self._items for name in item.ann_data["names"]}
         self._meta = ProjectMeta([ObjClass(name, Cuboid3d) for name in unique_names])
-        meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         scene_names = set([item._scene_name for item in self._items])
         dataset_info = api.dataset.get_info_by_id(dataset_id)
@@ -164,7 +164,7 @@ class LyftConverter(PointcloudConverter):
                 )
                 scene_name_to_dataset[name] = ds
         else:
-            scene_name_to_dataset[scene_names[0]] = dataset_info
+            scene_name_to_dataset[list(scene_names)[0]] = dataset_info
 
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Converting pointclouds...")
@@ -190,7 +190,7 @@ class LyftConverter(PointcloudConverter):
             pcd_id = info.id
 
             # * Convert annotation and upload
-            ann = self.to_supervisely(item, meta, renamed_classes)
+            ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
             api.pointcloud.annotation.append(pcd_id, ann)
 
             # * Upload related images

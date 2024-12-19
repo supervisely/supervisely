@@ -269,7 +269,6 @@ def convert_label_to_annotation(label, meta, renamed_classes):
         pcobj = PointcloudObject(meta.get_obj_class(class_name))
         figures.append(PointcloudFigure(pcobj, geometry))
         objs.append(pcobj)
-
     return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
 
@@ -287,6 +286,19 @@ def _convert_label_to_geometry(label):
         geometry = Cuboid3d(position, rotation, dimension)
         geometries.append(geometry)
     return geometries
+
+
+def _convert_BEVBox3D_to_geometry(box):
+    bbox = box.to_xyzwhlr()
+    dim = bbox[[3, 5, 4]]
+    pos = bbox[:3] + [0, 0, dim[1] / 2]
+    yaw = bbox[-1]
+    position = Vector3d(float(pos[0]), float(pos[1]), float(pos[2]))
+    rotation = Vector3d(0, 0, float(-yaw))
+
+    dimension = Vector3d(float(dim[0]), float(dim[2]), float(dim[1]))
+    geometry = Cuboid3d(position, rotation, dimension)
+    return geometry
 
 
 def convert_bin_to_pcd(bin_file, save_filepath):
