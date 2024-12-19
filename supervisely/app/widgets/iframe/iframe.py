@@ -56,6 +56,8 @@ class IFrame(Widget):
         height: Optional[Union[int, str]] = None,
         width: Optional[Union[int, str]] = None,
     ):
+        height = height or self._height
+        width = width or self._width
         self._update(path_to_html=path_to_html, height=height, width=width)
 
     def clean_up(self):
