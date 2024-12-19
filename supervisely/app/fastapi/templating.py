@@ -77,6 +77,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             **JinjaWidgets().context,
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
+            "pyodide_version": pyodide_version,
             "app_name": get_name_from_env(default="Supervisely App"),
         }
         template: jinja2.Template = self.get_template(name)
