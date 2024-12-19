@@ -472,7 +472,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type volume_id: int
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :param integer_coords: Integer coordinates.
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
         :type integer_coords: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
@@ -514,7 +514,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         :type volume_ids: int
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :param integer_coords: Integer coordinates.
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
         :type integer_coords: bool, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional

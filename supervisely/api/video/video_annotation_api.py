@@ -265,9 +265,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_info: VideoInfo, optional
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :param force_metadata_for_links: Force metadata for links.
+        :param force_metadata_for_links: If True, updates meta for videos with links.
         :type force_metadata_for_links: bool, optional
-        :param integer_coords: Integer coordinates.
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
         :type integer_coords: bool, optional
         :param progress_cb: Progress callback to track download progress.
         :type progress_cb: Union[tqdm, Callable], optional
@@ -312,9 +312,9 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         :type video_ids: int
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
-        :param force_metadata_for_links: Force metadata for links.
+        :param force_metadata_for_links: If True, updates meta for videos with links.
         :type force_metadata_for_links: bool, optional
-        :param integer_coords: Integer coordinates.
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
         :type integer_coords: bool, optional
         :param batch_size: Batch size for parallel downloads. Default is 10 as an optimal value.
         :type batch_size: int, optional
