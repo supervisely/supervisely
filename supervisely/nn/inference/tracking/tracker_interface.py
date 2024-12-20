@@ -73,7 +73,7 @@ class TrackerInterface:
 
         self.geometries[start_fig] = geometries[-1]
 
-    def frames_loader_generator(self, batch_size=16) -> Generator[None, None, None]:
+    def frames_loader_generator(self, batch_size=4) -> Generator[None, None, None]:
         if self.load_all_frames:
             self._cur_frames_indexes = self.frames_indexes
             yield
