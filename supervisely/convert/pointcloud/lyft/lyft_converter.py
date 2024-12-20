@@ -11,6 +11,8 @@ from supervisely import (
     is_development,
     Progress,
     PointcloudObject,
+    TagMeta,
+    TagValueType,
 )
 from supervisely.io import fs
 from supervisely.convert.base_converter import AvailablePointcloudConverters
@@ -184,7 +186,11 @@ class LyftConverter(PointcloudConverter):
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         unique_names = {name for item in self._items for name in item.ann_data["names"]}
-        self._meta = ProjectMeta([ObjClass(name, Cuboid3d) for name in unique_names])
+        tag_names = {tag["name"] for tag in self._lyft.attribute}
+        self._meta = ProjectMeta(
+            [ObjClass(name, Cuboid3d) for name in unique_names],
+            [TagMeta(tag, TagValueType.NONE) for tag in tag_names],
+        )
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         scene_names = set([item._scene_name for item in self._items])
@@ -219,6 +225,10 @@ class LyftConverter(PointcloudConverter):
             if current_dataset is None:
                 raise RuntimeError(f"Dataset not found for scene name: {item._scene_name}")
             current_dataset_id = current_dataset.id
+
+            # * Convert timestamp to ISO format
+            iso_time = datetime.utcfromtimestamp(item.ann_data["timestamp"] / 1e6).isoformat() + "Z"
+            item.ann_data["timestamp"] = iso_time
 
             # * Convert pointcloud from ".bin" to ".pcd"
             pcd_path = str(Path(item.path).with_suffix(".pcd"))
