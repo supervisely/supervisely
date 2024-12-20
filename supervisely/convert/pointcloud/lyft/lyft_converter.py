@@ -78,13 +78,16 @@ class LyftConverter(PointcloudConverter):
             )  # ⬅︎ need to check
 
         input_data = [lyft_dir for lyft_dir in fs.dirs_filter(self._input_data, filter_fn)]
-        if len(input_data) != 4:
+        if len(input_data) == 0:
             return False
         input_path = str(Path(input_data[0]).parent)
 
         lidar_dir = input_path + "/lidar/"
+        if not fs.dir_exists(lidar_dir):
+            return False
+
         json_dir = input_path + "/data/"
-        if not lyft_helper.validate_ann_dir(json_dir):
+        if not fs.dir_exists(json_dir) or not lyft_helper.validate_ann_dir(json_dir):
             return False
 
         bin_files = fs.list_files_recursively(
