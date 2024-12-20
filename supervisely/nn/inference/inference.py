@@ -228,6 +228,7 @@ class Inference:
             ttl=env.smart_cache_ttl(),
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
+            log_progress=True,
         )
 
     def get_batch_size(self):
