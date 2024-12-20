@@ -426,8 +426,16 @@ class InferenceImageCache:
                         cur_t = time.monotonic()
                         if cur_t - prog_t > 3 or (isinstance(size, int) and prog_n >= size):
                             prog_t = cur_t
+                            percent_str = ""
+                            if isinstance(size, int):
+                                percent_str = f" ({(prog_n*100) // size}%)"
+                            prog_str = (
+                                f"{(prog_n / 1000000):.2f}/{(size / 1000000):.2f} MB{percent_str}"
+                            )
                             sly.logger.debug(
-                                "Downloading video #%s: %d B / %s B", video_id, prog_n, size
+                                "Downloading video #%s: %s",
+                                video_id,
+                                prog_str,
                             )
 
                     progress_cb = _progress_cb
