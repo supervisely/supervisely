@@ -67,13 +67,13 @@ class LyftConverter(PointcloudConverter):
         try:
             from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
         except ImportError:
-            logger.error(
+            logger.warn(
                 'Please run "pip install lyft_dataset_sdk" ' "to install the official devkit first."
             )
             return
 
         def filter_fn(path):
-            return Path(path).name in ["data", "lidar", "images", "maps"]
+            return Path(path).name in lyft_helper.FOLDER_NAMES
 
         dirs = [lyft_dir for lyft_dir in fs.dirs_filter(self._input_data, filter_fn)]
         if len(dirs) != 4:
@@ -81,6 +81,10 @@ class LyftConverter(PointcloudConverter):
 
         lidar_dir = self._input_data + "/lidar/"
         json_dir = self._input_data + "/data/"
+        if any([not fs.dir_exists(d) for d in [lidar_dir, json_dir]]) or any(
+            [not fs.file_exists(f"{json_dir}/{d}.json") for d in lyft_helper.TABLE_NAMES]
+        ):
+            return False
 
         bin_files = fs.list_files_recursively(
             lidar_dir, [self.key_file_ext], ignore_valid_extensions_case=True
@@ -94,14 +98,18 @@ class LyftConverter(PointcloudConverter):
         if pointcloud.shape[0] % 5 != 0:
             return False
 
-        t = TinyTimer()
-        lyft = Lyft(data_path=self._input_data, json_path=json_dir, verbose=False)
-        self._lyft = lyft
-        logger.info(f"LyftDataset initialization took {t.get_sec():.2f} sec")
+        try:
+            t = TinyTimer()
+            lyft = Lyft(data_path=self._input_data, json_path=json_dir, verbose=False)
+            self._lyft: Lyft = lyft
+            logger.info(f"LyftDataset initialization took {t.get_sec():.2f} sec")
+        except Exception as e:
+            logger.info(f"Failed to initialize LyftDataset: {e}")
+            return False
 
         t = TinyTimer()
         progress = Progress(f"Extracting annotations from available scenes...")
-        for scene in lyft_helper.get_available_scenes(lyft):
+        for i, scene in enumerate(lyft_helper.get_available_scenes(lyft)):
             scene_name = scene["name"]
             sample_datas = lyft_helper.extract_data_from_scene(lyft, scene)
             if sample_datas is None:
@@ -114,9 +122,9 @@ class LyftConverter(PointcloudConverter):
                 custom_data = sample_data.get("custom_data", {})
                 item = self.Item(item_path, ann_data, related_images, custom_data, scene_name)
                 self._items.append(item)
-            # self._scene_to_sample_cnt[scene_name] = len(sample_datas)
             progress.iter_done_report()
-            break  # ! remove
+            # if i == 2:  # ! to remove
+            #     break
         t = t.get_sec()
         logger.info(
             f"Lyft annotation extraction took {t:.2f} sec ({(t / self.items_count):.3f} sec per sample)"
@@ -173,12 +181,14 @@ class LyftConverter(PointcloudConverter):
         ):  # by object in point cloud
             class_name = renamed_classes.get(l.label_class, l.label_class)
             tag_names = [
-                self._lyft.get("attribute", attr_token)["name"]
+                self._lyft.get("attribute", attr_token).get("name", None)
                 for attr_token in token["attribute_tokens"]
             ]
-            tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
-            tag_metas = [meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names]
-            tag_col = PointcloudTagCollection([PointcloudTag(meta, None) for meta in tag_metas])
+            tag_col = None
+            if len(tag_names) > 0 and all([tag_name is not None for tag_name in tag_names]):
+                tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+                tag_metas = [meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names]
+                tag_col = PointcloudTagCollection([PointcloudTag(meta, None) for meta in tag_metas])
             pcobj = PointcloudObject(meta.get_obj_class(class_name), tag_col)
             figures.append(PointcloudFigure(pcobj, geometry))
             objs.append(pcobj)

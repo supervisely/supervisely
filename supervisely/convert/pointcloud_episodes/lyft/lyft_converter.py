@@ -69,9 +69,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
         renamed_classes: dict = {},
         renamed_tags: dict = {},
     ):
-        from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
-
-        lyft: Lyft = self._lyft
+        lyft = self._lyft
 
         scene_name_to_pcd_ep_ann = {}
         # * Group items by scene name
@@ -100,16 +98,20 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
 
                         # * Get tags for the object
                         tag_names = [
-                            lyft.get("attribute", attr_token)["name"]
+                            lyft.get("attribute", attr_token).get("name", None)
                             for attr_token in instance_token["attribute_tokens"]
                         ]
-                        tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
-                        tag_metas = [
-                            meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
-                        ]
-                        # obj_tags = PointcloudEpisodeTagCollection([
-                        #     PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas
-                        # ])  # todo: fix
+                        if len(tag_names) > 0 and all(
+                            [tag_name is not None for tag_name in tag_names]
+                        ):
+                            tags = [TagMeta(tag_name, TagValueType.NONE) for tag_name in tag_names]
+                            tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+                            tag_metas = [
+                                meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
+                            ]
+                            obj_tags = PointcloudEpisodeTagCollection(
+                                [PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas]
+                            )  # todo: fix
                         obj_tags = None
                         pcd_ep_obj = PointcloudEpisodeObject(obj_class, obj_tags)
                         # * Assign the object to the starting token

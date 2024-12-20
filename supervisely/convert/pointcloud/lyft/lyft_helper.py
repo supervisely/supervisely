@@ -3,8 +3,6 @@ from typing import List
 import numpy as np
 import open3d as o3d
 import shutil
-from pyquaternion import Quaternion
-
 from supervisely import PointcloudAnnotation, PointcloudObject, PointcloudFigure, logger, fs
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 from supervisely.io import json
@@ -14,6 +12,23 @@ from supervisely.pointcloud_annotation.pointcloud_object_collection import (
 from datetime import datetime
 from collections import defaultdict
 from uuid import uuid4
+
+TABLE_NAMES = [
+    "category",
+    "attribute",
+    "visibility",
+    "instance",
+    "sensor",
+    "calibrated_sensor",
+    "ego_pose",
+    "log",
+    "scene",
+    "sample",
+    "sample_data",
+    "sample_annotation",
+    "map",
+]
+FOLDER_NAMES = ["data", "lidar", "images", "maps"]
 
 
 def get_available_scenes(lyft):
@@ -29,23 +44,24 @@ def get_available_scenes(lyft):
         yield scene
 
 
-def get_all_instance_tokens(lyft, instance_token):
-    it = lyft.get("instance", instance_token)
-    first_ann_token = it["first_annotation_token"]
-    last_ann_token = it["last_annotation_token"]
-    ann_tokens = lyft.get("sample_annotation", first_ann_token)
-    while True:
-        yield ann_tokens["token"]
-        if ann_tokens["token"] == last_ann_token:
-            break
-        ann_tokens = lyft.get("sample_annotation", ann_tokens["next"])
+# def get_all_instance_tokens(lyft, instance_token):
+#     it = lyft.get("instance", instance_token)
+#     first_ann_token = it["first_annotation_token"]
+#     last_ann_token = it["last_annotation_token"]
+#     ann_tokens = lyft.get("sample_annotation", first_ann_token)
+#     while True:
+#         yield ann_tokens["token"]
+#         if ann_tokens["next"] == "":
+#             break
+#         ann_tokens = lyft.get("sample_annotation", ann_tokens["next"])
 
 
 def extract_data_from_scene(lyft, scene):
     try:
+        from pyquaternion import Quaternion
         from lyft_dataset_sdk.utils.geometry_utils import transform_matrix
-    except ImportError:
-        logger.error("Please run pip install lyft_dataset_sdk")
+    except ImportError as ie:
+        logger.warn(f"Lazy import failed. Error: {ie}")
         return
 
     new_token = scene["first_sample_token"]
@@ -71,7 +87,7 @@ def extract_data_from_scene(lyft, scene):
         rots = np.array([b.orientation.yaw_pitch_roll[0] for b in boxes]).reshape(-1, 1)
 
         names = np.array([b.name for b in boxes])
-        gt_boxes = np.concatenate([locs, dims, -rots - np.pi / 2], axis=1)
+        gt_boxes = np.concatenate([locs, dims, rots + np.pi / 2], axis=1)
         data["lidar_path"] = str(lidar_path)
         data["ann_data"]["names"] = names
         data["ann_data"]["gt_boxes"] = gt_boxes
