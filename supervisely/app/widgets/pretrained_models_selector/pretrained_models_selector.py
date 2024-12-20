@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Literal, Union
 
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
@@ -136,7 +136,7 @@ class PretrainedModelsSelector(Widget):
             return models[selected_row_index]
 
     def get_selected_model_params(
-        self, model_name_column: str = "Model", train_version: str = "v1"
+        self, model_name_column: str = "Model", train_version: Literal["v1", "v2"] = "v1"
     ) -> Union[Dict, None]:
         selected_model = self.get_selected_row()
         if selected_model is None:
