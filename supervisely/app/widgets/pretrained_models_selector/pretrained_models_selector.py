@@ -1,9 +1,10 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Literal, Union
 
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.io.fs import get_file_ext
+from supervisely.nn.utils import ModelSource
 
 
 class PretrainedModelsSelector(Widget):
@@ -134,39 +135,71 @@ class PretrainedModelsSelector(Widget):
             selected_row_index = int(widget_actual_state["selectedRow"])
             return models[selected_row_index]
 
-    def get_selected_model_params(self, model_name_column: str = "Model") -> Union[Dict, None]:
+    def get_selected_model_params(
+        self,
+        model_name_column: str = "Model",
+        train_version: Literal["v1", "v2"] = "v1",
+    ) -> Union[Dict, None]:
         selected_model = self.get_selected_row()
         if selected_model is None:
             return {}
 
-        model_name = selected_model.get(model_name_column)
-        if model_name is None:
-            raise ValueError(
-                "Could not find model name. Make sure you have column 'Model' in your models list."
-            )
-        checkpoint_url = selected_model.get("meta", {}).get("weights_url")
-        if checkpoint_url is None:
-            pass
+        if train_version == "v1":
+            model_name = selected_model.get(model_name_column)
+            if model_name is None:
+                raise ValueError(
+                    "Could not find model name. Make sure you have column 'Model' in your models list."
+                )
 
-        checkpoint_ext = get_file_ext(checkpoint_url)
-        checkpoint_name = f"{model_name.lower()}{checkpoint_ext}"
+            model_meta = selected_model.get("meta")
+            if model_meta is None:
+                raise ValueError(
+                    "Could not find model meta. Make sure you have key 'meta' in your models configuration list."
+                )
+            checkpoint_url = model_meta.get("weights_url")
+            if checkpoint_url is None:
+                model_files = model_meta.get("model_files")
+                if model_files is None:
+                    raise ValueError(
+                        "Could not find model files. Make sure you have key 'model_files' or 'weights_url' in 'meta' in your models configuration list."
+                    )
+                checkpoint_url = model_files.get("checkpoint")
+                if checkpoint_url is None:
+                    raise ValueError(
+                        "Could not find checkpoint url. Make sure you have key 'checkpoint' in 'model_files' in 'meta' in your models configuration list."
+                    )
 
-        task_type = self.get_selected_task_type()
-        model_params = {
-            "model_source": "Pretrained models",
-            "task_type": task_type,
-            "checkpoint_name": checkpoint_name,
-            "checkpoint_url": checkpoint_url,
-        }
+            checkpoint_ext = get_file_ext(checkpoint_url)
+            checkpoint_name = f"{model_name.lower()}{checkpoint_ext}"
 
-        if len(self._arch_types) > 1:
-            arch_type = self.get_selected_arch_type()
-            model_params["arch_type"] = arch_type
+            task_type = self.get_selected_task_type()
+            model_params = {
+                "model_source": "Pretrained models",
+                "task_type": task_type,
+                "checkpoint_name": checkpoint_name,
+                "checkpoint_url": checkpoint_url,
+            }
 
-        config_url = selected_model.get("meta", {}).get("config_url")
-        if config_url is not None:
-            model_params["config_url"] = config_url
+            if len(self._arch_types) > 1:
+                arch_type = self.get_selected_arch_type()
+                model_params["arch_type"] = arch_type
 
+            config_url = selected_model.get("meta", {}).get("config_url")
+            if config_url is not None:
+                model_params["config_url"] = config_url
+        elif train_version == "v2":
+            model_info = self.get_selected_row()
+            meta = model_info.get("meta")
+            if meta is None:
+                raise ValueError("key 'meta' not found in model configuration")
+            model_files = meta.get("model_files")
+            if model_files is None:
+                raise ValueError("key 'model_files' not found in key 'meta' in model configuration")
+            model_params = {
+                "model_source": ModelSource.PRETRAINED,
+                "model_info": model_info,
+                "model_files": model_files,
+            }
         return model_params
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
