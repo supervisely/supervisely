@@ -196,7 +196,7 @@ class BBoxTracking(Inference):
             )
 
         predictions = []
-        frames_n = len(video_interface.frames) - 1
+        frames_n = video_interface.frames_count
         box_n = len(input_bboxes)
         geom_t = time.monotonic()
         api.logger.info(
