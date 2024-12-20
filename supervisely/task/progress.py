@@ -5,7 +5,7 @@ import inspect
 import math
 import re
 from functools import partial, wraps
-from typing import Dict, Optional, Union
+from typing import Dict, Literal, Optional, Union
 
 from tqdm import tqdm
 
@@ -79,6 +79,7 @@ class Progress:
         is_size: Optional[bool] = False,
         need_info_log: Optional[bool] = False,
         min_report_percent: Optional[int] = 1,
+        notification_log_level: Optional[Literal["info", "debug"]] = "info",
     ):
         self.is_size = is_size
         self.message = message
@@ -94,6 +95,9 @@ class Progress:
         self.logger = logger if ext_logger is None else ext_logger
         self.report_every = max(1, math.ceil((total_cnt or 0) / 100 * min_report_percent))
         self.need_info_log = need_info_log
+        self.notification_func = logger.info
+        if notification_log_level == "debug":
+            self.notification_func = logger.debug
 
         mb5 = 5 * 1024 * 1024
         if self.is_size and self.is_total_unknown:
@@ -169,9 +173,9 @@ class Progress:
             extra["current_label"] = self.current_label
             extra["total_label"] = self.total_label
 
-        self.logger.info("progress", extra=extra)
+        self.notification_func("progress", extra=extra)
         if self.need_info_log is True:
-            self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
+            self.notification_func(f"{self.message} [{self.current_label} / {self.total_label}]")
 
     def need_report(self) -> bool:
         if (
