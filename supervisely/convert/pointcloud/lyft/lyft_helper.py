@@ -178,7 +178,7 @@ def _convert_BEVBox3D_to_geometry(box):
 
 
 def convert_bin_to_pcd(bin_file, save_filepath):
-    import open3d as o3d
+    import open3d as o3d # pylint: disable=import-error
 
     b = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 5)
     points = b[:, 0:3]
@@ -214,7 +214,7 @@ def validate_ann_dir(ann_dir):
 
 
 def lyft_annotation_to_BEVBox3D(data):
-    import open3d as o3d
+    import open3d as o3d # pylint: disable=import-error
 
     boxes = data["gt_boxes"]
     names = data["names"]

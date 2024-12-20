@@ -233,8 +233,9 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
                     current_dataset_id, ann_episode, frame_to_pointcloud_ids
                 )
             except Exception as e:
+                error_msg = getattr(getattr(e, "response", e), "text", str(e))
                 logger.warn(
-                    f"Failed to upload annotation for scene: {scene}. Message: {e.response.text}"
+                    f"Failed to upload annotation for scene: {scene}. Message: {error_msg}"
                 )
             logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
 

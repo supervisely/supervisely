@@ -158,7 +158,7 @@ class LyftConverter(PointcloudConverter):
         Returns:
             PointcloudAnnotation: The converted point cloud annotation.
         """
-        import open3d as o3d
+        import open3d as o3d # pylint: disable=import-error
 
         if getattr(item, "ann_data", None) is None:
             return PointcloudAnnotation()
