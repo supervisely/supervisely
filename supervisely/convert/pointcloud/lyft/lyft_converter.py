@@ -73,18 +73,18 @@ class LyftConverter(PointcloudConverter):
             return
 
         def filter_fn(path):
-            return Path(path).name in lyft_helper.FOLDER_NAMES
+            return all(
+                [Path(path).with_name(name).exists() for name in lyft_helper.FOLDER_NAMES]
+            )  # ⬅︎ need to check
 
-        dirs = [lyft_dir for lyft_dir in fs.dirs_filter(self._input_data, filter_fn)]
-        if len(dirs) != 4:
+        input_data = [lyft_dir for lyft_dir in fs.dirs_filter(self._input_data, filter_fn)]
+        if len(input_data) != 4:
             return False
+        input_path = str(Path(input_data[0]).parent)
 
-        lidar_dir = self._input_data + "/lidar/"
-        if not fs.dir_exists(lidar_dir):
-            return False
-
-        json_dir = self._input_data + "/data/"
-        if not fs.dir_exists(json_dir) or lyft_helper.validate_ann_dir(json_dir) is False:
+        lidar_dir = input_path + "/lidar/"
+        json_dir = input_path + "/data/"
+        if not lyft_helper.validate_ann_dir(json_dir):
             return False
 
         bin_files = fs.list_files_recursively(
@@ -101,7 +101,7 @@ class LyftConverter(PointcloudConverter):
 
         try:
             t = TinyTimer()
-            lyft = Lyft(data_path=self._input_data, json_path=json_dir, verbose=False)
+            lyft = Lyft(data_path=input_path, json_path=json_dir, verbose=False)
             self._lyft: Lyft = lyft
             logger.info(f"LyftDataset initialization took {t.get_sec():.2f} sec")
         except Exception as e:
