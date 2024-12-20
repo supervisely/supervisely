@@ -83,14 +83,14 @@ class LyftConverter(PointcloudConverter):
             subdirs = [f for f in Path(self._input_data).iterdir() if f.is_dir()]
             for d in subdirs:
                 if filter_fn(d):
-                    input_path = str(d.parent)
+                    input_path = str(d)
                     break
             if input_path is None:
                 return False
 
         lidar_dir = input_path + "/lidar/"
         json_dir = input_path + "/data/"
-        if not lyft_helper.validate_ann_dir(json_dir):
+        if lyft_helper.validate_ann_dir(json_dir) is False:
             return False
 
         bin_files = fs.list_files_recursively(
