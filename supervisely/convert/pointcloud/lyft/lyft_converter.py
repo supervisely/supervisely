@@ -74,12 +74,17 @@ class LyftConverter(PointcloudConverter):
 
         def filter_fn(path):
             return all(
-                [Path(path).with_name(name).exists() for name in lyft_helper.FOLDER_NAMES]
-            )  # ⬅︎ need to check
+                [Path(f"{self._input_data}/{name}").exists() for name in lyft_helper.FOLDER_NAMES]
+            )
 
-        input_data = [lyft_dir for lyft_dir in fs.dirs_filter(self._input_data, filter_fn)]
-        if len(input_data) == 0:
-            return False
+        input_data = None
+        if filter_fn(self._input_data):
+            input_data = self._input_data
+        else:
+            # * If LYFT dirs not found in root directory, search them in subdirectories
+            input_data = [lyft_dir for lyft_dir in fs.dirs_filter(self._input_data, filter_fn)]
+            if len(input_data) == 0:
+                return False
         input_path = str(Path(input_data[0]).parent)
 
         lidar_dir = input_path + "/lidar/"
