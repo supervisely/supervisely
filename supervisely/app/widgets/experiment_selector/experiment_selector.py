@@ -19,6 +19,8 @@ from supervisely.app.widgets import (
 )
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.utils import ModelSource
+
 
 WEIGHTS_DIR = "weights"
 
@@ -472,6 +474,17 @@ class ExperimentSelector(Widget):
         }
         full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
         return full_model_files
+
+    def get_deploy_params(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary with deploy parameters except runtime and device keys.
+        """
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": self.get_model_files(),
+            "model_info": self.get_selected_experiment_info(),
+        }
+        return deploy_params
 
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:

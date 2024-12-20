@@ -14,6 +14,7 @@ from supervisely.nn.training.gui.hyperparameters_selector import Hyperparameters
 from supervisely.nn.training.gui.input_selector import InputSelector
 from supervisely.nn.training.gui.model_selector import ModelSelector
 from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
+from supervisely.nn.training.gui.training_artifacts import TrainingArtifacts
 from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
@@ -50,7 +51,9 @@ class TrainGUI:
         if is_production():
             self.task_id = sly_env.task_id()
         else:
-            self.task_id = "debug-session"
+            self.task_id = sly_env.task_id(raise_not_found=False)
+            if self.task_id is None:
+                self.task_id = "debug-session"
 
         self.framework_name = framework_name
         self.models = models
@@ -86,17 +89,22 @@ class TrainGUI:
         # 7. Training logs
         self.training_logs = TrainingLogs(self.app_options)
 
+        # 8. Training Artifacts
+        self.training_artifacts = TrainingArtifacts(self.app_options)
+
         # Stepper layout
+        self.steps = [
+            self.input_selector.card,
+            self.train_val_splits_selector.card,
+            self.classes_selector.card,
+            self.model_selector.card,
+            self.hyperparameters_selector.card,
+            self.training_process.card,
+            self.training_logs.card,
+            self.training_artifacts.card,
+        ]
         self.stepper = Stepper(
-            widgets=[
-                self.input_selector.card,
-                self.train_val_splits_selector.card,
-                self.classes_selector.card,
-                self.model_selector.card,
-                self.hyperparameters_selector.card,
-                self.training_process.card,
-                self.training_logs.card,
-            ],
+            widgets=self.steps,
         )
         # ------------------------------------------------- #
 
@@ -264,6 +272,20 @@ class TrainGUI:
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper
+
+    def set_next_step(self):
+        current_step = self.stepper.get_active_step()
+        self.stepper.set_active_step(current_step + 1)
+
+    def set_previous_step(self):
+        current_step = self.stepper.get_active_step()
+        self.stepper.set_active_step(current_step - 1)
+
+    def set_first_step(self):
+        self.stepper.set_active_step(1)
+
+    def set_last_step(self):
+        self.stepper.set_active_step(len(self.steps))
 
     def enable_select_buttons(self):
         """

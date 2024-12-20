@@ -1,8 +1,6 @@
 import numpy as np
 
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.cv_tasks import CVTask
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
@@ -12,7 +10,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class LocalizationAccuracyIoU(BaseVisMetric):
+class LocalizationAccuracyIoU(BaseVisMetrics):
     @property
     def header_md(self) -> MarkdownWidget:
         title = "Localization Accuracy (IoU)"
@@ -90,7 +88,7 @@ class LocalizationAccuracyIoU(BaseVisMetric):
         bin_width = min([bin_edges[1] - bin_edges[0] for _, bin_edges in hist_data])
 
         for i, (eval_result, (hist, bin_edges)) in enumerate(zip(self.eval_results, hist_data)):
-            name = f"[{i+1}] {eval_result.model_name}"
+            name = f"[{i+1}] {eval_result.name}"
             kde = gaussian_kde(eval_result.mp.ious)
             density = kde(x_range)
 

@@ -120,6 +120,7 @@ class SelectDatasetTree(Widget):
 
         # Extract values from Enum to match the .type property of the ProjectInfo object.
 
+        self._project_types = None
         if allowed_project_types is not None:
             if all(allowed_project_types) is isinstance(allowed_project_types, ProjectType):
                 self._project_types = (
@@ -129,8 +130,6 @@ class SelectDatasetTree(Widget):
                 )
             elif all(allowed_project_types) is isinstance(allowed_project_types, str):
                 self._project_types = allowed_project_types
-            else:
-                self._project_types = None
 
         # Widget components.
         self._select_team = None

@@ -1,10 +1,8 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.visualization.widgets import ChartWidget, MarkdownWidget
 
 
-class AveragePrecisionByClass(BaseVisMetric):
+class AveragePrecisionByClass(BaseVisMetrics):
     MARKDOWN_CLASS_AP = "markdown_class_ap_polar"
     MARKDOWN_CLASS_AP_BAR = "markdown_class_ap_bar"
 
@@ -43,8 +41,8 @@ class AveragePrecisionByClass(BaseVisMetric):
                         x=eval_result.mp.cat_names,
                         y=ap_per_class,
                         name=trace_name,
-                        width=0.2,
-                        marker=dict(color=eval_result.color),
+                        width=0.2 if cls_cnt >= 5 else None,
+                        marker=dict(color=eval_result.color, line=dict(width=0.7)),
                     )
                 )
 
@@ -116,7 +114,7 @@ class AveragePrecisionByClass(BaseVisMetric):
                     {
                         "type": "tag",
                         "tagId": "confidence",
-                        "value": [eval_result.f1_optimal_conf, 1],
+                        "value": [eval_result.mp.f1_optimal_conf, 1],
                     },
                     {"type": "tag", "tagId": "outcome", "value": "TP"},
                     {"type": "specific_objects", "tagId": None, "value": list(obj_ids)},

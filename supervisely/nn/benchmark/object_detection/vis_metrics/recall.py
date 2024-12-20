@@ -68,4 +68,7 @@ class Recall(DetectionVisMetric):
             )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Recall", range=[0, 1])
+        fig.update_layout(
+            width=700 if len(sorted_by_f1) < 10 else None,
+        )
         return fig

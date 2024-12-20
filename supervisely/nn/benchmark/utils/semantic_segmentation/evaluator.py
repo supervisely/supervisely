@@ -63,29 +63,11 @@ class Evaluator:
         :param boundary_implementation: Choose "exact" for the euclidean pixel distance.
             The Boundary IoU paper uses the L1 distance ("fast").
         """
-        global torch, np, GPU
+        global torch, np, GPU, numpy
         import torch  # pylint: disable=import-error
 
-        if torch.cuda.is_available():
-            GPU = True
-            logger.info("Using GPU for evaluation.")
-            try:
-                # gpu-compatible numpy analogue
-                import cupy as np  # pylint: disable=import-error
-
-                global numpy
-                import numpy as numpy
-            except:
-                logger.warning(
-                    "Failed to import cupy. Use cupy official documentation to install this "
-                    "module: https://docs.cupy.dev/en/stable/install.html"
-                )
-        else:
-            GPU = False
-            import numpy as np
-
-            global numpy
-            numpy = np
+        numpy = np
+        GPU = False
 
         self.progress = progress or tqdm_sly
         self.class_names = class_names

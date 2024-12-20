@@ -69,6 +69,7 @@ from supervisely.io.network_exceptions import (
     process_requests_exception,
     process_requests_exception_async,
     process_unhandled_request,
+    RetryableRequestException,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -1283,16 +1284,20 @@ class Api:
                         Api._raise_for_status_httpx(resp)
 
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
-                    for chunk in resp.iter_raw(chunk_size):
-                        yield chunk, hhash
-                        total_streamed += len(chunk)
+                    try:
+                        for chunk in resp.iter_raw(chunk_size):
+                            yield chunk, hhash
+                            total_streamed += len(chunk)
+                    except Exception as e:
+                        raise RetryableRequestException(repr(e))
+
                     if expected_size != 0 and total_streamed != expected_size:
                         raise ValueError(
                             f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
                 if (
                     isinstance(e, httpx.HTTPStatusError)
                     and resp.status_code == 400
@@ -1531,9 +1536,12 @@ class Api:
 
                     # received hash of the content to check integrity of the data stream
                     hhash = resp.headers.get("x-content-checksum-sha256", None)
-                    async for chunk in resp.aiter_raw(chunk_size):
-                        yield chunk, hhash
-                        total_streamed += len(chunk)
+                    try:
+                        async for chunk in resp.aiter_raw(chunk_size):
+                            yield chunk, hhash
+                            total_streamed += len(chunk)
+                    except Exception as e:
+                        raise RetryableRequestException(repr(e))
 
                     if expected_size != 0 and total_streamed != expected_size:
                         raise ValueError(
@@ -1541,7 +1549,7 @@ class Api:
                         )
                     logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
                     return
-            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+            except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
                 if (
                     isinstance(e, httpx.HTTPStatusError)
                     and resp.status_code == 400
@@ -1623,11 +1631,14 @@ class Api:
         else:
             self._check_https_redirect()
             if self.server_address.startswith("https://"):
-                self._semaphore = asyncio.Semaphore(10)
-                logger.debug("Setting global API semaphore size to 10 for HTTPS")
+                size = 10
+                if "app.supervise" in self.server_address:
+                    size = 7
+                logger.debug(f"Setting global API semaphore size to {size} for HTTPS")
             else:
-                self._semaphore = asyncio.Semaphore(5)
-                logger.debug("Setting global API semaphore size to 5 for HTTP")
+                size = 5
+                logger.debug(f"Setting global API semaphore size to {size} for HTTP")
+            self._semaphore = asyncio.Semaphore(size)
 
     def set_semaphore_size(self, size: int = None):
         """
