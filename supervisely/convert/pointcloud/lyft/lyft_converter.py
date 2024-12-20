@@ -10,6 +10,7 @@ from supervisely import (
     logger,
     is_development,
     Progress,
+    PointcloudObject,
 )
 from supervisely.io import fs
 from supervisely.convert.base_converter import AvailablePointcloudConverters
@@ -19,6 +20,12 @@ from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.api.api import ApiField
 from datetime import datetime
 from supervisely import TinyTimer
+from supervisely.pointcloud_annotation.pointcloud_annotation import (
+    PointcloudFigure,
+    PointcloudObjectCollection,
+    PointcloudTagCollection,
+)
+from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
 
 
 class LyftConverter(PointcloudConverter):
@@ -132,13 +139,48 @@ class LyftConverter(PointcloudConverter):
         Returns:
             PointcloudAnnotation: The converted point cloud annotation.
         """
+        import open3d as o3d
+
         if getattr(item, "ann_data", None) is None:
-            return None
+            return PointcloudAnnotation()
+
+        data = item.ann_data
 
         # * Convert annotation to json
-        label = lyft_helper.lyft_annotation_to_BEVBox3D(item.ann_data)
+        boxes = data["gt_boxes"]
+        names = data["names"]
 
-        return lyft_helper.convert_label_to_annotation(label, meta, renamed_classes)
+        objects = []
+        for name, box in zip(names, boxes):
+            center = [float(box[0]), float(box[1]), float(box[2])]
+            size = [float(box[3]), float(box[5]), float(box[4])]
+            ry = float(box[6])
+
+            yaw = ry - np.pi
+            yaw = yaw - np.floor(yaw / (2 * np.pi) + 0.5) * 2 * np.pi
+            world_cam = None
+            objects.append(o3d.ml.datasets.utils.BEVBox3D(center, size, yaw, name, -1.0, world_cam))
+            objects[-1].yaw = ry
+
+        geoms = [lyft_helper._convert_BEVBox3D_to_geometry(box) for box in objects]
+
+        figures = []
+        objs = []
+        for l, geometry, token in zip(
+            objects, geoms, data["instance_tokens"]
+        ):  # by object in point cloud
+            class_name = renamed_classes.get(l.label_class, l.label_class)
+            tag_names = [
+                self._lyft.get("attribute", attr_token)["name"]
+                for attr_token in token["attribute_tokens"]
+            ]
+            tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+            tag_metas = [meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names]
+            tag_col = PointcloudTagCollection([PointcloudTag(meta, None) for meta in tag_metas])
+            pcobj = PointcloudObject(meta.get_obj_class(class_name), tag_col)
+            figures.append(PointcloudFigure(pcobj, geometry))
+            objs.append(pcobj)
+        return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         unique_names = {name for item in self._items for name in item.ann_data["names"]}

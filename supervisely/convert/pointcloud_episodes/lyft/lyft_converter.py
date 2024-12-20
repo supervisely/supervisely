@@ -90,41 +90,45 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
                 objs = lyft_helper.lyft_annotation_to_BEVBox3D(ann)
                 figures = []
                 for obj, instance_token in zip(objs, ann["instance_tokens"]):
-                    # get obj class by name
-                    class_name = instance_token["category_name"]
-                    obj_class_name = renamed_classes.get(class_name, class_name)
-                    obj_class = meta.get_obj_class(obj_class_name)
-
-                    # get pcd object's tags
-                    tag_names = [
-                        lyft.get("attribute", attr_token)["name"]
-                        for attr_token in instance_token["attribute_tokens"]
-                    ]
-                    tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
-                    tag_metas = [
-                        meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
-                    ]
-                    obj_tags = [
-                        PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas
-                    ]  # todo: frame range?
-
+                    parent_object = None
                     parent_obj_token = instance_token["prev"]
-                    pcd_ep_obj = PointcloudEpisodeObject(
-                        obj_class, PointcloudEpisodeTagCollection(obj_tags)
-                    )
-                    token_to_obj[instance_token["token"]] = pcd_ep_obj
-                    parent_object = token_to_obj.get(parent_obj_token, pcd_ep_obj)
-                    figures.append(
-                        PointcloudFigure(
-                            parent_object, lyft_helper._convert_BEVBox3D_to_geometry(obj), i
-                        )
-                    )
+                    if parent_obj_token == "":
+                        # * Create a new object
+                        class_name = instance_token["category_name"]
+                        obj_class_name = renamed_classes.get(class_name, class_name)
+                        obj_class = meta.get_obj_class(obj_class_name)
+
+                        # * Get tags for the object
+                        tag_names = [
+                            lyft.get("attribute", attr_token)["name"]
+                            for attr_token in instance_token["attribute_tokens"]
+                        ]
+                        tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+                        tag_metas = [
+                            meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
+                        ]
+                        # obj_tags = PointcloudEpisodeTagCollection([
+                        #     PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas
+                        # ])  # todo: fix
+                        obj_tags = None
+                        pcd_ep_obj = PointcloudEpisodeObject(obj_class, obj_tags)
+                        # * Assign the object to the starting token
+                        token_to_obj[instance_token["token"]] = pcd_ep_obj
+                        parent_object = pcd_ep_obj
+                    else:
+                        # * -> Figure has a parent object, get it
+                        token_to_obj[instance_token["token"]] = token_to_obj[parent_obj_token]
+                        parent_object = token_to_obj[parent_obj_token]
+
+                    geom = lyft_helper._convert_BEVBox3D_to_geometry(obj)
+                    pcd_figure = PointcloudFigure(parent_object, geom, i)
+                    figures.append(pcd_figure)
                 frame = PointcloudEpisodeFrame(i, figures)
                 frames.append(frame)
             tag_collection = PointcloudEpisodeTagCollection(tags) if len(tags) > 0 else None
             pcd_ep_ann = PointcloudEpisodeAnnotation(
                 len(frames),
-                PointcloudEpisodeObjectCollection(list(token_to_obj.values())),
+                PointcloudEpisodeObjectCollection(list(set(token_to_obj.values()))),
                 PointcloudEpisodeFrameCollection(frames),
                 tag_collection,
             )
