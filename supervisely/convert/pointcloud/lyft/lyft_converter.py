@@ -80,10 +80,11 @@ class LyftConverter(PointcloudConverter):
             return False
 
         lidar_dir = self._input_data + "/lidar/"
+        if not fs.dir_exists(lidar_dir):
+            return False
+
         json_dir = self._input_data + "/data/"
-        if any([not fs.dir_exists(d) for d in [lidar_dir, json_dir]]) or any(
-            [not fs.file_exists(f"{json_dir}/{d}.json") for d in lyft_helper.TABLE_NAMES]
-        ):
+        if not fs.dir_exists(json_dir) or lyft_helper.validate_ann_dir(json_dir) is False:
             return False
 
         bin_files = fs.list_files_recursively(
@@ -109,7 +110,8 @@ class LyftConverter(PointcloudConverter):
 
         t = TinyTimer()
         progress = Progress(f"Extracting annotations from available scenes...")
-        for i, scene in enumerate(lyft_helper.get_available_scenes(lyft)):
+        # i = 0 # for debug
+        for scene in lyft_helper.get_available_scenes(lyft):
             scene_name = scene["name"]
             sample_datas = lyft_helper.extract_data_from_scene(lyft, scene)
             if sample_datas is None:
@@ -123,7 +125,8 @@ class LyftConverter(PointcloudConverter):
                 item = self.Item(item_path, ann_data, related_images, custom_data, scene_name)
                 self._items.append(item)
             progress.iter_done_report()
-            # if i == 2:  # ! to remove
+            # i += 1
+            # if i == 2:
             #     break
         t = t.get_sec()
         logger.info(

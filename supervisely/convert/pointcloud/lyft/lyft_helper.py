@@ -218,6 +218,12 @@ def get_related_images(ann_data):
     return [(sensor, img_path) for sensor, img_path in ann_data.items() if "CAM" in sensor]
 
 
+def validate_ann_dir(ann_dir):
+    if any([not fs.file_exists(f"{ann_dir}/{d}.json") for d in TABLE_NAMES]):
+        return False
+    return True
+
+
 def lyft_annotation_to_BEVBox3D(data):
     boxes = data["gt_boxes"]
     names = data["names"]
