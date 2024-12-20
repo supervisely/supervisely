@@ -17,7 +17,6 @@ RUN pip install nibabel==5.2.1
 RUN pip install bagpy==0.5
 RUN pip install imagecodecs==2023.3.16
 RUN pip install lyft-dataset-sdk==0.0.8
-RUN pip install pyquaternion==0.9.9
 
 # Export
 RUN pip install lxml==4.6.3
