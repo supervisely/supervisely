@@ -1,7 +1,6 @@
 import os
-from typing import List
+from typing import List, Tuple
 import numpy as np
-import open3d as o3d
 import shutil
 from supervisely import PointcloudAnnotation, PointcloudObject, PointcloudFigure, logger, fs
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
@@ -42,18 +41,6 @@ def get_available_scenes(lyft):
         if not os.path.exists(str(lidar_path)):
             continue
         yield scene
-
-
-# def get_all_instance_tokens(lyft, instance_token):
-#     it = lyft.get("instance", instance_token)
-#     first_ann_token = it["first_annotation_token"]
-#     last_ann_token = it["last_annotation_token"]
-#     ann_tokens = lyft.get("sample_annotation", first_ann_token)
-#     while True:
-#         yield ann_tokens["token"]
-#         if ann_tokens["next"] == "":
-#             break
-#         ann_tokens = lyft.get("sample_annotation", ann_tokens["next"])
 
 
 def extract_data_from_scene(lyft, scene):
@@ -153,7 +140,7 @@ def extract_data_from_scene(lyft, scene):
     return dataset_data
 
 
-def generate_rimage_infos(related_images: List[tuple[str, str]], ann_data):
+def generate_rimage_infos(related_images: List[Tuple[str, str]], ann_data):
     sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
     for sensor, image_path in related_images:
         if not any([sensor.endswith(s) for s in sensors_to_skip]):
@@ -191,10 +178,12 @@ def _convert_BEVBox3D_to_geometry(box):
 
 
 def convert_bin_to_pcd(bin_file, save_filepath):
-    bin = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 5)
-    points = bin[:, 0:3]
-    intensity = bin[:, 3]
-    ring_index = bin[:, 4]
+    import open3d as o3d
+
+    b = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 5)
+    points = b[:, 0:3]
+    intensity = b[:, 3]
+    ring_index = b[:, 4]
     intensity_fake_rgb = np.zeros((intensity.shape[0], 3))
     intensity_fake_rgb[:, 0] = (
         intensity  # red The intensity measures the reflectivity of the objects
@@ -225,6 +214,8 @@ def validate_ann_dir(ann_dir):
 
 
 def lyft_annotation_to_BEVBox3D(data):
+    import open3d as o3d
+
     boxes = data["gt_boxes"]
     names = data["names"]
 

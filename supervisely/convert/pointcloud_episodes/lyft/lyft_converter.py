@@ -18,8 +18,6 @@ from supervisely.pointcloud_annotation.pointcloud_episode_tag import (
 from supervisely.project.project_settings import LabelingInterface
 
 from pathlib import Path
-from typing import Dict, Optional
-
 from supervisely import (
     Api,
     ObjClass,
@@ -36,7 +34,6 @@ from supervisely import (
     VideoTag,
 )
 from supervisely.io import fs
-from supervisely.io.fs import get_file_name
 from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.api.api import ApiField
 from datetime import datetime
@@ -200,7 +197,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
                 pcd_meta = {}
                 pcd_meta["frame"] = idx
 
-                pcd_name = get_file_name(pcd_path)
+                pcd_name = fs.get_file_name(pcd_path)
                 info = api.pointcloud_episode.upload_path(
                     current_dataset_id, pcd_name, pcd_path, pcd_meta
                 )
