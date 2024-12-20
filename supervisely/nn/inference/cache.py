@@ -411,15 +411,26 @@ class InferenceImageCache:
                 sly.logger.debug("Downloading video #%s", video_id)
                 if progress_cb is None and self.log_progress:
                     size = video_info.file_meta.get("size", None)
-                    if size is not None:
+                    if size is None:
+                        size = "unknown"
+                    else:
                         size = int(size)
-                    progress = sly.Progress(
-                        f"Downloading video #{video_id}",
-                        size,
-                        min_report_percent=10,
-                        notification_log_level="debug",
-                    )
-                    progress_cb = progress.iters_done_report
+
+                    prog_n = 0
+                    prog_t = time.monotonic()
+
+                    def _progress_cb(n):
+                        nonlocal prog_n
+                        nonlocal prog_t
+                        prog_n += n
+                        cur_t = time.monotonic()
+                        if cur_t - prog_t > 3 or (isinstance(size, int) and prog_n >= size):
+                            prog_t = cur_t
+                            sly.logger.debug(
+                                "Downloading video #%s: %d B / %s B", video_id, prog_n, size
+                            )
+
+                    progress_cb = _progress_cb
                 temp_video_path = Path("/tmp/smart_cache").joinpath(
                     f"_{sly.rand_str(6)}_" + video_info.name
                 )
