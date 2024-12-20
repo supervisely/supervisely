@@ -216,3 +216,22 @@ def get_related_images(ann_data):
     #     if "CAM" in sensor and not any([sensor.endswith(s) for s in sensors_to_skip])
     # ]
     return [(sensor, img_path) for sensor, img_path in ann_data.items() if "CAM" in sensor]
+
+
+def lyft_annotation_to_BEVBox3D(data):
+    boxes = data["gt_boxes"]
+    names = data["names"]
+
+    objects = []
+    for name, box in zip(names, boxes):
+        center = [float(box[0]), float(box[1]), float(box[2])]
+        size = [float(box[3]), float(box[5]), float(box[4])]
+        ry = float(box[6])
+
+        yaw = ry - np.pi
+        yaw = yaw - np.floor(yaw / (2 * np.pi) + 0.5) * 2 * np.pi
+        world_cam = None
+        objects.append(o3d.ml.datasets.utils.BEVBox3D(center, size, yaw, name, -1.0, world_cam))
+        objects[-1].yaw = ry
+
+    return objects
