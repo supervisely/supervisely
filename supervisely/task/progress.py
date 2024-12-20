@@ -5,7 +5,7 @@ import inspect
 import math
 import re
 from functools import partial, wraps
-from typing import Dict, Literal, Optional, Union
+from typing import Dict, Optional, Union
 
 from tqdm import tqdm
 
