@@ -59,6 +59,7 @@ def extract_data_from_scene(lyft, scene):
         if not os.path.exists(str(lidar_path)):
             logger.debug(f"Skipping sample {new_token} - lidar file doesn't exist")
             continue
+        data["lidar_path"] = str(lidar_path)
 
         sd_record_lid = lyft.get("sample_data", sensor_token)
         cs_record_lid = lyft.get("calibrated_sensor", sd_record_lid["calibrated_sensor_token"])
@@ -67,12 +68,11 @@ def extract_data_from_scene(lyft, scene):
         locs = np.array([b.center for b in boxes]).reshape(-1, 3)
         dims = np.array([b.wlh for b in boxes]).reshape(-1, 3)
         rots = np.array([b.orientation.yaw_pitch_roll[0] for b in boxes]).reshape(-1, 1)
-
         rots = (rots + np.pi) % (2 * np.pi) - np.pi
         gt_boxes = np.concatenate([locs, dims, rots], axis=1)
 
         # gt_boxes = np.concatenate([locs, dims, rots + np.pi / 2], axis=1)
-        data["lidar_path"] = str(lidar_path)
+        names = np.array([b.name for b in boxes])
         data["ann_data"]["names"] = names
         data["ann_data"]["gt_boxes"] = gt_boxes
         instance_tokens = [lyft.get("sample_annotation", box.token) for box in boxes]
