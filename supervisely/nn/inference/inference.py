@@ -2246,7 +2246,7 @@ class Inference:
             time.sleep(2)
 
             # Predict and shutdown
-            if self._args.predict is not None:
+            if self._args.predict_project_id is not None:
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
                 self._app.shutdown()
@@ -2806,9 +2806,9 @@ class Inference:
         if args.model is None:
             raise ValueError("Argument '--model' is required for local deployment")
 
-        if args.predict is not None:
-            if args.predict.isdigit():
-                args.predict = int(args.predict)
+        if args.predict_project_id is not None:
+            if args.predict_project_id.isdigit():
+                args.predict_project_id = int(args.predict_project_id)
 
         return args
 
