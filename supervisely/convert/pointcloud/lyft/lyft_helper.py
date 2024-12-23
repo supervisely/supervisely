@@ -56,6 +56,9 @@ def extract_data_from_scene(lyft, scene):
 
         sensor_token = my_sample["data"]["LIDAR_TOP"]
         lidar_path, boxes, _ = lyft.get_sample_data(sensor_token)
+        if not os.path.exists(str(lidar_path)):
+            logger.debug(f"Skipping sample {new_token} - lidar file doesn't exist")
+            continue
 
         sd_record_lid = lyft.get("sample_data", sensor_token)
         cs_record_lid = lyft.get("calibrated_sensor", sd_record_lid["calibrated_sensor_token"])
@@ -172,7 +175,7 @@ def _convert_BEVBox3D_to_geometry(box):
 
 
 def convert_bin_to_pcd(bin_file, save_filepath):
-    import open3d as o3d # pylint: disable=import-error
+    import open3d as o3d  # pylint: disable=import-error
 
     b = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 5)
     points = b[:, 0:3]
@@ -208,7 +211,7 @@ def validate_ann_dir(ann_dir):
 
 
 def lyft_annotation_to_BEVBox3D(data):
-    import open3d as o3d # pylint: disable=import-error
+    import open3d as o3d  # pylint: disable=import-error
 
     boxes = data["gt_boxes"]
     names = data["names"]
