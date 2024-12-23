@@ -28,6 +28,14 @@ RETRY_STATUS_CODES = {
 }
 
 
+class RetryableRequestException(Exception):
+    """Exception that indicates that the request should be retried."""
+
+    def __init__(self, message, response=None):
+        super().__init__(message)
+        self.response = response
+
+
 async def process_requests_exception_async(
     external_logger,
     exc,
@@ -49,6 +57,8 @@ async def process_requests_exception_async(
             sleep_sec = int(recommended_sleep)
     except Exception:
         pass
+
+    is_retryable_exception = isinstance(exc, RetryableRequestException)
 
     is_connection_error = isinstance(
         exc,
@@ -82,7 +92,7 @@ async def process_requests_exception_async(
         except (AttributeError, ValueError):
             pass
 
-    if is_connection_error or is_server_retryable_error:
+    if any([is_connection_error, is_server_retryable_error, is_retryable_exception]):
         await process_retryable_request_async(
             external_logger,
             exc,
@@ -136,6 +146,8 @@ def process_requests_exception(
     except Exception:
         pass
 
+    is_retryable_exception = isinstance(exc, RetryableRequestException)
+
     is_connection_error = isinstance(
         exc,
         (
@@ -168,7 +180,7 @@ def process_requests_exception(
         except (AttributeError, ValueError):
             pass
 
-    if is_connection_error or is_server_retryable_error:
+    if any([is_connection_error, is_server_retryable_error, is_retryable_exception]):
         process_retryable_request(
             external_logger,
             exc,

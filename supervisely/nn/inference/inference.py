@@ -133,6 +133,7 @@ class Inference:
             if self.INFERENCE_SETTINGS is not None:
                 custom_inference_settings = self.INFERENCE_SETTINGS
             else:
+                logger.debug("Custom inference settings are not provided.")
                 custom_inference_settings = {}
         if isinstance(custom_inference_settings, str):
             if fs.file_exists(custom_inference_settings):
@@ -227,6 +228,7 @@ class Inference:
             ttl=env.smart_cache_ttl(),
             is_persistent=True,
             base_folder=env.smart_cache_container_dir(),
+            log_progress=True,
         )
 
     def get_batch_size(self):
@@ -570,7 +572,9 @@ class Inference:
                     ) as download_pbar:
                         self.gui.download_progress.show()
                         sly_fs.download(
-                            url=file_url, save_path=file_path, progress=download_pbar.update
+                            url=file_url,
+                            save_path=file_path,
+                            progress=download_pbar.update,
                         )
                     local_model_files[file] = file_path
             else:
@@ -589,6 +593,10 @@ class Inference:
         for file in model_files:
             file_url = model_files[file]
             file_info = self.api.file.get_info_by_path(team_id, file_url)
+            if file_info is None:
+                raise FileNotFoundError(
+                    f"File '{file_url}' not found in Team Files. Make sure the file exists."
+                )
             file_size = file_info.sizeb
             file_name = os.path.basename(file_url)
             file_path = os.path.join(self.model_dir, file_name)
@@ -1373,7 +1381,11 @@ class Inference:
         return result
 
     def _inference_images_ids(
-        self, api: Api, state: dict, images_ids: List[int], async_inference_request_uuid: str = None
+        self,
+        api: Api,
+        state: dict,
+        images_ids: List[int],
+        async_inference_request_uuid: str = None,
     ):
         """Inference images by ids.
         If "output_project_id" in state, upload images and annotations to the output project.
@@ -1798,7 +1810,8 @@ class Inference:
             dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
             image_names = [result["image_name"] for result in results]
             image_infos = api.image.get_list(
-                dataset_id, filters=[{"field": "name", "operator": "in", "value": image_names}]
+                dataset_id,
+                filters=[{"field": "name", "operator": "in", "value": image_names}],
             )
             meta_changed = False
             anns = []
@@ -2103,7 +2116,10 @@ class Inference:
                 # Read images
                 if cache_project_on_model:
                     images_nps = []
-                    for dataset_id, images_infos in images_infos_batch_by_dataset.items():
+                    for (
+                        dataset_id,
+                        images_infos,
+                    ) in images_infos_batch_by_dataset.items():
                         dataset_info = datasets_infos_dict[dataset_id]
                         images_paths, _ = zip(
                             *read_from_cached_project(
@@ -2115,7 +2131,10 @@ class Inference:
                         images_nps.extend([sly_image.read(path) for path in images_paths])
                 else:
                     images_nps = []
-                    for dataset_id, images_infos in images_infos_batch_by_dataset.items():
+                    for (
+                        dataset_id,
+                        images_infos,
+                    ) in images_infos_batch_by_dataset.items():
                         images_nps.extend(
                             self.cache.download_images(
                                 api,
@@ -2844,7 +2863,8 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     """Update project meta and annotation to match each other
     If obj class or tag meta from annotation conflicts with project meta
     add suffix to obj class or tag meta.
-    Return tuple of updated project meta, annotation and boolean flag if meta was changed."""
+    Return tuple of updated project meta, annotation and boolean flag if meta was changed.
+    """
     obj_classes_suffixes = ["_nn"]
     tag_meta_suffixes = ["_nn"]
     ann_obj_classes = {}

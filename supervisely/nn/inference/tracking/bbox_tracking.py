@@ -1,6 +1,7 @@
 import functools
 import json
 import time
+import uuid
 from pathlib import Path
 from queue import Queue
 from threading import Event, Thread
@@ -154,7 +155,8 @@ class BBoxTracking(Inference):
             raise
         stop_upload_event.set()
 
-    def _track_api(self, api: sly.Api, context: dict):
+    def _track_api(self, api: sly.Api, context: dict, request_uuid: str = None):
+        track_t = time.monotonic()
         # unused fields:
         context["trackId"] = "auto"
         context["objectIds"] = []
@@ -193,15 +195,27 @@ class BBoxTracking(Inference):
                 video_id=video_interface.video_id,
             )
 
-        api.logger.info("Start tracking.")
-
         predictions = []
-        for input_geom in input_bboxes:
+        frames_n = video_interface.frames_count
+        box_n = len(input_bboxes)
+        geom_t = time.monotonic()
+        api.logger.info(
+            "Start tracking.",
+            extra={
+                "video_id": video_interface.video_id,
+                "frame_range": range_of_frames,
+                "geometries_count": box_n,
+                "frames_count": frames_n,
+                "request_uuid": request_uuid,
+            },
+        )
+        for box_i, input_geom in enumerate(input_bboxes, 1):
             input_bbox = input_geom["data"]
             bbox = sly.Rectangle.from_json(input_bbox)
             predictions_for_object = []
             init = False
-            for _ in video_interface.frames_loader_generator():
+            frame_t = time.monotonic()
+            for frame_i, _ in enumerate(video_interface.frames_loader_generator(), 1):
                 imgs = video_interface.frames
                 target = PredictionBBox(
                     "",  # TODO: can this be useful?
@@ -224,10 +238,40 @@ class BBoxTracking(Inference):
                 predictions_for_object.append(
                     {"type": sly_geometry.geometry_name(), "data": sly_geometry.to_json()}
                 )
+                api.logger.debug(
+                    "Frame processed. Geometry: [%d / %d]. Frame: [%d / %d]",
+                    box_i,
+                    box_n,
+                    frame_i,
+                    frames_n,
+                    extra={
+                        "geometry_index": box_i,
+                        "frame_index": frame_i,
+                        "processing_time": time.monotonic() - frame_t,
+                        "request_uuid": request_uuid,
+                    },
+                )
+                frame_t = time.monotonic()
+
             predictions.append(predictions_for_object)
+            api.logger.info(
+                "Geometry processed. Progress: [%d / %d]",
+                box_i,
+                box_n,
+                extra={
+                    "geometry_index": box_i,
+                    "processing_time": time.monotonic() - geom_t,
+                    "request_uuid": request_uuid,
+                },
+            )
+            geom_t = time.monotonic()
 
         # predictions must be NxK bboxes: N=number of frames, K=number of objects
         predictions = list(map(list, zip(*predictions)))
+        api.logger.info(
+            "Tracking finished.",
+            extra={"tracking_time": time.monotonic() - track_t, "request_uuid": request_uuid},
+        )
         return predictions
 
     def _inference(self, frames: List[np.ndarray], geometries: List[Geometry], settings: dict):
@@ -322,8 +366,19 @@ class BBoxTracking(Inference):
 
         @server.post("/track-api")
         def track_api(request: Request):
-            sly.logger.info("Start tracking.")
-            return self._track_api(request.state.api, request.state.context)
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            sly.logger.info(
+                "Received track-api request.", extra={"request_uuid": inference_request_uuid}
+            )
+            result = self._track_api(
+                request.state.api, request.state.context, request_uuid=inference_request_uuid
+            )
+            sly.logger.info(
+                "Track-api request processed.", extra={"request_uuid": inference_request_uuid}
+            )
+            return result
 
         @server.post("/track-api-files")
         def track_api_files(
