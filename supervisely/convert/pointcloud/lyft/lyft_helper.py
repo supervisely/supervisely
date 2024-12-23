@@ -1,16 +1,8 @@
 import os
 from typing import List, Tuple
 import numpy as np
-import shutil
-from supervisely import PointcloudAnnotation, PointcloudObject, PointcloudFigure, logger, fs
+from supervisely import logger, fs
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
-from supervisely.io import json
-from supervisely.pointcloud_annotation.pointcloud_object_collection import (
-    PointcloudObjectCollection,
-)
-from datetime import datetime
-from collections import defaultdict
-from uuid import uuid4
 
 TABLE_NAMES = [
     "category",
@@ -84,7 +76,9 @@ def extract_data_from_scene(lyft, scene):
         for sensor, sensor_token in my_sample["data"].items():
             if "CAM" in sensor:
                 img_path, boxes, cam_intrinsic = lyft.get_sample_data(sensor_token)
-                assert os.path.exists(img_path)
+                if not os.path.exists(img_path):
+                    logger.debug(f"pass {sensor} - image doesn't exist")
+                    continue
                 data["ann_data"][sensor] = str(img_path)
 
                 sd_record_cam = lyft.get("sample_data", sensor_token)
