@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import inspect
 import json
 import os
@@ -12,6 +13,7 @@ from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from functools import partial, wraps
+from pathlib import Path
 from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.request import urlopen
@@ -34,6 +36,7 @@ from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
 from supervisely._utils import (
     add_callback,
     get_filename_from_headers,
+    get_or_create_event_loop,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -110,7 +113,7 @@ class Inference:
         self._is_local_deploy = sly_env.local_deploy()
         if model_dir is None:
             if self._is_local_deploy is True:
-                model_dir = "~/.cache/supervisely/app_data"
+                model_dir = Path("~/.cache/supervisely/app_data").expanduser()
             else:
                 model_dir = os.path.join(get_data_dir(), "models")
         sly_fs.mkdir(model_dir)
@@ -134,7 +137,7 @@ class Inference:
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
         self._hardware: str = None
-        self.pretrained_models = self._load_json_file(self.MODELS) if self.MODELS else None
+        self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
                 custom_inference_settings = self.INFERENCE_SETTINGS
@@ -266,13 +269,22 @@ class Inference:
                 )
                 device = "cpu"
 
-    def _load_json_file(self, file: str) -> List[Dict[str, Any]]:
+    def _load_json_file(self, file_path: str) -> dict:
+        if isinstance(file_path, str):
+            if sly_fs.file_exists(file_path) and sly_fs.get_file_ext(file_path) == ".json":
+                return sly_json.load_json_file(file_path)
+            else:
+                raise ValueError("File not found or invalid file format.")
+        else:
+            raise ValueError("Invalid file. Please provide a valid '.json' file.")
+
+    def _load_models_json_file(self, models: str) -> List[Dict[str, Any]]:
         """
         Loads dictionary from the provided file.
         """
-        if isinstance(file, str):
-            if sly_fs.file_exists(file) and sly_fs.get_file_ext(file) == ".json":
-                models = sly_json.load_json_file(file)
+        if isinstance(models, str):
+            if sly_fs.file_exists(models) and sly_fs.get_file_ext(models) == ".json":
+                models = sly_json.load_json_file(models)
             else:
                 raise ValueError("File not found or invalid file format.")
         else:
@@ -2246,7 +2258,12 @@ class Inference:
             time.sleep(2)
 
             # Predict and shutdown
-            if self._args.predict_project_id is not None:
+            if any[
+                self._args.predict_project,
+                self._args.predict_dataset,
+                self._args.predict_dir,
+                self._args.predict_image,
+            ]:
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
                 self._app.shutdown()
@@ -2756,10 +2773,12 @@ class Inference:
     def _parse_local_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
-        # Deploy params
-        parser.add_argument("--model", type=str, required=True, help="Path to the model directory")
+        # Deploy args
         parser.add_argument(
-            "--checkpoint", type=str, required=False, help="Path to the checkpoint file"
+            "--model",
+            type=str,
+            required=True,
+            help="Name of the pretrained model or path to custom checkpoint file",
         )
         parser.add_argument(
             "--device",
@@ -2778,38 +2797,39 @@ class Inference:
         # -------------------------- #
 
         # Predict args
+        parser.add_argument("--predict-project", type=int, required=False, help="ID of the project")
         parser.add_argument(
-            "--predict-dir", type=str, required=False, help="Path to local directory with images"
+            "--predict-dataset",
+            type=lambda x: [int(i) for i in x.split(",")] if "," in x else int(x),
+            required=False,
+            help="ID of the dataset or a comma-separated list of dataset IDs",
         )
         parser.add_argument(
-            "--predict-project-id", type=int, required=False, help="ID of the project"
+            "--predict-dir",
+            type=str,
+            required=False,
+            help="Not implemented yet. Path to the local directory with images",
         )
         parser.add_argument(
-            "--predict-dataset-id", type=int, required=False, help="ID of the dataset"
+            "--predict-image",
+            type=str,
+            required=False,
+            help="Image ID on Supervisely instance or path to local image",
         )
         # -------------------------- #
 
         # Output args
-        parser.add_argument(
-            "--output", type=str, required=False, help="Name of a new project or dataset"
-        )
-        parser.add_argument(
-            "--output-dir",
-            type=str,
-            required=False,
-            help="Name of the output directory where predictions will be saved",
-        )
+        parser.add_argument("--output", type=str, required=False, help="Not implemented yet")
+        parser.add_argument("--output-dir", type=str, required=False, help="Not implemented yet")
         # -------------------------- #
 
         # Parse arguments
         args = parser.parse_args()
         if args.model is None:
             raise ValueError("Argument '--model' is required for local deployment")
-
-        if args.predict_project_id is not None:
-            if args.predict_project_id.isdigit():
-                args.predict_project_id = int(args.predict_project_id)
-
+        if args.predict_image is not None:
+            if args.predict_image.is_digit():
+                args.predict_image = int(args.predict_image)
         return args
 
     def _get_pretrained_model_params_from_args(self):
@@ -2844,68 +2864,68 @@ class Inference:
         return model_files, model_source, model_info, need_download
 
     def _get_custom_model_params_from_args(self):
-        model_files = None
-        model_source = None
-        model_info = None
-        need_download = False
-
-        if not os.path.isdir(self._args.model):
-            raise ValueError(f"The specified model directory does not exist: {self._args.model}")
-        if not os.path.isfile(self._args.checkpoint):
-            raise ValueError(
-                f"The specified checkpoint file does not exist: {self._args.checkpoint}"
-            )
-
-        # Check if model dir local or remote
-        artifacts_dir = self._args.model
-        checkpoint_path = self._args.checkpoint
-        model_source = ModelSource.CUSTOM
-        if os.path.isfile(checkpoint_path):
+        def _load_experiment_info(artifacts_dir):
             experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
             model_info = self._load_json_file(experiment_path)
             original_model_files = model_info.get("model_files")
-            if original_model_files is None:
-                raise ValueError("Invalid 'experiment_info.json'. Couldn't get 'model_files' key.")
-            model_files = {}
-            for k, v in original_model_files.items():
-                model_files[k] = os.path.join(artifacts_dir, v)
-            model_files["checkpoint"] = checkpoint_path
-        else:
-            need_download = True
-            team_id = sly_env.team_id(raise_not_found=False)
-            if team_id is None:
-                raise ValueError(
-                    "Team ID not found in env. It is required for remote custom checkpoints"
-                )
+            if not original_model_files:
+                raise ValueError("Invalid 'experiment_info.json'. Missing 'model_files' key.")
+            return model_info, original_model_files
 
-            checkpoint_file_info = self._api.file.get_info_by_path(team_id, checkpoint_path)
-            if checkpoint_file_info is not None:
-                artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
-                local_artifacts_dir = os.path.join(
-                    self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
-                )
-                sly_fs.mkdir(local_artifacts_dir, True)
+        def _prepare_local_model_files(artifacts_dir, checkpoint_path, original_model_files):
+            return {k: os.path.join(artifacts_dir, v) for k, v in original_model_files.items()} | {
+                "checkpoint": checkpoint_path
+            }
 
-                file_infos = self._api.file.list(team_id, artifacts_dir, False, "fileinfo")
-                remote_paths = [f.path for f in file_infos if not f.is_dir]
-                local_paths = [os.path.join(local_artifacts_dir, f.name) for f in remote_paths]
-                self._api.file.download_bulk_async(team_id, remote_paths, local_paths)
-                model_info = self._load_json_file(
-                    os.path.join(local_artifacts_dir, "experiment_info.json")
-                )
+        def _download_remote_files(team_id, artifacts_dir, local_artifacts_dir):
+            sly_fs.mkdir(local_artifacts_dir, True)
+            file_infos = self.api.file.list(team_id, artifacts_dir, False, "fileinfo")
+            remote_paths = [f.path for f in file_infos if not f.is_dir]
+            local_paths = [
+                os.path.join(local_artifacts_dir, f.name) for f in file_infos if not f.is_dir
+            ]
 
-                original_model_files = model_info.get("model_files")
-                if original_model_files is None:
-                    raise ValueError(
-                        "Invalid 'experiment_info.json'. Couldn't get 'model_files' key."
-                    )
-                model_files = {}
-                for k, v in original_model_files.items():
-                    model_files[k] = os.path.join(artifacts_dir, v)
-                model_files["checkpoint"] = checkpoint_path
+            coro = self.api.file.download_bulk_async(team_id, remote_paths, local_paths)
+            loop = get_or_create_event_loop()
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coro, loop)
+                future.result()
             else:
-                raise ValueError(f"Couldn't find: '{checkpoint_path}' in Team ID: '{team_id}'")
+                loop.run_until_complete(coro)
 
+        model_source = ModelSource.CUSTOM
+        need_download = False
+        checkpoint_path = self._args.model
+
+        if not os.path.isfile(checkpoint_path):
+            team_id = sly_env.team_id(raise_not_found=False)
+            if not team_id:
+                raise ValueError(
+                    "Team ID not found in env. Required for remote custom checkpoints."
+                )
+            file_info = self.api.file.get_info_by_path(team_id, checkpoint_path)
+            if not file_info:
+                raise ValueError(
+                    f"Couldn't find: '{checkpoint_path}' locally or remotely in Team ID."
+                )
+            need_download = True
+
+        artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+        if not need_download:
+            model_info, original_model_files = _load_experiment_info(artifacts_dir)
+            model_files = _prepare_local_model_files(
+                artifacts_dir, checkpoint_path, original_model_files
+            )
+        else:
+            local_artifacts_dir = os.path.join(
+                self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
+            )
+            _download_remote_files(team_id, artifacts_dir, local_artifacts_dir)
+
+            model_info, original_model_files = _load_experiment_info(local_artifacts_dir)
+            model_files = _prepare_local_model_files(
+                local_artifacts_dir, checkpoint_path, original_model_files
+            )
         return model_files, model_source, model_info, need_download
 
     def _get_deploy_params_from_args(self):
@@ -2945,44 +2965,60 @@ class Inference:
         self._uvicorn_server.run()
 
     def _inference_by_local_deploy_args(self):
-        if isinstance(self._args.predict, int):
-            source_project = self.api.project.get_info_by_id(self._args.predict)
+        def predict_project_by_args(api: Api, project_id: int, dataset_ids: List[int] = None):
+            source_project = api.project.get_info_by_id(project_id)
             workspace_id = source_project.workspace_id
-            output_project = self.api.project.create(
-                workspace_id, self._args.output, change_name_if_conflict=True
+            output_project = api.project.create(
+                workspace_id, f"{source_project.name} predicted", change_name_if_conflict=True
             )
-
             results = self._inference_project_id(
                 api=self.api,
                 state={
-                    "projectId": self._args.predict,
-                    "dataset_ids": None,
+                    "projectId": project_id,
+                    "dataset_ids": dataset_ids,
                     "output_project_id": output_project.id,
                 },
             )
-        elif isinstance(self._args.predict, str):
-            if sly_fs.file_exists(self._args.predict):
-                img = sly_image.read(self._args.predict)
+
+        def predict_datasets_by_args(api: Api, dataset_ids: List[int]):
+            dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
+            project_ids = list(set([dataset_info.project_id for dataset_info in dataset_infos]))
+            if len(project_ids) > 1:
+                raise ValueError("All datasets should belong to the same project")
+            predict_project_by_args(api, project_ids[0], dataset_ids)
+
+        def predict_image_by_args(api: Api, image: Union[str, int]):
+            def predict_image_np(image_np):
                 settings = self._get_inference_settings({})
-                anns, _ = self._inference_auto([img], settings)
-                if len(anns) > 0:
-                    ann = anns[0]
-                    pred_ann_path = os.path.join(
-                        os.path.dirname(self._args.predict),
-                        "pred_" + os.path.basename(self._args.predict) + ".json",
-                    )
+                anns, _ = self._inference_auto([image_np], settings)
+                if len(anns) == 0:
+                    return Annotation(img_size=image_np.shape[:2])
+                ann = anns[0]
+                return ann
+
+            if isinstance(image, int):
+                image_np = api.image.download_np(image)
+                ann = predict_image_np(image_np)
+                api.annotation.upload_ann(image, ann)
+            elif isinstance(image, str):
+                if sly_fs.file_exists(self._args.predict):
+                    image_np = sly_image.read(self._args.predict)
+                    ann = predict_image_np(image_np)
+                    pred_ann_path = image + ".json"
                     sly_json.dump_json_file(ann.to_json(), pred_ann_path)
-
                     # Save image for debug
-                    ann.draw_pretty(img)
-                    pred_path = os.path.join(
-                        os.path.dirname(self._args.predict),
-                        "pred_" + os.path.basename(self._args.predict),
-                    )
-                    sly_image.write(pred_path, img)
+                    # ann.draw_pretty(image_np)
+                    # pred_path = os.path.join(os.path.dirname(self._args.predict), "pred_" + os.path.basename(self._args.predict))
+                    # sly_image.write(pred_path, image_np)
 
-        elif sly_fs.dir_exists(self._args.predict):
-            pass
+        if self._args.predict_project is not None:
+            predict_project_by_args(self.api, self._args.predict_project)
+        elif self._args.predict_dataset is not None:
+            predict_datasets_by_args(self.api, self._args.predict_dataset)
+        elif self._args.predict_dir is not None:
+            raise NotImplementedError("Predict from directory is not implemented yet")
+        elif self._args.predict_image is not None:
+            predict_image_by_args(self.api, self._args.predict_image)
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
