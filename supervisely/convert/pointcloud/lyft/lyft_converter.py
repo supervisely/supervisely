@@ -68,9 +68,9 @@ class LyftConverter(PointcloudConverter):
             from lyft_dataset_sdk.lyftdataset import LyftDataset as Lyft
         except ImportError:
             logger.warn(
-                'Please run "pip install lyft_dataset_sdk" ' "to install the official devkit first."
+                'Install "lyft_dataset_sdk" python package to import datasets in LYFT format.'
             )
-            return
+            return False
 
         def filter_fn(path):
             return all([(Path(path) / name).exists() for name in lyft_helper.FOLDER_NAMES])
