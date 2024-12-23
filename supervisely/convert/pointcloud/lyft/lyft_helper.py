@@ -69,7 +69,7 @@ def extract_data_from_scene(lyft, scene):
         dims = np.array([b.wlh for b in boxes]).reshape(-1, 3)
         rots = np.array([b.orientation.yaw_pitch_roll[0] for b in boxes]).reshape(-1, 1)
 
-        gt_boxes = np.concatenate([locs, dims, -rots - np.pi / 2], axis=1)
+        gt_boxes = np.concatenate([locs, dims, -rots + np.pi / 2], axis=1)
         names = np.array([b.name for b in boxes])
         data["ann_data"]["names"] = names
         data["ann_data"]["gt_boxes"] = gt_boxes
