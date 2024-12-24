@@ -25,7 +25,7 @@ import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ApiField, ModuleApiBase
-from supervisely.api.resumable_upload_api import ResumableUploadApi
+from supervisely.api.resumable_upload_api import ResumableResponse, ResumableUploadApi
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -2084,7 +2084,7 @@ class FileApi(ModuleApiBase):
         """
         api_method = "file-storage.upload"
         headers = {"Content-Type": "application/octet-stream"}
-        sha256 = await get_file_hash_async(src, "sha256")
+        # sha256 = await get_file_hash_async(src) #TODO add with resumaple api
         json_body = {
             ApiField.TEAM_ID: team_id,
             ApiField.PATH: dst,
@@ -2094,14 +2094,14 @@ class FileApi(ModuleApiBase):
             semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
-                response = await self.resumable.request_upload()
-                for chunk in chunks:
-                    item = await fd.read()
-                    response = await self.resumable.upload_chunk()
-                    if progress_cb is not None and progress_cb_type == "size":
-                        progress_cb(len(item))
-                    if progress_cb is not None and progress_cb_type == "number":
-                        progress_cb(1)
+                item = await fd.read()
+                response = await self._api.post_async(
+                    api_method, content=item, params=json_body, headers=headers
+                )
+                if progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(item))
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
                 return response
 
     async def upload_bulk_async(
@@ -2174,3 +2174,119 @@ class FileApi(ModuleApiBase):
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    async def upload_resumable_async(
+        self,
+        team_id: int,
+        src: str,
+        dst: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
+        check_hash: bool = True,
+    ) -> httpx.Response:
+        """
+        Upload file from local path to Team Files asynchronously.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param src: Local path to file.
+        :type src: str
+        :param dst: Path to save file in Team Files.
+        :type dst: str
+        :param semaphore: Semaphore for limiting the number of simultaneous uploads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
+        :param check_hash: If True, checks hash of uploaded file.
+        :type check_hash: bool
+        :return: Response from API.
+        :rtype: :class:`httpx.Response`
+        :Usage example:
+
+            .. code-block:: python
+
+                import supervisely as sly
+                import asyncio
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                path_to_file = "/path/to/local/file/01587.json"
+                path_to_save = "/files/01587.json"
+                loop = sly.utils.get_or_create_event_loop()
+                loop.run_until_complete(
+                    api.file.upload_async(8, path_to_file, path_to_save)
+                )
+        """
+        size = os.path.getsize(src)
+        if check_hash:
+            sha256 = await get_file_hash_async(src, "sha256")
+        else:
+            sha256 = None
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            async with aiofiles.open(src, "rb") as fd:
+                response: ResumableResponse = await self.resumable.request_upload(
+                    team_id=team_id, file_path=dst, sha256=sha256, size=size
+                )
+                chunk_size, num_chunks = response.limits.calculate_optimal_chunk_size(
+                    file_szie=size
+                )
+                offset = 0
+                part_id = 0
+                parts = []
+                try:
+                    if response.limits.is_parallel_upload_supported:
+                        async for chunk in self.resumable.generate_chunks(
+                            fd, chunk_size, num_chunks
+                        ):
+                            offset += len(chunk)
+                            part_id += 1
+                            response = await self.resumable.upload_chunk(
+                                chunk=chunk,
+                                team_id=team_id,
+                                file_path=dst,
+                                session_id=response.session_id,
+                                part_id=part_id,
+                                offset=offset,
+                            )
+                            parts.append(part_id)
+                            if progress_cb is not None and progress_cb_type == "size":
+                                progress_cb(len(chunk))
+                            if progress_cb is not None and progress_cb_type == "number":
+                                progress_cb(1)
+                    else:
+                        for _ in range(num_chunks):
+                            chunk = await fd.read(chunk_size)
+                            offset += len(chunk)
+                            part_id += 1
+                            response = await self.resumable.upload_chunk(
+                                chunk=chunk,
+                                team_id=team_id,
+                                file_path=dst,
+                                session_id=response.session_id,
+                                part_id=part_id,
+                                offset=offset,
+                            )
+                            parts.append(part_id)
+                            if progress_cb is not None and progress_cb_type == "size":
+                                progress_cb(len(chunk))
+                            if progress_cb is not None and progress_cb_type == "number":
+                                progress_cb(1)
+                except Exception as e:
+                    await self.resumable.abort_upload(
+                        team_id=team_id, file_path=dst, session_id=response.session_id
+                    )
+                    raise e
+                response = await self.resumable.complete_upload(
+                    team_id=team_id,
+                    file_path=dst,
+                    session_id=response.session_id,
+                    parts=parts,
+                )
+                return response

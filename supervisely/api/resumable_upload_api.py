@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Coroutine, List, Optional
+from typing import TYPE_CHECKING, AsyncGenerator, Coroutine, List, Optional, Tuple
+from uuid import uuid4
 
-from supervisely._utils import camel_to_snake, get_or_create_event_loop
+from aiofiles.threadpool.binary import AsyncBufferedReader
+
+from supervisely._utils import camel_to_snake
 from supervisely.api.module_api import ApiField
 
 if TYPE_CHECKING:
@@ -18,6 +21,21 @@ class Limits:
     max_chunk_size: int
     max_chunks: int
     chunk_size_multiple_of: int
+
+    def calculate_optimal_chunk_size(self, file_size: int) -> Tuple[int, int]:
+        """Calculate optimal chunk size based on limits.
+
+        :param file_size: Size of the file in bytes.
+        :type file_size: int
+        :return: Optimal chunk size and number of chunks.
+        :rtype: Tuple[int, int]
+        """
+        if self.min_chunk_size is None:
+            self.min_chunk_size = 1024 * 1024  # 1 MB
+        optimal_chunk_size = min(file_size // self.max_chunks, self.max_chunk_size)
+        optimal_chunk_size = max(optimal_chunk_size, self.min_chunk_size)
+        num_chunks = (file_size + optimal_chunk_size - 1) // optimal_chunk_size
+        return optimal_chunk_size, num_chunks
 
 
 @dataclass
@@ -124,7 +142,8 @@ class ResumableUploadApi:
             ApiField.PART_ID: part_id,
             ApiField.OFFSET: offset,
         }
-        response = await self._api.post_async(method, content=chunk, params=params)
+        headers = {"Content-Type": "application/octet-stream"}
+        response = await self._api.post_async(method, content=chunk, params=params, headers=headers)
         return self.parse_resumable_response(response.json())
 
     def complete_upload(
@@ -208,3 +227,35 @@ class ResumableUploadApi:
         }
         response = self._api.post_httpx(method, json=data)
         return self.parse_resumable_response(response.json())
+
+    @staticmethod
+    def generate_id() -> str:
+        """Generate a unique identifier for the upload part.
+
+        :return: Unique identifier as a hexadecimal string from UUID4.
+        :rtype: str
+        """
+        return uuid4().hex
+
+    @staticmethod
+    async def generate_chunks(
+        fd: AsyncBufferedReader,
+        chunk_size: int,
+        num_chunks: int,
+    ) -> AsyncGenerator[bytes, None]:
+        """Generate chunks of data from a file descriptor.
+
+        :param fd: File descriptor.
+        :type fd: AsyncBufferedReader
+        :param chunk_size: Size of the chunk in bytes.
+        :type chunk_size: int
+        :param num_chunks: Number of chunks to generate.
+        :type num_chunks: int
+        :return: Asynchronous generator of chunks.
+        :rtype: AsyncGenerator[bytes, None]
+        """
+        for _ in range(num_chunks):
+            chunk = await fd.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
