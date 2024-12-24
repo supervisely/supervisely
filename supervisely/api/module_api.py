@@ -596,6 +596,20 @@ class ApiField:
     """"""
     CLEAR_LOCAL_DATA_SOURCE = "clearLocalDataSource"
     """"""
+    SHA256 = "sha256"
+    """"""
+    CRC32 = "crc32"
+    """"""
+    BLAKE3 = "blake3"
+    """"""
+    LIMITS = "limits"
+    """"""
+    PARTS = "parts"
+    """"""
+    PART_ID = "partId"
+    """"""
+    OFFSET = "offset"
+    """"""
 
 
 def _get_single_item(items):

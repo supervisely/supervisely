@@ -11,6 +11,7 @@ import re
 import string
 import time
 import urllib
+import zlib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
@@ -18,6 +19,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 import requests
+from blake3 import blake3
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import env as sly_env
@@ -88,12 +90,22 @@ def batched(seq, batch_size=50):
         yield seq[i : i + batch_size]
 
 
-def get_bytes_hash(bytes):
-    return base64.b64encode(hashlib.sha256(bytes).digest()).decode("utf-8")
+def get_bytes_hash(bytes, hash_type: Literal["sha256", "crc32", "blake3"] = "sha256"):
+    if hash_type == "sha256":
+        return base64.b64encode(hashlib.sha256(bytes).digest()).decode("utf-8")
+    elif hash_type == "crc32":
+        return base64.b64encode(zlib.crc32(bytes).to_bytes(4, "big")).decode("utf-8")
+    elif hash_type == "blake3":
+        return base64.b64encode(blake3(bytes).digest()).decode("utf-8")
 
 
-def get_string_hash(data):
-    return base64.b64encode(hashlib.sha256(str.encode(data)).digest()).decode("utf-8")
+def get_string_hash(data, hash_type: Literal["sha256", "crc32", "blake3"] = "sha256"):
+    if hash_type == "sha256":
+        return base64.b64encode(hashlib.sha256(str.encode(data)).digest()).decode("utf-8")
+    elif hash_type == "crc32":
+        return base64.b64encode(zlib.crc32(str.encode(data)).to_bytes(4, "big")).decode("utf-8")
+    elif hash_type == "blake3":
+        return base64.b64encode(blake3(str.encode(data)).digest()).decode("utf-8")
 
 
 def unwrap_if_numpy(x):

@@ -127,6 +127,7 @@ INSTALL_REQUIRES = [
     "zstd",
     "aiofiles",
     "httpx[http2]==0.27.2",
+    "blake3==1.0.0",
 ]
 
 ALT_INSTALL_REQUIRES = {

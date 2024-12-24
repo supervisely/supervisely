@@ -25,6 +25,7 @@ import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.api.resumable_upload_api import ResumableUploadApi
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -89,6 +90,10 @@ class FileApi(ModuleApiBase):
         file_path = "/999_App_Test/"
         files = api.file.list(team_id, file_path)
     """
+
+    def __init__(self, api):
+        super().__init__(api)
+        self.resumable = ResumableUploadApi(api)
 
     @staticmethod
     def info_sequence():
@@ -2079,7 +2084,7 @@ class FileApi(ModuleApiBase):
         """
         api_method = "file-storage.upload"
         headers = {"Content-Type": "application/octet-stream"}
-        # sha256 = await get_file_hash_async(src) #TODO add with resumaple api
+        sha256 = await get_file_hash_async(src, "sha256")
         json_body = {
             ApiField.TEAM_ID: team_id,
             ApiField.PATH: dst,
@@ -2089,14 +2094,14 @@ class FileApi(ModuleApiBase):
             semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
-                item = await fd.read()
-                response = await self._api.post_async(
-                    api_method, content=item, params=json_body, headers=headers
-                )
-                if progress_cb is not None and progress_cb_type == "size":
-                    progress_cb(len(item))
-                if progress_cb is not None and progress_cb_type == "number":
-                    progress_cb(1)
+                response = await self.resumable.request_upload()
+                for chunk in chunks:
+                    item = await fd.read()
+                    response = await self.resumable.upload_chunk()
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(item))
+                    if progress_cb is not None and progress_cb_type == "number":
+                        progress_cb(1)
                 return response
 
     async def upload_bulk_async(

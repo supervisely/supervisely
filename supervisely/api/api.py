@@ -66,10 +66,10 @@ import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
+    RetryableRequestException,
     process_requests_exception,
     process_requests_exception_async,
     process_unhandled_request,
-    RetryableRequestException,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger

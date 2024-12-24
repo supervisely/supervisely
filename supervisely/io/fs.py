@@ -850,12 +850,17 @@ def string_to_byte_size(string: Union[str, int]) -> int:
         )
 
 
-def get_file_hash(path: str) -> str:
+def get_file_hash(
+    path: str,
+    hash_type: Literal["sha256", "crc32", "blake3"] = "sha256",
+) -> str:
     """
     Get hash from target file.
 
     :param path: Target file path.
     :type path: str
+    :param hash_type: Hash type. Available types: sha256, crc32, blake3. Default: sha256.
+    :type hash_type: Literal["sha256", "crc32", "blake3"]
     :returns: File hash
     :rtype: :class:`str`
     :Usage example:
@@ -867,7 +872,7 @@ def get_file_hash(path: str) -> str:
     """
     with open(path, "rb") as file:
         file_bytes = file.read()
-        return get_bytes_hash(file_bytes)
+        return get_bytes_hash(bytes=file_bytes, hash_type=hash_type)
 
 
 def tree(dir_path: str) -> str:
@@ -1398,12 +1403,17 @@ async def copy_file_async(
         progress_cb(1)
 
 
-async def get_file_hash_async(path: str) -> str:
+async def get_file_hash_async(
+    path: str,
+    hash_type: Literal["sha256", "crc32", "blake3"] = "sha256",
+) -> str:
     """
     Get hash from target file asynchronously.
 
     :param path: Target file path.
     :type path: str
+    :param hash_type: Hash type. Available types: sha256, crc32, blake3. Default: sha256.
+    :type hash_type: Literal["sha256", "crc32", "blake3"]
     :returns: File hash
     :rtype: :class:`str`
     :Usage example:
@@ -1422,7 +1432,7 @@ async def get_file_hash_async(path: str) -> str:
     """
     async with aiofiles.open(path, "rb") as file:
         file_bytes = await file.read()
-        return get_bytes_hash(file_bytes)
+        return get_bytes_hash(bytes=file_bytes, hash_type=hash_type)
 
 
 async def unpack_archive_async(
