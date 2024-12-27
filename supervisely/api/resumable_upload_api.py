@@ -31,6 +31,11 @@ class Limits:
     max_chunks: int
     chunk_size_multiple_of: int
 
+    def __post_init__(self):
+        self.min_chunk_size = int(self.min_chunk_size) if self.min_chunk_size else None
+        self.max_chunk_size = int(self.max_chunk_size) if self.max_chunk_size else None
+        self.max_chunks = int(self.max_chunks) if self.max_chunks else None
+
     def calculate_optimal_chunk_size(self, file_size: int) -> Tuple[int, int]:
         """Calculate optimal chunk size based on limits.
 
@@ -50,11 +55,32 @@ class Limits:
 
 
 @dataclass
+class Range:
+    start: int
+    end: int
+
+    def __post_init__(self):
+        self.start = int(self.start) if self.start else None
+        self.end = int(self.end) if self.end else None
+
+
+@dataclass
+class Part:
+    part_id: int
+    size: int
+    range: Range
+
+    def __post_init__(self):
+        self.part_id = int(self.part_id)
+        self.size = int(self.size)
+
+
+@dataclass
 class ResumableResponse:
     session_id: Optional[str] = None
     limits: Optional[Limits] = None
     hash: Optional[str] = None
-    parts: Optional[List[dict]] = None
+    parts: Optional[List[Part]] = None
 
 
 def transform_keys(obj):
@@ -62,11 +88,15 @@ def transform_keys(obj):
     if isinstance(obj, dict):
         new_obj = {}
         for k, v in obj.items():
-            new_obj[camel_to_snake(k)] = transform_keys(v)
+            if k == ApiField.RANGE:
+                new_obj[ApiField.RANGE] = Range(**transform_keys(v))
+            else:
+                new_obj[camel_to_snake(k)] = transform_keys(v)
         return new_obj
     elif isinstance(obj, list):
         return [transform_keys(i) for i in obj]
     else:
+
         return obj
 
 
@@ -80,9 +110,12 @@ class ResumableUploadApi:
         session_id = response_json.get(ApiField.SESSION_ID)
         limits = response_json.get(ApiField.LIMITS)
         hash = response_json.get(ApiField.HASH)
+        parts = response_json.get(ApiField.PARTS)
+        if parts is not None:
+            parts = [Part(**transform_keys(part)) for part in parts]
         if limits is not None:
             limits = Limits(**transform_keys(limits))
-        return ResumableResponse(session_id=session_id, limits=limits, hash=hash)
+        return ResumableResponse(session_id=session_id, limits=limits, hash=hash, parts=parts)
 
     def request_upload(
         self,

@@ -610,6 +610,8 @@ class ApiField:
     """"""
     OFFSET = "offset"
     """"""
+    RANGE = "range"
+    """"""
 
 
 def _get_single_item(items):
