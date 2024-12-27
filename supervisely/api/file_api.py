@@ -2231,62 +2231,64 @@ class FileApi(ModuleApiBase):
             semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
-                response: ResumableResponse = await self.resumable.request_upload(
+                first_response: ResumableResponse = self.resumable.request_upload(
                     team_id=team_id, file_path=dst, sha256=sha256, size=size
                 )
-                chunk_size, num_chunks = response.limits.calculate_optimal_chunk_size(
-                    file_szie=size
+                chunk_size, num_chunks = first_response.limits.calculate_optimal_chunk_size(
+                    file_size=size
                 )
                 offset = 0
                 part_id = 0
                 parts = []
                 try:
-                    if response.limits.is_parallel_upload_supported:
+                    if first_response.limits.is_parallel_upload_supported:
+                        tasks = []
                         async for chunk in self.resumable.generate_chunks(
                             fd, chunk_size, num_chunks
                         ):
-                            offset += len(chunk)
                             part_id += 1
-                            response = await self.resumable.upload_chunk(
+                            task = self.resumable.upload_chunk(
                                 chunk=chunk,
                                 team_id=team_id,
                                 file_path=dst,
-                                session_id=response.session_id,
+                                session_id=first_response.session_id,
                                 part_id=part_id,
                                 offset=offset,
+                                semaphore=semaphore,
+                                progress_cb=progress_cb if progress_cb_type == "size" else None,
                             )
+                            tasks.append(task)
+                            offset += len(chunk) + 1
                             parts.append(part_id)
-                            if progress_cb is not None and progress_cb_type == "size":
-                                progress_cb(len(chunk))
-                            if progress_cb is not None and progress_cb_type == "number":
-                                progress_cb(1)
+                        responses = await asyncio.gather(*tasks)
+                        # TODO check_hash_func
                     else:
                         for _ in range(num_chunks):
                             chunk = await fd.read(chunk_size)
-                            offset += len(chunk)
                             part_id += 1
                             response = await self.resumable.upload_chunk(
                                 chunk=chunk,
                                 team_id=team_id,
                                 file_path=dst,
-                                session_id=response.session_id,
+                                session_id=first_response.session_id,
                                 part_id=part_id,
                                 offset=offset,
                             )
+                            offset += len(chunk) + 1
                             parts.append(part_id)
                             if progress_cb is not None and progress_cb_type == "size":
                                 progress_cb(len(chunk))
-                            if progress_cb is not None and progress_cb_type == "number":
-                                progress_cb(1)
+                    response = self.resumable.complete_upload(
+                        team_id=team_id,
+                        file_path=dst,
+                        session_id=first_response.session_id,
+                        parts=parts,
+                    )
+                    if progress_cb is not None and progress_cb_type == "number":
+                        progress_cb(1)
                 except Exception as e:
-                    await self.resumable.abort_upload(
-                        team_id=team_id, file_path=dst, session_id=response.session_id
+                    self.resumable.abort_upload(
+                        team_id=team_id, file_path=dst, session_id=first_response.session_id
                     )
                     raise e
-                response = await self.resumable.complete_upload(
-                    team_id=team_id,
-                    file_path=dst,
-                    session_id=response.session_id,
-                    parts=parts,
-                )
                 return response

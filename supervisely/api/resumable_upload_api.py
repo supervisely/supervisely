@@ -2,7 +2,15 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, AsyncGenerator, Coroutine, List, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    List,
+    Optional,
+    Tuple,
+)
 from uuid import uuid4
 
 from aiofiles.threadpool.binary import AsyncBufferedReader
@@ -12,6 +20,7 @@ from supervisely.api.module_api import ApiField
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
+    from supervisely.api.file_api import FileInfo
 
 
 @dataclass
@@ -35,13 +44,17 @@ class Limits:
         optimal_chunk_size = min(file_size // self.max_chunks, self.max_chunk_size)
         optimal_chunk_size = max(optimal_chunk_size, self.min_chunk_size)
         num_chunks = (file_size + optimal_chunk_size - 1) // optimal_chunk_size
+        if num_chunks == 1:
+            optimal_chunk_size = file_size
         return optimal_chunk_size, num_chunks
 
 
 @dataclass
 class ResumableResponse:
-    session_id: str
-    limits: Limits
+    session_id: Optional[str] = None
+    limits: Optional[Limits] = None
+    hash: Optional[str] = None
+    parts: Optional[List[dict]] = None
 
 
 def transform_keys(obj):
@@ -64,10 +77,12 @@ class ResumableUploadApi:
 
     @staticmethod
     def parse_resumable_response(response_json: dict) -> ResumableResponse:
-        session_id = response_json[ApiField.SESSION_ID]
-        limits = response_json[ApiField.LIMITS]
-        limits = Limits(**transform_keys(limits))
-        return ResumableResponse(session_id=session_id, limits=limits)
+        session_id = response_json.get(ApiField.SESSION_ID)
+        limits = response_json.get(ApiField.LIMITS)
+        hash = response_json.get(ApiField.HASH)
+        if limits is not None:
+            limits = Limits(**transform_keys(limits))
+        return ResumableResponse(session_id=session_id, limits=limits, hash=hash)
 
     def request_upload(
         self,
@@ -116,6 +131,8 @@ class ResumableUploadApi:
         session_id: str,
         part_id: int,
         offset: float,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Callable[[int], None]] = None,
     ) -> Coroutine[ResumableResponse]:
         """Upload a chunk of the file to the storage.
 
@@ -131,6 +148,10 @@ class ResumableUploadApi:
         :type part_id: int
         :param offset: Offset in bytes to start upload from.
         :type offset: float
+        :param semaphore: Semaphore to limit the number of concurrent uploads.
+        :type semaphore: Optional[asyncio.Semaphore]
+        :param progress_cb: Callback function to report progress in bytes.
+        :type progress_cb: Optional[Callable[[int], None]]
         :return: Resumable upload response.
         :rtype: ResumableResponse
         """
@@ -143,7 +164,16 @@ class ResumableUploadApi:
             ApiField.OFFSET: offset,
         }
         headers = {"Content-Type": "application/octet-stream"}
-        response = await self._api.post_async(method, content=chunk, params=params, headers=headers)
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async with semaphore:
+            response = await self._api.post_async(
+                method, content=chunk, params=params, headers=headers
+            )
+        if progress_cb is not None:
+            progress_cb(len(chunk))
         return self.parse_resumable_response(response.json())
 
     def complete_upload(
@@ -152,7 +182,7 @@ class ResumableUploadApi:
         file_path: str,
         session_id: str,
         parts: Optional[List[int]] = None,
-    ) -> ResumableResponse:
+    ) -> FileInfo:
         """Complete the upload process.
 
         :param team_id: Team ID.
@@ -174,7 +204,7 @@ class ResumableUploadApi:
             ApiField.PARTS: parts or [],
         }
         response = self._api.post_httpx(method, json=data)
-        return self.parse_resumable_response(response.json())
+        return self._api.file._convert_json_info(response.json())
 
     def abort_upload(
         self,
