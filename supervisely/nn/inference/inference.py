@@ -624,6 +624,12 @@ class Inference:
         for file in model_files:
             file_url = model_files[file]
             file_info = self.api.file.get_info_by_path(team_id, file_url)
+            if file_info is None:
+                if sly_fs.file_exists(file_url):
+                    local_model_files[file] = file_url
+                    continue
+                else:
+                    raise ValueError(f"File '{file_url}' not found in Team Files")
             file_size = file_info.sizeb
             file_name = os.path.basename(file_url)
             file_path = os.path.join(self.model_dir, file_name)
@@ -2258,12 +2264,14 @@ class Inference:
             time.sleep(2)
 
             # Predict and shutdown
-            if any[
-                self._args.predict_project,
-                self._args.predict_dataset,
-                self._args.predict_dir,
-                self._args.predict_image,
-            ]:
+            if any(
+                [
+                    self._args.predict_project,
+                    self._args.predict_dataset,
+                    self._args.predict_dir,
+                    self._args.predict_image,
+                ]
+            ):
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
                 self._app.shutdown()
@@ -2828,7 +2836,7 @@ class Inference:
         if args.model is None:
             raise ValueError("Argument '--model' is required for local deployment")
         if args.predict_image is not None:
-            if args.predict_image.is_digit():
+            if args.predict_image.isdigit():
                 args.predict_image = int(args.predict_image)
         return args
 

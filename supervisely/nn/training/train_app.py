@@ -8,7 +8,7 @@ training workflows in a Supervisely application.
 import shutil
 import subprocess
 from datetime import datetime
-from os import listdir
+from os import getcwd, listdir
 from os.path import basename, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
@@ -555,6 +555,7 @@ class TrainApp:
         self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
         self._generate_model_meta(remote_dir, experiment_info)
+        self._upload_demo_files(remote_dir)
 
         # Step 7. Set output widgets
         self._set_text_status("reset")
@@ -1481,6 +1482,35 @@ class TrainApp:
         self._upload_file_to_team_files(
             local_path, remote_path, f"Uploading '{self._app_state_file}' to Team Files"
         )
+
+    def _upload_demo_files(self, remote_dir: str) -> None:
+        local_demo_dir = self._app_options.get("local_demo_dir")
+        if local_demo_dir is None:
+            return
+
+        local_demo_dir = join(getcwd(), local_demo_dir)
+        if not sly_fs.dir_exists(local_demo_dir):
+            logger.info(f"Demo directory '{local_demo_dir}' does not exist")
+            return
+
+        logger.debug(f"Uploading demo files to Supervisely")
+        remote_demo_dir = join(remote_dir, "demo")
+        local_files = sly_fs.list_files_recursively(local_demo_dir)
+        total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
+        with self.progress_bar_main(
+            message="Uploading demo files to Team Files",
+            total=total_size,
+            unit="bytes",
+            unit_scale=True,
+        ) as upload_artifacts_pbar:
+            self.progress_bar_main.show()
+            remote_dir = self._api.file.upload_directory(
+                self._team_id,
+                local_demo_dir,
+                remote_demo_dir,
+                progress_size_cb=upload_artifacts_pbar,
+            )
+            self.progress_bar_main.hide()
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
         """
