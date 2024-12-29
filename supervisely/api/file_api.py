@@ -2180,11 +2180,13 @@ class FileApi(ModuleApiBase):
         team_id: int,
         src: str,
         dst: str,
+        check_hash: bool = True,
+        autocomplete: bool = False,
+        current_state: Optional[ResumableResponse] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
-        check_hash: bool = True,
-    ) -> httpx.Response:
+    ) -> ResumableResponse:
         """
         Upload file from local path to Team Files asynchronously.
 
@@ -2194,16 +2196,20 @@ class FileApi(ModuleApiBase):
         :type src: str
         :param dst: Path to save file in Team Files.
         :type dst: str
+        :param check_hash: If True, checks hash of uploaded file.
+        :type check_hash: bool
+        :param autocomplete: If True, completes upload after last chunk.
+        :type autocomplete: bool
+        :param current_state: Current state of upload.
+        :type current_state: ResumableResponse, optional
         :param semaphore: Semaphore for limiting the number of simultaneous uploads.
         :type semaphore: asyncio.Semaphore, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :param check_hash: If True, checks hash of uploaded file.
-        :type check_hash: bool
         :return: Response from API.
-        :rtype: :class:`httpx.Response`
+        :rtype: :class:`ResumableResponse`
         :Usage example:
 
             .. code-block:: python
@@ -2231,15 +2237,24 @@ class FileApi(ModuleApiBase):
             semaphore = self._api.get_default_semaphore()
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
-                first_response: ResumableResponse = self.resumable.request_upload(
-                    team_id=team_id, file_path=dst, sha256=sha256, size=size
-                )
-                chunk_size, num_chunks = first_response.limits.calculate_optimal_chunk_size(
-                    file_size=size
-                )
+                if current_state is None:
+                    first_response: ResumableResponse = self.resumable.request_upload(
+                        team_id=team_id, file_path=dst, sha256=sha256, size=size
+                    )
+                    chunk_size, num_chunks = first_response.limits.calculate_optimal_chunk_size(
+                        file_size=size
+                    )
+                    part_ids_to_upload = range(1, num_chunks + 1)
+                else:
+                    first_response = current_state
+                    chunk_size = first_response.limits.optimal_chunk_size
+                    num_chunks = first_response.limits.num_chunks
+                    part_ids_to_upload = first_response.get_part_ids_to_reupload(num_chunks)
+
                 offset = 0
                 part_id = 0
                 parts = []
+                responses = []
                 try:
                     if first_response.limits.is_parallel_upload_supported:
                         tasks = []
@@ -2247,6 +2262,9 @@ class FileApi(ModuleApiBase):
                             fd, chunk_size, num_chunks
                         ):
                             part_id += 1
+                            if part_id not in part_ids_to_upload:
+                                offset += len(chunk) + 1
+                                continue
                             task = self.resumable.upload_chunk(
                                 chunk=chunk,
                                 team_id=team_id,
@@ -2261,11 +2279,13 @@ class FileApi(ModuleApiBase):
                             offset += len(chunk) + 1
                             parts.append(part_id)
                         responses = await asyncio.gather(*tasks)
-                        # TODO check_hash_func
                     else:
                         for _ in range(num_chunks):
                             chunk = await fd.read(chunk_size)
                             part_id += 1
+                            if part_id not in part_ids_to_upload:
+                                offset += len(chunk) + 1
+                                continue
                             response = await self.resumable.upload_chunk(
                                 chunk=chunk,
                                 team_id=team_id,
@@ -2274,21 +2294,32 @@ class FileApi(ModuleApiBase):
                                 part_id=part_id,
                                 offset=offset,
                             )
+                            responses.append(response)
                             offset += len(chunk) + 1
                             parts.append(part_id)
                             if progress_cb is not None and progress_cb_type == "size":
                                 progress_cb(len(chunk))
-                    response = self.resumable.complete_upload(
+                    # TODO check_hash_func(responses)
+                    first_response.status = self.resumable.get_upload_status(
                         team_id=team_id,
                         file_path=dst,
                         session_id=first_response.session_id,
-                        parts=parts,
                     )
+
+                    if autocomplete:
+                        last_response = self.resumable.complete_upload(
+                            team_id=team_id,
+                            file_path=dst,
+                            session_id=first_response.session_id,
+                            parts=parts,
+                        )
                     if progress_cb is not None and progress_cb_type == "number":
                         progress_cb(1)
                 except Exception as e:
-                    self.resumable.abort_upload(
-                        team_id=team_id, file_path=dst, session_id=first_response.session_id
+                    logger.error(e)
+                    first_response.status = self.resumable.get_upload_status(
+                        team_id=team_id,
+                        file_path=dst,
+                        session_id=first_response.session_id,
                     )
-                    raise e
-                return response
+                return first_response

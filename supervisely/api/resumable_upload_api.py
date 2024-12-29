@@ -11,7 +11,6 @@ from typing import (
     Optional,
     Tuple,
 )
-from uuid import uuid4
 
 from aiofiles.threadpool.binary import AsyncBufferedReader
 
@@ -30,6 +29,8 @@ class Limits:
     max_chunk_size: int
     max_chunks: int
     chunk_size_multiple_of: int
+    optimal_chunk_size: Optional[int] = None
+    num_chunks: Optional[int] = None
 
     def __post_init__(self):
         self.min_chunk_size = int(self.min_chunk_size) if self.min_chunk_size else None
@@ -51,7 +52,9 @@ class Limits:
         num_chunks = (file_size + optimal_chunk_size - 1) // optimal_chunk_size
         if num_chunks == 1:
             optimal_chunk_size = file_size
-        return optimal_chunk_size, num_chunks
+        self.optimal_chunk_size = optimal_chunk_size
+        self.num_chunks = num_chunks
+        return self.optimal_chunk_size, self.num_chunks
 
 
 @dataclass
@@ -76,11 +79,36 @@ class Part:
 
 
 @dataclass
+class ResumableStatus:
+    parts: Optional[List[Part]] = None
+
+
+@dataclass
 class ResumableResponse:
     session_id: Optional[str] = None
     limits: Optional[Limits] = None
     hash: Optional[str] = None
-    parts: Optional[List[Part]] = None
+    status: Optional[ResumableStatus] = None
+
+    def get_part_ids_to_reupload(self, num_chunks: Optional[int] = None) -> List[int]:
+        """Get a list of Parts that need to be re-uploaded.
+
+        :param num_chunks: Number of chunks in the file.
+        :type num_chunks: Optional[int]
+        :return: List of Parts.
+        :rtype: List[Part]
+        :raises ValueError: If the number of chunks is not provided and cannot be determined.
+        """
+        if num_chunks is None:
+            num_chunks = self.limits.num_chunks
+            if num_chunks is None:
+                raise ValueError("Cannot determine the number of chunks in the file.")
+        if self.status is None or self.status.parts is None:
+            return []
+        else:
+            part_ids = sorted(part.part_id for part in self.status.parts)
+            missing_ids = [i for i in range(part_ids[0], num_chunks + 1) if i not in part_ids]
+            return missing_ids
 
 
 def transform_keys(obj):
@@ -110,12 +138,16 @@ class ResumableUploadApi:
         session_id = response_json.get(ApiField.SESSION_ID)
         limits = response_json.get(ApiField.LIMITS)
         hash = response_json.get(ApiField.HASH)
+        if limits is not None:
+            limits = Limits(**transform_keys(limits))
+        return ResumableResponse(session_id=session_id, limits=limits, hash=hash)
+
+    @staticmethod
+    def parse_resumable_status(response_json: dict) -> ResumableStatus:
         parts = response_json.get(ApiField.PARTS)
         if parts is not None:
             parts = [Part(**transform_keys(part)) for part in parts]
-        if limits is not None:
-            limits = Limits(**transform_keys(limits))
-        return ResumableResponse(session_id=session_id, limits=limits, hash=hash, parts=parts)
+        return ResumableStatus(parts=parts)
 
     def request_upload(
         self,
@@ -270,7 +302,7 @@ class ResumableUploadApi:
         team_id: int,
         file_path: str,
         session_id: str,
-    ) -> ResumableResponse:
+    ) -> ResumableStatus:
         """Retrieve the status of the upload process.
 
         :param team_id: Team ID.
@@ -279,8 +311,8 @@ class ResumableUploadApi:
         :type file_path: str
         :param session_id: Session ID.
         :type session_id: str
-        :return: Resumable upload response.
-        :rtype: ResumableResponse
+        :return: Resumable upload status response.
+        :rtype: ResumableStatus
         """
         method = "file-storage.resumable_upload.status"
         data = {
@@ -290,15 +322,6 @@ class ResumableUploadApi:
         }
         response = self._api.post_httpx(method, json=data)
         return self.parse_resumable_response(response.json())
-
-    @staticmethod
-    def generate_id() -> str:
-        """Generate a unique identifier for the upload part.
-
-        :return: Unique identifier as a hexadecimal string from UUID4.
-        :rtype: str
-        """
-        return uuid4().hex
 
     @staticmethod
     async def generate_chunks(
