@@ -115,7 +115,10 @@ class Inference:
 
         if model_dir is None:
             if self._is_local_deploy is True:
-                model_dir = Path("~/.cache/supervisely/app_data").expanduser()
+                try:
+                    model_dir = get_data_dir()
+                except:
+                    model_dir = Path("~/.cache/supervisely/app_data").expanduser()
             else:
                 model_dir = os.path.join(get_data_dir(), "models")
         sly_fs.mkdir(model_dir)
@@ -2274,7 +2277,6 @@ class Inference:
             # Start server
             server_thread = threading.Thread(target=self._run_server)
             server_thread.start()
-            time.sleep(2)
 
             # Predict and shutdown
             if any(
