@@ -164,6 +164,9 @@ class ImageInfo(NamedTuple):
     #: 'createdAt': '2021-03-05T14:15:39.923Z', 'updatedAt': '2021-03-05T14:15:39.923Z'}, {...}]".
     tags: List[Dict]
 
+    #: :class:`str`: Id of a user who created the image.
+    created_by: str
+
     @property
     def preview_url(self):
         """
@@ -233,6 +236,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.PATH_ORIGINAL,
             ApiField.FULL_STORAGE_URL,
             ApiField.TAGS,
+            ApiField.CREATED_BY_ID[0][0],
         ]
 
     @staticmethod
