@@ -536,58 +536,62 @@ class BaseTrainArtifacts:
             api: Api, train_info: TrainInfo
         ) -> ExperimentInfo:
 
-            checkpoints = []
-            for chk in train_info.checkpoints:
-                if self.weights_folder:
-                    checkpoints.append(join(self.weights_folder, chk.name))
-                else:
-                    checkpoints.append(chk.name)
+            try:
+                checkpoints = []
+                for chk in train_info.checkpoints:
+                    if self.weights_folder:
+                        checkpoints.append(join(self.weights_folder, chk.name))
+                    else:
+                        checkpoints.append(chk.name)
 
-            best_checkpoint = next(
-                (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
-            )
-            if not best_checkpoint and checkpoints:
-                best_checkpoint = get_file_name_with_ext(checkpoints[-1])
-
-            task_info = api.task.get_info_by_id(train_info.task_id)
-            workspace_id = task_info["workspaceId"]
-
-            project = api.project.get_info_by_name(workspace_id, train_info.project_name)
-            project_id = project.id if project else None
-
-            model_files = {}
-            if train_info.config_path:
-                model_files["config"] = self.get_config_path(train_info.artifacts_folder).replace(
-                    train_info.artifacts_folder, ""
+                best_checkpoint = next(
+                    (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
                 )
+                if not best_checkpoint and checkpoints:
+                    best_checkpoint = get_file_name_with_ext(checkpoints[-1])
 
-            input_datetime = task_info["startedAt"]
-            parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
-            date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
+                task_info = api.task.get_info_by_id(train_info.task_id)
+                workspace_id = task_info["workspaceId"]
 
-            experiment_info_data = {
-                "experiment_name": f"Unknown {self.framework_name} experiment",
-                "framework_name": self.framework_name,
-                "model_name": f"Unknown {self.framework_name} model",
-                "task_type": train_info.task_type,
-                "project_id": project_id,
-                "task_id": train_info.task_id,
-                "model_files": model_files,
-                "checkpoints": checkpoints,
-                "best_checkpoint": best_checkpoint,
-                "artifacts_dir": train_info.artifacts_folder,
-                "datetime": date_time,
-            }
+                project = api.project.get_info_by_name(workspace_id, train_info.project_name)
+                project_id = project.id if project else None
 
-            experiment_info_fields = {
-                field.name
-                for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
-            }
-            for field in experiment_info_fields:
-                if field not in experiment_info_data:
-                    experiment_info_data[field] = None
+                model_files = {}
+                if train_info.config_path:
+                    model_files["config"] = self.get_config_path(
+                        train_info.artifacts_folder
+                    ).replace(train_info.artifacts_folder, "")
 
-            return ExperimentInfo(**experiment_info_data)
+                input_datetime = task_info["startedAt"]
+                parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+                date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+                experiment_info_data = {
+                    "experiment_name": f"Unknown {self.framework_name} experiment",
+                    "framework_name": self.framework_name,
+                    "model_name": f"Unknown {self.framework_name} model",
+                    "task_type": train_info.task_type,
+                    "project_id": project_id,
+                    "task_id": train_info.task_id,
+                    "model_files": model_files,
+                    "checkpoints": checkpoints,
+                    "best_checkpoint": best_checkpoint,
+                    "artifacts_dir": train_info.artifacts_folder,
+                    "datetime": date_time,
+                }
+
+                experiment_info_fields = {
+                    field.name
+                    for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
+                }
+                for field in experiment_info_fields:
+                    if field not in experiment_info_data:
+                        experiment_info_data[field] = None
+
+                return ExperimentInfo(**experiment_info_data)
+            except Exception as e:
+                logger.warning(f"Failed to build experiment info: {e}")
+                return None
 
         train_infos = self.get_list(sort)
 
