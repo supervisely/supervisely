@@ -156,6 +156,22 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       console.log(`Package ${packageName} extracted to ${extractTo}`);
     }
 
+    let unSubStoreAction = null;
+
+    function subToStoreAction() {
+      if (unSubStoreAction) {
+        unSubStoreAction();
+      }
+
+      const store = window.slyApp.store;
+
+      unSubStoreAction = store.subscribeAction((action) => {
+        runPythonScript(action);
+      });
+
+      console.log("Subscribed to store actions");
+    }
+
     async function loadMainPythonScript() {
       pyodide = await loadPyodide();
       await pyodide.loadPackage("micropip");
@@ -182,6 +198,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
     async function runPythonScript(...params) {
       if (initPromise) {
         await initPromise;
+        subToStoreAction();
         initPromise = null;
       }
 
