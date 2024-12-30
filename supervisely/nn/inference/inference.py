@@ -110,7 +110,9 @@ class Inference:
         multithread_inference: Optional[bool] = True,
         use_serving_gui_template: Optional[bool] = False,
     ):
-        self._is_local_deploy = sly_env.local_deploy()
+
+        self._args, self._is_local_deploy = self._parse_local_deploy_args()
+
         if model_dir is None:
             if self._is_local_deploy is True:
                 model_dir = Path("~/.cache/supervisely/app_data").expanduser()
@@ -155,7 +157,6 @@ class Inference:
         self._use_gui = use_gui
         self._use_serving_gui_template = use_serving_gui_template
         self._gui = None
-        self._args = None
         self._uvicorn_server = None
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
@@ -164,7 +165,7 @@ class Inference:
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
         if self._is_local_deploy:
-            self._args = self._parse_local_deploy_args()
+            # self._args = self._parse_local_deploy_args()
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
@@ -2785,7 +2786,6 @@ class Inference:
         parser.add_argument(
             "--model",
             type=str,
-            required=True,
             help="Name of the pretrained model or path to custom checkpoint file",
         )
         parser.add_argument(
@@ -2834,11 +2834,12 @@ class Inference:
         # Parse arguments
         args = parser.parse_args()
         if args.model is None:
-            raise ValueError("Argument '--model' is required for local deployment")
+            # raise ValueError("Argument '--model' is required for local deployment")
+            return None, False
         if args.predict_image is not None:
             if args.predict_image.isdigit():
                 args.predict_image = int(args.predict_image)
-        return args
+        return args, True
 
     def _get_pretrained_model_params_from_args(self):
         model_files = None

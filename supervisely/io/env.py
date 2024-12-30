@@ -554,19 +554,3 @@ def semaphore_size() -> int:
         postprocess_fn=lambda x: int(x),
         raise_not_found=False,
     )
-
-
-def local_deploy() -> bool:
-    """Returns local deploy flag from environment variable using following keys:
-        - LOCAL_DEPLOY
-
-    :return: local deploy flag
-    :rtype: bool
-    """
-    return _parse_from_env(
-        name="local_deploy",
-        keys=["LOCAL_DEPLOY"],
-        default=False,
-        raise_not_found=False,
-        postprocess_fn=flag_from_env,
-    )
