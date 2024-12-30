@@ -41,6 +41,56 @@ class SelectedIds(BaseModel):
 
 
 class Bokeh(Widget):
+    """
+    Bokeh widget for creating interactive plots.
+
+    Note:
+        Only Bokeh version 3.1.1 is supported.
+
+    :param plots: List of plots to be displayed.
+    :type plots: List[Plot]
+    :param width: Width of the chart in pixels.
+    :type width: int
+    :param height: Height of the chart in pixels.
+    :type height: int
+    :param tools: List of tools to be displayed on the chart.
+    :type tools: List[str]
+    :param toolbar_location: Location of the toolbar.
+    :type toolbar_location: Literal["above", "below", "left", "right"]
+    :param x_axis_visible: If True, x-axis will be visible.
+    :type x_axis_visible: bool
+    :param y_axis_visible: If True, y-axis will be visible.
+    :type y_axis_visible: bool
+    :param grid_visible: If True, grid will be visible.
+    :type grid_visible: bool
+    :param widget_id: Unique widget identifier.
+    :type widget_id: str
+    :param show_legend: If True, ckickable legend widget will be displayed.
+    :type show_legend: bool
+    :param legend_location: Location of the clickable legend widget.
+    :type legend_location: Literal["left", "top", "right", "bottom"]
+    :param legend_click_policy: Click policy of the clickable legend widget.
+    :type legend_click_policy: Literal["hide", "mute"]
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely.app.widgets import Bokeh, IFrame
+
+        plot = Bokeh.Circle(
+            x_coordinates=[1, 2, 3, 4, 5],
+            y_coordinates=[1, 2, 3, 4, 5],
+            radii=10,
+            colors="red",
+            legend_label="Circle plot",
+        )
+        bokeh = Bokeh(plots=[plot], width=1000, height=600)
+
+        # To allow the widget to be interacted with, you need to add it to the IFrame widget.
+        iframe = IFrame()
+        iframe.set(bokeh.html_route_with_timestamp, height="650px", width="100%")
+    """
+
     class Routes:
         VALUE_CHANGED = "value_changed"
         HTML_ROUTE = "bokeh.html"
@@ -98,8 +148,8 @@ class Bokeh(Widget):
             self._dynamic_selection = dynamic_selection
             self._fill_alpha = fill_alpha
             self._line_color = line_color
-            self._legend_label = legend_label
             self._plot_id = plot_id or uuid4().hex
+            self._legend_label = legend_label or str(self._plot_id)
 
         def add(self, plot) -> None:
             from bokeh.models import (  # pylint: disable=import-error
@@ -188,6 +238,12 @@ class Bokeh(Widget):
         legend_click_policy: Literal["hide", "mute"] = "hide",
         **kwargs,
     ):
+        import bokeh  # pylint: disable=import-error
+
+        # check Bokeh version compatibility (only 3.1.1 is supported)
+        if bokeh.__version__ != "3.1.1":
+            raise RuntimeError(f"Bokeh version {bokeh.__version__} is not supported. Use 3.1.1")
+
         from bokeh.models import Legend  # pylint: disable=import-error
         from bokeh.plotting import figure  # pylint: disable=import-error
 
