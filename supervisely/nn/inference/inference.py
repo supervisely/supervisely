@@ -250,7 +250,7 @@ class Inference:
             maxsize=sly_env.smart_cache_size(),
             ttl=sly_env.smart_cache_ttl(),
             is_persistent=True,
-            base_folder=env.smart_cache_container_dir(),
+            base_folder=sly_env.smart_cache_container_dir(),
             log_progress=True,
         )
 
