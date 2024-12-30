@@ -72,6 +72,7 @@ class DatasetInfo(NamedTuple):
     workspace_id: int
     parent_id: Union[int, None]
     custom_data: dict
+    created_by: int
 
     @property
     def image_preview_url(self):
@@ -147,6 +148,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             ApiField.WORKSPACE_ID,
             ApiField.PARENT_ID,
             ApiField.CUSTOM_DATA,
+            ApiField.CREATED_BY_ID[0][0],
         ]
 
     @staticmethod
