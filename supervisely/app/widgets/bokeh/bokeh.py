@@ -1,23 +1,96 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
+from uuid import uuid4
 
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from supervisely.app.widgets import Widget
+
 from supervisely._utils import is_production
-from supervisely.io.env import task_id
 from supervisely.api.api import Api
+from supervisely.app.widgets import Widget
+from supervisely.io.env import task_id
+from supervisely.sly_logger import logger
+
+
+class DebouncedEventHandler:
+    def __init__(self, debounce_time: float = 0.1):
+        self._event_queue = []
+        self._debounce_time = debounce_time
+        self._task = None
+
+    async def _process_events(self, func: Callable):
+        await asyncio.sleep(self._debounce_time)
+        aggregated_events = self._event_queue.copy()
+        self._event_queue.clear()
+        func(aggregated_events)
+
+    def handle_event(self, event_data, func: Callable):
+        self._event_queue.append(event_data)
+        if self._task is None or self._task.done():
+            self._task = asyncio.create_task(self._process_events(func))
 
 
 class SelectedIds(BaseModel):
-    selected_ids: List[Any]
+    selected_ids: List[int]
+    plot_id: Optional[Union[str, int]] = None
 
 
 class Bokeh(Widget):
+    """
+    Bokeh widget for creating interactive plots.
+
+    Note:
+        Only Bokeh version 3.1.1 is supported.
+
+    :param plots: List of plots to be displayed.
+    :type plots: List[Plot]
+    :param width: Width of the chart in pixels.
+    :type width: int
+    :param height: Height of the chart in pixels.
+    :type height: int
+    :param tools: List of tools to be displayed on the chart.
+    :type tools: List[str]
+    :param toolbar_location: Location of the toolbar.
+    :type toolbar_location: Literal["above", "below", "left", "right"]
+    :param x_axis_visible: If True, x-axis will be visible.
+    :type x_axis_visible: bool
+    :param y_axis_visible: If True, y-axis will be visible.
+    :type y_axis_visible: bool
+    :param grid_visible: If True, grid will be visible.
+    :type grid_visible: bool
+    :param widget_id: Unique widget identifier.
+    :type widget_id: str
+    :param show_legend: If True, ckickable legend widget will be displayed.
+    :type show_legend: bool
+    :param legend_location: Location of the clickable legend widget.
+    :type legend_location: Literal["left", "top", "right", "bottom"]
+    :param legend_click_policy: Click policy of the clickable legend widget.
+    :type legend_click_policy: Literal["hide", "mute"]
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely.app.widgets import Bokeh, IFrame
+
+        plot = Bokeh.Circle(
+            x_coordinates=[1, 2, 3, 4, 5],
+            y_coordinates=[1, 2, 3, 4, 5],
+            radii=10,
+            colors="red",
+            legend_label="Circle plot",
+        )
+        bokeh = Bokeh(plots=[plot], width=1000, height=600)
+
+        # To allow the widget to be interacted with, you need to add it to the IFrame widget.
+        iframe = IFrame()
+        iframe.set(bokeh.html_route_with_timestamp, height="650px", width="100%")
+    """
+
     class Routes:
         VALUE_CHANGED = "value_changed"
         HTML_ROUTE = "bokeh.html"
@@ -42,6 +115,8 @@ class Bokeh(Widget):
             dynamic_selection: bool = False,
             fill_alpha: float = 0.5,
             line_color: Optional[str] = None,
+            legend_label: Optional[str] = None,
+            plot_id: Optional[Union[str, int]] = None,
         ):
             if not colors:
                 colors = Bokeh._generate_colors(x_coordinates, y_coordinates)
@@ -73,6 +148,8 @@ class Bokeh(Widget):
             self._dynamic_selection = dynamic_selection
             self._fill_alpha = fill_alpha
             self._line_color = line_color
+            self._plot_id = plot_id or uuid4().hex
+            self._legend_label = legend_label or str(self._plot_id)
 
         def add(self, plot) -> None:
             from bokeh.models import (  # pylint: disable=import-error
@@ -97,6 +174,7 @@ class Bokeh(Widget):
                 fill_alpha=self._fill_alpha,
                 line_color=self._line_color,
                 source=self._source,
+                legend_label=self._legend_label,
             )
             if not self._dynamic_selection:
                 for tool in plot.tools:
@@ -127,9 +205,10 @@ class Bokeh(Widget):
                     var xhr = new XMLHttpRequest();
                     xhr.open("POST", "{route_path}", true);
                     xhr.setRequestHeader("Content-Type", "application/json");
-                    xhr.send(JSON.stringify({{selected_ids: selected_ids}}));
+                    xhr.send(JSON.stringify({{selected_ids: selected_ids, plot_id: '{plot_id}'}}));
                 """.format(
-                    route_path=route_path
+                    route_path=route_path,
+                    plot_id=self._plot_id,
                 ),
             )
             self._source.selected.js_on_change("indices", callback)
@@ -154,13 +233,31 @@ class Bokeh(Widget):
         y_axis_visible: bool = False,
         grid_visible: bool = False,
         widget_id: Optional[str] = None,
+        show_legend: bool = False,
+        legend_location: Literal["left", "top", "right", "bottom"] = "right",
+        legend_click_policy: Literal["hide", "mute"] = "hide",
         **kwargs,
     ):
+        import bokeh  # pylint: disable=import-error
+
+        # check Bokeh version compatibility (only 3.1.1 is supported)
+        if bokeh.__version__ != "3.1.1":
+            raise RuntimeError(f"Bokeh version {bokeh.__version__} is not supported. Use 3.1.1")
+
+        from bokeh.models import Legend  # pylint: disable=import-error
         from bokeh.plotting import figure  # pylint: disable=import-error
 
         self.widget_id = widget_id
         self._plots = plots
         self._plot = figure(width=width, height=height, tools=tools, toolbar_location="above")
+
+        self._legend_location = legend_location
+        self._legend_click_policy = legend_click_policy
+        if show_legend:
+            self._plot.add_layout(
+                Legend(click_policy=self._legend_click_policy),
+                self._legend_location,
+            )
         self._renderers = []
 
         self._plot.xaxis.visible = x_axis_visible
@@ -177,6 +274,7 @@ class Bokeh(Widget):
         def _html_response() -> None:
             return HTMLResponse(content=self.get_html())
 
+        # TODO: support for offline mode
         # JinjaWidgets().context.pop(self.widget_id, None)  # remove the widget from index.html
 
     @property
@@ -263,10 +361,11 @@ class Bokeh(Widget):
     def value_changed(self, func: Callable) -> Callable:
         server = self._sly_app.get_server()
         self._changes_handled = True
+        debounced_handler = DebouncedEventHandler(debounce_time=0.2)  # TODO: check if it's enough
 
         @server.post(self.route_path)
-        def _click(selected_ids: SelectedIds) -> None:
-            func(selected_ids.selected_ids)
+        async def _click(data: SelectedIds) -> None:
+            debounced_handler.handle_event(data, func)
 
         return _click
 
@@ -276,3 +375,28 @@ class Bokeh(Widget):
             <script type="text/javascript"> {self._script} </script>
             {self._div}
         </div>"""
+
+    def update_radii(self, new_radii: Union[List[Union[list, int, float]], int, float]) -> None:
+        if isinstance(new_radii, (int, float)):
+            new_radii = [new_radii] * len(self._plots)
+        elif len(new_radii) != len(self._plots):
+            logger.warning(
+                f"{len(new_radii)} != {len(self._plots)}: new_radii will be broadcasted to all plots"
+            )
+            new_radii = [new_radii[0]] * len(self._plots)
+        for idx, radii in enumerate(new_radii):
+            self.update_radii_by_plot_idx(idx, radii)
+
+    def update_radii_by_plot_idx(self, plot_idx: int, new_radii: List[Union[int, float]]) -> None:
+        coords_length = len(self._plots[plot_idx]._x_coordinates)
+        if isinstance(new_radii, (int, float)):
+            new_radii = [new_radii] * coords_length
+        elif len(new_radii) != coords_length:
+            logger.warning(
+                f"{len(new_radii)} != {coords_length}: new_radii will be broadcasted to all plots"
+            )
+            new_radii = [new_radii[0]] * coords_length
+
+        self._plots[plot_idx]._radii = new_radii
+        self._plots[plot_idx]._source.data["radius"] = new_radii
+        self._update_html()
