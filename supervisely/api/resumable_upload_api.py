@@ -33,9 +33,9 @@ class Limits:
     num_chunks: Optional[int] = None
 
     def __post_init__(self):
-        self.min_chunk_size = int(self.min_chunk_size) if self.min_chunk_size else None
-        self.max_chunk_size = int(self.max_chunk_size) if self.max_chunk_size else None
-        self.max_chunks = int(self.max_chunks) if self.max_chunks else None
+        self.min_chunk_size = int(self.min_chunk_size) if self.min_chunk_size is not None else None
+        self.max_chunk_size = int(self.max_chunk_size) if self.max_chunk_size is not None else None
+        self.max_chunks = int(self.max_chunks) if self.max_chunks is not None else None
 
     def calculate_optimal_chunk_size(self, file_size: int) -> Tuple[int, int]:
         """Calculate optimal chunk size based on limits.
@@ -63,8 +63,8 @@ class Range:
     end: int
 
     def __post_init__(self):
-        self.start = int(self.start) if self.start else None
-        self.end = int(self.end) if self.end else None
+        self.start = int(self.start) if self.start is not None else None
+        self.end = int(self.end) if self.end is not None else None
 
 
 @dataclass
@@ -82,13 +82,30 @@ class Part:
 class ResumableStatus:
     parts: Optional[List[Part]] = None
 
+    def is_uploaded(self, num_chunks: int) -> bool:
+        """Check if all parts have been uploaded.
+
+        :param num_chunks: Number of chunks in the file.
+        :type num_chunks: int
+        :return: True if all parts have been uploaded, False otherwise.
+        :rtype: bool
+        """
+        missing_ids = ResumableResponse(status=self).get_part_ids_to_reupload(num_chunks)
+        if missing_ids:
+            return False
+        else:
+            return True
+
 
 @dataclass
 class ResumableResponse:
+    team_id: Optional[int] = None
+    file_path: Optional[str] = None
     session_id: Optional[str] = None
     limits: Optional[Limits] = None
     hash: Optional[str] = None
     status: Optional[ResumableStatus] = None
+    file_info: Optional[FileInfo] = None
 
     def get_part_ids_to_reupload(self, num_chunks: Optional[int] = None) -> List[int]:
         """Get a list of Parts that need to be re-uploaded.
@@ -124,7 +141,6 @@ def transform_keys(obj):
     elif isinstance(obj, list):
         return [transform_keys(i) for i in obj]
     else:
-
         return obj
 
 
@@ -186,13 +202,14 @@ class ResumableUploadApi:
         if blake3 is not None:
             data[ApiField.META][ApiField.BLAKE3] = blake3
         response = self._api.post_httpx(method, json=data)
-        return self.parse_resumable_response(response.json())
+        resumable_response = self.parse_resumable_response(response.json())
+        resumable_response.team_id = team_id
+        resumable_response.file_path = file_path
+        return resumable_response
 
     async def upload_chunk(
         self,
         chunk: bytes,
-        team_id: int,
-        file_path: str,
         session_id: str,
         part_id: int,
         offset: float,
@@ -205,10 +222,6 @@ class ResumableUploadApi:
         :type chunk: bytes
         :param team_id: Team ID.
         :type team_id: int
-        :param file_path: Path to the file in the storage.
-        :type file_path: str
-        :param session_id: Session ID.
-        :type session_id: str
         :param part_id: Part ID.
         :type part_id: int
         :param offset: Offset in bytes to start upload from.
@@ -222,8 +235,6 @@ class ResumableUploadApi:
         """
         method = "file-storage.resumable_upload.chunk"
         params = {
-            ApiField.TEAM_ID: team_id,
-            ApiField.PATH: file_path,
             ApiField.SESSION_ID: session_id,
             ApiField.PART_ID: part_id,
             ApiField.OFFSET: offset,
@@ -243,17 +254,12 @@ class ResumableUploadApi:
 
     def complete_upload(
         self,
-        team_id: int,
-        file_path: str,
         session_id: str,
         parts: Optional[List[int]] = None,
     ) -> FileInfo:
         """Complete the upload process.
 
-        :param team_id: Team ID.
-        :type team_id: int
-        :param file_path: Path to the file in the storage.
-        :type file_path: str
+
         :param session_id: Session ID.
         :type session_id: str
         :param parts: List of part partIds in the order they should be concatenated. This information is required for parallel uploads.
@@ -263,8 +269,6 @@ class ResumableUploadApi:
         """
         method = "file-storage.resumable_upload.complete"
         data = {
-            ApiField.TEAM_ID: team_id,
-            ApiField.PATH: file_path,
             ApiField.SESSION_ID: session_id,
             ApiField.PARTS: parts or [],
         }
@@ -273,55 +277,36 @@ class ResumableUploadApi:
 
     def abort_upload(
         self,
-        team_id: int,
-        file_path: str,
         session_id: str,
     ) -> ResumableResponse:
         """Abort the upload process.
 
-        :param team_id: Team ID.
-        :type team_id: int
-        :param file_path: Path to the file in the storage.
-        :type file_path: str
         :param session_id: Session ID.
         :type session_id: str
         :return: Resumable upload response.
         :rtype: ResumableResponse
         """
         method = "file-storage.resumable_upload.abort"
-        data = {
-            ApiField.TEAM_ID: team_id,
-            ApiField.PATH: file_path,
-            ApiField.SESSION_ID: session_id,
-        }
+        data = {ApiField.SESSION_ID: session_id}
         response = self._api.post_httpx(method, json=data)
         return self.parse_resumable_response(response.json())
 
     def get_upload_status(
         self,
-        team_id: int,
-        file_path: str,
         session_id: str,
     ) -> ResumableStatus:
         """Retrieve the status of the upload process.
 
-        :param team_id: Team ID.
-        :type team_id: int
-        :param file_path: Path to the file in the storage.
-        :type file_path: str
+
         :param session_id: Session ID.
         :type session_id: str
         :return: Resumable upload status response.
         :rtype: ResumableStatus
         """
         method = "file-storage.resumable_upload.status"
-        data = {
-            ApiField.TEAM_ID: team_id,
-            ApiField.PATH: file_path,
-            ApiField.SESSION_ID: session_id,
-        }
+        data = {ApiField.SESSION_ID: session_id}
         response = self._api.post_httpx(method, json=data)
-        return self.parse_resumable_response(response.json())
+        return self.parse_resumable_status(response.json())
 
     @staticmethod
     async def generate_chunks(
