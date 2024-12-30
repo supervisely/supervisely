@@ -40,7 +40,7 @@ from supervisely.io.fs import (
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import load_json_file
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import Progress, ProgressType, tqdm_sly
 
 
 class FileInfo(NamedTuple):
@@ -2185,7 +2185,7 @@ class FileApi(ModuleApiBase):
         current_state: Optional[ResumableResponse] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        progress_cb_type: Literal["number", "size"] = "size",
+        progress_cb_type: ProgressType = ProgressType.SIZE,
     ) -> ResumableResponse:
         """
         Upload file from local path to Team Files asynchronously.
@@ -2209,7 +2209,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb_type: Type of progress callback, can be "number" or "size".
                     Default is "size". Use "size" for tracking progress of uploaded chunks.
                     If you tracks progress by number of uploaded files, use "number".
-        :type progress_cb_type: Literal["number", "size"], optional
+        :type progress_cb_type: ProgressType, optional
         :return: Response from API.
         :rtype: :class:`ResumableResponse`
         :Usage example:
@@ -2240,85 +2240,85 @@ class FileApi(ModuleApiBase):
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
                 if current_state is None:
-                    first_response: ResumableResponse = self.resumable.request_upload(
+                    response = self.resumable.request_upload(
                         team_id=team_id, file_path=dst, sha256=sha256, size=size
                     )
-                    chunk_size, num_chunks = first_response.limits.calculate_optimal_chunk_size(
-                        file_size=size
-                    )
-                    part_ids_to_upload = range(1, num_chunks + 1)
+                    limits = response.limits.calculate_optimal_chunk_size(file_size=size)
+                    # the last chunk may be smaller than the optimal size, it is OK
+                    part_ids_to_upload = range(1, limits.num_chunks + 1)
                 else:
-                    first_response = current_state
-                    chunk_size = first_response.limits.optimal_chunk_size
-                    num_chunks = first_response.limits.num_chunks
-                    part_ids_to_upload = first_response.get_part_ids_to_reupload(num_chunks)
+                    response = current_state
+                    limits = response.limits
+                    part_ids_to_upload = response.get_part_ids_to_reupload(limits.num_chunks)
 
                 offset = 0
                 part_id = 0
                 parts = []
                 responses = []
                 try:
-                    if first_response.limits.is_parallel_upload_supported:
+                    if response.limits.is_parallel_upload_supported:
                         tasks = []
-                        async for chunk in self.resumable.generate_chunks(
-                            fd, chunk_size, num_chunks
-                        ):
+                        async for chunk in self.resumable.generate_chunks(fd, limits):
                             part_id += 1
                             if part_id not in part_ids_to_upload:
                                 offset += len(chunk) + 1
                                 continue
                             task = self.resumable.upload_chunk(
                                 chunk=chunk,
-                                session_id=first_response.session_id,
+                                session_id=response.session_id,
                                 part_id=part_id,
                                 offset=offset,
                                 semaphore=semaphore,
-                                progress_cb=progress_cb if progress_cb_type == "size" else None,
+                                progress_cb=(
+                                    progress_cb if progress_cb_type == ProgressType.SIZE else None
+                                ),
                             )
                             tasks.append(task)
                             offset += len(chunk) + 1
                             parts.append(part_id)
                         responses = await asyncio.gather(*tasks)
                     else:
-                        for _ in range(num_chunks):
-                            chunk = await fd.read(chunk_size)
+                        for _ in range(limits.num_chunks):
+                            chunk = await fd.read(limits.optimal_chunk_size)
                             part_id += 1
                             if part_id not in part_ids_to_upload:
                                 offset += len(chunk) + 1
                                 continue
-                            response = await self.resumable.upload_chunk(
+                            chunk_response = await self.resumable.upload_chunk(
                                 chunk=chunk,
-                                session_id=first_response.session_id,
+                                session_id=response.session_id,
                                 part_id=part_id,
                                 offset=offset,
                                 semaphore=semaphore,
-                                progress_cb=progress_cb if progress_cb_type == "size" else None,
+                                progress_cb=(
+                                    progress_cb if progress_cb_type == ProgressType.SIZE else None
+                                ),
                             )
-                            responses.append(response)
+                            responses.append(chunk_response)
                             offset += len(chunk) + 1
                             parts.append(part_id)
-                            if progress_cb is not None and progress_cb_type == "size":
+                            if progress_cb is not None and progress_cb_type == ProgressType.SIZE:
                                 progress_cb(len(chunk))
                     # TODO check_hash_func(responses)
-                    first_response.status = self.resumable.get_upload_status(
-                        session_id=first_response.session_id,
+                    response.status = self.resumable.get_upload_status(
+                        session_id=response.session_id,
                     )
 
                     if autocomplete:
-                        if first_response.status.is_uploaded(num_chunks=num_chunks):
-                            first_response.file_info = self.resumable.complete_upload(
-                                session_id=first_response.session_id,
+                        if response.status.is_uploaded(limits=limits):
+                            response.file_info = self.resumable.complete_upload(
+                                session_id=response.session_id,
                                 parts=parts,
                             )
                         else:
-                            final_response = self.resumable.abort_upload(
-                                session_id=first_response.session_id,
+                            result = self.resumable.abort_upload(
+                                session_id=response.session_id,
                             )
-                    if progress_cb is not None and progress_cb_type == "number":
+                    if progress_cb is not None and progress_cb_type == ProgressType.NUMBER:
                         progress_cb(1)
                 except Exception as e:
                     logger.error(e)
-                    first_response.status = self.resumable.get_upload_status(
-                        session_id=first_response.session_id,
+                    response.status = self.resumable.get_upload_status(
+                        session_id=response.session_id,
                     )
-                return first_response
+                return response

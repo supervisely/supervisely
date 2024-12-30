@@ -14,6 +14,7 @@ from typing import (
 
 from aiofiles.threadpool.binary import AsyncBufferedReader
 
+from supervisely import logger
 from supervisely._utils import camel_to_snake
 from supervisely.api.module_api import ApiField
 
@@ -37,24 +38,31 @@ class Limits:
         self.max_chunk_size = int(self.max_chunk_size) if self.max_chunk_size is not None else None
         self.max_chunks = int(self.max_chunks) if self.max_chunks is not None else None
 
-    def calculate_optimal_chunk_size(self, file_size: int) -> Tuple[int, int]:
+    def calculate_optimal_chunk_size(self, file_size: int) -> Limits:
         """Calculate optimal chunk size based on limits.
 
         :param file_size: Size of the file in bytes.
         :type file_size: int
-        :return: Optimal chunk size and number of chunks.
-        :rtype: Tuple[int, int]
+        :return: Limits object with optimal_chunk_size and num_chunks set.
+        :rtype: Limits
         """
         if self.min_chunk_size is None:
             self.min_chunk_size = 1024 * 1024  # 1 MB
         optimal_chunk_size = min(file_size // self.max_chunks, self.max_chunk_size)
         optimal_chunk_size = max(optimal_chunk_size, self.min_chunk_size)
+
+        # for google cloud storage
+        if self.chunk_size_multiple_of:
+            optimal_chunk_size = (
+                optimal_chunk_size // self.chunk_size_multiple_of
+            ) * self.chunk_size_multiple_of
+
         num_chunks = (file_size + optimal_chunk_size - 1) // optimal_chunk_size
         if num_chunks == 1:
             optimal_chunk_size = file_size
         self.optimal_chunk_size = optimal_chunk_size
         self.num_chunks = num_chunks
-        return self.optimal_chunk_size, self.num_chunks
+        return self
 
 
 @dataclass
@@ -82,14 +90,15 @@ class Part:
 class ResumableStatus:
     parts: Optional[List[Part]] = None
 
-    def is_uploaded(self, num_chunks: int) -> bool:
-        """Check if all parts have been uploaded.
+    def is_uploaded(self, limits: Optional[Limits] = None) -> bool:
+        """Check if all parts have been uploaded. Based on the number of chunks in the file.
 
-        :param num_chunks: Number of chunks in the file.
-        :type num_chunks: int
+        :param limits: Limits object with num_chunks information.
+        :type limits: Optional[Limits]
         :return: True if all parts have been uploaded, False otherwise.
         :rtype: bool
         """
+        num_chunks = limits.num_chunks if limits is not None else None
         missing_ids = ResumableResponse(status=self).get_part_ids_to_reupload(num_chunks)
         if missing_ids:
             return False
@@ -175,6 +184,7 @@ class ResumableUploadApi:
         blake3: Optional[str] = None,
     ) -> ResumableResponse:
         """Initialize a resumable upload.
+        Returns information about the upload process: a session ID and limits for the upload.
 
         :param team_id: Team ID.
         :type team_id: int
@@ -217,6 +227,7 @@ class ResumableUploadApi:
         progress_cb: Optional[Callable[[int], None]] = None,
     ) -> Coroutine[ResumableResponse]:
         """Upload a chunk of the file to the storage.
+        In response server returns hash of the uploaded chunk.
 
         :param chunk: Chunk data as a byte string.
         :type chunk: bytes
@@ -257,15 +268,16 @@ class ResumableUploadApi:
         session_id: str,
         parts: Optional[List[int]] = None,
     ) -> FileInfo:
-        """Complete the upload process.
-
+        """Complete the upload process and create a file in the storage.
+        Returns information about the uploaded file.
 
         :param session_id: Session ID.
         :type session_id: str
-        :param parts: List of part partIds in the order they should be concatenated. This information is required for parallel uploads.
+        :param parts: List of part partIds in the order they should be concatenated.
+                    This information is required for parallel uploads.
         :type parts: List[int]
-        :return: Resumable upload response.
-        :rtype: ResumableResponse
+        :return: File information.
+        :rtype: FileInfo
         """
         method = "file-storage.resumable_upload.complete"
         data = {
@@ -278,25 +290,31 @@ class ResumableUploadApi:
     def abort_upload(
         self,
         session_id: str,
-    ) -> ResumableResponse:
+    ) -> bool:
         """Abort the upload process.
 
         :param session_id: Session ID.
         :type session_id: str
-        :return: Resumable upload response.
-        :rtype: ResumableResponse
+        :return: True if the upload was successfully aborted, False otherwise.
         """
+
         method = "file-storage.resumable_upload.abort"
         data = {ApiField.SESSION_ID: session_id}
-        response = self._api.post_httpx(method, json=data)
-        return self.parse_resumable_response(response.json())
+        try:
+            response = self._api.post_httpx(method, json=data)
+        except Exception as e:
+            logger.error(f"Failed to abort upload for session '{session_id}'", exc_info=e)
+            result = False
+        else:
+            result = response.json().get("success", False)
+        return result
 
     def get_upload_status(
         self,
         session_id: str,
     ) -> ResumableStatus:
         """Retrieve the status of the upload process.
-
+        Status includes information about uploaded parts.
 
         :param session_id: Session ID.
         :type session_id: str
@@ -311,22 +329,17 @@ class ResumableUploadApi:
     @staticmethod
     async def generate_chunks(
         fd: AsyncBufferedReader,
-        chunk_size: int,
-        num_chunks: int,
+        limits: Limits,
     ) -> AsyncGenerator[bytes, None]:
         """Generate chunks of data from a file descriptor.
 
         :param fd: File descriptor.
         :type fd: AsyncBufferedReader
-        :param chunk_size: Size of the chunk in bytes.
-        :type chunk_size: int
-        :param num_chunks: Number of chunks to generate.
-        :type num_chunks: int
         :return: Asynchronous generator of chunks.
         :rtype: AsyncGenerator[bytes, None]
         """
-        for _ in range(num_chunks):
-            chunk = await fd.read(chunk_size)
+        for _ in range(limits.num_chunks):
+            chunk = await fd.read(limits.optimal_chunk_size)
             if not chunk:
                 break
             yield chunk

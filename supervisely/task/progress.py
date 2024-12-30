@@ -5,12 +5,22 @@ import inspect
 import math
 import re
 from functools import partial, wraps
+from logging import Logger
 from typing import Dict, Optional, Union
 
 from tqdm import tqdm
 
 from supervisely._utils import is_development, is_production, sizeof_fmt
 from supervisely.sly_logger import EventType, logger
+
+
+class ProgressType:
+    """
+    Progress types.
+    """
+
+    NUMBER = "number"
+    SIZE = "size"
 
 
 # float progress of training, since zero
@@ -75,7 +85,7 @@ class Progress:
         self,
         message: str,
         total_cnt: Optional[int] = None,
-        ext_logger: Optional[logger] = None,
+        ext_logger: Optional[Logger] = None,
         is_size: Optional[bool] = False,
         need_info_log: Optional[bool] = False,
         min_report_percent: Optional[int] = 1,
