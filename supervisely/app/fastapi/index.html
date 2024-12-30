@@ -156,6 +156,13 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       console.log(`Package ${packageName} extracted to ${extractTo}`);
     }
 
+    const allowedActions = new Set([
+    {% if events_subscribed %}
+      {% for event in events_subscribed %}
+        '{{{ event }}}',
+      {% endfor %}
+    {% endif %}
+    ]);
     let unSubStoreAction = null;
 
     function subToStoreAction() {
@@ -166,6 +173,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       const store = window.slyApp.store;
 
       unSubStoreAction = store.subscribeAction((action) => {
+        if (!allowedActions.has(action.type)) return;
         runPythonScript(action);
       });
 
