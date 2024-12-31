@@ -120,10 +120,10 @@
     let pyodide = null;
     let mainScriptTxt = null;
 
-    async function loadDependency(pyodide, url, moduleName) {
+    async function loadDependency(pyodide, url, modulePath) {
       const pythonCode = await fetch(url).then(response => response.text());
       const FS = pyodide.FS;
-      FS.writeFile(moduleName + ".py", pythonCode);
+      FS.writeFile(modulePath, pythonCode);
     }
 
     async function setupAndImportPythonPackage(url, packageName) {
@@ -157,9 +157,9 @@ with tarfile.open(tar_path, "r:") as tar_ref:
     }
 
     const allowedActions = new Set([
-    {% if events_subscribed %}
-      {% for event in events_subscribed %}
-        '{{{ event }}}',
+      {% if events_subscribed %}
+    {% for event in events_subscribed %}
+    '{{{ event }}}',
       {% endfor %}
     {% endif %}
     ]);
@@ -195,10 +195,15 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       {% endfor %}
       {% endif %}
 
-      await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk")
-      await loadDependency(pyodide, "./gui.py", "gui")
+      await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk") // temporary solution
+      await setupAndImportPythonPackage("./src.tar", "src")
+      {% if src_modules %}
+      {% for module in src_modules %}
+      await loadDependency(pyodide, "./{{{ module }}}", "{{{ module }}}")
+      {% endfor %}
+      {% endif %}
 
-      mainScriptTxt = await fetch("./main.py").then((response) => response.text());
+      mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
     }
 
     let initPromise = null;
