@@ -2849,7 +2849,7 @@ class Inference:
         # -------------------------- #
 
         # Parse arguments
-        args = parser.parse_args()
+        args, _ = parser.parse_known_args()
         if args.model is None:
             # raise ValueError("Argument '--model' is required for local deployment")
             return None, False
