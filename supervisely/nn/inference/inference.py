@@ -2286,20 +2286,7 @@ class Inference:
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
                 self._app.shutdown()
-            # Inference server
-            else:
-                # Start server
-                server_thread = threading.Thread(target=self._run_server)
-                server_thread.start()
-
-                # Gracefully shut down the server
-                # logger.info("Shutting down the server...")
-                # if self._uvicorn_server:
-                #     self._uvicorn_server.should_exit = True
-
-                # server_thread.join()
-                # logger.info("Server terminated.")
-                # exit()
+        # else: run server after endpoints
 
         @call_on_autostart()
         def autostart_func():
@@ -2795,6 +2782,10 @@ class Inference:
         @self._check_serve_before_call
         def _get_deploy_info():
             return asdict(self._get_deploy_info())
+
+        # Local deploy without predict args
+        if self._is_local_deploy:
+            self._run_server()
 
     def _parse_local_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
