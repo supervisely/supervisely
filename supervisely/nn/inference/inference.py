@@ -2274,10 +2274,6 @@ class Inference:
         self._app.set_ready_check_function(self.is_model_deployed)
 
         if self._is_local_deploy:
-            # Start server
-            server_thread = threading.Thread(target=self._run_server)
-            server_thread.start()
-
             # Predict and shutdown
             if any(
                 [
@@ -2290,13 +2286,20 @@ class Inference:
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
                 self._app.shutdown()
-                logger.info("Shutting down the server...")
-                if self._uvicorn_server:
-                    self._uvicorn_server.should_exit = True
+            # Inference server
+            else:
+                # Start server
+                server_thread = threading.Thread(target=self._run_server)
+                server_thread.start()
 
-                server_thread.join()
-                logger.info("Server terminated.")
-                exit()
+                # Gracefully shut down the server
+                # logger.info("Shutting down the server...")
+                # if self._uvicorn_server:
+                #     self._uvicorn_server.should_exit = True
+
+                # server_thread.join()
+                # logger.info("Server terminated.")
+                # exit()
 
         @call_on_autostart()
         def autostart_func():
@@ -2850,6 +2853,8 @@ class Inference:
         if args.model is None:
             # raise ValueError("Argument '--model' is required for local deployment")
             return None, False
+        if isinstance(args.predict_dataset, int):
+            args.predict_dataset = [args.predict_dataset]
         if args.predict_image is not None:
             if args.predict_image.isdigit():
                 args.predict_image = int(args.predict_image)
