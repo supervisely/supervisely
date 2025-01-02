@@ -244,29 +244,22 @@ class Bokeh(Widget):
         if bokeh.__version__ != "3.1.1":
             raise RuntimeError(f"Bokeh version {bokeh.__version__} is not supported. Use 3.1.1")
 
-        from bokeh.models import Legend  # pylint: disable=import-error
-        from bokeh.plotting import figure  # pylint: disable=import-error
-
         self.widget_id = widget_id
         self._plots = plots
-        self._plot = figure(width=width, height=height, tools=tools, toolbar_location="above")
 
+        self._width = width
+        self._height = height
+        self._tools = tools
+        self._toolbar_location = toolbar_location
+        self._x_axis_visible = x_axis_visible
+        self._y_axis_visible = y_axis_visible
+        self._grid_visible = grid_visible
+        self._show_legend = show_legend
         self._legend_location = legend_location
         self._legend_click_policy = legend_click_policy
-        if show_legend:
-            self._plot.add_layout(
-                Legend(click_policy=self._legend_click_policy),
-                self._legend_location,
-            )
-        self._renderers = []
 
-        self._plot.xaxis.visible = x_axis_visible
-        self._plot.yaxis.visible = y_axis_visible
-        self._plot.grid.visible = grid_visible
         super().__init__(widget_id=widget_id, file_path=__file__)
-
-        self._process_plots(plots)
-        self._update_html()
+        self._load_chart()
 
         server = self._sly_app.get_server()
 
@@ -276,6 +269,42 @@ class Bokeh(Widget):
 
         # TODO: support for offline mode
         # JinjaWidgets().context.pop(self.widget_id, None)  # remove the widget from index.html
+
+    def _load_chart(self, **kwargs):
+        from bokeh.models import Legend  # pylint: disable=import-error
+        from bokeh.plotting import figure  # pylint: disable=import-error
+
+        self._width = kwargs.get("width", self._width)
+        self._height = kwargs.get("height", self._height)
+        self._tools = kwargs.get("tools", self._tools)
+        self._toolbar_location = kwargs.get("toolbar_location", self._toolbar_location)
+        self._show_legend = kwargs.get("show_legend", self._show_legend)
+        self._legend_location = kwargs.get("legend_location", self._legend_location)
+        self._legend_click_policy = kwargs.get("legend_click_policy", self._legend_click_policy)
+        self._x_axis_visible = kwargs.get("x_axis_visible", self._x_axis_visible)
+        self._y_axis_visible = kwargs.get("y_axis_visible", self._y_axis_visible)
+        self._grid_visible = kwargs.get("grid_visible", self._grid_visible)
+
+        self._plot = figure(
+            width=self._width,
+            height=self._height,
+            tools=self._tools,
+            toolbar_location=self._toolbar_location,
+        )
+
+        if self._show_legend:
+            self._plot.add_layout(
+                Legend(click_policy=self._legend_click_policy),
+                self._legend_location,
+            )
+
+        self._plot.xaxis.visible = self._x_axis_visible
+        self._plot.yaxis.visible = self._y_axis_visible
+        self._plot.grid.visible = self._grid_visible
+
+        self._renderers = []
+        self._process_plots(self._plots)
+        self._update_html()
 
     @property
     def route_path(self) -> str:
@@ -399,4 +428,9 @@ class Bokeh(Widget):
 
         self._plots[plot_idx]._radii = new_radii
         self._plots[plot_idx]._source.data["radius"] = new_radii
-        self._update_html()
+        self._load_chart()
+
+    def update_chart_size(self, width: Optional[int] = None, height: Optional[int] = None) -> None:
+        self._width = width or self._width
+        self._height = height or self._height
+        self._load_chart()
