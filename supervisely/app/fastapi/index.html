@@ -205,7 +205,15 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
     }
 
+    let initPromise = null;
+
     async function runPythonScript(...params) {
+      if (initPromise) {
+        await initPromise;
+        subToStoreAction();
+        initPromise = null;
+      }
+
       let result;
       const timeStart = performance.now();
 
@@ -225,8 +233,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 
     const runPythonScriptThrottled = _.throttle(runPythonScript, 50);
     {% if __webpy_script__ %}
-    await loadMainPythonScript();
-    subToStoreAction();
+    initPromise = loadMainPythonScript();
     {% endif %}
   </script>
   <!-- Hot reload script -->
