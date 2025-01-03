@@ -204,6 +204,22 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       {% endif %}
 
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
+      python_code = `
+from sly_sdk.webpy import WebPyApplication
+app = WebPyApplication()
+state = app.state
+if state.get("app_initializing", False) == True:
+    state["app_initializing"] = False
+    state.send_changes()
+`
+      const fn = pyodide.runPython(python_code);
+      if (typeof fn === "function") {
+        const newParams = params.map(p => pyodide.toPy(p));
+        result = fn(...newParams);
+      } else {
+        result = fn;
+      }
+      subToStoreAction();
     }
 
     let initPromise = null;
@@ -211,7 +227,6 @@ with tarfile.open(tar_path, "r:") as tar_ref:
     async function runPythonScript(...params) {
       if (initPromise) {
         await initPromise;
-        subToStoreAction();
         initPromise = null;
       }
 
