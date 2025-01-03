@@ -694,8 +694,8 @@ class Inference:
         try:
             if is_production():
                 self._add_workflow_input(model_source, model_files, model_info)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to add input to the workflow: {repr(e)}")
 
         self._load_model(deploy_params)
         if self._model_meta is None:
@@ -3050,30 +3050,27 @@ class Inference:
             predict_image_by_args(self.api, self._args.predict_image)
 
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
-        try:
-            if model_source == ModelSource.PRETRAINED:
-                checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
-                checkpoint_name = model_info["meta"]["model_name"]
-            elif model_source == ModelSource.CUSTOM:
-                checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
-                checkpoint_url = os.path.join(
-                    model_info["artifacts_dir"], "checkpoints", checkpoint_name
-                )
-
-            app_name = sly_env.app_name()
-            meta = WorkflowMeta(node_settings=WorkflowSettings(title=f"Serve {app_name}"))
-
-            logger.debug(
-                f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}"
+        if model_source == ModelSource.PRETRAINED:
+            checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
+            checkpoint_name = model_info["meta"]["model_name"]
+        elif model_source == ModelSource.CUSTOM:
+            checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
+            checkpoint_url = os.path.join(
+                model_info["artifacts_dir"], "checkpoints", checkpoint_name
             )
-            if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
-                self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-            else:
-                logger.debug(
-                    f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
-                )
-        except Exception as e:
-            logger.debug(f"Failed to add input to the workflow: {repr(e)}")
+
+        app_name = sly_env.app_name()
+        meta = WorkflowMeta(node_settings=WorkflowSettings(title=f"Serve {app_name}"))
+
+        logger.debug(
+            f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}"
+        )
+        if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
+            self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+        else:
+            logger.debug(
+                f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
+            )
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
