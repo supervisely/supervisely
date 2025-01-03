@@ -2271,7 +2271,7 @@ class Inference:
             if not self._is_local_deploy:
                 self._task_id = sly_env.task_id() if is_production() else None
 
-        if isinstance(self.gui, GUI.ServingGUITemplate):
+        if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             self._app = Application(layout=self._app_layout)
