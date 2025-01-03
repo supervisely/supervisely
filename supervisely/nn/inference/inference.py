@@ -47,6 +47,7 @@ from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api
+from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.exceptions import DialogWindowError
@@ -689,6 +690,13 @@ class Inference:
         if model_source == ModelSource.CUSTOM:
             self._set_model_meta_custom_model(model_info)
             self._set_checkpoint_info_custom_model(deploy_params)
+
+        try:
+            if is_production():
+                self._add_workflow_input(model_source, model_files, model_info)
+        except:
+            pass
+
         self._load_model(deploy_params)
         if self._model_meta is None:
             self._set_model_meta_from_classes()
@@ -2263,10 +2271,12 @@ class Inference:
             if not self._is_local_deploy:
                 self._task_id = sly_env.task_id() if is_production() else None
 
-        if isinstance(self.gui, GUI.InferenceGUI):
+        if isinstance(self.gui, GUI.ServingGUITemplate):
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             self._app = Application(layout=self._app_layout)
+        # elif isinstance(self.gui, GUI.InferenceGUI):
+        #     self._app = Application(layout=self.get_ui())
         else:
             self._app = Application(layout=self.get_ui())
 
@@ -3038,6 +3048,32 @@ class Inference:
             raise NotImplementedError("Predict from directory is not implemented yet")
         elif self._args.predict_image is not None:
             predict_image_by_args(self.api, self._args.predict_image)
+
+    def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
+        try:
+            if model_source == ModelSource.PRETRAINED:
+                checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
+                checkpoint_name = model_info["meta"]["model_name"]
+            elif model_source == ModelSource.CUSTOM:
+                checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
+                checkpoint_url = os.path.join(
+                    model_info["artifacts_dir"], "checkpoints", checkpoint_name
+                )
+
+            app_name = sly_env.app_name()
+            meta = WorkflowMeta(node_settings=WorkflowSettings(title=f"Serve {app_name}"))
+
+            logger.debug(
+                f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}"
+            )
+            if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
+                self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+            else:
+                logger.debug(
+                    f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
+                )
+        except Exception as e:
+            logger.debug(f"Failed to add input to the workflow: {repr(e)}")
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
