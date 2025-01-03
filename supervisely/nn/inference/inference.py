@@ -3053,7 +3053,7 @@ class Inference:
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
             checkpoint_name = model_info["meta"]["model_name"]
-        elif model_source == ModelSource.CUSTOM:
+        else:
             checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
             checkpoint_url = os.path.join(
                 model_info["artifacts_dir"], "checkpoints", checkpoint_name
