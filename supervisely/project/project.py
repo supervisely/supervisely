@@ -4693,6 +4693,7 @@ async def _download_project_items_batch_async(
                 width, height = sly.image.get_size_from_bytes(img_bytes)
                 img_info = img_info._replace(height=height, width=width)
     else:
+        img_ids = [img_info.id for img_info in img_infos]
         imgs_bytes = [None] * len(img_infos)
 
     if only_image_tags is False:
