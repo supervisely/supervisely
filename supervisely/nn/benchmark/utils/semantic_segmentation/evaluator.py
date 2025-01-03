@@ -150,21 +150,19 @@ class Evaluator:
         self.boundary_iou_intersection_counts = np.zeros(self.num_classes, dtype=np.int64)
         self.boundary_iou_union_counts = np.zeros(self.num_classes, dtype=np.int64)
 
-        def _func(loader, progress):
-            pred, gt, img_name = next(loader)
-            sample_results = self.evaluate_sample(pred, gt, img_name)
-            self.update_results(sample_results, img_name)
-            self.confusion_matrix = self.calc_confusion_matrix(
-                pred, gt, self.confusion_matrix, img_name
-            )
-            progress.update(1)
-
         with self.progress(message="Calculating metrics...", total=len(loader)) as pbar:
-            loader = iter(loader)
+            def _func(loader_data):
+                pred, gt, img = loader_data
+                sample_results = self.evaluate_sample(pred, gt, img)
+                self.update_results(sample_results, img)
+                self.confusion_matrix = self.calc_confusion_matrix(
+                    pred, gt, self.confusion_matrix, img
+                )
+                pbar.update(1)
+
             with ThreadPoolExecutor(max_workers=4) as executor:
-                futures = [executor.submit(_func, loader, pbar) for _ in range(len(loader))]
-                for future in futures:
-                    future.result()
+                for _ in executor.map(_func, loader):
+                    pass
 
         result = self.calculate_error_metrics()
         normalized_confusion_matrix = self.confusion_matrix / self.confusion_matrix.sum(
