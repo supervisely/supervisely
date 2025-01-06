@@ -113,9 +113,10 @@ if __name__ == "__main__":
     try:
         # main_dnp()  # to download and save images as numpy arrays
         # main_dp()  # to download and save images as files
-        main_dps()  # to download and save images as files (batch)
+        # main_dps()  # to download and save images as files (batch)
         # compare_main_dps()  # to compare the time taken for downloading images as files (batch)
         # main_bytes()  # to download and save image as bytes
-        # main_n_bytes()  # to download and save images as bytes (batch)        
+        # main_n_bytes()  # to download and save images as bytes (batch)
+        api.annotation.get_list(DATASET_ID, filters=[{"field": "tag", "operator": "=", "value": "test"}])
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

@@ -4,8 +4,8 @@ import time
 
 import supervisely as sly
 
-LOG_LEVEL = "INFO"
-# LOG_LEVEL = "DEBUG"
+# LOG_LEVEL = "INFO"
+LOG_LEVEL = "DEBUG"
 api = sly.Api.from_env()
 
 api.logger.setLevel(LOG_LEVEL)
@@ -70,6 +70,20 @@ def main_ip():
     print(f"Time taken for download input async: {end-start}")
 
 
+def main_tt():
+    start = time.time()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        api.file._download_async(
+            1,
+            "/245_2022-11-28 11_49_31.893.tar",
+            "245_2022-11-28 11_49_31.893.tar",
+        )
+    )
+    end = time.time()
+    print(f"Time taken for download dir async: {end-start}")
+
+
 def main_dd():
     start = time.time()
     loop = asyncio.get_event_loop()
@@ -97,8 +111,13 @@ if __name__ == "__main__":
     try:
         # maind_df()  # to download and save files
         # main_dd()  # to download and save files as folder
-        main_db()  # to download and save files in bulk
+        # main_db()  # to download and save files in bulk
         # main_ip()  # to download input file
         # compare_dir_download()  # to compare download time between async and sync
+        # main_tt()  # to download single file
+        vlproj = sly.PointcloudEpisodeDataset(
+            f"{user_path}/test_project_download/training", sly.OpenMode.READ
+        )._read()
+
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

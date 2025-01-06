@@ -6,13 +6,13 @@ import sys
 import time
 
 import supervisely as sly
-from supervisely.project.download import download_to_cache
+from supervisely.project.download import download_async_or_sync, download_to_cache
 from supervisely.project.project import _download_project, _download_project_async
 
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
-PROJECT_ID = 325865  #  41862
-DATSET_ID = 98429
+PROJECT_ID = 44090  #  41862
+DATSET_ID = 98369
 home_dir = os.path.expanduser("~")
 common_path = os.path.join(home_dir, "test_project_download/")
 save_path = os.path.join(common_path, "old/")
@@ -20,21 +20,35 @@ save_path_async = os.path.join(common_path, "async/")
 sly.fs.ensure_base_path(common_path)
 api = sly.Api.from_env()
 
-# sly.fs.clean_dir(common_path)
+sly.fs.clean_dir(common_path)
 
 
-def main_dpa(project_id: int, semaphore_size: int):
+def main_dpa(project_id: int, semaphore_size: int = None):
     if semaphore_size is None:
         sema = None
     else:
         sema = asyncio.Semaphore(semaphore_size)
     start = time.time()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        _download_project_async(
-            api, project_id, save_path_async, semaphore=sema, resume_download=True
-        )
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(
+    # _download_project_async(
+    #     api,
+    #     project_id,
+    #     save_path_async,
+    #     # dataset_ids=[DATSET_ID],
+    #     semaphore=sema,
+    #     save_image_meta=True,
+    # )
+    download_async_or_sync(
+        api,
+        project_id,
+        save_path_async,
+        # dataset_ids=[DATSET_ID],
+        semaphore=sema,
+        save_image_meta=True,
+        resume_download=True,
     )
+    # )
     finish = time.time() - start
     print(f"Time taken for async method: {finish}")
     print(f"Project downloaded to {save_path_async}")
@@ -49,7 +63,12 @@ def main_dptc():
 
 def main_dps(project_id: int):
     start = time.time()
-    _download_project(api, project_id, save_path)
+    _download_project(
+        api,
+        project_id,
+        save_path,
+        # dataset_ids=[DATSET_ID],
+    )
     finish = time.time() - start
     print(f"Time taken for sync method: {finish}")
 
@@ -93,8 +112,9 @@ if __name__ == "__main__":
         # ann_db()
         # api = sly.Api(args.server, args.token)
         # api.logger.setLevel(LOG_LEVEL)
-        main_dpa(PROJECT_ID, 200)  # to download and save project as files (async)
-        # main_dps(args.id)  # to download and save project as files (sync)
+        main_dpa(PROJECT_ID)  # to download and save project as files (async)
+        # main_dps(PROJECT_ID)  # to download and save project as files (sync)
         # compare_downloads(args.id, args.semaphore)  # to compare the time taken for downloading and saving project as files (sync vs async)
+        
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

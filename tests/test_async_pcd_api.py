@@ -9,7 +9,9 @@ import supervisely as sly
 
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
-PROJECT_ID = 42161
+PROJECT_ID = 44090
+DATASET_ID = 107523
+pcd_ids = [32412155, 32412154, 32412153]  # pointcloud ids 73, 78, 25
 user_path = os.path.expanduser("~")
 save_path = f"{user_path}/Work/test_pcd_download/"
 sly.logger.info(f"Save path: {save_path}")
@@ -73,11 +75,33 @@ def compare_main_dps():
     print(f"Time taken for async method: {finish}")
 
 
+def main_ann_bulk(ids, pointclouds=None):
+    progress = sly.Progress("Downloading annotations", len(ids))
+    loop = sly.utils.get_or_create_event_loop()
+    if loop.is_running():
+        future = asyncio.run_coroutine_threadsafe(
+            api.pointcloud.annotation.download_bulk_async(
+                ids, progress_cb=progress.iters_done_report
+            ),
+            loop=loop,
+        )
+        results = future.result()
+    else:
+        results = loop.run_until_complete(
+            api.pointcloud.annotation.download_bulk_async(
+                ids, progress_cb=progress.iters_done_report
+            )
+        )
+    return results
+
+
 if __name__ == "__main__":
     try:
         # main_dps()  # to download and save pointclouds as files (batch)
         # main_dris()  # to download and save related images of pointclouds as files (batch)
-        compare_main_dps()  # to compare the time taken for downloading pointclouds as files (batch)
-
+        # compare_main_dps()  # to compare the time taken for downloading pointclouds as files (batch)
+        start = time.time()
+        results = main_ann_bulk(ids)  # to download annotations of pointclouds (batch)
+        finish = time.time() - start
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

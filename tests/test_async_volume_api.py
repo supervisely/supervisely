@@ -50,10 +50,27 @@ def compare_main_dps():
     print(f"Time taken for async method: {finish}")
 
 
+def main_ann_bulk(ids):
+    progress = sly.Progress("Downloading annotations", len(ids))
+    loop = sly.utils.get_or_create_event_loop()
+    if loop.is_running():
+        future = asyncio.run_coroutine_threadsafe(
+            api.volume.annotation.download_bulk_async(ids, progress_cb=progress.iters_done_report),
+            loop=loop,
+        )
+        results = future.result()
+    else:
+        results = loop.run_until_complete(
+            api.volume.annotation.download_bulk_async(ids, progress_cb=progress.iters_done_report)
+        )
+    return results
+
+
 if __name__ == "__main__":
     try:
         # main_dps()  # to download and save volumes as files (batch)
-        compare_main_dps()  # to compare the time taken for downloading volumes as files (batch)
+        # compare_main_dps()  # to compare the time taken for downloading volumes as files (batch)
+        results = main_ann_bulk(ids)  # to download and save volumes as files (bulk)
 
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

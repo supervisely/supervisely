@@ -5,8 +5,9 @@ import supervisely as sly
 
 api = sly.Api.from_env()
 TEAM_ID = int(os.environ["TEAM_ID"])
+user_path = os.path.expanduser("~")
 # test_dir = "/test_resumable_api"
-test_dir = "/test_images_download"
+test_dir = f"{user_path}/Work/test_images_download"
 # test_file = "cdandcinuav.tar"
 test_file = "yolov8s-seg.pt"
 test_path = os.path.join(test_dir, test_file)
@@ -35,4 +36,3 @@ if loop.is_running():
     result = future.result()
 else:
     result = loop.run_until_complete(coro)
-
