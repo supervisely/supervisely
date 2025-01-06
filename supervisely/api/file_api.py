@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 from time import time
 from typing import Callable, Dict, List, NamedTuple, Optional, Union
-
+import copy
 import aiofiles
 import httpx
 import requests
@@ -25,7 +25,7 @@ import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ApiField, ModuleApiBase
-from supervisely.api.resumable_upload_api import ResumableResponse, ResumableUploadApi
+from supervisely.api.resumable_upload_api import ResumableUploadApi, ResumableUploadInfo
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -2182,11 +2182,11 @@ class FileApi(ModuleApiBase):
         dst: str,
         check_hash: bool = True,
         autocomplete: bool = False,
-        current_state: Optional[ResumableResponse] = None,
+        current_state: Optional[ResumableUploadInfo] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: ProgressType = ProgressType.SIZE,
-    ) -> ResumableResponse:
+    ) -> ResumableUploadInfo:
         """
         Upload file from local path to Team Files asynchronously.
 
@@ -2200,8 +2200,8 @@ class FileApi(ModuleApiBase):
         :type check_hash: bool
         :param autocomplete: If True, perform checks. If all parts uploaded - completes upload, if not - aborts.
         :type autocomplete: bool
-        :param current_state: Response from the previous try to upload the same file.
-        :type current_state: ResumableResponse, optional
+        :param current_state: Resumable Upload Info from the previous try to upload the same file.
+        :type current_state: ResumableUploadInfo, optional
         :param semaphore: Semaphore for limiting the number of simultaneous uploads of chunks.
         :type semaphore: asyncio.Semaphore, optional
         :param progress_cb: Function for tracking upload progress.
@@ -2211,7 +2211,7 @@ class FileApi(ModuleApiBase):
                     If you tracks progress by number of uploaded files, use "number".
         :type progress_cb_type: ProgressType, optional
         :return: Response from API.
-        :rtype: :class:`ResumableResponse`
+        :rtype: :class:`ResumableUploadInfo`
         :Usage example:
 
             .. code-block:: python
@@ -2240,23 +2240,23 @@ class FileApi(ModuleApiBase):
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
                 if current_state is None:
-                    response = self.resumable.request_upload(
+                    upload_info = self.resumable.request_upload(
                         team_id=team_id, file_path=dst, sha256=sha256, size=size
                     )
-                    limits = response.limits.calculate_optimal_chunk_size(file_size=size)
+                    limits = upload_info.limits.calculate_optimal_chunk_size(file_size=size)
                     # the last chunk may be smaller than the optimal size, it is OK
                     part_ids_to_upload = range(1, limits.num_chunks + 1)
                 else:
-                    response = current_state
-                    limits = response.limits
-                    part_ids_to_upload = response.get_part_ids_to_reupload(limits.num_chunks)
+                    upload_info = copy.deepcopy(current_state)
+                    limits = upload_info.limits
+                    part_ids_to_upload = upload_info.get_part_ids_to_reupload(limits.num_chunks)
 
                 offset = 0
                 part_id = 0
                 parts = []
                 responses = []
                 try:
-                    if response.limits.is_parallel_upload_supported:
+                    if upload_info.limits.is_parallel_upload_supported:
                         tasks = []
                         async for chunk in self.resumable.generate_chunks(fd, limits):
                             part_id += 1
@@ -2265,7 +2265,7 @@ class FileApi(ModuleApiBase):
                                 continue
                             task = self.resumable.upload_chunk(
                                 chunk=chunk,
-                                session_id=response.session_id,
+                                session_id=upload_info.session_id,
                                 part_id=part_id,
                                 offset=offset,
                                 semaphore=semaphore,
@@ -2286,7 +2286,7 @@ class FileApi(ModuleApiBase):
                                 continue
                             chunk_response = await self.resumable.upload_chunk(
                                 chunk=chunk,
-                                session_id=response.session_id,
+                                session_id=upload_info.session_id,
                                 part_id=part_id,
                                 offset=offset,
                                 semaphore=semaphore,
@@ -2300,25 +2300,22 @@ class FileApi(ModuleApiBase):
                             if progress_cb is not None and progress_cb_type == ProgressType.SIZE:
                                 progress_cb(len(chunk))
                     # TODO check_hash_func(responses)
-                    response.status = self.resumable.get_upload_status(
-                        session_id=response.session_id,
+                    upload_info.status = self.resumable.get_upload_status(
+                        session_id=upload_info.session_id,
                     )
 
                     if autocomplete:
-                        if response.status.is_uploaded(limits=limits):
-                            response.file_info = self.resumable.complete_upload(
-                                session_id=response.session_id,
-                                parts=parts,
-                            )
+                        if upload_info.status.check_is_uploaded(limits=limits):
+                            upload_info.file_info = self.resumable.complete_upload(part_ids=parts)
                         else:
                             result = self.resumable.abort_upload(
-                                session_id=response.session_id,
+                                session_id=upload_info.session_id,
                             )
                     if progress_cb is not None and progress_cb_type == ProgressType.NUMBER:
                         progress_cb(1)
                 except Exception as e:
                     logger.error(e)
-                    response.status = self.resumable.get_upload_status(
-                        session_id=response.session_id,
+                    upload_info.status = self.resumable.get_upload_status(
+                        session_id=upload_info.session_id,
                     )
-                return response
+                return upload_info

@@ -2,15 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    AsyncGenerator,
-    Callable,
-    Coroutine,
-    List,
-    Optional,
-    Tuple,
-)
+from typing import TYPE_CHECKING, AsyncGenerator, Callable, Coroutine, List, Optional
 
 from aiofiles.threadpool.binary import AsyncBufferedReader
 
@@ -89,8 +81,10 @@ class Part:
 @dataclass
 class ResumableStatus:
     parts: Optional[List[Part]] = None
+    is_uploaded: bool = False
+    is_aborted: bool = False
 
-    def is_uploaded(self, limits: Optional[Limits] = None) -> bool:
+    def check_is_uploaded(self, limits: Optional[Limits] = None) -> bool:
         """Check if all parts have been uploaded. Based on the number of chunks in the file.
 
         :param limits: Limits object with num_chunks information.
@@ -99,15 +93,16 @@ class ResumableStatus:
         :rtype: bool
         """
         num_chunks = limits.num_chunks if limits is not None else None
-        missing_ids = ResumableResponse(status=self).get_part_ids_to_reupload(num_chunks)
+        missing_ids = ResumableUploadInfo(status=self).get_part_ids_to_reupload(num_chunks)
         if missing_ids:
-            return False
+            self.is_uploaded = False
         else:
-            return True
+            self.is_uploaded = True
+        return self.is_uploaded
 
 
 @dataclass
-class ResumableResponse:
+class ResumableUploadInfo:
     team_id: Optional[int] = None
     file_path: Optional[str] = None
     session_id: Optional[str] = None
@@ -115,6 +110,10 @@ class ResumableResponse:
     hash: Optional[str] = None
     status: Optional[ResumableStatus] = None
     file_info: Optional[FileInfo] = None
+
+    def __post_init__(self):
+        if self.status is None:
+            self.status = ResumableStatus()
 
     def get_part_ids_to_reupload(self, num_chunks: Optional[int] = None) -> List[int]:
         """Get a list of Parts that need to be re-uploaded.
@@ -159,13 +158,13 @@ class ResumableUploadApi:
         self._api = api
 
     @staticmethod
-    def parse_resumable_response(response_json: dict) -> ResumableResponse:
+    def parse_resumable_response(response_json: dict) -> ResumableUploadInfo:
         session_id = response_json.get(ApiField.SESSION_ID)
         limits = response_json.get(ApiField.LIMITS)
         hash = response_json.get(ApiField.HASH)
         if limits is not None:
             limits = Limits(**transform_keys(limits))
-        return ResumableResponse(session_id=session_id, limits=limits, hash=hash)
+        return ResumableUploadInfo(session_id=session_id, limits=limits, hash=hash)
 
     @staticmethod
     def parse_resumable_status(response_json: dict) -> ResumableStatus:
@@ -182,7 +181,7 @@ class ResumableUploadApi:
         sha256: Optional[str] = None,
         crc32: Optional[str] = None,
         blake3: Optional[str] = None,
-    ) -> ResumableResponse:
+    ) -> ResumableUploadInfo:
         """Initialize a resumable upload.
         Returns information about the upload process: a session ID and limits for the upload.
 
@@ -199,7 +198,7 @@ class ResumableUploadApi:
         :param blake3: BLAKE3 hash of the file.
         :type blake3: str
         :return: Resumable upload response.
-        :rtype: ResumableResponse
+        :rtype: ResumableUploadInfo
         """
         method = "file-storage.resumable_upload.request"
         data = {ApiField.TEAM_ID: team_id, ApiField.PATH: file_path, ApiField.META: {}}
@@ -225,7 +224,7 @@ class ResumableUploadApi:
         offset: float,
         semaphore: Optional[asyncio.Semaphore] = None,
         progress_cb: Optional[Callable[[int], None]] = None,
-    ) -> Coroutine[ResumableResponse]:
+    ) -> Coroutine[ResumableUploadInfo]:
         """Upload a chunk of the file to the storage.
         In response server returns hash of the uploaded chunk.
 
@@ -242,7 +241,7 @@ class ResumableUploadApi:
         :param progress_cb: Callback function to report progress in bytes.
         :type progress_cb: Optional[Callable[[int], None]]
         :return: Resumable upload response.
-        :rtype: ResumableResponse
+        :rtype: ResumableUploadInfo
         """
         method = "file-storage.resumable_upload.chunk"
         params = {
@@ -266,23 +265,23 @@ class ResumableUploadApi:
     def complete_upload(
         self,
         session_id: str,
-        parts: Optional[List[int]] = None,
+        part_ids: Optional[List[int]] = None,
     ) -> FileInfo:
         """Complete the upload process and create a file in the storage.
         Returns information about the uploaded file.
 
         :param session_id: Session ID.
         :type session_id: str
-        :param parts: List of part partIds in the order they should be concatenated.
+        :param part_ids: List of partIds in the order they should be concatenated.
                     This information is required for parallel uploads.
-        :type parts: List[int]
+        :type part_ids: List[int]
         :return: File information.
         :rtype: FileInfo
         """
         method = "file-storage.resumable_upload.complete"
         data = {
             ApiField.SESSION_ID: session_id,
-            ApiField.PARTS: parts or [],
+            ApiField.PARTS: part_ids or [],
         }
         response = self._api.post_httpx(method, json=data)
         return self._api.file._convert_json_info(response.json())
