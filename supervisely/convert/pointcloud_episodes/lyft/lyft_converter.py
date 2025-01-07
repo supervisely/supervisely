@@ -30,8 +30,6 @@ from supervisely import (
     PointcloudEpisodeFrame,
     TagMeta,
     TagValueType,
-    VideoTagCollection,
-    VideoTag,
 )
 from supervisely.io import fs
 from supervisely.convert.pointcloud.lyft import lyft_helper
@@ -39,6 +37,7 @@ from supervisely.api.api import ApiField
 from datetime import datetime
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from collections import defaultdict
+
 # from supervisely.annotation.tag_meta import TagTargetType as TagTT
 
 
@@ -141,7 +140,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
         target_type = None  # TagTT.GLOBAL # todo remove after fixing tags
         self._meta = ProjectMeta(
             [ObjClass(name, Cuboid3d) for name in unique_names],
-            [TagMeta(tag, TagValueType.NONE, target_type=TagTT.GLOBAL) for tag in tag_names],
+            [TagMeta(tag, TagValueType.NONE, target_type=target_type) for tag in tag_names],
         )
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 

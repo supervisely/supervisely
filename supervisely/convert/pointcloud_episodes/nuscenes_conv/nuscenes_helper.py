@@ -3,8 +3,8 @@ import numpy as np
 from os import path as osp
 from nuscenes.utils.data_classes import transform_matrix
 from pyquaternion import Quaternion
-import datetime
-from supervisely import fs
+from datetime import datetime
+from supervisely import fs, logger
 from pathlib import Path
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
@@ -39,9 +39,10 @@ TABLE_NAMES = [
     "map",
 ]
 
+
 class Sample:
     def __init__(self, timestamp, lidar_path, anns, cam_data):
-        self.timestamp = datetime.utcfromtimestamp(self.timestamp / 1e6).isoformat()
+        self.timestamp = datetime.utcfromtimestamp(timestamp / 1e6).isoformat()
         self.lidar_path = lidar_path
         self.anns = anns
         self.cam_data = cam_data
@@ -57,11 +58,12 @@ class Sample:
         instance_tokens = [nuscenes.get("sample_annotation", box.token) for box in boxes]
 
         yield from zip(gt_boxes, names, instance_tokens)
-    
+
     def convert_lidar_to_supervisely(self):
         import open3d as o3d  # pylint: disable=import-error
+
         bin_file = Path(self.lidar_path)
-        save_path = bin_file.with_suffix(".pcd")
+        save_path = str(bin_file.with_suffix(".pcd"))
 
         b = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 5)
         points = b[:, 0:3]
@@ -74,14 +76,26 @@ class Sample:
         intensity_fake_rgb[:, 1] = (
             ring_index  # green ring index is the index of the laser ranging from 0 to 31
         )
-
-        pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
-        pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
-        o3d.io.write_point_cloud(save_path, pc)
+        try:
+            pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
+            pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
+            o3d.io.write_point_cloud(save_path, pc)
+        except Exception as e:
+            logger.warn(f"Error converting lidar to supervisely format: {e}")
         return save_path
 
+
 class AnnotationObject:
-    def __init__(self, name: str, bbox: np.ndarray, instance_token: List[str], parent_token: str, category: str, attributes: List[str], visibility: str):
+    def __init__(
+        self,
+        name: str,
+        bbox: np.ndarray,
+        instance_token: List[str],
+        parent_token: str,
+        category: str,
+        attributes: List[str],
+        visibility: str,
+    ):
         self.name = name
         self.bbox = bbox
         self.instance_token = instance_token
@@ -105,9 +119,10 @@ class AnnotationObject:
         geometry = Cuboid3d(position, rotation, dimension)
 
         return geometry
-    
+
     def convert_nuscenes_to_BEVBox3D(self):
         import open3d as o3d  # pylint: disable=import-error
+
         box = self.bbox
         center = [float(box[0]), float(box[1]), float(box[2])]
         size = [float(box[3]), float(box[5]), float(box[4])]
@@ -117,6 +132,7 @@ class AnnotationObject:
         world_cam = None
         return o3d.ml.datasets.utils.BEVBox3D(center, size, yaw, self.name, -1.0, world_cam)
 
+
 class CamData:
     def __init__(self, nuscenes, sensor_name, sensor_token, cs_record, ego_record):
         img_path, boxes, cam_intrinsic = nuscenes.get_sample_data(sensor_token)
@@ -124,15 +140,13 @@ class CamData:
             return None
 
         sd_record_cam = nuscenes.get("sample_data", sensor_token)
-        cs_record_cam = nuscenes.get(
-            "calibrated_sensor", sd_record_cam["calibrated_sensor_token"]
-        )
+        cs_record_cam = nuscenes.get("calibrated_sensor", sd_record_cam["calibrated_sensor_token"])
         ego_record_cam = nuscenes.get("ego_pose", sd_record_cam["ego_pose_token"])
         lid_to_ego = transform_matrix(
             cs_record["translation"],
             Quaternion(cs_record["rotation"]),
             inverse=False,
-            )
+        )
         lid_ego_to_world = transform_matrix(
             ego_record["translation"],
             Quaternion(ego_record["rotation"]),
@@ -153,16 +167,12 @@ class CamData:
         )
         velo_to_cam_rot = velo_to_cam[:3, :3]
         velo_to_cam_trans = velo_to_cam[:3, 3]
-        
+
         self.name = sensor_name
         self.path = str(img_path)
         self.imsize = (sd_record_cam["width"], sd_record_cam["height"])
-        self.extrinsic = np.hstack(
-            (velo_to_cam_rot, velo_to_cam_trans.reshape(3, 1))
-        )
-        self.intrinsic = np.asarray(
-            cs_record_cam["camera_intrinsic"]
-        )
+        self.extrinsic = np.hstack((velo_to_cam_rot, velo_to_cam_trans.reshape(3, 1)))
+        self.intrinsic = np.asarray(cs_record_cam["camera_intrinsic"])
 
     def get_info(self, timestamp):
         sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
@@ -175,12 +185,8 @@ class CamData:
                     "deviceId": self.name,
                     "timestamp": timestamp,
                     "sensorsData": {
-                        "extrinsicMatrix": list(
-                            self.extrinsic.flatten().astype(float)
-                        ),
-                        "intrinsicMatrix": list(
-                            self.intrinsic.flatten().astype(float)
-                        ),
+                        "extrinsicMatrix": list(self.extrinsic.flatten().astype(float)),
+                        "intrinsicMatrix": list(self.intrinsic.flatten().astype(float)),
                     },
                 },
             }

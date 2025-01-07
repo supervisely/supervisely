@@ -53,7 +53,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
         self._nuscenes = None
 
     def __str__(self) -> str:
-        return AvailablePointcloudConverters.LYFT
+        return AvailablePointcloudConverters.NUSCENES
 
     def to_supervisely(
         self,
@@ -118,7 +118,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
             scene_name_to_dataset[scene_names[0]] = dataset_info
 
         if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Converting pointclouds...")
+            progress, progress_cb = self.get_progress(total_sample_cnt, "Converting pointclouds...")
         else:
             progress_cb = None
 
@@ -220,10 +220,10 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                 if len(image_jsons) > 0:
                     api.pointcloud.add_related_images(image_jsons, camera_names)
 
-            logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
+                if log_progress:
+                    progress_cb(1)
 
-            if log_progress:
-                progress_cb(1)
+            logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
 
         if log_progress:
             if is_development():

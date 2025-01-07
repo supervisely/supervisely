@@ -113,7 +113,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         tags = []
         for sample_i, sample in enumerate(scene_samples):
             figures = []
-            for i, obj in enumerate(sample.anns):
+            for obj in sample.anns:
                 instance_token = obj.instance_token
                 class_name = obj.category
                 parent_obj_token = obj.parent_token
@@ -132,7 +132,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                     token_to_obj[instance_token] = token_to_obj[parent_obj_token]
                     parent_object = token_to_obj[parent_obj_token]
                 geom = obj.to_supervisely()
-                pcd_figure = PointcloudFigure(parent_object, geom, i)
+                pcd_figure = PointcloudFigure(parent_object, geom, sample_i)
                 figures.append(pcd_figure)
             frame = PointcloudEpisodeFrame(sample_i, figures)
             frames.append(frame)
@@ -149,7 +149,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         attributes = {attr["name"]: attr["description"] for attr in nuscenes.attribute}
         category_to_color = {
             category["name"]: nuscenes.colormap[category["name"]] for category in nuscenes.category
-        }
+        }  # todo add class description
         self._meta = ProjectMeta(
             [ObjClass(name, Cuboid3d, color) for name, color in category_to_color.items()],
             [TagMeta(tag, TagValueType.NONE) for tag in attributes.keys()],
@@ -179,7 +179,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             scene_name_to_dataset[scene_names[0]] = dataset_info
 
         if log_progress:
-            progress, progress_cb = self.get_progress(scene_cnt, "Converting pointclouds...")
+            progress, progress_cb = self.get_progress(total_sample_cnt, "Converting pointclouds...")
         else:
             progress_cb = None
 
@@ -240,6 +240,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                     for sensor, token in sample["data"].items()
                     if sensor.startswith("CAM")
                 ]
+                lidar_path, _, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
                 scene_samples.append(Sample(timestamp, lidar_path, anns, camera_data))
                 if sample["next"] == "":
                     break
@@ -249,6 +250,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             frame_to_pointcloud_ids = {}
             for idx, sample in enumerate(scene_samples):
                 pcd_path = sample.convert_lidar_to_supervisely()
+
                 pcd_name = fs.get_file_name(pcd_path)
                 pcd_meta = {}
                 pcd_meta["frame"] = idx
@@ -279,6 +281,9 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                 if len(image_jsons) > 0:
                     api.pointcloud_episode.add_related_images(image_jsons, camera_names)
 
+                if log_progress:
+                    progress_cb(1)
+
             # * Convert and upload annotations
             pcd_ann = self.to_supervisely(scene_samples, meta, renamed_classes, renamed_tags)
             try:
@@ -287,11 +292,10 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                 )
             except Exception as e:
                 error_msg = getattr(getattr(e, "response", e), "text", str(e))
-                logger.warn(f"Failed to upload annotation for scene: {scene}. Message: {error_msg}")
+                logger.warn(
+                    f"Failed to upload annotation for scene: {scene['name']}. Message: {error_msg}"
+                )
             logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
-
-            if log_progress:
-                progress_cb(1)
 
         if log_progress:
             if is_development():
