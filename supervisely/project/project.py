@@ -10,6 +10,7 @@ import random
 import shutil
 from collections import defaultdict, namedtuple
 from enum import Enum
+from pathlib import Path
 from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 
 import aiofiles
@@ -1791,6 +1792,54 @@ class Dataset(KeyObject):
         await self._add_ann_by_type_async(item_name, ann)
         await self._add_item_info_async(item_name, item_info)
 
+    def to_coco(
+        self,
+        meta: ProjectMeta,
+        save: Optional[bool] = False,
+        save_path: Optional[str] = None,
+        log_progress: bool = False,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
+    ) -> Tuple[Dict, Union[None, Dict]]:
+        """
+        Convert Supervisely dataset to COCO format.
+
+        If save_path is None, the COCO dataset will be saved in the same directory as the dataset.
+            Note:   If you start conversion from sly.Project,
+                    all COCO JSON files will be saved in the root of the project.
+
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param save: If True, saves COCO dataset to the disk.
+        :type save: :class:`bool`, optional
+        :param save_path: Path to save COCO dataset.
+        :type save_path: :class:`str`, optional
+        :return: COCO dataset in dictionary format.
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                save_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, save_path=save_path)
+        """
+
+        from supervisely.convert.image.coco.coco_helper import sly_ds_to_coco
+
+        return sly_ds_to_coco(
+            self,
+            meta=meta,
+            save=save,
+            save_path=save_path,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
 
 class Project:
     """
@@ -3515,6 +3564,76 @@ class Project:
             images_ids=images_ids,
             resume_download=resume_download,
         )
+
+    @staticmethod
+    def to_coco(
+        project_dir: str,
+        dest_dir: Optional[str] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to COCO format.
+
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: tqdm or callable, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to COCO format
+            sly.Project(project_directory).to_coco(log_progress=True)
+        """
+        from supervisely.convert.image.coco.coco_helper import COCO_INSTANCES_FILE
+
+        project_fs = Project(project_dir, OpenMode.READ)
+
+        if dest_dir is None:
+            dest_dir = project_fs.directory
+
+        Path(dest_dir).mkdir(parents=True, exist_ok=True)
+
+        if progress_cb is not None:
+            log_progress = False
+
+        if log_progress:
+            progress_cb = tqdm_sly(
+                desc="Converting Supervisely project to COCO format", total=project_fs.total_items
+            )
+
+        multiple_datasets = len(project_fs.datasets) > 1
+        for dataset in project_fs.datasets:
+            dataset: Dataset
+            prefix = f"{dataset.short_name}_" if multiple_datasets else ""
+            save_path = Path(dest_dir) / f"{prefix}{COCO_INSTANCES_FILE}"
+            cnt = 1
+            while save_path.exists():
+                save_path = save_path.with_name(f"{prefix}{cnt:02d}_{COCO_INSTANCES_FILE}")
+                cnt += 1
+
+            dataset.to_coco(
+                meta=project_fs.meta,
+                save=True,
+                save_path=str(save_path),
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+            )
+            logger.info(f"Dataset '{dataset.short_name}' has been converted to COCO format.")
+        logger.info(f"Project '{project_fs.name}' has been converted to COCO format.")
+
+        
 
 
 def read_single_project(
