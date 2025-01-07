@@ -6,6 +6,7 @@ import re
 import shutil
 import string
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 
@@ -14,6 +15,29 @@ import requests
 from giturlparse import parse
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
+
+from supervisely.io.fs import dir_exists, list_files_recursively, remove_dir
+
+
+class cd:
+    def __init__(self, new_path=None, add_to_path=False):
+        self.new_path = new_path
+        self.add_to_path = add_to_path
+        self._should_remove_from_path = False
+
+    def __enter__(self):
+        self.old_path = os.getcwd()
+        if self.new_path is not None:
+            os.chdir(self.new_path)
+        if self.add_to_path and not self.new_path in sys.path:
+            sys.path.insert(0, self.new_path)
+            self._should_remove_from_path = True
+        return self
+
+    def __exit__(self, etype, value, traceback):
+        os.chdir(self.old_path)
+        if self._should_remove_from_path:
+            sys.path.remove(self.new_path)
 
 
 def slug_is_valid(slug):
@@ -192,7 +216,18 @@ def archive_application(repo: git.Repo, config, slug):
     app_folder_name = re.sub("[ \/]", "-", app_folder_name)
     app_folder_name = re.sub("[\"'`,\[\]\(\)]", "", app_folder_name)
     working_dir_path = Path(repo.working_dir).absolute()
+    should_remove_dir = None
     if config.get("type", "app") == "client_side_app":
+        gui_folder_path = config["gui_folder_path"]
+        gui_folder_path = working_dir_path / gui_folder_path
+        if not dir_exists(gui_folder_path):
+            should_remove_dir = gui_folder_path
+            # if gui folder is empty, need to render it
+            with cd(str(working_dir_path), add_to_path=True):
+                exec(open("sly_sdk/render.py", "r").read(), {"__name__": "__main__"})
+                file_paths.extend(
+                    [Path(p).absolute() for p in list_files_recursively(str(gui_folder_path))]
+                )
         archive_path = archive_folder + "/archive.tar"
         write_mode = "w"
     else:
@@ -205,6 +240,9 @@ def archive_application(repo: git.Repo, config, slug):
                     path.absolute(),
                     Path(app_folder_name).joinpath(path.relative_to(working_dir_path)),
                 )
+    if should_remove_dir is not None:
+        # remove gui folder if it was rendered
+        remove_dir(should_remove_dir)
     return archive_path
 
 
