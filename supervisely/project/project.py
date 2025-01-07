@@ -4529,13 +4529,12 @@ async def _download_project_async(
                     try:
                         existing = dataset_fs.get_item_info(image.name)
                     except:
-                        pass
+                        to_download.append(image)
                     else:
-                        if existing.updated_at == image.updated_at:
-                            if ds_progress is not None:
-                                ds_progress(1)
-                            continue
-                    to_download.append(image)
+                        if existing.updated_at != image.updated_at:
+                            to_download.append(image)
+                        elif ds_progress is not None:
+                            ds_progress(1)
                 return to_download
 
             small_images = await check_items(small_images)
