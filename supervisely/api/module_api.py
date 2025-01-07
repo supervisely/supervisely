@@ -596,6 +596,12 @@ class ApiField:
     """"""
     CLEAR_LOCAL_DATA_SOURCE = "clearLocalDataSource"
     """"""
+    ONLY_RUNNING = "onlyRunning"
+    """"""
+    SHOW_DISABLED = "showDisabled"
+    """"""
+    WITH_SHARED = "withShared"
+    """"""
 
 
 def _get_single_item(items):

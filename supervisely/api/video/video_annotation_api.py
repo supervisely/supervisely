@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Callable, Dict, List, Optional, Union
 
 from tqdm import tqdm
@@ -12,7 +11,6 @@ from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnota
 from supervisely.api.module_api import ApiField
 from supervisely.io.json import load_json_file
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import Progress
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
@@ -254,18 +252,28 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_id: int,
         video_info=None,
         semaphore: Optional[asyncio.Semaphore] = None,
+        force_metadata_for_links: bool = True,
+        integer_coords: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> Dict:
         """
         Download information about VideoAnnotation by video ID from API asynchronously.
 
         :param video_id: Video ID in Supervisely.
         :type video_id: int
-        :param video_info: VideoInfo object. Use it to avoid additional request to the server.
+        :param video_info: Does not affect the result, but is left for compatibility with the method signature.
         :type video_info: VideoInfo, optional
         :param semaphore: Semaphore to limit the number of parallel downloads.
         :type semaphore: asyncio.Semaphore, optional
+        :param force_metadata_for_links: If True, updates meta for videos with links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
+        :type integer_coords: bool, optional
+        :param progress_cb: Progress callback to track download progress.
+        :type progress_cb: Union[tqdm, Callable], optional
         :return: Information about VideoAnnotation in json format
         :rtype: :class:`dict`
+
         :Usage example:
 
          .. code-block:: python
@@ -280,15 +288,74 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
             loop = sly.utils.get_or_create_event_loop()
             ann_info = loop.run_until_complete(api.video.annotation.download_async(video_id))
         """
-        if video_info is None:
-            video_info = self._api.video.get_info_by_id(video_id)
+        return await self.download_bulk_async(
+            video_ids=[video_id],
+            semaphore=semaphore,
+            force_metadata_for_links=force_metadata_for_links,
+            integer_coords=integer_coords,
+            progress_cb=progress_cb,
+        )
 
+    async def download_bulk_async(
+        self,
+        video_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        force_metadata_for_links: bool = True,
+        integer_coords: bool = True,
+        batch_size: int = 10,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[Dict]:
+        """
+        Download information about VideoAnnotation in bulk by video IDs from API asynchronously.
+
+        :param video_ids: List of Video IDs in Supervisely. All videos must be from the same dataset.
+        :type video_ids: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param force_metadata_for_links: If True, updates meta for videos with links.
+        :type force_metadata_for_links: bool, optional
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
+        :type integer_coords: bool, optional
+        :param batch_size: Batch size for parallel downloads. Default is 10 as an optimal value.
+        :type batch_size: int, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: Information about VideoAnnotations in json format
+        :rtype: :class:`list`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            video_ids = [198702499, 198702500, 198702501]
+            loop = sly.utils.get_or_create_event_loop()
+            ann_infos = loop.run_until_complete(api.video.annotation.download_bulk_async(video_ids))
+        """
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        async with semaphore:
-            response = await self._api.post_async(
-                self._method_download_bulk,
-                {ApiField.DATASET_ID: video_info.dataset_id, self._entity_ids_str: [video_info.id]},
-            )
-            return response.json()
+        async def fetch_with_semaphore(batch):
+            async with semaphore:
+                json_data = {
+                    self._entity_ids_str: batch,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    ApiField.INTEGER_COORDS: integer_coords,
+                }
+                response = await self._api.post_async(
+                    self._method_download_bulk,
+                    json=json_data,
+                )
+                if progress_cb is not None:
+                    progress_cb(len(batch))
+                return response.json()
+
+        tasks = [fetch_with_semaphore(batch) for batch in batched(video_ids, batch_size=batch_size)]
+        responses = await asyncio.gather(*tasks)
+        json_response = [item for response in responses for item in response]
+        return json_response

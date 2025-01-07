@@ -15,6 +15,7 @@ from supervisely.io.fs import (
     silent_remove,
 )
 
+Image.MAX_IMAGE_PIXELS = None
 EXT_TO_CONVERT = [".heic", ".avif", ".heif", ".jfif"]
 
 
