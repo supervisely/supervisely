@@ -107,7 +107,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         meta: ProjectMeta,
         renamed_classes: dict = {},
         renamed_tags: dict = {},
-    ) -> PointcloudAnnotation:
+    ) -> PointcloudEpisodeAnnotation:
         token_to_obj = {}
         frames = []
         tags = []
@@ -159,13 +159,13 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         dataset_info = api.dataset.get_info_by_id(dataset_id)
         scene_name_to_dataset = {}
 
-        scene_names = None  # todo
+        scene_names = [scene["name"] for scene in nuscenes.scene]
         scene_cnt = len(scene_names)
+        total_sample_cnt = sum([scene["nbr_samples"] for scene in nuscenes.scene])
+
         multiple_scenes = len(scene_names) > 1
         if multiple_scenes:
-            logger.info(
-                f"Found {len(scene_names)} scenes ({scene_cnt} pointclouds) in the input data."
-            )
+            logger.info(f"Found {scene_cnt} scenes ({total_sample_cnt} samples) in the input data.")
             # * Create a nested dataset for each scene
             for name in scene_names:
                 ds = api.dataset.create(
@@ -176,7 +176,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                 )
                 scene_name_to_dataset[name] = ds
         else:
-            scene_name_to_dataset[list(scene_names)[0]] = dataset_info
+            scene_name_to_dataset[scene_names[0]] = dataset_info
 
         if log_progress:
             progress, progress_cb = self.get_progress(scene_cnt, "Converting pointclouds...")
@@ -266,7 +266,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                 for img_path, rimage_info in [
                     data.get_info(sample.timestamp) for data in sample.cam_data
                 ]:
-                    img = api.pointcloud.upload_related_image(img_path)
+                    img = api.pointcloud_episode.upload_related_image(img_path)
                     image_jsons.append(
                         {
                             ApiField.ENTITY_ID: pcd_id,
@@ -277,7 +277,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                     )
                     camera_names.append(rimage_info[ApiField.META]["deviceId"])
                 if len(image_jsons) > 0:
-                    api.pointcloud.add_related_images(image_jsons, camera_names)
+                    api.pointcloud_episode.add_related_images(image_jsons, camera_names)
 
             # * Convert and upload annotations
             pcd_ann = self.to_supervisely(scene_samples, meta, renamed_classes, renamed_tags)
