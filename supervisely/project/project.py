@@ -4500,9 +4500,11 @@ async def _download_project_async(
         )
         small_images = []
         large_images = []
+        dataset_images = []
         async for image_batch in all_images:
             for image in image_batch:
                 if images_ids is None or image.id in images_ids:
+                    dataset_images.append(image)
                     if image.size < switch_size:
                         small_images.append(image)
                     else:
@@ -4529,13 +4531,12 @@ async def _download_project_async(
                     try:
                         existing = dataset_fs.get_item_info(image.name)
                     except:
-                        pass
+                        to_download.append(image)
                     else:
-                        if existing.updated_at == image.updated_at:
-                            if ds_progress is not None:
-                                ds_progress(1)
-                            continue
-                    to_download.append(image)
+                        if existing.updated_at != image.updated_at:
+                            to_download.append(image)
+                        elif ds_progress is not None:
+                            ds_progress(1)
                 return to_download
 
             small_images = await check_items(small_images)
@@ -4574,11 +4575,9 @@ async def _download_project_async(
 
         await queue.join()
 
-        all_images = small_images + large_images
-
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
-            for image_info in all_images:
+            for image_info in dataset_images:
                 if image_info.meta:
                     sly.fs.mkdir(meta_dir)
                     sly.json.dump_json_file(
@@ -4586,7 +4585,7 @@ async def _download_project_async(
                     )
 
         # delete redundant items
-        items_names_set = set([img.name for img in all_images])
+        items_names_set = set([img.name for img in dataset_images])
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
