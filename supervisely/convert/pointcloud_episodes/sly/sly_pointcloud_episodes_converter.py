@@ -74,7 +74,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                 recognized_ext = imghdr.what(full_path)
                 if file in JUNK_FILES:
                     continue
-                elif ext in self.ann_ext:
+                elif ext == self.ann_ext:
                     rimg_json_dict[file] = full_path
                 elif recognized_ext:
                     if ext.lower() == ".pcd":
@@ -87,6 +87,8 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                         used_img_ext.append(ext)
                 else:
                     try:
+                        # todo: fix, causes convertor to recognise any format
+                        # todo: as supervisely if it contains a pcd file
                         validate_pcd_ext(ext)
                         pcd_dict[file] = full_path
                     except:

@@ -8,6 +8,23 @@ from supervisely import fs
 from pathlib import Path
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
+DIR_NAMES = ["CAM_BACK", "CAM_BACK_LEFT", "CAM_BACK_RIGHT", "CAM_FRONT", "CAM_FRONT_LEFT", "CAM_FRONT_RIGHT", "LIDAR_TOP", "RADAR_FRONT", "RADAR_FRONT_LEFT", "RADAR_FRONT_RIGHT", "RADAR_BACK_LEFT", "RADAR_BACK_RIGHT"]
+TABLE_NAMES = [
+    "category",
+    "attribute",
+    "visibility",
+    "instance",
+    "sensor",
+    "calibrated_sensor",
+    "ego_pose",
+    "log",
+    "scene",
+    "sample",
+    "sample_data",
+    "sample_annotation",
+    "map",
+]
+
 class Sample:
     def __init__(self, timestamp, lidar_path, anns, cam_data):
         self.timestamp = datetime.utcfromtimestamp(self.timestamp / 1e6).isoformat()
