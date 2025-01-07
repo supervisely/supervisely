@@ -4432,23 +4432,29 @@ async def _download_project_async(
     switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
-    # number of workers
-    num_workers = kwargs.get("num_workers", 5)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
 
-    async def worker(queue: asyncio.Queue, semaphore: asyncio.Semaphore):
-        while True:
+    # number of workers
+    num_workers = min(kwargs.get("num_workers", semaphore._value), 10)
+
+    async def worker(queue: asyncio.Queue, stop_event: asyncio.Event):
+        while not stop_event.is_set():
             task = await queue.get()
             if task is None:
                 break
-            async with semaphore:
+            try:
                 await task
-            queue.task_done()
+            except Exception as e:
+                logger.error(f"Error in _download_project_async worker: {e}")
+                stop_event.set()
+            finally:
+                queue.task_done()
 
     queue = asyncio.Queue()
-    workers = [asyncio.create_task(worker(queue, semaphore)) for _ in range(num_workers)]
+    stop_event = asyncio.Event()
+    workers = [asyncio.create_task(worker(queue, stop_event)) for _ in range(num_workers)]
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4588,6 +4594,10 @@ async def _download_project_async(
     for _ in range(num_workers):
         await queue.put(None)
     await asyncio.gather(*workers)
+
+    if stop_event.is_set():
+        raise RuntimeError("Download process was stopped due to an error in one of the workers.")
+
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:
