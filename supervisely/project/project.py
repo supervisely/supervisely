@@ -4500,8 +4500,10 @@ async def _download_project_async(
         )
         small_images = []
         large_images = []
+        dataset_images = []
         async for image_batch in all_images:
             for image in image_batch:
+                dataset_images.append(image)
                 if images_ids is None or image.id in images_ids:
                     if image.size < switch_size:
                         small_images.append(image)
@@ -4573,11 +4575,11 @@ async def _download_project_async(
 
         await queue.join()
 
-        all_images = small_images + large_images
+        downloaded_images = small_images + large_images
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
-            for image_info in all_images:
+            for image_info in downloaded_images:
                 if image_info.meta:
                     sly.fs.mkdir(meta_dir)
                     sly.json.dump_json_file(
@@ -4585,7 +4587,7 @@ async def _download_project_async(
                     )
 
         # delete redundant items
-        items_names_set = set([img.name for img in all_images])
+        items_names_set = set([img.name for img in dataset_images])
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
