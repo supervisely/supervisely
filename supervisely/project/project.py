@@ -4503,8 +4503,8 @@ async def _download_project_async(
         dataset_images = []
         async for image_batch in all_images:
             for image in image_batch:
-                dataset_images.append(image)
                 if images_ids is None or image.id in images_ids:
+                    dataset_images.append(image)
                     if image.size < switch_size:
                         small_images.append(image)
                     else:
@@ -4575,11 +4575,9 @@ async def _download_project_async(
 
         await queue.join()
 
-        downloaded_images = small_images + large_images
-
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
-            for image_info in downloaded_images:
+            for image_info in dataset_images:
                 if image_info.meta:
                     sly.fs.mkdir(meta_dir)
                     sly.json.dump_json_file(
