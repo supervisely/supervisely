@@ -41,6 +41,10 @@ TABLE_NAMES = [
 
 
 class Sample:
+    """
+    A class to represent a sample from the NuScenes dataset.
+    """
+
     def __init__(self, timestamp, lidar_path, anns, cam_data):
         self.timestamp = datetime.utcfromtimestamp(timestamp / 1e6).isoformat()
         self.lidar_path = lidar_path
@@ -49,17 +53,33 @@ class Sample:
 
     @staticmethod
     def generate_boxes(nuscenes, boxes):
+        """
+        Generate ground truth boxes for a given set of boxes.
+
+        Yields:
+            tuple: A tuple containing:
+                - gt_box (np.ndarray): A numpy array representing the ground truth box with concatenated location,
+                                       dimensions, and rotation.
+                - name (str): The name of the object.
+                - instance_token (str): The instance token associated with the box.
+        """
         locs = np.array([b.center for b in boxes]).reshape(-1, 3)
         dims = np.array([b.wlh for b in boxes]).reshape(-1, 3)
         rots = np.array([b.orientation.yaw_pitch_roll[0] for b in boxes]).reshape(-1, 1)
 
-        gt_boxes = np.concatenate([locs, dims, -rots + np.pi / 2], axis=1)
+        gt_boxes = np.concatenate([locs, dims, -rots - np.pi / 2], axis=1)
         names = np.array([b.name for b in boxes])
         instance_tokens = [nuscenes.get("sample_annotation", box.token) for box in boxes]
 
         yield from zip(gt_boxes, names, instance_tokens)
 
     def convert_lidar_to_supervisely(self):
+        """
+        Converts a LiDAR point cloud file to the Supervisely format and saves it as a .pcd file.
+
+        Returns:
+            str: The file path of the saved .pcd file.
+        """
         import open3d as o3d  # pylint: disable=import-error
 
         bin_file = Path(self.lidar_path)
@@ -86,11 +106,32 @@ class Sample:
 
 
 class AnnotationObject:
+    """
+    A class to represent an annotation object in the NuScenes dataset.
+
+    Attributes:
+    -----------
+    name : str
+        The name of the annotation object.
+    bbox : np.ndarray
+        The bounding box coordinates.
+    instance_token : str
+        The instance token associated with the annotation object.
+    parent_token : str
+        The token of instance preceding the current object instance.
+    category : str
+        The class name of the annotation object.
+    attributes : List[str]
+        The attribute names associated with the annotation object.
+    visibility : str
+        The visibility level of the annotation object.
+    """
+
     def __init__(
         self,
         name: str,
         bbox: np.ndarray,
-        instance_token: List[str],
+        instance_token: str,
         parent_token: str,
         category: str,
         attributes: List[str],
@@ -134,6 +175,23 @@ class AnnotationObject:
 
 
 class CamData:
+    """
+    A class to represent camera data and perform transformations between different coordinate systems.
+
+    Attributes:
+    -----------
+    name : str
+        The name of the sensor.
+    path : str
+        The path to the image file.
+    imsize : tuple
+        The size of the image (width, height).
+    extrinsic : np.ndarray
+        The extrinsic matrix (4x4) representing the transformation from the lidar to the camera coordinate system.
+    intrinsic : np.ndarray
+        The intrinsic matrix (3x3) representing the camera's intrinsic parameters.
+    """
+
     def __init__(self, nuscenes, sensor_name, sensor_token, cs_record, ego_record):
         img_path, boxes, cam_intrinsic = nuscenes.get_sample_data(sensor_token)
         if not osp.exists(img_path):
@@ -175,6 +233,15 @@ class CamData:
         self.intrinsic = np.asarray(cs_record_cam["camera_intrinsic"])
 
     def get_info(self, timestamp):
+        """
+        Retrieves information about the image and its metadata.
+
+        Args:
+            timestamp (int): The timestamp associated with the image.
+
+        Returns:
+            tuple: A tuple containing the image path and a dictionary with image metadata.
+        """
         sensors_to_skip = ["_intrinsic", "_extrinsic", "_imsize"]
         if not any([self.name.endswith(s) for s in sensors_to_skip]):
             image_name = fs.get_file_name_with_ext(self.path)

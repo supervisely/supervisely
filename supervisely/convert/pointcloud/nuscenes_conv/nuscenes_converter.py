@@ -1,6 +1,4 @@
-from pathlib import Path
 from typing import Dict, Optional
-
 from supervisely import (
     Api,
     ObjClass,
@@ -8,7 +6,6 @@ from supervisely import (
     ProjectMeta,
     logger,
     is_development,
-    Progress,
     PointcloudObject,
     TagMeta,
     TagValueType,
@@ -17,10 +14,7 @@ from supervisely.io import fs
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
 from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.convert.pointcloud.lyft import lyft_helper
 from supervisely.api.api import ApiField
-from datetime import datetime
-from supervisely import TinyTimer
 from supervisely.pointcloud_annotation.pointcloud_annotation import (
     PointcloudFigure,
     PointcloudObjectCollection,
@@ -35,13 +29,13 @@ from supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_helper impor
     Sample,
     AnnotationObject,
     CamData,
-    TABLE_NAMES,
-    DIR_NAMES,
 )
 from os import path as osp
 
 
 class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
+    """Converter for NuScenes pointcloud format."""
+
     def __init__(
         self,
         input_data: str,
@@ -64,35 +58,42 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
     ) -> PointcloudAnnotation:
         bevbox_objs = [obj.convert_nuscenes_to_BEVBox3D() for obj in scene_sample.anns]
         geoms = [obj.to_supervisely() for obj in scene_sample.anns]
-        tokens = [obj.instance_token for obj in scene_sample.anns]
+        attrs = [obj.attributes for obj in scene_sample.anns]
 
         figures = []
         objs = []
-        for l, g, t in zip(bevbox_objs, geoms, tokens):
-            class_name = renamed_classes.get(l.label_class, l.label_class)
-            tag_names = [
-                self._nuscenes.get("attribute", attr_token).get("name", None)
-                for attr_token in t["attribute_tokens"]
-            ]
+        for label, geom, attributes in zip(bevbox_objs, geoms, attrs):
+            class_name = renamed_classes.get(label.label_class, label.label_class)
             tag_col = None
-            if len(tag_names) > 0 and all([tag_name is not None for tag_name in tag_names]):
-                tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+            if len(attributes) > 0 and all([tag_name is not None for tag_name in attributes]):
+                tag_meta_names = [renamed_tags.get(name, name) for name in attributes]
                 tag_metas = [meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names]
                 tag_col = PointcloudTagCollection([PointcloudTag(meta, None) for meta in tag_metas])
             pcobj = PointcloudObject(meta.get_obj_class(class_name), tag_col)
-            figures.append(PointcloudFigure(pcobj, g))
+            figures.append(PointcloudFigure(pcobj, geom))
             objs.append(pcobj)
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         nuscenes = self._nuscenes
 
-        unique_names = {name for item in self._items for name in item.ann_data["names"]}
-        tag_names = {tag["name"] for tag in self._lyft.attribute}
-        self._meta = ProjectMeta(
-            [ObjClass(name, Cuboid3d) for name in unique_names],
-            [TagMeta(tag, TagValueType.NONE) for tag in tag_names],
-        )
+        tag_metas = [TagMeta(attr["name"], TagValueType.NONE) for attr in nuscenes.attribute]
+        obj_classes = []
+        for category in nuscenes.category:
+            color = nuscenes.colormap[category["name"]]
+            description = category["description"]
+            if len(description) > 255:
+                # * Trim description to fit into 255 characters limit
+                sentences = description.split(".")
+                trimmed_description = ""
+                for sentence in sentences:
+                    if len(trimmed_description) + len(sentence) + 1 > 255:
+                        break
+                    trimmed_description += sentence + "."
+                description = trimmed_description.strip()
+            obj_classes.append(ObjClass(category["name"], Cuboid3d, color, description=description))
+
+        self._meta = ProjectMeta(obj_classes, tag_metas)
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         dataset_info = api.dataset.get_info_by_id(dataset_id)
@@ -124,21 +125,19 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
 
         for scene in nuscenes.scene:
             current_dataset_id = scene_name_to_dataset[scene["name"]].id
-            sample = nuscenes.get("sample", scene["first_sample_token"])
-            lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
-            if not osp.exists(lidar_path):
-                continue
 
             log = nuscenes.get("log", scene["log_token"])
+            sample_token = scene["first_sample_token"]
 
-            # todo various log data, to store in tags/meta
-            vechicle = log["vehicle"]
-            date = log["date_captured"]
-            loc = log["location"]
-            desc = scene["description"]
-
+            # * Extract scene's samples
             scene_samples = []
             for i in range(scene["nbr_samples"]):
+                sample = nuscenes.get("sample", sample_token)
+                lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
+                if not osp.exists(lidar_path):
+                    logger.warn(f'Scene "{scene["name"]}" has no LIDAR data.')
+                    continue
+
                 timestamp = sample["timestamp"]
                 anns = []
                 for box, name, inst_token in Sample.generate_boxes(nuscenes, boxes):
@@ -178,7 +177,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     if sensor.startswith("CAM")
                 ]
                 scene_samples.append(Sample(timestamp, lidar_path, anns, camera_data))
-                sample = nuscenes.get("sample", sample["next"])
+                sample_token = sample["next"]
 
             # * Convert and upload pointclouds w/ annotations
             for idx, sample in enumerate(scene_samples):
@@ -186,19 +185,24 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
 
                 pcd_path = sample.convert_lidar_to_supervisely()
                 pcd_name = fs.get_file_name(pcd_path)
-                pcd_meta = {}
-                pcd_meta["frame"] = idx
+                pcd_meta = {
+                    "frame": idx,
+                    "vehicle": log["vehicle"],
+                    "date": log["date_captured"],
+                    "location": log["location"],
+                    "description": scene["description"],
+                }
                 info = api.pointcloud.upload_path(current_dataset_id, pcd_name, pcd_path, pcd_meta)
                 fs.silent_remove(pcd_path)
 
                 pcd_id = info.id
                 # * Upload pointcloud annotation
                 try:
-                    api.pointcloud.annotation.append(pcd_id, pcd_ann, {idx: pcd_id})
+                    api.pointcloud.annotation.append(pcd_id, pcd_ann)
                 except Exception as e:
                     error_msg = getattr(getattr(e, "response", e), "text", str(e))
                     logger.warn(
-                        f"Failed to upload annotation for scene: {scene}. Message: {error_msg}"
+                        f"Failed to upload annotation for scene: {scene['name']}. Message: {error_msg}"
                     )
 
                 # * Upload related images
