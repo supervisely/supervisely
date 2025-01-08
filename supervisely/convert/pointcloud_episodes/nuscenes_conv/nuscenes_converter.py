@@ -302,7 +302,6 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
 
             if log_progress:
                 progress_cb(1)
-            break  # ! DELETE, used for debug to process only one scene
 
         if log_progress:
             if is_development():
