@@ -1361,11 +1361,22 @@ class FileApi(ModuleApiBase):
            # Output: /My_App_Test_001
         """
         res_dir = dir_path.rstrip("/")
-        suffix = 1
-        while self.dir_exists(team_id, res_dir):
-            res_dir = dir_path.rstrip("/") + f"_{suffix:03d}"
-            suffix += 1
-        return res_dir
+        if not self.dir_exists(team_id, res_dir + "/"):
+            return res_dir
+
+        low, high = 0, 1
+        while self.dir_exists(team_id, f"{res_dir}_{high:03d}/"):
+            low = high
+            high *= 2
+
+        while low < high:
+            mid = (low + high) // 2
+            if self.dir_exists(team_id, f"{res_dir}_{mid:03d}/"):
+                low = mid + 1
+            else:
+                high = mid
+
+        return f"{res_dir}_{low:03d}"
 
     def upload_directory(
         self,
@@ -1609,7 +1620,7 @@ class FileApi(ModuleApiBase):
                 downloaded_file_hash = await get_file_hash_async(local_save_path)
                 if hash_to_check != downloaded_file_hash:
                     raise RuntimeError(
-                        f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        f"Downloaded hash of file path: '{remote_path}' does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
                     )
         if progress_cb is not None and progress_cb_type == "number":
             progress_cb(1)

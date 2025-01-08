@@ -1,8 +1,7 @@
-import os
 from collections import defaultdict
-from typing import Dict, Iterable, List, Optional, Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import Iterable, List, Optional, Union
 
-import cv2
 import numpy as np
 import pandas as pd
 
@@ -12,10 +11,7 @@ from supervisely.nn.benchmark.utils.semantic_segmentation.utils import (
     get_exterior_boundary,
     get_interior_boundary,
     get_single_contiguous_segment,
-    one_hot,
-    single_one_hot,
 )
-from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 ERROR_CODES = {
@@ -63,29 +59,6 @@ class Evaluator:
         :param boundary_implementation: Choose "exact" for the euclidean pixel distance.
             The Boundary IoU paper uses the L1 distance ("fast").
         """
-        global torch, np, GPU
-        import torch  # pylint: disable=import-error
-
-        if torch.cuda.is_available():
-            GPU = True
-            logger.info("Using GPU for evaluation.")
-            try:
-                # gpu-compatible numpy analogue
-                import cupy as np  # pylint: disable=import-error
-
-                global numpy
-                import numpy as numpy
-            except:
-                logger.warning(
-                    "Failed to import cupy. Use cupy official documentation to install this "
-                    "module: https://docs.cupy.dev/en/stable/install.html"
-                )
-        else:
-            GPU = False
-            import numpy as np
-
-            global numpy
-            numpy = np
 
         self.progress = progress or tqdm_sly
         self.class_names = class_names
@@ -127,8 +100,6 @@ class Evaluator:
         self.per_image_metrics = pd.DataFrame()
 
     def extract_masks(self, seg, cl, n_cl):
-        if GPU:
-            seg = np.asarray(seg)
         h, w = seg.shape
         masks = np.zeros((n_cl, h, w))
 
@@ -138,8 +109,6 @@ class Evaluator:
         return masks
 
     def extract_masks_gen(self, seg, cl):
-        if GPU:
-            seg = np.asarray(seg)
         h, w = seg.shape
         for c in cl:
             mask = np.zeros((h, w))
@@ -182,21 +151,18 @@ class Evaluator:
         self.boundary_iou_union_counts = np.zeros(self.num_classes, dtype=np.int64)
 
         with self.progress(message="Calculating metrics...", total=len(loader)) as pbar:
-            for pred, gt, img_name in loader:
-                sample_results = self.evaluate_sample(pred, gt, img_name)
-                self.update_results(sample_results, img_name)
+            def _func(loader_data):
+                pred, gt, img = loader_data
+                sample_results = self.evaluate_sample(pred, gt, img)
+                self.update_results(sample_results, img)
                 self.confusion_matrix = self.calc_confusion_matrix(
-                    pred,
-                    gt,
-                    self.confusion_matrix,
-                    img_name,
+                    pred, gt, self.confusion_matrix, img
                 )
                 pbar.update(1)
-        if GPU:
-            for key, value in self.results.items():
-                self.results[key] = value.get()  # pylint: disable=no-member
-            self.boundary_iou_intersection_counts = self.boundary_iou_intersection_counts.get()
-            self.boundary_iou_union_counts = self.boundary_iou_union_counts.get()
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                for _ in executor.map(_func, loader):
+                    pass
 
         result = self.calculate_error_metrics()
         normalized_confusion_matrix = self.confusion_matrix / self.confusion_matrix.sum(
@@ -337,14 +303,14 @@ class Evaluator:
         e_extent_ou_renormed = e_extent / (tp + e_boundary + e_extent)
         e_segment_ou_renormed = e_segment_ou
 
-        with numpy.errstate(invalid="ignore"):
+        with np.errstate(invalid="ignore"):
             boundary_iou = (
                 image_stats["boundary_iou_intersection_counts"]
                 / image_stats["boundary_iou_union_counts"]
             )
 
         def postprocess_values(values):
-            values = values[~numpy.isnan(values)]
+            values = values[~np.isnan(values)]
             value = round(float(np.mean(values)), 2)
             return value
 
@@ -370,10 +336,6 @@ class Evaluator:
         H, W = tp_mask.shape[-2:]
         if self.use_relative_boundary_width:
             img_diag = np.sqrt(H**2 + W**2)
-            if GPU:
-                img_diag = img_diag.get()
-                tp_mask = tp_mask.get()
-                tn_mask = tn_mask.get()
 
             boundary_width = int(round(self.boundary_width * img_diag))
         else:
@@ -386,20 +348,9 @@ class Evaluator:
             tn_mask, width=boundary_width, implementation=self.boundary_implementation
         )
 
-        if GPU:
-            tp_ext_boundary, tn_ext_boundary = np.asarray(tp_ext_boundary), np.asarray(
-                tn_ext_boundary
-            )
-
         boundary_intersection = np.logical_and(tp_ext_boundary, tn_ext_boundary)
         fp_boundary_mask_naive = np.logical_and(fp_mask, boundary_intersection)
         fn_boundary_mask_naive = np.logical_and(fn_mask, boundary_intersection)
-
-        if GPU:
-            fp_boundary_mask_naive, fn_boundary_mask_naive = (
-                fp_boundary_mask_naive.get(),
-                fn_boundary_mask_naive.get(),
-            )
 
         dilated_fp_boundary_mask = dilate_mask(
             mask=fp_boundary_mask_naive,
@@ -412,16 +363,8 @@ class Evaluator:
             implementation=self.boundary_implementation,
         )
 
-        if GPU:
-            dilated_fp_boundary_mask = np.asarray(dilated_fp_boundary_mask)
-            dilated_fn_boundary_mask = np.asarray(dilated_fn_boundary_mask)
-
         fp_boundary_mask = np.logical_and(dilated_fp_boundary_mask, fp_mask)
         fn_boundary_mask = np.logical_and(dilated_fn_boundary_mask, fn_mask)
-
-        if GPU:
-            fp_boundary_mask = fp_boundary_mask.get()
-            fn_boundary_mask = fn_boundary_mask.get()
 
         # check if every segment of boundary errors has a TP and a TN as direct neighbor
         fp_boundary_segments = get_contiguous_segments(fp_boundary_mask)
@@ -458,10 +401,6 @@ class Evaluator:
         H, W = tp_mask.shape[-2:]
         if self.use_relative_boundary_width:
             img_diag = np.sqrt(H**2 + W**2)
-            if GPU:
-                img_diag = img_diag.get()
-                tp_mask = tp_mask.get()
-                tn_mask = tn_mask.get()
 
             boundary_width = int(round(self.boundary_width * img_diag))
         else:
@@ -474,20 +413,9 @@ class Evaluator:
             tn_mask, width=boundary_width, implementation=self.boundary_implementation
         )
 
-        if GPU:
-            tp_ext_boundary, tn_ext_boundary = np.asarray(tp_ext_boundary), np.asarray(
-                tn_ext_boundary
-            )
-
         boundary_intersection = np.logical_and(tp_ext_boundary, tn_ext_boundary)
         fp_boundary_mask_naive = np.logical_and(fp_mask, boundary_intersection)
         fn_boundary_mask_naive = np.logical_and(fn_mask, boundary_intersection)
-
-        if GPU:
-            fp_boundary_mask_naive, fn_boundary_mask_naive = (
-                fp_boundary_mask_naive.get(),
-                fn_boundary_mask_naive.get(),
-            )
 
         dilated_fp_boundary_mask = dilate_mask(
             mask=fp_boundary_mask_naive,
@@ -500,16 +428,8 @@ class Evaluator:
             implementation=self.boundary_implementation,
         )
 
-        if GPU:
-            dilated_fp_boundary_mask = np.asarray(dilated_fp_boundary_mask)
-            dilated_fn_boundary_mask = np.asarray(dilated_fn_boundary_mask)
-
         fp_boundary_mask = np.logical_and(dilated_fp_boundary_mask, fp_mask)
         fn_boundary_mask = np.logical_and(dilated_fn_boundary_mask, fn_mask)
-
-        if GPU:
-            fp_boundary_mask = fp_boundary_mask.get()
-            fn_boundary_mask = fn_boundary_mask.get()
 
         # check if every segment of boundary errors has a TP and a TN as direct neighbor
         fp_boundary_segments = get_single_contiguous_segment(fp_boundary_mask)
@@ -546,9 +466,6 @@ class Evaluator:
         pred_one_hot,
         gt_one_hot,
     ):
-        if GPU:
-            pred_one_hot = pred_one_hot.get()
-            gt_one_hot = gt_one_hot.get()
 
         pred_segments = get_contiguous_segments(pred_one_hot)
         gt_segments = get_contiguous_segments(gt_one_hot)
@@ -588,8 +505,6 @@ class Evaluator:
                 else:  # only FP segment errors for this class
                     # positive prediction must be a superset of unassigned
                     # every prediction can only be unassigned or ignore
-                    if GPU:
-                        pred_c = np.asarray(pred_c)
                     assert pred_c[results[c] == ERROR_CODES["unassigned"]].all()
                     results[c][results[c] == ERROR_CODES["unassigned"]] = ERROR_CODES["FP_segment"]
             else:
@@ -606,9 +521,6 @@ class Evaluator:
         pred_mask,
         gt_mask,
     ):
-        if GPU:
-            pred_mask = pred_mask.get()
-            gt_mask = gt_mask.get()
 
         pred_segments = get_single_contiguous_segment(pred_mask)
         gt_segments = get_single_contiguous_segment(gt_mask)
@@ -647,8 +559,6 @@ class Evaluator:
             else:  # only FP segment errors for this class
                 # positive prediction must be a superset of unassigned
                 # every prediction can only be unassigned or ignore
-                if GPU:
-                    pred_mask = np.asarray(pred_mask)
                 assert pred_mask[class_results == ERROR_CODES["unassigned"]].all()
                 class_results[class_results == ERROR_CODES["unassigned"]] = ERROR_CODES[
                     "FP_segment"
@@ -669,11 +579,6 @@ class Evaluator:
         H, W = sample_results.shape[-2:]
         img_diag = np.sqrt(H**2 + W**2)
 
-        if GPU:
-            img_diag = img_diag.get()
-            pred_one_hot = pred_one_hot.get()
-            gt_one_hot = gt_one_hot.get()
-
         boundary_width = max(int(round(self.boundary_iou_d * img_diag)), 1)
 
         # BoundaryIoU uses "fast" boundary implementation, see https://github.com/bowenc0221/boundary-iou-api/blob/37d25586a677b043ed585f10e5c42d4e80176ea9/boundary_iou/utils/boundary_utils.py#L12
@@ -686,10 +591,6 @@ class Evaluator:
         gt_one_hot_ext_boundary = get_exterior_boundary(
             gt_one_hot, width=boundary_width, implementation="fast"
         )  # G_d - G
-
-        if GPU:
-            pred_one_hot_int_boundary = np.asarray(pred_one_hot_int_boundary)
-            gt_one_hot_int_boundary = np.asarray(gt_one_hot_int_boundary)
 
         boundary_intersection = np.logical_and(pred_one_hot_int_boundary, gt_one_hot_int_boundary)
         boundary_union = np.logical_or(pred_one_hot_int_boundary, gt_one_hot_int_boundary)
@@ -708,11 +609,6 @@ class Evaluator:
         H, W = class_results.shape[-2:]
         img_diag = np.sqrt(H**2 + W**2)
 
-        if GPU:
-            img_diag = img_diag.get()
-            pred_mask = pred_mask.get()
-            gt_mask = gt_mask.get()
-
         boundary_width = max(int(round(self.boundary_iou_d * img_diag)), 1)
 
         # BoundaryIoU uses "fast" boundary implementation, see https://github.com/bowenc0221/boundary-iou-api/blob/37d25586a677b043ed585f10e5c42d4e80176ea9/boundary_iou/utils/boundary_utils.py#L12
@@ -725,10 +621,6 @@ class Evaluator:
         gt_mask_ext_boundary = get_exterior_boundary(
             gt_mask, width=boundary_width, implementation="fast"
         )  # G_d - G
-
-        if GPU:
-            pred_mask_int_boundary = np.asarray(pred_mask_int_boundary)
-            gt_mask_int_boundary = np.asarray(gt_mask_int_boundary)
 
         boundary_intersection = np.logical_and(pred_mask_int_boundary, gt_mask_int_boundary)
         boundary_union = np.logical_or(pred_mask_int_boundary, gt_mask_int_boundary)

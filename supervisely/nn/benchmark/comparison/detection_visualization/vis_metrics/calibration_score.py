@@ -1,6 +1,4 @@
-from supervisely.nn.benchmark.comparison.detection_visualization.vis_metrics.vis_metric import (
-    BaseVisMetric,
-)
+from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
 from supervisely.nn.benchmark.visualization.widgets import (
     ChartWidget,
     CollapseWidget,
@@ -10,7 +8,7 @@ from supervisely.nn.benchmark.visualization.widgets import (
 )
 
 
-class CalibrationScore(BaseVisMetric):
+class CalibrationScore(BaseVisMetrics):
     @property
     def header_md(self) -> MarkdownWidget:
         text_template = self.vis_texts.markdown_calibration_score_1
@@ -139,7 +137,7 @@ class CalibrationScore(BaseVisMetric):
                     x=eval_result.dfsp_down["scores"],
                     y=eval_result.dfsp_down["f1"],
                     mode="lines",
-                    name=f"[{i+1}] {eval_result.model_name}",
+                    name=f"[{i+1}] {eval_result.name}",
                     line=dict(color=eval_result.color),
                     hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>",
                 )
@@ -194,7 +192,7 @@ class CalibrationScore(BaseVisMetric):
                     x=pred_probs,
                     y=true_probs,
                     mode="lines+markers",
-                    name=f"[{i+1}] {eval_result.model_name}",
+                    name=f"[{i+1}] {eval_result.name}",
                     line=dict(color=eval_result.color),
                     hovertemplate=f"{eval_result.name}<br>"
                     + "Confidence Score: %{x:.2f}<br>Fraction of True Positives: %{y:.2f}<extra></extra>",

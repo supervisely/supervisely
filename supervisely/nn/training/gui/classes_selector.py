@@ -11,36 +11,36 @@ class ClassesSelector:
     lock_message = "Select training and validation splits to unlock"
 
     def __init__(self, project_id: int, classes: list, app_options: dict = {}):
-        self.classes_table = ClassesTable(project_id=project_id)  # use dataset_ids
-        if len(classes) > 0:
-            self.classes_table.select_classes(classes)  # from app options
-        else:
-            self.classes_table.select_all()
+        self.display_widgets = []
 
+        # GUI Components
         if is_development() or is_debug_with_sly_net():
             qa_stats_link = abs_url(f"projects/{project_id}/stats/datasets")
         else:
             qa_stats_link = f"/projects/{project_id}/stats/datasets"
-
         qa_stats_text = Text(
             text=f"<i class='zmdi zmdi-chart-donut' style='color: #7f858e'></i> <a href='{qa_stats_link}' target='_blank'> <b> QA & Stats </b></a>"
         )
 
+        self.classes_table = ClassesTable(project_id=project_id)
+        if len(classes) > 0:
+            self.classes_table.select_classes(classes)
+        else:
+            self.classes_table.select_all()
+
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        container = Container(
-            [
-                qa_stats_text,
-                self.classes_table,
-                self.validator_text,
-                self.button,
-            ]
+        self.display_widgets.extend(
+            [qa_stats_text, self.classes_table, self.validator_text, self.button]
         )
+        # -------------------------------- #
+
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
-            content=container,
+            content=self.container,
             lock_message=self.lock_message,
             collapsable=app_options.get("collapsable", False),
         )

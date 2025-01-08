@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pickle
 from typing import Dict, List, Optional, Union
@@ -5,27 +7,47 @@ from typing import Dict, List, Optional, Union
 import yaml
 
 from supervisely.app.widgets import SlyTqdm
+from supervisely.io.fs import get_file_name_with_ext
 from supervisely.task.progress import tqdm_sly
 
 
 class BaseEvalResult:
-    def __init__(self, directory: str):
+    def __init__(self, directory: Optional[str] = None):
         self.directory = directory
         self.inference_info: Dict = None
         self.speedtest_info: Dict = None
         self.eval_data: Dict = None
         self.mp = None
 
-        self._read_eval_data()
+        if self.directory is not None:
+            self._read_files(self.directory)
+            self._prepare_data()
+
+    @classmethod
+    def from_evaluator(cls, evaulator: BaseEvaluator) -> BaseEvalResult:
+        """Method to customize loading of the evaluation result."""
+        raise NotImplementedError()
 
     @property
     def cv_task(self):
         return self.inference_info.get("task_type")
 
     @property
-    def name(self) -> str:
-        model_name = self.inference_info.get("model_name", self.directory)
-        return self.inference_info.get("deploy_params", {}).get("checkpoint_name", model_name)
+    def name(self) -> Union[str, None]:
+        deploy_params = self.inference_info.get("deploy_params", {})
+        return (
+            deploy_params.get("checkpoint_name")
+            or deploy_params.get("model_name")
+            or self.inference_info.get("model_name")
+        )
+
+    @property
+    def short_name(self) -> str:
+        if not self.name:
+            return
+        if len(self.name) > 20:
+            return self.name[:9] + "..." + self.name[-7:]
+        return self.name
 
     @property
     def gt_project_id(self) -> int:
@@ -59,8 +81,34 @@ class BaseEvalResult:
     def classes_whitelist(self):
         return self.inference_info.get("inference_settings", {}).get("classes", [])  # TODO: check
 
-    def _read_eval_data(self):
+    def _read_files(self, path: str) -> None:
+        """Read all necessary files from the directory"""
         raise NotImplementedError()
+
+    def _prepare_data(self) -> None:
+        """Prepare data to allow easy access to the data"""
+        raise NotImplementedError()
+
+    @property
+    def key_metrics(self):
+        raise NotImplementedError()
+
+    @property
+    def checkpoint_name(self):
+        if self.inference_info is None:
+            return None
+
+        deploy_params = self.inference_info.get("deploy_params", {})
+        name = None
+        if deploy_params:
+            name = deploy_params.get("checkpoint_name")  # not TrainApp
+            if name is None:
+                name = deploy_params.get("model_files", {}).get("checkpoint")
+                if name is not None:
+                    name = get_file_name_with_ext(name)
+        if name is None:
+            name = self.inference_info.get("checkpoint_name", "")
+        return name
 
 
 class BaseEvaluator:

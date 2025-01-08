@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Union
 
 from supervisely import env, logger
@@ -18,6 +19,8 @@ from supervisely.app.widgets import (
 )
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.utils import ModelSource
+
 
 WEIGHTS_DIR = "weights"
 
@@ -72,26 +75,34 @@ class ExperimentSelector(Widget):
 
             # col 3 project
             self._training_project_id = experiment_info.project_id
-            self._training_project_info = self._api.project.get_info_by_id(
-                self._training_project_id
-            )
+            if self._training_project_id is None:
+                self._training_project_info = None
+            else:
+                self._training_project_info = self._api.project.get_info_by_id(
+                    self._training_project_id
+                )
 
             # col 4 checkpoints
             self._checkpoints = experiment_info.checkpoints
 
             self._checkpoints_names = []
             self._checkpoints_paths = []
+            self._best_checkpoint_value = None
             for checkpoint_path in self._checkpoints:
                 self._checkpoints_names.append(get_file_name_with_ext(checkpoint_path))
                 self._checkpoints_paths.append(
                     os.path.join(experiment_info.artifacts_dir, checkpoint_path)
                 )
+                if experiment_info.best_checkpoint == get_file_name_with_ext(checkpoint_path):
+                    self._best_checkpoint = os.path.join(
+                        experiment_info.artifacts_dir, checkpoint_path
+                    )
 
             # col 5 session
             self._session_link = self._generate_session_link()
 
             # col 6 benchmark report
-            self._benchmark_report = None  # experiment_infos.benchmark_report_path
+            self._benchmark_report_id = experiment_info.evaluation_report_id
 
             # widgets
             self._task_widget = self._create_task_widget()
@@ -191,7 +202,7 @@ class ExperimentSelector(Widget):
             task_widget = Container(
                 [
                     Text(
-                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}'>{self._task_id}</a>",
+                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}' target='_blank'>{self._task_id}</a>",
                         "text",
                     ),
                     Text(
@@ -233,26 +244,35 @@ class ExperimentSelector(Widget):
             for path, name in zip(self._checkpoints_paths, self._checkpoints_names):
                 checkpoint_selector_items.append(Select.Item(value=path, label=name))
             checkpoint_selector = Select(items=checkpoint_selector_items)
+            if self._best_checkpoint_value is not None:
+                checkpoint_selector.set_value(self._best_checkpoint)
             return checkpoint_selector
 
         def _create_session_widget(self) -> Text:
             session_link_widget = Text(
-                f"<a href='{self._session_link}'>Preview</a> <i class='zmdi zmdi-open-in-new'></i>",
+                f"<a href='{self._session_link}' target='_blank'>Preview</a> <i class='zmdi zmdi-open-in-new'></i>",
                 "text",
             )
             return session_link_widget
 
         def _create_benchmark_widget(self) -> Text:
-            if self._benchmark_report is None:
-                self._benchmark_report = "No benchmark report available"
+            if self._benchmark_report_id is None:
+                self._benchmark_report_id = "No evaluation report available"
                 benchmark_widget = Text(
-                    "<span class='field-description text-muted' style='color: #7f858e'>No benchmark report available</span>",
+                    "<span class='field-description text-muted' style='color: #7f858e'>No evaluation report available</span>",
                     "text",
                     font_size=13,
                 )
             else:
+                if is_development():
+                    benchmark_report_link = abs_url(
+                        f"/model-benchmark?id={self._benchmark_report_id}"
+                    )
+                else:
+                    benchmark_report_link = f"/model-benchmark?id={self._benchmark_report_id}"
+
                 benchmark_widget = Text(
-                    f"<a href='{self._benchmark_report}'>Benchmark Report</a> <i class='zmdi zmdi-chart'></i>",
+                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
                     "text",
                 )
             return benchmark_widget
@@ -432,7 +452,7 @@ class ExperimentSelector(Widget):
         if len(self._rows) == 0:
             return
         selected_row = self.get_selected_row()
-        selected_row_json = selected_row._experiment_info._asdict()
+        selected_row_json = asdict(selected_row._experiment_info)
         return selected_row_json
 
     def get_selected_checkpoint_path(self) -> str:
@@ -454,6 +474,17 @@ class ExperimentSelector(Widget):
         }
         full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
         return full_model_files
+
+    def get_deploy_params(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary with deploy parameters except runtime and device keys.
+        """
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": self.get_model_files(),
+            "model_info": self.get_selected_experiment_info(),
+        }
+        return deploy_params
 
     def set_active_row(self, row_index: int) -> None:
         if row_index < 0 or row_index > len(self._rows) - 1:

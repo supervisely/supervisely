@@ -2091,7 +2091,12 @@ class Project:
                     OpenMode.READ,
                     parents=parents,
                 )
-                self._datasets = self._datasets.add(current_dataset)
+                if current_dataset.name not in self._datasets._collection:
+                    self._datasets = self._datasets.add(current_dataset)
+                else:
+                    logger.debug(
+                        f"Dataset '{current_dataset.name}' already exists in project '{self.name}'. Skip adding to collection."
+                    )
             except Exception as ex:
                 logger.warning(ex)
 
@@ -4427,23 +4432,29 @@ async def _download_project_async(
     switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
-    # number of workers
-    num_workers = kwargs.get("num_workers", 5)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
 
-    async def worker(queue: asyncio.Queue, semaphore: asyncio.Semaphore):
-        while True:
+    # number of workers
+    num_workers = min(kwargs.get("num_workers", semaphore._value), 10)
+
+    async def worker(queue: asyncio.Queue, stop_event: asyncio.Event):
+        while not stop_event.is_set():
             task = await queue.get()
             if task is None:
                 break
-            async with semaphore:
+            try:
                 await task
-            queue.task_done()
+            except Exception as e:
+                logger.error(f"Error in _download_project_async worker: {e}")
+                stop_event.set()
+            finally:
+                queue.task_done()
 
     queue = asyncio.Queue()
-    workers = [asyncio.create_task(worker(queue, semaphore)) for _ in range(num_workers)]
+    stop_event = asyncio.Event()
+    workers = [asyncio.create_task(worker(queue, stop_event)) for _ in range(num_workers)]
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4489,9 +4500,11 @@ async def _download_project_async(
         )
         small_images = []
         large_images = []
+        dataset_images = []
         async for image_batch in all_images:
             for image in image_batch:
                 if images_ids is None or image.id in images_ids:
+                    dataset_images.append(image)
                     if image.size < switch_size:
                         small_images.append(image)
                     else:
@@ -4518,13 +4531,12 @@ async def _download_project_async(
                     try:
                         existing = dataset_fs.get_item_info(image.name)
                     except:
-                        pass
+                        to_download.append(image)
                     else:
-                        if existing.updated_at == image.updated_at:
-                            if ds_progress is not None:
-                                ds_progress(1)
-                            continue
-                    to_download.append(image)
+                        if existing.updated_at != image.updated_at:
+                            to_download.append(image)
+                        elif ds_progress is not None:
+                            ds_progress(1)
                 return to_download
 
             small_images = await check_items(small_images)
@@ -4563,11 +4575,9 @@ async def _download_project_async(
 
         await queue.join()
 
-        all_images = small_images + large_images
-
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
-            for image_info in all_images:
+            for image_info in dataset_images:
                 if image_info.meta:
                     sly.fs.mkdir(meta_dir)
                     sly.json.dump_json_file(
@@ -4575,7 +4585,7 @@ async def _download_project_async(
                     )
 
         # delete redundant items
-        items_names_set = set([img.name for img in all_images])
+        items_names_set = set([img.name for img in dataset_images])
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
@@ -4583,6 +4593,10 @@ async def _download_project_async(
     for _ in range(num_workers):
         await queue.put(None)
     await asyncio.gather(*workers)
+
+    if stop_event.is_set():
+        raise RuntimeError("Download process was stopped due to an error in one of the workers.")
+
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:
@@ -4605,6 +4619,9 @@ async def _download_project_item_async(
     Uses parameters from the parent function _download_project_async.
     """
     if save_images:
+        logger.debug(
+            f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
+        )
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
         )
@@ -4667,6 +4684,9 @@ async def _download_project_items_batch_async(
         img_ids = [img_info.id for img_info in img_infos]
         imgs_bytes = [None] * len(img_ids)
         temp_dict = {}
+        logger.debug(
+            f"Downloading {len(img_ids)} images in bulk with _download_project_items_batch_async"
+        )
         async for img_id, img_bytes in api.image.download_bytes_generator_async(
             dataset_id,
             img_ids,
@@ -4682,6 +4702,7 @@ async def _download_project_items_batch_async(
                 width, height = sly.image.get_size_from_bytes(img_bytes)
                 img_info = img_info._replace(height=height, width=width)
     else:
+        img_ids = [img_info.id for img_info in img_infos]
         imgs_bytes = [None] * len(img_infos)
 
     if only_image_tags is False:

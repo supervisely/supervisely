@@ -50,7 +50,7 @@ class RecallVsPrecision(DetectionVisMetric):
                 marker=dict(color=orange_color),
             )
         )
-        fig.update_layout(barmode="group")
+        fig.update_layout(barmode="group", width=800 if len(sorted_by_f1) < 10 else None)
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Value", range=[0, 1])
         return fig

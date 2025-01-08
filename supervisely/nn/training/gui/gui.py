@@ -5,8 +5,10 @@ This module provides the `TrainGUI` class that handles the graphical user interf
 training workflows in Supervisely.
 """
 
+from os import environ
+
 import supervisely.io.env as sly_env
-from supervisely import Api
+from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
@@ -14,10 +16,11 @@ from supervisely.nn.training.gui.hyperparameters_selector import Hyperparameters
 from supervisely.nn.training.gui.input_selector import InputSelector
 from supervisely.nn.training.gui.model_selector import ModelSelector
 from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
+from supervisely.nn.training.gui.training_artifacts import TrainingArtifacts
 from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, RuntimeType
 
 
 class TrainGUI:
@@ -46,11 +49,12 @@ class TrainGUI:
         app_options: dict = None,
     ):
         self._api = Api.from_env()
-
         if is_production():
             self.task_id = sly_env.task_id()
         else:
-            self.task_id = "debug-session"
+            self.task_id = sly_env.task_id(raise_not_found=False)
+            if self.task_id is None:
+                self.task_id = "debug-session"
 
         self.framework_name = framework_name
         self.models = models
@@ -58,10 +62,18 @@ class TrainGUI:
         self.app_options = app_options
         self.collapsable = app_options.get("collapsable", False)
 
-        self.team_id = sly_env.team_id()
-        self.workspace_id = sly_env.workspace_id()
-        self.project_id = sly_env.project_id()  # from app options?
+        self.team_id = sly_env.team_id(raise_not_found=False)
+        self.workspace_id = sly_env.workspace_id(raise_not_found=False)
+        self.project_id = sly_env.project_id()
         self.project_info = self._api.project.get_info_by_id(self.project_id)
+        self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
+
+        if self.workspace_id is None:
+            self.workspace_id = self.project_info.workspace_id
+            environ["WORKSPACE_ID"] = str(self.workspace_id)
+        if self.team_id is None:
+            self.team_id = self.project_info.team_id
+            environ["TEAM_ID"] = str(self.team_id)
 
         # 1. Project selection + Train/val split
         self.input_selector = InputSelector(self.project_info, self.app_options)
@@ -85,17 +97,22 @@ class TrainGUI:
         # 7. Training logs
         self.training_logs = TrainingLogs(self.app_options)
 
+        # 8. Training Artifacts
+        self.training_artifacts = TrainingArtifacts(self._api, self.app_options)
+
         # Stepper layout
+        self.steps = [
+            self.input_selector.card,
+            self.train_val_splits_selector.card,
+            self.classes_selector.card,
+            self.model_selector.card,
+            self.hyperparameters_selector.card,
+            self.training_process.card,
+            self.training_logs.card,
+            self.training_artifacts.card,
+        ]
         self.stepper = Stepper(
-            widgets=[
-                self.input_selector.card,
-                self.train_val_splits_selector.card,
-                self.classes_selector.card,
-                self.model_selector.card,
-                self.hyperparameters_selector.card,
-                self.training_process.card,
-                self.training_logs.card,
-            ],
+            widgets=self.steps,
         )
         # ------------------------------------------------- #
 
@@ -264,6 +281,20 @@ class TrainGUI:
 
         self.layout: Widget = self.stepper
 
+    def set_next_step(self):
+        current_step = self.stepper.get_active_step()
+        self.stepper.set_active_step(current_step + 1)
+
+    def set_previous_step(self):
+        current_step = self.stepper.get_active_step()
+        self.stepper.set_active_step(current_step - 1)
+
+    def set_first_step(self):
+        self.stepper.set_active_step(1)
+
+    def set_last_step(self):
+        self.stepper.set_active_step(len(self.steps))
+
     def enable_select_buttons(self):
         """
         Makes all select buttons in the GUI available for interaction.
@@ -399,7 +430,7 @@ class TrainGUI:
 
             app_state = {
                 "input": {"project_id": 43192},
-                "train_val_splits": {
+                "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
@@ -415,13 +446,18 @@ class TrainGUI:
                         "enable": True,
                         "speed_test": True
                     },
-                    "cache_project": True
+                    "cache_project": True,
+                "export": {
+                    "enable": True,
+                    "ONNXRuntime": True,
+                    "TensorRT": True
+                    },
                 }
             }
         """
         app_state = self.validate_app_state(app_state)
 
-        options = app_state["options"]
+        options = app_state.get("options", {})
         input_settings = app_state["input"]
         train_val_splits_settings = app_state["train_val_split"]
         classes_settings = app_state["classes"]
@@ -444,7 +480,7 @@ class TrainGUI:
         :type options: dict
         """
         # Set Input
-        self.input_selector.set_cache(options["cache_project"])
+        self.input_selector.set_cache(options.get("cache_project", True))
         self.input_selector_cb()
         # ----------------------------------------- #
 
@@ -527,13 +563,22 @@ class TrainGUI:
         """
         self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
-        model_benchmark_settings = options["model_benchmark"]
-        self.hyperparameters_selector.set_model_benchmark_checkbox_value(
-            model_benchmark_settings["enable"]
-        )
-        self.hyperparameters_selector.set_speedtest_checkbox_value(
-            model_benchmark_settings["speed_test"]
-        )
+        model_benchmark_settings = options.get("model_benchmark", None)
+        if model_benchmark_settings is not None:
+            self.hyperparameters_selector.set_model_benchmark_checkbox_value(
+                model_benchmark_settings["enable"]
+            )
+            self.hyperparameters_selector.set_speedtest_checkbox_value(
+                model_benchmark_settings["speed_test"]
+            )
+        export_weights_settings = options.get("export", None)
+        if export_weights_settings is not None:
+            self.hyperparameters_selector.set_export_onnx_checkbox_value(
+                export_weights_settings.get(RuntimeType.ONNXRUNTIME, False)
+            )
+            self.hyperparameters_selector.set_export_tensorrt_checkbox_value(
+                export_weights_settings.get(RuntimeType.TENSORRT, False)
+            )
         self.hyperparameters_selector_cb()
 
     # ----------------------------------------- #

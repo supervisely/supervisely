@@ -40,7 +40,7 @@ We provide a comprehensive model performance analysis using a set of metrics, in
 
 - **Pixel accuracy**: reflects the percent of image pixels which were correctly classified.
 - **Precision**: reflects the number of correctly predicted positive segmentations divided by the total number of predicted positive segmentations.
-- **Recall8**: reflects the number of correctly predicted positive segmentations divided by the number of all samples that should have been segmented as positive.
+- **Recall**: reflects the number of correctly predicted positive segmentations divided by the number of all samples that should have been segmented as positive.
 - **F1-score**: reflects the tradeoff between precision and recall. It is equivalent to the Dice coefficient and calculated as a harmonic mean of precision and recall.
 - **Intersection over union (IoU, also known as the Jaccard index)**: measures the overlap between ground truth mask and predicted mask. It is calculated as the ratio of the intersection of the two masks areas to their combined areas.
 - **Boundary intersection over union**: a segmentation consistency measure that first computes the sets of ground truth  and predicted masks pixels that are located within the distance d from each contour and then computes intersection over union of these two sets. Pixel distance parameter d (pixel width of the boundary region) controls the sensitivity of the metric, it is usually set as 2% of the image diagonal for normal resolution images and 0.5% of the image diagonal for high resolution images.
@@ -72,7 +72,7 @@ The pie chart below demonstrates what the model lacked in order to show the perf
 
 markdown_renormalized_error_ou = """## Renormalized Error Over Union
 
-The pie chart below is dedicated to decomposition of postprocessed variant of error over union which takes into consideration cause and effect relationships between different types of segmentation errors. Error over union decomposition has its own pitfalls. It is important to understand that models which tend to produce segment errors (when entire segments are mispredicted and there is no intersection between ground truth and predicted mask) will face less occasions to produce boundary and extent errors - as a result, boundary and extent error over union values will be underestimated.
+The chart below is dedicated to decomposition of postprocessed variant of error over union which takes into consideration cause and effect relationships between different types of segmentation errors. Error over union decomposition has its own pitfalls. It is important to understand that models which tend to produce segment errors (when entire segments are mispredicted and there is no intersection between ground truth and predicted mask) will face less occasions to produce boundary and extent errors - as a result, boundary and extent error over union values will be underestimated.
 
 In terms of localization, segment error is more fundamental than extent, while extent error is more fundamental than boundary. In order to overcome this problem, renormalized error over union proposes a slightly different calculation method - by removing more fundamental errors from the denominator - read more in our <a href="{}" target="_blank">technical report</a>
 """.format(
