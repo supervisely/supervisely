@@ -1,10 +1,11 @@
-from typing import List
-import numpy as np
-from os import path as osp
-from nuscenes.utils.data_classes import transform_matrix
 from datetime import datetime
-from supervisely import fs, logger
+from os import path as osp
 from pathlib import Path
+from typing import List
+
+import numpy as np
+
+from supervisely import fs, logger
 from supervisely.geometry.cuboid_3d import Cuboid3d, Vector3d
 
 DIR_NAMES = [
@@ -100,7 +101,7 @@ class Sample:
             pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
             o3d.io.write_point_cloud(save_path, pc)
         except Exception as e:
-            logger.warn(f"Error converting lidar to supervisely format: {e}")
+            logger.warning(f"Error converting lidar to supervisely format: {e}")
         return save_path
 
 
@@ -192,7 +193,10 @@ class CamData:
     """
 
     def __init__(self, nuscenes, sensor_name, sensor_token, cs_record, ego_record):
-        from pyquaternion import Quaternion
+        from nuscenes.utils.data_classes import (  # pylint: disable=import-error
+            transform_matrix,
+        )
+        from pyquaternion import Quaternion  # pylint: disable=import-error
 
         img_path, boxes, cam_intrinsic = nuscenes.get_sample_data(sensor_token)
         if not osp.exists(img_path):

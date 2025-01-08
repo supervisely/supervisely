@@ -1,36 +1,29 @@
+import os
 from typing import Dict, Optional
-from supervisely import (
-    Api,
-    ObjClass,
-    PointcloudAnnotation,
-    ProjectMeta,
-    logger,
-    is_development,
-    PointcloudObject,
-    TagMeta,
-    TagValueType,
-)
-from supervisely.io import fs
+
+import supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_helper as helpers
+import supervisely.io.fs as fs
+from supervisely import PointcloudAnnotation, PointcloudObject
+from supervisely._utils import is_development
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.api import Api, ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
-from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.api.api import ApiField
-from supervisely.pointcloud_annotation.pointcloud_annotation import (
-    PointcloudFigure,
-    PointcloudObjectCollection,
-    PointcloudTagCollection,
-)
-from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
-
 from supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_converter import (
     NuscenesEpisodesConverter,
 )
-from supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_helper import (
-    Sample,
-    AnnotationObject,
-    CamData,
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
+from supervisely.pointcloud_annotation.pointcloud_object_collection import (
+    PointcloudObjectCollection,
 )
-from os import path as osp
+from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
+    PointcloudTagCollection,
+)
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 
 
 class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
@@ -134,13 +127,13 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
             for i in range(scene["nbr_samples"]):
                 sample = nuscenes.get("sample", sample_token)
                 lidar_path, boxes, _ = nuscenes.get_sample_data(sample["data"]["LIDAR_TOP"])
-                if not osp.exists(lidar_path):
-                    logger.warn(f'Scene "{scene["name"]}" has no LIDAR data.')
+                if not os.path.exists(lidar_path):
+                    logger.warning(f'Scene "{scene["name"]}" has no LIDAR data.')
                     continue
 
                 timestamp = sample["timestamp"]
                 anns = []
-                for box, name, inst_token in Sample.generate_boxes(nuscenes, boxes):
+                for box, name, inst_token in helpers.Sample.generate_boxes(nuscenes, boxes):
                     current_instance_token = inst_token["token"]
                     parent_token = inst_token["prev"]
 
@@ -153,7 +146,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     visibility = nuscenes.get("visibility", ann["visibility_token"])["level"]
 
                     anns.append(
-                        AnnotationObject(
+                        helpers.AnnotationObject(
                             name,
                             box,
                             current_instance_token,
@@ -172,11 +165,11 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                 ego_pose = nuscenes.get("ego_pose", sample_data["ego_pose_token"])
 
                 camera_data = [
-                    CamData(nuscenes, sensor, token, cal_sensor, ego_pose)
+                    helpers.CamData(nuscenes, sensor, token, cal_sensor, ego_pose)
                     for sensor, token in sample["data"].items()
                     if sensor.startswith("CAM")
                 ]
-                scene_samples.append(Sample(timestamp, lidar_path, anns, camera_data))
+                scene_samples.append(helpers.Sample(timestamp, lidar_path, anns, camera_data))
                 sample_token = sample["next"]
 
             # * Convert and upload pointclouds w/ annotations
@@ -201,7 +194,7 @@ class NuscenesConverter(NuscenesEpisodesConverter, PointcloudConverter):
                     api.pointcloud.annotation.append(pcd_id, pcd_ann)
                 except Exception as e:
                     error_msg = getattr(getattr(e, "response", e), "text", str(e))
-                    logger.warn(
+                    logger.warning(
                         f"Failed to upload annotation for scene: {scene['name']}. Message: {error_msg}"
                     )
 
