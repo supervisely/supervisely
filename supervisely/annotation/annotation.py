@@ -9,7 +9,7 @@ import json
 import operator
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -3068,11 +3068,43 @@ class Annotation:
         from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
 
         return sly_ann_to_coco(
-            self,
-            coco_image_id,
-            class_mapping,
-            coco_ann,
-            last_label_id,
-            coco_captions,
-            last_caption_id,
+            ann=self,
+            coco_image_id=coco_image_id,
+            class_mapping=class_mapping,
+            coco_ann=coco_ann,
+            last_label_id=last_label_id,
+            coco_captions=coco_captions,
+            last_caption_id=last_caption_id,
         )
+
+    def to_yolo(
+        self,
+        class_names: List[str],
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    ) -> List[str]:
+        """
+        Convert Supervisely annotation to YOLO annotation format.
+        Returns a list of strings, each string represents one object.
+
+        :param class_names: List of class names.
+        :type class_names: List[str]
+        :param task_type: Task type, one of "detection", "segmentation", "pose".
+        :type task_type: str
+        :return: List of objects in YOLO format.
+        :rtype: :class:`list`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            class_names = [obj_cls.name for obj_cls in meta.obj_classes]
+
+            yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
+        """
+
+        from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
+
+        return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)

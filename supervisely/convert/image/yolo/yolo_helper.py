@@ -552,7 +552,7 @@ def sly_ds_to_yolo(
         shutil.copy2(img_path, images_dir / img_name)
 
         label_path = str(labels_dir / f"{img_name}.txt")
-        yolo_lines = sly_ann_to_yolo(ann, class_names, task_type)
+        yolo_lines = ann.to_yolo(class_names, task_type)
         if len(yolo_lines) > 0:
             with open(label_path, "w") as f:
                 f.write("\n".join(yolo_lines))
