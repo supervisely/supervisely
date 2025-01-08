@@ -2,7 +2,6 @@ from typing import List
 import numpy as np
 from os import path as osp
 from nuscenes.utils.data_classes import transform_matrix
-from pyquaternion import Quaternion
 from datetime import datetime
 from supervisely import fs, logger
 from pathlib import Path
@@ -193,6 +192,8 @@ class CamData:
     """
 
     def __init__(self, nuscenes, sensor_name, sensor_token, cs_record, ego_record):
+        from pyquaternion import Quaternion
+
         img_path, boxes, cam_intrinsic = nuscenes.get_sample_data(sensor_token)
         if not osp.exists(img_path):
             return None
