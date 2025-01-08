@@ -57,3 +57,12 @@ from supervisely.convert.video.sly.sly_video_converter import SLYVideoConverter
 # Volume
 from supervisely.convert.volume.sly.sly_volume_converter import SLYVolumeConverter
 from supervisely.convert.volume.dicom.dicom_converter import DICOMConverter
+
+# Export Converters
+from supervisely.convert.image.coco.coco_helper import sly_project_to_coco as to_coco
+from supervisely.convert.image.yolo.yolo_helper import sly_project_to_yolo as to_yolo
+
+__all__ = [
+    "to_coco",
+    "to_yolo",
+]

@@ -9,14 +9,14 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-from tqdm import tqdm
 
 from supervisely._utils import generate_free_name
 from supervisely.api.image_api import ImageApi
 from supervisely.imaging.image import read as sly_image
-from supervisely.io.fs import get_file_name_with_ext, list_files
+from supervisely.io.fs import get_file_name_with_ext
 from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project import Dataset
+from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import tqdm_sly
 
 COCO_INSTANCES_FILE = "coco_instances.json"
@@ -737,3 +737,66 @@ def sly_ds_to_coco(
             logger.info(f"Saved COCO captions to '{captions_path}'")
 
     return coco_ann, coco_captions
+
+
+def sly_project_to_coco(
+    project: Union[Project, str],
+    dest_dir: Optional[str] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Callable] = None,
+) -> None:
+    """
+    Convert Supervisely project to COCO format.
+
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
+
+        # Convert Project to COCO format
+        sly.Project(project_directory).to_coco(log_progress=True)
+    """
+    if isinstance(project, str):
+        project = Project(project, mode=OpenMode.READ)
+
+    dest_dir = Path(dest_dir) if dest_dir is not None else Path(project.directory).parent / "coco"
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    if len(os.listdir(dest_dir)) > 0:
+        raise FileExistsError(f"Directory {dest_dir} is not empty.")
+
+    if progress_cb is not None:
+        log_progress = False
+
+    if log_progress:
+        progress_cb = tqdm_sly(
+            desc="Converting Supervisely project to COCO format", total=project.total_items
+        ).update
+
+    used_ds_names = set()
+    for ds in project.datasets:
+        ds: Dataset
+        coco_dir = generate_free_name(used_ds_names, ds.short_name, extend_used_names=True)
+        ds.to_coco(
+            meta=project.meta,
+            dest_dir=dest_dir / coco_dir,
+            save_json=True,
+            copy_images=True,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+        logger.info(f"Dataset '{ds.short_name}' has been converted to COCO format.")
+    logger.info(f"Project '{project.name}' has been converted to COCO format.")

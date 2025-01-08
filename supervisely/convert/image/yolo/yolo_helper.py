@@ -18,7 +18,7 @@ from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.color import generate_rgb
 from supervisely.io.fs import get_file_name_with_ext, touch
-from supervisely.project.project import Dataset
+from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
@@ -594,3 +594,66 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
         yaml.dump(data_yaml, f, default_flow_style=None)
 
     logger.info(f"Data config file has been saved to {str(save_path)}")
+
+
+def sly_project_to_yolo(
+    project: Union[Project, str],
+    dest_dir: Optional[str] = None,
+    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    log_progress: bool = False,
+    progress_cb: Optional[Callable] = None,
+):
+    """
+    Convert Supervisely project to YOLO format.
+
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
+
+        # Convert Project to YOLO format
+        sly.Project(project_directory).to_yolo(log_progress=True)
+    """
+    if isinstance(project, str):
+        project = Project(project, mode=OpenMode.READ)
+
+    dest_dir = Path(project.directory).parent / "yolo" if dest_dir is None else Path(dest_dir)
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    if len(os.listdir(dest_dir)) > 0:
+        raise FileExistsError(f"Directory {dest_dir} is not empty.")
+
+    if progress_cb is not None:
+        log_progress = False
+
+    if log_progress:
+        progress_cb = tqdm_sly(
+            desc="Converting Supervisely project to YOLO format", total=project.total_items
+        ).update
+
+    save_yolo_config(project.meta, dest_dir, with_keypoint=task_type == "pose")
+
+    for dataset in project.datasets:
+        dataset: Dataset
+        dataset.to_yolo(
+            meta=project.meta,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+        logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
+    logger.info(f"Project '{project.name}' has been converted to YOLO format.")

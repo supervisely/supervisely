@@ -3661,35 +3661,18 @@ class Project:
 
             # Convert Project to COCO format
             sly.Project(project_directory).to_coco(log_progress=True)
+            # or
+            from supervisely.convert import to_coco
+            to_coco(project_directory, dest_dir="./coco_project")
         """
-        dest_dir = Path(dest_dir) if dest_dir is not None else Path(self.directory).parent / "coco"
+        from supervisely.convert import to_coco
 
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        if len(os.listdir(dest_dir)) > 0:
-            raise FileExistsError(f"Directory {dest_dir} is not empty.")
-
-        if progress_cb is not None:
-            log_progress = False
-
-        if log_progress:
-            progress_cb = tqdm_sly(
-                desc="Converting Supervisely project to COCO format", total=self.total_items
-            ).update
-
-        used_ds_names = set()
-        for ds in self.datasets:
-            ds: Dataset
-            coco_dir = generate_free_name(used_ds_names, ds.short_name, extend_used_names=True)
-            ds.to_coco(
-                meta=self.meta,
-                dest_dir=dest_dir / coco_dir,
-                save_json=True,
-                copy_images=True,
-                log_progress=log_progress,
-                progress_cb=progress_cb,
-            )
-            logger.info(f"Dataset '{ds.short_name}' has been converted to COCO format.")
-        logger.info(f"Project '{self.name}' has been converted to COCO format.")
+        return to_coco(
+            project=self,
+            dest_dir=dest_dir,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
     def to_yolo(
         self,
@@ -3721,37 +3704,20 @@ class Project:
 
             # Convert Project to YOLO format
             sly.Project(project_directory).to_yolo(log_progress=True)
+            # or
+            from supervisely.convert import to_yolo
+            to_yolo(project_directory, dest_dir="./yolo_project")
         """
 
-        from supervisely.convert.image.yolo.yolo_helper import save_yolo_config
+        from supervisely.convert import to_yolo
 
-        dest_dir = Path(self.directory).parent / "yolo" if dest_dir is None else Path(dest_dir)
-
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        if len(os.listdir(dest_dir)) > 0:
-            raise FileExistsError(f"Directory {dest_dir} is not empty.")
-
-        if progress_cb is not None:
-            log_progress = False
-
-        if log_progress:
-            progress_cb = tqdm_sly(
-                desc="Converting Supervisely project to YOLO format", total=self.total_items
-            ).update
-
-        save_yolo_config(self.meta, dest_dir, with_keypoint=task_type == "pose")
-
-        for dataset in self.datasets:
-            dataset: Dataset
-            dataset.to_yolo(
-                meta=self.meta,
-                dest_dir=dest_dir,
-                task_type=task_type,
-                log_progress=log_progress,
-                progress_cb=progress_cb,
-            )
-            logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
-        logger.info(f"Project '{self.name}' has been converted to YOLO format.")
+        return to_yolo(
+            project=self,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
 
 def read_single_project(
