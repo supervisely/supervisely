@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 from typing import Callable, List, Literal, Optional, Tuple, Union
@@ -5,6 +6,7 @@ from typing import Callable, List, Literal, Optional, Tuple, Union
 import yaml
 from tqdm import tqdm
 
+from supervisely._utils import generate_free_name
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.geometry.alpha_mask import AlphaMask
@@ -15,7 +17,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import touch
+from supervisely.io.fs import get_file_name_with_ext, touch
 from supervisely.project.project import Dataset
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -449,14 +451,14 @@ def label_to_yolo_lines(
     for label in labels:
         if task_type == "detection":
             yolo_line = rectangle_to_yolo_line(
-                class_name=class_idx,
+                class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
         elif task_type == "segmentation":
             yolo_line = polygon_to_yolo_line(
-                class_name=class_idx,
+                class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
@@ -465,7 +467,7 @@ def label_to_yolo_lines(
             nodes_field = label.obj_class.geometry_type.items_json_field
             max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
             yolo_line = keypoints_to_yolo_line(
-                class_name=class_idx,
+                class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
@@ -491,7 +493,7 @@ def sly_ann_to_yolo(
 
     h, w = ann.img_size
     yolo_lines = []
-    for label in ann:
+    for label in ann.labels:
         lines = label_to_yolo_lines(
             label=label,
             img_height=h,
@@ -506,7 +508,7 @@ def sly_ann_to_yolo(
 def sly_ds_to_yolo(
     dataset: Dataset,
     meta: ProjectMeta,
-    save_path: Optional[str] = None,
+    dest_dir: Optional[str] = None,
     task_type: Literal["detection", "segmentation", "pose"] = "detection",
     log_progress: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -521,12 +523,12 @@ def sly_ds_to_yolo(
             total=len(dataset),
         ).update
 
-    save_path = Path(dataset.path) / "yolo" if save_path is None else Path(save_path)
-    save_path.mkdir(parents=True, exist_ok=True)
+    dest_dir = Path(dataset.path) / "yolo" if dest_dir is None else Path(dest_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
     # * create train and val directories
-    images_dir = save_path / "images"
-    labels_dir = save_path / "labels"
+    images_dir = dest_dir / "images"
+    labels_dir = dest_dir / "labels"
     train_images_dir = images_dir / "train"
     train_labels_dir = labels_dir / "train"
     val_images_dir = images_dir / "val"
@@ -536,23 +538,20 @@ def sly_ds_to_yolo(
 
     # * convert annotations and copy images
     class_names = [obj_class.name for obj_class in meta.obj_classes]
+    used_names = set(os.listdir(train_images_dir)) | set(os.listdir(val_images_dir))
     for name in dataset.get_items_names():
-        # todo add ds prefix to name
         ann_path = dataset.get_ann_path(name)
         ann = Annotation.load_json_file(ann_path, meta)
 
-        images_dir = train_images_dir if ann.img_tags.get("val") else val_images_dir
-        labels_dir = train_labels_dir if ann.img_tags.get("val") else val_labels_dir
+        images_dir = val_images_dir if ann.img_tags.get("val") else train_images_dir
+        labels_dir = val_labels_dir if ann.img_tags.get("val") else train_labels_dir
 
         img_path = Path(dataset.get_img_path(name))
-        img_rel_path = img_path.relative_to(dataset.path)
+        img_name = f"{dataset.short_name}_{get_file_name_with_ext(img_path)}"
+        img_name = generate_free_name(used_names, img_name, with_ext=True, extend_used_names=True)
+        shutil.copy2(img_path, images_dir / img_name)
 
-        img_dst_path = images_dir / img_rel_path
-        img_dst_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(img_path, img_dst_path)
-
-        ann_rel_path = ann_path.relative_to(dataset.path)
-        label_path = str(labels_dir / ann_rel_path.with_suffix(".txt"))
+        label_path = str(labels_dir / f"{img_name}.txt")
         yolo_lines = sly_ann_to_yolo(ann, class_names, task_type)
         if len(yolo_lines) > 0:
             with open(label_path, "w") as f:
@@ -560,28 +559,38 @@ def sly_ds_to_yolo(
         else:
             touch(label_path)
 
-        if log_progress:
+        if progress_cb is not None:
             progress_cb(1)
 
     # * save data config file if it does not exist
-    config_path = save_path / "data_config.yaml"
+    config_path = dest_dir / "data_config.yaml"
     if not config_path.exists():
-        save_yolo_config(meta, config_path)
+        save_yolo_config(meta, dest_dir, with_keypoint=task_type == "pose")
 
-    return str(save_path)
+    return str(dest_dir)
 
 
-def save_yolo_config(meta: ProjectMeta, save_path: str):
-    class_names = [obj_class.name for obj_class in meta.obj_classes]
-    class_colors = [obj_class.color for obj_class in meta.obj_classes]
+def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = False):
+    dest_dir = Path(dest_dir)
+    save_path = dest_dir / "data_config.yaml"
+    class_names = [c.name for c in meta.obj_classes]
+    class_colors = [c.color for c in meta.obj_classes]
     data_yaml = {
-        "train": f"../{str(save_path.name)}/images/train",
-        "val": f"../{str(save_path.name)}/images/val",
+        "train": f"../{str(dest_dir.name)}/images/train",
+        "val": f"../{str(dest_dir.name)}/images/val",
         "nc": len(class_names),
         "names": class_names,
         "colors": class_colors,
     }
+    has_keypoints = any(c.geometry_type == GraphNodes for c in meta.obj_classes)
+    if has_keypoints and with_keypoint:
+        max_kpts_count = 0
+        for obj_class in meta.obj_classes:
+            if issubclass(obj_class.geometry_type, GraphNodes):
+                field_name = obj_class.geometry_type.items_json_field
+                max_kpts_count = max(max_kpts_count, len(obj_class.geometry_config[field_name]))
+        data_yaml["kpt_shape"] = [max_kpts_count, 3]
     with open(save_path, "w") as f:
-        yaml.dump(data_yaml, f)
+        yaml.dump(data_yaml, f, default_flow_style=None)
 
     logger.info(f"Data config file has been saved to {str(save_path)}")

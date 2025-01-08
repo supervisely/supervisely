@@ -1862,7 +1862,7 @@ class Dataset(KeyObject):
     def to_yolo(
         self,
         meta: ProjectMeta,
-        save_path: Optional[str] = None,
+        dest_dir: Optional[str] = None,
         task_type: Literal["detection", "segmentation", "pose"] = "detection",
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
@@ -1872,8 +1872,8 @@ class Dataset(KeyObject):
 
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
-        :param save_path: Path to save YOLO dataset.
-        :type save_path: :class:`str`, optional
+        :param dest_dir: Path to save YOLO dataset.
+        :type dest_dir: :class:`str`, optional
         :param task_type: Task type.
         :type task_type: :class:`str`, optional
         :param log_progress: If True, log progress.
@@ -1892,8 +1892,8 @@ class Dataset(KeyObject):
             project = sly.Project(project_path, sly.OpenMode.READ)
 
             for ds in project.datasets:
-                save_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-                ds.to_yolo(project.meta, save_path=save_path)
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                ds.to_yolo(project.meta, dest_dir=dest_dir)
         """
 
         from supervisely.convert.image.yolo.yolo_helper import sly_ds_to_yolo
@@ -1901,7 +1901,7 @@ class Dataset(KeyObject):
         return sly_ds_to_yolo(
             self,
             meta=meta,
-            save_path=save_path,
+            dest_dir=dest_dir,
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
@@ -3725,13 +3725,11 @@ class Project:
 
         from supervisely.convert.image.yolo.yolo_helper import save_yolo_config
 
-        if dest_dir is None:
-            dest_dir = Path(self.directory).parent / "yolo"
+        dest_dir = Path(self.directory).parent / "yolo" if dest_dir is None else Path(dest_dir)
 
-        if dest_dir.exists() and os.listdir(dest_dir) > 0:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        if len(os.listdir(dest_dir)) > 0:
             raise FileExistsError(f"Directory {dest_dir} is not empty.")
-
-        Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
         if progress_cb is not None:
             log_progress = False
@@ -3741,8 +3739,7 @@ class Project:
                 desc="Converting Supervisely project to YOLO format", total=self.total_items
             ).update
 
-        config_path = dest_dir / "data_config.yaml"
-        save_yolo_config(self.meta, config_path)
+        save_yolo_config(self.meta, dest_dir, with_keypoint=task_type == "pose")
 
         for dataset in self.datasets:
             dataset: Dataset
