@@ -1,8 +1,25 @@
-from typing import List, Tuple, Union
+import shutil
+from pathlib import Path
+from typing import Callable, List, Literal, Optional, Tuple, Union
 
-from supervisely import AnyGeometry, GraphNodes, Polygon, Rectangle, logger
-from supervisely.geometry.graph import KeypointsTemplate, Node
+import yaml
+from tqdm import tqdm
+
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
+from supervisely.geometry.alpha_mask import AlphaMask
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes, KeypointsTemplate, Node
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.color import generate_rgb
+from supervisely.io.fs import touch
+from supervisely.project.project import Dataset
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
+from supervisely.task.progress import tqdm_sly
 
 YOLO_DETECTION_COORDS_NUM = 4
 YOLO_SEGM_MIN_COORDS_NUM = 6
@@ -322,3 +339,249 @@ def get_geometry(
         num_keypoints=num_keypoints,
         num_dims=num_dims,
     )
+
+
+def rectangle_to_yolo_line(
+    class_idx: int,
+    geometry: Rectangle,
+    img_height: int,
+    img_width: int,
+):
+    x = geometry.center.col / img_width
+    y = geometry.center.row / img_height
+    w = geometry.width / img_width
+    h = geometry.height / img_height
+    return f"{class_idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
+
+
+def polygon_to_yolo_line(
+    class_idx: int,
+    geometry: Polygon,
+    img_height: int,
+    img_width: int,
+) -> str:
+    coords = []
+    for point in geometry.exterior:
+        x = point.col / img_width
+        y = point.row / img_height
+        coords.extend([x, y])
+    return f"{class_idx} {' '.join(map(lambda coord: f'{coord:.6f}', coords))}"
+
+
+def keypoints_to_yolo_line(
+    class_idx: int,
+    geometry: GraphNodes,
+    img_height: int,
+    img_width: int,
+    max_kpts_count: int,
+):
+    bbox = geometry.to_bbox()
+    x, y, w, h = bbox.center.col, bbox.center.row, bbox.width, bbox.height
+    x, y, w, h = x / img_width, y / img_height, w / img_width, h / img_height
+
+    line = f"{class_idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}"
+
+    for node in geometry.nodes.values():
+        node: Node
+        visible = 2 if not node.disabled else 1
+        line += (
+            f" {node.location.col / img_width:.6f} {node.location.row / img_height:.6f} {visible}"
+        )
+    if len(geometry.nodes) < max_kpts_count:
+        for _ in range(max_kpts_count - len(geometry.nodes)):
+            line += " 0 0 0"
+
+    return line
+
+
+def convert_label_geometry_if_needed(
+    label: Label,
+    task_type: Literal["detection", "segmentation", "pose"],
+    verbose: bool = False,
+) -> List[Label]:
+    if task_type == "detection":
+        available_geometry_type = Rectangle
+        convertable_geometry_types = [Polygon, GraphNodes, Bitmap, Polyline, AlphaMask, AnyGeometry]
+    elif task_type == "segmentation":
+        available_geometry_type = Polygon
+        convertable_geometry_types = [Bitmap, AlphaMask, AnyGeometry]
+    elif task_type == "pose":
+        available_geometry_type = GraphNodes
+        convertable_geometry_types = []
+    else:
+        raise ValueError(
+            f"Unsupported task type: {task_type}. "
+            "Supported types: 'detection', 'segmentation', 'pose'"
+        )
+
+    if label.obj_class.geometry_type == available_geometry_type:
+        return [label]
+
+    need_convert = label.obj_class.geometry_type in convertable_geometry_types
+
+    if need_convert:
+        new_obj_cls = label.obj_class.clone(geometry_type=available_geometry_type)
+        return label.convert(new_obj_cls)
+
+    if verbose:
+        logger.warning(
+            f"Label '{label.obj_class.name}' has unsupported geometry type: "
+            f"{type(label.obj_class.geometry_type)}. Skipping."
+        )
+    return []
+
+
+def label_to_yolo_lines(
+    label: Label,
+    img_height: int,
+    img_width: int,
+    class_names: List[str],
+    task_type: Literal["detection", "segmentation", "pose"],
+) -> List[str]:
+    """
+    Convert the Supervisely Label to a line in the YOLO format.
+    """
+
+    labels = convert_label_geometry_if_needed(label, task_type)
+    class_idx = class_names.index(label.obj_class.name)
+
+    lines = []
+    for label in labels:
+        if task_type == "detection":
+            yolo_line = rectangle_to_yolo_line(
+                class_name=class_idx,
+                geometry=label.geometry,
+                img_height=img_height,
+                img_width=img_width,
+            )
+        elif task_type == "segmentation":
+            yolo_line = polygon_to_yolo_line(
+                class_name=class_idx,
+                geometry=label.geometry,
+                img_height=img_height,
+                img_width=img_width,
+            )
+        elif task_type == "pose":
+            nodes_field = label.obj_class.geometry_type.items_json_field
+            max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
+            yolo_line = keypoints_to_yolo_line(
+                class_name=class_idx,
+                geometry=label.geometry,
+                img_height=img_height,
+                img_width=img_width,
+                max_kpts_count=max_kpts_count,
+            )
+        else:
+            raise ValueError(f"Unsupported geometry type: {type(label.obj_class.geometry_type)}")
+
+        if yolo_line is not None:
+            lines.append(yolo_line)
+
+    return lines
+
+
+def sly_ann_to_yolo(
+    ann: Annotation,
+    class_names: List[str],
+    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+) -> List[str]:
+    """
+    Convert the Supervisely annotation to the YOLO format.
+    """
+
+    h, w = ann.img_size
+    yolo_lines = []
+    for label in ann:
+        lines = label_to_yolo_lines(
+            label=label,
+            img_height=h,
+            img_width=w,
+            class_names=class_names,
+            task_type=task_type,
+        )
+        yolo_lines.extend(lines)
+    return yolo_lines
+
+
+def sly_ds_to_yolo(
+    dataset: Dataset,
+    meta: ProjectMeta,
+    save_path: Optional[str] = None,
+    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    log_progress: bool = False,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> str:
+
+    if progress_cb is not None:
+        log_progress = False
+
+    if log_progress:
+        progress_cb = tqdm_sly(
+            desc=f"Converting dataset '{dataset.short_name}' to YOLO format",
+            total=len(dataset),
+        ).update
+
+    save_path = Path(dataset.path) / "yolo" if save_path is None else Path(save_path)
+    save_path.mkdir(parents=True, exist_ok=True)
+
+    # * create train and val directories
+    images_dir = save_path / "images"
+    labels_dir = save_path / "labels"
+    train_images_dir = images_dir / "train"
+    train_labels_dir = labels_dir / "train"
+    val_images_dir = images_dir / "val"
+    val_labels_dir = labels_dir / "val"
+    for dir_path in [train_images_dir, train_labels_dir, val_images_dir, val_labels_dir]:
+        dir_path.mkdir(parents=True, exist_ok=True)
+
+    # * convert annotations and copy images
+    class_names = [obj_class.name for obj_class in meta.obj_classes]
+    for name in dataset.get_items_names():
+        # todo add ds prefix to name
+        ann_path = dataset.get_ann_path(name)
+        ann = Annotation.load_json_file(ann_path, meta)
+
+        images_dir = train_images_dir if ann.img_tags.get("val") else val_images_dir
+        labels_dir = train_labels_dir if ann.img_tags.get("val") else val_labels_dir
+
+        img_path = Path(dataset.get_img_path(name))
+        img_rel_path = img_path.relative_to(dataset.path)
+
+        img_dst_path = images_dir / img_rel_path
+        img_dst_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(img_path, img_dst_path)
+
+        ann_rel_path = ann_path.relative_to(dataset.path)
+        label_path = str(labels_dir / ann_rel_path.with_suffix(".txt"))
+        yolo_lines = sly_ann_to_yolo(ann, class_names, task_type)
+        if len(yolo_lines) > 0:
+            with open(label_path, "w") as f:
+                f.write("\n".join(yolo_lines))
+        else:
+            touch(label_path)
+
+        if log_progress:
+            progress_cb(1)
+
+    # * save data config file if it does not exist
+    config_path = save_path / "data_config.yaml"
+    if not config_path.exists():
+        save_yolo_config(meta, config_path)
+
+    return str(save_path)
+
+
+def save_yolo_config(meta: ProjectMeta, save_path: str):
+    class_names = [obj_class.name for obj_class in meta.obj_classes]
+    class_colors = [obj_class.color for obj_class in meta.obj_classes]
+    data_yaml = {
+        "train": f"../{str(save_path.name)}/images/train",
+        "val": f"../{str(save_path.name)}/images/val",
+        "nc": len(class_names),
+        "names": class_names,
+        "colors": class_colors,
+    }
+    with open(save_path, "w") as f:
+        yaml.dump(data_yaml, f)
+
+    logger.info(f"Data config file has been saved to {str(save_path)}")

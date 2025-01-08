@@ -11,7 +11,17 @@ import shutil
 from collections import defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import aiofiles
 import numpy as np
@@ -21,6 +31,7 @@ import supervisely as sly
 from supervisely._utils import (
     abs_url,
     batched,
+    generate_free_name,
     get_or_create_event_loop,
     is_development,
     snake_to_human,
@@ -1795,24 +1806,31 @@ class Dataset(KeyObject):
     def to_coco(
         self,
         meta: ProjectMeta,
-        save: Optional[bool] = False,
-        save_path: Optional[str] = None,
+        dest_dir: Optional[str] = None,
+        save_json: bool = False,
+        copy_images: bool = False,
         log_progress: bool = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Callable] = None,
     ) -> Tuple[Dict, Union[None, Dict]]:
         """
         Convert Supervisely dataset to COCO format.
 
-        If save_path is None, the COCO dataset will be saved in the same directory as the dataset.
+        If dest_dir is None, the COCO dataset will be saved in the same directory as the dataset.
             Note:   If you start conversion from sly.Project,
                     all COCO JSON files will be saved in the root of the project.
 
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
-        :param save: If True, saves COCO dataset to the disk.
-        :type save: :class:`bool`, optional
-        :param save_path: Path to save COCO dataset.
-        :type save_path: :class:`str`, optional
+        :param dest_dir: Path to save COCO dataset.
+        :type dest_dir: :class:`str`, optional
+        :param save_json: If True, saves COCO JSON files to the disk.
+        :type save_json: :class:`bool`, optional
+        :param copy_images: If True, copies images to the COCO dataset directory.
+        :type copy_images: :class:`bool`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
         :return: COCO dataset in dictionary format.
         :rtype: :class:`dict`
 
@@ -1825,8 +1843,8 @@ class Dataset(KeyObject):
             project = sly.Project(project_path, sly.OpenMode.READ)
 
             for ds in project.datasets:
-                save_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-                coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, save_path=save_path)
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, dest_dir=dest_dir)
         """
 
         from supervisely.convert.image.coco.coco_helper import sly_ds_to_coco
@@ -1834,8 +1852,57 @@ class Dataset(KeyObject):
         return sly_ds_to_coco(
             self,
             meta=meta,
-            save=save,
+            dest_dir=dest_dir,
+            save_json=save_json,
+            copy_images=copy_images,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    def to_yolo(
+        self,
+        meta: ProjectMeta,
+        save_path: Optional[str] = None,
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        log_progress: bool = False,
+        progress_cb: Optional[Callable] = None,
+    ):
+        """
+        Convert Supervisely dataset to YOLO format.
+
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param save_path: Path to save YOLO dataset.
+        :type save_path: :class:`str`, optional
+        :param task_type: Task type.
+        :type task_type: :class:`str`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
+        :return: YOLO dataset in dictionary format.
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                save_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                ds.to_yolo(project.meta, save_path=save_path)
+        """
+
+        from supervisely.convert.image.yolo.yolo_helper import sly_ds_to_yolo
+
+        return sly_ds_to_yolo(
+            self,
+            meta=meta,
             save_path=save_path,
+            task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
@@ -3565,12 +3632,11 @@ class Project:
             resume_download=resume_download,
         )
 
-    @staticmethod
     def to_coco(
-        project_dir: str,
+        self,
         dest_dir: Optional[str] = None,
         log_progress: bool = True,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
         """
         Convert Supervisely project to COCO format.
@@ -3580,7 +3646,7 @@ class Project:
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
-        :type progress_cb: tqdm or callable, optional
+        :type progress_cb: callable, optional
         :return: None
         :rtype: NoneType
 
@@ -3596,12 +3662,74 @@ class Project:
             # Convert Project to COCO format
             sly.Project(project_directory).to_coco(log_progress=True)
         """
-        from supervisely.convert.image.coco.coco_helper import COCO_INSTANCES_FILE
+        dest_dir = Path(dest_dir) if dest_dir is not None else Path(self.directory).parent / "coco"
 
-        project_fs = Project(project_dir, OpenMode.READ)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        if len(os.listdir(dest_dir)) > 0:
+            raise FileExistsError(f"Directory {dest_dir} is not empty.")
+
+        if progress_cb is not None:
+            log_progress = False
+
+        if log_progress:
+            progress_cb = tqdm_sly(
+                desc="Converting Supervisely project to COCO format", total=self.total_items
+            ).update
+
+        used_ds_names = set()
+        for ds in self.datasets:
+            ds: Dataset
+            coco_dir = generate_free_name(used_ds_names, ds.short_name, extend_used_names=True)
+            ds.to_coco(
+                meta=self.meta,
+                dest_dir=dest_dir / coco_dir,
+                save_json=True,
+                copy_images=True,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+            )
+            logger.info(f"Dataset '{ds.short_name}' has been converted to COCO format.")
+        logger.info(f"Project '{self.name}' has been converted to COCO format.")
+
+    def to_yolo(
+        self,
+        dest_dir: Optional[str] = None,
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        log_progress: bool = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to YOLO format.
+
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: callable, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to YOLO format
+            sly.Project(project_directory).to_yolo(log_progress=True)
+        """
+
+        from supervisely.convert.image.yolo.yolo_helper import save_yolo_config
 
         if dest_dir is None:
-            dest_dir = project_fs.directory
+            dest_dir = Path(self.directory).parent / "yolo"
+
+        if dest_dir.exists() and os.listdir(dest_dir) > 0:
+            raise FileExistsError(f"Directory {dest_dir} is not empty.")
 
         Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
@@ -3610,30 +3738,23 @@ class Project:
 
         if log_progress:
             progress_cb = tqdm_sly(
-                desc="Converting Supervisely project to COCO format", total=project_fs.total_items
-            )
+                desc="Converting Supervisely project to YOLO format", total=self.total_items
+            ).update
 
-        multiple_datasets = len(project_fs.datasets) > 1
-        for dataset in project_fs.datasets:
+        config_path = dest_dir / "data_config.yaml"
+        save_yolo_config(self.meta, config_path)
+
+        for dataset in self.datasets:
             dataset: Dataset
-            prefix = f"{dataset.short_name}_" if multiple_datasets else ""
-            save_path = Path(dest_dir) / f"{prefix}{COCO_INSTANCES_FILE}"
-            cnt = 1
-            while save_path.exists():
-                save_path = save_path.with_name(f"{prefix}{cnt:02d}_{COCO_INSTANCES_FILE}")
-                cnt += 1
-
-            dataset.to_coco(
-                meta=project_fs.meta,
-                save=True,
-                save_path=str(save_path),
+            dataset.to_yolo(
+                meta=self.meta,
+                dest_dir=dest_dir,
+                task_type=task_type,
                 log_progress=log_progress,
                 progress_cb=progress_cb,
             )
-            logger.info(f"Dataset '{dataset.short_name}' has been converted to COCO format.")
-        logger.info(f"Project '{project_fs.name}' has been converted to COCO format.")
-
-        
+            logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
+        logger.info(f"Project '{self.name}' has been converted to YOLO format.")
 
 
 def read_single_project(
