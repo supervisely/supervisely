@@ -1620,7 +1620,7 @@ class FileApi(ModuleApiBase):
                 downloaded_file_hash = await get_file_hash_async(local_save_path)
                 if hash_to_check != downloaded_file_hash:
                     raise RuntimeError(
-                        f"Downloaded hash of image with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        f"Downloaded hash of file path: '{remote_path}' does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
                     )
         if progress_cb is not None and progress_cb_type == "number":
             progress_cb(1)
