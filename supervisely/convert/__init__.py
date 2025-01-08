@@ -38,7 +38,7 @@ from supervisely.convert.pointcloud.las.las_converter import LasConverter
 from supervisely.convert.pointcloud.ply.ply_converter import PlyConverter
 from supervisely.convert.pointcloud.bag.bag_converter import BagConverter
 from supervisely.convert.pointcloud.lyft.lyft_converter import LyftConverter
-
+from supervisely.convert.pointcloud.nuscenes_conv.nuscenes_converter import NuscenesConverter
 
 # Pointcloud Episodes
 from supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_converter import (
@@ -46,6 +46,9 @@ from supervisely.convert.pointcloud_episodes.sly.sly_pointcloud_episodes_convert
 )
 from supervisely.convert.pointcloud_episodes.bag.bag_converter import BagEpisodesConverter
 from supervisely.convert.pointcloud_episodes.lyft.lyft_converter import LyftEpisodesConverter
+from supervisely.convert.pointcloud_episodes.nuscenes_conv.nuscenes_converter import (
+    NuscenesEpisodesConverter,
+)
 
 # Video
 from supervisely.convert.video.mot.mot_converter import MOTConverter

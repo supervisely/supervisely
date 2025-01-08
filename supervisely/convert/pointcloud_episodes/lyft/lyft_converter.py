@@ -30,8 +30,6 @@ from supervisely import (
     PointcloudEpisodeFrame,
     TagMeta,
     TagValueType,
-    VideoTagCollection,
-    VideoTag,
 )
 from supervisely.io import fs
 from supervisely.convert.pointcloud.lyft import lyft_helper
@@ -39,6 +37,8 @@ from supervisely.api.api import ApiField
 from datetime import datetime
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from collections import defaultdict
+
+# from supervisely.annotation.tag_meta import TagTargetType as TagTT
 
 
 class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
@@ -78,7 +78,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
         for scene_name, items in scene_name_to_items.items():
             token_to_obj = {}
             frames = []
-            tags = []  # todo tags that belong to the whole scene if any
+            tags = []  # todo tags that belong to the scene if any
             # * Iterate over each sample in the scene
             for i, item in enumerate(items):
                 ann = item.ann_data
@@ -93,23 +93,23 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
                         obj_class_name = renamed_classes.get(class_name, class_name)
                         obj_class = meta.get_obj_class(obj_class_name)
 
-                        # # * Get tags for the object
+                        # * Get tags for the object
                         # tag_names = [
-                        #     lyft.get("attribute", attr_token).get("name", None)
-                        #     for attr_token in instance_token["attribute_tokens"]
+                        # lyft.get("attribute", attr_token).get("name", None)
+                        # for attr_token in instance_token["attribute_tokens"]
                         # ]
                         # if len(tag_names) > 0 and all(
-                        #     [tag_name is not None for tag_name in tag_names]
+                        # [tag_name is not None for tag_name in tag_names]
                         # ):
-                        #     tags = [TagMeta(tag_name, TagValueType.NONE) for tag_name in tag_names]
-                        #     tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
-                        #     tag_metas = [
-                        #         meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
-                        #     ]
-                        #     obj_tags = PointcloudEpisodeTagCollection(
-                        #         [PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas]
-                        #     )  # todo: implement after fixing
-                        obj_tags = None
+                        # tags = [TagMeta(tag_name, TagValueType.NONE) for tag_name in tag_names]
+                        # tag_meta_names = [renamed_tags.get(name, name) for name in tag_names]
+                        # tag_metas = [
+                        # meta.get_tag_meta(tag_meta_name) for tag_meta_name in tag_meta_names
+                        # ]
+                        # obj_tags = PointcloudEpisodeTagCollection(
+                        # [PointcloudEpisodeTag(tag_meta, None) for tag_meta in tag_metas]
+                        # )
+                        obj_tags = None  # todo remove after fixing tags
                         pcd_ep_obj = PointcloudEpisodeObject(obj_class, obj_tags)
                         # * Assign the object to the starting token
                         token_to_obj[instance_token["token"]] = pcd_ep_obj
@@ -137,9 +137,10 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         unique_names = {name for item in self._items for name in item.ann_data["names"]}
         tag_names = {tag["name"] for tag in self._lyft.attribute}
+        target_type = None  # TagTT.GLOBAL # todo remove after fixing tags
         self._meta = ProjectMeta(
             [ObjClass(name, Cuboid3d) for name in unique_names],
-            [TagMeta(tag, TagValueType.NONE) for tag in tag_names],
+            [TagMeta(tag, TagValueType.NONE, target_type=target_type) for tag in tag_names],
         )
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -234,9 +235,7 @@ class LyftEpisodesConverter(LyftConverter, PointcloudEpisodeConverter):
                 )
             except Exception as e:
                 error_msg = getattr(getattr(e, "response", e), "text", str(e))
-                logger.warn(
-                    f"Failed to upload annotation for scene: {scene}. Message: {error_msg}"
-                )
+                logger.warn(f"Failed to upload annotation for scene: {scene}. Message: {error_msg}")
             logger.info(f"Dataset ID:{current_dataset_id} has been successfully uploaded.")
 
         if log_progress:

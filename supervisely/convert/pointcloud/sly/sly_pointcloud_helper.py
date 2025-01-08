@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from supervisely import (
     AnyGeometry,
@@ -16,7 +16,9 @@ from supervisely.io.json import load_json_file
 SLY_ANN_KEYS = ["figures", "objects", "tags"]
 
 
-def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
+def get_meta_from_annotation(ann_path: str, meta: Union[ProjectMeta, None]) -> ProjectMeta:
+    if meta is None:
+        meta = ProjectMeta()
     ann_json = load_json_file(ann_path)
     if "annotation" in ann_json:
         ann_json = ann_json["annotation"]

@@ -57,6 +57,7 @@ class AvailablePointcloudConverters:
     PLY = "ply"
     BAG = "rosbag"
     LYFT = "lyft"
+    NUSCENES = "nuscenes"
 
 
 class AvailablePointcloudEpisodesConverters:
@@ -303,23 +304,15 @@ class BaseConverter:
             return found_formats[0]
 
     def _collect_items_if_format_not_detected(self):
-        from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
-            PointcloudEpisodeConverter,
-        )
-
         only_modality_items = True
         unsupported_exts = set()
         items = []
-        is_episode = isinstance(self, PointcloudEpisodeConverter)
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
-                    if is_episode:
-                        items.append(self.Item(full_path, len(items)))  # pylint: disable=no-member
-                    else:
-                        items.append(self.Item(full_path))  # pylint: disable=no-member
+                    items.append(self.Item(full_path))  # pylint: disable=no-member
                     continue
                 only_modality_items = False
                 if ext.lower() in self.unsupported_exts:

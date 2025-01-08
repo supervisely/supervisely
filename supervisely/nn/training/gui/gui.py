@@ -5,6 +5,8 @@ This module provides the `TrainGUI` class that handles the graphical user interf
 training workflows in Supervisely.
 """
 
+from os import environ
+
 import supervisely.io.env as sly_env
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
@@ -47,7 +49,6 @@ class TrainGUI:
         app_options: dict = None,
     ):
         self._api = Api.from_env()
-
         if is_production():
             self.task_id = sly_env.task_id()
         else:
@@ -61,11 +62,18 @@ class TrainGUI:
         self.app_options = app_options
         self.collapsable = app_options.get("collapsable", False)
 
-        self.team_id = sly_env.team_id()
-        self.workspace_id = sly_env.workspace_id()
-        self.project_id = sly_env.project_id()  # from app options?
+        self.team_id = sly_env.team_id(raise_not_found=False)
+        self.workspace_id = sly_env.workspace_id(raise_not_found=False)
+        self.project_id = sly_env.project_id()
         self.project_info = self._api.project.get_info_by_id(self.project_id)
         self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
+
+        if self.workspace_id is None:
+            self.workspace_id = self.project_info.workspace_id
+            environ["WORKSPACE_ID"] = str(self.workspace_id)
+        if self.team_id is None:
+            self.team_id = self.project_info.team_id
+            environ["TEAM_ID"] = str(self.team_id)
 
         # 1. Project selection + Train/val split
         self.input_selector = InputSelector(self.project_info, self.app_options)
@@ -90,7 +98,7 @@ class TrainGUI:
         self.training_logs = TrainingLogs(self.app_options)
 
         # 8. Training Artifacts
-        self.training_artifacts = TrainingArtifacts(self.app_options)
+        self.training_artifacts = TrainingArtifacts(self._api, self.app_options)
 
         # Stepper layout
         self.steps = [

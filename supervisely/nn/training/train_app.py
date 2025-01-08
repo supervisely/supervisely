@@ -8,7 +8,7 @@ training workflows in a Supervisely application.
 import shutil
 import subprocess
 from datetime import datetime
-from os import listdir
+from os import getcwd, listdir
 from os.path import basename, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
@@ -124,8 +124,6 @@ class TrainApp:
             logger.info("TrainApp is running in debug mode")
 
         self.framework_name = framework_name
-        self._team_id = sly_env.team_id()
-        self._workspace_id = sly_env.workspace_id()
         self._tensorboard_process = None
 
         self._models = self._load_models(models)
@@ -249,6 +247,26 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Input Data
+    @property
+    def team_id(self) -> int:
+        """
+        Returns the ID of the team.
+
+        :return: Team ID.
+        :rtype: int
+        """
+        return self.gui.team_id
+
+    @property
+    def workspace_id(self) -> int:
+        """
+        Returns the ID of the workspace.
+
+        :return: Workspace ID.
+        :rtype: int
+        """
+        return self.gui.workspace_id
+
     @property
     def project_id(self) -> int:
         """
@@ -555,6 +573,7 @@ class TrainApp:
         self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, splits_data)
         self._generate_model_meta(remote_dir, experiment_info)
+        self._upload_demo_files(remote_dir)
 
         # Step 7. Set output widgets
         self._set_text_status("reset")
@@ -1074,7 +1093,7 @@ class TrainApp:
         ) as model_download_main_pbar:
             self.progress_bar_main.show()
             for name, remote_path in remote_paths.items():
-                file_info = self._api.file.get_info_by_path(self._team_id, remote_path)
+                file_info = self._api.file.get_info_by_path(self.team_id, remote_path)
                 file_name = basename(remote_path)
                 local_path = join(self.model_dir, file_name)
                 file_size = file_info.sizeb
@@ -1087,7 +1106,7 @@ class TrainApp:
                 ) as model_download_secondary_pbar:
                     self.progress_bar_secondary.show()
                     self._api.file.download(
-                        self._team_id,
+                        self.team_id,
                         remote_path,
                         local_path,
                         progress_cb=model_download_secondary_pbar.update,
@@ -1325,7 +1344,7 @@ class TrainApp:
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             self._api.file.upload(
-                self._team_id,
+                self.team_id,
                 local_path,
                 remote_path,
                 progress_cb=upload_artifacts_pbar,
@@ -1421,7 +1440,7 @@ class TrainApp:
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
-            self._team_id, remote_checkpoints_dir, return_type="fileinfo"
+            self.team_id, remote_checkpoints_dir, return_type="fileinfo"
         )
         experiment_info["checkpoints"] = [
             f"checkpoints/{checkpoint.name}" for checkpoint in checkpoint_files
@@ -1481,6 +1500,38 @@ class TrainApp:
         self._upload_file_to_team_files(
             local_path, remote_path, f"Uploading '{self._app_state_file}' to Team Files"
         )
+
+    def _upload_demo_files(self, remote_dir: str) -> None:
+        demo = self._app_options.get("demo")
+        if demo is None:
+            return
+        demo_path = demo.get("path")
+        if demo_path is None:
+            return
+
+        local_demo_dir = join(getcwd(), demo_path)
+        if not sly_fs.dir_exists(local_demo_dir):
+            logger.info(f"Demo directory '{local_demo_dir}' does not exist")
+            return
+
+        logger.debug(f"Uploading demo files to Supervisely")
+        remote_demo_dir = join(remote_dir, "demo")
+        local_files = sly_fs.list_files_recursively(local_demo_dir)
+        total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
+        with self.progress_bar_main(
+            message="Uploading demo files to Team Files",
+            total=total_size,
+            unit="bytes",
+            unit_scale=True,
+        ) as upload_artifacts_pbar:
+            self.progress_bar_main.show()
+            remote_dir = self._api.file.upload_directory(
+                self.team_id,
+                local_demo_dir,
+                remote_demo_dir,
+                progress_size_cb=upload_artifacts_pbar,
+            )
+            self.progress_bar_main.hide()
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
         """
@@ -1557,13 +1608,13 @@ class TrainApp:
 
         # Clean debug directory if exists
         if task_id == "debug-session":
-            if self._api.file.dir_exists(self._team_id, f"{remote_artifacts_dir}/", True):
+            if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
                 with self.progress_bar_main(
                     message=f"[Debug] Cleaning train artifacts: '{remote_artifacts_dir}/'",
                     total=1,
                 ) as upload_artifacts_pbar:
                     self.progress_bar_main.show()
-                    self._api.file.remove_dir(self._team_id, f"{remote_artifacts_dir}", True)
+                    self._api.file.remove_dir(self.team_id, f"{remote_artifacts_dir}", True)
                     upload_artifacts_pbar.update(1)
                     self.progress_bar_main.hide()
 
@@ -1586,14 +1637,14 @@ class TrainApp:
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory(
-                self._team_id,
+                self.team_id,
                 self.output_dir,
                 remote_artifacts_dir,
                 progress_size_cb=upload_artifacts_pbar,
             )
             self.progress_bar_main.hide()
 
-        file_info = self._api.file.get_info_by_path(self._team_id, join(remote_dir, "open_app.lnk"))
+        file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
         return remote_dir, file_info
 
     def _set_training_output(
@@ -1629,33 +1680,36 @@ class TrainApp:
 
         # Set instruction to GUI
         demo_options = self._app_options.get("demo", {})
-        if demo_options:
+        demo_path = demo_options.get("path", None)
+        if demo_path is not None:
             # Show PyTorch demo if available
-            pytorch_demo = demo_options.get("pytorch")
-            if pytorch_demo:
+            if self.gui.training_artifacts.pytorch_demo_exists(demo_path):
                 self.gui.training_artifacts.pytorch_instruction.show()
 
             # Show ONNX demo if supported and available
-            onnx_demo = demo_options.get("onnx")
             if (
                 self._app_options.get("export_onnx_supported", False)
                 and self.gui.hyperparameters_selector.get_export_onnx_checkbox_value()
-                and onnx_demo
+                and self.gui.training_artifacts.onnx_demo_exists(demo_path)
             ):
                 self.gui.training_artifacts.onnx_instruction.show()
 
             # Show TensorRT demo if supported and available
-            tensorrt_demo = demo_options.get("tensorrt")
             if (
                 self._app_options.get("export_tensorrt_supported", False)
                 and self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value()
-                and tensorrt_demo
+                and self.gui.training_artifacts.trt_demo_exists(demo_path)
             ):
                 self.gui.training_artifacts.trt_instruction.show()
 
             # Show the inference demo widget if overview or any demo is available
-            demo_overview = self._app_options.get("overview", {})
-            if demo_overview or any([pytorch_demo, onnx_demo, tensorrt_demo]):
+            if self.gui.training_artifacts.overview_demo_exists(demo_path) or any(
+                [
+                    self.gui.training_artifacts.pytorch_demo_exists(demo_path),
+                    self.gui.training_artifacts.onnx_demo_exists(demo_path),
+                    self.gui.training_artifacts.trt_demo_exists(demo_path),
+                ]
+            ):
                 self.gui.training_artifacts.inference_demo_field.show()
         # ---------------------------- #
 
@@ -1676,7 +1730,7 @@ class TrainApp:
         eval_res_dir = (
             f"/model-benchmark/{self.project_info.id}_{self.project_info.name}/{task_dir}/"
         )
-        eval_res_dir = self._api.storage.get_free_dir_name(self._team_id, eval_res_dir)
+        eval_res_dir = self._api.storage.get_free_dir_name(self.team_id, eval_res_dir)
         return eval_res_dir
 
     def _run_model_benchmark(
@@ -1742,6 +1796,8 @@ class TrainApp:
                 use_gui=False,
                 custom_inference_settings=self._inference_settings,
             )
+            if hasattr(m, "in_train"):
+                m.in_train = True
 
             logger.info(f"Using device: {self.device}")
 
@@ -1910,7 +1966,7 @@ class TrainApp:
 
             if self.model_source == ModelSource.CUSTOM:
                 file_info = self._api.file.get_info_by_path(
-                    self._team_id,
+                    self.team_id,
                     self.gui.model_selector.experiment_selector.get_selected_checkpoint_path(),
                 )
                 if file_info is not None:
@@ -2319,7 +2375,7 @@ class TrainApp:
                     self.progress_bar_secondary.show()
                     destination_path = join(remote_dir, self._export_dir_name, file_name)
                     self._api.file.upload(
-                        self._team_id,
+                        self.team_id,
                         path,
                         destination_path,
                         export_upload_secondary_pbar,
