@@ -209,7 +209,7 @@ class CustomModelsSelector(Widget):
                 )
             else:
                 task_widget = Text(
-                    f"<span class='field-description text-muted' style='color: #7f858e'>Task (ID: '{self._task_id}') was archived</span>",
+                    f"<span class='field-description text-muted' style='color: #7f858e'>Task was archived (ID: '{self._task_id}')</span>",
                     "text",
                 )
             return task_widget
