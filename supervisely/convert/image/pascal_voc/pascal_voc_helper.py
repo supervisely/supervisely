@@ -80,15 +80,23 @@ def get_col2coord(img: np.ndarray) -> dict:
 
 def read_colors(colors_file: str) -> Tuple[ObjClassCollection, dict]:
     if os.path.isfile(colors_file):
-        logger.info("Will try to read segmentation colors from provided file.")
-        in_lines = filter(None, map(str.strip, open(colors_file, "r").readlines()))
-        in_splitted = (x.split() for x in in_lines)
-        # Format: {name: (R, G, B)}, values [0; 255]
-        cls2col = {}
-        for x in in_splitted:
-            if len(x) != 4:
-                raise ValueError("Invalid format of colors file.")
-            cls2col[x[0]] = (int(x[1]), int(x[2]), int(x[3]))
+        try:
+            logger.info("Will try to read segmentation colors from provided file.")
+            with open(colors_file, "r") as file:
+                cls2col = {}
+                for line in file:
+                    parts = line.strip().split()
+                    if len(parts) < 4:
+                        raise ValueError("Invalid format of colors file.")
+                    class_name = " ".join(parts[:-3])
+                    colors = tuple(map(int, parts[-3:]))
+                    cls2col[class_name] = colors
+        except Exception as e:
+            logger.warning(
+                "Failed to read segmentation colors from provided file. "
+                "Will use default PascalVOC color mapping."
+            )
+            cls2col = default_classes_colors
     else:
         logger.info("Will use default PascalVOC color mapping.")
         cls2col = default_classes_colors
