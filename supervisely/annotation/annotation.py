@@ -3003,7 +3003,6 @@ class Annotation:
     #     new_ann._labels = new_labels
     #     return new_ann
 
-    # region Converters
     def to_coco(
         self,
         coco_image_id: int,
@@ -3123,5 +3122,3 @@ class Annotation:
         from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
 
         return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)
-
-    # region Converters^
