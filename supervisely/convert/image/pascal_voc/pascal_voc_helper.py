@@ -508,8 +508,6 @@ def sly_ds_to_pascal_voc(
     image_stats = []
     classes_colors = {}
     for item_name, img_path, ann_path in dataset.items():
-        logger.info(f"Processing item: {item_name}")
-
         # Assign unique name to avoid conflicts
         unique_name = f"{dataset.name}_{get_file_name(item_name)}"
 
