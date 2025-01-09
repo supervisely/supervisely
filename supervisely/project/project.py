@@ -1806,27 +1806,31 @@ class Dataset(KeyObject):
     def to_coco(
         self,
         meta: ProjectMeta,
+        return_type: Literal["path", "dict"] = "path",
         dest_dir: Optional[str] = None,
-        save_json: bool = False,
         copy_images: bool = False,
+        with_captions=False,
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
     ) -> Tuple[Dict, Union[None, Dict]]:
         """
         Convert Supervisely dataset to COCO format.
 
-        If dest_dir is None, the COCO dataset will be saved in the same directory as the dataset.
-            Note:   If you start conversion from sly.Project,
-                    all COCO JSON files will be saved in the root of the project.
+        Note:   Depending on the `return_type` and `with_captionsparameters, the function returns different values.
+                If `return_type` is "path", the COCO annotation files will be saved to the disk.
+                If `return_type` is "dict", the function returns COCO dataset in dictionary format.
+                If `with_captions` is True, the function returns Tuple (instances and captions).
 
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param return_type: Return type (`path` or `dict`).
+        :type return_type: :class:`str`, optional
         :param dest_dir: Path to save COCO dataset.
         :type dest_dir: :class:`str`, optional
-        :param save_json: If True, saves COCO JSON files to the disk.
-        :type save_json: :class:`bool`, optional
         :param copy_images: If True, copies images to the COCO dataset directory.
         :type copy_images: :class:`bool`, optional
+        :param with_captions: If True, returns captions
+        :type with_captions: :class:`bool`, optional
         :param log_progress: If True, log progress.
         :type log_progress: :class:`str`, optional
         :param progress_cb: Progress callback.
@@ -1852,9 +1856,10 @@ class Dataset(KeyObject):
         return dataset_to_coco(
             self,
             meta=meta,
+            return_type=return_type,
             dest_dir=dest_dir,
-            save_json=save_json,
             copy_images=copy_images,
+            with_captions=with_captions,
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
@@ -1917,7 +1922,7 @@ class Dataset(KeyObject):
     ) -> Tuple[Dict, Union[None, Dict]]:
         """
         Convert Supervisely dataset to Pascal VOC format.
-        
+
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
         :param dest_dir: Destination directory.
@@ -3682,6 +3687,8 @@ class Project:
     def to_coco(
         self,
         dest_dir: Optional[str] = None,
+        copy_images: bool = False,
+        with_captions: bool = False,
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
     ) -> None:
@@ -3690,6 +3697,10 @@ class Project:
 
         :param dest_dir: Destination directory.
         :type dest_dir: :class:`str`, optional
+        :param copy_images: Copy images to the destination directory.
+        :type copy_images: :class:`bool`
+        :param with_captions: Return captions for images.
+        :type with_captions: :class:`bool`
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
@@ -3717,6 +3728,8 @@ class Project:
         project_to_coco(
             project=self,
             dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
@@ -3775,7 +3788,7 @@ class Project:
     ) -> None:
         """
         Convert Supervisely project to Pascal VOC format.
-        
+
         :param dest_dir: Destination directory.
         :type dest_dir: :class:`str`, optional
         :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
@@ -3811,6 +3824,7 @@ class Project:
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
+
 
 def read_single_project(
     dir: str,

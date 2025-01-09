@@ -5,7 +5,7 @@ import uuid
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -604,32 +604,38 @@ def create_coco_ann_template(meta: ProjectMeta) -> Dict:
 def sly_ds_to_coco(
     dataset: Dataset,
     meta: ProjectMeta,
+    return_type: Literal["path", "dict"] = "path",
     dest_dir: Optional[str] = None,
-    save_json: bool = False,
     copy_images: bool = False,
+    with_captions: bool = False,
     log_progress: bool = False,
     progress_cb: Optional[Callable] = None,
-) -> Tuple[Dict, Optional[Dict], Union[str, None], Union[str, None]]:
+) -> Union[str, Tuple[str, str], Dict, Tuple[Dict, Dict]]:
     """
     Convert Supervisely dataset to COCO format.
 
-    If dest_dir is None, the COCO dataset will be saved in the same directory as the dataset.
+    Note: Depending on the return_type and with_captions parameters, the function returns different values.
 
     :param dataset: Supervisely dataset.
     :type dataset: :class:`Dataset<supervisely.project.dataset.Dataset>`
     :param meta: Project meta information.
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+    :param return_type: Type of return value.
+                        If 'path', returns paths to COCO dataset files.
+                        If 'dict', returns COCO dataset dictionaries.
     :param dest_dir: Destination path to save COCO dataset.
     :type dest_dir: :class:`str`, optional
-    :param save_json: If True, saves COCO JSON files to the disk.
-    :type save_json: :class:`bool`, optional
     :param copy_images: If True, copies images to the destination directory.
     :type copy_images: :class:`bool`, optional
+    :param with_captions: If True, returns COCO captions.
+    :type with_captions: :class:`bool`, optional
     :param log_progress: If True, logs the progress of the conversion.
     :type log_progress: :class:`bool`, optional
     :param progress_cb: Callback function to track the progress of the conversion.
     :type progress_cb: :class:`Callable`, optional
-    :return: Tuple with COCO dataset dictionaries (ann, captions) and paths to them.
+    :return:
+            If return_type is 'path', returns paths to COCO dataset file or file (instances or instances and captions).
+            If return_type is 'dict', returns COCO dataset dictionary or dictionaries (instances or instances and captions).
     :rtype: :class:`tuple`
 
     :Usage example:
@@ -646,7 +652,8 @@ def sly_ds_to_coco(
             dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             coco_json, coco_captions, coco_json_path, coco_captions_path = sly_ds_to_coco(ds, project.meta, save=True, dest_dir=dest_dir)
     """
-    dest_dir = Path(dest_dir) or Path(dataset.path).parent / "coco"
+    dest_dir = Path(dataset.path).parent / "coco" if dest_dir is None else Path(dest_dir)
+    save_json = return_type == "path"
     if save_json is True:
         annotations_dir = dest_dir / "annotations"
         annotations_dir.mkdir(parents=True, exist_ok=True)
@@ -664,11 +671,7 @@ def sly_ds_to_coco(
         ).update
 
     coco_ann = create_coco_ann_template(meta)
-
-    has_captions = has_caption_tag(meta)
-    coco_captions = None
-    if has_captions:
-        coco_captions = create_coco_ann_template(meta)
+    coco_captions = create_coco_ann_template(meta) if with_captions else None
 
     image_coco = lambda info, idx: dict(
         license="None",
@@ -709,7 +712,7 @@ def sly_ds_to_coco(
         image_info = ImageApi._convert_json_info(ImageApi(None), image_info_json)
 
         coco_ann["images"].append(image_coco(image_info, image_idx))
-        if has_captions:
+        if with_captions:
             coco_captions["images"].append(image_coco(image_info, image_idx))
 
         ann = Annotation.load_json_file(ann_path, meta)
@@ -733,25 +736,37 @@ def sly_ds_to_coco(
         dump_json_file(coco_ann, ann_path)
         logger.info(f"Saved COCO instances to '{ann_path}'")
 
-        if has_captions:
+        if with_captions:
             captions_path = str(annotations_dir / COCO_CAPTIONS_FILE)
             dump_json_file(coco_captions, captions_path)
             logger.info(f"Saved COCO captions to '{captions_path}'")
 
-    return coco_ann, coco_captions, ann_path, captions_path
+            return ann_path, captions_path
+        return ann_path
+    if with_captions:
+        return coco_ann, coco_captions
+    return coco_ann
 
 
 def sly_project_to_coco(
     project: Union[Project, str],
     dest_dir: Optional[str] = None,
+    copy_images: bool = False,
+    with_captions: bool = False,
     log_progress: bool = True,
     progress_cb: Optional[Callable] = None,
 ) -> None:
     """
     Convert Supervisely project to COCO format.
 
+    :param project: Supervisely project.
+    :type project: :class:`Project<supervisely.project.project.Project>` or :class:`str`
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
+    :param copy_images: Copy images to destination directory.
+    :type copy_images: :class:`bool`, optional
+    :param with_captions: Return COCO captions.
+    :type with_captions: :class:`bool`, optional
     :param log_progress: Show uploading progress bar.
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
@@ -775,10 +790,7 @@ def sly_project_to_coco(
         project = Project(project, mode=OpenMode.READ)
 
     dest_dir = Path(dest_dir) if dest_dir is not None else Path(project.directory).parent / "coco"
-
     dest_dir.mkdir(parents=True, exist_ok=True)
-    if len(os.listdir(dest_dir)) > 0:
-        raise FileExistsError(f"Directory {dest_dir} is not empty.")
 
     if progress_cb is not None:
         log_progress = False
@@ -794,9 +806,10 @@ def sly_project_to_coco(
         coco_dir = generate_free_name(used_ds_names, ds.short_name, extend_used_names=True)
         ds.to_coco(
             meta=project.meta,
+            return_type="path",
             dest_dir=dest_dir / coco_dir,
-            save_json=True,
-            copy_images=True,
+            copy_images=copy_images,
+            with_captions=with_captions,
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
