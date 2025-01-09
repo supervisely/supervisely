@@ -3003,6 +3003,7 @@ class Annotation:
     #     new_ann._labels = new_labels
     #     return new_ann
 
+    # region Converters
     def to_coco(
         self,
         coco_image_id: int,
@@ -3076,3 +3077,19 @@ class Annotation:
             coco_captions,
             last_caption_id,
         )
+
+    def to_pascal_voc(
+        self,
+        image_name: str,
+    ) -> Tuple[List, List]:
+        """
+        Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
+        """
+
+        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
+            sly_ann_to_pascal_voc,
+        )
+
+        return sly_ann_to_pascal_voc(self, image_name)
+
+    # region Converters^

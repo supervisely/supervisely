@@ -1470,7 +1470,7 @@ class Dataset(KeyObject):
     def __iter__(self):
         return next(self)
 
-    def items(self) -> Generator[Tuple[str]]:
+    def items(self) -> Generator[Tuple[str, str, str]]:
         """
         This method is used to iterate over dataset items, receiving item name, path to image and path to annotation
         json file. It is useful when you need to iterate over dataset items and get paths to images and annotations.
@@ -1791,7 +1791,8 @@ class Dataset(KeyObject):
         )
         await self._add_ann_by_type_async(item_name, ann)
         await self._add_item_info_async(item_name, item_info)
-
+    
+    # region Convert DS
     def to_coco(
         self,
         meta: ProjectMeta,
@@ -1839,6 +1840,30 @@ class Dataset(KeyObject):
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
+
+    def to_pascal_voc(
+        self,
+        meta: ProjectMeta,
+        save_path: Optional[str] = None,
+        log_progress: bool = False,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
+    ) -> Tuple[Dict, Union[None, Dict]]:
+        """
+        Convert Supervisely dataset to Pascal VOC format.
+        """
+
+        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
+            sly_ds_to_pascal_voc,
+        )
+
+        return sly_ds_to_pascal_voc(
+            self,
+            meta=meta,
+            save_path=save_path,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    # region Convert DS
 
 
 class Project:
@@ -3565,6 +3590,7 @@ class Project:
             resume_download=resume_download,
         )
 
+    # region Convert PR
     @staticmethod
     def to_coco(
         project_dir: str,
@@ -3633,7 +3659,41 @@ class Project:
             logger.info(f"Dataset '{dataset.short_name}' has been converted to COCO format.")
         logger.info(f"Project '{project_fs.name}' has been converted to COCO format.")
 
-        
+    def to_pascal_voc(
+        self,
+        dest_dir: Optional[str] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to Pascal VOC format.
+        """
+        if dest_dir is None:
+            dest_dir = self.directory
+
+        Path(dest_dir).mkdir(parents=True, exist_ok=True)
+
+        if progress_cb is not None:
+            log_progress = False
+
+        if log_progress:
+            progress_cb = tqdm_sly(
+                desc="Converting Supervisely project to Pascal VOC format", total=self.total_items
+            )
+
+        for dataset in self.datasets:
+            dataset: Dataset
+            dataset.to_pascal_voc(
+                meta=self.meta,
+                save_path=dest_dir,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+            )
+            logger.info(f"Dataset '{dataset.short_name}' has been converted to Pascal VOC format.")
+        logger.info(f"Project '{self.name}' has been converted to Pascal VOC format.")
+
+    # region Convert PR
+    # ------------------------------------------------------------------------------------------------------------ #
 
 
 def read_single_project(
