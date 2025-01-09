@@ -61,8 +61,10 @@ from supervisely.convert.volume.dicom.dicom_converter import DICOMConverter
 # Export Converters
 from supervisely.convert.image.coco.coco_helper import sly_project_to_coco as to_coco
 from supervisely.convert.image.yolo.yolo_helper import sly_project_to_yolo as to_yolo
+from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_project_to_pascal_voc as to_pascal_voc
 
 __all__ = [
     "to_coco",
     "to_yolo",
+    "to_pascal_voc",
 ]

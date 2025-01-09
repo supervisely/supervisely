@@ -1803,7 +1803,6 @@ class Dataset(KeyObject):
         await self._add_ann_by_type_async(item_name, ann)
         await self._add_item_info_async(item_name, item_info)
 
-    # region Convert DS
     def to_coco(
         self,
         meta: ProjectMeta,
@@ -1912,26 +1911,50 @@ class Dataset(KeyObject):
         self,
         meta: ProjectMeta,
         save_path: Optional[str] = None,
+        train_val_split_coef: float = 0.8,
         log_progress: bool = False,
         progress_cb: Optional[Union[Callable, tqdm]] = None,
     ) -> Tuple[Dict, Union[None, Dict]]:
         """
         Convert Supervisely dataset to Pascal VOC format.
-        """
+        
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param save_path: Destination directory.
+        :type save_path: :class:`str`, optional
+        :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
+        :type train_val_split_coef: :class:`float`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
+        :return: None
+        :rtype: NoneType
 
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                ds.to_pascal_voc(project.meta, dest_dir=dest_dir)
+        """
         from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
             sly_ds_to_pascal_voc,
         )
 
-        return sly_ds_to_pascal_voc(
+        sly_ds_to_pascal_voc(
             self,
             meta=meta,
             save_path=save_path,
+            train_val_split_coef=train_val_split_coef,
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
-
-    # region Convert DS
 
 
 class Project:
@@ -3658,7 +3681,6 @@ class Project:
             resume_download=resume_download,
         )
 
-    # region Convert PR
     def to_coco(
         self,
         dest_dir: Optional[str] = None,
@@ -3749,39 +3771,48 @@ class Project:
     def to_pascal_voc(
         self,
         dest_dir: Optional[str] = None,
+        train_val_split_coef: float = 0.8,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Convert Supervisely project to Pascal VOC format.
+        
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
+        :type train_val_split_coef: :class:`float`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: callable, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to YOLO format
+            sly.Project(project_directory).to_pascal_voc(log_progress=True)
+            # or
+            from supervisely.convert import to_pascal_voc
+            to_pascal_voc(project_directory, dest_dir="./pascal_voc_project")
         """
-        if dest_dir is None:
-            dest_dir = self.directory
+        from supervisely.convert import to_pascal_voc
 
-        Path(dest_dir).mkdir(parents=True, exist_ok=True)
-
-        if progress_cb is not None:
-            log_progress = False
-
-        if log_progress:
-            progress_cb = tqdm_sly(
-                desc="Converting Supervisely project to Pascal VOC format", total=self.total_items
-            )
-
-        for dataset in self.datasets:
-            dataset: Dataset
-            dataset.to_pascal_voc(
-                meta=self.meta,
-                save_path=dest_dir,
-                log_progress=log_progress,
-                progress_cb=progress_cb,
-            )
-            logger.info(f"Dataset '{dataset.short_name}' has been converted to Pascal VOC format.")
-        logger.info(f"Project '{self.name}' has been converted to Pascal VOC format.")
-
-    # region Convert PR
-    # ------------------------------------------------------------------------------------------------------------ #
-
+        to_pascal_voc(
+            project=self,
+            dest_dir=dest_dir,
+            train_val_split_coef=train_val_split_coef,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
 def read_single_project(
     dir: str,
