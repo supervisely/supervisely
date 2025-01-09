@@ -3,7 +3,6 @@ import shutil
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, OrderedDict, Tuple, Union
 
-import lxml.etree as ET
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -320,7 +319,9 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
         res_mask = res_mask.convert("P", palette=Image.ADAPTIVE)
         return res_mask
 
-    def from_ann_to_xml(ann: Annotation, image_name: str) -> ET.ElementTree:
+    def from_ann_to_xml(ann: Annotation, image_name: str):
+        import lxml.etree as ET  # pylint: disable=import-error
+
         xml_root = ET.Element("annotation")
 
         ET.SubElement(xml_root, "folder").text = f"VOC"
@@ -477,7 +478,7 @@ def sly_ds_to_pascal_voc(
     # Prepare Pascal VOC root directory
     if dest_dir is None:
         dest_dir = str(Path(dataset.path).parent / "pascal_voc")
-    
+
     pascal_root_path = os.path.join(dest_dir, "VOCdevkit", "VOC")
     result_images_dir = os.path.join(pascal_root_path, "JPEGImages")
     result_ann_dir = os.path.join(pascal_root_path, "Annotations")
