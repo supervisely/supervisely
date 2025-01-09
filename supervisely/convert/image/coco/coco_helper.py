@@ -609,7 +609,7 @@ def sly_ds_to_coco(
     copy_images: bool = False,
     log_progress: bool = False,
     progress_cb: Optional[Callable] = None,
-) -> Tuple[Dict, Optional[Dict]]:
+) -> Tuple[Dict, Optional[Dict], Union[str, None], Union[str, None]]:
     """
     Convert Supervisely dataset to COCO format.
 
@@ -629,8 +629,8 @@ def sly_ds_to_coco(
     :type log_progress: :class:`bool`, optional
     :param progress_cb: Callback function to track the progress of the conversion.
     :type progress_cb: :class:`Callable`, optional
-    :return: COCO dataset in dictionary format.
-    :rtype: :class:`dict`
+    :return: Tuple with COCO dataset dictionaries (ann, captions) and paths to them.
+    :rtype: :class:`tuple`
 
     :Usage example:
 
@@ -644,7 +644,7 @@ def sly_ds_to_coco(
 
         for ds in project.datasets:
             dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            coco_json = sly_ds_to_coco(ds, project.meta, save=True, dest_dir=dest_dir)
+            coco_json, coco_captions, coco_json_path, coco_captions_path = sly_ds_to_coco(ds, project.meta, save=True, dest_dir=dest_dir)
     """
     dest_dir = Path(dest_dir) or Path(dataset.path).parent / "coco"
     if save_json is True:
@@ -725,18 +725,20 @@ def sly_ds_to_coco(
         if progress_cb is not None:
             progress_cb(1)
 
+    ann_path = None
+    captions_path = None
     if save_json is True:
         logger.info("Saving COCO annotations to disk...")
-        anns_path = str(annotations_dir / COCO_INSTANCES_FILE)
-        dump_json_file(coco_ann, anns_path)
-        logger.info(f"Saved COCO instances to '{anns_path}'")
+        ann_path = str(annotations_dir / COCO_INSTANCES_FILE)
+        dump_json_file(coco_ann, ann_path)
+        logger.info(f"Saved COCO instances to '{ann_path}'")
 
         if has_captions:
             captions_path = str(annotations_dir / COCO_CAPTIONS_FILE)
             dump_json_file(coco_captions, captions_path)
             logger.info(f"Saved COCO captions to '{captions_path}'")
 
-    return coco_ann, coco_captions
+    return coco_ann, coco_captions, ann_path, captions_path
 
 
 def sly_project_to_coco(
