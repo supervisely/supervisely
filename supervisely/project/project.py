@@ -1847,9 +1847,9 @@ class Dataset(KeyObject):
                 coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, dest_dir=dest_dir)
         """
 
-        from supervisely.convert.image.coco.coco_helper import sly_ds_to_coco
+        from supervisely.convert import dataset_to_coco
 
-        return sly_ds_to_coco(
+        return dataset_to_coco(
             self,
             meta=meta,
             dest_dir=dest_dir,
@@ -1896,9 +1896,9 @@ class Dataset(KeyObject):
                 ds.to_yolo(project.meta, dest_dir=dest_dir)
         """
 
-        from supervisely.convert.image.yolo.yolo_helper import sly_ds_to_yolo
+        from supervisely.convert import dataset_to_yolo
 
-        return sly_ds_to_yolo(
+        return dataset_to_yolo(
             self,
             meta=meta,
             dest_dir=dest_dir,
@@ -1943,11 +1943,9 @@ class Dataset(KeyObject):
                 dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
                 ds.to_pascal_voc(project.meta, dest_dir=dest_dir)
         """
-        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
-            sly_ds_to_pascal_voc,
-        )
+        from supervisely.convert import dataset_to_pascal_voc
 
-        sly_ds_to_pascal_voc(
+        dataset_to_pascal_voc(
             self,
             meta=meta,
             save_path=save_path,
@@ -3714,9 +3712,9 @@ class Project:
             from supervisely.convert import to_coco
             to_coco(project_directory, dest_dir="./coco_project")
         """
-        from supervisely.convert import to_coco
+        from supervisely.convert import project_to_coco
 
-        return to_coco(
+        project_to_coco(
             project=self,
             dest_dir=dest_dir,
             log_progress=log_progress,
@@ -3758,9 +3756,9 @@ class Project:
             to_yolo(project_directory, dest_dir="./yolo_project")
         """
 
-        from supervisely.convert import to_yolo
+        from supervisely.convert import project_to_yolo
 
-        return to_yolo(
+        project_to_yolo(
             project=self,
             dest_dir=dest_dir,
             task_type=task_type,
@@ -3804,9 +3802,9 @@ class Project:
             from supervisely.convert import to_pascal_voc
             to_pascal_voc(project_directory, dest_dir="./pascal_voc_project")
         """
-        from supervisely.convert import to_pascal_voc
+        from supervisely.convert import project_to_pascal_voc
 
-        to_pascal_voc(
+        project_to_pascal_voc(
             project=self,
             dest_dir=dest_dir,
             train_val_split_coef=train_val_split_coef,
