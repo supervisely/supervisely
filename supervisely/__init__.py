@@ -268,6 +268,8 @@ import inspect
 from supervisely.task.progress import tqdm_sly
 import tqdm
 
+from supervisely import convert
+
 _original_tqdm = tqdm.tqdm
 
 

@@ -11,7 +11,17 @@ import shutil
 from collections import defaultdict, namedtuple
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import aiofiles
 import numpy as np
@@ -21,6 +31,7 @@ import supervisely as sly
 from supervisely._utils import (
     abs_url,
     batched,
+    generate_free_name,
     get_or_create_event_loop,
     is_development,
     snake_to_human,
@@ -1791,29 +1802,36 @@ class Dataset(KeyObject):
         )
         await self._add_ann_by_type_async(item_name, ann)
         await self._add_item_info_async(item_name, item_info)
-    
+
     # region Convert DS
     def to_coco(
         self,
         meta: ProjectMeta,
-        save: Optional[bool] = False,
-        save_path: Optional[str] = None,
+        dest_dir: Optional[str] = None,
+        save_json: bool = False,
+        copy_images: bool = False,
         log_progress: bool = False,
-        progress_cb: Optional[Union[Callable, tqdm]] = None,
+        progress_cb: Optional[Callable] = None,
     ) -> Tuple[Dict, Union[None, Dict]]:
         """
         Convert Supervisely dataset to COCO format.
 
-        If save_path is None, the COCO dataset will be saved in the same directory as the dataset.
+        If dest_dir is None, the COCO dataset will be saved in the same directory as the dataset.
             Note:   If you start conversion from sly.Project,
                     all COCO JSON files will be saved in the root of the project.
 
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
-        :param save: If True, saves COCO dataset to the disk.
-        :type save: :class:`bool`, optional
-        :param save_path: Path to save COCO dataset.
-        :type save_path: :class:`str`, optional
+        :param dest_dir: Path to save COCO dataset.
+        :type dest_dir: :class:`str`, optional
+        :param save_json: If True, saves COCO JSON files to the disk.
+        :type save_json: :class:`bool`, optional
+        :param copy_images: If True, copies images to the COCO dataset directory.
+        :type copy_images: :class:`bool`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
         :return: COCO dataset in dictionary format.
         :rtype: :class:`dict`
 
@@ -1826,8 +1844,8 @@ class Dataset(KeyObject):
             project = sly.Project(project_path, sly.OpenMode.READ)
 
             for ds in project.datasets:
-                save_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-                coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, save_path=save_path)
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, dest_dir=dest_dir)
         """
 
         from supervisely.convert.image.coco.coco_helper import sly_ds_to_coco
@@ -1835,8 +1853,57 @@ class Dataset(KeyObject):
         return sly_ds_to_coco(
             self,
             meta=meta,
-            save=save,
-            save_path=save_path,
+            dest_dir=dest_dir,
+            save_json=save_json,
+            copy_images=copy_images,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    def to_yolo(
+        self,
+        meta: ProjectMeta,
+        dest_dir: Optional[str] = None,
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        log_progress: bool = False,
+        progress_cb: Optional[Callable] = None,
+    ):
+        """
+        Convert Supervisely dataset to YOLO format.
+
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param dest_dir: Path to save YOLO dataset.
+        :type dest_dir: :class:`str`, optional
+        :param task_type: Task type.
+        :type task_type: :class:`str`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
+        :return: YOLO dataset in dictionary format.
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                ds.to_yolo(project.meta, dest_dir=dest_dir)
+        """
+
+        from supervisely.convert.image.yolo.yolo_helper import sly_ds_to_yolo
+
+        return sly_ds_to_yolo(
+            self,
+            meta=meta,
+            dest_dir=dest_dir,
+            task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
@@ -1863,6 +1930,7 @@ class Dataset(KeyObject):
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
+
     # region Convert DS
 
 
@@ -3591,12 +3659,11 @@ class Project:
         )
 
     # region Convert PR
-    @staticmethod
     def to_coco(
-        project_dir: str,
+        self,
         dest_dir: Optional[str] = None,
         log_progress: bool = True,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb: Optional[Callable] = None,
     ) -> None:
         """
         Convert Supervisely project to COCO format.
@@ -3606,7 +3673,7 @@ class Project:
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
-        :type progress_cb: tqdm or callable, optional
+        :type progress_cb: callable, optional
         :return: None
         :rtype: NoneType
 
@@ -3621,43 +3688,63 @@ class Project:
 
             # Convert Project to COCO format
             sly.Project(project_directory).to_coco(log_progress=True)
+            # or
+            from supervisely.convert import to_coco
+            to_coco(project_directory, dest_dir="./coco_project")
         """
-        from supervisely.convert.image.coco.coco_helper import COCO_INSTANCES_FILE
+        from supervisely.convert import to_coco
 
-        project_fs = Project(project_dir, OpenMode.READ)
+        return to_coco(
+            project=self,
+            dest_dir=dest_dir,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
-        if dest_dir is None:
-            dest_dir = project_fs.directory
+    def to_yolo(
+        self,
+        dest_dir: Optional[str] = None,
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        log_progress: bool = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to YOLO format.
 
-        Path(dest_dir).mkdir(parents=True, exist_ok=True)
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: callable, optional
+        :return: None
+        :rtype: NoneType
 
-        if progress_cb is not None:
-            log_progress = False
+        :Usage example:
 
-        if log_progress:
-            progress_cb = tqdm_sly(
-                desc="Converting Supervisely project to COCO format", total=project_fs.total_items
-            )
+        .. code-block:: python
 
-        multiple_datasets = len(project_fs.datasets) > 1
-        for dataset in project_fs.datasets:
-            dataset: Dataset
-            prefix = f"{dataset.short_name}_" if multiple_datasets else ""
-            save_path = Path(dest_dir) / f"{prefix}{COCO_INSTANCES_FILE}"
-            cnt = 1
-            while save_path.exists():
-                save_path = save_path.with_name(f"{prefix}{cnt:02d}_{COCO_INSTANCES_FILE}")
-                cnt += 1
+            import supervisely as sly
 
-            dataset.to_coco(
-                meta=project_fs.meta,
-                save=True,
-                save_path=str(save_path),
-                log_progress=log_progress,
-                progress_cb=progress_cb,
-            )
-            logger.info(f"Dataset '{dataset.short_name}' has been converted to COCO format.")
-        logger.info(f"Project '{project_fs.name}' has been converted to COCO format.")
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to YOLO format
+            sly.Project(project_directory).to_yolo(log_progress=True)
+            # or
+            from supervisely.convert import to_yolo
+            to_yolo(project_directory, dest_dir="./yolo_project")
+        """
+
+        from supervisely.convert import to_yolo
+
+        return to_yolo(
+            project=self,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
     def to_pascal_voc(
         self,
@@ -4611,23 +4698,29 @@ async def _download_project_async(
     switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
-    # number of workers
-    num_workers = kwargs.get("num_workers", 5)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
 
-    async def worker(queue: asyncio.Queue, semaphore: asyncio.Semaphore):
-        while True:
+    # number of workers
+    num_workers = min(kwargs.get("num_workers", semaphore._value), 10)
+
+    async def worker(queue: asyncio.Queue, stop_event: asyncio.Event):
+        while not stop_event.is_set():
             task = await queue.get()
             if task is None:
                 break
-            async with semaphore:
+            try:
                 await task
-            queue.task_done()
+            except Exception as e:
+                logger.error(f"Error in _download_project_async worker: {e}")
+                stop_event.set()
+            finally:
+                queue.task_done()
 
     queue = asyncio.Queue()
-    workers = [asyncio.create_task(worker(queue, semaphore)) for _ in range(num_workers)]
+    stop_event = asyncio.Event()
+    workers = [asyncio.create_task(worker(queue, stop_event)) for _ in range(num_workers)]
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4673,9 +4766,11 @@ async def _download_project_async(
         )
         small_images = []
         large_images = []
+        dataset_images = []
         async for image_batch in all_images:
             for image in image_batch:
                 if images_ids is None or image.id in images_ids:
+                    dataset_images.append(image)
                     if image.size < switch_size:
                         small_images.append(image)
                     else:
@@ -4702,13 +4797,12 @@ async def _download_project_async(
                     try:
                         existing = dataset_fs.get_item_info(image.name)
                     except:
-                        pass
+                        to_download.append(image)
                     else:
-                        if existing.updated_at == image.updated_at:
-                            if ds_progress is not None:
-                                ds_progress(1)
-                            continue
-                    to_download.append(image)
+                        if existing.updated_at != image.updated_at:
+                            to_download.append(image)
+                        elif ds_progress is not None:
+                            ds_progress(1)
                 return to_download
 
             small_images = await check_items(small_images)
@@ -4747,11 +4841,9 @@ async def _download_project_async(
 
         await queue.join()
 
-        all_images = small_images + large_images
-
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
-            for image_info in all_images:
+            for image_info in dataset_images:
                 if image_info.meta:
                     sly.fs.mkdir(meta_dir)
                     sly.json.dump_json_file(
@@ -4759,7 +4851,7 @@ async def _download_project_async(
                     )
 
         # delete redundant items
-        items_names_set = set([img.name for img in all_images])
+        items_names_set = set([img.name for img in dataset_images])
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
@@ -4767,6 +4859,10 @@ async def _download_project_async(
     for _ in range(num_workers):
         await queue.put(None)
     await asyncio.gather(*workers)
+
+    if stop_event.is_set():
+        raise RuntimeError("Download process was stopped due to an error in one of the workers.")
+
     try:
         create_readme(dest_dir, project_id, api)
     except Exception as e:

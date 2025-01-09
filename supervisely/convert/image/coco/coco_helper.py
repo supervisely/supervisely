@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import uuid
 from copy import deepcopy
@@ -8,14 +9,14 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
-from tqdm import tqdm
 
 from supervisely._utils import generate_free_name
 from supervisely.api.image_api import ImageApi
 from supervisely.imaging.image import read as sly_image
-from supervisely.io.fs import get_file_name_with_ext, list_files
+from supervisely.io.fs import get_file_name_with_ext
 from supervisely.io.json import dump_json_file, load_json_file
-from supervisely.project.project import Dataset
+from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import tqdm_sly
 
 COCO_INSTANCES_FILE = "coco_instances.json"
@@ -350,7 +351,7 @@ def _get_graph_info(idx, obj_class):
     return data
 
 
-def _get_categories_from_meta(meta: ProjectMeta):
+def get_categories_from_meta(meta: ProjectMeta):
     cat = lambda idx, c: {"supercategory": c.name, "id": idx, "name": c.name}
     return [
         cat(idx, c) if c.geometry_type != GraphNodes else _get_graph_info(idx, c)
@@ -575,25 +576,59 @@ def sly_ann_to_coco(
     return res_inst, res_captions
 
 
+def has_caption_tag(meta: ProjectMeta) -> bool:
+    tag = meta.get_tag_meta("caption")
+    return tag is not None and tag.value_type == TagValueType.ANY_STRING
+
+
+def create_coco_ann_template(meta: ProjectMeta) -> Dict:
+    now = datetime.now()
+    coco_ann = dict(
+        info=dict(
+            description="COCO dataset converted from Supervisely",
+            url="None",
+            version=str(1.0),
+            year=now.year,
+            contributor="Supervisely",
+            date_created=now.strftime("%Y-%m-%d %H:%M:%S"),
+        ),
+        licenses=[dict(url="None", id=0, name="None")],
+        images=[],
+        annotations=[],
+        categories=[],
+    )
+    coco_ann["categories"] = get_categories_from_meta(meta)
+    return coco_ann
+
+
 def sly_ds_to_coco(
     dataset: Dataset,
     meta: ProjectMeta,
-    save: Optional[bool] = False,
-    save_path: Optional[str] = None,
+    dest_dir: Optional[str] = None,
+    save_json: bool = False,
+    copy_images: bool = False,
     log_progress: bool = False,
-    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    progress_cb: Optional[Callable] = None,
 ) -> Tuple[Dict, Optional[Dict]]:
     """
     Convert Supervisely dataset to COCO format.
 
-    If save_path is None, the COCO dataset will be saved in the same directory as the dataset.
+    If dest_dir is None, the COCO dataset will be saved in the same directory as the dataset.
 
+    :param dataset: Supervisely dataset.
+    :type dataset: :class:`Dataset<supervisely.project.dataset.Dataset>`
     :param meta: Project meta information.
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
-    :param save: If True, saves COCO dataset to the disk.
-    :type save: :class:`bool`, optional
-    :param save_path: Path to save COCO dataset.
-    :type save_path: :class:`str`, optional
+    :param dest_dir: Destination path to save COCO dataset.
+    :type dest_dir: :class:`str`, optional
+    :param save_json: If True, saves COCO JSON files to the disk.
+    :type save_json: :class:`bool`, optional
+    :param copy_images: If True, copies images to the destination directory.
+    :type copy_images: :class:`bool`, optional
+    :param log_progress: If True, logs the progress of the conversion.
+    :type log_progress: :class:`bool`, optional
+    :param progress_cb: Callback function to track the progress of the conversion.
+    :type progress_cb: :class:`Callable`, optional
     :return: COCO dataset in dictionary format.
     :rtype: :class:`dict`
 
@@ -608,9 +643,16 @@ def sly_ds_to_coco(
         project = sly.Project(project_path, sly.OpenMode.READ)
 
         for ds in project.datasets:
-            save_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
-            coco_json = sly_ds_to_coco(ds, project.meta, save=True, save_path=save_path)
+            dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+            coco_json = sly_ds_to_coco(ds, project.meta, save=True, dest_dir=dest_dir)
     """
+    dest_dir = Path(dest_dir) or Path(dataset.path).parent / "coco"
+    if save_json is True:
+        annotations_dir = dest_dir / "annotations"
+        annotations_dir.mkdir(parents=True, exist_ok=True)
+    if copy_images is True:
+        images_dir = dest_dir / "images"
+        images_dir.mkdir(parents=True, exist_ok=True)
 
     if progress_cb is not None:
         log_progress = False
@@ -619,28 +661,14 @@ def sly_ds_to_coco(
         progress_cb = tqdm_sly(
             desc=f"Converting dataset '{dataset.short_name}' to COCO format",
             total=len(dataset),
-        )
+        ).update
 
-    now = datetime.now()
-    coco_ann_base = dict(
-        info=dict(
-            description=f"Name: {dataset.short_name}. Path: {dataset.path}",
-            url="None",
-            version=str(1.0),
-            year=now.year,
-            contributor="Supervisely",
-            date_created=now.strftime("%Y-%m-%d %H:%M:%S"),
-        ),
-        licenses=[dict(url="None", id=0, name="None")],
-        images=[],
-        annotations=[],
-    )
-    coco_ann = deepcopy(coco_ann_base)
-    coco_ann["categories"] = _get_categories_from_meta(meta)
+    coco_ann = create_coco_ann_template(meta)
 
-    captions_tag = meta.get_tag_meta("caption")
-    has_captions = captions_tag is not None and captions_tag.value_type == TagValueType.ANY_STRING
-    coco_captions = deepcopy(coco_ann_base) if has_captions else None
+    has_captions = has_caption_tag(meta)
+    coco_captions = None
+    if has_captions:
+        coco_captions = create_coco_ann_template(meta)
 
     image_coco = lambda info, idx: dict(
         license="None",
@@ -658,8 +686,13 @@ def sly_ds_to_coco(
     caption_id = 0
     for image_idx, name in enumerate(dataset.get_items_names(), 1):
         img_path = dataset.get_img_path(name)
+        img_name = get_file_name_with_ext(img_path)
         ann_path = dataset.get_ann_path(name)
         img_info_path = dataset.get_img_info_path(name)
+
+        if copy_images:
+            dst_img_path = images_dir / img_name
+            shutil.copy(img_path, dst_img_path)
 
         if os.path.exists(img_info_path):
             image_info_json = load_json_file(img_info_path)
@@ -667,8 +700,8 @@ def sly_ds_to_coco(
             img = sly_image(img_path, remove_alpha_channel=False)
             now = datetime.now()
             image_info_json = {
-                "id": image_idx,
-                "name": name,
+                "id": None,
+                "name": img_name,
                 "height": img.shape[0],
                 "width": img.shape[1],
                 "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
@@ -690,26 +723,80 @@ def sly_ds_to_coco(
         caption_id += len(captions)
 
         if progress_cb is not None:
-            progress_cb.update(1)
+            progress_cb(1)
 
-    if save is True:
+    if save_json is True:
         logger.info("Saving COCO annotations to disk...")
-        save_path = save_path or os.path.join(dataset.path, COCO_INSTANCES_FILE)
-        json_files = set(list_files(str(Path(save_path).parent), valid_extensions=[".json"]))
-        file_name = get_file_name_with_ext(save_path)
-        file_name = generate_free_name(json_files, file_name, with_ext=True, extend_used_names=True)
-        save_path = str(Path(save_path).parent / file_name)
-        dump_json_file(coco_ann, save_path)
-        logger.info(f"Saved COCO instances to '{save_path}'")
+        anns_path = str(annotations_dir / COCO_INSTANCES_FILE)
+        dump_json_file(coco_ann, anns_path)
+        logger.info(f"Saved COCO instances to '{anns_path}'")
 
         if has_captions:
-            if file_name.endswith(COCO_INSTANCES_FILE):
-                file_name = file_name.replace(COCO_CAPTIONS_FILE, COCO_CAPTIONS_FILE)
-            else:
-                file_name = COCO_CAPTIONS_FILE
-            file_name = generate_free_name(json_files, file_name, with_ext=True)
-            save_path = str(Path(save_path).parent / file_name)
-            dump_json_file(coco_captions, save_path)
-            logger.info(f"Saved COCO captions to '{save_path}'")
+            captions_path = str(annotations_dir / COCO_CAPTIONS_FILE)
+            dump_json_file(coco_captions, captions_path)
+            logger.info(f"Saved COCO captions to '{captions_path}'")
 
     return coco_ann, coco_captions
+
+
+def sly_project_to_coco(
+    project: Union[Project, str],
+    dest_dir: Optional[str] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Callable] = None,
+) -> None:
+    """
+    Convert Supervisely project to COCO format.
+
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
+
+        # Convert Project to COCO format
+        sly.Project(project_directory).to_coco(log_progress=True)
+    """
+    if isinstance(project, str):
+        project = Project(project, mode=OpenMode.READ)
+
+    dest_dir = Path(dest_dir) if dest_dir is not None else Path(project.directory).parent / "coco"
+
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    if len(os.listdir(dest_dir)) > 0:
+        raise FileExistsError(f"Directory {dest_dir} is not empty.")
+
+    if progress_cb is not None:
+        log_progress = False
+
+    if log_progress:
+        progress_cb = tqdm_sly(
+            desc="Converting Supervisely project to COCO format", total=project.total_items
+        ).update
+
+    used_ds_names = set()
+    for ds in project.datasets:
+        ds: Dataset
+        coco_dir = generate_free_name(used_ds_names, ds.short_name, extend_used_names=True)
+        ds.to_coco(
+            meta=project.meta,
+            dest_dir=dest_dir / coco_dir,
+            save_json=True,
+            copy_images=True,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+        logger.info(f"Dataset '{ds.short_name}' has been converted to COCO format.")
+    logger.info(f"Project '{project.name}' has been converted to COCO format.")
