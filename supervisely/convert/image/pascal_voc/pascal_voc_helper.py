@@ -1,21 +1,20 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union, OrderedDict
+from typing import Callable, Dict, List, Optional, OrderedDict, Tuple, Union
 
 import lxml.etree as ET
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from supervisely.imaging.color import generate_rgb
 
 from supervisely import (
     Annotation,
     Dataset,
-    Project,
     Label,
     ObjClass,
     ObjClassCollection,
+    Project,
     ProjectMeta,
     generate_free_name,
     logger,
@@ -24,10 +23,11 @@ from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging.color import generate_rgb
 from supervisely.imaging.image import read
-from supervisely.task.progress import tqdm_sly
-from supervisely.io.fs import get_file_name, get_file_ext, file_exists
+from supervisely.io.fs import file_exists, get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
+from supervisely.task.progress import tqdm_sly
 
 MASKS_EXTENSION = ".png"
 
@@ -264,21 +264,21 @@ def update_meta_from_xml(
 def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
     """
     Convert Supervisely annotation to Pascal VOC format annotation.
-    
+
     :param ann: Supervisely annotation.
     :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
     :param image_name: Image name.
     :type image_name: :class:`str`
     :return: Tuple with xml tree and instance and class masks in PIL.Image format.
     :rtype: :class:`Tuple`
-    
+
     :Usage example:
 
      .. code-block:: python
 
         import supervisely as sly
         from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
-        
+
         ann = sly.Annotation.from_json(ann_json, meta)
         xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
     """
@@ -376,7 +376,7 @@ def sly_ds_to_pascal_voc(
 ) -> Tuple[Dict, Optional[Dict]]:
     """
     Convert Supervisely dataset to Pascal VOC format.
-    
+
     :param meta: Project meta information.
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
     :param save_path: Destination directory.
@@ -404,8 +404,14 @@ def sly_ds_to_pascal_voc(
             save_path = "/home/admin/work/supervisely/projects/lemons_annotated_pascal_voc"
             sly_ds_to_pascal_voc(ds, project.meta, save_path=save_path)
     """
-    
-    def write_main_set(is_trainval, images_stats, meta_json, result_main_sets_dir, result_segmentation_sets_dir):
+
+    def write_main_set(
+        is_trainval: int,
+        images_stats: dict,
+        meta: ProjectMeta,
+        result_main_sets_dir: str,
+        result_segmentation_sets_dir: str,
+    ):
         res_files = ["trainval.txt", "train.txt", "val.txt"]
         for file in os.listdir(result_segmentation_sets_dir):
             if file in res_files:
@@ -429,7 +435,7 @@ def sly_ds_to_pascal_voc(
             ]
             write_objs[0] = {"suffix": "trainval", "imgs": trainval_imgs}
 
-        for obj_cls in meta_json.obj_classes:
+        for obj_cls in meta.obj_classes:
             if obj_cls.geometry_type not in SUPPORTED_GEOMETRY_TYPES:
                 continue
             if obj_cls.name == "neutral":
@@ -442,8 +448,7 @@ def sly_ds_to_pascal_voc(
                         v = "1" if obj_cls.name in img_stats["classes"] else "-1"
                         f.write(f'{img_stats["name"]} {v}\n')
 
-
-    def write_segm_set(is_trainval, images_stats, result_imgsets_dir):
+    def write_segm_set(is_trainval: int, images_stats: dict, result_imgsets_dir: str):
         with open(os.path.join(result_imgsets_dir, "trainval.txt"), "a") as f:
             if is_trainval == 1:
                 f.writelines(
@@ -457,7 +462,7 @@ def sly_ds_to_pascal_voc(
             f.writelines(i["name"] + "\n" for i in images_stats if i["dataset"] == TRAIN_TAG_NAME)
         with open(os.path.join(result_imgsets_dir, "val.txt"), "a") as f:
             f.writelines(i["name"] + "\n" for i in images_stats if i["dataset"] == VAL_TAG_NAME)
-    
+
     if progress_cb is not None:
         log_progress = False
 
@@ -466,9 +471,9 @@ def sly_ds_to_pascal_voc(
             desc=f"Converting dataset '{dataset.short_name}' to Pascal VOC format",
             total=len(dataset),
         )
-        
+
     logger.info(f"Processing dataset: '{dataset.name}'")
-    
+
     # Prepare Pascal VOC root directory
     pascal_root_path = os.path.join(save_path, "VOCdevkit", "VOC")
     result_images_dir = os.path.join(pascal_root_path, "JPEGImages")
@@ -488,38 +493,41 @@ def sly_ds_to_pascal_voc(
     os.makedirs(result_image_sets_dir, exist_ok=True)
     os.makedirs(result_segmentation_sets_dir, exist_ok=True)
     os.makedirs(result_main_sets_dir, exist_ok=True)
-    logger.info(f"Pascal VOC directories for dataset: '{dataset.name}' have been created")
 
     # Create colors.txt file
     if not file_exists(result_colors_file_path):
         with open(result_colors_file_path, "w") as f:
-            f.write(f"neutral {default_classes_colors['neutral'][0]} {default_classes_colors['neutral'][1]} {default_classes_colors['neutral'][2]}\n")
+            f.write(
+                f"neutral {default_classes_colors['neutral'][0]} {default_classes_colors['neutral'][1]} {default_classes_colors['neutral'][2]}\n"
+            )
 
     image_stats = []
     classes_colors = {}
     for item_name, img_path, ann_path in dataset.items():
         logger.info(f"Processing item: {item_name}")
-        
+
         # Assign unique name to avoid conflicts
         unique_name = f"{dataset.name}_{get_file_name(item_name)}"
-        
+
         # Load annotation
         ann = Annotation.from_json(load_json_file(ann_path), meta)
         pascal_ann, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, unique_name)
-        
+
         # Write ann
         ann_path = os.path.join(result_ann_dir, f"{unique_name}.xml")
         ET.indent(pascal_ann, space="    ")
         pascal_ann.write(ann_path, pretty_print=True)
-        
+
         # Save instance mask
-        instance_mask_path = os.path.join(result_obj_dir, f"{unique_name}_instance{MASKS_EXTENSION}")
+        instance_mask_path = os.path.join(
+            result_obj_dir, f"{unique_name}_instance{MASKS_EXTENSION}"
+        )
         instance_mask.save(instance_mask_path)
-        
+
         # Save class mask
         class_mask_path = os.path.join(result_class_dir, f"{unique_name}_class{MASKS_EXTENSION}")
         class_mask.save(class_mask_path)
-        
+
         # Save original image
         img_ext = get_file_ext(img_path)
         if img_ext not in VALID_IMG_EXT:
@@ -535,12 +543,12 @@ def sly_ds_to_pascal_voc(
         # Update stats
         cur_img_stats = {"classes": set(), "dataset": None, "name": jpg_name}
         image_stats.append(cur_img_stats)
-        
+
         # Get classes colors
         for label in ann.labels:
             cur_img_stats["classes"].add(label.obj_class.name)
             classes_colors[label.obj_class.name] = tuple(label.obj_class.color)
-            
+
         if log_progress:
             progress_cb.update(1)
 
@@ -563,62 +571,65 @@ def sly_ds_to_pascal_voc(
 
     is_trainval = 0
     write_segm_set(is_trainval, image_stats, result_segmentation_sets_dir)
-    write_main_set(is_trainval, image_stats, meta, result_main_sets_dir, result_segmentation_sets_dir)
+    write_main_set(
+        is_trainval, image_stats, meta, result_main_sets_dir, result_segmentation_sets_dir
+    )
+
 
 def sly_project_to_pascal_voc(
-        project: Union[Project, str],
-        dest_dir: Optional[str] = None,
-        train_val_split_coef: float = 0.8,
-        log_progress: bool = True,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-    ) -> None:
-        """
-        Convert Supervisely project to Pascal VOC format.
-        
-        :param dest_dir: Destination directory.
-        :type dest_dir: :class:`str`, optional
-        :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
-        :type train_val_split_coef: :class:`float`, optional
-        :param log_progress: Show uploading progress bar.
-        :type log_progress: :class:`bool`
-        :param progress_cb: Function for tracking conversion progress (for all items in the project).
-        :type progress_cb: callable, optional
-        :return: None
-        :rtype: NoneType
+    project: Union[Project, str],
+    dest_dir: Optional[str] = None,
+    train_val_split_coef: float = 0.8,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> None:
+    """
+    Convert Supervisely project to Pascal VOC format.
 
-        :Usage example:
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
+    :type train_val_split_coef: :class:`float`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :return: None
+    :rtype: NoneType
 
-        .. code-block:: python
+    :Usage example:
 
-            import supervisely as sly
+    .. code-block:: python
 
-            # Local folder with Project
-            project_directory = "/home/admin/work/supervisely/source/project"
+        import supervisely as sly
 
-            # Convert Project to Pascal VOC format
-            sly.Project(project_directory).to_pascal_voc(log_progress=True)
-        """
-        if dest_dir is None:
-            dest_dir = project.directory
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
 
-        Path(dest_dir).mkdir(parents=True, exist_ok=True)
+        # Convert Project to Pascal VOC format
+        sly.Project(project_directory).to_pascal_voc(log_progress=True)
+    """
+    if dest_dir is None:
+        dest_dir = project.directory
 
-        if progress_cb is not None:
-            log_progress = False
+    Path(dest_dir).mkdir(parents=True, exist_ok=True)
 
-        if log_progress:
-            progress_cb = tqdm_sly(
-                desc="Converting Supervisely project to Pascal VOC format", total=project.total_items
-            )
+    if progress_cb is not None:
+        log_progress = False
 
-        for dataset in project.datasets:
-            dataset: Dataset
-            dataset.to_pascal_voc(
-                meta=project.meta,
-                save_path=dest_dir,
-                train_val_split_coef=train_val_split_coef,
-                log_progress=log_progress,
-                progress_cb=progress_cb,
-            )
-            logger.info(f"Dataset '{dataset.short_name}' has been converted to Pascal VOC format.")
-        logger.info(f"Project '{project.name}' has been converted to Pascal VOC format.")
+    if log_progress:
+        progress_cb = tqdm_sly(
+            desc="Converting Supervisely project to Pascal VOC format", total=project.total_items
+        )
+
+    for dataset in project.datasets:
+        dataset: Dataset
+        dataset.to_pascal_voc(
+            meta=project.meta,
+            save_path=dest_dir,
+            train_val_split_coef=train_val_split_coef,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+        logger.info(f"Dataset '{dataset.short_name}' has been converted to Pascal VOC format.")
+    logger.info(f"Project '{project.name}' has been converted to Pascal VOC format.")
