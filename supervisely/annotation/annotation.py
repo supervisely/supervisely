@@ -3077,20 +3077,6 @@ class Annotation:
             last_caption_id=last_caption_id,
         )
 
-    def to_pascal_voc(
-        self,
-        image_name: str,
-    ) -> Tuple[List, List]:
-        """
-        Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
-        """
-
-        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
-            sly_ann_to_pascal_voc,
-        )
-
-        return sly_ann_to_pascal_voc(self, image_name)
-
     def to_yolo(
         self,
         class_names: List[str],
@@ -3122,3 +3108,34 @@ class Annotation:
         from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
 
         return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)
+
+    def to_pascal_voc(
+        self,
+        image_name: str,
+    ) -> Tuple[List, List]:
+        """
+        Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
+
+        :param ann: Supervisely annotation.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+        :param image_name: Image name.
+        :type image_name: :class:`str`
+        :return: Tuple with xml tree and instance and class masks in PIL.Image format.
+        :rtype: :class:`Tuple`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
+        """
+
+        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
+            sly_ann_to_pascal_voc,
+        )
+
+        return sly_ann_to_pascal_voc(self, image_name)
