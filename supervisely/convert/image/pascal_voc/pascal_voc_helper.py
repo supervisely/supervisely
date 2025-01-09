@@ -369,7 +369,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
 def sly_ds_to_pascal_voc(
     dataset: Dataset,
     meta: ProjectMeta,
-    save_path: Optional[str] = None,
+    dest_dir: Optional[str] = None,
     train_val_split_coef: float = 0.8,
     log_progress: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -379,8 +379,8 @@ def sly_ds_to_pascal_voc(
 
     :param meta: Project meta information.
     :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
-    :param save_path: Destination directory.
-    :type save_path: :class:`str`, optional
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
     :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
     :type train_val_split_coef: :class:`float`, optional
     :param log_progress: If True, log progress.
@@ -401,8 +401,8 @@ def sly_ds_to_pascal_voc(
         project = sly.Project(project_path, sly.OpenMode.READ)
 
         for ds in project.datasets:
-            save_path = "/home/admin/work/supervisely/projects/lemons_annotated_pascal_voc"
-            sly_ds_to_pascal_voc(ds, project.meta, save_path=save_path)
+            dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated_pascal_voc"
+            sly_ds_to_pascal_voc(ds, project.meta, dest_dir=dest_dir)
     """
 
     def write_main_set(
@@ -475,7 +475,10 @@ def sly_ds_to_pascal_voc(
     logger.info(f"Processing dataset: '{dataset.name}'")
 
     # Prepare Pascal VOC root directory
-    pascal_root_path = os.path.join(save_path, "VOCdevkit", "VOC")
+    if dest_dir is None:
+        dest_dir = str(Path(dataset.path).parent / "pascal_voc")
+    
+    pascal_root_path = os.path.join(dest_dir, "VOCdevkit", "VOC")
     result_images_dir = os.path.join(pascal_root_path, "JPEGImages")
     result_ann_dir = os.path.join(pascal_root_path, "Annotations")
     result_obj_dir = os.path.join(pascal_root_path, "SegmentationObject")
@@ -626,7 +629,7 @@ def sly_project_to_pascal_voc(
         dataset: Dataset
         dataset.to_pascal_voc(
             meta=project.meta,
-            save_path=dest_dir,
+            dest_dir=dest_dir,
             train_val_split_coef=train_val_split_coef,
             log_progress=log_progress,
             progress_cb=progress_cb,

@@ -1910,7 +1910,7 @@ class Dataset(KeyObject):
     def to_pascal_voc(
         self,
         meta: ProjectMeta,
-        save_path: Optional[str] = None,
+        dest_dir: Optional[str] = None,
         train_val_split_coef: float = 0.8,
         log_progress: bool = False,
         progress_cb: Optional[Union[Callable, tqdm]] = None,
@@ -1920,8 +1920,8 @@ class Dataset(KeyObject):
         
         :param meta: Project meta information.
         :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
-        :param save_path: Destination directory.
-        :type save_path: :class:`str`, optional
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
         :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
         :type train_val_split_coef: :class:`float`, optional
         :param log_progress: If True, log progress.
@@ -1948,7 +1948,7 @@ class Dataset(KeyObject):
         dataset_to_pascal_voc(
             self,
             meta=meta,
-            save_path=save_path,
+            dest_dir=dest_dir,
             train_val_split_coef=train_val_split_coef,
             log_progress=log_progress,
             progress_cb=progress_cb,
