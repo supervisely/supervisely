@@ -1816,7 +1816,7 @@ class Dataset(KeyObject):
         """
         Convert Supervisely dataset to COCO format.
 
-        Note:   Depending on the `return_type` and `with_captionsparameters, the function returns different values.
+        Note:   Depending on the `return_type` and `with_captions` parameters, the function returns different values.
                 If `return_type` is "path", the COCO annotation files will be saved to the disk.
                 If `return_type` is "dict", the function returns COCO dataset in dictionary format.
                 If `with_captions` is True, the function returns Tuple (instances and captions).

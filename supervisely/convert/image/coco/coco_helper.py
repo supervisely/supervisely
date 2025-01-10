@@ -614,7 +614,7 @@ def sly_ds_to_coco(
     """
     Convert Supervisely dataset to COCO format.
 
-    Note: Depending on the return_type and with_captions parameters, the function returns different values.
+    Note: Depending on the `return_type` and `with_captions` parameters, the function returns different values.
 
     :param dataset: Supervisely dataset.
     :type dataset: :class:`Dataset<supervisely.project.dataset.Dataset>`
