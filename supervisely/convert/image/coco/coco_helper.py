@@ -712,8 +712,8 @@ def sly_ds_to_coco(
         image_info = ImageApi._convert_json_info(ImageApi(None), image_info_json)
 
         coco_ann["images"].append(image_coco(image_info, image_idx))
-        if with_captions is True and isinstance(coco_captions, dict):
-            coco_captions["images"].append(image_coco(image_info, image_idx))
+        if with_captions is True:
+            coco_captions["images"].append(image_coco(image_info, image_idx))  # pylint: disable=unsubscriptable-object
 
         ann = Annotation.load_json_file(ann_path, meta)
         if ann.img_size is None or ann.img_size == (0, 0) or ann.img_size == (None, None):
