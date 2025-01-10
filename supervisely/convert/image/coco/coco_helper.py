@@ -5,7 +5,7 @@ import uuid
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -581,7 +581,7 @@ def has_caption_tag(meta: ProjectMeta) -> bool:
     return tag is not None and tag.value_type == TagValueType.ANY_STRING
 
 
-def create_coco_ann_template(meta: ProjectMeta) -> Dict:
+def create_coco_ann_template(meta: ProjectMeta) -> Dict[str, Any]:
     now = datetime.now()
     coco_ann = dict(
         info=dict(
@@ -712,7 +712,7 @@ def sly_ds_to_coco(
         image_info = ImageApi._convert_json_info(ImageApi(None), image_info_json)
 
         coco_ann["images"].append(image_coco(image_info, image_idx))
-        if with_captions is True and coco_captions is not None:
+        if with_captions is True and isinstance(coco_captions, dict):
             coco_captions["images"].append(image_coco(image_info, image_idx))
 
         ann = Annotation.load_json_file(ann_path, meta)
@@ -736,7 +736,7 @@ def sly_ds_to_coco(
         dump_json_file(coco_ann, ann_path)
         logger.info(f"Saved COCO instances to '{ann_path}'")
 
-        if with_captions is True and coco_captions is not None:
+        if with_captions is True:
             captions_path = str(annotations_dir / COCO_CAPTIONS_FILE)
             dump_json_file(coco_captions, captions_path)
             logger.info(f"Saved COCO captions to '{captions_path}'")
