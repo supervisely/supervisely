@@ -61,7 +61,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             return False
 
         def filter_fn(path):
-            return all([(Path(path) / name).exists() for name in ["maps", "samples", "sweeps"]])
+            return all([(Path(path) / name).exists() for name in ["maps", "samples"]])
 
         input_path = next((d for d in fs.dirs_filter(self._input_data, filter_fn)), None)
         if input_path is None:
@@ -71,25 +71,12 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         if any([not fs.dir_exists(f"{sample_dir}/{d}") for d in helpers.DIR_NAMES]):
             return False
 
-        sweeps_dir = input_path + "/sweeps/"
-        if any([not fs.dir_exists(f"{sweeps_dir}/{d}") for d in helpers.DIR_NAMES]):
+        fil_fn = lambda p: all(fs.file_exists(f"{p}/{name}.json") for name in helpers.TABLE_NAMES)
+        ann_dir = next((d for d in fs.dirs_filter(input_path, fil_fn)), None)
+        if ann_dir is None:
             return False
 
-        version = next(
-            (
-                d.name
-                for d in Path(input_path).iterdir()
-                if d.is_dir() and d.name.startswith("v1.0-")
-            ),
-            None,
-        )
-        if version is None:
-            return False
-
-        ann_dir = osp.join(input_path, version)
-        if any([not fs.file_exists(f"{ann_dir}/{d}.json") for d in helpers.TABLE_NAMES]):
-            return False
-
+        version = osp.basename(ann_dir)
         try:
             t = TinyTimer()
             nuscenes = NuScenes(version=version, dataroot=input_path, verbose=False)
