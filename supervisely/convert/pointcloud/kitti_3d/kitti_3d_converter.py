@@ -84,7 +84,7 @@ class KITTI3DConverter(PointcloudConverter):
         renamed_tags: dict = {},
     ) -> PointcloudAnnotation:
         label = item.ann_data
-        objs, figures = kitti_3d_helper.convert_label_to_annotation(label, meta)
+        objs, figures = kitti_3d_helper.convert_label_to_annotation(label, meta, renamed_classes)
         return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):

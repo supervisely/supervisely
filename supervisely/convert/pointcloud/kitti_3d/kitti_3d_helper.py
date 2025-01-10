@@ -63,12 +63,13 @@ def _convert_label_to_geometry(label):
     return geometries
 
 
-def convert_label_to_annotation(label, meta):
+def convert_label_to_annotation(label, meta, renamed_class_names: dict = None):
     geometries = _convert_label_to_geometry(label)
     figures = []
     objs = []
     for l, geometry in zip(label, geometries):  # by object in point cloud
-        pcobj = PointcloudObject(meta.get_obj_class(l.label_class))
+        class_name = renamed_class_names.get(l.label_class, l.label_class)
+        pcobj = PointcloudObject(meta.get_obj_class(class_name))
         figures.append(PointcloudFigure(pcobj, geometry))
         objs.append(pcobj)
 
