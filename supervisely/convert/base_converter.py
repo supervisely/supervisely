@@ -56,6 +56,7 @@ class AvailablePointcloudConverters:
     BAG = "rosbag"
     LYFT = "lyft"
     NUSCENES = "nuscenes"
+    KITTI3D = "kitti3d"
 
 
 class AvailablePointcloudEpisodesConverters:
