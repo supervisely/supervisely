@@ -24,29 +24,6 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class KITTI3DConverter(PointcloudConverter):
-    class Item(PointcloudConverter.Item):
-        def __init__(
-            self,
-            item_path,
-            ann_data: str = None,
-            related_images: list = None,
-            custom_data: dict = None,
-        ):
-            super().__init__(item_path, ann_data, related_images, custom_data)
-            self._type = "point_cloud"
-
-    def __init__(
-        self,
-        input_data: str,
-        labeling_interface: Optional[Union[LabelingInterface, str]],
-        upload_as_links: bool,
-        remote_files_map: Optional[Dict[str, str]] = None,
-    ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
-
-        self._total_msg_count = 0
-        self._is_pcd_episode = False
-
     def __str__(self) -> str:
         return AvailablePointcloudConverters.KITTI3D
 
@@ -57,9 +34,6 @@ class KITTI3DConverter(PointcloudConverter):
     def validate_format(self) -> bool:
         def _file_filter_fn(file_path):
             return get_file_ext(file_path).lower() == self.key_file_ext
-
-        def _ann_filter_fn(file_path):
-            return get_file_ext(file_path).lower() == ".txt"
 
         def _dir_filter_fn(path):
             return all([(Path(path) / name).exists() for name in kitti_3d_helper.FOLDER_NAMES])

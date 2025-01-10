@@ -16,17 +16,6 @@ def read_kitti_label(label_path, calib_path):
     return label
 
 
-def read_kitti_labels(label_paths, calib_paths):
-    all_labels = []
-    all_calibs = []
-    for label_path, calib_path in zip(label_paths, calib_paths):
-        calib = o3d.ml.datasets.KITTI.read_calib(calib_path)
-        label = o3d.ml.datasets.KITTI.read_label(label_path, calib)
-        all_labels.append(label)
-        all_calibs.append(calib)
-    return all_labels
-
-
 def convert_labels_to_meta(labels):
     labels = flatten(labels)
     unique_labels = np.unique([l.label_class for l in labels])
