@@ -712,7 +712,7 @@ def sly_ds_to_coco(
         image_info = ImageApi._convert_json_info(ImageApi(None), image_info_json)
 
         coco_ann["images"].append(image_coco(image_info, image_idx))
-        if with_captions:
+        if with_captions is True and coco_captions is not None:
             coco_captions["images"].append(image_coco(image_info, image_idx))
 
         ann = Annotation.load_json_file(ann_path, meta)
@@ -736,7 +736,7 @@ def sly_ds_to_coco(
         dump_json_file(coco_ann, ann_path)
         logger.info(f"Saved COCO instances to '{ann_path}'")
 
-        if with_captions:
+        if with_captions is True and coco_captions is not None:
             captions_path = str(annotations_dir / COCO_CAPTIONS_FILE)
             dump_json_file(coco_captions, captions_path)
             logger.info(f"Saved COCO captions to '{captions_path}'")
