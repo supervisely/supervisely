@@ -296,7 +296,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
             label.geometry.draw(mask, label.obj_class.color)
 
         res_mask = Image.fromarray(mask)
-        res_mask = res_mask.convert("P", palette=Image.ADAPTIVE)
+        res_mask = res_mask.convert("P", palette=Image.ADAPTIVE)  # pylint: disable=no-member
         return res_mask
 
     def from_ann_to_class_mask(ann: Annotation, contour_thickness: int = 3):
@@ -316,7 +316,7 @@ def sly_ann_to_pascal_voc(ann: Annotation, image_name: str) -> Tuple[dict]:
             label.geometry.draw(mask, new_color)
 
         res_mask = Image.fromarray(mask)
-        res_mask = res_mask.convert("P", palette=Image.ADAPTIVE)
+        res_mask = res_mask.convert("P", palette=Image.ADAPTIVE)  # pylint: disable=no-member
         return res_mask
 
     def from_ann_to_xml(ann: Annotation, image_name: str):
@@ -405,6 +405,7 @@ def sly_ds_to_pascal_voc(
             dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated_pascal_voc"
             sly_ds_to_pascal_voc(ds, project.meta, dest_dir=dest_dir)
     """
+    import lxml.etree as ET  # pylint: disable=import-error
 
     def write_main_set(
         is_trainval: int,
