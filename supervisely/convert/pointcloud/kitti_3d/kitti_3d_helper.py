@@ -1,5 +1,4 @@
 import numpy as np
-import open3d as o3d
 
 from supervisely import ObjClass, ObjClassCollection, ProjectMeta
 from supervisely.geometry.cuboid_3d import Cuboid3d
@@ -11,6 +10,8 @@ FOLDER_NAMES = ["velodyne", "image_2", "label_2", "calib"]
 
 
 def read_kitti_label(label_path, calib_path):
+    import open3d as o3d  # pylint: disable=import-error
+
     calib = o3d.ml.datasets.KITTI.read_calib(calib_path)
     label = o3d.ml.datasets.KITTI.read_label(label_path, calib)
     return label
@@ -25,6 +26,8 @@ def convert_labels_to_meta(labels):
 
 
 def convert_bin_to_pcd(src, dst):
+    import open3d as o3d  # pylint: disable=import-error
+
     try:
         bin = np.fromfile(src, dtype=np.float32).reshape(-1, 4)
     except ValueError as e:

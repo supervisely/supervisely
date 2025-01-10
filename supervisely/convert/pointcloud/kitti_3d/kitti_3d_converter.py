@@ -1,13 +1,11 @@
 import os
 from pathlib import Path
-from typing import Dict, Optional, Union
 
 from supervisely import PointcloudAnnotation, ProjectMeta, is_development, logger
 from supervisely.api.api import Api, ApiField
 from supervisely.convert.base_converter import AvailablePointcloudConverters
 from supervisely.convert.pointcloud.kitti_3d import kitti_3d_helper
 from supervisely.convert.pointcloud.pointcloud_converter import PointcloudConverter
-from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.io.fs import (
     dirs_filter,
     file_exists,
@@ -20,7 +18,6 @@ from supervisely.io.fs import (
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
-from supervisely.project.project_settings import LabelingInterface
 
 
 class KITTI3DConverter(PointcloudConverter):
