@@ -19,6 +19,8 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -344,8 +346,17 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+            def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
+                if old_cls.geometry_type == new_cls.geometry_type:
+                    if old_cls.geometry_type == GraphNodes:
+                        old_nodes = old_cls.geometry_config["nodes"]
+                        new_nodes = new_cls.geometry_config["nodes"]
+                        return old_nodes.keys() == new_nodes.keys()
+                    return True
+                return False
+
             while meta1.obj_classes.get(new_name) is not None:
-                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                if _is_matched(meta1.get_obj_class(new_name), new_cls):
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"
