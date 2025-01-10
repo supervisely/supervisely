@@ -33,16 +33,7 @@ class KITTI3DConverter(PointcloudConverter):
             custom_data: dict = None,
         ):
             super().__init__(item_path, ann_data, related_images, custom_data)
-            self._topic = None
             self._type = "point_cloud"
-
-        @property
-        def topic(self):
-            return self._topic
-
-        @topic.setter
-        def topic(self, topic: str):
-            self._topic = topic
 
     def __init__(
         self,
