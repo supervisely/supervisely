@@ -461,9 +461,11 @@ class BBoxTracking(Inference):
                 if not figure.geometry_type == sly.Rectangle.geometry_name():
                     stop_upload_event.set()
                     raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
+                api.logger.info("geometry:", extra={"figure": figure._asdict()})
                 geometry: sly.Rectangle = sly.deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
+                api.logger.info("geometry:", extra={"geometry": geometry._asdict()})
                 init = False
                 for frame_i in range(frame_index, frame_index + frames_count, direction_n):
                     frame_i_next = frame_i + direction_n
