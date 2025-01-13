@@ -462,10 +462,10 @@ class BBoxTracking(Inference):
                     stop_upload_event.set()
                     raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
                 api.logger.info("geometry:", extra={"figure": figure._asdict()})
-                geometry: sly.Rectangle = sly.deserialize_geometry(
+                sly_geometry: sly.Rectangle = sly.deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
-                api.logger.info("geometry:", extra={"geometry": geometry._asdict()})
+                api.logger.info("geometry:", extra={"geometry": type(sly_geometry)})
                 init = False
                 for frame_i in range(frame_index, frame_index + frames_count, direction_n):
                     frame_i_next = frame_i + direction_n
@@ -479,7 +479,12 @@ class BBoxTracking(Inference):
 
                     target = PredictionBBox(
                         "",  # TODO: can this be useful?
-                        [geometry.top, geometry.left, geometry.bottom, geometry.right],
+                        [
+                            sly_geometry.top,
+                            sly_geometry.left,
+                            sly_geometry.bottom,
+                            sly_geometry.right,
+                        ],
                         None,
                     )
 
