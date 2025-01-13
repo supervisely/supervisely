@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.collection.str_enum import StrEnum
@@ -21,6 +21,7 @@ class VideoAnnotationToolAction(StrEnum):
     """"""
     ENTITIES_SET_INTITY = "entities/setEntity"
     """"""
+    DIRECT_TRACKING_PROGRESS = "figures/setDirectTrackingProgress"
 
 
 class VideoAnnotationToolApi(ModuleApiBase):
@@ -51,7 +52,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
             VideoAnnotationToolAction.JOBS_ENABLE_CONTROLS,
             {},
         )
-        
+
     def disable_submit_button(self, session_id: str) -> Dict[str, Any]:
         """Disables submit button of the labeling jobs.
 
@@ -65,7 +66,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
             VideoAnnotationToolAction.JOBS_DISABLE_SUBMIT,
             {},
         )
-        
+
     def enable_submit_button(self, session_id: str) -> Dict[str, Any]:
         """Enables submit button of the labeling jobs.
 
@@ -79,7 +80,7 @@ class VideoAnnotationToolApi(ModuleApiBase):
             VideoAnnotationToolAction.JOBS_ENABLE_SUBMIT,
             {},
         )
-        
+
     def disable_confirm_button(self, session_id: str) -> Dict[str, Any]:
         """Disables confirm button of the labeling jobs.
 
@@ -93,10 +94,10 @@ class VideoAnnotationToolApi(ModuleApiBase):
             VideoAnnotationToolAction.JOBS_DISABLE_CONFIRM,
             {},
         )
-    
+
     def enable_confirm_button(self, session_id: str) -> Dict[str, Any]:
         """Enables confirm button of the labeling jobs.
-        
+
         :param session_id: ID of the session in the Video Labeling Tool which confirm button should be enabled.
         :type session_id: str
         :return: Response from API server in JSON format.
@@ -131,6 +132,26 @@ class VideoAnnotationToolApi(ModuleApiBase):
                 ApiField.FRAME: frame,
             },
         )
+
+    def set_direct_tracking_progress(
+        self,
+        session_id: str,
+        video_id: int,
+        track_id: str,
+        frame_range: Tuple,
+        progress_current: int,
+        progress_total: int,
+    ):
+        payload = {
+            ApiField.TRACK_ID: track_id,
+            ApiField.VIDEO_ID: video_id,
+            ApiField.FRAME_RANGE: frame_range,
+            ApiField.PROGRESS: {
+                ApiField.CURRENT: progress_current,
+                ApiField.TOTAL: progress_total,
+            },
+        }
+        return self._act(session_id, VideoAnnotationToolAction.DIRECT_TRACKING_PROGRESS, payload)
 
     def _act(self, session_id: int, action: VideoAnnotationToolAction, payload: dict):
         data = {

@@ -4,16 +4,21 @@ import time
 import uuid
 from pathlib import Path
 from queue import Queue
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from fastapi import BackgroundTasks, Form, Request, UploadFile
+from fastapi import BackgroundTasks, Form, Request, Response, UploadFile, status
 
 import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
+from supervisely.api.module_api import ApiField
 from supervisely.nn.inference import Inference
+from supervisely.nn.inference.inference import (
+    _convert_sly_progress_to_dict,
+    _get_log_extra_for_inference_request,
+)
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionBBox
 
@@ -52,6 +57,10 @@ class BBoxTracking(Inference):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
         return sly.deserialize_geometry(geometry_type_str, geometry_json)
+
+    def _on_inference_start(self, inference_request_uuid: str):
+        super()._on_inference_start(inference_request_uuid)
+        self._inference_requests[inference_request_uuid]["lock"] = Lock()
 
     def _track(self, api: sly.Api, context: dict, notify_annotation_tool: bool):
         video_interface = TrackerInterface(
@@ -320,6 +329,180 @@ class BBoxTracking(Inference):
         sly.logger.info("Start tracking.")
         return self._inference(frames, geometries, state)
 
+    def _track_async(self, api: sly.Api, context: dict, request_uuid: str = None):
+        inference_request = self._inference_requests[request_uuid]
+
+        session_id = context["sessionId"]
+        direct_progress = context.get("useDirectProgressMessages", False)
+        frame_index = context["frameIndex"]
+        frames_count = context["frames"]
+        track_id = context["trackId"]
+        video_id = context["videoId"]
+        direction = context.get("direction", "forward")
+        direction_n = 1 if direction == "forward" else -1
+        figures = context["figures"]
+        progress: sly.Progress = inference_request["progress"]
+        progress_total = frames_count * len(figures)
+        progress.total = progress_total
+
+        range_of_frames = [
+            frame_index,
+            frame_index + frames_count * direction_n,
+        ]
+
+        if self.cache.is_persistent:
+            self.cache.run_cache_task_manually(
+                api,
+                None,
+                video_id=video_id,
+            )
+        else:
+            # if cache is not persistent, run cache task for range of frames
+            self.cache.run_cache_task_manually(
+                api,
+                [range_of_frames if direction_n == 1 else range_of_frames[::-1]],
+                video_id=video_id,
+            )
+
+        global_stop_indicatior = False
+
+        def _add_to_inference_request(geometry, object_id, frame_index, figure_id):
+            figure_info = api.video.figure._convert_json_info(
+                {
+                    ApiField.FIGURE_ID: figure_id,
+                    ApiField.OBJECT_ID: object_id,
+                    ApiField.FRAME_INDEX: frame_index,
+                    ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
+                    ApiField.GEOMETRY: geometry.to_json(),
+                }
+            )
+            with inference_request["lock"]:
+                inference_request["pending_results"].append(figure_info)
+
+        def _nofify_loop(q: Queue, stop_event: Event):
+            nonlocal global_stop_indicatior
+            try:
+                while True:
+                    items = []  # (geometry, object_id, frame_index)
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        items_by_object_id = {}
+                        for item in items:
+                            items_by_object_id.setdefault(item[1], []).append(item)
+
+                        for object_id, object_items in items_by_object_id.items():
+                            frame_range = [
+                                min(item[2] for item in object_items),
+                                max(item[2] for item in object_items),
+                            ]
+                            progress.iters_done(len(object_items))
+                            if direct_progress:
+                                api.vid_ann_tool.set_direct_tracking_progress(
+                                    session_id,
+                                    video_id,
+                                    track_id,
+                                    frame_range=frame_range,
+                                    progress_current=progress.current,
+                                    progress_total=progress.total,
+                                )
+                        continue
+                    if stop_event.is_set():
+                        return
+                    time.sleep(0.5)
+            except Exception as e:
+                api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
+                global_stop_indicatior = True
+                raise
+
+        def _upload_loop(q: Queue, notify_q: Queue, stop_event: Event):
+            nonlocal global_stop_indicatior
+            try:
+                while True:
+                    items = []  # (geometry, object_id, frame_index)
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        for item in items:
+                            figure_id = uuid.uuid5(
+                                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+                            ).hex
+                            _add_to_inference_request(*item, figure_id)
+                            if direct_progress:
+                                notify_q.put(item)
+                        continue
+                    if stop_event.is_set():
+                        return
+                    time.sleep(1)
+            except Exception as e:
+                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                global_stop_indicatior = True
+                raise
+
+        upload_queue = Queue()
+        notify_queue = Queue()
+        stop_upload_event = Event()
+        Thread(
+            target=_upload_loop,
+            args=[upload_queue, notify_queue, stop_upload_event],
+            daemon=True,
+        ).start()
+        Thread(
+            target=_nofify_loop,
+            args=[notify_queue, stop_upload_event],
+            daemon=True,
+        ).start()
+
+        api.logger.info("Start tracking.")
+        try:
+            for figure in figures:
+                figure = api.video.figure._convert_json_info(figure)
+                if not figure.geometry_type == sly.Rectangle.geometry_name():
+                    stop_upload_event.set()
+                    raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
+                geometry: sly.Rectangle = sly.deserialize_geometry(
+                    figure.geometry_type, figure.geometry
+                )
+                init = False
+                for frame_i in range(frame_index, frame_index + frames_count, direction_n):
+                    frame_i_next = frame_i + direction_n
+                    frame, frame_next = self.cache.download_frames(
+                        api,
+                        video_id,
+                        [frame_i, frame_i_next] if direction_n == 1 else [frame_i_next, frame_i],
+                    )
+                    if direction_n == -1:
+                        frame, frame_next = frame_next, frame
+
+                    target = PredictionBBox(
+                        "",  # TODO: can this be useful?
+                        [geometry.top, geometry.left, geometry.bottom, geometry.right],
+                        None,
+                    )
+
+                    if not init:
+                        self.initialize(frame, target)
+                        init = True
+
+                    geometry = self.predict(
+                        rgb_image=frame,
+                        prev_rgb_image=frame_next,
+                        target_bbox=target,
+                        settings=self.custom_inference_settings_dict,
+                    )
+                    sly_geometry = self._to_sly_geometry(geometry)
+                    upload_queue.put((sly_geometry, figure.object_id, frame_i_next))
+
+                    if global_stop_indicatior:
+                        stop_upload_event.set()
+                        return
+
+                api.logger.info(f"Figure #{figure.id} tracked.")
+        except Exception:
+            stop_upload_event.set()
+            raise
+        stop_upload_event.set()
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -379,6 +562,100 @@ class BBoxTracking(Inference):
                 "Track-api request processed.", extra={"request_uuid": inference_request_uuid}
             )
             return result
+
+        @server.post("/track_async")
+        def track_async(response: Response, request: Request):
+            sly.logger.debug(
+                f"'inference_video_id_async' request in json format:{request.state.state}"
+            )
+            # check batch size
+            batch_size = request.state.state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                self._track_async,
+                request.state.api,
+                request.state.state,
+                inference_request_uuid,
+            )
+            end_callback = functools.partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+            sly.logger.debug(
+                "Inference has scheduled from 'track_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
+
+        @server.post("/pop_tracking_results")
+        def pop_tracking_results(request: Request, response: Response):
+            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+
+            inference_request = self._inference_requests[inference_request_uuid]
+            frame_range = request.state.state.get("frame_range", None)
+            figures = []
+            with inference_request["lock"]:
+                if frame_range is not None:
+                    figure_ids = set()
+                    for figure in inference_request["pending_results"]:
+                        if (
+                            figure.frame_index >= frame_range[0]
+                            and figure.frame_index <= frame_range[1]
+                        ):
+                            figure_ids.add(figure.id)
+                            figures.append(figure)
+                    inference_request["pending_results"] = [
+                        figure
+                        for figure in inference_request["pending_results"]
+                        if figure.id not in figure_ids
+                    ]
+
+                else:
+                    figures = inference_request["pending_results"]
+                    inference_request["pending_results"].clear()
+                inference_request = inference_request.copy()
+                inference_request["pending_results"] = figures
+
+            inference_request["pending_results"] = [
+                {
+                    ApiField.ID: figure.id,
+                    ApiField.OBJECT_ID: figure.object_id,
+                    ApiField.GEOMETRY_TYPE: figure.geometry_type,
+                    ApiField.GEOMETRY: figure.geometry,
+                    ApiField.FRAME_INDEX: figure.frame_index,
+                }
+                for figure in figures
+            ]
+
+            inference_request["progress"] = _convert_sly_progress_to_dict(
+                inference_request["progress"]
+            )
+
+            # Logging
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request_uuid, inference_request
+            )
+            sly.logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+            return inference_request
 
         @server.post("/track-api-files")
         def track_api_files(
