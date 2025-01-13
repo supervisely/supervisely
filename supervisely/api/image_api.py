@@ -167,6 +167,15 @@ class ImageInfo(NamedTuple):
     #: :class:`str`: Id of a user who created the image.
     created_by: str
 
+    #: :class:`dict`: Custom data.
+    custom_data: Dict[str, Any]
+
+    #: :class:`bool`: True if image has custom data.
+    have_custom_data: bool
+
+    #: :class:`str`: Custom data sort.
+    custom_data_sort: str
+
     @property
     def preview_url(self):
         """
@@ -237,6 +246,9 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FULL_STORAGE_URL,
             ApiField.TAGS,
             ApiField.CREATED_BY_ID[0][0],
+            ApiField.CUSTOM_DATA,
+            ApiField.CUSTOM_DATA_SORT,
+            ApiField.HAVE_CUSTOM_DATA,
         ]
 
     @staticmethod
@@ -259,6 +271,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = False,
         batch_size: Optional[int] = None,
         project_id: int = None,
+        with_custom_data: bool = False,
     ) -> Iterator[List[ImageInfo]]:
         """
         Returns a generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
@@ -267,7 +280,16 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
-        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}
+        :param sort: Field name to sort. One of:
+                    - ``id`` (default)
+                    - ``name``
+                    - ``description``
+                    - ``labelsCount``
+                    - ``datasetId``
+                    - ``createdAt``
+                    - ``updatedAt``
+                    - ``size``
+                    - ``customDataSort``
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
@@ -279,6 +301,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
+        :param with_custom_data: Default is False. If True, returns custom data as dict in ImageInfo.
+        :type with_custom_data: bool, optional
         :return: Generator that yields lists of images in the given :class:`Dataset<supervisely.project.project.Dataset>` or :class:`Project<supervisely.project.project.Project>`.
 
         :Usage example:
@@ -305,7 +329,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
             ApiField.PAGINATION_MODE: ApiField.TOKEN,
         }
-
+        if with_custom_data:
+            data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
         if batch_size is not None:
             data[ApiField.PER_PAGE] = batch_size
         else:
@@ -331,6 +356,7 @@ class ImageApi(RemoveableBulkModuleApi):
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
+        with_custom_data: bool = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -339,7 +365,16 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
-        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}
+        :param sort: Field name to sort. One of:
+                    - ``id`` (default)
+                    - ``name``
+                    - ``description``
+                    - ``labelsCount``
+                    - ``datasetId``
+                    - ``createdAt``
+                    - ``updatedAt``
+                    - ``size``
+                    - ``customDataSort``
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
@@ -355,6 +390,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type only_labelled: bool, optional
         :param fields: List of fields to return. If None, returns all fields.
         :type fields: List[str], optional
+        :param with_custom_data: Default is False. If True, returns custom data as dict in ImageInfo.
+        :type with_custom_data: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -429,6 +466,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ]
         if fields is not None:
             data[ApiField.FIELDS] = fields
+        if with_custom_data:
+            data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -446,6 +485,7 @@ class ImageApi(RemoveableBulkModuleApi):
         limit: Optional[int] = None,
         return_first_response: Optional[bool] = False,
         project_id: int = None,
+        with_custom_data: bool = False,
     ) -> List[ImageInfo]:
         """
         List of filtered Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -455,12 +495,29 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
-        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}.
+        :param sort: Field name to sort. One of:
+                    - ``id`` (default)
+                    - ``name``
+                    - ``description``
+                    - ``labelsCount``
+                    - ``datasetId``
+                    - ``createdAt``
+                    - ``updatedAt``
+                    - ``size``
+                    - ``customDataSort``
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
+        :param force_metadata_for_links: If True, updates meta for images with remote storage links when listing.
+        :type force_metadata_for_links: bool, optional
+        :param limit: Max number of list elements. No limit if None (default).
+        :type limit: :class:`int`, optional
+        :param return_first_response: If True, returns first response without waiting for all pages.
+        :type return_first_response: bool, optional
         :param project_id: :class:`Project<supervisely.project.project.Project>` ID in which the Images are located.
         :type project_id: :class:`int`
+        :param with_custom_data: Default is False. If True, returns custom data as dict in ImageInfo.
+        :type with_custom_data: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
 
@@ -497,6 +554,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
         }
+        if with_custom_data:
+            data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
 
         if not all(["type" in filter.keys() for filter in filters]):
             raise ValueError("'type' field not found in filter")
@@ -523,12 +582,21 @@ class ImageApi(RemoveableBulkModuleApi):
             return_first_response=return_first_response,
         )
 
-    def get_info_by_id(self, id: int, force_metadata_for_links=True) -> ImageInfo:
+    def get_info_by_id(
+        self,
+        id: int,
+        force_metadata_for_links: bool = True,
+        with_custom_data: bool = False,
+    ) -> ImageInfo:
         """
         Get Image information by ID.
 
         :param id: Image ID in Supervisely.
         :type id: int
+        :param force_metadata_for_links: If True, returns full_storage_url and path_original fields in ImageInfo.
+        :type force_metadata_for_links: bool, optional
+        :param with_custom_data: Default is False. If True, returns custom data as dict.
+        :type with_custom_data: bool, optional
         :return: Object with image information from Supervisely.
         :rtype: :class:`ImageInfo<ImageInfo>`
         :Usage example:
@@ -548,12 +616,20 @@ class ImageApi(RemoveableBulkModuleApi):
         return self._get_info_by_id(
             id,
             "images.info",
-            fields={ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links},
+            fields={
+                ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                ApiField.WITH_CUSTOM_DATA_S: with_custom_data,
+            },
         )
 
-    def _get_info_by_filters(self, parent_id, filters, force_metadata_for_links):
+    def _get_info_by_filters(self, parent_id, filters, force_metadata_for_links, with_custom_data):
         """_get_info_by_filters"""
-        items = self.get_list(parent_id, filters, force_metadata_for_links=force_metadata_for_links)
+        items = self.get_list(
+            parent_id,
+            filters,
+            force_metadata_for_links=force_metadata_for_links,
+            with_custom_data=with_custom_data,
+        )
         return _get_single_item(items)
 
     def get_info_by_name(
@@ -561,6 +637,7 @@ class ImageApi(RemoveableBulkModuleApi):
         dataset_id: int,
         name: str,
         force_metadata_for_links: Optional[bool] = True,
+        with_custom_data: bool = False,
     ) -> ImageInfo:
         """Returns image info by image name from given dataset id.
 
@@ -570,12 +647,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :type name: str
         :param force_metadata_for_links: If True, returns full_storage_url and path_original fields in ImageInfo.
         :type force_metadata_for_links: bool, optional
+        :param with_custom_data: Default is False. If True, returns custom data as dict in ImageInfo.
+        :type with_custom_data: bool, optional
         :return: Object with image information from Supervisely.
         :rtype: :class:`ImageInfo<ImageInfo>`
         """
         return self._get_info_by_name(
             get_info_by_filters_fn=lambda module_name: self._get_info_by_filters(
-                dataset_id, module_name, force_metadata_for_links
+                dataset_id, module_name, force_metadata_for_links, with_custom_data
             ),
             name=name,
         )
@@ -586,6 +665,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links=True,
+        with_custom_data: bool = False,
     ) -> List[ImageInfo]:
         """
         Get Images information by ID.
@@ -594,6 +674,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking the progress.
         :type progress_cb: tqdm or callable, optional
+        :param force_metadata_for_links: If True, updates meta for images with remote storage links when listing.
+        :type force_metadata_for_links: bool, optional
+        :param with_custom_data: Default is False. If True, returns custom data as dict in ImageInfo.
+        :type with_custom_data: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -624,14 +708,14 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
-                temp_results = self.get_list_all_pages(
-                    "images.list",
-                    {
-                        ApiField.DATASET_ID: dataset_id,
-                        ApiField.FILTER: filters,
-                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    },
-                )
+                data = {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.FILTER: filters,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                }
+                if with_custom_data:
+                    data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
+                temp_results = self.get_list_all_pages("images.list", data)
                 results.extend(temp_results)
                 if progress_cb is not None and len(temp_results) > 0:
                     progress_cb(len(temp_results))
@@ -1207,6 +1291,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1229,6 +1314,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and links lists.
+        :type custom_data_list: List[dict], optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1262,10 +1349,16 @@ class ImageApi(RemoveableBulkModuleApi):
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
+            custom_data_list=custom_data_list,
         )
 
     def upload_np(
-        self, dataset_id: int, name: str, img: np.ndarray, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        img: np.ndarray,
+        meta: Optional[Dict] = None,
+        custom_data: Optional[Dict] = None,
     ) -> ImageInfo:
         """
         Upload given Image in numpy format with given name to Dataset.
@@ -1278,6 +1371,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type img: np.ndarray
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param custom_data: Custom data dictionary.
+        :type custom_data: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1294,7 +1389,14 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np)
         """
         metas = None if meta is None else [meta]
-        return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
+        custom_data_list = None if custom_data is None else [custom_data]
+        return self.upload_nps(
+            dataset_id,
+            [name],
+            [img],
+            metas=metas,
+            custom_data_list=custom_data_list,
+        )[0]
 
     def upload_nps(
         self,
@@ -1304,6 +1406,7 @@ class ImageApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[List[Dict]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1320,6 +1423,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and links lists.
+        :type custom_data_list: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1358,7 +1463,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_to_bytes_stream, zip(img_name_list, hashes), progress_cb=progress_cb
         )
         return self.upload_hashes(
-            dataset_id, names, hashes, metas=metas, conflict_resolution=conflict_resolution
+            dataset_id,
+            names,
+            hashes,
+            metas=metas,
+            conflict_resolution=conflict_resolution,
+            custom_data_list=custom_data_list,
         )
 
     def upload_link(
@@ -1368,6 +1478,7 @@ class ImageApi(RemoveableBulkModuleApi):
         link: str,
         meta: Optional[Dict] = None,
         force_metadata_for_links=True,
+        custom_data: Optional[Dict] = None,
     ) -> ImageInfo:
         """
         Uploads Image from given link to Dataset.
@@ -1382,6 +1493,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
+        :param custom_data: Custom data dictionary.
+        :type custom_data: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1400,12 +1513,14 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_link(dataset_id, img_name, img_link)
         """
         metas = None if meta is None else [meta]
+        custom_data_list = None if custom_data is None else [custom_data]
         return self.upload_links(
             dataset_id,
             [name],
             [link],
             metas=metas,
             force_metadata_for_links=force_metadata_for_links,
+            custom_data_list=custom_data_list,
         )[0]
 
     def upload_links(
@@ -1419,6 +1534,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1439,6 +1555,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and links lists.
+        :type custom_data_list: List[Dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1469,10 +1587,16 @@ class ImageApi(RemoveableBulkModuleApi):
             force_metadata_for_links=force_metadata_for_links,
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
+            custom_data_list=custom_data_list,
         )
 
     def upload_hash(
-        self, dataset_id: int, name: str, hash: str, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        hash: str,
+        meta: Optional[Dict] = None,
+        custom_data: Optional[Dict] = None,
     ) -> ImageInfo:
         """
         Upload Image from given hash to Dataset.
@@ -1485,6 +1609,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hash: str
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param custom_data: Custom data dictionary.
+        :type custom_data: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1527,7 +1653,14 @@ class ImageApi(RemoveableBulkModuleApi):
             # ]
         """
         metas = None if meta is None else [meta]
-        return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
+        custom_data_list = None if custom_data is None else [custom_data]
+        return self.upload_hashes(
+            dataset_id,
+            [name],
+            [hash],
+            metas=metas,
+            custom_data_list=custom_data_list,
+        )[0]
 
     def upload_hashes(
         self,
@@ -1542,6 +1675,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1568,6 +1702,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and hashes lists.
+        :type custom_data_list: List[dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1612,10 +1748,16 @@ class ImageApi(RemoveableBulkModuleApi):
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
+            custom_data_list=custom_data_list,
         )
 
     def upload_id(
-        self, dataset_id: int, name: str, id: int, meta: Optional[Dict] = None
+        self,
+        dataset_id: int,
+        name: str,
+        id: int,
+        meta: Optional[Dict] = None,
+        custom_data: Optional[Dict] = None,
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -1628,6 +1770,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type id: int
         :param meta: Image metadata.
         :type meta: dict, optional
+        :param custom_data: Custom data dictionary.
+        :type custom_data: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1670,7 +1814,14 @@ class ImageApi(RemoveableBulkModuleApi):
             # ]
         """
         metas = None if meta is None else [meta]
-        return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
+        custom_data_list = None if custom_data is None else [custom_data]
+        return self.upload_ids(
+            dataset_id,
+            [name],
+            [id],
+            metas=metas,
+            custom_data_list=custom_data_list,
+        )[0]
 
     def upload_ids(
         self,
@@ -1684,6 +1835,7 @@ class ImageApi(RemoveableBulkModuleApi):
         infos: List[ImageInfo] = None,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1708,6 +1860,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type skip_validation: bool, optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and ids lists.
+        :type custom_data_list: List[Dict], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1742,7 +1896,8 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         if metas is None:
             metas = [{}] * len(names)
-
+        if custom_data_list is None:
+            custom_data_list = [{}] * len(names)
         if infos is None:
             infos = self.get_info_by_id_batch(
                 ids, force_metadata_for_links=force_metadata_for_links
@@ -1752,19 +1907,23 @@ class ImageApi(RemoveableBulkModuleApi):
         # hashes = [info.hash for info in infos]
         # return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
 
-        links, links_names, links_order, links_metas = [], [], [], []
-        hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
-        for idx, (name, info, meta) in enumerate(zip(names, infos, metas)):
+        links, links_names, links_order, links_metas, links_custom_data = [], [], [], [], []
+        hashes, hashes_names, hashes_order, hashes_metas, hashes_custom_data = [], [], [], [], []
+        for idx, (name, info, meta, custom_data) in enumerate(
+            zip(names, infos, metas, custom_data_list)
+        ):
             if info.link is not None:
                 links.append(info.link)
                 links_names.append(name)
                 links_order.append(idx)
                 links_metas.append(meta)
+                links_custom_data.append(custom_data)
             else:
                 hashes.append(info.hash)
                 hashes_names.append(name)
                 hashes_order.append(idx)
                 hashes_metas.append(meta)
+                hashes_custom_data.append(custom_data)
 
         result = [None] * len(names)
         if len(links) > 0:
@@ -1778,6 +1937,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 force_metadata_for_links=force_metadata_for_links,
                 skip_validation=skip_validation,
                 conflict_resolution=conflict_resolution,
+                custom_data_list=links_custom_data,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1792,6 +1952,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 batch_size=batch_size,
                 skip_validation=skip_validation,
                 conflict_resolution=conflict_resolution,
+                custom_data_list=hashes_custom_data,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1812,6 +1973,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        custom_data_list: Optional[List[Dict]] = None,
     ):
         """ """
         if use_strict_validation and not validate_meta:
@@ -1863,37 +2025,59 @@ class ImageApi(RemoveableBulkModuleApi):
             now = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             return f"{get_file_name(name)}_{now}{get_file_ext(name)}"
 
-        def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
+        def _pack_for_request(
+            names: List[str],
+            items: List[Any],
+            metas: List[Dict],
+            custom_data_list: List[Dict],
+        ) -> List[Any]:
             images = []
-            for name, item, meta in zip(names, items, metas):
+            for name, item, meta, custom_data in zip(names, items, metas, custom_data_list):
                 item_tuple = func_item_to_kv(item)
                 image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
+                if len(custom_data) != 0 and type(custom_data) == dict:
+                    image_data[ApiField.CUSTOM_DATA] = custom_data
                 images.append(image_data)
             return images
 
         if len(names) == 0:
             return results
         if len(names) != len(items):
-            raise ValueError('Can not match "names" and "items" lists, len(names) != len(items)')
+            raise ValueError(
+                f'Can not match "names" and "items" lists, {len(names)} != {len(items)}'
+            )
 
         if metas is None:
             metas = [{}] * len(names)
         else:
             if len(names) != len(metas):
-                raise ValueError('Can not match "names" and "metas" len(names) != len(metas)')
+                raise ValueError(
+                    f'Can not match "names" and "metas" lists, {len(names)} != {len(metas)}'
+                )
+
+        if custom_data_list is None:
+            custom_data_list = [{}] * len(names)
+        else:
+            if len(names) != len(custom_data_list):
+                raise ValueError(
+                    f'Can not match "names" and "custom_data_list" lists, {len(names)} != {len(custom_data_list)}'
+                )
 
         idx_to_id = {}
-        for batch_count, (batch_names, batch_items, batch_metas) in enumerate(
+        for batch_count, (batch_names, batch_items, batch_metas, batched_custom_data) in enumerate(
             zip(
                 batched(names, batch_size=batch_size),
                 batched(items, batch_size=batch_size),
                 batched(metas, batch_size=batch_size),
+                batched(custom_data_list, batch_size=batch_size),
             )
         ):
             for retry in range(2):
-                images = _pack_for_request(batch_names, batch_items, batch_metas)
+                images = _pack_for_request(
+                    batch_names, batch_items, batch_metas, batched_custom_data
+                )
                 try:
                     response = self._api.post(
                         "images.bulk.add",
@@ -3132,6 +3316,7 @@ class ImageApi(RemoveableBulkModuleApi):
         links: Optional[List[str]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
@@ -3162,6 +3347,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :param force_metadata_for_links: Specifies whether to force retrieving metadata for images from links.
                                          If False, metadata fields in the response can be empty (if metadata has not been retrieved yet).
         :type force_metadata_for_links: Optional[bool]
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the paths or links.
+        :type custom_data_list: Optional[List[Dict]]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -3213,6 +3400,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 progress_cb=progress_cb,
                 metas=metas,
                 conflict_resolution=conflict_resolution,
+                custom_data_list=custom_data_list,
             )
             image_infos.extend(image_infos_by_paths)
 
@@ -3223,8 +3411,10 @@ class ImageApi(RemoveableBulkModuleApi):
                 names=names,
                 links=links,
                 progress_cb=progress_cb,
+                metas=metas,
                 conflict_resolution=conflict_resolution,
                 force_metadata_for_links=force_metadata_for_links,
+                custom_data_list=custom_data_list,
             )
             image_infos.extend(image_infos_by_links)
 
@@ -3385,6 +3575,7 @@ class ImageApi(RemoveableBulkModuleApi):
         group_tag_name: Optional[str] = None,
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        custom_data_list: Optional[List[Dict]] = None,
     ) -> List[ImageInfo]:
         """
         Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
@@ -3399,7 +3590,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type metas: List[Dict], optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
-
+        :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the paths.
+        :type custom_data_list: Optional[List[Dict]]
         :return: List of uploaded images infos.
         :rtype: List[ImageInfo]
 
@@ -3439,6 +3631,14 @@ class ImageApi(RemoveableBulkModuleApi):
             if len(metas) != len(paths):
                 raise ValueError("Length of 'metas' is not equal to the length of 'paths'.")
             _metas = metas.copy()
+
+        if custom_data_list is None:
+            custom_data_list = [dict() for _ in paths]
+        else:
+            if len(custom_data_list) != len(paths):
+                raise ValueError(
+                    "Length of 'custom_data_list' is not equal to the length of 'paths'."
+                )
 
         dataset = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
         meta_json = self._api.project.get_meta(dataset.project_id)
@@ -3500,6 +3700,7 @@ class ImageApi(RemoveableBulkModuleApi):
             paths=image_paths,
             progress_cb=progress_cb,
             metas=_metas,
+            custom_data_list=custom_data_list,
         )
         image_ids = [image_info.id for image_info in image_infos]
 
@@ -3702,6 +3903,47 @@ class ImageApi(RemoveableBulkModuleApi):
         data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("images.update.links", data)
         return r.json()
+
+    def get_custom_data(self, id: int) -> Dict[str, Any]:
+        """
+        Returns custom data for image with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :return: Custom data.
+        :rtype: Dict[str, Any]
+        """
+        response = self._api.post("images.custom-data.get", {ApiField.ID: id})
+        return response.json()
+
+    def set_custom_data(
+        self,
+        id: int,
+        data: Dict[str, Any],
+        overwrite: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Sets custom data for image with given ID.
+        By default, appends data to the existing custom data.
+        If overwrite is set to True, the existing custom data will be replaced instead.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param data: Data to be appended to the existing custom data. If overwrite is set to True, the existing custom data will be replaced instead.
+        :type data: Dict[str, Any]
+        :param overwrite: Default is False. If True, overwrites existing custom data.
+        :type overwrite: bool, optional
+        :return: json-encoded content of a response.
+        :rtype: Dict[str, Any]
+        """
+        if not overwrite:
+            existing_data = self.get_custom_data(id)
+            existing_data.update(data)
+            data = existing_data
+        response = self._api.post(
+            "images.custom-data.set", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
+        )
+        return response.json()
 
     async def _download_async(
         self,
@@ -4290,7 +4532,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :type per_page: int, optional
         :param semaphore: Semaphore for limiting the number of simultaneous requests.
         :type semaphore: :class:`asyncio.Semaphore`, optional
-        :param kwargs: Additional arguments.
+        :param kwargs: Additional arguments:
+                     - dataset_info: DatasetInfo object.
+                     - with_custom_data: bool = False,
         :return: List of images in dataset.
         :rtype: AsyncGenerator[List[ImageInfo]]
 
@@ -4311,6 +4555,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         method = "images.list"
         dataset_info = kwargs.get("dataset_info", None)
+        with_custom_data = kwargs.get("with_custom_data", False)
 
         if dataset_info is None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
@@ -4340,7 +4585,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-
+        if with_custom_data:
+            data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
