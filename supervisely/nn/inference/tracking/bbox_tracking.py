@@ -372,7 +372,7 @@ class BBoxTracking(Inference):
                 {
                     ApiField.FIGURE_ID: figure_id,
                     ApiField.OBJECT_ID: object_id,
-                    ApiField.FRAME_INDEX: frame_index,
+                    "meta": {"frame": frame_index},
                     ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
                     ApiField.GEOMETRY: geometry.to_json(),
                 }
