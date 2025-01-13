@@ -388,6 +388,7 @@ class BBoxTracking(Inference):
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
+                        api.logger.debug(f"got {len(items)} items to notify")
                         items_by_object_id = {}
                         for item in items:
                             items_by_object_id.setdefault(item[1], []).append(item)
@@ -399,6 +400,7 @@ class BBoxTracking(Inference):
                             ]
                             progress.iters_done(len(object_items))
                             if direct_progress:
+                                api.logger.debug(f"notifying")
                                 api.vid_ann_tool.set_direct_tracking_progress(
                                     session_id,
                                     video_id,
@@ -428,8 +430,10 @@ class BBoxTracking(Inference):
                             figure_id = uuid.uuid5(
                                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
                             ).hex
+                            api.logger.debug(f"_add_to_inference_request")
                             _add_to_inference_request(*item, figure_id)
                             if direct_progress:
+                                api.logger.debug(f"put to notify queue")
                                 notify_q.put(item)
                         continue
                     if stop_event.is_set():
@@ -443,16 +447,18 @@ class BBoxTracking(Inference):
         upload_queue = Queue()
         notify_queue = Queue()
         stop_upload_event = Event()
-        Thread(
+        upload_thread = Thread(
             target=_upload_loop,
             args=[upload_queue, notify_queue, stop_upload_event],
             daemon=True,
-        ).start()
-        Thread(
+        )
+        upload_thread.start()
+        notify_thread = Thread(
             target=_nofify_loop,
             args=[notify_queue, stop_upload_event],
             daemon=True,
-        ).start()
+        )
+        notify_thread.start()
 
         api.logger.info("Start tracking.")
         try:
@@ -510,6 +516,8 @@ class BBoxTracking(Inference):
             stop_upload_event.set()
             raise
         stop_upload_event.set()
+        upload_thread.join()
+        notify_thread.join()
 
     def serve(self):
         super().serve()
