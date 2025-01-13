@@ -10,7 +10,18 @@ import random
 import shutil
 from collections import defaultdict, namedtuple
 from enum import Enum
-from typing import Callable, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+from pathlib import Path
+from typing import (
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import aiofiles
 import numpy as np
@@ -20,6 +31,7 @@ import supervisely as sly
 from supervisely._utils import (
     abs_url,
     batched,
+    generate_free_name,
     get_or_create_event_loop,
     is_development,
     snake_to_human,
@@ -1469,7 +1481,7 @@ class Dataset(KeyObject):
     def __iter__(self):
         return next(self)
 
-    def items(self) -> Generator[Tuple[str]]:
+    def items(self) -> Generator[Tuple[str, str, str]]:
         """
         This method is used to iterate over dataset items, receiving item name, path to image and path to annotation
         json file. It is useful when you need to iterate over dataset items and get paths to images and annotations.
@@ -1790,6 +1802,162 @@ class Dataset(KeyObject):
         )
         await self._add_ann_by_type_async(item_name, ann)
         await self._add_item_info_async(item_name, item_info)
+
+    def to_coco(
+        self,
+        meta: ProjectMeta,
+        return_type: Literal["path", "dict"] = "path",
+        dest_dir: Optional[str] = None,
+        copy_images: bool = False,
+        with_captions=False,
+        log_progress: bool = False,
+        progress_cb: Optional[Callable] = None,
+    ) -> Tuple[Dict, Union[None, Dict]]:
+        """
+        Convert Supervisely dataset to COCO format.
+
+        Note:   Depending on the `return_type` and `with_captions` parameters, the function returns different values.
+                If `return_type` is "path", the COCO annotation files will be saved to the disk.
+                If `return_type` is "dict", the function returns COCO dataset in dictionary format.
+                If `with_captions` is True, the function returns Tuple (instances and captions).
+
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param return_type: Return type (`path` or `dict`).
+        :type return_type: :class:`str`, optional
+        :param dest_dir: Path to save COCO dataset.
+        :type dest_dir: :class:`str`, optional
+        :param copy_images: If True, copies images to the COCO dataset directory.
+        :type copy_images: :class:`bool`, optional
+        :param with_captions: If True, returns captions
+        :type with_captions: :class:`bool`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
+        :return: COCO dataset in dictionary format.
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                coco: Tuple[Dict, Dict] = ds.to_coco(project.meta, save=True, dest_dir=dest_dir)
+        """
+
+        from supervisely.convert import dataset_to_coco
+
+        return dataset_to_coco(
+            self,
+            meta=meta,
+            return_type=return_type,
+            dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    def to_yolo(
+        self,
+        meta: ProjectMeta,
+        dest_dir: Optional[str] = None,
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        log_progress: bool = False,
+        progress_cb: Optional[Callable] = None,
+    ):
+        """
+        Convert Supervisely dataset to YOLO format.
+
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param dest_dir: Path to save YOLO dataset.
+        :type dest_dir: :class:`str`, optional
+        :param task_type: Task type.
+        :type task_type: :class:`str`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
+        :return: YOLO dataset in dictionary format.
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                ds.to_yolo(project.meta, dest_dir=dest_dir)
+        """
+
+        from supervisely.convert import dataset_to_yolo
+
+        return dataset_to_yolo(
+            self,
+            meta=meta,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    def to_pascal_voc(
+        self,
+        meta: ProjectMeta,
+        dest_dir: Optional[str] = None,
+        train_val_split_coef: float = 0.8,
+        log_progress: bool = False,
+        progress_cb: Optional[Union[Callable, tqdm]] = None,
+    ) -> Tuple[Dict, Union[None, Dict]]:
+        """
+        Convert Supervisely dataset to Pascal VOC format.
+
+        :param meta: Project meta information.
+        :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
+        :type train_val_split_coef: :class:`float`, optional
+        :param log_progress: If True, log progress.
+        :type log_progress: :class:`str`, optional
+        :param progress_cb: Progress callback.
+        :type progress_cb: :class:`Callable`, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project_path = "/home/admin/work/supervisely/projects/lemons_annotated"
+            project = sly.Project(project_path, sly.OpenMode.READ)
+
+            for ds in project.datasets:
+                dest_dir = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
+                ds.to_pascal_voc(project.meta, dest_dir=dest_dir)
+        """
+        from supervisely.convert import dataset_to_pascal_voc
+
+        dataset_to_pascal_voc(
+            self,
+            meta=meta,
+            dest_dir=dest_dir,
+            train_val_split_coef=train_val_split_coef,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
 
 
 class Project:
@@ -3514,6 +3682,147 @@ class Project:
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+        )
+
+    def to_coco(
+        self,
+        dest_dir: Optional[str] = None,
+        copy_images: bool = False,
+        with_captions: bool = False,
+        log_progress: bool = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to COCO format.
+
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param copy_images: Copy images to the destination directory.
+        :type copy_images: :class:`bool`
+        :param with_captions: Return captions for images.
+        :type with_captions: :class:`bool`
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: callable, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to COCO format
+            sly.Project(project_directory).to_coco(log_progress=True)
+            # or
+            from supervisely.convert import to_coco
+            to_coco(project_directory, dest_dir="./coco_project")
+        """
+        from supervisely.convert import project_to_coco
+
+        project_to_coco(
+            project=self,
+            dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    def to_yolo(
+        self,
+        dest_dir: Optional[str] = None,
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        log_progress: bool = True,
+        progress_cb: Optional[Callable] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to YOLO format.
+
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: callable, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to YOLO format
+            sly.Project(project_directory).to_yolo(log_progress=True)
+            # or
+            from supervisely.convert import to_yolo
+            to_yolo(project_directory, dest_dir="./yolo_project")
+        """
+
+        from supervisely.convert import project_to_yolo
+
+        project_to_yolo(
+            project=self,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+
+    def to_pascal_voc(
+        self,
+        dest_dir: Optional[str] = None,
+        train_val_split_coef: float = 0.8,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Convert Supervisely project to Pascal VOC format.
+
+        :param dest_dir: Destination directory.
+        :type dest_dir: :class:`str`, optional
+        :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
+        :type train_val_split_coef: :class:`float`, optional
+        :param log_progress: Show uploading progress bar.
+        :type log_progress: :class:`bool`
+        :param progress_cb: Function for tracking conversion progress (for all items in the project).
+        :type progress_cb: callable, optional
+        :return: None
+        :rtype: NoneType
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            # Local folder with Project
+            project_directory = "/home/admin/work/supervisely/source/project"
+
+            # Convert Project to YOLO format
+            sly.Project(project_directory).to_pascal_voc(log_progress=True)
+            # or
+            from supervisely.convert import to_pascal_voc
+            to_pascal_voc(project_directory, dest_dir="./pascal_voc_project")
+        """
+        from supervisely.convert import project_to_pascal_voc
+
+        project_to_pascal_voc(
+            project=self,
+            dest_dir=dest_dir,
+            train_val_split_coef=train_val_split_coef,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
         )
 
 

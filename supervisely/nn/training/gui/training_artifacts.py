@@ -102,7 +102,7 @@ class TrainingArtifacts:
                     apps = api.app.get_list(
                         team_id,
                         filter=[{"field": "name", "operator": "=", "value": app_name}],
-                        only_running=True,
+                        only_running=False,
                     )
                     if len(apps) == 1:
                         app_info = apps[0]
