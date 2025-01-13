@@ -333,7 +333,7 @@ class BBoxTracking(Inference):
         api.logger.info("context", extra=context)
         inference_request = self._inference_requests[request_uuid]
 
-        session_id = context.get("session_id", context.get("sessionId", None))
+        session_id = context.get("session_id", context["sessionId"])
         direct_progress = context.get("useDirectProgressMessages", False)
         frame_index = context["frameIndex"]
         frames_count = context["frames"]
@@ -566,9 +566,7 @@ class BBoxTracking(Inference):
 
         @server.post("/track_async")
         def track_async(response: Response, request: Request):
-            sly.logger.debug(
-                f"'inference_video_id_async' request in json format:{request.state.state}"
-            )
+            sly.logger.debug(f"'track_async' request in json format:{request.state.state}")
             # check batch size
             batch_size = request.state.state.get("batch_size", None)
             if batch_size is None:
@@ -588,7 +586,7 @@ class BBoxTracking(Inference):
                 inference_request_uuid,
                 self._track_async,
                 request.state.api,
-                request.state.state,
+                request.state.context,
                 inference_request_uuid,
             )
             end_callback = functools.partial(
