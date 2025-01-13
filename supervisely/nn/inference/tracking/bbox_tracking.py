@@ -330,9 +330,10 @@ class BBoxTracking(Inference):
         return self._inference(frames, geometries, state)
 
     def _track_async(self, api: sly.Api, context: dict, request_uuid: str = None):
+        api.logger.info("context", extra=context)
         inference_request = self._inference_requests[request_uuid]
 
-        session_id = context["sessionId"]
+        session_id = context.get("session_id", context.get("sessionId", None))
         direct_progress = context.get("useDirectProgressMessages", False)
         frame_index = context["frameIndex"]
         frames_count = context["frames"]
