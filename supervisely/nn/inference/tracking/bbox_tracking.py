@@ -638,24 +638,33 @@ class BBoxTracking(Inference):
                 },
             )
             frame_range = context.get("frame_range", None)
-            frame_range = None
+            sly.logger.debug("frame_range: %s", frame_range)
             with inference_request["lock"]:
                 inference_request_copy = inference_request.copy()
+                inference_request_copy.pop("lock")
+                inference_request_copy["progress"] = _convert_sly_progress_to_dict(
+                    inference_request_copy["progress"]
+                )
+
                 if frame_range is not None:
                     inference_request_copy["pending_results"] = [
                         figure
                         for figure in inference_request_copy["pending_results"]
-                        if figure.meta["frame"] >= frame_range[0]
-                        and figure.meta["frame"] <= frame_range[1]
+                        if figure.frame_index >= frame_range[0]
+                        and figure.frame_index <= frame_range[1]
                     ]
                     inference_request["pending_results"] = [
                         figure
                         for figure in inference_request["pending_results"]
-                        if figure.meta["frame"] < frame_range[0]
-                        or figure.meta["frame"] > frame_range[1]
+                        if figure.frame_index < frame_range[0]
+                        or figure.frame_index > frame_range[1]
                     ]
                 else:
-                    inference_request["pending_results"].clear()
+                    inference_request["pending_results"] = []
+
+            sly.logger.debug(
+                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
+            )
 
             inference_request_copy["pending_results"] = [
                 {
@@ -663,14 +672,13 @@ class BBoxTracking(Inference):
                     ApiField.OBJECT_ID: figure.object_id,
                     ApiField.GEOMETRY_TYPE: figure.geometry_type,
                     ApiField.GEOMETRY: figure.geometry,
-                    ApiField.META: {ApiField.FRAME: figure.meta["frame"]},
+                    ApiField.META: {ApiField.FRAME: figure.frame_index},
                 }
                 for figure in inference_request_copy["pending_results"]
             ]
-            inference_request_copy.pop("lock")
 
-            inference_request_copy["progress"] = _convert_sly_progress_to_dict(
-                inference_request_copy["progress"]
+            sly.logger.debug(
+                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
             )
 
             # Logging
