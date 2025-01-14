@@ -661,6 +661,7 @@ class BBoxTracking(Inference):
                 }
                 for figure in figures
             ]
+            inference_request.pop("lock")
 
             inference_request["progress"] = _convert_sly_progress_to_dict(
                 inference_request["progress"]
