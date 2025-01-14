@@ -660,7 +660,7 @@ class BBoxTracking(Inference):
                     ApiField.OBJECT_ID: figure.object_id,
                     ApiField.GEOMETRY_TYPE: figure.geometry_type,
                     ApiField.GEOMETRY: figure.geometry,
-                    ApiField.FRAME_INDEX: figure.frame_index,
+                    ApiField.META: {ApiField.FRAME: figure.meta["frame"]},
                 }
                 for figure in inference_request_copy["pending_results"]
             ]
