@@ -632,7 +632,9 @@ class BBoxTracking(Inference):
                 extra={
                     "inference_request_uuid": inference_request_uuid,
                     "pending_results_len": len(inference_request["pending_results"]),
-                    "pending_results": inference_request["pending_results"][:3],
+                    "pending_results": [
+                        figure._asdict() for figure in inference_request["pending_results"][:3]
+                    ],
                 },
             )
             frame_range = context.get("frame_range", None)
