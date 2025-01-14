@@ -1,17 +1,19 @@
 import functools
 import json
 import time
+import uuid
 from pathlib import Path
 from queue import Queue
 from threading import Event, Thread
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from fastapi import BackgroundTasks, Form, Request, UploadFile
+from fastapi import BackgroundTasks, Form, Request, Response, UploadFile, status
 
 import supervisely as sly
 import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
+from supervisely.api.module_api import ApiField
 from supervisely.nn.inference import Inference
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
@@ -210,6 +212,139 @@ class PointTracking(Inference):
         sly.logger.info("Start tracking.")
         return self._inference(frames, geometries, state)
 
+    def _track_async(self, api: sly.Api, context: dict, inference_request_uuid: str):
+        api.logger.info("context", extra=context)
+        inference_request = self._inference_requests[request_uuid]
+
+        session_id = context.get("session_id", context["sessionId"])
+        direct_progress = context.get("useDirectProgressMessages", False)
+        frame_index = context["frameIndex"]
+        frames_count = context["frames"]
+        track_id = context["trackId"]
+        video_id = context["videoId"]
+        direction = context.get("direction", "forward")
+        direction_n = 1 if direction == "forward" else -1
+        figures = context["figures"]
+        progress: sly.Progress = inference_request["progress"]
+        progress_total = frames_count * len(figures)
+        progress.total = progress_total
+
+        range_of_frames = [
+            frame_index,
+            frame_index + frames_count * direction_n,
+        ]
+
+        if self.cache.is_persistent:
+            self.cache.run_cache_task_manually(
+                api,
+                None,
+                video_id=video_id,
+            )
+        else:
+            # if cache is not persistent, run cache task for range of frames
+            self.cache.run_cache_task_manually(
+                api,
+                [range_of_frames if direction_n == 1 else range_of_frames[::-1]],
+                video_id=video_id,
+            )
+
+        global_stop_indicatior = False
+
+        def _add_to_inference_request(geometry, object_id, frame_index, figure_id):
+            figure_info = api.video.figure._convert_json_info(
+                {
+                    ApiField.FIGURE_ID: figure_id,
+                    ApiField.OBJECT_ID: object_id,
+                    "meta": {"frame": frame_index},
+                    ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
+                    ApiField.GEOMETRY: geometry.to_json(),
+                }
+            )
+            with inference_request["lock"]:
+                inference_request["pending_results"].append(figure_info)
+
+        def _nofify_loop(q: Queue, stop_event: Event):
+            nonlocal global_stop_indicatior
+            try:
+                while True:
+                    items = []  # (geometry, object_id, frame_index)
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        api.logger.debug(f"got {len(items)} items to notify")
+                        items_by_object_id = {}
+                        for item in items:
+                            items_by_object_id.setdefault(item[1], []).append(item)
+
+                        for object_id, object_items in items_by_object_id.items():
+                            frame_range = [
+                                min(item[2] for item in object_items),
+                                max(item[2] for item in object_items),
+                            ]
+                            progress.iters_done(len(object_items))
+                            if direct_progress:
+                                api.logger.debug(f"notifying")
+                                api.vid_ann_tool.set_direct_tracking_progress(
+                                    session_id,
+                                    video_id,
+                                    track_id,
+                                    frame_range=frame_range,
+                                    progress_current=progress.current,
+                                    progress_total=progress.total,
+                                )
+                        continue
+                    if stop_event.is_set():
+                        return
+                    time.sleep(0.5)
+            except Exception as e:
+                api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
+                global_stop_indicatior = True
+                raise
+
+        def _upload_loop(q: Queue, notify_q: Queue, stop_event: Event):
+            nonlocal global_stop_indicatior
+            try:
+                while True:
+                    items = []  # (geometry, object_id, frame_index)
+                    while not q.empty():
+                        items.append(q.get_nowait())
+                    if len(items) > 0:
+                        for item in items:
+                            figure_id = uuid.uuid5(
+                                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+                            ).hex
+                            api.logger.debug(f"_add_to_inference_request")
+                            _add_to_inference_request(*item, figure_id)
+                            if direct_progress:
+                                api.logger.debug(f"put to notify queue")
+                                notify_q.put(item)
+                        continue
+                    if stop_event.is_set():
+                        return
+                    time.sleep(1)
+            except Exception as e:
+                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
+                global_stop_indicatior = True
+                raise
+
+        upload_queue = Queue()
+        notify_queue = Queue()
+        stop_upload_event = Event()
+        upload_thread = Thread(
+            target=_upload_loop,
+            args=[upload_queue, notify_queue, stop_upload_event],
+            daemon=True,
+        )
+        upload_thread.start()
+        notify_thread = Thread(
+            target=_nofify_loop,
+            args=[notify_queue, stop_upload_event],
+            daemon=True,
+        )
+        notify_thread.start()
+
+        api.logger.info("Start tracking.")
+
     def serve(self):
         super().serve()
         server = self._app.get_server()
@@ -376,6 +511,44 @@ class PointTracking(Inference):
                 stop_upload_event.set()
                 raise
             stop_upload_event.set()
+
+        @server.post("/track_async")
+        def track_async(response: Response, request: Request):
+            sly.logger.debug(f"'track_async' request in json format:{request.state.context}")
+            # check batch size
+            batch_size = request.state.context.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                    "success": False,
+                }
+            inference_request_uuid = uuid.uuid5(
+                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+            ).hex
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                self._track_async,
+                request.state.api,
+                request.state.context,
+                inference_request_uuid,
+            )
+            end_callback = functools.partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+            sly.logger.debug(
+                "Inference has scheduled from 'track_async' endpoint",
+                extra={"inference_request_uuid": inference_request_uuid},
+            )
+            return {
+                "message": "Inference has started.",
+                "inference_request_uuid": inference_request_uuid,
+            }
 
     def predict(
         self,
