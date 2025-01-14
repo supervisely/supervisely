@@ -628,30 +628,25 @@ class BBoxTracking(Inference):
 
             inference_request = self._inference_requests[inference_request_uuid]
             frame_range = context.get("frame_range", None)
-            figures = []
             with inference_request["lock"]:
+                inference_request_copy = inference_request.copy()
                 if frame_range is not None:
-                    figure_ids = set()
-                    for figure in inference_request["pending_results"]:
-                        if (
-                            figure.frame_index >= frame_range[0]
-                            and figure.frame_index <= frame_range[1]
-                        ):
-                            figure_ids.add(figure.id)
-                            figures.append(figure)
+                    inference_request_copy["pending_results"] = [
+                        figure
+                        for figure in inference_request_copy["pending_results"]
+                        if figure.frame_index >= frame_range[0]
+                        and figure.frame_index <= frame_range[1]
+                    ]
                     inference_request["pending_results"] = [
                         figure
                         for figure in inference_request["pending_results"]
-                        if figure.id not in figure_ids
+                        if figure.frame_index < frame_range[0]
+                        or figure.frame_index > frame_range[1]
                     ]
-
                 else:
-                    figures = inference_request["pending_results"]
                     inference_request["pending_results"].clear()
-                inference_request = inference_request.copy()
-                inference_request["pending_results"] = figures
 
-            inference_request["pending_results"] = [
+            inference_request_copy["pending_results"] = [
                 {
                     ApiField.ID: figure.id,
                     ApiField.OBJECT_ID: figure.object_id,
@@ -659,20 +654,20 @@ class BBoxTracking(Inference):
                     ApiField.GEOMETRY: figure.geometry,
                     ApiField.FRAME_INDEX: figure.frame_index,
                 }
-                for figure in figures
+                for figure in inference_request_copy["pending_results"]
             ]
-            inference_request.pop("lock")
+            inference_request_copy.pop("lock")
 
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
+            inference_request_copy["progress"] = _convert_sly_progress_to_dict(
+                inference_request_copy["progress"]
             )
 
             # Logging
             log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
+                inference_request_uuid, inference_request_copy
             )
             sly.logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-            return inference_request
+            return inference_request_copy
 
         @server.post("/track-api-files")
         def track_api_files(

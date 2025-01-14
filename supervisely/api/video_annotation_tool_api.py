@@ -159,6 +159,6 @@ class VideoAnnotationToolApi(ModuleApiBase):
             ApiField.ACTION: str(action),
             ApiField.PAYLOAD: payload,
         }
-        resp = self._api.post("/annotation-tool.run-action", data)
+        resp = self._api.post("annotation-tool.run-action", data)
 
         return resp.json()
