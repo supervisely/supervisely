@@ -604,7 +604,7 @@ class ApiField:
     """"""
     WITH_CUSTOM_DATA_S = "withCustomData"
     """"""
-    HAVE_CUSTOM_DATA = "haveCustomData"
+    HAS_CUSTOM_DATA = "hasCustomData"
     """"""
     CUSTOM_DATA_SORT = "customDataSort"
     """"""

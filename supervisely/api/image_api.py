@@ -76,6 +76,7 @@ from supervisely.project.project_type import (
 from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
+CUSTOM_SORT_KEY = "slyCustomSort"
 
 
 class ImageInfo(NamedTuple):
@@ -104,6 +105,10 @@ class ImageInfo(NamedTuple):
             path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
             full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             tags=[]
+            created_by='admin',
+            custom_data={'slyCustomSort': '1'},
+            custom_data_sort='1',
+            has_custom_data=True
         )
     """
 
@@ -165,16 +170,19 @@ class ImageInfo(NamedTuple):
     tags: List[Dict]
 
     #: :class:`str`: Id of a user who created the image.
-    created_by: str
+    created_by: Optional[str]
 
-    #: :class:`dict`: Custom data.
-    custom_data: Dict[str, Any]
+    #: :class:`dict`: Custom data. Does not return by default i.e. None.
+    # To return custom data, use `with_custom_data=True`.
+    custom_data: Optional[Dict[str, Any]]
 
-    #: :class:`bool`: True if image has custom data.
-    have_custom_data: bool
+    #: :class:`str`: Value of `slyCustomSort` key in custom data dict.
+    # Does not return by default i.e. None.
+    # Return only if sort parameter is set to `customDataSort` and image has custom data dict with `slyCustomSort` key and value.
+    custom_data_sort: Optional[str]
 
-    #: :class:`str`: Custom data sort.
-    custom_data_sort: str
+    #: :class:`bool`: True if image has custom data dict with `slyCustomSort` key and value.
+    has_custom_data: bool
 
     @property
     def preview_url(self):
@@ -248,7 +256,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.CREATED_BY_ID[0][0],
             ApiField.CUSTOM_DATA,
             ApiField.CUSTOM_DATA_SORT,
-            ApiField.HAVE_CUSTOM_DATA,
+            ApiField.HAS_CUSTOM_DATA,
         ]
 
     @staticmethod
@@ -260,6 +268,25 @@ class ImageApi(RemoveableBulkModuleApi):
         :rtype: :class:`str`
         """
         return "ImageInfo"
+
+    @staticmethod
+    def prepare_custom_data_with_sorting(
+        value: str,
+        existing_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Prepare custom data with custom sorting parameter.
+
+        :param value: Value for sorting.
+        :type value: str
+        :param existing_data: Existing custom data.
+        :type existing_data: Optional[Dict[str, Any]]
+        :return: Custom data with sorting parameter.
+        :rtype: Dict[str, Any]
+        """
+        new_data = existing_data or {}
+        new_data[CUSTOM_SORT_KEY] = value
+        return new_data
 
     def get_list_generator(
         self,
@@ -1239,6 +1266,7 @@ class ImageApi(RemoveableBulkModuleApi):
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
         custom_data: Optional[Dict] = None,
+        custom_sort_value: Optional[str] = None,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1259,6 +1287,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :param custom_data: Custom data dictionary.
         :type custom_data: dict, optional
+        :param custom_sort_value: Sort value that will be used for sorting by `customDataSort`.
+        :type custom_sort_value: str, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1275,6 +1305,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         custom_data_list = None if custom_data is None else [custom_data]
+        custom_sort_values = None if custom_sort_value is None else [custom_sort_value]
         return self.upload_paths(
             dataset_id,
             [name],
@@ -1284,6 +1315,7 @@ class ImageApi(RemoveableBulkModuleApi):
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )[0]
 
     def upload_paths(
@@ -1298,6 +1330,7 @@ class ImageApi(RemoveableBulkModuleApi):
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images with given names from given local path to Dataset.
@@ -1322,6 +1355,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and links lists.
         :type custom_data_list: List[dict], optional
+        :param custom_sort_values: List of sort values that will be used for sorting by `customDataSort`.
+        :type custom_sort_values: List[str], optional
         :raises: :class:`ValueError` if len(names) != len(paths)
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
@@ -1356,6 +1391,7 @@ class ImageApi(RemoveableBulkModuleApi):
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )
 
     def upload_np(
@@ -1365,6 +1401,7 @@ class ImageApi(RemoveableBulkModuleApi):
         img: np.ndarray,
         meta: Optional[Dict] = None,
         custom_data: Optional[Dict] = None,
+        custom_sort_value: Optional[str] = None,
     ) -> ImageInfo:
         """
         Upload given Image in numpy format with given name to Dataset.
@@ -1379,6 +1416,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param custom_data: Custom data dictionary.
         :type custom_data: dict, optional
+        :param custom_sort_value: Sort value that will be used for sorting by `customDataSort`.
+        :type custom_sort_value: str, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1396,12 +1435,14 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         custom_data_list = None if custom_data is None else [custom_data]
+        custom_sort_values = None if custom_sort_value is None else [custom_sort_value]
         return self.upload_nps(
             dataset_id,
             [name],
             [img],
             metas=metas,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )[0]
 
     def upload_nps(
@@ -1413,6 +1454,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Upload given Images in numpy format with given names to Dataset.
@@ -1431,6 +1473,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and links lists.
         :type custom_data_list: List[dict], optional
+        :param custom_sort_values: List of sort values that will be used for sorting by `customDataSort`.
+        :type custom_sort_values: List[str], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1475,6 +1519,7 @@ class ImageApi(RemoveableBulkModuleApi):
             metas=metas,
             conflict_resolution=conflict_resolution,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )
 
     def upload_link(
@@ -1485,6 +1530,7 @@ class ImageApi(RemoveableBulkModuleApi):
         meta: Optional[Dict] = None,
         force_metadata_for_links=True,
         custom_data: Optional[Dict] = None,
+        custom_sort_value: Optional[str] = None,
     ) -> ImageInfo:
         """
         Uploads Image from given link to Dataset.
@@ -1501,6 +1547,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: bool, optional
         :param custom_data: Custom data dictionary.
         :type custom_data: dict, optional
+        :param custom_sort_value: Sort value that will be used for sorting by `customDataSort`.
+        :type custom_sort_value: str, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1520,6 +1568,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         custom_data_list = None if custom_data is None else [custom_data]
+        custom_sort_values = None if custom_sort_value is None else [custom_sort_value]
         return self.upload_links(
             dataset_id,
             [name],
@@ -1527,6 +1576,7 @@ class ImageApi(RemoveableBulkModuleApi):
             metas=metas,
             force_metadata_for_links=force_metadata_for_links,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )[0]
 
     def upload_links(
@@ -1541,6 +1591,7 @@ class ImageApi(RemoveableBulkModuleApi):
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads Images from given links to Dataset.
@@ -1563,6 +1614,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and links lists.
         :type custom_data_list: List[Dict], optional
+        :param custom_sort_values: List of sort values that will be used for sorting by `customDataSort`.
+        :type custom_sort_values: List[str], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1594,6 +1647,7 @@ class ImageApi(RemoveableBulkModuleApi):
             skip_validation=skip_validation,
             conflict_resolution=conflict_resolution,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )
 
     def upload_hash(
@@ -1603,6 +1657,7 @@ class ImageApi(RemoveableBulkModuleApi):
         hash: str,
         meta: Optional[Dict] = None,
         custom_data: Optional[Dict] = None,
+        custom_sort_value: Optional[str] = None,
     ) -> ImageInfo:
         """
         Upload Image from given hash to Dataset.
@@ -1617,6 +1672,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param custom_data: Custom data dictionary.
         :type custom_data: dict, optional
+        :param custom_sort_value: Sort value that will be used for sorting by `customDataSort`.
+        :type custom_sort_value: str, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1660,12 +1717,14 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         custom_data_list = None if custom_data is None else [custom_data]
+        custom_sort_values = None if custom_sort_value is None else [custom_sort_value]
         return self.upload_hashes(
             dataset_id,
             [name],
             [hash],
             metas=metas,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )[0]
 
     def upload_hashes(
@@ -1682,6 +1741,7 @@ class ImageApi(RemoveableBulkModuleApi):
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Upload images from given hashes to Dataset.
@@ -1710,6 +1770,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_caching_for_validation: bool, optional
         :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and hashes lists.
         :type custom_data_list: List[dict], optional
+        :param custom_sort_values: List of sort values for every image that will be used for sorting by `customDataSort`.
+        :type custom_sort_values: List[str], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1755,6 +1817,7 @@ class ImageApi(RemoveableBulkModuleApi):
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )
 
     def upload_id(
@@ -1764,6 +1827,7 @@ class ImageApi(RemoveableBulkModuleApi):
         id: int,
         meta: Optional[Dict] = None,
         custom_data: Optional[Dict] = None,
+        custom_sort_value: Optional[str] = None,
     ) -> ImageInfo:
         """
         Upload Image by ID to Dataset.
@@ -1778,6 +1842,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict, optional
         :param custom_data: Custom data dictionary.
         :type custom_data: dict, optional
+        :param custom_sort_value: Sort value that will be used for sorting by `customDataSort`.
+        :type custom_sort_value: str, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1821,12 +1887,14 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         metas = None if meta is None else [meta]
         custom_data_list = None if custom_data is None else [custom_data]
+        custom_sort_values = None if custom_sort_value is None else [custom_sort_value]
         return self.upload_ids(
             dataset_id,
             [name],
             [id],
             metas=metas,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )[0]
 
     def upload_ids(
@@ -1842,6 +1910,7 @@ class ImageApi(RemoveableBulkModuleApi):
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Upload Images by IDs to Dataset.
@@ -1868,6 +1937,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
         :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the names and ids lists.
         :type custom_data_list: List[Dict], optional
+        :param custom_sort_values: List of sort values that will be used for sorting by `customDataSort`.
+        :type custom_sort_values: List[str], optional
         :return: List with information about Images. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[ImageInfo]`
         :Usage example:
@@ -1904,6 +1975,8 @@ class ImageApi(RemoveableBulkModuleApi):
             metas = [{}] * len(names)
         if custom_data_list is None:
             custom_data_list = [{}] * len(names)
+        if custom_sort_values is None:
+            custom_sort_values = [None] * len(names)
         if infos is None:
             infos = self.get_info_by_id_batch(
                 ids, force_metadata_for_links=force_metadata_for_links
@@ -1913,10 +1986,25 @@ class ImageApi(RemoveableBulkModuleApi):
         # hashes = [info.hash for info in infos]
         # return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
 
-        links, links_names, links_order, links_metas, links_custom_data = [], [], [], [], []
-        hashes, hashes_names, hashes_order, hashes_metas, hashes_custom_data = [], [], [], [], []
-        for idx, (name, info, meta, custom_data) in enumerate(
-            zip(names, infos, metas, custom_data_list)
+        links, links_names, links_order, links_metas, links_custom_data, links_custom_sort = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
+
+        hashes, hashes_names, hashes_order, hashes_metas, hashes_custom_data, hashes_custom_sort = (
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+        )
+        for idx, (name, info, meta, custom_data, custom_sort) in enumerate(
+            zip(names, infos, metas, custom_data_list, custom_sort_values)
         ):
             if info.link is not None:
                 links.append(info.link)
@@ -1924,12 +2012,14 @@ class ImageApi(RemoveableBulkModuleApi):
                 links_order.append(idx)
                 links_metas.append(meta)
                 links_custom_data.append(custom_data)
+                links_custom_sort.append(custom_sort)
             else:
                 hashes.append(info.hash)
                 hashes_names.append(name)
                 hashes_order.append(idx)
                 hashes_metas.append(meta)
                 hashes_custom_data.append(custom_data)
+                hashes_custom_sort.append(custom_sort)
 
         result = [None] * len(names)
         if len(links) > 0:
@@ -1944,6 +2034,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 skip_validation=skip_validation,
                 conflict_resolution=conflict_resolution,
                 custom_data_list=links_custom_data,
+                custom_sort_values=links_custom_sort,
             )
             for info, pos in zip(res_infos_links, links_order):
                 result[pos] = info
@@ -1959,6 +2050,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 skip_validation=skip_validation,
                 conflict_resolution=conflict_resolution,
                 custom_data_list=hashes_custom_data,
+                custom_sort_values=hashes_custom_sort,
             )
             for info, pos in zip(res_infos_hashes, hashes_order):
                 result[pos] = info
@@ -1980,6 +2072,7 @@ class ImageApi(RemoveableBulkModuleApi):
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ):
         """ """
         if use_strict_validation and not validate_meta:
@@ -2036,13 +2129,18 @@ class ImageApi(RemoveableBulkModuleApi):
             items: List[Any],
             metas: List[Dict],
             custom_data_list: List[Dict],
+            custom_sort_values: List[str],
         ) -> List[Any]:
             images = []
-            for name, item, meta, custom_data in zip(names, items, metas, custom_data_list):
+            for name, item, meta, custom_data, sort_value in zip(
+                names, items, metas, custom_data_list, custom_sort_values
+            ):
                 item_tuple = func_item_to_kv(item)
                 image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
+                if sort_value is not None:
+                    custom_data = self.prepare_custom_data_with_sorting(sort_value, custom_data)
                 if len(custom_data) != 0 and type(custom_data) == dict:
                     image_data[ApiField.CUSTOM_DATA] = custom_data
                 images.append(image_data)
@@ -2071,18 +2169,33 @@ class ImageApi(RemoveableBulkModuleApi):
                     f'Can not match "names" and "custom_data_list" lists, {len(names)} != {len(custom_data_list)}'
                 )
 
+        if custom_sort_values is None:
+            custom_sort_values = [None] * len(names)
+        else:
+            if len(names) != len(custom_sort_values):
+                raise ValueError(
+                    f'Can not match "names" and "custom_sort_values" lists, {len(names)} != {len(custom_sort_values)}'
+                )
+
         idx_to_id = {}
-        for batch_count, (batch_names, batch_items, batch_metas, batched_custom_data) in enumerate(
+        for batch_count, (
+            batch_names,
+            batch_items,
+            batch_metas,
+            batched_custom_data,
+            batched_sort_values,
+        ) in enumerate(
             zip(
                 batched(names, batch_size=batch_size),
                 batched(items, batch_size=batch_size),
                 batched(metas, batch_size=batch_size),
                 batched(custom_data_list, batch_size=batch_size),
+                batched(custom_sort_values, batch_size=batch_size),
             )
         ):
             for retry in range(2):
                 images = _pack_for_request(
-                    batch_names, batch_items, batch_metas, batched_custom_data
+                    batch_names, batch_items, batch_metas, batched_custom_data, batched_sort_values
                 )
                 try:
                     response = self._api.post(
@@ -3323,6 +3436,7 @@ class ImageApi(RemoveableBulkModuleApi):
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = "rename",
         force_metadata_for_links: Optional[bool] = False,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Uploads images to Supervisely and adds a tag to them.
@@ -3355,6 +3469,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type force_metadata_for_links: Optional[bool]
         :param custom_data_list: List of custom data dictionaries. Each dictionary corresponds to an image in the same position in the paths or links.
         :type custom_data_list: Optional[List[Dict]]
+        :param custom_sort_values: List of custom sort values. Each value corresponds to an image in the same position in the paths or links.
+        :type custom_sort_values: Optional[List[str]]
         :return: List of uploaded images infos
         :rtype: List[ImageInfo]
         :raises Exception: if tag does not exist in project or tag is not of type ANY_STRING
@@ -3407,6 +3523,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 metas=metas,
                 conflict_resolution=conflict_resolution,
                 custom_data_list=custom_data_list,
+                custom_sort_values=custom_sort_values,
             )
             image_infos.extend(image_infos_by_paths)
 
@@ -3421,6 +3538,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 conflict_resolution=conflict_resolution,
                 force_metadata_for_links=force_metadata_for_links,
                 custom_data_list=custom_data_list,
+                custom_sort_values=custom_sort_values,
             )
             image_infos.extend(image_infos_by_links)
 
@@ -3582,6 +3700,7 @@ class ImageApi(RemoveableBulkModuleApi):
         metas: Optional[List[Dict]] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         custom_data_list: Optional[List[Dict]] = None,
+        custom_sort_values: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
@@ -3645,6 +3764,13 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise ValueError(
                     "Length of 'custom_data_list' is not equal to the length of 'paths'."
                 )
+        if custom_sort_values is None:
+            custom_sort_values = [None for _ in paths]
+        else:
+            if len(custom_sort_values) != len(paths):
+                raise ValueError(
+                    "Length of 'custom_sort_values' is not equal to the length of 'paths'."
+                )
 
         dataset = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
         meta_json = self._api.project.get_meta(dataset.project_id)
@@ -3707,6 +3833,7 @@ class ImageApi(RemoveableBulkModuleApi):
             progress_cb=progress_cb,
             metas=_metas,
             custom_data_list=custom_data_list,
+            custom_sort_values=custom_sort_values,
         )
         image_ids = [image_info.id for image_info in image_infos]
 
@@ -3926,26 +4053,39 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         id: int,
         data: Dict[str, Any],
-        overwrite: bool = False,
+        mode: Literal["replace", "update", "preserve"] = "update",
+        custom_sort_value: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Sets custom data for image with given ID.
-        By default, appends data to the existing custom data.
-        If overwrite is set to True, the existing custom data will be replaced instead.
+        Sets custom data for image with given ID based on the selected mode.
 
         :param id: Image ID in Supervisely.
         :type id: int
-        :param data: Data to be appended to the existing custom data. If overwrite is set to True, the existing custom data will be replaced instead.
+        :param data: New custom data.
         :type data: Dict[str, Any]
-        :param overwrite: Default is False. If True, overwrites existing custom data.
-        :type overwrite: bool, optional
+        :param mode: The update mode:
+            - "replace": Clear the existing dictionary and replace it with the new data.
+            - "update" (default): Add new keys and update values of existing keys.
+            - "preserve": Add new keys, but do not overwrite existing ones.
+
+        :type mode: Literal["replace", "update", "preserve"]
+        :param custom_sort_value: Sort value that will be used for sorting by `customDataSort`.
+                Will replace the existing value in param `data`.
+        :type custom_sort_value: str, optional
         :return: json-encoded content of a response.
         :rtype: Dict[str, Any]
         """
-        if not overwrite:
+        if mode != "replace":
             existing_data = self.get_custom_data(id)
-            existing_data.update(data)
+            if mode == "preserve":
+                for k, v in data.items():
+                    if k not in existing_data:
+                        existing_data[k] = v
+            else:  # mode == "update"
+                existing_data.update(data)
             data = existing_data
+        if custom_sort_value is not None:
+            data[CUSTOM_SORT_KEY] = custom_sort_value
         response = self._api.post(
             "images.custom-data.set", {ApiField.ID: id, ApiField.CUSTOM_DATA: data}
         )
