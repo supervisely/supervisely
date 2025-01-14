@@ -544,6 +544,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 force_metadata_for_links=force_metadata_for_links,
                 return_first_response=return_first_response,
                 project_id=project_id,
+                with_custom_data=with_custom_data,
             )
 
         data = {
@@ -1237,6 +1238,7 @@ class ImageApi(RemoveableBulkModuleApi):
         validate_meta: Optional[bool] = False,
         use_strict_validation: Optional[bool] = False,
         use_caching_for_validation: Optional[bool] = False,
+        custom_data: Optional[Dict] = None,
     ) -> ImageInfo:
         """
         Uploads Image with given name from given local path to Dataset.
@@ -1255,6 +1257,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type use_strict_validation: bool, optional
         :param use_caching_for_validation: If True, uses caching for validation.
         :type use_caching_for_validation: bool, optional
+        :param custom_data: Custom data dictionary.
+        :type custom_data: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
         :Usage example:
@@ -1270,6 +1274,7 @@ class ImageApi(RemoveableBulkModuleApi):
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
         """
         metas = None if meta is None else [meta]
+        custom_data_list = None if custom_data is None else [custom_data]
         return self.upload_paths(
             dataset_id,
             [name],
@@ -1278,6 +1283,7 @@ class ImageApi(RemoveableBulkModuleApi):
             validate_meta=validate_meta,
             use_strict_validation=use_strict_validation,
             use_caching_for_validation=use_caching_for_validation,
+            custom_data_list=custom_data_list,
         )[0]
 
     def upload_paths(
