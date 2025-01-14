@@ -622,7 +622,7 @@ class BBoxTracking(Inference):
             context = request.state.context
             inference_request_uuid = context.get("inference_request_uuid", None)
             if inference_request_uuid is None:
-                inference_request_uuid = context.get("inference_request_id", None)
+                inference_request_uuid = context.get("requestId", None)
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 sly.logger.error("Error: 'inference_request_uuid' is required.")
