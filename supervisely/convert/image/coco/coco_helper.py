@@ -522,17 +522,7 @@ def sly_ann_to_coco(
             masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
             bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
             graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
-            for label in masks:
-                cat_id = class_mapping[label.obj_class.name]
-                coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
-                segmentation = extend_mask_up_to_image(
-                    label.geometry.data, (h, w), label.geometry.origin
-                )
-                coco_obj["segmentation"] = coco_segmentation_rle(segmentation)
-                coco_obj["area"] = label.geometry.area
-                coco_obj["bbox"] = _get_common_bbox([label])
-                label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
-            for label in polygons + bboxes:
+            for label in polygons + bboxes + masks:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
                 coco_obj["bbox"] = _get_common_bbox([label])
@@ -541,6 +531,11 @@ def sly_ann_to_coco(
                     poly = label.geometry.to_json()["points"]["exterior"]
                     poly = np.array(poly).flatten().astype(float).tolist()
                     coco_obj["segmentation"] = [poly]
+                elif label.obj_class.geometry_type == Bitmap:
+                    segmentation = extend_mask_up_to_image(
+                        label.geometry.data, (h, w), label.geometry.origin
+                    )
+                    coco_obj["segmentation"] = coco_segmentation_rle(segmentation)
 
                 label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
 
