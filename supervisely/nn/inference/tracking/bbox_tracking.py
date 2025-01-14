@@ -627,6 +627,14 @@ class BBoxTracking(Inference):
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self._inference_requests[inference_request_uuid]
+            sly.logger.debug(
+                "Pop tracking results",
+                extra={
+                    "inference_request_uuid": inference_request_uuid,
+                    "pending_results_len": len(inference_request["pending_results"]),
+                    "pending_results": inference_request["pending_results"][:3],
+                },
+            )
             frame_range = context.get("frame_range", None)
             with inference_request["lock"]:
                 inference_request_copy = inference_request.copy()
