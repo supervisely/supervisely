@@ -1674,8 +1674,9 @@ class TrainApp:
                 self.gui.training_artifacts.model_benchmark_report_thumbnail.show()
                 self.gui.training_artifacts.model_benchmark_report_field.show()
             else:
-                self.gui.training_artifacts.model_benchmark_fail_text.show()
-                self.gui.training_artifacts.model_benchmark_report_field.show()
+                if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value():
+                    self.gui.training_artifacts.model_benchmark_fail_text.show()
+                    self.gui.training_artifacts.model_benchmark_report_field.show()
         # ---------------------------- #
 
         # Set instruction to GUI

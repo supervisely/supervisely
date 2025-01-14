@@ -9,7 +9,7 @@ import json
 import operator
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -3002,3 +3002,140 @@ class Annotation:
     #     new_labels = [label._to_subpixel_coordinate_system() for label in new_ann.labels]
     #     new_ann._labels = new_labels
     #     return new_ann
+
+    def to_coco(
+        self,
+        coco_image_id: int,
+        class_mapping: Dict[str, int],
+        coco_ann: Optional[Union[Dict, List]] = None,
+        last_label_id: Optional[int] = None,
+        coco_captions: Optional[Union[Dict, List]] = None,
+        last_caption_id: Optional[int] = None,
+    ) -> Tuple[List, List]:
+        """
+        Convert Supervisely annotation to COCO format annotation ("annotations" field).
+
+        :param coco_image_id: Image id in COCO format.
+        :type coco_image_id: int
+        :param class_mapping: Dictionary that maps class names to class ids.
+        :type class_mapping: Dict[str, int]
+        :param coco_ann: COCO annotation in dictionary or list format to append new annotations.
+        :type coco_ann: Union[Dict, List], optional
+        :param last_label_id: Last label id in COCO format to continue counting.
+        :type last_label_id: int, optional
+        :param coco_captions: COCO captions in dictionary or list format to append new captions.
+        :type coco_captions: Union[Dict, List], optional
+        :return: Tuple with list of COCO objects and list of COCO captions.
+        :rtype: :class:`tuple`
+
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+
+            coco_instances = dict(
+                info=dict(
+                    description="COCO dataset converted from Supervisely",
+                    url="None",
+                    version=str(1.0),
+                    year=2025,
+                    contributor="Supervisely",
+                    date_created="2025-01-01 00:00:00",
+                ),
+                licenses=[dict(url="None", id=0, name="None")],
+                images=[],
+                annotations=[],
+                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 0, "name": "lemon"}, ...]
+            )
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            image_id = 11
+            label_id = 222
+            class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
+
+            curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, coco_instances, label_id)
+            # or
+            # curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, label_id=label_id)
+            # coco_instances["annotations"].extend(curr_coco_ann)
+
+            label_id += len(curr_coco_ann)
+            image_id += 1
+        """
+
+        from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
+
+        return sly_ann_to_coco(
+            ann=self,
+            coco_image_id=coco_image_id,
+            class_mapping=class_mapping,
+            coco_ann=coco_ann,
+            last_label_id=last_label_id,
+            coco_captions=coco_captions,
+            last_caption_id=last_caption_id,
+        )
+
+    def to_yolo(
+        self,
+        class_names: List[str],
+        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    ) -> List[str]:
+        """
+        Convert Supervisely annotation to YOLO annotation format.
+        Returns a list of strings, each string represents one object.
+
+        :param class_names: List of class names.
+        :type class_names: List[str]
+        :param task_type: Task type, one of "detection", "segmentation", "pose".
+        :type task_type: str
+        :return: List of objects in YOLO format.
+        :rtype: :class:`list`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            class_names = [obj_cls.name for obj_cls in meta.obj_classes]
+
+            yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
+        """
+
+        from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
+
+        return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)
+
+    def to_pascal_voc(
+        self,
+        image_name: str,
+    ) -> Tuple[List, List]:
+        """
+        Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
+
+        :param ann: Supervisely annotation.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+        :param image_name: Image name.
+        :type image_name: :class:`str`
+        :return: Tuple with xml tree and instance and class masks in PIL.Image format.
+        :rtype: :class:`Tuple`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
+        """
+
+        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
+            sly_ann_to_pascal_voc,
+        )
+
+        return sly_ann_to_pascal_voc(self, image_name)
