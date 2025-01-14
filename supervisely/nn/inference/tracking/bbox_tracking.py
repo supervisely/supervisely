@@ -642,14 +642,14 @@ class BBoxTracking(Inference):
                     inference_request_copy["pending_results"] = [
                         figure
                         for figure in inference_request_copy["pending_results"]
-                        if figure.frame_index >= frame_range[0]
-                        and figure.frame_index <= frame_range[1]
+                        if figure.meta["frame"] >= frame_range[0]
+                        and figure.meta["frame"] <= frame_range[1]
                     ]
                     inference_request["pending_results"] = [
                         figure
                         for figure in inference_request["pending_results"]
-                        if figure.frame_index < frame_range[0]
-                        or figure.frame_index > frame_range[1]
+                        if figure.meta["frame"] < frame_range[0]
+                        or figure.meta["frame"] > frame_range[1]
                     ]
                 else:
                     inference_request["pending_results"].clear()
