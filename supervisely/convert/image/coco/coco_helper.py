@@ -713,7 +713,9 @@ def sly_ds_to_coco(
 
         coco_ann["images"].append(image_coco(image_info, image_idx))
         if with_captions is True:
-            coco_captions["images"].append(image_coco(image_info, image_idx))  # pylint: disable=unsubscriptable-object
+            coco_captions["images"].append(
+                image_coco(image_info, image_idx)
+            )  # pylint: disable=unsubscriptable-object
 
         ann = Annotation.load_json_file(ann_path, meta)
         if ann.img_size is None or ann.img_size == (0, 0) or ann.img_size == (None, None):
@@ -815,3 +817,127 @@ def sly_project_to_coco(
         )
         logger.info(f"Dataset '{ds.short_name}' has been converted to COCO format.")
     logger.info(f"Project '{project.name}' has been converted to COCO format.")
+
+
+def to_coco(
+    input_data: Union[Project, Dataset, Annotation, str],
+    dest_dir: Optional[str] = None,
+    meta: Optional[ProjectMeta] = None,
+    copy_images: bool = False,
+    with_captions: bool = False,
+    coco_image_id: int = 0,
+    class_mapping: Dict[str, int] = None,
+    coco_ann: Optional[Union[Dict, List]] = None,
+    last_label_id: Optional[int] = None,
+    coco_captions: Optional[Union[Dict, List]] = None,
+    last_caption_id: Optional[int] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Callable] = None,
+) -> Union[None, Dict, Tuple[str, str], Tuple[str, str], Tuple[List, List], Tuple[Dict, Dict]]:
+    """
+    Universal function to convert Supervisely project, dataset, or annotation to COCO format.
+    Note:
+        - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
+            You can use the dedicated functions for each data type:
+
+                - :func:`sly.convert.sly_project_to_coco()`
+                - :func:`sly.convert.sly_ds_to_coco()`
+                - :func:`sly.convert.sly_ann_to_coco()`
+
+        - If the input_data is a Project, the dest_dir parameters are required.
+        - If the input_data is a Dataset, the meta and dest_dir parameters are required.
+        - If the input_data is an Annotation, the coco_image_id and class_mapping parameters are required.
+
+    :param input_data: Supervisely project, dataset, annotation, or path to the project.
+    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.project.dataset.Dataset>` or :class:`Annotation<supervisely.annotation.annotation.Annotation>' or :class:`str`
+
+    # Project or Dataset conversion arguments:
+    :param dest_dir: Destination directory to save project or dataset in COCO format.
+    :type dest_dir: :class:`str`, optional
+    :param meta: Project meta information (required for dataset conversion).
+    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
+    :param copy_images: Copy images to destination directory (for project or dataset conversion).
+    :type copy_images: :class:`bool`, optional
+    :param with_captions: If True, returns COCO captions (for project or dataset conversion).
+    :type with_captions: :class:`bool`, optional
+    :param log_progress: Show uploading progress bar (for project or dataset conversion).
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project or dataset).
+    :type progress_cb: callable, optional
+
+    # Annotation conversion arguments:
+    :param coco_image_id: Image id in COCO format (for annotation conversion).
+    :type coco_image_id: int, optional
+    :param class_mapping: Dictionary that maps class names to class ids (for annotation conversion).
+    :type class_mapping: Dict[str, int], optional
+    :param coco_ann: COCO annotation in dictionary or list format to append new annotations (for annotation conversion).
+    :type coco_ann: Union[Dict, List], optional
+    :param last_label_id: Last label id in COCO format to continue counting (for annotation conversion).
+    :type last_label_id: int, optional
+    :param coco_captions: COCO captions in dictionary or list format to append new captions (for annotation conversion).
+    :type coco_captions: Union[Dict, List], optional
+    :param last_caption_id: Last caption id in COCO format to continue counting (for annotation conversion).
+    :type last_caption_id: int, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project in Supervisely format
+        project_directory = "./source/project"
+
+        # Convert Project to COCO format
+        sly.convert.to_coco(project_directory, dest_dir="./coco")
+
+        # Convert Dataset to COCO format
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+        dataset = project_fs.datasets.get("ds1")
+        sly.convert.to_coco(dataset, dest_dir="./coco")
+
+        # Convert Annotation to COCO format
+        ann = sly.Annotation.from_json(ann_json, meta)
+        image_id = 1
+        class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
+        coco_instances, coco_captions = sly.convert.to_coco(ann, image_id, class_mapping)
+    """
+    if isinstance(input_data, (Project, str)):
+        return sly_project_to_coco(
+            project=input_data,
+            dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    if isinstance(input_data, Dataset):
+        if meta is None:
+            raise ValueError("Project meta information is required for dataset conversion.")
+        return sly_ds_to_coco(
+            dataset=input_data,
+            meta=meta,
+            return_type="path",
+            dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    if isinstance(input_data, Annotation):
+        if class_mapping is None and meta is not None:
+            class_mapping = {c.name: idx for idx, c in enumerate(meta.obj_classes)}
+        if class_mapping is None:
+            raise ValueError("Class mapping is required for annotation conversion.")
+        return sly_ann_to_coco(
+            ann=input_data,
+            coco_image_id=coco_image_id,
+            class_mapping=class_mapping,
+            coco_ann=coco_ann,
+            last_label_id=last_label_id,
+            coco_captions=coco_captions,
+            last_caption_id=last_caption_id,
+        )
+    raise ValueError("Unsupported input type. Only Project, Dataset and Annotation are supported.")

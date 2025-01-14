@@ -657,3 +657,85 @@ def sly_project_to_yolo(
         )
         logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
     logger.info(f"Project '{project.name}' has been converted to YOLO format.")
+
+
+def to_yolo(
+    input_data: Union[Project, Dataset, Annotation, str],
+    dest_dir: Optional[str] = None,
+    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    meta: Optional[ProjectMeta] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Callable] = None,
+    class_names: Optional[List[str]] = None,
+) -> Union[None, List[str], str]:
+    """
+    Universal function to convert Supervisely project, dataset, or annotation to YOLO format.
+    Note:
+        - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
+            You can use the dedicated functions for each data type:
+
+                - :func:`sly.convert.sly_project_to_yolo()`
+                - :func:`sly.convert.sly_ds_to_yolo()`
+                - :func:`sly.convert.sly_ann_to_yolo()`
+
+        - If the input_data is a Project, the dest_dir parameters are required.
+        - If the input_data is a Dataset, the meta and dest_dir parameters are required.
+        - If the input_data is an Annotation, the class_names parameter is required.
+
+    :param input_data: Supervisely project, dataset, or annotation, or path to the directory with the project.
+    :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, :class:`supervisely.annotation.annotation.Annotation` or :class:`str`
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param task_type: Task type.
+    :type task_type: :class:`str`, optional
+    :param meta: Project meta.
+    :type meta: :class:`supervisely.project.project_meta.ProjectMeta`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :param class_names: List of class names (required for Annotation conversion).
+    :type class_names: :class:`list`, optional
+    :return: None, list of YOLO lines, or path to the destination directory.
+    :rtype: NoneType, list, str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
+
+        # Convert Project to YOLO format
+        yolo_lines = sly.to_yolo(project_directory)
+    """
+
+    if isinstance(input_data, (Project, str)):
+        return sly_project_to_yolo(
+            project=input_data,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    elif isinstance(input_data, Dataset):
+        return sly_ds_to_yolo(
+            dataset=input_data,
+            meta=meta,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    elif isinstance(input_data, Annotation):
+        if class_names is None and meta is not None:
+            class_names = [c.name for c in meta.obj_classes]
+        return sly_ann_to_yolo(
+            ann=input_data,
+            class_names=class_names,
+            task_type=task_type,
+        )
+    else:
+        raise ValueError(f"Unsupported input data type: {type(input_data)}")
