@@ -638,6 +638,7 @@ class BBoxTracking(Inference):
                 },
             )
             frame_range = context.get("frame_range", None)
+            frame_range = None
             with inference_request["lock"]:
                 inference_request_copy = inference_request.copy()
                 if frame_range is not None:
