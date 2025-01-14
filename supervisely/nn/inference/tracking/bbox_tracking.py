@@ -619,13 +619,16 @@ class BBoxTracking(Inference):
 
         @server.post("/pop_tracking_results")
         def pop_tracking_results(request: Request, response: Response):
-            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            context = request.state.context
+            inference_request_uuid = context.get("inference_request_uuid", None)
+            if inference_request_uuid is None:
+                inference_request_uuid = context.get("inference_request_id", None)
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self._inference_requests[inference_request_uuid]
-            frame_range = request.state.state.get("frame_range", None)
+            frame_range = context.get("frame_range", None)
             figures = []
             with inference_request["lock"]:
                 if frame_range is not None:
