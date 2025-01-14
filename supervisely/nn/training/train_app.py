@@ -580,7 +580,10 @@ class TrainApp:
         self._set_training_output(remote_dir, file_info, mb_eval_report)
         self._set_ws_progress_status("completed")
 
-        # Step 8. Workflow output
+        # Step 8. Set custom field with task id
+        self._api.task.set_field(self.task_id, "data.trainTaskId ", self.task_id)
+
+        # Step 9. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
