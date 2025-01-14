@@ -436,10 +436,9 @@ class BBoxTracking(Inference):
                             if direct_progress:
                                 api.logger.debug(f"put to notify queue")
                                 notify_q.put(item)
-                        continue
-                    if stop_event.is_set():
+
+                    elif stop_event.is_set():
                         return
-                    time.sleep(1)
             except Exception as e:
                 api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
