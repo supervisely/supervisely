@@ -3027,6 +3027,7 @@ class Project:
         save_images: bool = True,
         save_image_meta: bool = False,
         resume_download: bool = False,
+        include_custom_data: bool = False,
     ) -> None:
         """
         Download project from Supervisely to the given directory.
@@ -3055,6 +3056,10 @@ class Project:
         :type save_images: :class:`bool`, optional
         :param save_image_meta: Download images metadata in JSON format or not.
         :type save_image_meta: :class:`bool`, optional
+        :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+        :type resume_download: :class:`bool`, optional
+        :param include_custom_data: Include custom data in the image info.
+        :type include_custom_data: :class:`bool`, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -3093,6 +3098,7 @@ class Project:
             save_images=save_images,
             save_image_meta=save_image_meta,
             resume_download=resume_download,
+            include_custom_data=include_custom_data,
         )
 
     @staticmethod
@@ -3607,6 +3613,7 @@ class Project:
         save_image_meta: bool = False,
         images_ids: Optional[List[int]] = None,
         resume_download: Optional[bool] = False,
+        include_custom_data: Optional[bool] = False,
         **kwargs,
     ) -> None:
         """
@@ -3638,6 +3645,8 @@ class Project:
         :type images_ids: :class:`list` [ :class:`int` ], optional
         :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
         :type resume_download: :class:`bool`, optional
+        :param include_custom_data: Include custom data in the image info.
+        :type include_custom_data: :class:`bool`, optional
         :return: None
         :rtype: NoneType
 
@@ -3682,6 +3691,7 @@ class Project:
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+            include_custom_data=include_custom_data,
         )
 
     def to_coco(
@@ -3920,6 +3930,7 @@ def _download_project(
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    include_custom_data: Optional[bool] = False,
 ):
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -3957,7 +3968,9 @@ def _download_project(
         else:
             dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
-        all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
+        all_images = api.image.get_list(
+            dataset_id, force_metadata_for_links=False, with_custom_data=include_custom_data
+        )
         images = [image for image in all_images if images_ids is None or image.id in images_ids]
         ds_total = len(images)
 
@@ -4243,6 +4256,7 @@ def download_project(
     save_image_meta: bool = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    include_custom_data: Optional[bool] = False,
 ) -> None:
     """
     Download image project to the local directory.
@@ -4275,6 +4289,8 @@ def download_project(
     :type images_ids: list(int), optional
     :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
     :type resume_download: bool, optional
+    :param include_custom_data: Include custom data in the image info.
+    :type include_custom_data: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:
@@ -4326,6 +4342,7 @@ def download_project(
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+            include_custom_data=include_custom_data,
         )
     else:
         _download_project_optimized(
@@ -4340,6 +4357,7 @@ def download_project(
             save_images=save_images,
             log_progress=log_progress,
             images_ids=images_ids,
+            include_custom_data=include_custom_data,
         )
 
 
@@ -4355,6 +4373,7 @@ def _download_project_optimized(
     save_images=True,
     log_progress=True,
     images_ids: List[int] = None,
+    include_custom_data: Optional[bool] = False,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -4382,6 +4401,7 @@ def _download_project_optimized(
                         api.image.get_list(
                             dataset.id,
                             filters=[{"field": "id", "operator": "in", "value": images_ids}],
+                            with_custom_data=include_custom_data,
                         )
                     )
                 ds_progress = tqdm_sly(
@@ -4400,6 +4420,7 @@ def _download_project_optimized(
                 save_image_info=save_image_info,
                 save_images=save_images,
                 images_ids=images_ids,
+                include_custom_data=include_custom_data,
             )
 
     try:
@@ -4448,11 +4469,14 @@ def _download_dataset(
     save_image_info=False,
     save_images=True,
     images_ids: List[int] = None,
+    include_custom_data: Optional[bool] = False,
 ):
     image_filters = None
     if images_ids is not None:
         image_filters = [{"field": "id", "operator": "in", "value": images_ids}]
-    images = api.image.get_list(dataset_id, filters=image_filters)
+    images = api.image.get_list(
+        dataset_id, filters=image_filters, with_custom_data=include_custom_data
+    )
     images_to_download = images
     if only_image_tags is True:
         if project_meta is None:
@@ -4727,6 +4751,7 @@ async def _download_project_async(
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    include_custom_data: Optional[bool] = False,
     **kwargs,
 ):
     """
@@ -4805,7 +4830,10 @@ async def _download_project_async(
         if save_images is False and only_image_tags is True:
             force_metadata_for_links = True
         all_images = api.image.get_list_generator_async(
-            dataset_id, force_metadata_for_links=force_metadata_for_links, dataset_info=dataset
+            dataset_id,
+            force_metadata_for_links=force_metadata_for_links,
+            dataset_info=dataset,
+            with_custom_data=include_custom_data,
         )
         small_images = []
         large_images = []
