@@ -4,6 +4,7 @@ import sys
 import uuid
 from copy import deepcopy
 from datetime import datetime
+from itertools import groupby
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
@@ -351,12 +352,35 @@ def _get_graph_info(idx, obj_class):
     return data
 
 
-def get_categories_from_meta(meta: ProjectMeta):
+def get_categories_from_meta(meta: ProjectMeta) -> List[Dict[str, Any]]:
+    """Get categories from Supervisely project meta."""
     cat = lambda idx, c: {"supercategory": c.name, "id": idx, "name": c.name}
     return [
         cat(idx, c) if c.geometry_type != GraphNodes else _get_graph_info(idx, c)
         for idx, c in enumerate(meta.obj_classes)
     ]
+
+
+def extend_mask_up_to_image(
+    binary_mask: np.ndarray, image_shape: Tuple[int, int], origin: PointLocation
+) -> np.ndarray:
+    """Extend binary mask up to image shape."""
+    y, x = origin.col, origin.row
+    new_mask = np.zeros(image_shape, dtype=binary_mask.dtype)
+    new_mask[x : x + binary_mask.shape[0], y : y + binary_mask.shape[1]] = binary_mask
+    return new_mask
+
+
+def coco_segmentation_rle(segmentation: np.ndarray) -> Dict[str, Any]:
+    """Convert COCO segmentation to RLE format."""
+    binary_mask = np.asfortranarray(segmentation)
+    rle = {"counts": [], "size": list(binary_mask.shape)}
+    counts = rle.get("counts")
+    for i, (value, elements) in enumerate(groupby(binary_mask.ravel(order="F"))):
+        if i == 0 and value == 1:
+            counts.append(0)
+        counts.append(len(list(elements)))
+    return rle
 
 
 def sly_ann_to_coco(
@@ -491,16 +515,23 @@ def sly_ann_to_coco(
 
     res_inst = []  # result list of COCO objects
 
+    h, w = ann.img_size
     for binding_key, labels in ann.get_bindings().items():
         if binding_key is None:
             polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
             masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
             bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
             graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
-            if len(masks) > 0:
-                for l in masks:
-                    polygon_cls = l.obj_class.clone(geometry_type=Polygon)
-                    polygons.extend(l.convert(polygon_cls))
+            for label in masks:
+                cat_id = class_mapping[label.obj_class.name]
+                coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
+                segmentation = extend_mask_up_to_image(
+                    label.geometry.data, (h, w), label.geometry.origin
+                )
+                coco_obj["segmentation"] = coco_segmentation_rle(segmentation)
+                coco_obj["area"] = label.geometry.area
+                coco_obj["bbox"] = _get_common_bbox([label])
+                label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
             for label in polygons + bboxes:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
@@ -525,28 +556,16 @@ def sly_ann_to_coco(
         masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
         graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
 
-        if len(masks) > 0:  # convert Bitmap to Polygon
-            for l in masks:
-                polygon_cls = l.obj_class.clone(geometry_type=Polygon)
-                polygons.extend(l.convert(polygon_cls))
-
-        matched_bbox = False
-        if len(polygons) > 0:  # process polygons
-            cat_id = class_mapping[polygons[0].obj_class.name]
-            coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
-            if len(bboxes) > 0:
-                found = _get_common_bbox(bboxes, sly_bbox=True, approx=True)
-                new = _get_common_bbox(polygons, sly_bbox=True)
-                matched_bbox = found.contains(new)
-
-            polys = [l.geometry.to_json()["points"]["exterior"] for l in polygons]
-            polys = [np.array(p).flatten().astype(float).tolist() for p in polys]
-            coco_obj["segmentation"] = polys
-            coco_obj["area"] = sum([l.geometry.area for l in polygons])
-            coco_obj["bbox"] = _get_common_bbox(bboxes if matched_bbox else polygons)
-            label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
+        need_to_process_separately = len(masks) > 0 and len(polygons) > 0
+        bbox_matched_w_mask = False
+        bbox_matched_w_poly = False
 
         if len(graphs) > 0:
+            if len(masks) > 0 or len(polygons) > 0:
+                logger.warning(
+                    "Keypoints and Polygons/Bitmaps in one binding key are not supported. "
+                    "Objects will be converted separately."
+                )
             if len(graphs) > 1:
                 logger.warning(
                     "Multiple Keypoints in one binding key are not supported. "
@@ -556,7 +575,41 @@ def sly_ann_to_coco(
             coco_obj = _create_keypoints_obj(graphs[0], cat_id, label_id, coco_image_id)
             label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
 
-        if len(bboxes) > 0 and not matched_bbox:  # process bboxes separately
+        # convert Bitmap to Polygon
+        if len(masks) > 0:
+            for label in masks:
+                cat_id = class_mapping[label.obj_class.name]
+                coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
+                segmentation = extend_mask_up_to_image(
+                    label.geometry.data, (h, w), label.geometry.origin
+                )
+                coco_obj["segmentation"] = coco_segmentation_rle(segmentation)
+                coco_obj["area"] = label.geometry.area
+                if len(bboxes) > 0 and not need_to_process_separately:
+                    found = _get_common_bbox(bboxes, sly_bbox=True, approx=True)
+                    new = _get_common_bbox([label], sly_bbox=True)
+                    bbox_matched_w_mask = found.contains(new)
+                coco_obj["bbox"] = _get_common_bbox(bboxes if bbox_matched_w_mask else [label])
+                label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
+
+        # process polygons
+        if len(polygons) > 0:
+            cat_id = class_mapping[polygons[0].obj_class.name]
+            coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
+            if len(bboxes) > 0 and not need_to_process_separately:
+                found = _get_common_bbox(bboxes, sly_bbox=True, approx=True)
+                new = _get_common_bbox(polygons, sly_bbox=True)
+                bbox_matched_w_poly = found.contains(new)
+
+            polys = [l.geometry.to_json()["points"]["exterior"] for l in polygons]
+            polys = [np.array(p).flatten().astype(float).tolist() for p in polys]
+            coco_obj["segmentation"] = polys
+            coco_obj["area"] = sum([l.geometry.area for l in polygons])
+            coco_obj["bbox"] = _get_common_bbox(bboxes if bbox_matched_w_poly else polygons)
+            label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
+
+        # process bboxes separately if they are not matched with masks/polygons
+        if len(bboxes) > 0 and not bbox_matched_w_poly and not bbox_matched_w_mask:
             for label in bboxes:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
