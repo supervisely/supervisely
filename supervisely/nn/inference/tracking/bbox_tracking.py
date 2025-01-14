@@ -581,9 +581,9 @@ class BBoxTracking(Inference):
 
         @server.post("/track_async")
         def track_async(response: Response, request: Request):
-            sly.logger.debug(f"'track_async' request in json format:{request.state.state}")
+            sly.logger.debug(f"'track_async' request in json format:{request.state.context}")
             # check batch size
-            batch_size = request.state.state.get("batch_size", None)
+            batch_size = request.state.context.get("batch_size", None)
             if batch_size is None:
                 batch_size = self.get_batch_size()
             if self.max_batch_size is not None and batch_size > self.max_batch_size:
