@@ -255,7 +255,7 @@ class ImageApi(RemoveableBulkModuleApi):
         return "ImageInfo"
 
     @staticmethod
-    def add_custom_sort(meta, sort_by):
+    def add_custom_sort(meta: dict, sort_by: str, name: Optional[str] = None) -> dict:
         """
         Add `customSort` key to meta dict.
 
@@ -263,30 +263,44 @@ class ImageApi(RemoveableBulkModuleApi):
         :type meta: dict
         :param sort_by: Key name of meta object that will be used for sorting.
         :type sort_by: str
+        :param name: Name of the image. Used for improved debug logging.
+        :type name: str, optional
         :return: Updated meta.
         :rtype: dict
         """
-        meta[ApiField.CUSTOM_SORT] = meta[sort_by]
+        sort_value = meta.get(sort_by, None)
+        if sort_value:
+            meta[ApiField.CUSTOM_SORT] = sort_value
+            message = f"Custom sorting applied with key '{sort_by}' and value '{sort_value}'."
+        else:
+            message = f"Custom sorting will not be applied. Key '{sort_by}' not found in meta."
+        if name:
+            message = f"Image '{name}': {message}"
+        logger.info(message)
         return meta
 
     @contextmanager
-    def group_by_context(self, value: str):
+    def sort_by_context(self, key: str):
         """
         Use this context manager to set the key name of meta object that will be used for custom sorting.
-        This context manager allows you to set the `group_by` attribute of ImageApi object for the duration of the context, then delete it.
+        This context manager allows you to set the `sort_by` attribute of ImageApi object for the duration of the context, then delete it.
 
-        :param value: It is a key name of meta object that will be used for sorting.
-        :type value: str
+        :param key: It is a key name of meta object that will be used for sorting.
+        :type key: str
         """
-        if hasattr(self, "group_by") and self.group_by != value:
+        if hasattr(self, "sort_by") and self.sort_by != key:
             raise AttributeError(
-                f"Attribute 'group_by' already exists and has different value: {self.group_by}"
+                f"Attribute 'sort_by' already exists and has different value: {self.sort_by}"
             )
-        self.group_by = value
+        self.sort_by = key
+        self.sort_by_context_counter = getattr(self, "sort_by_context_counter", 0) + 1
         try:
             yield
         finally:
-            del self.group_by
+            self.sort_by_context_counter -= 1
+            if self.sort_by_context_counter == 0:
+                del self.sort_by
+                del self.sort_by_context_counter
 
     def get_list_generator(
         self,
@@ -2007,6 +2021,8 @@ class ImageApi(RemoveableBulkModuleApi):
             for name, item, meta in zip(names, items, metas):
                 item_tuple = func_item_to_kv(item)
                 image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
+                if self.sort_by is not None:
+                    meta = self.add_custom_sort(meta, self.sort_by, name)
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
                 images.append(image_data)
