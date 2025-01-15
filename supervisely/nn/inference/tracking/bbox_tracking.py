@@ -638,6 +638,8 @@ class BBoxTracking(Inference):
                 },
             )
             frame_range = context.get("frame_range", None)
+            if frame_range is None:
+                frame_range = context.get("frameRange", None)
             sly.logger.debug("frame_range: %s", frame_range)
             with inference_request["lock"]:
                 inference_request_copy = inference_request.copy()
