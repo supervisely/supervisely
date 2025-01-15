@@ -639,30 +639,27 @@ def sly_project_to_pascal_voc(
 
 
 def to_pascal_voc(
-    input_data: Union[Project, Dataset, Annotation, str],
+    input_data: Union[Project, Dataset, str],
     dest_dir: Optional[str] = None,
     meta: Optional[ProjectMeta] = None,
     train_val_split_coef: float = 0.8,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
-    image_name: Optional[str] = None,
-) -> Union[None, Tuple]:
+) -> None:
     """
-    Universal function to convert Supervisely project, dataset, or annotation to Pascal VOC format.
+    Universal function to convert Supervisely project or dataset to Pascal VOC format.
     Note:
         - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
             You can use the dedicated functions for each data type:
 
                 - :func:`sly.convert.sly_project_to_pascal_voc()`
                 - :func:`sly.convert.sly_ds_to_pascal_voc()`
-                - :func:`sly.convert.sly_ann_to_pascal_voc()`
 
         - If the input_data is a Project, the dest_dir parameters are required.
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
-        - If the input_data is an Annotation, the image_name parameter is required.
 
-    :param input_data: Input data to convert (Project, Dataset, Annotation, or path to the project directory).
-    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, :class:`Annotation<supervisely.annotation.annotation.Annotation>` or :class:`str`
+    :param input_data: Input data to convert (Project, Dataset, or path to the project directory).
+    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, or :class:`str`
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
     :param meta: Project meta information (required for Dataset conversion).
@@ -673,8 +670,6 @@ def to_pascal_voc(
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :param image_name: Image name (required for Annotation conversion).
-    :type image_name: :class:`str`, optional
     :return: None
     :rtype: NoneType
 
@@ -696,11 +691,15 @@ def to_pascal_voc(
         # Convert Dataset to Pascal VOC format
         dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
         sly.convert.to_pascal_voc(dataset, dest_dir="./pascal_voc")
-
-        # Convert Annotation to Pascal VOC format
-        ann = sly.Annotation.from_json(ann_json, meta)
-        sly.convert.to_pascal_voc(ann, image_name="image.jpg")
     """
+    if isinstance(input_data, str):
+        try:
+            input_data = Project(input_data, mode=OpenMode.READ)
+        except Exception as e:
+            try:
+                input_data = Dataset(input_data, mode=OpenMode.READ)
+            except Exception as e:
+                raise ValueError("Please check the path or the input data.")
 
     if isinstance(input_data, (Project, str)):
         return sly_project_to_pascal_voc(
@@ -719,9 +718,5 @@ def to_pascal_voc(
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
-    elif isinstance(input_data, Annotation):
-        if image_name is None:
-            raise ValueError("image_name must be specified for Annotation input")
-        return sly_ann_to_pascal_voc(input_data, image_name)
     else:
         raise ValueError(f"Unsupported input data type: {type(input_data)}")

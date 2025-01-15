@@ -660,42 +660,37 @@ def sly_project_to_yolo(
 
 
 def to_yolo(
-    input_data: Union[Project, Dataset, Annotation, str],
+    input_data: Union[Project, Dataset, str],
     dest_dir: Optional[str] = None,
     task_type: Literal["detection", "segmentation", "pose"] = "detection",
     meta: Optional[ProjectMeta] = None,
     log_progress: bool = True,
     progress_cb: Optional[Callable] = None,
-    class_names: Optional[List[str]] = None,
-) -> Union[None, List[str], str]:
+) -> Union[None, str]:
     """
-    Universal function to convert Supervisely project, dataset, or annotation to YOLO format.
+    Universal function to convert Supervisely project or dataset  to YOLO format.
     Note:
         - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
             You can use the dedicated functions for each data type:
 
                 - :func:`sly.convert.sly_project_to_yolo()`
                 - :func:`sly.convert.sly_ds_to_yolo()`
-                - :func:`sly.convert.sly_ann_to_yolo()`
 
         - If the input_data is a Project, the dest_dir parameters are required.
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
-        - If the input_data is an Annotation, the class_names parameter is required.
 
-    :param input_data: Supervisely project, dataset, or annotation, or path to the directory with the project.
-    :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, :class:`supervisely.annotation.annotation.Annotation` or :class:`str`
+    :param input_data: Supervisely project or dataset, or path to the directory with the project.
+    :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, or :class:`str`
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
     :param task_type: Task type.
     :type task_type: :class:`str`, optional
-    :param meta: Project meta.
+    :param meta: Project meta (required for Dataset conversion).
     :type meta: :class:`supervisely.project.project_meta.ProjectMeta`, optional
     :param log_progress: Show uploading progress bar.
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :param class_names: List of class names (required for Annotation conversion).
-    :type class_names: :class:`list`, optional
     :return: None, list of YOLO lines, or path to the destination directory.
     :rtype: NoneType, list, str
 
@@ -717,15 +712,16 @@ def to_yolo(
         # Convert Dataset to YOLO format
         dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
         sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta)
-
-        # Convert Annotation to YOLO format
-        ann = sly.Annotation.from_json(ann_json, meta)
-        image_id = 1
-        class_names = [c.name for c in meta.obj_classes]
-        yolo_lines = sly.convert.to_yolo(ann, class_names=class_names)
     """
-
-    if isinstance(input_data, (Project, str)):
+    if isinstance(input_data, str):
+        try:
+            input_data = Project(input_data, mode=OpenMode.READ)
+        except Exception:
+            try:
+                input_data = Dataset(input_data, mode=OpenMode.READ)
+            except Exception:
+                raise ValueError("Please check the path or the input data.")
+    if isinstance(input_data, Project):
         return sly_project_to_yolo(
             project=input_data,
             dest_dir=dest_dir,
@@ -742,13 +738,5 @@ def to_yolo(
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
-    elif isinstance(input_data, Annotation):
-        if class_names is None and meta is not None:
-            class_names = [c.name for c in meta.obj_classes]
-        return sly_ann_to_yolo(
-            ann=input_data,
-            class_names=class_names,
-            task_type=task_type,
-        )
     else:
-        raise ValueError(f"Unsupported input data type: {type(input_data)}")
+        raise ValueError("Unsupported input type. Only Project or Dataset are supported.")
