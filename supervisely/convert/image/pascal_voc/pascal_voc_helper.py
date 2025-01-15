@@ -686,9 +686,20 @@ def to_pascal_voc(
 
         # Local folder with Project
         project_directory = "/home/admin/work/supervisely/source/project"
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
 
         # Convert Project to Pascal VOC format
-        sly.to_pascal_voc(sly.Project(project_directory), log_progress=True)
+        sly.convert.to_pascal_voc(project_directory, dest_dir="./pascal_voc")
+        # or
+        sly.convert.to_pascal_voc(project_fs, dest_dir="./pascal_voc")
+
+        # Convert Dataset to Pascal VOC format
+        dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
+        sly.convert.to_pascal_voc(dataset, dest_dir="./pascal_voc")
+
+        # Convert Annotation to Pascal VOC format
+        ann = sly.Annotation.from_json(ann_json, meta)
+        sly.convert.to_pascal_voc(ann, image_name="image.jpg")
     """
 
     if isinstance(input_data, (Project, str)):

@@ -937,14 +937,16 @@ def to_coco(
 
         # Local folder with Project in Supervisely format
         project_directory = "./source/project"
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
 
         # Convert Project to COCO format
         sly.convert.to_coco(project_directory, dest_dir="./coco")
+        # or
+        sly.convert.to_coco(project_fs, dest_dir="./coco")
 
         # Convert Dataset to COCO format
-        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
-        dataset = project_fs.datasets.get("ds1")
-        sly.convert.to_coco(dataset, dest_dir="./coco")
+        # dataset: sly.Dataset
+        sly.convert.to_coco(dataset, dest_dir="./coco", meta=project_fs.meta)
 
         # Convert Annotation to COCO format
         ann = sly.Annotation.from_json(ann_json, meta)

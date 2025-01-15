@@ -707,9 +707,22 @@ def to_yolo(
 
         # Local folder with Project
         project_directory = "/home/admin/work/supervisely/source/project"
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
 
         # Convert Project to YOLO format
-        yolo_lines = sly.to_yolo(project_directory)
+        sly.convert.to_yolo(project_directory, dest_dir="./yolo")
+        # or
+        sly.convert.to_yolo(project_fs, dest_dir="./yolo")
+
+        # Convert Dataset to YOLO format
+        dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
+        sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta)
+
+        # Convert Annotation to YOLO format
+        ann = sly.Annotation.from_json(ann_json, meta)
+        image_id = 1
+        class_names = [c.name for c in meta.obj_classes]
+        yolo_lines = sly.convert.to_yolo(ann, class_names=class_names)
     """
 
     if isinstance(input_data, (Project, str)):
