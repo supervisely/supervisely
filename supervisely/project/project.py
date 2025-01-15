@@ -4138,7 +4138,7 @@ def upload_project(
             dataset_id=dataset.id,
             project_meta=updated_meta,
         ):
-            names, img_paths, img_infos, ann_paths = [], [], [], []
+            names, img_paths, img_infos, ann_paths, custom_data_list = [], [], [], [], []
             for item_name in ds_fs:
                 img_path, ann_path = ds_fs.get_item_paths(item_name)
                 img_info_path = ds_fs.get_img_info_path(item_name)
@@ -4148,7 +4148,9 @@ def upload_project(
                 ann_paths.append(ann_path)
 
                 if os.path.isfile(img_info_path):
-                    img_infos.append(ds_fs.get_image_info(item_name=item_name))
+                    image_info = ds_fs.get_image_info(item_name=item_name)
+                    img_infos.append(image_info)
+                    custom_data_list.append(image_info.custom_data or {})
 
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
@@ -4177,13 +4179,18 @@ def upload_project(
 
             if len(img_paths) != 0:
                 uploaded_img_infos = api.image.upload_paths(
-                    dataset.id, names, img_paths, ds_progress, metas=metas
+                    dataset.id,
+                    names,
+                    img_paths,
+                    ds_progress,
+                    metas=metas,
+                    custom_data_list=custom_data_list,
                 )
             elif len(img_paths) == 0 and len(img_infos) != 0:
                 # uploading links and hashes (the code from api.image.upload_ids)
                 img_metas = [{}] * len(names)
-                links, links_names, links_order, links_metas = [], [], [], []
-                hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
+                links, links_names, links_order, links_metas, links_cdata = [], [], [], [], []
+                hashes, hashes_names, hashes_order, hashes_metas, hashes_cdata = [], [], [], [], []
                 dataset_id = dataset.id
                 for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
                     if info.link is not None:
@@ -4191,11 +4198,13 @@ def upload_project(
                         links_names.append(name)
                         links_order.append(idx)
                         links_metas.append(meta)
+                        links_cdata.append(info.custom_data or {})
                     else:
                         hashes.append(info.hash)
                         hashes_names.append(name)
                         hashes_order.append(idx)
                         hashes_metas.append(meta)
+                        hashes_cdata.append(info.custom_data or {})
 
                 result = [None] * len(names)
                 if len(links) > 0:
@@ -4205,6 +4214,7 @@ def upload_project(
                         links,
                         ds_progress,
                         metas=links_metas,
+                        custom_data_list=links_cdata,
                     )
                     for info, pos in zip(res_infos_links, links_order):
                         result[pos] = info
@@ -4216,6 +4226,7 @@ def upload_project(
                         hashes,
                         ds_progress,
                         metas=hashes_metas,
+                        custom_data_list=hashes_cdata,
                     )
                     for info, pos in zip(res_infos_hashes, hashes_order):
                         result[pos] = info
