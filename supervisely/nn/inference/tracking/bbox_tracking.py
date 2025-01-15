@@ -413,7 +413,7 @@ class BBoxTracking(Inference):
                         if stop_event.is_set():
                             api.logger.debug(f"stop event is set. returning from notify loop")
                             return
-                    time.sleep(0.5)
+                    time.sleep(1)
             except Exception as e:
                 api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
