@@ -473,7 +473,7 @@ class BBoxTracking(Inference):
                 )
                 api.logger.info("geometry:", extra={"geometry": type(sly_geometry)})
                 init = False
-                for frame_i in range(frame_index, frame_index + frames_count, direction_n):
+                for frame_i in range(*range_of_frames, direction_n):
                     frame_i_next = frame_i + direction_n
                     frame, frame_next = self.cache.download_frames(
                         api,
