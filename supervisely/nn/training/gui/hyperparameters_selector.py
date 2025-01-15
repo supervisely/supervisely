@@ -45,7 +45,7 @@ class HyperparametersSelector:
                 f"Learn more about Model Benchmark in the {docs_link}.", status="info"
             )
             self.model_benchmark_auto_convert_warning = Text(
-                text="Project will be automatically converted according to CV task for model evaluation.",
+                text="Project will be automatically converted according to CV task for Model Evaluation.",
                 status="warning",
             )
             self.model_benchmark_auto_convert_warning.hide()
@@ -53,8 +53,8 @@ class HyperparametersSelector:
             self.display_widgets.extend(
                 [
                     self.model_benchmark_field,
-                    self.model_benchmark_auto_convert_warning,
                     self.model_benchmark_learn_more,
+                    self.model_benchmark_auto_convert_warning,
                 ]
             )
         # -------------------------------- #
@@ -144,10 +144,8 @@ class HyperparametersSelector:
     def toggle_mb_speedtest(self, is_checked: bool) -> None:
         if is_checked:
             self.run_speedtest_checkbox.show()
-            self.model_benchmark_auto_convert_warning.show()
         else:
             self.run_speedtest_checkbox.hide()
-            self.model_benchmark_auto_convert_warning.hide()
 
     def get_export_onnx_checkbox_value(self) -> bool:
         if self.app_options.get("export_onnx_supported", False):

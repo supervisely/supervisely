@@ -14,7 +14,6 @@ from supervisely.app.widgets import (
 )
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource
-from supervisely.nn.artifacts.utils import FrameworkMapper, FrameworkName
 
 
 class ModelSelector:
@@ -37,7 +36,7 @@ class ModelSelector:
                 legacy_experiment_infos = framework_cls.get_list_experiment_info()
                 experiment_infos = experiment_infos + legacy_experiment_infos
             except:
-                logger.warn(f"Legacy checkpoints are not available for '{framework}'")
+                logger.warning(f"Legacy checkpoints are not available for '{framework}'")
 
         self.experiment_selector = ExperimentSelector(self.team_id, experiment_infos)
         self.model_source_tabs = RadioTabs(
@@ -106,3 +105,9 @@ class ModelSelector:
             self.validator_text.set(text="Model is selected", status="success")
             self.validator_text.show()
             return True
+
+    def get_selected_task_type(self) -> str:
+        if self.get_model_source() == ModelSource.PRETRAINED:
+            return self.pretrained_models_table.get_selected_task_type()
+        else:
+            return self.experiment_selector.get_selected_task_type()
