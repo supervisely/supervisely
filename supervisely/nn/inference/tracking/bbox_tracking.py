@@ -398,7 +398,7 @@ class BBoxTracking(Inference):
                                 min(item[2] for item in object_items),
                                 max(item[2] for item in object_items),
                             ]
-                            progress.iters_done(len(object_items))
+                            progress.iters_done_report(len(object_items))
                             if direct_progress:
                                 api.logger.debug(f"notifying")
                                 api.vid_ann_tool.set_direct_tracking_progress(
@@ -413,7 +413,7 @@ class BBoxTracking(Inference):
                         if stop_event.is_set():
                             api.logger.debug(f"stop event is set. returning from notify loop")
                             return
-                        time.sleep(0.5)
+                    time.sleep(0.5)
             except Exception as e:
                 api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
