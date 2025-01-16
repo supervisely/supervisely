@@ -482,7 +482,6 @@ class TrainApp:
         downloading project and model data.
         """
         logger.info("Preparing for training")
-        self.gui.disable_select_buttons()
 
         # Step 1. Workflow Input
         if is_production():
@@ -503,38 +502,39 @@ class TrainApp:
         :type experiment_info: dict
         """
         logger.info("Finalizing training")
+        # Step 1. Validate experiment TaskType
+        experiment_info = self._validate_experiment_task_type(experiment_info)
 
-        # Step 1. Validate experiment_info
+        # Step 2. Validate experiment_info
         success, reason = self._validate_experiment_info(experiment_info)
         if not success:
             raise ValueError(f"{reason}. Failed to upload artifacts")
 
-        # Step 2. Preprocess artifacts
+        # Step 3. Preprocess artifacts
         experiment_info = self._preprocess_artifacts(experiment_info)
 
-        # Step3. Postprocess splits
+        # Step 4. Postprocess splits
         train_splits_data = self._postprocess_splits()
 
-        # Step 3. Upload artifacts
+        # Step 5. Upload artifacts
         self._set_text_status("uploading")
         remote_dir, file_info = self._upload_artifacts()
 
-        # Step 4. Run Model Benchmark
+        # Step 6. Create model meta according to model CV task type
         model_meta = self.create_model_meta(experiment_info["task_type"])
-        mb_eval_lnk_file_info, mb_eval_report, mb_eval_report_id, eval_metrics = (
-            None,
-            None,
-            None,
-            {},
-        )
+
+        # Step 7. [Optional] Run Model Benchmark
+        mb_eval_lnk_file_info, mb_eval_report = None, None
+        mb_eval_report_id, eval_metrics = None, {}
         if self.is_model_benchmark_enabled:
             try:
                 # Convert GT project
                 if self._app_options.get("auto_convert_classes", True):
-                    self._set_text_status("convert_gt_project")
-                    gt_project_id, bm_splits_data = self._convert_and_split_gt_project(
-                        experiment_info["task_type"]
-                    )
+                    if self.gui.need_convert_shapes_for_bm:
+                        self._set_text_status("convert_gt_project")
+                        gt_project_id, bm_splits_data = self._convert_and_split_gt_project(
+                            experiment_info["task_type"]
+                        )
                 else:
                     gt_project_id, bm_splits_data = None, train_splits_data
 
@@ -555,7 +555,7 @@ class TrainApp:
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
-        # Step 5. [Optional] Convert weights
+        # Step 8. [Optional] Convert weights
         export_weights = {}
         if self.gui.hyperparameters_selector.is_export_required():
             try:
@@ -564,7 +564,7 @@ class TrainApp:
             except Exception as e:
                 logger.error(f"Export weights failed: {e}")
 
-        # Step 6. Generate and upload additional files
+        # Step 9. Generate and upload additional files
         self._set_text_status("metadata")
         self._generate_experiment_info(
             remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
@@ -575,12 +575,12 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-        # Step 7. Set output widgets
+        # Step 10. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(remote_dir, file_info, mb_eval_report)
         self._set_ws_progress_status("completed")
 
-        # Step 8. Workflow output
+        # Step 11. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
@@ -1120,6 +1120,24 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Postprocess
+    def _validate_experiment_task_type(self, experiment_info: dict) -> dict:
+        """
+        Checks if the task_type key if returned from the user's training function.
+        If not, it will be set to the task type of the model selected in the model selector.
+
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        :return: Experiment info with task_type key.
+        :rtype: dict
+        """
+        task_type = experiment_info.get("task_type", None)
+        if task_type is None:
+            logger.debug(
+                "Task type not found in experiment_info. Task type from model config will be used."
+            )
+            task_type = self.gui.model_selector.get_selected_task_type()
+            experiment_info["task_type"] = task_type
+        return experiment_info
 
     def _validate_experiment_info(self, experiment_info: dict) -> tuple:
         """
@@ -2218,6 +2236,7 @@ class TrainApp:
         Wrapper function to wrap the training process.
         """
         experiment_info = None
+        check_logs_text = "Please check the logs for more details."
 
         try:
             self._set_train_widgets_state_on_start()
@@ -2226,7 +2245,7 @@ class TrainApp:
             self._prepare_working_dir()
             self._init_logger()
         except Exception as e:
-            message = "Error occurred during training initialization. Please check the logs for more details."
+            message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2237,9 +2256,7 @@ class TrainApp:
             self._set_ws_progress_status("preparing")
             self._prepare()
         except Exception as e:
-            message = (
-                "Error occurred during data preparation. Please check the logs for more details."
-            )
+            message = f"Error occurred during data preparation. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2250,8 +2267,18 @@ class TrainApp:
             if self._app_options.get("train_logger", None) is None:
                 self._set_ws_progress_status("training")
             experiment_info = self._train_func()
+        except ZeroDivisionError as e:
+            message = (
+                "'ZeroDivisionError' occurred during training. "
+                "The error was caused by an insufficient dataset size relative to the specified batch size in hyperparameters. "
+                "Please check input data and hyperparameters."
+            )
+            self._show_error(message, e)
+            self._restore_train_widgets_state_on_error()
+            self._set_ws_progress_status("reset")
+            return
         except Exception as e:
-            message = "Error occurred during training. Please check the logs for more details."
+            message = f"Error occurred during training. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2263,7 +2290,7 @@ class TrainApp:
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
         except Exception as e:
-            message = "Error occurred during finalizing and uploading training artifacts . Please check the logs for more details."
+            message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2280,6 +2307,7 @@ class TrainApp:
         self._restore_train_widgets_state_on_error()
 
     def _set_train_widgets_state_on_start(self):
+        self.gui.disable_select_buttons()
         self.gui.training_artifacts.validator_text.hide()
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
@@ -2305,6 +2333,7 @@ class TrainApp:
         if self._app_options.get("device_selector", False):
             self.gui.training_process.select_device._select.enable()
             self.gui.training_process.select_device.enable()
+        self.gui.enable_select_buttons()
 
     def _validate_experiment_name(self) -> bool:
         experiment_name = self.gui.training_process.get_experiment_name()
@@ -2475,7 +2504,7 @@ class TrainApp:
             change_name_if_conflict=True,
         )
 
-        # 3. Upload gt project to benchmark workspace
+        # 3. Upload converted gt project
         project = Project("tmp_project", OpenMode.READ)
         self._api.project.update_meta(gt_project_info.id, project.meta)
         for dataset in project.datasets:
@@ -2491,6 +2520,7 @@ class TrainApp:
                 img_infos = self._api.image.copy_batch(ds_info.id, img_ids)
                 img_ids = [img_info.id for img_info in img_infos]
                 self._api.annotation.upload_anns(img_ids, anns)
+        sly_fs.remove_dir(project.directory)
 
         # 4. Match splits with original project
         gt_split_data = self._postprocess_splits(gt_project_info.id)
