@@ -594,15 +594,14 @@ class MaskTracking(Inference):
                     video_id,
                     list(range(range_of_frames[0], range_of_frames[1] + direction_n, direction_n)),
                 )
+                sly.logger.debug(f"frames: {len(frames)}")
                 for figure in figures:
                     figure = api.video.figure._convert_json_info(figure)
                     fig_id = figure.id
                     obj_id = figure.object_id
                     geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
                     original_geometry = geometry.clone()
-                    if not isinstance(geometry, sly.Bitmap) and not isinstance(
-                        geometry, sly.Polygon
-                    ):
+                    if not isinstance(geometry, (sly.Bitmap, sly.Polygon)):
                         stop_upload_event.set()
                         raise TypeError(
                             f"This app does not support {geometry.geometry_name()} tracking"
@@ -631,6 +630,7 @@ class MaskTracking(Inference):
                     frames=frames, input_mask=multilabel_mask[:, :, 0]
                 )
                 tracked_multilabel_masks = np.array(tracked_multilabel_masks)
+                sly.logger.debug(f"tracked_multilabel_masks: {len(tracked_multilabel_masks)}")
                 # decompose multilabel masks into binary masks
                 for i in np.unique(tracked_multilabel_masks):
                     if i != 0:

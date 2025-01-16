@@ -357,6 +357,7 @@ class PointTracking(Inference):
                 video_id,
                 list(range(range_of_frames[0], range_of_frames[1] + direction_n, direction_n)),
             )
+            sly.logger.debug(f"frames: {len(frames)}")
             for figure in figures:
                 figure = api.video.figure._convert_json_info(figure)
                 api.logger.info("geometry:", extra={"figure": figure._asdict()})
