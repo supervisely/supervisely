@@ -11,6 +11,7 @@ import supervisely.io.env as sly_env
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
+from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
@@ -142,17 +143,19 @@ class TrainGUI:
         def need_convert_class_shapes() -> bool:
             task_type = self.model_selector.get_selected_task_type()
 
-            def _is_acceptable(shape):
+            def _need_convert(shape):
                 if task_type == TaskType.OBJECT_DETECTION:
-                    return shape == Rectangle.geometry_name()
-                return True
+                    return shape != Rectangle.geometry_name()
+                elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+                    return shape == Polygon.geometry_name()
+                return
 
             data = self.classes_selector.classes_table._table_data
             selected_classes = set(self.classes_selector.classes_table.get_selected_classes())
             empty = set(r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0)
-            acceptable = set(r[0]["data"] for r in data if _is_acceptable(r[1]["data"]))
+            need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
 
-            if len(selected_classes - empty - acceptable) > 0:
+            if need_convert.intersection(selected_classes - empty):
                 self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
             else:
                 self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()

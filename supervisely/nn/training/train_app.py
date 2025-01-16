@@ -1408,7 +1408,7 @@ class TrainApp:
 
         if task_type == TaskType.OBJECT_DETECTION:
             model_meta, _ = model_meta.to_detection_task(True)
-        elif task_type == TaskType.INSTANCE_SEGMENTATION or TaskType.SEMANTIC_SEGMENTATION:
+        elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
             model_meta, _ = model_meta.to_segmentation_task()  # @TODO: check background class
         return model_meta
 
