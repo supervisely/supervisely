@@ -51,10 +51,6 @@ from supervisely.nn.benchmark import (
     SemanticSegmentationBenchmark,
     SemanticSegmentationEvaluator,
 )
-from supervisely.nn.benchmark.base_benchmark import (
-    WORKSPACE_DESCRIPTION,
-    WORKSPACE_NAME,
-)
 from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
@@ -1204,9 +1200,14 @@ class TrainApp:
         logger.debug("Validation successful")
         return True, None
 
-    def _postprocess_splits(self) -> dict:
+    def _postprocess_splits(self, project_id: Optional[int] = None) -> dict:
         """
         Processes the train and val splits to generate the necessary data for the experiment_info.json file.
+
+        :param project_id: ID of the ground truth project for model benchmark. Provide only when cv task convertion is required.
+        :type project_id: Optional[int]
+        :return: Splits data.
+        :rtype: dict
         """
         val_dataset_ids = None
         val_images_ids = None
@@ -1216,10 +1217,30 @@ class TrainApp:
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_set, val_set = self._train_split, self._val_split
         if split_method == "Based on datasets":
-            val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
-            train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
+            if project_id is None:
+                val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
+                train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
+            else:
+                src_datasets_map = {
+                    dataset.id: dataset
+                    for _, dataset in self._api.dataset.tree(self.project_info.id)
+                }
+                val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
+                train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
+
+                train_dataset_names = [src_datasets_map[ds_id].name for ds_id in train_dataset_ids]
+                val_dataset_names = [src_datasets_map[ds_id].name for ds_id in val_dataset_ids]
+
+                gt_datasets_map = {
+                    dataset.name: dataset.id for _, dataset in self._api.dataset.tree(project_id)
+                }
+                train_dataset_ids = [gt_datasets_map[ds_name] for ds_name in train_dataset_names]
+                val_dataset_ids = [gt_datasets_map[ds_name] for ds_name in val_dataset_names]
         else:
-            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
+            if project_id is None:
+                project_id = self.project_id
+
+            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(project_id)]
             ds_infos_dict = {}
             for dataset in dataset_infos:
                 if dataset.parent_id is not None:
@@ -2472,81 +2493,5 @@ class TrainApp:
                 self._api.annotation.upload_anns(img_ids, anns)
 
         # 4. Match splits with original project
-        gt_split_data = self._preprocess_gt_splits_for_bm(gt_project_info.id)
+        gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data
-
-    def _preprocess_gt_splits_for_bm(self, gt_project_id: int) -> dict:
-        """
-        Preprocess the ground truth splits for the Model Benchmark evaluation.
-        """
-        val_dataset_ids = None
-        val_images_ids = None
-        train_dataset_ids = None
-        train_images_ids = None
-
-        split_method = self.gui.train_val_splits_selector.get_split_method()
-        train_set, val_set = self._train_split, self._val_split
-        if split_method == "Based on datasets":
-            src_datasets_map = {
-                dataset.id: dataset for _, dataset in self._api.dataset.tree(self.project_info.id)
-            }
-            val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
-            train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
-
-            train_dataset_names = [src_datasets_map[ds_id].name for ds_id in train_dataset_ids]
-            val_dataset_names = [src_datasets_map[ds_id].name for ds_id in val_dataset_ids]
-
-            gt_datasets_map = {
-                dataset.name: dataset.id for _, dataset in self._api.dataset.tree(gt_project_id)
-            }
-            train_dataset_ids = [gt_datasets_map[ds_name] for ds_name in train_dataset_names]
-            val_dataset_ids = [gt_datasets_map[ds_name] for ds_name in val_dataset_names]
-        else:
-            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(gt_project_id)]
-            ds_infos_dict = {}
-            for dataset in dataset_infos:
-                if dataset.parent_id is not None:
-                    parent_ds = self._api.dataset.get_info_by_id(dataset.parent_id)
-                    dataset_name = f"{parent_ds.name}/{dataset.name}"
-                else:
-                    dataset_name = dataset.name
-                ds_infos_dict[dataset_name] = dataset
-
-            def get_image_infos_by_split(ds_infos_dict: dict, split: list):
-                image_names_per_dataset = {}
-                for item in split:
-                    image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
-                image_infos = []
-                for dataset_name, image_names in image_names_per_dataset.items():
-                    ds_info = ds_infos_dict[dataset_name]
-                    for names_batch in batched(image_names, 200):
-                        image_infos.extend(
-                            self._api.image.get_list(
-                                ds_info.id,
-                                filters=[
-                                    {
-                                        "field": "name",
-                                        "operator": "in",
-                                        "value": names_batch,
-                                    }
-                                ],
-                            )
-                        )
-                return image_infos
-
-            val_image_infos = get_image_infos_by_split(ds_infos_dict, val_set)
-            train_image_infos = get_image_infos_by_split(ds_infos_dict, train_set)
-            val_images_ids = [img_info.id for img_info in val_image_infos]
-            train_images_ids = [img_info.id for img_info in train_image_infos]
-
-        gt_splits_data = {
-            "train": {
-                "dataset_ids": train_dataset_ids,
-                "images_ids": train_images_ids,
-            },
-            "val": {
-                "dataset_ids": val_dataset_ids,
-                "images_ids": val_images_ids,
-            },
-        }
-        return gt_splits_data
