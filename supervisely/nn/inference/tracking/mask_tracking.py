@@ -539,9 +539,9 @@ class MaskTracking(Inference):
                                         progress_total=progress.total,
                                     )
                             continue
-                        if stop_event.is_set():
+                        elif stop_event.is_set():
                             return
-                        time.sleep(0.5)
+                        time.sleep(1)
                 except Exception as e:
                     api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
                     global_stop_indicatior = True
@@ -575,18 +575,18 @@ class MaskTracking(Inference):
             upload_queue = Queue()
             notify_queue = Queue()
             stop_upload_event = Event()
-            notify_thread = Thread(
+            upload_thread = Thread(
                 target=_upload_loop,
                 args=[upload_queue, notify_queue, stop_upload_event],
                 daemon=True,
             )
-            notify_thread.start()
-            upload_thread = Thread(
+            upload_thread.start()
+            notify_thread = Thread(
                 target=_nofify_loop,
                 args=[notify_queue, stop_upload_event],
                 daemon=True,
             )
-            upload_thread.start()
+            notify_thread.start()
 
             # run tracker
             api.logger.info("Starting tracking process")

@@ -326,7 +326,7 @@ class PointTracking(Inference):
                                 api.logger.debug(f"put to notify queue")
                                 notify_q.put(item)
                         continue
-                    if stop_event.is_set():
+                    elif stop_event.is_set():
                         return
                     time.sleep(1)
             except Exception as e:
