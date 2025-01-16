@@ -256,7 +256,9 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def _add_custom_sort(self, meta: dict, name: Optional[str] = None) -> dict:
         """
-        Add `customSort` key to meta dict.
+        Add `customSort` key with value to meta dict based on the `sort_by` attribute of `ImageApi` object:
+         - `sort_by` attribute is set by `sort_by_context` context manager and available for the duration of the context.
+         - `sort_by` attribute is used to set the key name of meta object that will "link" its value to the custom sorting.
 
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict
