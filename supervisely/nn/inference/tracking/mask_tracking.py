@@ -633,12 +633,14 @@ class MaskTracking(Inference):
                 sly.logger.debug(f"tracked_multilabel_masks: {len(tracked_multilabel_masks)}")
                 # decompose multilabel masks into binary masks
                 for i in np.unique(tracked_multilabel_masks):
+                    sly.logger.debug(f"i: {i}")
                     if i != 0:
                         binary_masks = tracked_multilabel_masks == i
                         fig_id = label2id[i]["fig_id"]
                         obj_id = label2id[i]["obj_id"]
                         geometry_type = label2id[i]["original_geometry"]
                         for j, mask in enumerate(binary_masks[1:]):
+                            sly.logger.debug(f"j: {j}")
                             # check if mask is not empty
                             if not np.any(mask):
                                 api.logger.info(
@@ -657,6 +659,7 @@ class MaskTracking(Inference):
                                 else:
                                     geometries = [sly.Bitmap(mask)]
                                 for l, geometry in enumerate(geometries):
+                                    sly.logger.debug("Put geometry to upload queue")
                                     upload_queue.put(
                                         (
                                             geometry,
