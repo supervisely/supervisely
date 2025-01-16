@@ -689,12 +689,10 @@ class MaskTracking(Inference):
                         track_id,
                         message=f"An error occured during tracking. Error: {e}",
                     )
-                progress.message = "Error occured during tracking"
-                progress.set(current=0, total=1, report=False)
+                error = True
                 raise
             else:
-                progress.message = "Ready"
-                progress.set(current=0, total=1, report=False)
+                error = False
             finally:
                 stop_upload_event.set()
                 if upload_thread.is_alive():
@@ -702,7 +700,12 @@ class MaskTracking(Inference):
                 stop_notify_event.set()
                 if notify_thread.is_alive():
                     notify_thread.join()
-                progress.report_progress()
+                if error:
+                    progress.message = "Error occured during tracking"
+                    progress.set(current=0, total=1, report=True)
+                else:
+                    progress.message = "Ready"
+                    progress.set(current=0, total=1, report=True)
 
         @server.post("/track_async")
         def track_async(response: Response, request: Request):
