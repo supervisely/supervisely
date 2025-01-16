@@ -413,17 +413,18 @@ class PointTracking(Inference):
                     message=f"An error occured during tracking. Error: {e}",
                 )
             progress.message = "Error occured during tracking"
-            progress.set(current=0, total=1, report=True)
+            progress.set(current=0, total=1, report=False)
             raise
         else:
             progress.message = "Ready"
-            progress.set(current=0, total=1, report=True)
+            progress.set(current=0, total=1, report=False)
         finally:
             stop_upload_event.set()
             if upload_thread.is_alive():
                 upload_thread.join()
             if notify_thread.is_alive():
                 notify_thread.join()
+            progress.report_progress()
 
     def serve(self):
         super().serve()
