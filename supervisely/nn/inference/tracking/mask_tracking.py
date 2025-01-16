@@ -590,7 +590,9 @@ class MaskTracking(Inference):
             api.logger.info("Starting tracking process")
             try:
                 frames = self.cache.download_frames(
-                    api, video_id, list(range(*range_of_frames, direction_n))
+                    api,
+                    video_id,
+                    list(range(range_of_frames[0], range_of_frames[1] + direction_n, direction_n)),
                 )
                 for figure in figures:
                     figure = api.video.figure._convert_json_info(figure)
@@ -643,7 +645,7 @@ class MaskTracking(Inference):
                                     f"Skipping empty mask on frame {frame_index + j + 1}"
                                 )
                                 # update progress bar anyway (otherwise it will not be finished)
-                                self.video_interface._notify(task="add geometry on frame")
+                                progress.iter_done_report()
                             else:
                                 if geometry_type == "polygon":
                                     bitmap_geometry = sly.Bitmap(mask)
