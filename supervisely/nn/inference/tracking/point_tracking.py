@@ -15,6 +15,10 @@ import supervisely.nn.inference.tracking.functional as F
 from supervisely.annotation.label import Geometry, Label
 from supervisely.api.module_api import ApiField
 from supervisely.nn.inference import Inference
+from supervisely.nn.inference.inference import (
+    _convert_sly_progress_to_dict,
+    _get_log_extra_for_inference_request,
+)
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 
@@ -618,6 +622,79 @@ class PointTracking(Inference):
                 "message": "Inference has started.",
                 "inference_request_uuid": inference_request_uuid,
             }
+
+        @server.post("/pop_tracking_results")
+        def pop_tracking_results(request: Request, response: Response):
+            context = request.state.context
+            inference_request_uuid = context.get("inference_request_uuid", None)
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                sly.logger.error("Error: 'inference_request_uuid' is required.")
+                return {"message": "Error: 'inference_request_uuid' is required."}
+
+            inference_request = self._inference_requests[inference_request_uuid]
+            sly.logger.debug(
+                "Pop tracking results",
+                extra={
+                    "inference_request_uuid": inference_request_uuid,
+                    "pending_results_len": len(inference_request["pending_results"]),
+                    "pending_results": [
+                        figure._asdict() for figure in inference_request["pending_results"][:3]
+                    ],
+                },
+            )
+            frame_range = context.get("frame_range", None)
+            if frame_range is None:
+                frame_range = context.get("frameRange", None)
+            sly.logger.debug("frame_range: %s", frame_range)
+            with inference_request["lock"]:
+                inference_request_copy = inference_request.copy()
+                inference_request_copy.pop("lock")
+                inference_request_copy["progress"] = _convert_sly_progress_to_dict(
+                    inference_request_copy["progress"]
+                )
+
+                if frame_range is not None:
+                    inference_request_copy["pending_results"] = [
+                        figure
+                        for figure in inference_request_copy["pending_results"]
+                        if figure.frame_index >= frame_range[0]
+                        and figure.frame_index <= frame_range[1]
+                    ]
+                    inference_request["pending_results"] = [
+                        figure
+                        for figure in inference_request["pending_results"]
+                        if figure.frame_index < frame_range[0]
+                        or figure.frame_index > frame_range[1]
+                    ]
+                else:
+                    inference_request["pending_results"] = []
+
+            sly.logger.debug(
+                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
+            )
+
+            inference_request_copy["pending_results"] = [
+                {
+                    ApiField.ID: figure.id,
+                    ApiField.OBJECT_ID: figure.object_id,
+                    ApiField.GEOMETRY_TYPE: figure.geometry_type,
+                    ApiField.GEOMETRY: figure.geometry,
+                    ApiField.META: {ApiField.FRAME: figure.frame_index},
+                }
+                for figure in inference_request_copy["pending_results"]
+            ]
+
+            sly.logger.debug(
+                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
+            )
+
+            # Logging
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request_uuid, inference_request_copy
+            )
+            sly.logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+            return inference_request_copy
 
     def predict(
         self,
