@@ -254,26 +254,23 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         return "ImageInfo"
 
-    @staticmethod
-    def add_custom_sort(meta: dict, sort_by: str, name: Optional[str] = None) -> dict:
+    def _add_custom_sort(self, meta: dict, name: Optional[str] = None) -> dict:
         """
         Add `customSort` key to meta dict.
 
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict
-        :param sort_by: Key name of meta object that will be used for sorting.
-        :type sort_by: str
         :param name: Name of the image. Used for improved debug logging.
         :type name: str, optional
         :return: Updated meta.
         :rtype: dict
         """
-        sort_value = meta.get(sort_by, None)
+        sort_value = meta.get(self.sort_by, None)
         if sort_value:
             meta[ApiField.CUSTOM_SORT] = sort_value
-            message = f"Custom sorting applied with key '{sort_by}' and value '{sort_value}'."
+            message = f"Custom sorting applied with key '{self.sort_by}' and value '{sort_value}'."
         else:
-            message = f"Custom sorting will not be applied. Key '{sort_by}' not found in meta."
+            message = f"Custom sorting will not be applied. Key '{self.sort_by}' not found in meta."
         if name:
             message = f"Image '{name}': {message}"
         logger.info(message)
@@ -1210,6 +1207,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Image with given name from given local path to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort order for image.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
@@ -1217,16 +1218,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param path: Local Image path.
         :type path: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict, optional
         :param validate_meta: If True, validates provided meta with saved JSON schema.
         :type validate_meta: bool, optional
@@ -1247,6 +1238,12 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
+
+            # Custom sort for image
+            img_meta = {"src": "path_1"}
+            with api.image.sort_by_context("src"):
+                img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg", meta=img_meta)
+
         """
         metas = None if meta is None else [meta]
         return self.upload_paths(
@@ -1274,6 +1271,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Images with given names from given local path to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: List of Images names with extension.
@@ -1283,16 +1284,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
@@ -1316,7 +1307,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_names = ["7777.jpeg", "8888.jpeg", "9999.jpeg"]
             image_paths = ["/home/admin/Downloads/img/770918.jpeg", "/home/admin/Downloads/img/770919.jpeg", "/home/admin/Downloads/img/770920.jpeg"]
 
-            img_infos = api.image.upload_path(dataset_id, names=img_names, paths=img_paths)
+            img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths)
+
+            # Custom sort for images
+            img_metas = [{"src": "path_1"}, {"src": "path_2"}, {"src": "path_3"}]
+            with api.image.sort_by_context("src"):
+                img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths, metas=img_metas)
         """
 
         def path_to_bytes_stream(path):
@@ -1343,6 +1339,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload given Image in numpy format with given name to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort order for image.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
@@ -1350,16 +1350,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param img: image in RGB format(numpy matrix)
         :type img: np.ndarray
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
@@ -1375,6 +1365,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_np = sly.image.read("/home/admin/Downloads/7777.jpeg")
             img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np)
+
+            # Custom sort for image
+            img_meta = {"src": "path_1"}
+            with api.image.sort_by_context("src"):
+                img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np, meta=img_meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
@@ -1391,6 +1386,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload given Images in numpy format with given names to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Images names with extension.
@@ -1400,16 +1399,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
@@ -1465,6 +1454,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Image from given link to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort order for image.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
@@ -1472,16 +1465,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param link: Link to Image.
         :type link: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict, optional
         :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
@@ -1501,6 +1484,11 @@ class ImageApi(RemoveableBulkModuleApi):
             img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
 
             img_info = api.image.upload_link(dataset_id, img_name, img_link)
+
+            # Custom sort for image
+            img_meta = {"src": "path_1"}
+            with api.image.sort_by_context("src"):
+                img_info = api.image.upload_link(dataset_id, img_name, img_link, meta=img_meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_links(
@@ -1526,6 +1514,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Images from given links to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Images names with extension.
@@ -1535,16 +1527,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: List[dict], optional
         :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
@@ -1570,6 +1552,11 @@ class ImageApi(RemoveableBulkModuleApi):
                          'https://m.media-amazon.com/images/M/MV5BNjQ3NWNlNmQtMTE5ZS00MDdmLTlkZjUtZTBlM2UxMGFiMTU3XkEyXkFqcGdeQXVyNjUwNzk3NDc@._V1_.jpg']
 
             img_infos = api.image.upload_links(dataset_id, img_names, img_links)
+
+            # Custom sort for images
+            img_metas = [{"src": "path_1"}, {"src": "path_2"}, {"src": "path_3"}]
+            with api.image.sort_by_context("src"):
+                img_infos = api.image.upload_links(dataset_id, names=img_names, links=img_links, metas=img_metas)
         """
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item),
@@ -1590,6 +1577,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image from given hash to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort order for image.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
@@ -1597,16 +1588,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param hash: Image hash.
         :type hash: str
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
@@ -1648,6 +1629,14 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
             #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
             # ]
+
+            # Custom sort for image
+            new_dataset_id = 452985
+            im_info = api.image.get_info_by_id(193940090)
+            print(im_info.meta)
+            # Output: {"src": "path_1"}
+            with api.image.sort_by_context("src"):
+                img_info = api.image.upload_hash(new_dataset_id, name=im_info.name, hash=im_info.hash, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
@@ -1669,6 +1658,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload images from given hashes to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Images names with extension.
@@ -1678,16 +1671,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: List[dict], optional
         :param batch_size: Number of images to upload in one batch.
         :type batch_size: int, optional
@@ -1731,6 +1714,12 @@ class ImageApi(RemoveableBulkModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
+
+            # Custom sort for images
+            new_dataset_id = 452985
+            new_metas = [{"src": "path_1"}, {"src": "path_2"}, {"src": "path_3"}]
+            with api.image.sort_by_context("src"):
+                img_infos = api.image.upload_hashes(new_dataset_id, names=names, hashes=hashes, metas=new_metas)
         """
         return self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
@@ -1753,6 +1742,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image by ID to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort order for image.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
@@ -1760,16 +1753,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param id: Source image ID in Supervisely.
         :type id: int
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
@@ -1811,6 +1794,14 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
             #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
             # ]
+
+            # Custom sort for image
+            new_dataset_id = 452985
+            im_info = api.image.get_info_by_id(193940090)
+            print(im_info.meta)
+            # Output: {"src": "path_1"}
+            with api.image.sort_by_context("src"):
+                img_info = api.image.upload_id(new_dataset_id, name=im_info.name, id=im_info.id, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
@@ -1831,6 +1822,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Images by IDs to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Source images names with extension.
@@ -1840,16 +1835,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: List[dict], optional
         :param batch_size: Number of images to upload in one batch.
         :type batch_size: int, optional
@@ -1892,6 +1877,12 @@ class ImageApi(RemoveableBulkModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T12:31:36.550Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T12:31:37.119Z", "level": "info"}
+
+            # Custom sort for images
+            new_dataset_id = 452985
+            new_metas = [{"src": "path_1"}, {"src": "path_2"}, {"src": "path_3"}]
+            with api.image.sort_by_context("src"):
+                img_infos = api.image.upload_ids(new_dataset_id, names=names, ids=ids, metas=new_metas)
         """
         if metas is None:
             metas = [{}] * len(names)
@@ -2022,7 +2013,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 item_tuple = func_item_to_kv(item)
                 image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
                 if self.sort_by is not None:
-                    meta = self.add_custom_sort(meta, self.sort_by, name)
+                    meta = self._add_custom_sort(meta, name)
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
                 images.append(image_data)
@@ -2899,16 +2890,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param id: Image ID in Supervisely.
         :type id: int
         :param meta: Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict
         :raises: :class:`TypeError` if meta type is not dict
         :return: Image information in dict format with new meta
@@ -2960,16 +2941,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param description: New Image description.
         :type description: str, optional
         :param meta: New Image metadata. Custom additional image info that contain image technical and/or user-generated data.
-                To set custom sort for images, you can do one of the following with the meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type meta: dict, optional
         :return_json: If True, return response in JSON format, otherwise convert it ImageInfo object.
             This parameter is only added for backward compatibility for update_meta method.
@@ -3312,6 +3283,10 @@ class ImageApi(RemoveableBulkModuleApi):
         Uploads images to Supervisely and adds a tag to them.
         At least one of `paths` or `links` must be provided.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param tag_name: Tag name in Supervisely.
@@ -3323,16 +3298,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param paths: List of paths to images.
         :type paths: List[str]
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
@@ -3375,6 +3340,10 @@ class ImageApi(RemoveableBulkModuleApi):
 
             image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
+            # Custom sort for images
+            metas = [{"src": "path_1"}, {"src": "path_2"}]
+            with api.image.sort_by_context("src"):
+                image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths, metas)
         """
 
         if paths is None and links is None:
@@ -3574,6 +3543,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
 
+        If you include `metas` during the upload, you can add a custom sort order for images.
+        To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param paths: List of paths to images.
@@ -3581,16 +3554,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :param group_tag_name: Group name. All images will be assigned by tag with this group name. If `group_tag_name` is None, the images will be grouped by one of the default tags.
         :type group_tag_name: str, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-                To set custom sort for every image, you can do one of the following with the every meta dict before passing it to the method:
-                    .. code-block:: python
-                        # 1. Set `customSort` key directly:
-                        meta = {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
-                        # 2. Set `customSort` key using `add_custom_sort` method to select any meta key as a sorting key:
-                        meta = {"src": "folder_1", "dst": "folder_2"}
-                        meta = api.image.add_custom_sort(meta, "src")
-                        # meta == {"src": "folder_1", "dst": "folder_2", "customSort": "folder_1"}
-
         :type metas: List[Dict], optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
@@ -3626,6 +3589,9 @@ class ImageApi(RemoveableBulkModuleApi):
             pbar = tqdm(desc="Uploading images", total=len(paths))
             image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
 
+            # Custom sort for images
+            with api.image.sort_by_context("meta"):
+                image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
         """
 
         if metas is None:
@@ -4586,3 +4552,18 @@ class ImageApi(RemoveableBulkModuleApi):
 
         async for page in self.get_list_page_generator_async(method, data, total_pages, semaphore):
             yield page
+
+    @staticmethod
+    def update_meta_dict_custom_sort(meta: Dict[str, Any], custom_sort: str) -> Dict[str, Any]:
+        """
+        Updates meta dictionary with custom sort value.
+
+        :param meta: Image meta dictionary.
+        :type meta: Dict[str, Any]
+        :param custom_sort: Custom sort value.
+        :type custom_sort: str
+        :return: Updated meta dictionary.
+        :rtype: Dict[str, Any]
+        """
+        meta[ApiField.CUSTOM_SORT] = custom_sort
+        return meta

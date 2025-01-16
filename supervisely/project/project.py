@@ -3544,6 +3544,10 @@ class Project:
         """
         Uploads project to Supervisely from the given directory.
 
+        If you have a metadata.json files in the project directory for images, you will be able to upload images with added custom sort order.
+        To do this, use context manager :func:`api.image.sort_by_context` with the desired key name from the metadata.json file which will be used for sorting.
+        More about project struture: https://developer.supervisely.com/getting-started/supervisely-annotation-format/project-structure#project-structure-example
+
         :param dir: Path to project directory.
         :type dir: :class:`str`
         :param api: Supervisely API address and token.
@@ -3582,6 +3586,15 @@ class Project:
                 workspace_id=45,
                 project_name="My Project"
             )
+
+            # Upload project with added custom sort order
+            with api.image.sort_by_context("custom_sort_key"):
+                project_id, project_name = sly.Project.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Project"
+                )
         """
         return upload_project(
             dir=dir,
