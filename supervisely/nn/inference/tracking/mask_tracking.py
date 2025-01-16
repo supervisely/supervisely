@@ -529,6 +529,7 @@ class MaskTracking(Inference):
                                 ]
                                 progress.iters_done(len(object_items))
                                 if direct_progress:
+                                    sly.logger.debug("send notify")
                                     api.vid_ann_tool.set_direct_tracking_progress(
                                         session_id,
                                         video_id,
@@ -560,6 +561,7 @@ class MaskTracking(Inference):
                                 ).hex
                                 _add_to_inference_request(*item, figure_id)
                                 if direct_progress:
+                                    sly.logger.debug("Put item to notify queue")
                                     notify_q.put(item)
                             continue
                         if stop_event.is_set():
