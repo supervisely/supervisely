@@ -25,6 +25,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.artifacts.artifacts import TrainInfo
+import supervisely.io.env as sly_env
 
 WEIGHTS_DIR = "weights"
 
@@ -69,18 +70,34 @@ class CustomModelsSelector(Widget):
             # col 1 task
             self._task_id = task_id
             self._task_path = train_info.artifacts_folder
-            task_info = self._api.task.get_info_by_id(task_id)
-            self._task_date_iso = task_info["startedAt"]
-            self._task_date = self._normalize_date()
-            self._task_link = self._create_task_link()
+            try:
+                self._task_info = self._api.task.get_info_by_id(task_id)
+            except:
+                self._task_info = None
+
+            if self._task_info is not None:
+                self._task_date_iso = self._task_info["startedAt"]
+                self._task_date = self._normalize_date()
+                self._task_link = self._create_task_link()
+            else:
+                self._task_date_iso = None
+                self._task_date = None
+                self._task_link = None
             self._config_path = train_info.config_path
 
             # col 2 project
             self._training_project_name = train_info.project_name
-            project_info = self._api.project.get_info_by_name(
-                task_info["workspaceId"], self._training_project_name
+
+            workspace_id = (
+                self._task_info["workspaceId"]
+                if self._task_info
+                else sly_env.workspace_id(raise_not_found=False)
             )
-            self._training_project_info = project_info
+            self._training_project_info = (
+                self._api.project.get_info_by_name(workspace_id, self._training_project_name)
+                if workspace_id
+                else None
+            )
 
             # col 3 checkpoints
             self._checkpoints = train_info.checkpoints
@@ -175,30 +192,36 @@ class CustomModelsSelector(Widget):
                 return ""
 
         def _create_task_widget(self) -> Flexbox:
-            task_widget = Container(
-                [
-                    Text(
-                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}'>{self._task_id}</a>",
-                        "text",
-                    ),
-                    Text(
-                        f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
-                        "text",
-                        font_size=13,
-                    ),
-                ],
-                gap=0,
-            )
+            if self._task_info is not None:
+                task_widget = Container(
+                    [
+                        Text(
+                            f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}'>{self._task_id}</a>",
+                            "text",
+                        ),
+                        Text(
+                            f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
+                            "text",
+                            font_size=13,
+                        ),
+                    ],
+                    gap=0,
+                )
+            else:
+                task_widget = Text(
+                    f"<span class='field-description text-muted' style='color: #7f858e'>Task was archived (ID: '{self._task_id}')</span>",
+                    "text",
+                )
             return task_widget
 
         def _create_training_project_widget(self) -> Union[ProjectThumbnail, Text]:
-            if self.training_project_info is not None:
+            if self._training_project_info is not None:
                 training_project_widget = ProjectThumbnail(
                     self._training_project_info, remove_margins=True
                 )
             else:
                 training_project_widget = Text(
-                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was deleted</span>",
+                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was archived</span>",
                     "text",
                     font_size=13,
                 )
@@ -405,7 +428,7 @@ class CustomModelsSelector(Widget):
                 )
                 return train_info.task_type, model_row
             except Exception as e:
-                logger.warn(f"Failed to process train info: {train_info}")
+                logger.warning(f"Failed to process train info: {train_info}. Error: {repr(e)}")
                 return None, None
 
         table_rows = defaultdict(list)

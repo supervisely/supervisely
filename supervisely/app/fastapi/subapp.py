@@ -1,6 +1,5 @@
-import asyncio
-import os
 import inspect
+import os
 import signal
 import sys
 from contextlib import suppress
@@ -1066,6 +1065,9 @@ class Application(metaclass=Singleton):
             return wrapper
 
         return inner
+
+    def render(self, context: Dict[str, Any]):
+        return Jinja2Templates().render("index.html", {**context, "HOTRELOAD": False})
 
     def set_ready_check_function(self, func: Callable):
         self._ready_check_function = func

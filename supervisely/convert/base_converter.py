@@ -19,6 +19,8 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -54,11 +56,15 @@ class AvailablePointcloudConverters:
     LAS = "las/laz"
     PLY = "ply"
     BAG = "rosbag"
+    LYFT = "lyft"
+    NUSCENES = "nuscenes"
+    KITTI3D = "kitti3d"
 
 
 class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
     BAG = "rosbag"
+    LYFT = "lyft"
 
 
 class AvailableVolumeConverters:
@@ -299,23 +305,15 @@ class BaseConverter:
             return found_formats[0]
 
     def _collect_items_if_format_not_detected(self):
-        from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
-            PointcloudEpisodeConverter,
-        )
-
         only_modality_items = True
         unsupported_exts = set()
         items = []
-        is_episode = isinstance(self, PointcloudEpisodeConverter)
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)
                 if ext.lower() in self.allowed_exts:  # pylint: disable=no-member
-                    if is_episode:
-                        items.append(self.Item(full_path, len(items)))  # pylint: disable=no-member
-                    else:
-                        items.append(self.Item(full_path))  # pylint: disable=no-member
+                    items.append(self.Item(full_path))  # pylint: disable=no-member
                     continue
                 only_modality_items = False
                 if ext.lower() in self.unsupported_exts:
@@ -348,8 +346,17 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+            def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
+                if old_cls.geometry_type == new_cls.geometry_type:
+                    if old_cls.geometry_type == GraphNodes:
+                        old_nodes = old_cls.geometry_config["nodes"]
+                        new_nodes = new_cls.geometry_config["nodes"]
+                        return old_nodes.keys() == new_nodes.keys()
+                    return True
+                return False
+
             while meta1.obj_classes.get(new_name) is not None:
-                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                if _is_matched(meta1.get_obj_class(new_name), new_cls):
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"
