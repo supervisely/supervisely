@@ -12,6 +12,7 @@ from supervisely.app.widgets import (
     RadioTabs,
     Text,
 )
+from supervisely.nn.artifacts.utils import FrameworkMapper
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource
 
