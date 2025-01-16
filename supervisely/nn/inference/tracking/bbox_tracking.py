@@ -707,6 +707,19 @@ class BBoxTracking(Inference):
             sly.logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return inference_request_copy
 
+        @server.post("/stop_tracking")
+        def stop_inference(response: Response, request: Request):
+            inference_request_uuid = request.state.context.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {
+                    "message": "Error: 'inference_request_uuid' is required.",
+                    "success": False,
+                }
+            inference_request = self._inference_requests[inference_request_uuid]
+            inference_request["cancel_inference"] = True
+            return {"message": "Inference will be stopped.", "success": True}
+
         @server.post("/track-api-files")
         def track_api_files(
             request: Request,
