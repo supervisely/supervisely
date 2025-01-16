@@ -393,11 +393,21 @@ class PointTracking(Inference):
                 if global_stop_indicatior:
                     stop_upload_event.set()
                     return
-        except Exception:
+        except Exception as e:
+            if direct_progress:
+                api.vid_ann_tool.set_direct_tracking_error(
+                    session_id,
+                    video_id,
+                    track_id,
+                    message=f"An error occured during tracking. Error: {e}",
+                )
+            progress.message = "Error occured during tracking"
+            progress.set(current=0, total=1, report=True)
             raise
-        finally:
+        else:
             progress.message = "Ready"
             progress.set(current=0, total=1, report=True)
+        finally:
             stop_upload_event.set()
             if upload_thread.is_alive():
                 upload_thread.join()

@@ -153,6 +153,26 @@ class VideoAnnotationToolApi(ModuleApiBase):
         }
         return self._act(session_id, VideoAnnotationToolAction.DIRECT_TRACKING_PROGRESS, payload)
 
+    def set_direct_tracking_error(
+        self,
+        session_id: str,
+        video_id: int,
+        track_id: str,
+        message: str,
+        warning: bool = False,
+    ):
+        payload = {
+            ApiField.TRACK_ID: track_id,
+            ApiField.VIDEO_ID: video_id,
+        }
+        if warning:
+            payload[ApiField.TYPE] = "warning"
+            payload[ApiField.MESSAGE] = message
+        else:
+            payload[ApiField.TYPE] = "error"
+            payload[ApiField.ERROR] = {ApiField.MESSAGE: message}
+        return self._act(session_id, VideoAnnotationToolAction.DIRECT_TRACKING_PROGRESS, payload)
+
     def _act(self, session_id: int, action: VideoAnnotationToolAction, payload: dict):
         data = {
             ApiField.SESSION_ID: session_id,

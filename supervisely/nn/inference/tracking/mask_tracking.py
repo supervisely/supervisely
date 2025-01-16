@@ -669,11 +669,21 @@ class MaskTracking(Inference):
                             stop_upload_event.set()
                             return
                         api.logger.info(f"Figure with id {fig_id} was successfully tracked")
-            except Exception:
+            except Exception as e:
+                if direct_progress:
+                    api.vid_ann_tool.set_direct_tracking_error(
+                        session_id,
+                        video_id,
+                        track_id,
+                        message=f"An error occured during tracking. Error: {e}",
+                    )
+                progress.message = "Error occured during tracking"
+                progress.set(current=0, total=1, report=True)
                 raise
-            finally:
+            else:
                 progress.message = "Ready"
                 progress.set(current=0, total=1, report=True)
+            finally:
                 stop_upload_event.set()
                 if upload_thread.is_alive():
                     upload_thread.join()
