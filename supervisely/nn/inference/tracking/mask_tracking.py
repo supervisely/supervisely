@@ -496,9 +496,9 @@ class MaskTracking(Inference):
             def _add_to_inference_request(geometry, object_id, frame_index, figure_id):
                 figure_info = api.video.figure._convert_json_info(
                     {
-                        ApiField.FIGURE_ID: figure_id,
+                        ApiField.ID: figure_id,
                         ApiField.OBJECT_ID: object_id,
-                        ApiField.FRAME_INDEX: frame_index,
+                        "meta": {"frame": frame_index},
                         ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
                         ApiField.GEOMETRY: geometry.to_json(),
                     }
