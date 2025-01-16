@@ -529,14 +529,13 @@ class TrainApp:
         if self.is_model_benchmark_enabled:
             try:
                 # Convert GT project
+                gt_project_id, bm_splits_data = None, train_splits_data
                 if self._app_options.get("auto_convert_classes", True):
                     if self.gui.need_convert_shapes_for_bm:
                         self._set_text_status("convert_gt_project")
                         gt_project_id, bm_splits_data = self._convert_and_split_gt_project(
                             experiment_info["task_type"]
                         )
-                else:
-                    gt_project_id, bm_splits_data = None, train_splits_data
 
                 self._set_text_status("benchmark")
                 (
