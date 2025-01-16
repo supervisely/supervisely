@@ -599,7 +599,7 @@ class MaskTracking(Inference):
                     figure = api.video.figure._convert_json_info(figure)
                     fig_id = figure.id
                     obj_id = figure.object_id
-                    geometry = self._deserialize_geometry(figure.geometry)
+                    geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
                     original_geometry = geometry.clone()
                     if not isinstance(geometry, sly.Bitmap) and not isinstance(
                         geometry, sly.Polygon
