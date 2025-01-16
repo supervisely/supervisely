@@ -3544,9 +3544,10 @@ class Project:
         """
         Uploads project to Supervisely from the given directory.
 
-        If you have a metadata.json files in the project directory for images, you will be able to upload images with added custom sort order.
+        If you have a metadata.json files in the project directory for images, you will be able to upload images with added custom sort parameter.
         To do this, use context manager :func:`api.image.sort_by_context` with the desired key name from the metadata.json file which will be used for sorting.
         More about project struture: https://developer.supervisely.com/getting-started/supervisely-annotation-format/project-structure#project-structure-example
+        Refer to the example section for usage details.
 
         :param dir: Path to project directory.
         :type dir: :class:`str`

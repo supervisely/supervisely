@@ -1209,7 +1209,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Image with given name from given local path to Dataset.
 
-        If you include `meta` during the upload, you can add a custom sort order for image.
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1273,7 +1273,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Images with given names from given local path to Dataset.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1341,7 +1341,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload given Image in numpy format with given name to Dataset.
 
-        If you include `meta` during the upload, you can add a custom sort order for image.
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1388,7 +1388,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload given Images in numpy format with given names to Dataset.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1456,7 +1456,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Image from given link to Dataset.
 
-        If you include `meta` during the upload, you can add a custom sort order for image.
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1516,7 +1516,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Images from given links to Dataset.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1579,7 +1579,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image from given hash to Dataset.
 
-        If you include `meta` during the upload, you can add a custom sort order for image.
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1660,7 +1660,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload images from given hashes to Dataset.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1744,7 +1744,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image by ID to Dataset.
 
-        If you include `meta` during the upload, you can add a custom sort order for image.
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -1824,7 +1824,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Images by IDs to Dataset.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -3285,7 +3285,7 @@ class ImageApi(RemoveableBulkModuleApi):
         Uploads images to Supervisely and adds a tag to them.
         At least one of `paths` or `links` must be provided.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
@@ -3545,7 +3545,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
 
-        If you include `metas` during the upload, you can add a custom sort order for images.
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.sort_by_context` with the desired key name from the meta dictionary to be used for sorting.
         Refer to the example section for more details.
 
