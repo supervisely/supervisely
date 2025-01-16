@@ -542,6 +542,7 @@ class MaskTracking(Inference):
                                     )
                             continue
                         elif stop_event.is_set():
+                            sly.logger.debug("returning from notify loop")
                             return
                         time.sleep(1)
                 except Exception as e:
