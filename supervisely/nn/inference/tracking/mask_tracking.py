@@ -747,54 +747,73 @@ class MaskTracking(Inference):
 
         @server.post("/pop_tracking_results")
         def pop_tracking_results(request: Request, response: Response):
-            inference_request_uuid = request.state.context.get("inference_request_uuid")
+            context = request.state.context
+            inference_request_uuid = context.get("inference_request_uuid", None)
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
+                sly.logger.error("Error: 'inference_request_uuid' is required.")
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self._inference_requests[inference_request_uuid]
-            frame_range = request.state.context.get("frame_range", None)
-            figures = []
+            sly.logger.debug(
+                "Pop tracking results",
+                extra={
+                    "inference_request_uuid": inference_request_uuid,
+                    "pending_results_len": len(inference_request["pending_results"]),
+                    "pending_results": [
+                        figure._asdict() for figure in inference_request["pending_results"][:3]
+                    ],
+                },
+            )
+            frame_range = context.get("frame_range", None)
+            if frame_range is None:
+                frame_range = context.get("frameRange", None)
+            sly.logger.debug("frame_range: %s", frame_range)
             with inference_request["lock"]:
+                inference_request_copy = inference_request.copy()
+                inference_request_copy.pop("lock")
+                inference_request_copy["progress"] = _convert_sly_progress_to_dict(
+                    inference_request_copy["progress"]
+                )
+
                 if frame_range is not None:
-                    figure_ids = set()
-                    for figure in inference_request["pending_results"]:
-                        if (
-                            figure.frame_index >= frame_range[0]
-                            and figure.frame_index <= frame_range[1]
-                        ):
-                            figure_ids.add(figure.id)
-                            figures.append(figure)
+                    inference_request_copy["pending_results"] = [
+                        figure
+                        for figure in inference_request_copy["pending_results"]
+                        if figure.frame_index >= frame_range[0]
+                        and figure.frame_index <= frame_range[1]
+                    ]
                     inference_request["pending_results"] = [
                         figure
                         for figure in inference_request["pending_results"]
-                        if figure.id not in figure_ids
+                        if figure.frame_index < frame_range[0]
+                        or figure.frame_index > frame_range[1]
                     ]
-
                 else:
-                    figures = inference_request["pending_results"]
-                    inference_request["pending_results"].clear()
-                inference_request = inference_request.copy()
-                inference_request["pending_results"] = figures
+                    inference_request["pending_results"] = []
 
-            inference_request["pending_results"] = [
+            sly.logger.debug(
+                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
+            )
+
+            inference_request_copy["pending_results"] = [
                 {
                     ApiField.ID: figure.id,
                     ApiField.OBJECT_ID: figure.object_id,
                     ApiField.GEOMETRY_TYPE: figure.geometry_type,
                     ApiField.GEOMETRY: figure.geometry,
-                    ApiField.FRAME_INDEX: figure.frame_index,
+                    ApiField.META: {ApiField.FRAME: figure.frame_index},
                 }
-                for figure in figures
+                for figure in inference_request_copy["pending_results"]
             ]
 
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
+            sly.logger.debug(
+                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
             )
 
             # Logging
             log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
+                inference_request_uuid, inference_request_copy
             )
             sly.logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-            return inference_request
+            return inference_request_copy
