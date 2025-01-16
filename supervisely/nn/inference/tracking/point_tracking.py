@@ -4,7 +4,7 @@ import time
 import uuid
 from pathlib import Path
 from queue import Queue
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -56,6 +56,10 @@ class PointTracking(Inference):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
         return sly.deserialize_geometry(geometry_type_str, geometry_json)
+
+    def _on_inference_start(self, inference_request_uuid: str):
+        super()._on_inference_start(inference_request_uuid)
+        self._inference_requests[inference_request_uuid]["lock"] = Lock()
 
     def get_info(self):
         info = super().get_info()
