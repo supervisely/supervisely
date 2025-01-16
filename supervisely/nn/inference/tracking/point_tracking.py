@@ -214,7 +214,7 @@ class PointTracking(Inference):
 
     def _track_async(self, api: sly.Api, context: dict, inference_request_uuid: str):
         api.logger.info("context", extra=context)
-        inference_request = self._inference_requests[request_uuid]
+        inference_request = self._inference_requests[inference_request_uuid]
 
         session_id = context.get("session_id", context["sessionId"])
         direct_progress = context.get("useDirectProgressMessages", False)
@@ -292,10 +292,9 @@ class PointTracking(Inference):
                                     progress_current=progress.current,
                                     progress_total=progress.total,
                                 )
-                        continue
-                    if stop_event.is_set():
+                    elif stop_event.is_set():
                         return
-                    time.sleep(0.5)
+                    time.sleep(1)
             except Exception as e:
                 api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
@@ -344,6 +343,66 @@ class PointTracking(Inference):
         notify_thread.start()
 
         api.logger.info("Start tracking.")
+        try:
+            frames = self.cache.download_frames(
+                api, video_id, list(range(*range_of_frames, direction_n))
+            )
+            for figure in figures:
+                figure = api.video.figure._convert_json_info(figure)
+                api.logger.info("geometry:", extra={"figure": figure._asdict()})
+                sly_geometry: sly.Rectangle = sly.deserialize_geometry(
+                    figure.geometry_type, figure.geometry
+                )
+                api.logger.info("geometry:", extra={"geometry": type(sly_geometry)})
+                if isinstance(sly_geometry, sly.Point):
+                    geometries = self._predict_point_geometries(
+                        sly_geometry,
+                        frames,
+                    )
+                elif isinstance(sly_geometry, sly.Polygon):
+                    if len(sly_geometry.interior) > 0:
+                        stop_upload_event.set()
+                        raise ValueError("Can't track polygons with interior.")
+                    geometries = self._predict_polygon_geometries(
+                        sly_geometry,
+                        frames,
+                    )
+                elif isinstance(sly_geometry, sly.GraphNodes):
+                    geometries = self._predict_graph_geometries(
+                        sly_geometry,
+                        frames,
+                    )
+                elif isinstance(sly_geometry, sly.Polyline):
+                    geometries = self._predict_polyline_geometries(
+                        sly_geometry,
+                        frames,
+                    )
+                else:
+                    raise TypeError(f"Tracking does not work with {sly_geometry.geometry_name()}.")
+
+                for i, geometry in enumerate(geometries, 1):
+                    upload_queue.put(
+                        (
+                            geometry,
+                            figure.object_id,
+                            frame_index + i * direction_n,
+                        )
+                    )
+                api.logger.info(f"Figure #{figure.id} tracked.")
+
+                if global_stop_indicatior:
+                    stop_upload_event.set()
+                    return
+        except Exception:
+            raise
+        finally:
+            progress.message = "Ready"
+            progress.set(current=0, total=1, report=True)
+            stop_upload_event.set()
+            if upload_thread.is_alive():
+                upload_thread.join()
+            if notify_thread.is_alive():
+                notify_thread.join()
 
     def serve(self):
         super().serve()

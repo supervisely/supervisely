@@ -569,16 +569,18 @@ class MaskTracking(Inference):
             upload_queue = Queue()
             notify_queue = Queue()
             stop_upload_event = Event()
-            Thread(
+            notify_thread = Thread(
                 target=_upload_loop,
                 args=[upload_queue, notify_queue, stop_upload_event],
                 daemon=True,
-            ).start()
-            Thread(
+            )
+            notify_thread.start()
+            upload_thread = Thread(
                 target=_nofify_loop,
                 args=[notify_queue, stop_upload_event],
                 daemon=True,
-            ).start()
+            )
+            upload_thread.start()
 
             # run tracker
             api.logger.info("Starting tracking process")
@@ -668,9 +670,15 @@ class MaskTracking(Inference):
                             return
                         api.logger.info(f"Figure with id {fig_id} was successfully tracked")
             except Exception:
-                stop_upload_event.set()
                 raise
-            stop_upload_event.set()
+            finally:
+                progress.message = "Ready"
+                progress.set(current=0, total=1, report=True)
+                stop_upload_event.set()
+                if upload_thread.is_alive():
+                    upload_thread.join()
+                if notify_thread.is_alive():
+                    notify_thread.join()
 
         @server.post("/track_async")
         def track_async(response: Response, request: Request):

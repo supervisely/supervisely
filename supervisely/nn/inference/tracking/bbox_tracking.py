@@ -388,7 +388,6 @@ class BBoxTracking(Inference):
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
-                        api.logger.debug(f"got {len(items)} items to notify")
                         items_by_object_id = {}
                         for item in items:
                             items_by_object_id.setdefault(item[1], []).append(item)
@@ -400,7 +399,6 @@ class BBoxTracking(Inference):
                             ]
                             progress.iters_done_report(len(object_items))
                             if direct_progress:
-                                api.logger.debug(f"notifying")
                                 api.vid_ann_tool.set_direct_tracking_progress(
                                     session_id,
                                     video_id,
@@ -409,10 +407,9 @@ class BBoxTracking(Inference):
                                     progress_current=progress.current,
                                     progress_total=progress.total,
                                 )
-                    else:
-                        if stop_event.is_set():
-                            api.logger.debug(f"stop event is set. returning from notify loop")
-                            return
+                    elif stop_event.is_set():
+                        api.logger.debug(f"stop event is set. returning from notify loop")
+                        return
                     time.sleep(1)
             except Exception as e:
                 api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
@@ -431,10 +428,8 @@ class BBoxTracking(Inference):
                             figure_id = uuid.uuid5(
                                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
                             ).hex
-                            api.logger.debug(f"_add_to_inference_request")
                             _add_to_inference_request(*item, figure_id)
                             if direct_progress:
-                                api.logger.debug(f"put to notify queue")
                                 notify_q.put(item)
 
                     elif stop_event.is_set():
@@ -515,9 +510,14 @@ class BBoxTracking(Inference):
         except Exception:
             stop_upload_event.set()
             raise
-        stop_upload_event.set()
-        upload_thread.join()
-        notify_thread.join()
+        finally:
+            progress.message = "Ready"
+            progress.set(current=0, total=1, report=True)
+            stop_upload_event.set()
+            if upload_thread.is_alive():
+                upload_thread.join()
+            if notify_thread.is_alive():
+                notify_thread.join()
 
     def serve(self):
         super().serve()
