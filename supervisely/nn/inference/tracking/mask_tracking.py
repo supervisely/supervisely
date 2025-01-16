@@ -588,17 +588,10 @@ class MaskTracking(Inference):
 
             # run tracker
             api.logger.info("Starting tracking process")
-            frame_indexes = list(range(frame_index, frame_index + frames_count * direction_n))
-            if direction_n == -1:
-                frame_indexes = frame_indexes[::-1]
-            frames = self.cache.download_frames(
-                api,
-                video_id,
-                frame_indexes,
-            )
-            if direction_n == -1:
-                frames = frames[::-1]
             try:
+                frames = self.cache.download_frames(
+                    api, video_id, list(range(*range_of_frames, direction_n))
+                )
                 for figure in figures:
                     figure = api.video.figure._convert_json_info(figure)
                     fig_id = figure.id
