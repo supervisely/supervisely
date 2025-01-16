@@ -512,11 +512,13 @@ class MaskTracking(Inference):
 
             def _nofify_loop(q: Queue, stop_event: Event):
                 nonlocal global_stop_indicatior
+                sly.logger.debug("Start notify loop")
                 try:
                     while True:
                         items = []  # (geometry, object_id, frame_index)
                         while not q.empty():
                             items.append(q.get_nowait())
+                            sly.logger.debug("Got item from notify queue")
                         if len(items) > 0:
                             items_by_object_id = {}
                             for item in items:
