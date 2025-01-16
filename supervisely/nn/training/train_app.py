@@ -12,6 +12,7 @@ from os import getcwd, listdir
 from os.path import basename, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
+from pathlib import Path
 
 import httpx
 import yaml
@@ -183,6 +184,7 @@ class TrainApp:
             self._convert_tensorrt_func = None
 
         # Benchmark parameters
+        self._debug_benchmark = self._app_options.get("debug_benchmark", False)
         if self.is_model_benchmark_enabled:
             self._benchmark_params = {
                 "model_files": {},
@@ -476,6 +478,19 @@ class TrainApp:
 
     # ----------------------------------------- #
 
+    # Debug
+    @property
+    def debug_benchmark(self) -> bool:
+        """
+        Checks if debug benchmarking is enabled.
+
+        :return: True if debug benchmarking is enabled, False otherwise.
+        :rtype: bool
+        """
+        return self._debug_benchmark
+
+    # ----------------------------------------- #
+
     def _prepare(self) -> None:
         """
         Prepares the environment for training by setting up directories,
@@ -517,8 +532,12 @@ class TrainApp:
         train_splits_data = self._postprocess_splits()
 
         # Step 5. Upload artifacts
-        self._set_text_status("uploading")
-        remote_dir, file_info = self._upload_artifacts()
+        if not self.debug_benchmark:
+            self._set_text_status("uploading")
+            remote_dir, file_info = self._upload_artifacts()
+        else:
+            remote_dir = str(Path(experiment_info["checkpoints"][0]).parent)
+            file_info = None
 
         # Step 6. Create model meta according to model CV task type
         model_meta = self.create_model_meta(experiment_info["task_type"])
@@ -555,24 +574,25 @@ class TrainApp:
                 logger.error(f"Model benchmark failed: {e}")
 
         # Step 8. [Optional] Convert weights
-        export_weights = {}
-        if self.gui.hyperparameters_selector.is_export_required():
-            try:
-                export_weights = self._export_weights(experiment_info)
-                export_weights = self._upload_export_weights(export_weights, remote_dir)
-            except Exception as e:
-                logger.error(f"Export weights failed: {e}")
+        if not self.debug_benchmark:
+            export_weights = {}
+            if self.gui.hyperparameters_selector.is_export_required():
+                try:
+                    export_weights = self._export_weights(experiment_info)
+                    export_weights = self._upload_export_weights(export_weights, remote_dir)
+                except Exception as e:
+                    logger.error(f"Export weights failed: {e}")
 
-        # Step 9. Generate and upload additional files
-        self._set_text_status("metadata")
-        self._generate_experiment_info(
-            remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
-        )
-        self._generate_app_state(remote_dir, experiment_info)
-        self._generate_hyperparameters(remote_dir, experiment_info)
-        self._generate_train_val_splits(remote_dir, train_splits_data)
-        self._generate_model_meta(remote_dir, model_meta)
-        self._upload_demo_files(remote_dir)
+            # Step 9. Generate and upload additional files
+            self._set_text_status("metadata")
+            self._generate_experiment_info(
+                remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
+            )
+            self._generate_app_state(remote_dir, experiment_info)
+            self._generate_hyperparameters(remote_dir, experiment_info)
+            self._generate_train_val_splits(remote_dir, train_splits_data)
+            self._generate_model_meta(remote_dir, model_meta)
+            self._upload_demo_files(remote_dir)
 
         # Step 10. Set output widgets
         self._set_text_status("reset")
@@ -1439,10 +1459,13 @@ class TrainApp:
         """
         Convert project meta according to task type.
         """
-        names_to_delete = [
-            c.name for c in self.project_meta.obj_classes if c.name not in self.classes
-        ]
-        model_meta = self.project_meta.delete_obj_classes(names_to_delete)
+        if not self.debug_benchmark:
+            names_to_delete = [
+                c.name for c in self.project_meta.obj_classes if c.name not in self.classes
+            ]
+            model_meta = self.project_meta.delete_obj_classes(names_to_delete)
+        else:
+            model_meta = self.project_meta
 
         if task_type == TaskType.OBJECT_DETECTION:
             model_meta, _ = model_meta.to_detection_task(True)
@@ -1711,18 +1734,19 @@ class TrainApp:
         Sets the training output in the GUI.
         """
         self.gui.set_next_step()
-        logger.info("All training artifacts uploaded successfully")
         self.gui.training_process.start_button.loading = False
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
         # self.gui.training_logs.tensorboard_button.disable()
 
-        # Set artifacts to GUI
-        set_directory(remote_dir)
-        self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
-        self.gui.training_artifacts.artifacts_thumbnail.show()
-        self.gui.training_artifacts.artifacts_field.show()
-        # ---------------------------- #
+        if not self.debug_benchmark:
+            logger.info("All training artifacts uploaded successfully")
+            # Set artifacts to GUI
+            set_directory(remote_dir)
+            self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
+            self.gui.training_artifacts.artifacts_thumbnail.show()
+            self.gui.training_artifacts.artifacts_field.show()
+            # ---------------------------- #
 
         # Set model benchmark to GUI
         if self._app_options.get("model_benchmark", False):
@@ -1739,7 +1763,7 @@ class TrainApp:
         # Set instruction to GUI
         demo_options = self._app_options.get("demo", {})
         demo_path = demo_options.get("path", None)
-        if demo_path is not None:
+        if demo_path is not None and not self.debug_benchmark:
             # Show PyTorch demo if available
             if self.gui.training_artifacts.pytorch_demo_exists(demo_path):
                 self.gui.training_artifacts.pytorch_instruction.show()
@@ -1771,11 +1795,12 @@ class TrainApp:
                 self.gui.training_artifacts.inference_demo_field.show()
         # ---------------------------- #
 
-        # Set status to completed and unlock
-        self.gui.training_artifacts.validator_text.set(
-            self.gui.training_artifacts.success_message_text, "success"
-        )
-        self.gui.training_artifacts.validator_text.show()
+        if not self.debug_benchmark:
+            # Set status to completed and unlock
+            self.gui.training_artifacts.validator_text.set(
+                self.gui.training_artifacts.success_message_text, "success"
+            )
+            self.gui.training_artifacts.validator_text.show()
         self.gui.training_artifacts.card.unlock()
         # ---------------------------- #
 
