@@ -308,7 +308,7 @@ class PointTracking(Inference):
                 global_stop_indicatior = True
                 raise
 
-        def _upload_loop(q: Queue, notify_q: Queue, stop_event: Event):
+        def _upload_loop(q: Queue, notify_q: Queue, stop_event: Event, stop_notify_event: Event):
             nonlocal global_stop_indicatior
             try:
                 while True:
@@ -327,25 +327,28 @@ class PointTracking(Inference):
                                 notify_q.put(item)
                         continue
                     elif stop_event.is_set():
+                        stop_notify_event.set()
                         return
                     time.sleep(1)
             except Exception as e:
                 api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
+                stop_notify_event.set()
                 raise
 
         upload_queue = Queue()
         notify_queue = Queue()
         stop_upload_event = Event()
+        stop_notify_event = Event()
         upload_thread = Thread(
             target=_upload_loop,
-            args=[upload_queue, notify_queue, stop_upload_event],
+            args=[upload_queue, notify_queue, stop_upload_event, stop_notify_event],
             daemon=True,
         )
         upload_thread.start()
         notify_thread = Thread(
             target=_nofify_loop,
-            args=[notify_queue, stop_upload_event],
+            args=[notify_queue, stop_notify_event],
             daemon=True,
         )
         notify_thread.start()
@@ -422,6 +425,7 @@ class PointTracking(Inference):
             stop_upload_event.set()
             if upload_thread.is_alive():
                 upload_thread.join()
+            stop_notify_event.set()
             if notify_thread.is_alive():
                 notify_thread.join()
             progress.report_progress()
