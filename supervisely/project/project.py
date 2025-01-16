@@ -4158,7 +4158,7 @@ def upload_project(
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
 
-            if img_paths == []:
+            if len(img_paths) == 0 and len(img_infos) == 0:
                 # Dataset is empty
                 continue
 
@@ -4179,17 +4179,23 @@ def upload_project(
                     total=len(names),
                 )
 
+            if len(img_infos) != 0:
+                merged_metas = []
+                for img_info, meta in zip(img_infos, metas):
+                    merged_meta = {**img_info.meta, **meta}
+                    merged_metas.append(merged_meta)
+                metas = merged_metas
+
             if len(img_paths) != 0:
                 uploaded_img_infos = api.image.upload_paths(
                     dataset.id, names, img_paths, ds_progress, metas=metas
                 )
-            elif len(img_paths) == 0 and len(img_infos) != 0:
+            elif len(img_infos) != 0:
                 # uploading links and hashes (the code from api.image.upload_ids)
-                img_metas = [{}] * len(names)
                 links, links_names, links_order, links_metas = [], [], [], []
                 hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
                 dataset_id = dataset.id
-                for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
+                for idx, (name, info, meta) in enumerate(zip(names, img_infos, metas)):
                     if info.link is not None:
                         links.append(info.link)
                         links_names.append(name)
