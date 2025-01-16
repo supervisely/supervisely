@@ -11,6 +11,9 @@ import supervisely.io.env as sly_env
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
 from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
 from supervisely.nn.training.gui.input_selector import InputSelector
@@ -137,6 +140,26 @@ class TrainGUI:
                 return
             self.training_process.set_experiment_name(experiment_name)
 
+        def need_convert_class_shapes() -> bool:
+            task_type = self.model_selector.get_selected_task_type()
+
+            def _need_convert(shape):
+                if task_type == TaskType.OBJECT_DETECTION:
+                    return shape != Rectangle.geometry_name()
+                elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+                    return shape == Polygon.geometry_name()
+                return
+
+            data = self.classes_selector.classes_table._table_data
+            selected_classes = set(self.classes_selector.classes_table.get_selected_classes())
+            empty = set(r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0)
+            need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
+
+            if need_convert.intersection(selected_classes - empty):
+                self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
+            else:
+                self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
+
         # ------------------------------------------------- #
 
         # Wrappers
@@ -168,7 +191,7 @@ class TrainGUI:
             callback=self.hyperparameters_selector_cb,
             validation_text=self.model_selector.validator_text,
             validation_func=self.model_selector.validate_step,
-            on_select_click=[set_experiment_name],
+            on_select_click=[set_experiment_name, need_convert_class_shapes],
             collapse_card=(self.model_selector.card, self.collapsable),
         )
 
@@ -276,6 +299,7 @@ class TrainGUI:
         @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
         def show_mb_speedtest(is_checked: bool):
             self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
+            need_convert_class_shapes()
 
         # ------------------------------------------------- #
 
