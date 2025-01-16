@@ -353,7 +353,9 @@ class PointTracking(Inference):
         api.logger.info("Start tracking.")
         try:
             frames = self.cache.download_frames(
-                api, video_id, list(range(*range_of_frames, direction_n))
+                api,
+                video_id,
+                list(range(range_of_frames[0], range_of_frames[1] + direction_n, direction_n)),
             )
             for figure in figures:
                 figure = api.video.figure._convert_json_info(figure)
