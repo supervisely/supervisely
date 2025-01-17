@@ -440,27 +440,31 @@ class BaseConverter:
             return meta1.clone(project_settings=new_settings)
         return meta1
 
-    def _download_remote_ann_files(self) -> None:
+    def _download_remote_files(self, download_images: bool = False) -> None:
         """
-        Download all annotation files from Cloud Storage to the local storage.
-        Needed to detect annotation format if "upload_as_links" is enabled.
+        Download all files from Cloud Storage to the local storage.
+        Needed to detect format if "upload_as_links" is enabled.
+        By default, downloads annotation files. Downloads images as well if 'download_images' is True.
         """
         if not self.upload_as_links:
             return
 
-        ann_archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
+        archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
 
-        anns_to_download = {
-            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
+        exts = [self.ann_ext] if not download_images else self.allowed_exts + [self.ann_ext]
+
+        files_to_download = {
+            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) in exts
         }
-        if not anns_to_download and not ann_archives:
+
+        if not files_to_download and not archives:
             return
 
         import asyncio
 
         for files_type, files in {
-            "annotations": anns_to_download,
-            "archives": ann_archives,
+            "annotations": files_to_download,
+            "archives": archives,
         }.items():
             if not files:
                 continue
@@ -478,14 +482,14 @@ class BaseConverter:
             loop = get_or_create_event_loop()
             _, progress_cb = self.get_progress(
                 len(files) if not is_archive_type else file_size,
-                f"Downloading {files_type} from remote storage",
+                f"Downloading files from remote storage",
                 is_size=is_archive_type,
             )
 
             for local_path in files.keys():
                 silent_remove(local_path)
 
-            logger.info(f"Downloading {files_type} from remote storage...")
+            logger.info(f"Downloading files from remote storage...")
             download_coro = self._api.storage.download_bulk_async(
                 team_id=self._team_id,
                 remote_paths=list(files.values()),
@@ -499,15 +503,17 @@ class BaseConverter:
                 future.result()
             else:
                 loop.run_until_complete(download_coro)
-            logger.info("Possible annotations downloaded successfully.")
+            if loop.is_running():
+                loop.close()
+            logger.info(f"Files downloaded successfully.")
 
             if is_archive_type:
                 for local_path in files.keys():
                     parent_dir = Path(local_path).parent
-                    if parent_dir.name == "ann":
+                    if parent_dir.name == ("ann" if files_type == "annotations" else "img"):
                         target_dir = parent_dir
                     else:
-                        target_dir = parent_dir / "ann"
+                        target_dir = parent_dir / ("ann" if files_type == "annotations" else "img")
                         target_dir.mkdir(parents=True, exist_ok=True)
 
                     unpack_archive(local_path, str(target_dir))

@@ -76,7 +76,7 @@ class SLYImageConverter(ImageConverter):
 
     def validate_format(self) -> bool:
         if self.upload_as_links and self._supports_links:
-            self._download_remote_ann_files()
+            self._download_remote_files()
         if self.read_sly_project(self._input_data):
             return True
 
