@@ -2320,6 +2320,9 @@ class Inference:
         else:
             autostart_func()
 
+        self.cache.add_cache_endpoint(server)
+        self.cache.add_cache_files_endpoint(server)
+
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
         def get_session_info(response: Response):

@@ -4,65 +4,37 @@ import time
 import uuid
 from pathlib import Path
 from queue import Queue
-from threading import Event, Lock, Thread
-from typing import Any, Dict, List, Optional, Union
+from threading import Event, Thread
+from typing import Any, Dict, List, Optional
 
 import numpy as np
-from fastapi import BackgroundTasks, Form, Request, Response, UploadFile, status
+from fastapi import Form, Request, UploadFile
 
-import supervisely as sly
-import supervisely.nn.inference.tracking.functional as F
+from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Geometry, Label
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
-from supervisely.nn.inference import Inference
-from supervisely.nn.inference.inference import (
-    _convert_sly_progress_to_dict,
-    _get_log_extra_for_inference_request,
+from supervisely.geometry.helpers import deserialize_geometry
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging import image as sly_image
+from supervisely.nn.inference.tracking.base_tracking import (
+    BaseTracking,
+    ValidationError,
 )
 from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
 from supervisely.nn.prediction_dto import Prediction, PredictionBBox
+from supervisely.sly_logger import logger
+from supervisely.task.progress import Progress
 
 
-class BBoxTracking(Inference):
-    def __init__(
-        self,
-        model_dir: Optional[str] = None,
-        custom_inference_settings: Optional[Union[Dict[str, Any], str]] = None,
-    ):
-        Inference.__init__(
-            self,
-            model_dir,
-            custom_inference_settings,
-            sliding_window_mode=None,
-            use_gui=False,
-        )
-
-        try:
-            self.load_on_device(model_dir, "cuda")
-        except RuntimeError:
-            self.load_on_device(model_dir, "cpu")
-            sly.logger.warn("Failed to load model on CUDA device.")
-
-        sly.logger.debug(
-            "Smart cache params",
-            extra={"ttl": sly.env.smart_cache_ttl(), "maxsize": sly.env.smart_cache_size()},
-        )
-
-    def get_info(self):
-        info = super().get_info()
-        info["task type"] = "tracking"
-        return info
-
+class BBoxTracking(BaseTracking):
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
-        return sly.deserialize_geometry(geometry_type_str, geometry_json)
+        return deserialize_geometry(geometry_type_str, geometry_json)
 
-    def _on_inference_start(self, inference_request_uuid: str):
-        super()._on_inference_start(inference_request_uuid)
-        self._inference_requests[inference_request_uuid]["lock"] = Lock()
-
-    def _track(self, api: sly.Api, context: dict, notify_annotation_tool: bool):
+    def _track(self, api: Api, context: dict, notify_annotation_tool: bool):
         video_interface = TrackerInterface(
             context=context,
             api=api,
@@ -128,7 +100,7 @@ class BBoxTracking(Inference):
                 init = False
                 for _ in video_interface.frames_loader_generator():
                     geom = video_interface.geometries[fig_id]
-                    if not isinstance(geom, sly.Rectangle):
+                    if not isinstance(geom, Rectangle):
                         stop_upload_event.set()
                         raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
@@ -164,7 +136,7 @@ class BBoxTracking(Inference):
             raise
         stop_upload_event.set()
 
-    def _track_api(self, api: sly.Api, context: dict, request_uuid: str = None):
+    def _track_api(self, api: Api, context: dict, request_uuid: str = None):
         track_t = time.monotonic()
         # unused fields:
         context["trackId"] = "auto"
@@ -220,7 +192,7 @@ class BBoxTracking(Inference):
         )
         for box_i, input_geom in enumerate(input_bboxes, 1):
             input_bbox = input_geom["data"]
-            bbox = sly.Rectangle.from_json(input_bbox)
+            bbox = Rectangle.from_json(input_bbox)
             predictions_for_object = []
             init = False
             frame_t = time.monotonic()
@@ -290,7 +262,7 @@ class BBoxTracking(Inference):
         }
         results = [[] for _ in range(len(frames) - 1)]
         for geometry in geometries:
-            if not isinstance(geometry, sly.Rectangle):
+            if not isinstance(geometry, Rectangle):
                 raise TypeError(f"Tracking does not work with {geometry.geometry_name()}.")
             target = PredictionBBox(
                 "",
@@ -307,7 +279,7 @@ class BBoxTracking(Inference):
                 )
                 sly_pred_geometry = self._to_sly_geometry(pred_geometry)
                 results[i].append(
-                    {"type": sly.Rectangle.geometry_name(), "data": sly_pred_geometry.to_json()}
+                    {"type": Rectangle.geometry_name(), "data": sly_pred_geometry.to_json()}
                 )
         return results
 
@@ -315,7 +287,7 @@ class BBoxTracking(Inference):
         self, request: Request, files: List[UploadFile], settings: str = Form("{}")
     ):
         state = json.loads(settings)
-        sly.logger.info(f"Start tracking with settings: {state}.")
+        logger.info(f"Start tracking with settings: {state}.")
         video_id = state["video_id"]
         frame_indexes = list(
             range(state["frame_index"], state["frame_index"] + state["frames"] + 1)
@@ -324,12 +296,12 @@ class BBoxTracking(Inference):
         frames = []
         for file, frame_idx in zip(files, frame_indexes):
             img_bytes = file.file.read()
-            frame = sly.image.read_bytes(img_bytes)
+            frame = sly_image.read_bytes(img_bytes)
             frames.append(frame)
-        sly.logger.info("Start tracking.")
+        logger.info("Start tracking.")
         return self._inference(frames, geometries, state)
 
-    def _track_async(self, api: sly.Api, context: dict, request_uuid: str = None):
+    def _track_async(self, api: Api, context: dict, request_uuid: str = None):
         api.logger.info("context", extra=context)
         inference_request = self._inference_requests[request_uuid]
 
@@ -342,7 +314,7 @@ class BBoxTracking(Inference):
         direction = context.get("direction", "forward")
         direction_n = 1 if direction == "forward" else -1
         figures = context["figures"]
-        progress: sly.Progress = inference_request["progress"]
+        progress: Progress = inference_request["progress"]
         progress_total = frames_count * len(figures)
         progress.total = progress_total
 
@@ -462,11 +434,11 @@ class BBoxTracking(Inference):
         try:
             for figure in figures:
                 figure = api.video.figure._convert_json_info(figure)
-                if not figure.geometry_type == sly.Rectangle.geometry_name():
+                if not figure.geometry_type == Rectangle.geometry_name():
                     stop_upload_event.set()
                     raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
                 api.logger.info("geometry:", extra={"figure": figure._asdict()})
-                sly_geometry: sly.Rectangle = sly.deserialize_geometry(
+                sly_geometry: Rectangle = deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
                 api.logger.info("geometry:", extra={"geometry": type(sly_geometry)})
@@ -536,197 +508,46 @@ class BBoxTracking(Inference):
                 progress.message = "Ready"
                 progress.set(current=0, total=1, report=True)
 
-    def serve(self):
-        super().serve()
-        server = self._app.get_server()
-        self.cache.add_cache_endpoint(server)
-        self.cache.add_cache_files_endpoint(server)
+    def track(self, api: Api, state: Dict, context: Dict):
+        return self._track(api, context, notify_annotation_tool=True)
 
-        def send_error_data(func):
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                value = None
-                try:
-                    value = func(*args, **kwargs)
-                except Exception as exc:
-                    request: Request = args[0]
-                    context = request.state.context
-                    api: sly.Api = request.state.api
-                    track_id = context["trackId"]
-                    api.logger.error(f"An error occured: {repr(exc)}")
+    def track_api(self, api: Api, state: Dict, context: Dict):
+        inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
+        result = self._track_api(api, context, inference_request_uuid)
+        logger.info("Track-api request processed.", extra={"request_uuid": inference_request_uuid})
+        return result
 
-                    api.post(
-                        "videos.notify-annotation-tool",
-                        data={
-                            "type": "videos:tracking-error",
-                            "data": {
-                                "trackId": track_id,
-                                "error": {"message": repr(exc)},
-                            },
-                        },
-                    )
-                return value
+    def track_api_files(self, api: Api, state: Dict, context: Dict):
+        return self._track_api_files()
 
-            return wrapper
-
-        @send_error_data
-        def track(request: Request):
-            return self._track(
-                request.state.api, request.state.context, notify_annotation_tool=True
+    def track_async(self, api: Api, state: Dict, context: Dict):
+        batch_size = context.get("batch_size", self.get_batch_size())
+        if self.max_batch_size is not None and batch_size > self.max_batch_size:
+            raise ValidationError(
+                f"Batch size should be less than or equal to {self.max_batch_size} for this model."
             )
-
-        @server.post("/track")
-        def start_track(request: Request, task: BackgroundTasks):
-            task.add_task(track, request)
-            return {"message": "Track task started."}
-
-        @server.post("/track-api")
-        def track_api(request: Request):
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            sly.logger.info(
-                "Received track-api request.", extra={"request_uuid": inference_request_uuid}
-            )
-            result = self._track_api(
-                request.state.api, request.state.context, request_uuid=inference_request_uuid
-            )
-            sly.logger.info(
-                "Track-api request processed.", extra={"request_uuid": inference_request_uuid}
-            )
-            return result
-
-        @server.post("/track_async")
-        def track_async(response: Response, request: Request):
-            sly.logger.debug(f"'track_async' request in json format:{request.state.context}")
-            # check batch size
-            batch_size = request.state.context.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._track_async,
-                request.state.api,
-                request.state.context,
-                inference_request_uuid,
-            )
-            end_callback = functools.partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
-            sly.logger.debug(
-                "Inference has scheduled from 'track_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
-            )
-            return {
-                "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
-            }
-
-        @server.post("/pop_tracking_results")
-        def pop_tracking_results(request: Request, response: Response):
-            context = request.state.context
-            inference_request_uuid = context.get("inference_request_uuid", None)
-            if inference_request_uuid is None:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                sly.logger.error("Error: 'inference_request_uuid' is required.")
-                return {"message": "Error: 'inference_request_uuid' is required."}
-
-            inference_request = self._inference_requests[inference_request_uuid]
-            sly.logger.debug(
-                "Pop tracking results",
-                extra={
-                    "inference_request_uuid": inference_request_uuid,
-                    "pending_results_len": len(inference_request["pending_results"]),
-                    "pending_results": [
-                        figure._asdict() for figure in inference_request["pending_results"][:3]
-                    ],
-                },
-            )
-            frame_range = context.get("frame_range", None)
-            if frame_range is None:
-                frame_range = context.get("frameRange", None)
-            sly.logger.debug("frame_range: %s", frame_range)
-            with inference_request["lock"]:
-                inference_request_copy = inference_request.copy()
-                inference_request_copy.pop("lock")
-                inference_request_copy["progress"] = _convert_sly_progress_to_dict(
-                    inference_request_copy["progress"]
-                )
-
-                if frame_range is not None:
-                    inference_request_copy["pending_results"] = [
-                        figure
-                        for figure in inference_request_copy["pending_results"]
-                        if figure.frame_index >= frame_range[0]
-                        and figure.frame_index <= frame_range[1]
-                    ]
-                    inference_request["pending_results"] = [
-                        figure
-                        for figure in inference_request["pending_results"]
-                        if figure.frame_index < frame_range[0]
-                        or figure.frame_index > frame_range[1]
-                    ]
-                else:
-                    inference_request["pending_results"] = []
-
-            sly.logger.debug(
-                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
-            )
-
-            inference_request_copy["pending_results"] = [
-                {
-                    ApiField.ID: figure.id,
-                    ApiField.OBJECT_ID: figure.object_id,
-                    ApiField.GEOMETRY_TYPE: figure.geometry_type,
-                    ApiField.GEOMETRY: figure.geometry,
-                    ApiField.META: {ApiField.FRAME: figure.frame_index},
-                }
-                for figure in inference_request_copy["pending_results"]
-            ]
-
-            sly.logger.debug(
-                "inference_request_copy", extra={"inference_request_copy": inference_request_copy}
-            )
-
-            # Logging
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request_copy
-            )
-            sly.logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-            return inference_request_copy
-
-        @server.post("/stop_tracking")
-        def stop_inference(response: Response, request: Request):
-            inference_request_uuid = request.state.context.get("inference_request_uuid")
-            if inference_request_uuid is None:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": "Error: 'inference_request_uuid' is required.",
-                    "success": False,
-                }
-            inference_request = self._inference_requests[inference_request_uuid]
-            inference_request["cancel_inference"] = True
-            return {"message": "Inference will be stopped.", "success": True}
-
-        @server.post("/track-api-files")
-        def track_api_files(
-            request: Request,
-            files: List[UploadFile],
-            settings: str = Form("{}"),
-        ):
-            return self._track_api_files(request, files, settings)
+        inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
+        self._on_inference_start(inference_request_uuid)
+        future = self._executor.submit(
+            self._handle_error_in_async,
+            inference_request_uuid,
+            self._track_async,
+            api,
+            context,
+            inference_request_uuid,
+        )
+        end_callback = functools.partial(
+            self._on_inference_end, inference_request_uuid=inference_request_uuid
+        )
+        future.add_done_callback(end_callback)
+        logger.debug(
+            "Inference has scheduled from 'track_async' endpoint",
+            extra={"inference_request_uuid": inference_request_uuid},
+        )
+        return {
+            "message": "Inference has started.",
+            "inference_request_uuid": inference_request_uuid,
+        }
 
     def initialize(self, init_rgb_image: np.ndarray, target_bbox: PredictionBBox) -> None:
         """
@@ -783,24 +604,24 @@ class BBoxTracking(Inference):
                 fill_rectangles=False,
             )
 
-    def _to_sly_geometry(self, dto: PredictionBBox) -> sly.Rectangle:
+    def _to_sly_geometry(self, dto: PredictionBBox) -> Rectangle:
         top, left, bottom, right = dto.bbox_tlbr
-        geometry = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
+        geometry = Rectangle(top=top, left=left, bottom=bottom, right=right)
         return geometry
 
-    def _create_label(self, dto: PredictionBBox) -> sly.Rectangle:
+    def _create_label(self, dto: PredictionBBox) -> Rectangle:
         geometry = self._to_sly_geometry(dto)
-        return Label(geometry, sly.ObjClass("", sly.Rectangle))
+        return Label(geometry, ObjClass("", Rectangle))
 
     def _get_obj_class_shape(self):
-        return sly.Rectangle
+        return Rectangle
 
     def _predictions_to_annotation(
         self,
         image: np.ndarray,
         predictions: List[Prediction],
         classes_whitelist: Optional[List[str]] = None,
-    ) -> sly.Annotation:
+    ) -> Annotation:
         labels = []
         for prediction in predictions:
             if (
@@ -818,6 +639,6 @@ class BBoxTracking(Inference):
             labels.append(label)
 
         # create annotation with correct image resolution
-        ann = sly.Annotation(img_size=image.shape[:2])
+        ann = Annotation(img_size=image.shape[:2])
         ann = ann.add_labels(labels)
         return ann
