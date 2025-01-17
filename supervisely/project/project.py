@@ -4200,8 +4200,8 @@ def upload_project(
             elif img_infos_count != 0:
                 if img_infos_count != len(names):
                     raise ValueError(
-                        f"Cannot upload Project: image info files count ({img_infos_count}) doesn't match with images count ({len(names)}) that are going to be uploaded. 
-                        Check the directory structure, all annotation files should have corresponding image info files."
+                        f"Cannot upload Project: image info files count ({img_infos_count}) doesn't match with images count ({len(names)}) that are going to be uploaded. "
+                        "Check the directory structure, all annotation files should have corresponding image info files."
                     )
                 # uploading links and hashes (the code from api.image.upload_ids)
                 links, links_names, links_order, links_metas = [], [], [], []
