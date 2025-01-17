@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import io
 import json
 import re
@@ -2023,7 +2024,7 @@ class ImageApi(RemoveableBulkModuleApi):
             for name, item, meta in zip(names, items, metas):
                 item_tuple = func_item_to_kv(item)
                 image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
-                if self.sort_by is not None:
+                if hasattr(self, "sort_by") and self.sort_by is not None:
                     meta = self._add_custom_sort(meta, name)
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
@@ -4568,7 +4569,7 @@ class ImageApi(RemoveableBulkModuleApi):
     @staticmethod
     def update_custom_sort(meta: Dict[str, Any], custom_sort: str) -> Dict[str, Any]:
         """
-        Updates meta dictionary with custom sort value.
+        Updates a copy of the meta dictionary with a new custom sort value.
 
         :param meta: Image meta dictionary.
         :type meta: Dict[str, Any]
@@ -4577,5 +4578,6 @@ class ImageApi(RemoveableBulkModuleApi):
         :return: Updated meta dictionary.
         :rtype: Dict[str, Any]
         """
-        meta[ApiField.CUSTOM_SORT] = custom_sort
-        return meta
+        meta_copy = copy.deepcopy(meta)
+        meta_copy[ApiField.CUSTOM_SORT] = custom_sort
+        return meta_copy
