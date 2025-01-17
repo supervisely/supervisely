@@ -4153,12 +4153,16 @@ def upload_project(
 
                 if os.path.isfile(img_info_path):
                     img_infos.append(ds_fs.get_image_info(item_name=item_name))
+                else:
+                    img_infos.append(None)
 
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
 
-            if len(img_paths) == 0 and len(img_infos) == 0:
+            img_infos_count = sum(1 for item in img_infos if item is not None)
+
+            if len(img_paths) == 0 and img_infos_count == 0:
                 # Dataset is empty
                 continue
 
@@ -4179,10 +4183,13 @@ def upload_project(
                     total=len(names),
                 )
 
-            if len(img_infos) != 0:
+            if img_infos_count != 0:
                 merged_metas = []
                 for img_info, meta in zip(img_infos, metas):
-                    merged_meta = {**img_info.meta, **meta}
+                    if img_info is None:
+                        merged_metas.append(meta)
+                        continue
+                    merged_meta = {**(img_info.meta or {}), **meta}
                     merged_metas.append(merged_meta)
                 metas = merged_metas
 
@@ -4190,7 +4197,12 @@ def upload_project(
                 uploaded_img_infos = api.image.upload_paths(
                     dataset.id, names, img_paths, ds_progress, metas=metas
                 )
-            elif len(img_infos) != 0:
+            elif img_infos_count != 0:
+                if img_infos_count != len(names):
+                    raise ValueError(
+                        f"Cannot upload Project: image info files count ({img_infos_count}) doesn't match with images count ({len(names)}) that are going to be uploaded. 
+                        Check the directory structure, all annotation files should have corresponding image info files."
+                    )
                 # uploading links and hashes (the code from api.image.upload_ids)
                 links, links_names, links_order, links_metas = [], [], [], []
                 hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
