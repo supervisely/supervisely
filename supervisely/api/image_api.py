@@ -272,7 +272,7 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         sort_value = meta.get(self.sort_by, None)
         if sort_value:
-            meta[ApiField.CUSTOM_SORT] = sort_value
+            meta[ApiField.CUSTOM_SORT] = str(sort_value)
             message = f"Custom sorting applied with key '{self.sort_by}' and value '{sort_value}'."
         else:
             message = f"Custom sorting will not be applied. Key '{self.sort_by}' not found in meta."
