@@ -868,7 +868,7 @@ class ModuleApiBase(_JsonConvertibleModule):
             return self.InfoType(*field_values)
 
     @classmethod
-    def _convert_info_to_json(cls, info: NamedTuple) -> Dict:
+    def convert_info_to_json(cls, info: NamedTuple) -> Dict:
         """_convert_info_to_json"""
 
         def _create_nested_dict(keys, value):

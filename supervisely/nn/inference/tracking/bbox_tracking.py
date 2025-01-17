@@ -5,7 +5,7 @@ import uuid
 from pathlib import Path
 from queue import Queue
 from threading import Event, Thread
-from typing import Any, Dict, List, Optional
+from typing import Any, BinaryIO, Dict, List, Optional
 
 import numpy as np
 from fastapi import Form, Request, UploadFile
@@ -283,24 +283,6 @@ class BBoxTracking(BaseTracking):
                 )
         return results
 
-    def _track_api_files(
-        self, request: Request, files: List[UploadFile], settings: str = Form("{}")
-    ):
-        state = json.loads(settings)
-        logger.info(f"Start tracking with settings: {state}.")
-        video_id = state["video_id"]
-        frame_indexes = list(
-            range(state["frame_index"], state["frame_index"] + state["frames"] + 1)
-        )
-        geometries = map(self._deserialize_geometry, state["input_geometries"])
-        frames = []
-        for file, frame_idx in zip(files, frame_indexes):
-            img_bytes = file.file.read()
-            frame = sly_image.read_bytes(img_bytes)
-            frames.append(frame)
-        logger.info("Start tracking.")
-        return self._inference(frames, geometries, state)
-
     def _track_async(self, api: Api, context: dict, request_uuid: str = None):
         api.logger.info("context", extra=context)
         inference_request = self._inference_requests[request_uuid]
@@ -517,8 +499,19 @@ class BBoxTracking(BaseTracking):
         logger.info("Track-api request processed.", extra={"request_uuid": inference_request_uuid})
         return result
 
-    def track_api_files(self, api: Api, state: Dict, context: Dict):
-        return self._track_api_files()
+    def track_api_files(self, files: List[BinaryIO], settings: Dict):
+        logger.info(f"Start tracking with settings: {settings}.")
+        frame_indexes = list(
+            range(settings["frame_index"], settings["frame_index"] + settings["frames"] + 1)
+        )
+        geometries = map(self._deserialize_geometry, settings["input_geometries"])
+        frames = []
+        for file, frame_idx in zip(files, frame_indexes):
+            img_bytes = file.read()
+            frame = sly_image.read_bytes(img_bytes)
+            frames.append(frame)
+        logger.info("Start tracking.")
+        return self._inference(frames, geometries, settings)
 
     def track_async(self, api: Api, state: Dict, context: Dict):
         batch_size = context.get("batch_size", self.get_batch_size())

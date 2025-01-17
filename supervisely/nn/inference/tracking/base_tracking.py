@@ -1,10 +1,11 @@
 import functools
 import inspect
+import json
 import traceback
 from asyncio import Lock
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
-from fastapi import BackgroundTasks, Request, Response, status
+from fastapi import BackgroundTasks, Form, Request, Response, UploadFile, status
 
 from supervisely.api.api import Api
 from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
@@ -167,7 +168,7 @@ class BaseTracking(Inference):
         return wrapper
 
     def _figure_info_to_json(self, figure: FigureInfo):
-        return FigureApi._convert_info_to_json(figure)
+        return FigureApi.convert_info_to_json(figure)
 
     def _pop_tracking_results(self, inference_request_uuid: str, frame_range: Tuple = None):
         inference_request = self._inference_requests[inference_request_uuid]
@@ -226,7 +227,11 @@ class BaseTracking(Inference):
     def track_api(self, api: Api, state: Dict, context: Dict):
         raise NotImplementedError("Method `_track_api` must be implemented.")
 
-    def track_api_files(self, api: Api, state: Dict, context: Dict):
+    def track_api_files(
+        self,
+        files: List[BinaryIO],
+        settings: Dict,
+    ):
         raise NotImplementedError("Method `track_api_files` must be implemented.")
 
     def track_async(self, api: Api, state: Dict, context: Dict):
@@ -277,16 +282,13 @@ class BaseTracking(Inference):
 
         @server.post("/track-api-files")
         @handle_validation
-        def track_api_files_handler(request: Request):
-            api = request.state.api
-            state = request.state.state
-            context = request.state.context
-            logger.info(
-                "Received track-api-files request.", extra={"context": context, "state": state}
-            )
-            result = self.track_api_files(api, state, context)
-            logger.info("Track-api-files request processed.")
-            return result
+        def track_api_files(
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+        ):
+            files = [file.file for file in files]
+            settings = json.loads(settings)
+            return self.track_api_files(files, settings)
 
         @server.post("/track_async")
         @handle_validation
