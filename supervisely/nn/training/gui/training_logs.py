@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 from supervisely import Api
 from supervisely._utils import is_production
-from supervisely.app.widgets import Button, Card, Container, Progress, TaskLogs, Text
+from supervisely.app.widgets import Button, RunAppButton, Card, Container, Progress, TaskLogs, Text
 from supervisely.io.env import task_id as get_task_id
 
 
@@ -39,10 +39,27 @@ class TrainingLogs:
             plain=True,
             icon="zmdi zmdi-chart",
             link=self.tensorboard_link,
+            visible_by_vue_field="!isStaticVersion",
         )
         self.tensorboard_button.disable()
 
-        self.display_widgets.extend([self.validator_text, self.tensorboard_button])
+        # Offline session Tensorboard button
+        self.tensorboard_offline_button = RunAppButton(
+            workspace_id=0,
+            module_id=0,
+            payload={},
+            text="Open Tensorboard",
+            button_type="text",
+            plain=True,
+            icon="zmdi zmdi-chart",
+            link=self.tensorboard_link,
+            available_in_offline=True,
+            visible_by_vue_field="isStaticVersion",
+        )
+
+        self.display_widgets.extend(
+            [self.validator_text, self.tensorboard_button, self.tensorboard_offline_button]
+        )
 
         # Optional Show logs button
         if app_options.get("show_logs_in_gui", False):
