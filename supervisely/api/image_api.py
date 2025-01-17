@@ -292,10 +292,12 @@ class ImageApi(RemoveableBulkModuleApi):
         :param key: It is a key name of meta object that will be used for sorting.
         :type key: str
         """
+        # pylint: disable=access-member-before-definition
         if hasattr(self, "sort_by") and self.sort_by != key:
             raise AttributeError(
                 f"Attribute 'sort_by' already exists and has different value: {self.sort_by}"
             )
+        # pylint: enable=access-member-before-definition
         self.sort_by = key
         self.sort_by_context_counter = getattr(self, "sort_by_context_counter", 0) + 1
         try:
