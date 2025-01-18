@@ -24,11 +24,11 @@ from supervisely.project.project_settings import LabelingInterface
 class YOLOConverter(ImageConverter):
 
     def __init__(
-            self,
-            input_data: str,
-            labeling_interface: Optional[Union[LabelingInterface, str]],
-            upload_as_links: bool,
-            remote_files_map: Optional[Dict[str, str]] = None,
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]],
+        upload_as_links: bool,
+        remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
@@ -38,6 +38,8 @@ class YOLOConverter(ImageConverter):
         self._coco_classes_dict: dict = {}
         self._num_kpts = None
         self._num_dims = None
+        self._supports_links = True
+        self._override_shape = self.upload_as_links
 
     def __str__(self) -> str:
         return AvailableImageConverters.YOLO
@@ -151,6 +153,9 @@ class YOLOConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links:
+            self._download_remote_ann_files()
+
         detected_ann_cnt = 0
         config_path = None
         images_list, ann_dict = [], {}
@@ -238,7 +243,8 @@ class YOLOConverter(ImageConverter):
 
         try:
             labels = []
-            item.set_shape()
+            if not self.upload_as_links:
+                item.set_shape()
             height, width = item.shape
             with open(item.ann_data, "r") as ann_file:
                 lines = ann_file.readlines()

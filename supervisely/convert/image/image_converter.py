@@ -47,6 +47,9 @@ class ImageConverter(BaseConverter):
             self._type: str = "image"
             self._shape: Optional[Union[Tuple, List]] = shape
             self._custom_data: dict = custom_data if custom_data is not None else {}
+            # * Used for converters like COCO and YOLO, where the shape of the image is required,
+            # * but not provided in some cases (when uploading as links from cloud storage, for example)
+            self._override_shape = False
 
         @property
         def meta(self) -> Union[str, dict]:
@@ -142,10 +145,12 @@ class ImageConverter(BaseConverter):
                 if item.path is None:
                     continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if self.upload_as_links and not self.supports_links:
-                    ann = None
-                else:
-                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                if not self._override_shape:
+                    if self.upload_as_links and not self.supports_links:
+                        ann = None
+                    else:
+                        ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                        anns.append(ann)
                 name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
@@ -159,9 +164,6 @@ class ImageConverter(BaseConverter):
                 else:
                     item_metas.append({})
 
-                if ann is not None:
-                    anns.append(ann)
-
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
@@ -173,7 +175,7 @@ class ImageConverter(BaseConverter):
                         metas=item_metas,
                         batch_size=batch_size,
                         conflict_resolution="rename",
-                        force_metadata_for_links=False,
+                        force_metadata_for_links=self._override_shape,
                     )
                 else:
                     img_infos = api.image.upload_paths(
@@ -183,8 +185,14 @@ class ImageConverter(BaseConverter):
                         metas=item_metas,
                         conflict_resolution="rename",
                     )
-
                 img_ids = [img_info.id for img_info in img_infos]
+
+                if self._override_shape:
+                    anns = []
+                    for info, item in zip(img_infos, batch):
+                        item.set_shape((info.height, info.width))
+                        anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
+
                 if len(anns) == len(img_ids):
                     api.annotation.upload_anns(
                         img_ids, anns, skip_bounds_validation=self.upload_as_links
