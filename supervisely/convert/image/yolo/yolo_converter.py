@@ -39,7 +39,7 @@ class YOLOConverter(ImageConverter):
         self._num_kpts = None
         self._num_dims = None
         self._supports_links = True
-        self._overwrite_img_shape = self.upload_as_links
+        self._force_shape_for_links = self.upload_as_links
 
     def __str__(self) -> str:
         return AvailableImageConverters.YOLO

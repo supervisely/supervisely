@@ -38,7 +38,7 @@ class ImageConverter(BaseConverter):
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
-        self._overwrite_img_shape = False
+        self._force_shape_for_links = False
 
     class Item(BaseConverter.BaseItem):
 
@@ -176,7 +176,7 @@ class ImageConverter(BaseConverter):
                         metas=item_metas,
                         batch_size=batch_size,
                         conflict_resolution="rename",
-                        force_metadata_for_links=self._overwrite_img_shape,
+                        force_metadata_for_links=self._force_shape_for_links,
                     )
                 else:
                     img_infos = api.image.upload_paths(
@@ -193,7 +193,7 @@ class ImageConverter(BaseConverter):
                     anns = [None] * len(img_ids)
                 else:
                     for info, item in zip(img_infos, batch):
-                        if self._overwrite_img_shape:
+                        if self._force_shape_for_links:
                             item.set_shape((info.height, info.width))
                         anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
 

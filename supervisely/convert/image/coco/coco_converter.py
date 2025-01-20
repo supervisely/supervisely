@@ -26,7 +26,7 @@ class COCOConverter(ImageConverter):
 
         self._coco_categories = []
         self._supports_links = True
-        self._overwrite_img_shape = self.upload_as_links
+        self._force_shape_for_links = self.upload_as_links
 
     def __str__(self) -> str:
         return AvailableImageConverters.COCO
