@@ -54,16 +54,20 @@ class TrainingLogs:
         # Offline session Tensorboard button
         if is_production():
             workspace_id = sly_env.workspace_id()
-            app_id = task_info["meta"]["app"]["id"]
-            app_info = api.app.get_info_by_id(app_id)
-            app_module_id = app_info.module_id
+            # app_id = task_info["meta"]["app"]["id"]
+            # app_info = api.app.get_info_by_id(app_id)
+            # app_module_id = app_info.module_id
 
             self.tensorboard_offline_button = RunAppButton(
                 workspace_id=workspace_id,
-                module_id=app_module_id,
-                payload={},
+                module_id=880,
+                payload={
+                    "state": {
+                        "slyFolder": "/experiments/990_Lemons (Annotated)/4246_RT-DETRv2/logs/"
+                    }
+                },
                 text="Open Tensorboard",
-                button_type="text",
+                button_type="info",
                 plain=True,
                 icon="zmdi zmdi-chart",
                 available_in_offline=True,
