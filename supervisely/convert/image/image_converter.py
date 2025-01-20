@@ -150,12 +150,12 @@ class ImageConverter(BaseConverter):
                 item.path = self.validate_image(item.path)
                 if item.path is None:
                     continue  # image has failed validation
-                item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
+                name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
 
-                name = generate_free_name(
-                    existing_names, item.name, with_ext=True, extend_used_names=True
+                item.name = generate_free_name(
+                    existing_names, name, with_ext=True, extend_used_names=True
                 )
-                item_names.append(name)
+                item_names.append(item.name)
                 item_paths.append(item.path)
 
                 if isinstance(item.meta, str):  # path to file
@@ -189,9 +189,7 @@ class ImageConverter(BaseConverter):
                 img_ids = [img_info.id for img_info in img_infos]
 
                 anns = []
-                if self.upload_as_links and not self.supports_links:
-                    anns = [None] * len(img_ids)
-                else:
+                if not (self.upload_as_links and not self.supports_links):
                     for info, item in zip(img_infos, batch):
                         if self._force_shape_for_links:
                             item.set_shape((info.height, info.width))
