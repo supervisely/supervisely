@@ -30,6 +30,16 @@ class ImageConverter(BaseConverter):
     ]
     modality = "images"
 
+    def __init__(
+        self,
+        input_data: str,
+        labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
+        upload_as_links: bool = False,
+        remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+        self._override_shape = False
+
     class Item(BaseConverter.BaseItem):
 
         def __init__(
@@ -136,18 +146,12 @@ class ImageConverter(BaseConverter):
             item_names = []
             item_paths = []
             item_metas = []
-            anns = []
             for item in batch:
                 item.path = self.validate_image(item.path)
                 if item.path is None:
                     continue  # image has failed validation
                 item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if not self._override_shape:
-                    if self.upload_as_links and not self.supports_links:
-                        ann = None
-                    else:
-                        ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                        anns.append(ann)
+
                 name = generate_free_name(
                     existing_names, item.name, with_ext=True, extend_used_names=True
                 )
@@ -184,10 +188,13 @@ class ImageConverter(BaseConverter):
                     )
                 img_ids = [img_info.id for img_info in img_infos]
 
-                if self._override_shape:
-                    anns = []
+                anns = []
+                if self.upload_as_links and not self.supports_links:
+                    anns = [None] * len(img_ids)
+                else:
                     for info, item in zip(img_infos, batch):
-                        item.set_shape((info.height, info.width))
+                        if self._override_shape:
+                            item.set_shape((info.height, info.width))
                         anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
 
                 if len(anns) == len(img_ids):
