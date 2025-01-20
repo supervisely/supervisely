@@ -47,8 +47,6 @@ class ImageConverter(BaseConverter):
             self._type: str = "image"
             self._shape: Optional[Union[Tuple, List]] = shape
             self._custom_data: dict = custom_data if custom_data is not None else {}
-            # * Used for converters like COCO and YOLO, where the shape of the image is required,
-            # * but not provided in some cases (when uploading as links from cloud storage, for example)
             self._override_shape = False
 
         @property

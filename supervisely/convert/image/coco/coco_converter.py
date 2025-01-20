@@ -15,7 +15,6 @@ COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
-
     def __init__(
             self,
             input_data: str,
