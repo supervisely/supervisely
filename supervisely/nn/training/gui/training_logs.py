@@ -1,9 +1,17 @@
 from typing import Any, Dict
 
+import supervisely.io.env as sly_env
 from supervisely import Api
 from supervisely._utils import is_production
-from supervisely.app.widgets import Button, RunAppButton, Card, Container, Progress, TaskLogs, Text
-from supervisely.io.env import task_id as get_task_id
+from supervisely.app.widgets import (
+    Button,
+    Card,
+    Container,
+    Progress,
+    RunAppButton,
+    TaskLogs,
+    Text,
+)
 
 
 class TrainingLogs:
@@ -21,7 +29,7 @@ class TrainingLogs:
         self.validator_text.hide()
 
         if is_production():
-            task_id = get_task_id(raise_not_found=False)
+            task_id = sly_env.task_id(raise_not_found=False)
         else:
             task_id = None
 
@@ -44,15 +52,17 @@ class TrainingLogs:
         self.tensorboard_button.disable()
 
         # Offline session Tensorboard button
+        if is_production():
+            workspace_id = sly_env.workspace_id()
+
         self.tensorboard_offline_button = RunAppButton(
-            workspace_id=0,
-            module_id=0,
+            workspace_id=workspace_id,
+            module_id=873,  # @TODO: change to the correct module_id
             payload={},
             text="Open Tensorboard",
             button_type="text",
             plain=True,
             icon="zmdi zmdi-chart",
-            link=self.tensorboard_link,
             available_in_offline=True,
             visible_by_vue_field="isStaticVersion",
         )
