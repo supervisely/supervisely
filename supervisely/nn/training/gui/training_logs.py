@@ -54,18 +54,21 @@ class TrainingLogs:
         # Offline session Tensorboard button
         if is_production():
             workspace_id = sly_env.workspace_id()
+            app_id = task_info["meta"]["app"]["id"]
+            app_info = api.app.get_info_by_id(app_id)
+            app_module_id = app_info.module_id
 
-        self.tensorboard_offline_button = RunAppButton(
-            workspace_id=workspace_id,
-            module_id=873,  # @TODO: change to the correct module_id
-            payload={},
-            text="Open Tensorboard",
-            button_type="text",
-            plain=True,
-            icon="zmdi zmdi-chart",
-            available_in_offline=True,
-            visible_by_vue_field="isStaticVersion",
-        )
+            self.tensorboard_offline_button = RunAppButton(
+                workspace_id=workspace_id,
+                module_id=app_module_id,
+                payload={},
+                text="Open Tensorboard",
+                button_type="text",
+                plain=True,
+                icon="zmdi zmdi-chart",
+                available_in_offline=True,
+                visible_by_vue_field="isStaticVersion",
+            )
 
         self.display_widgets.extend(
             [self.validator_text, self.tensorboard_button, self.tensorboard_offline_button]
