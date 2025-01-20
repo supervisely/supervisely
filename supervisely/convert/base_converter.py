@@ -171,6 +171,7 @@ class BaseConverter:
         self._api = Api.from_env() if self._upload_as_links else None
         self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
+        self._override_shape = False
 
         if self._labeling_interface not in LabelingInterface.values():
             raise ValueError(

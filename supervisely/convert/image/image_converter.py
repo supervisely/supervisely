@@ -47,7 +47,6 @@ class ImageConverter(BaseConverter):
             self._type: str = "image"
             self._shape: Optional[Union[Tuple, List]] = shape
             self._custom_data: dict = custom_data if custom_data is not None else {}
-            self._override_shape = False
 
         @property
         def meta(self) -> Union[str, dict]:
