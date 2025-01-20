@@ -1,5 +1,4 @@
 import functools
-import json
 import time
 import uuid
 from pathlib import Path
@@ -8,7 +7,6 @@ from threading import Event, Thread
 from typing import Any, BinaryIO, Dict, List, Optional
 
 import numpy as np
-from fastapi import Form, Request, UploadFile
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Geometry, Label

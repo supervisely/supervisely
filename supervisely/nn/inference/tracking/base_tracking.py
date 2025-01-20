@@ -297,7 +297,7 @@ class BaseTracking(Inference):
             state = request.state.state
             context = request.state.context
             logger.info("Received track_async request.", extra={"context": context, "state": state})
-            task.add_task(self.track, api, state, context)
+            task.add_task(self.track_async, api, state, context)
             return {"message": "Track task started."}
 
         @server.post("/stop_tracking")
