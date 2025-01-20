@@ -1,5 +1,7 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from supervisely import Api
+from supervisely.api.app_api import AppInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button, Card, Stepper, Text, Widget
 
@@ -126,3 +128,14 @@ def set_stepper_step(stepper: Stepper, button: Button, next_pos: int):
         stepper.set_active_step(next_pos)
     else:
         stepper.set_active_step(next_pos - 1)
+
+
+def get_app_info_by_name(api: Api, team_id: int, app_name: str) -> Union[AppInfo, None]:
+    apps = api.app.get_list(
+        team_id,
+        filter=[{"field": "name", "operator": "=", "value": app_name}],
+        only_running=False,
+    )
+    if len(apps) == 1:
+        app_info = apps[0]
+        return app_info

@@ -5,7 +5,7 @@ except ImportError:
 
 from typing import Optional
 
-from supervisely.app import DataJson
+from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
 
@@ -31,6 +31,54 @@ class RunAppButton(Widget):
         visible_by_vue_field: Optional[str] = "",
         widget_id: Optional[str] = None,
     ):
+        """
+        Button the runs an app on Supervisely instance.
+
+        :param workspace_id: Workspace ID.
+        :type workspace_id: int
+        :param module_id: Module ID.
+        :type module_id: int
+        :param payload: Payload to be sent to the app.
+        :type payload: dict, optional
+        :param text: Text to be displayed on the button.
+        :type text: str, optional
+        :param button_type: Type of the button.
+        :type button_type: Literal["primary", "info", "warning", "danger", "success", "text"], optional
+        :param button_size: Size of the button.
+        :type button_size: Literal["mini", "small", "large"], optional
+        :param plain: If True, the button will be plain.
+        :type plain: bool, optional
+        :param icon: Icon to be displayed on the button.
+        :type icon: str, optional
+        :param icon_gap: Gap between the icon and the text.
+        :type icon_gap: int, optional
+        :param available_in_offline: If True, the button will be available in offline session.
+        :type available_in_offline: bool, optional
+        :param visible_by_vue_field: Vue field that controls the button visibility. If set to "isStaticVersion", the button will be visible only in offline session.
+        :type visible_by_vue_field: str, optional
+        :param widget_id: Widget ID.
+        :type widget_id: str, optional
+
+        :Usage example:
+        .. code-block:: python
+            from supervisely.app.widgets import RunAppButton
+
+            workspace_id = 123
+            project_id = 555
+            app_module_id = 777
+
+            run_app_button = RunAppButton(
+                workspace_id=workspace_id,
+                module_id=app_module_id,
+                payload={"state": {"slyProjectId": project_id}},
+                text="Run App",
+                button_type="info",
+                plain=True,
+                icon="zmdi zmdi-chart",
+                available_in_offline=True,
+                visible_by_vue_field="isStaticVersion",
+            )
+        """
         self._widget_routes = {}
 
         self._text = text
@@ -68,7 +116,7 @@ class RunAppButton(Widget):
             - loading: If True, the button will show loading animation.
             - disabled: If True, the button will be disabled.
             - icon: Icon to be displayed on the button.
-            - link: Link to be opened on button click.
+            - available_in_offline: If True, the button will be available in offline session.
         """
         return {
             "options": {
@@ -109,8 +157,8 @@ class RunAppButton(Widget):
         :type value: int
         """
         self._workspace_id = value
-        DataJson()[self.widget_id]["workspace_id"] = self._workspace_id
-        DataJson().send_changes()
+        StateJson()[self.widget_id]["workspace_id"] = self._workspace_id
+        StateJson().send_changes()
 
     @property
     def text(self) -> str:
@@ -129,8 +177,28 @@ class RunAppButton(Widget):
         :type value: str
         """
         self._text = value
-        DataJson()[self.widget_id]["text"] = self._text
+        DataJson()[self.widget_id]["options"]["text"] = self._text
         DataJson().send_changes()
+
+    @property
+    def payload(self) -> dict:
+        """Returns the payload to be sent to the app.
+
+        :return: Payload to be sent to the app.
+        :rtype: dict
+        """
+        return self._payload
+
+    @payload.setter
+    def payload(self, value: dict) -> None:
+        """Sets the payload to be sent to the app.
+
+        :param value: Payload to be sent to the app.
+        :type value: dict
+        """
+        self._payload = value
+        StateJson()[self.widget_id]["payload"] = self._payload
+        StateJson().send_changes()
 
     @property
     def icon(self) -> str:
@@ -152,7 +220,7 @@ class RunAppButton(Widget):
             self._icon = ""
         else:
             self._icon = f'<i class="{value}" style="margin-right: {self._icon_gap}px"></i>'
-        DataJson()[self.widget_id]["icon"] = self._icon
+        DataJson()[self.widget_id]["options"]["icon"] = self._icon
         DataJson().send_changes()
 
     @property
@@ -174,7 +242,7 @@ class RunAppButton(Widget):
         :type value: Literal["primary", "info", "warning", "danger", "success", "text"]
         """
         self._button_type = value
-        DataJson()[self.widget_id]["button_type"] = self._button_type
+        DataJson()[self.widget_id]["options"]["button_type"] = self._button_type
         DataJson().send_changes()
 
     @property
@@ -194,27 +262,7 @@ class RunAppButton(Widget):
         :type value: bool
         """
         self._plain = value
-        DataJson()[self.widget_id]["plain"] = self._plain
-        DataJson().send_changes()
-
-    @property
-    def link(self) -> str:
-        """Returns the link to be opened on button click.
-
-        :return: Link to be opened on button click.
-        :rtype: str
-        """
-        return self._link
-
-    @link.setter
-    def link(self, value: str) -> None:
-        """Sets the link to be opened on button click.
-
-        :param value: Link to be opened on button click.
-        :type value: str
-        """
-        self._link = value
-        DataJson()[self.widget_id]["link"] = self._link
+        DataJson()[self.widget_id]["options"]["plain"] = self._plain
         DataJson().send_changes()
 
     @property
@@ -234,7 +282,7 @@ class RunAppButton(Widget):
         :type value: bool
         """
         self._loading = value
-        DataJson()[self.widget_id]["loading"] = self._loading
+        DataJson()[self.widget_id]["options"]["loading"] = self._loading
         DataJson().send_changes()
 
     @property
@@ -254,4 +302,4 @@ class RunAppButton(Widget):
         :type value: bool
         """
         self._disabled = value
-        DataJson()[self.widget_id]["disabled"] = self._disabled
+        DataJson()[self.widget_id]["options"]["disabled"] = self._disabled

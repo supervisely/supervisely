@@ -1,7 +1,8 @@
 from typing import Any, Dict
 
 import supervisely.io.env as sly_env
-from supervisely import Api
+import supervisely.nn.training.gui.utils as gui_utils
+from supervisely import Api, logger
 from supervisely._utils import is_production
 from supervisely.app.widgets import (
     Button,
@@ -50,33 +51,33 @@ class TrainingLogs:
             visible_by_vue_field="!isStaticVersion",
         )
         self.tensorboard_button.disable()
+        self.display_widgets.extend([self.validator_text, self.tensorboard_button])
 
         # Offline session Tensorboard button
         if is_production():
             workspace_id = sly_env.workspace_id()
-            # app_id = task_info["meta"]["app"]["id"]
-            # app_info = api.app.get_info_by_id(app_id)
-            # app_module_id = app_info.module_id
+            app_name = "Tensorboard Experiments Viewer"
+            team_id = sly_env.team_id()
 
-            self.tensorboard_offline_button = RunAppButton(
-                workspace_id=workspace_id,
-                module_id=880,
-                payload={
-                    "state": {
-                        "slyFolder": "/experiments/990_Lemons (Annotated)/4246_RT-DETRv2/logs/"
-                    }
-                },
-                text="Open Tensorboard",
-                button_type="info",
-                plain=True,
-                icon="zmdi zmdi-chart",
-                available_in_offline=True,
-                visible_by_vue_field="isStaticVersion",
-            )
-
-        self.display_widgets.extend(
-            [self.validator_text, self.tensorboard_button, self.tensorboard_offline_button]
-        )
+            app_info = gui_utils.get_app_info_by_name(api, team_id, app_name)
+            if app_info is not None:
+                app_module_id = app_info.module_id
+                self.tensorboard_offline_button = RunAppButton(
+                    workspace_id=workspace_id,
+                    module_id=app_module_id,
+                    payload={},
+                    text="Open Tensorboard",
+                    button_type="info",
+                    plain=True,
+                    icon="zmdi zmdi-chart",
+                    available_in_offline=True,
+                    visible_by_vue_field="isStaticVersion",
+                )
+                self.display_widgets.extend([self.tensorboard_offline_button])
+            else:
+                logger.warning(
+                    f"App '{app_name}' not found. Tensorboard button will not be displayed in offline mode."
+                )
 
         # Optional Show logs button
         if app_options.get("show_logs_in_gui", False):
