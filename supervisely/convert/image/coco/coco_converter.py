@@ -10,17 +10,18 @@ from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext
 from supervisely.project.project_settings import LabelingInterface
 
+
 COCO_ANN_KEYS = ["images", "annotations"]
 
 
 class COCOConverter(ImageConverter):
 
     def __init__(
-        self,
-        input_data: str,
-        labeling_interface: Optional[Union[LabelingInterface, str]],
-        upload_as_links: bool,
-        remote_files_map: Optional[Dict[str, str]] = None,
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 

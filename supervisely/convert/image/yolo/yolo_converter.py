@@ -24,11 +24,11 @@ from supervisely.project.project_settings import LabelingInterface
 class YOLOConverter(ImageConverter):
 
     def __init__(
-        self,
-        input_data: str,
-        labeling_interface: Optional[Union[LabelingInterface, str]],
-        upload_as_links: bool,
-        remote_files_map: Optional[Dict[str, str]] = None,
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
     ):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
