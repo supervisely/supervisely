@@ -30,16 +30,6 @@ class ImageConverter(BaseConverter):
     ]
     modality = "images"
 
-    def __init__(
-        self,
-        input_data: str,
-        labeling_interface: Optional[Union[LabelingInterface, str]] = LabelingInterface.DEFAULT,
-        upload_as_links: bool = False,
-        remote_files_map: Optional[Dict[str, str]] = None,
-    ):
-        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
-        self._force_shape_for_links = False
-
     class Item(BaseConverter.BaseItem):
 
         def __init__(
