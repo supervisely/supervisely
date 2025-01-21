@@ -1704,7 +1704,7 @@ class TrainApp:
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
         # Set offline tensorboard button payload
         self.gui.training_logs.tensorboard_offline_button.payload = {
-            "state": {"slyFolder": f"{remote_dir.rsplit('/')}/logs"}
+            "state": {"slyFolder": f"{remote_dir}/logs"}
         }
         return remote_dir, file_info
 
