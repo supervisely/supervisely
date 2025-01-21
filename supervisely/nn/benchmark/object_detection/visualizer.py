@@ -99,6 +99,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.key_metrics_md = key_metrics.md
         self.key_metrics_table = key_metrics.table
         self.overview_chart = key_metrics.chart
+        self.custom_ap_description = key_metrics.custom_ap_description_md
 
         # Explore Predictions
         explore_predictions = ExplorePredictions(
@@ -254,6 +255,12 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             # KeyMetrics
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
+        ]
+
+        if self.custom_ap_description is not None:
+            is_anchors_widgets.append((0, self.custom_ap_description))
+
+        is_anchors_widgets += [
             (0, self.overview_chart),
             # ExplorePredictions
             (1, self.explore_predictions_md),
