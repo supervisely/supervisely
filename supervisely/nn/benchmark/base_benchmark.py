@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -492,6 +493,8 @@ class BaseBenchmark:
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.get_eval_result()
+        self._dump_key_metrics(eval_result)
+
         layout_dir = self.get_layout_results_dir()
         self.visualizer = self.visualizer_cls(  # pylint: disable=not-callable
             self.api, [eval_result], layout_dir, self.pbar
@@ -621,3 +624,7 @@ class BaseBenchmark:
             self.diff_project_info = eval_result.diff_project_info
             return self.diff_project_info
         return None
+
+    def _dump_key_metrics(self, eval_result: BaseEvaluator):
+        path = str(Path(self.get_eval_results_dir(), "key_metrics.json"))
+        json.dump_json_file(eval_result.key_metrics, path)

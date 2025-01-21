@@ -48,8 +48,9 @@ def calculate_metrics(
     :return: Results of the evaluation
     :rtype: dict
     """
-    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
     from pycocotools.coco import COCO  # pylint: disable=import-error
+    from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
+
     cocoGt: COCO = cocoGt
 
     cocoEval = COCOeval(cocoGt, cocoDt, iouType=iouType)
@@ -79,10 +80,7 @@ def calculate_metrics(
         }
     else:
         iou_idx = np.where(iouThrs == iou_threshold)[0][0]
-        iou_idx_per_class = {
-            cat_id: iou_idx
-            for cat_id in cocoGt.getCatIds()
-        }
+        iou_idx_per_class = {cat_id: iou_idx for cat_id in cocoGt.getCatIds()}
 
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
@@ -97,6 +95,7 @@ def calculate_metrics(
         "iouThrs": cocoEval.params.iouThrs,
         "recThrs": cocoEval.params.recThrs,
         "evaluation_params": evaluation_params,
+        "iou_idx_per_class": iou_idx_per_class,
     }
     coco_metrics = {"mAP": cocoEval.stats[0], "precision": cocoEval.eval["precision"]}
     coco_metrics["AP50"] = cocoEval.stats[1]
@@ -236,11 +235,11 @@ def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t
 
 
 def get_matches(
-        eval_img_dict: dict,
-        eval_img_dict_cls: dict,
-        cocoEval_cls,
-        iou_idx_per_class: dict = None,
-    ):
+    eval_img_dict: dict,
+    eval_img_dict_cls: dict,
+    cocoEval_cls,
+    iou_idx_per_class: dict = None,
+):
     """
     type cocoEval_cls: COCOeval
     """

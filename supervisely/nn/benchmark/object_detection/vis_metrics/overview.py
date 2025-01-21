@@ -32,6 +32,10 @@ class Overview(DetectionVisMetric):
         # link to scroll to the optimal confidence section
         opt_conf_url = self.vis_texts.docs_url + "#f1-optimal-confidence-threshold"
 
+        iou_threshold = self.eval_result.mp.iou_threshold
+        if self.eval_result.mp.iou_threshold_per_class is not None:
+            iou_threshold = "Different IoU thresholds for each class"
+
         formats = [
             model_name.replace("_", "\_"),
             checkpoint_name.replace("_", "\_"),
@@ -45,7 +49,7 @@ class Overview(DetectionVisMetric):
             classes_str,
             note_about_images,
             starter_app_info,
-            self.eval_result.mp.iou_threshold,
+            iou_threshold,
             round(self.eval_result.mp.f1_optimal_conf, 4),
             opt_conf_url,
             self.vis_texts.docs_url,
