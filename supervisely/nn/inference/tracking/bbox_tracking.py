@@ -329,8 +329,10 @@ class BBoxTracking(BaseTracking):
                     ApiField.GEOMETRY: geometry.to_json(),
                 }
             )
+            logger.debug("Acquiring lock for add")
             with inference_request["lock"]:
                 inference_request["pending_results"].append(figure_info)
+            logger.debug("Released lock for add")
 
         def _nofify_loop(q: Queue, stop_event: Event):
             nonlocal global_stop_indicatior
@@ -406,13 +408,13 @@ class BBoxTracking(BaseTracking):
             args=[upload_queue, notify_queue, stop_upload_event, stop_notify_event],
             daemon=True,
         )
-        # upload_thread.start()
+        upload_thread.start()
         notify_thread = Thread(
             target=_nofify_loop,
             args=[notify_queue, stop_notify_event],
             daemon=True,
         )
-        # notify_thread.start()
+        notify_thread.start()
 
         api.logger.info("Start tracking.")
         try:
