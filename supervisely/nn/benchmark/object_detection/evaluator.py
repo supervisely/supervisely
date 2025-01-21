@@ -92,6 +92,10 @@ class ObjectDetectionEvalResult(BaseEvalResult):
     def key_metrics(self):
         return self.mp.key_metrics()
 
+    @property
+    def different_iou_thresholds_per_class(self) -> bool:
+        return self.mp.iou_threshold_per_class is not None
+
 
 class ObjectDetectionEvaluator(BaseEvaluator):
     EVALUATION_PARAMS_YAML_PATH = f"{Path(__file__).parent}/evaluation_params.yaml"

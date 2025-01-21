@@ -65,7 +65,7 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Calibration Score**: This score represents the consistency of predicted probabilities (or <abbr title="{}">confidence scores</abbr>) made by the model. We evaluate how well predicted probabilities align with actual outcomes. A well-calibrated model means that when it predicts an object with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
 """
 
-markdown_iou_per_class = """### Different IoU thresholds for each class
+markdown_iou_per_class = """### Different IoU Thresholds for Each Class
 
 The model is evaluated with different IoU thresholds for each class to provide more insights about the model's performance. This table shows the IoU thresholds used for each class.
 """

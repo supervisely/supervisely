@@ -50,10 +50,9 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
         self.overviews = self._create_overviews(overview)
         self.overview_md = overview.overview_md
         self.key_metrics_md = self._create_key_metrics()
-        self.key_metrics_table = overview.get_table_widget(
-            latency=speedtest.latency, fps=speedtest.fps
-        )
+        self.key_metrics_table = overview.get_table_widget(speedtest.latency, speedtest.fps)
         self.overview_chart = overview.chart_widget
+        self.iou_per_class_thresholds_md = overview.not_matched_iou_per_class_thresholds_md
 
         columns_number = len(self.comparison.eval_results) + 1  # +1 for GT
         self.explore_predictions_modal_gallery = self._create_explore_modal_table(columns_number)
@@ -154,6 +153,13 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
             (0, self.header),
             (1, self.overview_md),
             (0, self.overviews),
+        ]
+
+        if self.iou_per_class_thresholds_md is not None:
+            is_anchors_widgets.append((0, self.iou_per_class_thresholds_md))
+
+        is_anchors_widgets += [
+            # Key Metrics
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
             (0, self.overview_chart),

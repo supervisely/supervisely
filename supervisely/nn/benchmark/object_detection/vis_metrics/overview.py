@@ -16,10 +16,6 @@ class Overview(DetectionVisMetric):
         return header
 
     @property
-    def has_different_iou_thresholds_per_class(self) -> bool:
-        return self.eval_result.mp.iou_threshold_per_class is not None
-
-    @property
     def md(self) -> List[MarkdownWidget]:
         url = self.eval_result.inference_info.get("checkpoint_url")
         link_text = self.eval_result.inference_info.get("custom_checkpoint_path")
@@ -37,7 +33,7 @@ class Overview(DetectionVisMetric):
         opt_conf_url = self.vis_texts.docs_url + "#f1-optimal-confidence-threshold"
 
         iou_threshold = self.eval_result.mp.iou_threshold
-        if self.eval_result.mp.iou_threshold_per_class is not None:
+        if self.eval_result.different_iou_thresholds_per_class:
             iou_threshold = "Different IoU thresholds for each class (see the table below)"
 
         formats = [
@@ -123,7 +119,7 @@ class Overview(DetectionVisMetric):
     
     @property
     def iou_per_class_md(self) -> List[MarkdownWidget]:
-        if not self.has_different_iou_thresholds_per_class:
+        if not self.eval_result.different_iou_thresholds_per_class:
             return None
 
         return MarkdownWidget(
@@ -134,7 +130,7 @@ class Overview(DetectionVisMetric):
 
     @property
     def iou_per_class_table(self) -> TableWidget:
-        if not self.has_different_iou_thresholds_per_class:
+        if not self.eval_result.different_iou_thresholds_per_class:
             return None
 
         content = []

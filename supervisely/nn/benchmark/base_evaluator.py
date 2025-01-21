@@ -110,6 +110,10 @@ class BaseEvalResult:
             name = self.inference_info.get("checkpoint_name", "")
         return name
 
+    @property
+    def different_iou_thresholds_per_class(self) -> bool:
+        return False
+
 
 class BaseEvaluator:
     EVALUATION_PARAMS_YAML_PATH: str = None
