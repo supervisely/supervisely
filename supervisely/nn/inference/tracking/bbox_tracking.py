@@ -461,8 +461,8 @@ class BBoxTracking(BaseTracking):
 
                     t = time.time()
                     geometry = self.predict(
-                        rgb_image=frame,
-                        prev_rgb_image=frame_next,
+                        rgb_image=frame_next,
+                        prev_rgb_image=frame,
                         target_bbox=target,
                         settings=self.custom_inference_settings_dict,
                     )
