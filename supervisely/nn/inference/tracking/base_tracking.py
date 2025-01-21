@@ -236,7 +236,7 @@ class BaseTracking(Inference):
     ):
         raise NotImplementedError("Method `track_api_files` must be implemented.")
 
-    def track_async(self, api: Api, state: Dict, context: Dict, inference_request_uuid: str):
+    def track_async(self, api: Api, state: Dict, context: Dict):
         raise NotImplementedError("Method `track_async` must be implemented.")
 
     def stop_tracking(self, state: Dict, context: Dict):
@@ -294,19 +294,12 @@ class BaseTracking(Inference):
 
         @server.post("/track_async")
         @handle_validation
-        def track_async_handler(request: Request, task: BackgroundTasks):
+        def track_async_handler(request: Request):
             api = request.state.api
             state = request.state.state
             context = request.state.context
             logger.info("Received track_async request.", extra={"context": context, "state": state})
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            task.add_task(self.track_async, api, state, context, inference_request_uuid)
-            return {
-                "message": "Track task started.",
-                "inference_request_uuid": inference_request_uuid,
-            }
+            return self.track_async(api, state, context)
 
         @server.post("/stop_tracking")
         @handle_validation

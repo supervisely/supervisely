@@ -2252,6 +2252,22 @@ class Inference:
     def is_model_deployed(self):
         return self._model_served
 
+    def schedule_task(self, func, *args, **kwargs):
+        inference_request_uuid = kwargs["inference_request_uuid"]
+        self._on_inference_start(inference_request_uuid)
+        future = self._executor.submit(
+            self._handle_error_in_async,
+            inference_request_uuid,
+            func,
+            *args,
+            **kwargs,
+        )
+        end_callback = partial(
+            self._on_inference_end, inference_request_uuid=inference_request_uuid
+        )
+        future.add_done_callback(end_callback)
+        logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
+
     def serve(self):
         if not self._use_gui:
             Progress("Deploying model ...", 1)

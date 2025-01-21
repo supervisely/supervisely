@@ -511,12 +511,13 @@ class BBoxTracking(BaseTracking):
         logger.info("Start tracking.")
         return self._inference(frames, geometries, settings)
 
-    def track_async(self, api: Api, state: Dict, context: Dict, inference_request_uuid: str):
+    def track_async(self, api: Api, state: Dict, context: Dict):
         batch_size = context.get("batch_size", self.get_batch_size())
         if self.max_batch_size is not None and batch_size > self.max_batch_size:
             raise ValidationError(
                 f"Batch size should be less than or equal to {self.max_batch_size} for this model."
             )
+        inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         self._on_inference_start(inference_request_uuid)
         future = self._executor.submit(
             self._handle_error_in_async,
