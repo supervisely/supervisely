@@ -80,7 +80,6 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
                     item = next(item for item in self._items if item.name == image_name)
                     if item.shape == (height, width):
                         item.ann_data.extend(coco_ann)
-                        self._items[self._items.index(item)] = item
                         continue
                 item = self.Item(image_name) if image_url is None else self.Item(image_url)
                 item.name = image_name
