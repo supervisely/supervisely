@@ -19,6 +19,7 @@ from supervisely.nn.benchmark.visualization.vis_click_data import ClickData, IdM
 
 class ObjectDetectionEvalResult(BaseEvalResult):
     mp_cls = MetricProvider
+    PRIMARY_METRIC = "mAP"
 
     def _read_files(self, path: str) -> None:
         """Read all necessary files from the directory"""

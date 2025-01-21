@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union, Type
 
 import numpy as np
 
@@ -81,7 +81,7 @@ class BaseBenchmark:
         self.report_id = None
         self._validate_evaluation_params()
 
-    def _get_evaluator_class(self) -> type:
+    def _get_evaluator_class(self) -> Type[BaseEvaluator]:
         raise NotImplementedError()
 
     @property
@@ -96,6 +96,10 @@ class BaseBenchmark:
     def key_metrics(self):
         eval_results = self.get_eval_result()
         return eval_results.key_metrics
+    
+    @property
+    def primary_metric_name(self):
+        return self._get_evaluator_class().eval_result_cls.PRIMARY_METRIC
 
     def run_evaluation(
         self,
