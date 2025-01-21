@@ -261,12 +261,12 @@ class BaseTracking(Inference):
 
         @server.post("/track")
         @handle_validation
-        def track_handler(request: Request, task: BackgroundTasks):
+        def track_handler(request: Request):
             api = request.state.api
             state = request.state.state
             context = request.state.context
             logger.info("Received track request.", extra={"context": context, "state": state})
-            task.add_task(self.track, api, state, context)
+            self.schedule_task(self.track, api, state, context)
             return {"message": "Track task started."}
 
         @server.post("/track-api")
