@@ -340,6 +340,7 @@ class BBoxTracking(BaseTracking):
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
+                        logger.debug("Got %d items to notify", len(items))
                         items_by_object_id = {}
                         for item in items:
                             items_by_object_id.setdefault(item[1], []).append(item)
@@ -359,6 +360,7 @@ class BBoxTracking(BaseTracking):
                                     progress_current=progress.current,
                                     progress_total=progress.total,
                                 )
+                        logger.debug("Items notified")
                     elif stop_event.is_set():
                         api.logger.debug(f"stop event is set. returning from notify loop")
                         return
@@ -376,6 +378,7 @@ class BBoxTracking(BaseTracking):
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
+                        logger.debug("Got %d items to upload", len(items))
                         for item in items:
                             figure_id = uuid.uuid5(
                                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
@@ -383,6 +386,7 @@ class BBoxTracking(BaseTracking):
                             _add_to_inference_request(*item, figure_id)
                             if direct_progress:
                                 notify_q.put(item)
+                        logger.debug("Items added to inference request")
 
                     elif stop_event.is_set():
                         stop_notify_event.set()
@@ -425,10 +429,17 @@ class BBoxTracking(BaseTracking):
                 init = False
                 for frame_i in range(*range_of_frames, direction_n):
                     frame_i_next = frame_i + direction_n
+                    t = time.time()
                     frame, frame_next = self.cache.download_frames(
                         api,
                         video_id,
                         [frame_i, frame_i_next] if direction_n == 1 else [frame_i_next, frame_i],
+                    )
+                    api.logger.debug(
+                        "Frames %d, %d downloaded. Time: %f",
+                        frame_i,
+                        frame_i_next,
+                        time.time() - t,
                     )
                     if direction_n == -1:
                         frame, frame_next = frame_next, frame
@@ -448,6 +459,7 @@ class BBoxTracking(BaseTracking):
                         self.initialize(frame, target)
                         init = True
 
+                    t = time.time()
                     geometry = self.predict(
                         rgb_image=frame,
                         prev_rgb_image=frame_next,
@@ -455,6 +467,7 @@ class BBoxTracking(BaseTracking):
                         settings=self.custom_inference_settings_dict,
                     )
                     sly_geometry = self._to_sly_geometry(geometry)
+                    api.logger.debug("Prediction done. Time: %f", time.time() - t)
                     upload_queue.put((sly_geometry, figure.object_id, frame_i_next))
 
                     if global_stop_indicatior:
