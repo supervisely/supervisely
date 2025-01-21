@@ -244,13 +244,20 @@ class BaseTracking(Inference):
         return {"message": "Inference will be stopped.", "success": True}
 
     def pop_tracking_results(self, state: Dict, context: Dict):
-        validate_key(context, "inference_request_uuid", str)
-        inference_request_uuid = context["inference_request_uuid"]
-        frame_range = context.get("frameRange", context.get("frame_range", None))
-        tracking_results = self._pop_tracking_results(inference_request_uuid, frame_range)
-        log_extra = _get_log_extra_for_inference_request(inference_request_uuid, tracking_results)
-        logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-        return tracking_results
+        try:
+            validate_key(context, "inference_request_uuid", str)
+            inference_request_uuid = context["inference_request_uuid"]
+            frame_range = context.get("frameRange", context.get("frame_range", None))
+            tracking_results = self._pop_tracking_results(inference_request_uuid, frame_range)
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request_uuid, tracking_results
+            )
+            logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+            return tracking_results
+        except Exception as e:
+            raise
+        finally:
+            print("pop_tracking_results finished")
 
     def clear_tracking_results(self, state: Dict, context: Dict):
         self._clear_tracking_results(context)

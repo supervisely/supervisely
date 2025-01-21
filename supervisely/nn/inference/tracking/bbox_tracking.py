@@ -462,6 +462,7 @@ class BBoxTracking(BaseTracking):
                         self.initialize(frame, target)
                         init = True
 
+                    logger.debug("Start prediction")
                     t = time.time()
                     geometry = self.predict(
                         rgb_image=frame_next,
@@ -469,7 +470,7 @@ class BBoxTracking(BaseTracking):
                         target_bbox=target,
                         settings=self.custom_inference_settings_dict,
                     )
-                    api.logger.debug("Prediction done. Time: %f", time.time() - t)
+                    logger.debug("Prediction done. Time: %f", time.time() - t)
                     sly_geometry = self._to_sly_geometry(geometry)
                     upload_queue.put((sly_geometry, figure.object_id, frame_i_next))
 
