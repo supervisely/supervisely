@@ -181,7 +181,7 @@ class BaseTracking(Inference):
                 "frame_range": frame_range,
             },
         )
-        logger.debug("Acquiring lock for pop")
+        # logger.debug("Acquiring lock for pop")
         # with inference_request["lock"]:
         inference_request_copy = inference_request.copy()
 
@@ -199,7 +199,7 @@ class BaseTracking(Inference):
         else:
             inference_request["pending_results"] = []
         # lock
-        logger.debug("Released lock for pop")
+        # logger.debug("Released lock for pop")
         inference_request_copy.pop("lock")
         inference_request_copy["progress"] = _convert_sly_progress_to_dict(
             inference_request_copy["progress"]
