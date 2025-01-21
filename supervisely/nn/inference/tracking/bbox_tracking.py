@@ -390,6 +390,7 @@ class BBoxTracking(BaseTracking):
                             if direct_progress:
                                 notify_q.put(item)
                         logger.debug("Items added to inference request")
+                        time.sleep(0.1)
 
                     elif stop_event.is_set():
                         stop_notify_event.set()
@@ -409,7 +410,7 @@ class BBoxTracking(BaseTracking):
             args=[upload_queue, notify_queue, stop_upload_event, stop_notify_event],
             daemon=True,
         )
-        # upload_thread.start()
+        upload_thread.start()
         notify_thread = Thread(
             target=_nofify_loop,
             args=[notify_queue, stop_notify_event],
