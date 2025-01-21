@@ -1,10 +1,8 @@
 import functools
 import inspect
 import json
-import time
 import traceback
-import uuid
-from asyncio import Lock
+from threading import Lock
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 from fastapi import BackgroundTasks, Form, Request, Response, UploadFile, status
