@@ -98,7 +98,7 @@ class BaseBenchmark:
         return eval_results.key_metrics
     
     @property
-    def primary_metric_name(self):
+    def primary_metric_name(self) -> str:
         return self._get_evaluator_class().eval_result_cls.PRIMARY_METRIC
 
     def run_evaluation(
