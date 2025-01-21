@@ -144,5 +144,5 @@ class KeyMetrics(DetectionVisMetric):
         return MarkdownWidget(
             "custom_ap_description",
             "Custom AP per Class",
-            self.vis_texts.markdown_custom_AP_description,
+            self.vis_texts.markdown_AP_custom_description,
         )
