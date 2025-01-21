@@ -168,6 +168,7 @@ class BaseConverter:
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
+        self._force_shape_for_links = False
         self._api = Api.from_env() if self._upload_as_links else None
         self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
