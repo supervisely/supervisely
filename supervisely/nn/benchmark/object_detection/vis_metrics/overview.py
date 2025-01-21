@@ -2,7 +2,7 @@ import datetime
 from typing import List
 
 from supervisely.nn.benchmark.object_detection.base_vis_metric import DetectionVisMetric
-from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget
+from supervisely.nn.benchmark.visualization.widgets import MarkdownWidget, TableWidget
 
 
 class Overview(DetectionVisMetric):
@@ -14,6 +14,10 @@ class Overview(DetectionVisMetric):
         )
         header = MarkdownWidget("markdown_header", "Header", text=header_text)
         return header
+
+    @property
+    def has_different_iou_thresholds_per_class(self) -> bool:
+        return self.eval_result.mp.iou_threshold_per_class is not None
 
     @property
     def md(self) -> List[MarkdownWidget]:
@@ -34,7 +38,7 @@ class Overview(DetectionVisMetric):
 
         iou_threshold = self.eval_result.mp.iou_threshold
         if self.eval_result.mp.iou_threshold_per_class is not None:
-            iou_threshold = "Different IoU thresholds for each class"
+            iou_threshold = "Different IoU thresholds for each class (see the table below)"
 
         formats = [
             model_name.replace("_", "\_"),
@@ -116,3 +120,39 @@ class Overview(DetectionVisMetric):
         starter_app_info = train_session or evaluator_session or ""
 
         return classes_str, images_str, starter_app_info
+    
+    @property
+    def iou_per_class_md(self) -> List[MarkdownWidget]:
+        if not self.has_different_iou_thresholds_per_class:
+            return None
+
+        return MarkdownWidget(
+            "markdown_iou_per_class",
+            "Different IoU thresholds for each class",
+            text=self.vis_texts.markdown_iou_per_class,
+        )
+
+    @property
+    def iou_per_class_table(self) -> TableWidget:
+        if not self.has_different_iou_thresholds_per_class:
+            return None
+
+        content = []
+        for name, thr in self.eval_result.mp.iou_threshold_per_class.items():
+            row = [name, round(thr, 2)]
+            dct = {"row": row, "id": name, "items": row}
+            content.append(dct)
+
+        data = {
+            "columns": ["Class name", "IoU threshold"],
+            "columnsOptions": [{}, {"disableSort": True}],
+            "content": content,
+        }
+        return TableWidget(
+            name="table_iou_per_class",
+            data=data,
+            fix_columns=1,
+            width="60%",
+            show_header_controls=False,
+            main_column="Class name",
+        )

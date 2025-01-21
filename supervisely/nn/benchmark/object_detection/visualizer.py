@@ -90,6 +90,10 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.header = overview.get_header(me.login)
         self.overview_md = overview.md
 
+        # IOU Per Class (optional)
+        self.iou_per_class_md = overview.iou_per_class_md
+        self.iou_per_class_table = overview.iou_per_class_table
+
         # Key Metrics
         key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
         self.key_metrics_md = key_metrics.md
@@ -242,48 +246,57 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
             (0, self.overview_chart),
-            # ExplorePredictions
-            (1, self.explore_predictions_md),
-            (0, self.explore_predictions_gallery),
-            # ModelPredictions
-            (1, self.model_predictions_md),
-            (0, self.model_predictions_table),
-            # OutcomeCounts
-            (1, self.outcome_counts_md),
-            (0, self.clickable_label),
-            (0, self.outcome_counts_chart),
-            # Recall
-            (1, self.recall_md),
-            (0, self.recall_notificaiton),
-            (0, self.recall_per_class_md),
-            (0, self.clickable_label),
-            (0, self.recall_chart),
-            # Precision
-            (1, self.precision_md),
-            (0, self.precision_notification),
-            (0, self.precision_per_class_md),
-            (0, self.clickable_label),
-            (0, self.precision_chart),
-            # RecallVsPrecision
-            (1, self.recall_vs_precision_md),
-            (0, self.clickable_label),
-            (0, self.recall_vs_precision_chart),
-            # PRCurve
-            (1, self.pr_curve_md),
-            (0, self.pr_curve_notificaiton),
-            (0, self.pr_curve_chart),
-            (0, self.pr_curve_collapse),
-            # PRCurveByClass
-            (0, self.pr_curve_by_class_md),
-            (0, self.clickable_label),
-            (0, self.pr_curve_by_class_chart),
-            # ConfusionMatrix
-            (1, self.confusion_matrix_md),
-            (0, self.clickable_label),
-            (0, self.confusion_matrix_chart),
-            # FrequentlyConfused
-            (1, self.frequently_confused_md),
         ]
+
+        if self.iou_per_class_table is not None:
+            is_anchors_widgets.append((0, self.iou_per_class_md))
+            is_anchors_widgets.append((0, self.iou_per_class_table))
+        
+        is_anchors_widgets.extend(
+            [
+                # ExplorePredictions
+                (1, self.explore_predictions_md),
+                (0, self.explore_predictions_gallery),
+                # ModelPredictions
+                (1, self.model_predictions_md),
+                (0, self.model_predictions_table),
+                # OutcomeCounts
+                (1, self.outcome_counts_md),
+                (0, self.clickable_label),
+                (0, self.outcome_counts_chart),
+                # Recall
+                (1, self.recall_md),
+                (0, self.recall_notificaiton),
+                (0, self.recall_per_class_md),
+                (0, self.clickable_label),
+                (0, self.recall_chart),
+                # Precision
+                (1, self.precision_md),
+                (0, self.precision_notification),
+                (0, self.precision_per_class_md),
+                (0, self.clickable_label),
+                (0, self.precision_chart),
+                # RecallVsPrecision
+                (1, self.recall_vs_precision_md),
+                (0, self.clickable_label),
+                (0, self.recall_vs_precision_chart),
+                # PRCurve
+                (1, self.pr_curve_md),
+                (0, self.pr_curve_notificaiton),
+                (0, self.pr_curve_chart),
+                (0, self.pr_curve_collapse),
+                # PRCurveByClass
+                (0, self.pr_curve_by_class_md),
+                (0, self.clickable_label),
+                (0, self.pr_curve_by_class_chart),
+                # ConfusionMatrix
+                (1, self.confusion_matrix_md),
+                (0, self.clickable_label),
+                (0, self.confusion_matrix_chart),
+                # FrequentlyConfused
+                (1, self.frequently_confused_md),
+            ]
+        )
         if self.frequently_confused_present:
             is_anchors_widgets.append((0, self.clickable_label))
             is_anchors_widgets.append((0, self.frequently_confused_chart))
