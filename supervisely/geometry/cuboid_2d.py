@@ -123,7 +123,8 @@ class Cuboid2d(GraphNodes):
         :return: Position of the Cuboid2d
         :rtype: Optional[Dict]
         """
-        return self._position.copy()
+        if isinstance(self._position, dict):
+            return self._position.copy()
 
     @property
     def rotation(self) -> Optional[Dict]:
@@ -133,7 +134,8 @@ class Cuboid2d(GraphNodes):
         :return: Rotation of the Cuboid2d
         :rtype: Optional[Dict]
         """
-        return self._rotation.copy()
+        if isinstance(self._rotation, dict):
+            return self._rotation.copy()
 
     @property
     def dimensions(self) -> Optional[Dict]:
@@ -143,7 +145,8 @@ class Cuboid2d(GraphNodes):
         :return: Dimensions of the Cuboid2d
         :rtype: :class:`dict`
         """
-        return self._dimensions.copy()
+        if isinstance(self._dimensions, dict):
+            return self._dimensions.copy()
 
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> Cuboid2d:
