@@ -65,11 +65,7 @@ class TrainingLogs:
                 self.tensorboard_offline_button = RunAppButton(
                     workspace_id=workspace_id,
                     module_id=app_module_id,
-                    payload={
-                        "state": {
-                            "slyFolder:": "/experiments/990_Lemons (Annotated)/4293_RT-DETRv2/logs"
-                        }
-                    },
+                    payload={},
                     text="Open Tensorboard",
                     button_type="info",
                     plain=True,
