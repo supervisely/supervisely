@@ -182,25 +182,23 @@ class BaseTracking(Inference):
             },
         )
         logger.debug("Acquiring lock for pop")
-        with inference_request["lock"]:
-            inference_request_copy = inference_request.copy()
+        # with inference_request["lock"]:
+        inference_request_copy = inference_request.copy()
 
-            if frame_range is not None:
+        if frame_range is not None:
 
-                def _in_range(figure):
-                    return (
-                        figure.frame_index >= frame_range[0]
-                        and figure.frame_index <= frame_range[1]
-                    )
+            def _in_range(figure):
+                return figure.frame_index >= frame_range[0] and figure.frame_index <= frame_range[1]
 
-                inference_request_copy["pending_results"] = list(
-                    filter(_in_range, inference_request_copy["pending_results"])
-                )
-                inference_request["pending_results"] = list(
-                    filter(lambda x: not _in_range(x), inference_request["pending_results"])
-                )
-            else:
-                inference_request["pending_results"] = []
+            inference_request_copy["pending_results"] = list(
+                filter(_in_range, inference_request_copy["pending_results"])
+            )
+            inference_request["pending_results"] = list(
+                filter(lambda x: not _in_range(x), inference_request["pending_results"])
+            )
+        else:
+            inference_request["pending_results"] = []
+        # lock
         logger.debug("Released lock for pop")
         inference_request_copy.pop("lock")
         inference_request_copy["progress"] = _convert_sly_progress_to_dict(

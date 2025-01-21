@@ -458,7 +458,6 @@ class BBoxTracking(BaseTracking):
                     )
 
                     if not init:
-                        logger.debug("init")
                         self.initialize(frame, target)
                         init = True
 
