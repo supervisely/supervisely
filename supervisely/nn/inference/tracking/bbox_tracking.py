@@ -415,7 +415,7 @@ class BBoxTracking(BaseTracking):
             args=[notify_queue, stop_notify_event],
             daemon=True,
         )
-        notify_thread.start()
+        # notify_thread.start()
 
         api.logger.info("Start tracking.")
         try:
