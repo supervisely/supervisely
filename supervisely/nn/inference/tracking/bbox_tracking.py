@@ -330,8 +330,9 @@ class BBoxTracking(BaseTracking):
                 }
             )
             logger.debug("Acquiring lock for add")
-            with inference_request["lock"]:
-                inference_request["pending_results"].append(figure_info)
+            # with inference_request["lock"]:
+            inference_request["pending_results"].append(figure_info)
+            # lock
             logger.debug("Released lock for add")
 
         def _nofify_loop(q: Queue, stop_event: Event):
