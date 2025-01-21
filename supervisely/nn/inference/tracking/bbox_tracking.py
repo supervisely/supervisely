@@ -390,7 +390,7 @@ class BBoxTracking(BaseTracking):
                             if direct_progress:
                                 notify_q.put(item)
                         logger.debug("Items added to inference request")
-                        time.sleep(0.1)
+                        time.sleep(0.01)
 
                     elif stop_event.is_set():
                         stop_notify_event.set()
