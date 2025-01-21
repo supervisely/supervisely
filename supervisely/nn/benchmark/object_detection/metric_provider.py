@@ -182,6 +182,8 @@ class MetricProvider:
     def metric_table(self):
         table = self.json_metrics()
         iou_name = int(self.iou_threshold * 100)
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
         return {
             "mAP": table["mAP"],
             "AP50": table["AP50"],
