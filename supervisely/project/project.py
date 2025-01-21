@@ -3544,6 +3544,11 @@ class Project:
         """
         Uploads project to Supervisely from the given directory.
 
+        If you have a metadata.json files in the project directory for images, you will be able to upload images with added custom sort parameter.
+        To do this, use context manager :func:`api.image.add_custom_sort` with the desired key name from the metadata.json file which will be used for sorting.
+        More about project struture: https://developer.supervisely.com/getting-started/supervisely-annotation-format/project-structure#project-structure-example
+        Refer to the example section for usage details.
+
         :param dir: Path to project directory.
         :type dir: :class:`str`
         :param api: Supervisely API address and token.
@@ -3582,6 +3587,18 @@ class Project:
                 workspace_id=45,
                 project_name="My Project"
             )
+
+            # Upload project with added custom sort order
+            # This context manager processes every image and adds a custom sort order
+            # if `meta` is present in the image info file or image meta file.
+            # Otherwise, it will be uploaded without a custom sort order.
+            with api.image.add_custom_sort(key="key_name"):
+                project_id, project_name = sly.Project.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Project"
+                )
         """
         return upload_project(
             dir=dir,
@@ -4136,12 +4153,16 @@ def upload_project(
 
                 if os.path.isfile(img_info_path):
                     img_infos.append(ds_fs.get_image_info(item_name=item_name))
+                else:
+                    img_infos.append(None)
 
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
 
-            if img_paths == []:
+            img_infos_count = sum(1 for item in img_infos if item is not None)
+
+            if len(img_paths) == 0 and img_infos_count == 0:
                 # Dataset is empty
                 continue
 
@@ -4162,17 +4183,31 @@ def upload_project(
                     total=len(names),
                 )
 
+            if img_infos_count != 0:
+                merged_metas = []
+                for img_info, meta in zip(img_infos, metas):
+                    if img_info is None:
+                        merged_metas.append(meta)
+                        continue
+                    merged_meta = {**(img_info.meta or {}), **meta}
+                    merged_metas.append(merged_meta)
+                metas = merged_metas
+
             if len(img_paths) != 0:
                 uploaded_img_infos = api.image.upload_paths(
                     dataset.id, names, img_paths, ds_progress, metas=metas
                 )
-            elif len(img_paths) == 0 and len(img_infos) != 0:
+            elif img_infos_count != 0:
+                if img_infos_count != len(names):
+                    raise ValueError(
+                        f"Cannot upload Project: image info files count ({img_infos_count}) doesn't match with images count ({len(names)}) that are going to be uploaded. "
+                        "Check the directory structure, all annotation files should have corresponding image info files."
+                    )
                 # uploading links and hashes (the code from api.image.upload_ids)
-                img_metas = [{}] * len(names)
                 links, links_names, links_order, links_metas = [], [], [], []
                 hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
                 dataset_id = dataset.id
-                for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
+                for idx, (name, info, meta) in enumerate(zip(names, img_infos, metas)):
                     if info.link is not None:
                         links.append(info.link)
                         links_names.append(name)
