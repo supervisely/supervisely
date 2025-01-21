@@ -89,7 +89,7 @@ In this section you can visually assess the model performance through examples. 
 
 markdown_different_iou_thresholds_warning = """### IoU Thresholds Mismatch
 
-<i class="zmdi zmdi-alert-polygon" style="color: #f5a623; margin-right: 5px"></i> Models were evaluated with different IoU thresholds for each class and IoU thresholds for some classes are different between models. This may affect the comparison of models' performance. To get a more accurate comparison, we recommend evaluating all models with the same IoU threshold for all classes.
+<i class="zmdi zmdi-alert-polygon" style="color: #f5a623; margin-right: 5px"></i> The models were evaluated using different IoU thresholds. Since these thresholds varied between models and classes, it may have led to unfair comparison. For fair model comparison, we suggest using the same IoU threshold across models.
 """
 
 markdown_explore_difference = """## Explore Predictions

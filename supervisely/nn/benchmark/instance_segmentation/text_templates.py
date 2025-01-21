@@ -61,9 +61,9 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 """
 
 
-markdown_iou_per_class = """### Different IoU thresholds for each class
+markdown_iou_per_class = """### IoU Threshold per Class
 
-The model is evaluated with different IoU thresholds for each class to provide more insights about the model's performance. This table shows the IoU thresholds used for each class.
+The model is evaluated using different IoU thresholds for each class.
 """
 
 markdown_explorer = """## Explore Predictions
