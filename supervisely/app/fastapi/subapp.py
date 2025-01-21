@@ -926,20 +926,6 @@ class Application(metaclass=Singleton):
         self.test_client = TestClient(self._fastapi)
 
         if not headless:
-            templates = Jinja2Templates()
-            self.hot_reload = arel.HotReload([])
-            self._fastapi.add_websocket_route(
-                "/hot-reload", route=self.hot_reload, name="hot-reload"
-            )
-            self._fastapi.add_event_handler("startup", self.hot_reload.startup)
-            self._fastapi.add_event_handler("shutdown", self.hot_reload.shutdown)
-
-            # Setting HOTRELOAD=1 in template context, otherwise the HTML would not have the hot reload script.
-            templates.env.globals["HOTRELOAD"] = "1"
-            templates.env.globals["hot_reload"] = self.hot_reload
-
-            logger.debug("Hot reload is enabled, use app.reload_page() to reload page.")
-
             if is_production():
                 # to save offline session
                 from supervisely.app.content import ContentOrigin
