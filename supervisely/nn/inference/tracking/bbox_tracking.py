@@ -409,13 +409,13 @@ class BBoxTracking(BaseTracking):
             args=[upload_queue, notify_queue, stop_upload_event, stop_notify_event],
             daemon=True,
         )
-        upload_thread.start()
+        # upload_thread.start()
         notify_thread = Thread(
             target=_nofify_loop,
             args=[notify_queue, stop_notify_event],
             daemon=True,
         )
-        # notify_thread.start()
+        notify_thread.start()
 
         api.logger.info("Start tracking.")
         try:
