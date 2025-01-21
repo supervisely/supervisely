@@ -878,7 +878,7 @@ class ModuleApiBase(_JsonConvertibleModule):
                 return {keys[0]: _create_nested_dict(keys[1:], value)}
 
         json_info = {}
-        for field_name, value in (cls.info_sequence(), info):
+        for field_name, value in zip(cls.info_sequence(), info):
             if type(field_name) is str:
                 json_info[field_name] = value
             elif isinstance(field_name, tuple):
