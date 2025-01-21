@@ -1506,6 +1506,7 @@ class TrainApp:
             "evaluation_report_id": evaluation_report_id,
             "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "charts": {"type": "tensorboard", "link": f"{remote_dir}/logs/"},
         }
 
         # Add to task meta
