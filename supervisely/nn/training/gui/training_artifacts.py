@@ -2,7 +2,8 @@ import os
 from typing import Any, Dict
 
 import supervisely.io.env as sly_env
-from supervisely import Api
+import supervisely.nn.training.gui.utils as gui_utils
+from supervisely import Api, logger
 from supervisely._utils import is_production
 from supervisely.api.api import ApiField
 from supervisely.app.widgets import (
@@ -99,14 +100,14 @@ class TrainingArtifacts:
                 else:
                     app_name = sly_env.app_name()
                     team_id = sly_env.team_id()
-                    apps = api.app.get_list(
-                        team_id,
-                        filter=[{"field": "name", "operator": "=", "value": app_name}],
-                        only_running=False,
-                    )
-                    if len(apps) == 1:
-                        app_info = apps[0]
+                    app_info = gui_utils.get_app_info_by_name(api, team_id, app_name)
+                    if app_info is not None:
                         model_demo_gh_link = app_info.repo
+                    else:
+                        logger.warning(
+                            f"App '{app_name}' not found in Supervisely Ecosystem. Demo artifacts will not be displayed."
+                        )
+                        model_demo_gh_link = None
 
                 if model_demo_gh_link is not None:
                     gh_branch = "blob/main"
