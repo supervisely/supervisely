@@ -393,7 +393,7 @@ class BBoxTracking(BaseTracking):
                     elif stop_event.is_set():
                         stop_notify_event.set()
                         return
-                    time.sleep(0.01)
+                    time.sleep(0.000001)
             except Exception as e:
                 api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
