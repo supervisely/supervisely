@@ -111,39 +111,39 @@ class Cuboid2d(GraphNodes):
         Copy of Cuboid2d vertices.
 
         :return: Cuboid2d vertices
-        :rtype: :class:`dict`
+        :rtype: Optional[Dict]
         """
         return self.nodes
-    
+
     @property
     def position(self) -> Optional[Dict]:
         """
-        Position of the Cuboid2d.
+        Copy of the position of the Cuboid2d.
 
         :return: Position of the Cuboid2d
-        :rtype: :class:`dict`
+        :rtype: Optional[Dict]
         """
-        return self._position
-    
+        return self._position.copy()
+
     @property
     def rotation(self) -> Optional[Dict]:
         """
-        Rotation of the Cuboid2d.
+        Copy of the rotation of the Cuboid2d.
 
         :return: Rotation of the Cuboid2d
-        :rtype: :class:`dict`
+        :rtype: Optional[Dict]
         """
-        return self._rotation
-    
+        return self._rotation.copy()
+
     @property
     def dimensions(self) -> Optional[Dict]:
         """
-        Dimensions of the Cuboid2d.
+        Copy of the dimensions of the Cuboid2d.
 
         :return: Dimensions of the Cuboid2d
         :rtype: :class:`dict`
         """
-        return self._dimensions
+        return self._dimensions.copy()
 
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> Cuboid2d:
@@ -151,7 +151,7 @@ class Cuboid2d(GraphNodes):
         Convert a json dict to Cuboid2d. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :param data: Cuboid2d in json format as a dict.
-        :type data: dict
+        :type data: Dict[str, Dict]
         :return: Cuboid2d object
         :rtype: :class:`Cuboid2d<Cuboid2d>`
         :Usage example:
@@ -214,7 +214,7 @@ class Cuboid2d(GraphNodes):
         Convert the Cuboid2d to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
-        :rtype: :class:`dict`
+        :rtype: Dict[str, Dict]
         :Usage example:
 
          .. code-block:: python
@@ -353,7 +353,7 @@ class Cuboid2dTemplate(Cuboid2d, Geometry):
         """
         config = {VERTICES: {}, EDGES: []}
 
-        x = y = w = h = s = 1 # sample values only for config creation
+        x = y = w = h = s = 1  # sample values only for config creation
         base_vertices = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
         shifted_vertices = [(vx + s, vy + s) for vx, vy in base_vertices]
         verices_coords = base_vertices + shifted_vertices
