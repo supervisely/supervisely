@@ -483,7 +483,10 @@ class TrackerInterfaceV2:
                 time.sleep(upload_sleep_time)
         except Exception as e:
             if exception_handler is not None:
-                exception_handler(e)
+                e = exception_handler(e)
+                if not isinstance(e, Exception):
+                    return
+                raise e
             logger.error("Error in upload loop: %s", str(e), exc_info=True)
             raise
 
@@ -514,7 +517,10 @@ class TrackerInterfaceV2:
                 time.sleep(notify_sleep_time)
         except Exception as e:
             if exception_handler is not None:
-                exception_handler(e)
+                e = exception_handler(e)
+                if not isinstance(e, Exception):
+                    return
+                raise e
             logger.error("Error in notify loop: %s", str(e), exc_info=True)
             raise
 

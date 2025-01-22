@@ -245,6 +245,7 @@ class BaseTracking(Inference):
         inference_request["cancel_inference"] = True
         logger.debug("Stopped tracking:", extra={"uuid": inference_request_uuid})
 
+    # Implement the following methods in the derived class
     def track(self, api: Api, state: Dict, context: Dict):
         raise NotImplementedError("Method `track` must be implemented.")
 

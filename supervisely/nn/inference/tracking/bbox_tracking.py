@@ -372,6 +372,8 @@ class BBoxTracking(BaseTracking):
                             tracker_interface.frames_count,
                         )
 
+                        if inference_request["cancel_inference"]:
+                            return
                         if tracker_interface.is_stopped():
                             reason = tracker_interface.stop_reason()
                             if isinstance(reason, Exception):
