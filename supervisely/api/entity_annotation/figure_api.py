@@ -81,6 +81,9 @@ class FigureInfo(NamedTuple):
         if self.geometry_meta is not None:
             return Rectangle(*self.geometry_meta["bbox"], sly_id=self.id)
 
+    def to_json(self):
+        return FigureApi.convert_info_to_json(self)
+
 
 class FigureApi(RemoveableBulkModuleApi):
     """

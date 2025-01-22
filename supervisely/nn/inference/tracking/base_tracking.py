@@ -196,9 +196,6 @@ class BaseTracking(Inference):
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
-    def _figure_info_to_json(self, figure: FigureInfo):
-        return FigureApi.convert_info_to_json(figure)
-
     def _pop_tracking_results(self, inference_request_uuid: str, frame_range: Tuple = None):
         inference_request = self._inference_requests[inference_request_uuid]
         logger.debug(
@@ -234,8 +231,7 @@ class BaseTracking(Inference):
         )
 
         inference_request_copy["pending_results"] = [
-            self._figure_info_to_json(figure)
-            for figure in inference_request_copy["pending_results"]
+            figure.to_json() for figure in inference_request_copy["pending_results"]
         ]
 
         return inference_request_copy
