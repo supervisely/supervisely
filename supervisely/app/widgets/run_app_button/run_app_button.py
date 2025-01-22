@@ -11,9 +11,6 @@ from supervisely.app.widgets_context import JinjaWidgets
 
 
 class RunAppButton(Widget):
-    class Routes:
-        CLICK = "button_clicked_cb"
-
     def __init__(
         self,
         workspace_id: int,
