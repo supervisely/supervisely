@@ -61,35 +61,27 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             return False
 
         def filter_fn(path):
-            return all(
-                [
-                    (Path(path) / name).exists()
-                    for name in ["maps", "samples", "sweeps", "v1.0-mini"]
-                ]
-            )
+            return all([(Path(path) / name).exists() for name in ["maps", "samples"]])
 
-        try:
-            input_path = [d for d in fs.dirs_filter(self._input_data, filter_fn)].pop()
-        except IndexError:
+        input_path = next((d for d in fs.dirs_filter(self._input_data, filter_fn)), None)
+        if input_path is None:
             return False
 
         sample_dir = input_path + "/samples/"
         if any([not fs.dir_exists(f"{sample_dir}/{d}") for d in helpers.DIR_NAMES]):
             return False
 
-        sweeps_dir = input_path + "/sweeps/"
-        if any([not fs.dir_exists(f"{sweeps_dir}/{d}") for d in helpers.DIR_NAMES]):
+        fil_fn = lambda p: all(fs.file_exists(f"{p}/{name}.json") for name in helpers.TABLE_NAMES)
+        ann_dir = next((d for d in fs.dirs_filter(input_path, fil_fn)), None)
+        if ann_dir is None:
             return False
 
-        ann_dir = input_path + "/v1.0-mini/"
-        if any([not fs.file_exists(f"{ann_dir}/{d}.json") for d in helpers.TABLE_NAMES]):
-            return False
-
+        version = osp.basename(ann_dir)
         try:
             t = TinyTimer()
-            nuscenes = NuScenes(dataroot=input_path, verbose=False)
+            nuscenes = NuScenes(version=version, dataroot=input_path, verbose=False)
             self._nuscenes: NuScenes = nuscenes
-            logger.info(f"NuScenes initialization took {t.get_sec():.3f} sec")
+            logger.debug(f"NuScenes initialization took {t.get_sec():.3f} sec")
         except Exception as e:
             logger.debug(f"Failed to initialize NuScenes: {e}")
             return False
@@ -184,7 +176,9 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             scene_name_to_dataset[scene_names[0]] = dataset_info
 
         if log_progress:
-            progress, progress_cb = self.get_progress(total_sample_cnt, "Converting episode scenes...")
+            progress, progress_cb = self.get_progress(
+                total_sample_cnt, "Converting episode scenes..."
+            )
         else:
             progress_cb = None
 
