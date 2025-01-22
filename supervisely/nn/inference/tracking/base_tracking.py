@@ -177,29 +177,28 @@ class BaseTracking(Inference):
             extra={
                 "inference_request_uuid": inference_request_uuid,
                 "pending_results_len": len(inference_request["pending_results"]),
-                "pending_results[:3]": inference_request["pending_results"][:3],
                 "frame_range": frame_range,
             },
         )
-        # logger.debug("Acquiring lock for pop")
-        # with inference_request["lock"]:
-        inference_request_copy = inference_request.copy()
+        with inference_request["lock"]:
+            inference_request_copy = inference_request.copy()
 
-        if frame_range is not None:
+            if frame_range is not None:
 
-            def _in_range(figure):
-                return figure.frame_index >= frame_range[0] and figure.frame_index <= frame_range[1]
+                def _in_range(figure):
+                    return (
+                        figure.frame_index >= frame_range[0]
+                        and figure.frame_index <= frame_range[1]
+                    )
 
-            inference_request_copy["pending_results"] = list(
-                filter(_in_range, inference_request_copy["pending_results"])
-            )
-            inference_request["pending_results"] = list(
-                filter(lambda x: not _in_range(x), inference_request["pending_results"])
-            )
-        else:
-            inference_request["pending_results"] = []
-        # lock
-        # logger.debug("Released lock for pop")
+                inference_request_copy["pending_results"] = list(
+                    filter(_in_range, inference_request_copy["pending_results"])
+                )
+                inference_request["pending_results"] = list(
+                    filter(lambda x: not _in_range(x), inference_request["pending_results"])
+                )
+            else:
+                inference_request["pending_results"] = []
         inference_request_copy.pop("lock")
         inference_request_copy["progress"] = _convert_sly_progress_to_dict(
             inference_request_copy["progress"]
@@ -244,20 +243,13 @@ class BaseTracking(Inference):
         return {"message": "Inference will be stopped.", "success": True}
 
     def pop_tracking_results(self, state: Dict, context: Dict):
-        try:
-            validate_key(context, "inference_request_uuid", str)
-            inference_request_uuid = context["inference_request_uuid"]
-            frame_range = context.get("frameRange", context.get("frame_range", None))
-            tracking_results = self._pop_tracking_results(inference_request_uuid, frame_range)
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, tracking_results
-            )
-            logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-            return tracking_results
-        except Exception as e:
-            raise
-        finally:
-            print("pop_tracking_results finished")
+        validate_key(context, "inference_request_uuid", str)
+        inference_request_uuid = context["inference_request_uuid"]
+        frame_range = context.get("frameRange", context.get("frame_range", None))
+        tracking_results = self._pop_tracking_results(inference_request_uuid, frame_range)
+        log_extra = _get_log_extra_for_inference_request(inference_request_uuid, tracking_results)
+        logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+        return tracking_results
 
     def clear_tracking_results(self, state: Dict, context: Dict):
         self._clear_tracking_results(context)

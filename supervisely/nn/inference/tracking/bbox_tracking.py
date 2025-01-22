@@ -329,11 +329,8 @@ class BBoxTracking(BaseTracking):
                     ApiField.GEOMETRY: geometry.to_json(),
                 }
             )
-            # logger.debug("Acquiring lock for add")
-            # with inference_request["lock"]:
-            inference_request["pending_results"].append(figure_info)
-            # lock
-            # logger.debug("Released lock for add")
+            with inference_request["lock"]:
+                inference_request["pending_results"].append(figure_info)
 
         def _nofify_loop(q: Queue, stop_event: Event):
             nonlocal global_stop_indicatior
@@ -343,7 +340,6 @@ class BBoxTracking(BaseTracking):
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
-                        logger.debug("Got %d items to notify", len(items))
                         items_by_object_id = {}
                         for item in items:
                             items_by_object_id.setdefault(item[1], []).append(item)
@@ -363,7 +359,6 @@ class BBoxTracking(BaseTracking):
                                     progress_current=progress.current,
                                     progress_total=progress.total,
                                 )
-                        logger.debug("Items notified")
                     elif stop_event.is_set():
                         api.logger.debug(f"stop event is set. returning from notify loop")
                         return
@@ -381,7 +376,6 @@ class BBoxTracking(BaseTracking):
                     while not q.empty():
                         items.append(q.get_nowait())
                     if len(items) > 0:
-                        logger.debug("Got %d items to upload", len(items))
                         for item in items:
                             figure_id = uuid.uuid5(
                                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
@@ -389,11 +383,10 @@ class BBoxTracking(BaseTracking):
                             _add_to_inference_request(*item, figure_id)
                             if direct_progress:
                                 notify_q.put(item)
-                        logger.debug("Items added to inference request")
                     elif stop_event.is_set():
                         stop_notify_event.set()
                         return
-                    time.sleep(0.000001)
+                    time.sleep(0.01)
             except Exception as e:
                 api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
                 global_stop_indicatior = True
@@ -419,18 +412,17 @@ class BBoxTracking(BaseTracking):
 
         api.logger.info("Start tracking.")
         try:
-            for figure in figures:
+            for fig_i, figure in enumerate(figures):
                 figure = api.video.figure._convert_json_info(figure)
                 if not figure.geometry_type == Rectangle.geometry_name():
                     stop_upload_event.set()
                     raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
-                api.logger.info("geometry:", extra={"figure": figure._asdict()})
+                api.logger.info("figure:", extra={"figure": figure._asdict()})
                 sly_geometry: Rectangle = deserialize_geometry(
                     figure.geometry_type, figure.geometry
                 )
-                api.logger.info("geometry:", extra={"geometry": type(sly_geometry)})
                 init = False
-                for frame_i in range(*range_of_frames, direction_n):
+                for i, frame_i in enumerate(range(*range_of_frames, direction_n)):
                     frame_i_next = frame_i + direction_n
                     t = time.time()
                     frame, frame_next = self.cache.download_frames(
@@ -470,15 +462,22 @@ class BBoxTracking(BaseTracking):
                         target_bbox=target,
                         settings=self.custom_inference_settings_dict,
                     )
-                    logger.debug("Prediction done. Time: %f", time.time() - t)
+                    logger.debug("Prediction done. Time: %f sec", time.time() - t)
                     sly_geometry = self._to_sly_geometry(geometry)
                     upload_queue.put((sly_geometry, figure.object_id, frame_i_next))
+
+                    logger.debug("Frame processed. Frame: [%d / %d]", i, frames_count)
 
                     if global_stop_indicatior:
                         stop_upload_event.set()
                         return
 
-                api.logger.info(f"Figure #{figure.id} tracked.")
+                api.logger.info(
+                    "Figure tracked. Figure: [%d, %d]",
+                    fig_i,
+                    len(figures),
+                    extra={"figure_id": figure.id},
+                )
         except Exception as e:
             if direct_progress:
                 api.vid_ann_tool.set_direct_tracking_error(
