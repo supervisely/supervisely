@@ -8,12 +8,16 @@ import numpy as np
 from fastapi import Request
 from pydantic import ValidationError
 
-import supervisely as sly
 from supervisely._utils import find_value_by_keys
-from supervisely.annotation.label import Geometry
+from supervisely.annotation.label import Geometry, Label
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_figure_api import FigureInfo
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.helpers import deserialize_geometry
+from supervisely.geometry.polygon import Polygon
+from supervisely.imaging import image as sly_image
 from supervisely.nn.inference.tracking.base_tracking import BaseTracking
 from supervisely.nn.inference.tracking.tracker_interface import (
     TrackerInterface,
@@ -27,12 +31,12 @@ class MaskTracking(BaseTracking):
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
         geometry_json = data["data"]
-        return sly.deserialize_geometry(geometry_type_str, geometry_json)
+        return deserialize_geometry(geometry_type_str, geometry_json)
 
     def _inference(self, frames: List[np.ndarray], geometries: List[Geometry]):
         results = [[] for _ in range(len(frames) - 1)]
         for geometry in geometries:
-            if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
+            if not isinstance(geometry, Bitmap) and not isinstance(geometry, Polygon):
                 raise TypeError(f"This app does not support {geometry.geometry_name()} tracking")
 
             # combine several binary masks into one multilabel mask
@@ -42,10 +46,10 @@ class MaskTracking(BaseTracking):
             original_geometry = geometry.clone()
 
             # convert polygon to bitmap
-            if isinstance(geometry, sly.Polygon):
-                polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                polygon_label = sly.Label(geometry, polygon_obj_class)
-                bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+            if isinstance(geometry, Polygon):
+                polygon_obj_class = ObjClass("polygon", Polygon)
+                polygon_label = Label(geometry, polygon_obj_class)
+                bitmap_obj_class = ObjClass("bitmap", Bitmap)
                 bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
                 geometry = bitmap_label.geometry
             if i == 0:
@@ -73,14 +77,14 @@ class MaskTracking(BaseTracking):
                         # check if mask is not empty
                         if np.any(mask):
                             if geometry_type == "polygon":
-                                bitmap_geometry = sly.Bitmap(mask)
-                                bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                                bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
-                                polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                                bitmap_geometry = Bitmap(mask)
+                                bitmap_obj_class = ObjClass("bitmap", Bitmap)
+                                bitmap_label = Label(bitmap_geometry, bitmap_obj_class)
+                                polygon_obj_class = ObjClass("polygon", Polygon)
                                 polygon_labels = bitmap_label.convert(polygon_obj_class)
                                 geometries = [label.geometry for label in polygon_labels]
                             else:
-                                geometries = [sly.Bitmap(mask)]
+                                geometries = [Bitmap(mask)]
                             results[j].extend(
                                 [
                                     {"type": geom.geometry_name(), "data": geom.to_json()}
@@ -90,7 +94,7 @@ class MaskTracking(BaseTracking):
         return results
 
     def _track_api_cached(self, request: Request, context: dict):
-        sly.logger.info(f"Start tracking with settings: {context}.")
+        logger.info(f"Start tracking with settings: {context}.")
         video_id = context["video_id"]
         frame_indexes = list(
             range(context["frame_index"], context["frame_index"] + context["frames"] + 1)
@@ -169,16 +173,16 @@ class MaskTracking(BaseTracking):
                 self.video_interface.object_ids,
             ):
                 original_geometry = geometry.clone()
-                if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
+                if not isinstance(geometry, Bitmap) and not isinstance(geometry, Polygon):
                     stop_upload_event.set()
                     raise TypeError(
                         f"This app does not support {geometry.geometry_name()} tracking"
                     )
                 # convert polygon to bitmap
-                if isinstance(geometry, sly.Polygon):
-                    polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                    polygon_label = sly.Label(geometry, polygon_obj_class)
-                    bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+                if isinstance(geometry, Polygon):
+                    polygon_obj_class = ObjClass("polygon", Polygon)
+                    polygon_label = Label(geometry, polygon_obj_class)
+                    bitmap_obj_class = ObjClass("bitmap", Bitmap)
                     bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
                     geometry = bitmap_label.geometry
                 if i == 0:
@@ -216,14 +220,14 @@ class MaskTracking(BaseTracking):
                             self.video_interface._notify(task="add geometry on frame")
                         else:
                             if geometry_type == "polygon":
-                                bitmap_geometry = sly.Bitmap(mask)
-                                bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                                bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
-                                polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                                bitmap_geometry = Bitmap(mask)
+                                bitmap_obj_class = ObjClass("bitmap", Bitmap)
+                                bitmap_label = Label(bitmap_geometry, bitmap_obj_class)
+                                polygon_obj_class = ObjClass("polygon", Polygon)
                                 polygon_labels = bitmap_label.convert(polygon_obj_class)
                                 geometries = [label.geometry for label in polygon_labels]
                             else:
-                                geometries = [sly.Bitmap(mask)]
+                                geometries = [Bitmap(mask)]
                             for l, geometry in enumerate(geometries):
                                 if l == len(geometries) - 1:
                                     notify = True
@@ -288,17 +292,17 @@ class MaskTracking(BaseTracking):
                     figure = api.video.figure._convert_json_info(figure)
                     fig_id = figure.id
                     obj_id = figure.object_id
-                    geometry = sly.deserialize_geometry(figure.geometry_type, figure.geometry)
+                    geometry = deserialize_geometry(figure.geometry_type, figure.geometry)
                     original_geometry = geometry.clone()
-                    if not isinstance(geometry, (sly.Bitmap, sly.Polygon)):
+                    if not isinstance(geometry, (Bitmap, Polygon)):
                         raise TypeError(
                             f"This app does not support {geometry.geometry_name()} tracking"
                         )
                     # convert polygon to bitmap
-                    if isinstance(geometry, sly.Polygon):
-                        polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                        polygon_label = sly.Label(geometry, polygon_obj_class)
-                        bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+                    if isinstance(geometry, Polygon):
+                        polygon_obj_class = ObjClass("polygon", Polygon)
+                        polygon_label = Label(geometry, polygon_obj_class)
+                        bitmap_obj_class = ObjClass("bitmap", Bitmap)
                         bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
                         geometry = bitmap_label.geometry
                     if i == 0:
@@ -344,14 +348,14 @@ class MaskTracking(BaseTracking):
                                 progress.iter_done_report()
                             else:
                                 if geometry_type == "polygon":
-                                    bitmap_geometry = sly.Bitmap(mask)
-                                    bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
-                                    bitmap_label = sly.Label(bitmap_geometry, bitmap_obj_class)
-                                    polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
+                                    bitmap_geometry = Bitmap(mask)
+                                    bitmap_obj_class = ObjClass("bitmap", Bitmap)
+                                    bitmap_label = Label(bitmap_geometry, bitmap_obj_class)
+                                    polygon_obj_class = ObjClass("polygon", Polygon)
                                     polygon_labels = bitmap_label.convert(polygon_obj_class)
                                     geometries = [label.geometry for label in polygon_labels]
                                 else:
-                                    geometries = [sly.Bitmap(mask)]
+                                    geometries = [Bitmap(mask)]
                                 for l, geometry in enumerate(geometries):
                                     figure_id = uuid.uuid5(
                                         namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
@@ -437,13 +441,13 @@ class MaskTracking(BaseTracking):
 
         for input_geom in input_geometries:
             geometry = self._deserialize_geometry(input_geom)
-            if not isinstance(geometry, sly.Bitmap) and not isinstance(geometry, sly.Polygon):
+            if not isinstance(geometry, Bitmap) and not isinstance(geometry, Polygon):
                 raise TypeError(f"This app does not support {geometry.geometry_name()} tracking")
             # convert polygon to bitmap
-            if isinstance(geometry, sly.Polygon):
-                polygon_obj_class = sly.ObjClass("polygon", sly.Polygon)
-                polygon_label = sly.Label(geometry, polygon_obj_class)
-                bitmap_obj_class = sly.ObjClass("bitmap", sly.Bitmap)
+            if isinstance(geometry, Polygon):
+                polygon_obj_class = ObjClass("polygon", Polygon)
+                polygon_label = Label(geometry, polygon_obj_class)
+                bitmap_obj_class = ObjClass("bitmap", Bitmap)
                 bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
                 geometry = bitmap_label.geometry
             if i == 0:
@@ -476,7 +480,7 @@ class MaskTracking(BaseTracking):
                         predictions_for_label.append(None)
                     else:
                         # frame_idx = j + 1
-                        geometry = sly.Bitmap(mask)
+                        geometry = Bitmap(mask)
                         predictions_for_label.append(
                             {"type": geometry.geometry_name(), "data": geometry.to_json()}
                         )
@@ -491,7 +495,7 @@ class MaskTracking(BaseTracking):
         files: List[BinaryIO],
         settings: Dict,
     ):
-        sly.logger.info(f"Start tracking with settings: {settings}.")
+        logger.info(f"Start tracking with settings: {settings}.")
         frame_index = find_value_by_keys(settings, ["frame_index", "frameIndex"])
         frames_count = find_value_by_keys(settings, ["frames", "framesCount"])
         input_geometries = find_value_by_keys(settings, ["input_geometries", "inputGeometries"])
@@ -504,9 +508,9 @@ class MaskTracking(BaseTracking):
         frames = []
         for file, frame_idx in zip(files, frame_indexes):
             img_bytes = file.read()
-            frame = sly.image.read_bytes(img_bytes)
+            frame = sly_image.read_bytes(img_bytes)
             frames.append(frame)
-        sly.logger.info("Start tracking.")
+        logger.info("Start tracking.")
         return self._inference(frames, geometries)
 
     def track_async(self, api: Api, state: Dict, context: Dict):
