@@ -54,6 +54,7 @@ class TrainingLogs:
         self.display_widgets.extend([self.validator_text, self.tensorboard_button])
 
         # Offline session Tensorboard button
+        self.tensorboard_offline_button = None
         if is_production():
             workspace_id = sly_env.workspace_id()
             app_name = "Tensorboard Experiments Viewer"
