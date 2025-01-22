@@ -326,6 +326,15 @@ class ThreadSafeStopIndicator:
 FrameImage = namedtuple("FrameImage", ["frame_index", "image"])
 
 
+def get_value_from_dict(d: Dict, keys: List[str], default=object()):
+    for key in keys:
+        if key in d:
+            return d[key]
+    if default is object():
+        raise KeyError(f"None of the keys {keys} are in the dictionary.")
+    return default
+
+
 class TrackerInterfaceV2:
     UPLOAD_SLEEP_TIME = 0.001  # 1ms
     NOTIFY_SLEEP_TIME = 1  # 1s
@@ -338,16 +347,16 @@ class TrackerInterfaceV2:
     ):
         self.api = api
         self.context = context
-        logger.debug("TrackerInterfaceV2 context: %s", extra=self.context)
+        logger.debug("TrackerInterfaceV2 context:", extra=self.context)
         logger.debug(
             f"videoId in context: {'videoId' in context}",
         )
-        self.video_id = context.get("videoId", context["video_id"])
-        self.frame_index = context.get("frameIndex", context["frame_index"])
-        self.frames_count = context.get("frames", context["frames_count"])
+        self.video_id = get_value_from_dict(context, ["videoId", "video_id"])
+        self.frame_index = get_value_from_dict(context, ["frameIndex", "frame_index"])
+        self.frames_count = get_value_from_dict(context, ["frames", "frames_count"])
         self.track_id = context.get("trackId", "auto")
         self.direction = context.get("direction", "forward")
-        self.session_id = context.get("sessionId", context.get("session_id", None))
+        self.session_id = get_value_from_dict(context, ["sessionId", "session_id"], None)
         self.figures = context.get("figures", None)
         self.direct_progress = context.get("useDirectProgressMessages", False)
         self.direction_n = 1 if self.direction == "forward" else -1
