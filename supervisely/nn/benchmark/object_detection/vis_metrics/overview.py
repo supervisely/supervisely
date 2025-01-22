@@ -141,7 +141,7 @@ class Overview(DetectionVisMetric):
 
         data = {
             "columns": ["Class name", "IoU threshold"],
-            "columnsOptions": [{}, {"disableSort": True}],
+            "columnsOptions": [{"disableSort": True}, {}],
             "content": content,
         }
         return TableWidget(
@@ -149,6 +149,5 @@ class Overview(DetectionVisMetric):
             data=data,
             fix_columns=1,
             width="60%",
-            show_header_controls=False,
             main_column="Class name",
         )
