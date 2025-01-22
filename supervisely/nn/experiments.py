@@ -5,7 +5,6 @@ from os.path import dirname, join
 from typing import List
 
 import requests
-
 from supervisely import logger
 from supervisely.api.api import Api, ApiField
 
@@ -38,6 +37,10 @@ class ExperimentInfo:
     """Path to file with model metadata such as model name, project id, project name and classes used for training"""
     train_val_split: str
     """Path to train and validation splits, which contains IDs of the images used in each split"""
+    train_size: int
+    """Number of images in the training set"""
+    val_size: int
+    """Number of images in the validation set"""
     hyperparameters: str
     """Path to .yaml file with hyperparameters used in the experiment"""
     artifacts_dir: str
@@ -45,9 +48,13 @@ class ExperimentInfo:
     datetime: str
     """Date and time when the experiment was started"""
     evaluation_report_id: int
-    """ID of the evaluation report"""
+    """ID of the model benchmark evaluation report"""
+    evaluation_report_link: str
+    """Link to the model benchmark evaluation report"""
     evaluation_metrics: dict
     """Evaluation metrics"""
+    logs: dict
+    """Dictionary with link and type of logger"""
 
 
 def get_experiment_infos(

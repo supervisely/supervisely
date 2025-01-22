@@ -58,14 +58,11 @@ class TrainingLogs:
         if is_production():
             workspace_id = sly_env.workspace_id()
             app_name = "Tensorboard Experiments Viewer"
-            team_id = sly_env.team_id()
-
-            app_info = gui_utils.get_app_info_by_name(api, team_id, app_name)
-            if app_info is not None:
-                app_module_id = app_info.module_id
+            module_info = gui_utils.get_module_info_by_name(api, app_name)
+            if module_info is not None:
                 self.tensorboard_offline_button = RunAppButton(
                     workspace_id=workspace_id,
-                    module_id=app_module_id,
+                    module_id=module_info["id"],
                     payload={},
                     text="Open Tensorboard",
                     button_type="info",

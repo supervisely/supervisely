@@ -568,7 +568,7 @@ class TrainApp:
 
         # Step 9. Generate and upload additional files
         self._set_text_status("metadata")
-        self._generate_experiment_info(
+        experiment_info = self._generate_experiment_info(
             remote_dir,
             experiment_info,
             eval_metrics,
@@ -585,7 +585,7 @@ class TrainApp:
 
         # Step 10. Set output widgets
         self._set_text_status("reset")
-        self._set_training_output(remote_dir, file_info, mb_eval_report)
+        self._set_training_output(experiment_info, remote_dir, file_info, mb_eval_report)
         self._set_ws_progress_status("completed")
 
         # Step 11. Workflow output
@@ -1468,7 +1468,7 @@ class TrainApp:
         evaluation_report_link: Optional[str] = None,
         primary_metric_name: str = None,
         export_weights: Dict = {},
-    ) -> None:
+    ) -> dict:
         """
         Generates and uploads the experiment_info.json file to the output directory.
 
@@ -1509,11 +1509,8 @@ class TrainApp:
             "evaluation_report_id": evaluation_report_id,
             "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
-            "charts": {"type": "tensorboard", "link": f"{remote_dir}/logs/"},
+            "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
         }
-
-        # Add to task meta
-        # meta["experiment_info"]["primary_metric"] = primary_metric_name # dont save to json, only add to meta
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
@@ -1538,6 +1535,10 @@ class TrainApp:
             remote_path,
             f"Uploading '{self._experiment_json_file}' to Team Files",
         )
+
+        # Do not include this fields to uploaded file:
+        experiment_info["primary_metric"] = primary_metric_name
+        return experiment_info
 
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
         """
@@ -1730,7 +1731,7 @@ class TrainApp:
         return remote_dir, file_info
 
     def _set_training_output(
-        self, remote_dir: str, file_info: FileInfo, mb_eval_report=None
+        self, experiment_info: dict, remote_dir: str, file_info: FileInfo, mb_eval_report=None
     ) -> None:
         """
         Sets the training output in the GUI.
@@ -1743,6 +1744,7 @@ class TrainApp:
         # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
+        self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
@@ -1767,13 +1769,15 @@ class TrainApp:
         if demo_path is not None:
             # Show PyTorch demo if available
             if self.gui.training_artifacts.pytorch_demo_exists(demo_path):
-                self.gui.training_artifacts.pytorch_instruction.show()
+                if self.gui.training_artifacts.pytorch_instruction is not None:
+                    self.gui.training_artifacts.pytorch_instruction.show()
 
             # Show ONNX demo if supported and available
             if (
                 self._app_options.get("export_onnx_supported", False)
                 and self.gui.hyperparameters_selector.get_export_onnx_checkbox_value()
                 and self.gui.training_artifacts.onnx_demo_exists(demo_path)
+                and self.gui.training_artifacts.onnx_instruction is not None
             ):
                 self.gui.training_artifacts.onnx_instruction.show()
 
@@ -1782,6 +1786,7 @@ class TrainApp:
                 self._app_options.get("export_tensorrt_supported", False)
                 and self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value()
                 and self.gui.training_artifacts.trt_demo_exists(demo_path)
+                and self.gui.training_artifacts.trt_instruction is not None
             ):
                 self.gui.training_artifacts.trt_instruction.show()
 

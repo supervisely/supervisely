@@ -35,7 +35,7 @@ Vue.component('sly-run-app-button', {
     v-loading="options.loading || loading"
     :type="options.button_type"
     :plain="options.plain"
-    :size="options.size"
+    :size="options.button_size"
     :disabled="options.disabled"
     
   >

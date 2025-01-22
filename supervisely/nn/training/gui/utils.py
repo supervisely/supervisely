@@ -130,12 +130,9 @@ def set_stepper_step(stepper: Stepper, button: Button, next_pos: int):
         stepper.set_active_step(next_pos - 1)
 
 
-def get_app_info_by_name(api: Api, team_id: int, app_name: str) -> Union[AppInfo, None]:
-    apps = api.app.get_list(
-        team_id,
-        filter=[{"field": "name", "operator": "=", "value": app_name}],
-        only_running=False,
-    )
-    if len(apps) == 1:
-        app_info = apps[0]
-        return app_info
+def get_module_info_by_name(api: Api, app_name: str) -> Union[Dict, None]:
+    all_modules = api.app.get_list_ecosystem_modules()
+    for module in all_modules:
+        if module["name"] == app_name:
+            app_info = api.app.get_info(module["id"])
+            return app_info

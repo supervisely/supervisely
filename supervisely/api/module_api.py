@@ -606,6 +606,8 @@ class ApiField:
     """"""
     CUSTOM_SORT = "customSort"
     """"""
+    EXPERIMENT = "experiment"
+    """"""
 
 
 def _get_single_item(items):

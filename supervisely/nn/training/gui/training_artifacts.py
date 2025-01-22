@@ -91,6 +91,9 @@ class TrainingArtifacts:
             model_demo_path = model_demo.get("path", None)
             if model_demo_path is not None:
                 model_demo_gh_link = None
+                self.pytorch_instruction = None
+                self.onnx_instruction = None
+                self.trt_instruction = None
                 if is_production():
                     task_id = sly_env.task_id()
                     task_info = api.task.get_info_by_id(task_id)
@@ -99,15 +102,13 @@ class TrainingArtifacts:
                     model_demo_gh_link = app_info.repo
                 else:
                     app_name = sly_env.app_name()
-                    team_id = sly_env.team_id()
-                    app_info = gui_utils.get_app_info_by_name(api, team_id, app_name)
-                    if app_info is not None:
-                        model_demo_gh_link = app_info.repo
+                    module_info = gui_utils.get_module_info_by_name(api, app_name)
+                    if module_info is not None:
+                        model_demo_gh_link = module_info["repo"]
                     else:
                         logger.warning(
                             f"App '{app_name}' not found in Supervisely Ecosystem. Demo artifacts will not be displayed."
                         )
-                        model_demo_gh_link = None
 
                 if model_demo_gh_link is not None:
                     gh_branch = "blob/main"
