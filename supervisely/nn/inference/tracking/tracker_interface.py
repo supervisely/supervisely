@@ -568,7 +568,7 @@ class TrackerInterfaceV2:
         ):
             batch.append(FrameImage(frame_i, frame))
             if len(batch) == batch_size:
-                _get_indexes_str = lambda b: ", ".join(map(lambda x: x.frame_index, b))
+                _get_indexes_str = lambda b: ", ".join(map(lambda x: str(x.frame_index), b))
                 if len(batch) > 16:
                     batch_indexes_str = (
                         _get_indexes_str(batch[:8]) + " ... " + _get_indexes_str(batch[-8:])
