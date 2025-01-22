@@ -303,6 +303,22 @@ class InferenceImageCache:
                 self.get_frame_from_cache(video_id, frame_index) for frame_index in frame_indexes
             ]
 
+    def frames_loader(
+        self, api: sly.Api, video_id: int, frame_indexes: List[int]
+    ) -> Generator[np.ndarray, None, None]:
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            for frame_index in frame_indexes:
+                yield self.download_frame(api, video_id, frame_index)
+            return
+        self.run_cache_task_manually(api, None, video_id=video_id)
+        for i, frame_index in enumerate(frame_indexes):
+            if video_id in self._cache:
+                break
+            yield self.download_frame(api, video_id, frame_index)
+        if i < len(frame_indexes):
+            for frame in self._read_frames_from_cached_video_iter(video_id, frame_indexes[i:]):
+                yield frame
+
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
         self._wait_if_in_queue(name, api.logger)

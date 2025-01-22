@@ -5,7 +5,7 @@ import traceback
 from threading import Lock
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
-from fastapi import BackgroundTasks, Form, Request, Response, UploadFile, status
+from fastapi import Form, Request, Response, UploadFile, status
 
 from supervisely.api.api import Api
 from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
@@ -104,8 +104,9 @@ class BaseTracking(Inference):
         super()._on_inference_start(inference_request_uuid)
         self._inference_requests[inference_request_uuid]["lock"] = Lock()
 
+    @staticmethod
     def _notify_error_default(
-        self, api: Api, track_id: str, exception: Exception, with_traceback: bool = False
+        api: Api, track_id: str, exception: Exception, with_traceback: bool = False
     ):
         error_name = type(exception).__name__
         message = str(exception)
@@ -113,8 +114,8 @@ class BaseTracking(Inference):
             message = f"{message}\n{traceback.format_exc()}"
         api.video.notify_tracking_error(track_id, error_name, message)
 
+    @staticmethod
     def _notify_error_direct(
-        self,
         api: Api,
         session_id: str,
         video_id,
@@ -133,7 +134,18 @@ class BaseTracking(Inference):
             message=f"{error_name}: {message}",
         )
 
-    def send_error_data(self, func):
+    def _handle_error_in_async(self, uuid, func, *args, notify_error_func=None, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            inf_request = self._inference_requests.get(uuid, None)
+            if inf_request is not None:
+                inf_request["exception"] = str(e)
+            logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+            raise e
+
+    @staticmethod
+    def send_error_data(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             value = None
@@ -142,14 +154,14 @@ class BaseTracking(Inference):
             except Exception as exc:
                 try:
                     logger.error(f"An error occured: {exc}", exc_info=True)
-                    request: Request = args[0]
-                    context = request.state.context
-                    api: Api = request.state.api
+                    # args = [api, state, context]
+                    api: Api = args[0]
+                    context = args[2]
                     track_id = context["trackId"]
                     if ApiField.USE_DIRECT_PROGRESS_MESSAGES in context:
                         session_id = context.get("sessionId", context.get("session_id", None))
                         video_id = context.get("videoId", context.get("video_id", None))
-                        self._notify_error_direct(
+                        BaseTracking._notify_error_direct(
                             api=api,
                             session_id=session_id,
                             video_id=video_id,
@@ -158,7 +170,7 @@ class BaseTracking(Inference):
                             with_traceback=False,
                         )
                     else:
-                        self._notify_error_default(
+                        BaseTracking._notify_error_default(
                             api=api, track_id=track_id, exception=exc, with_traceback=False
                         )
                 except Exception:

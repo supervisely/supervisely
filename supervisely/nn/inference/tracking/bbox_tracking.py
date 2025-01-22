@@ -13,6 +13,7 @@ from supervisely.annotation.label import Geometry, Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
+from supervisely.api.video.video_figure_api import FigureInfo
 from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
@@ -20,7 +21,10 @@ from supervisely.nn.inference.tracking.base_tracking import (
     BaseTracking,
     ValidationError,
 )
-from supervisely.nn.inference.tracking.tracker_interface import TrackerInterface
+from supervisely.nn.inference.tracking.tracker_interface import (
+    TrackerInterface,
+    TrackerInterfaceV2,
+)
 from supervisely.nn.prediction_dto import Prediction, PredictionBBox
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -281,228 +285,117 @@ class BBoxTracking(BaseTracking):
                 )
         return results
 
-    def _track_async(self, api: Api, context: dict, request_uuid: str = None):
+    @BaseTracking.send_error_data
+    def _track_async(self, api: Api, state: dict, context: dict, request_uuid: str = None):
         api.logger.info("context", extra=context)
         inference_request = self._inference_requests[request_uuid]
-
-        session_id = context.get("session_id", context["sessionId"])
-        direct_progress = context.get("useDirectProgressMessages", False)
-        frame_index = context["frameIndex"]
-        frames_count = context["frames"]
-        track_id = context["trackId"]
-        video_id = context["videoId"]
-        direction = context.get("direction", "forward")
-        direction_n = 1 if direction == "forward" else -1
-        figures = context["figures"]
+        tracker_interface = TrackerInterfaceV2(api, context, self.cache)
         progress: Progress = inference_request["progress"]
+        frames_count = tracker_interface.frames_count
+        figures = tracker_interface.figures
         progress_total = frames_count * len(figures)
         progress.total = progress_total
 
-        range_of_frames = [
-            frame_index,
-            frame_index + frames_count * direction_n,
-        ]
-
-        if self.cache.is_persistent:
-            self.cache.run_cache_task_manually(
-                api,
-                None,
-                video_id=video_id,
-            )
-        else:
-            # if cache is not persistent, run cache task for range of frames
-            self.cache.run_cache_task_manually(
-                api,
-                [range_of_frames if direction_n == 1 else range_of_frames[::-1]],
-                video_id=video_id,
-            )
-
-        global_stop_indicatior = False
-
-        def _add_to_inference_request(geometry, object_id, frame_index, figure_id):
-            figure_info = api.video.figure._convert_json_info(
-                {
-                    ApiField.ID: figure_id,
-                    ApiField.OBJECT_ID: object_id,
-                    "meta": {"frame": frame_index},
-                    ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
-                    ApiField.GEOMETRY: geometry.to_json(),
-                }
-            )
+        def _upload_f(items: List[FigureInfo]):
             with inference_request["lock"]:
-                inference_request["pending_results"].append(figure_info)
+                inference_request["pending_results"].extend(items)
 
-        def _nofify_loop(q: Queue, stop_event: Event):
-            nonlocal global_stop_indicatior
-            try:
-                while True:
-                    items = []  # (geometry, object_id, frame_index)
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        items_by_object_id = {}
-                        for item in items:
-                            items_by_object_id.setdefault(item[1], []).append(item)
+        def _notify_f(items: List[FigureInfo]):
+            items_by_object_id: Dict[int, List[FigureInfo]] = {}
+            for item in items:
+                items_by_object_id.setdefault(item.object_id, []).append(item)
 
-                        for object_id, object_items in items_by_object_id.items():
-                            frame_range = [
-                                min(item[2] for item in object_items),
-                                max(item[2] for item in object_items),
-                            ]
-                            progress.iters_done_report(len(object_items))
-                            if direct_progress:
-                                api.vid_ann_tool.set_direct_tracking_progress(
-                                    session_id,
-                                    video_id,
-                                    track_id,
-                                    frame_range=frame_range,
-                                    progress_current=progress.current,
-                                    progress_total=progress.total,
-                                )
-                    elif stop_event.is_set():
-                        api.logger.debug(f"stop event is set. returning from notify loop")
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in notify loop: %s", str(e), exc_info=True)
-                global_stop_indicatior = True
-                raise
+            for object_id, object_items in items_by_object_id.items():
+                frame_range = [
+                    min(item.frame_index for item in object_items),
+                    max(item.frame_index for item in object_items),
+                ]
+                progress.iters_done_report(len(object_items))
+                tracker_interface.notify_progress(progress.current, progress.total, frame_range)
 
-        def _upload_loop(q: Queue, notify_q: Queue, stop_event: Event, stop_notify_event: Event):
-            nonlocal global_stop_indicatior
-            try:
-                while True:
-                    items = []  # (geometry, object_id, frame_index)
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        for item in items:
-                            figure_id = uuid.uuid5(
-                                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-                            ).hex
-                            _add_to_inference_request(*item, figure_id)
-                            if direct_progress:
-                                notify_q.put(item)
-                    elif stop_event.is_set():
-                        stop_notify_event.set()
-                        return
-                    time.sleep(0.01)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                global_stop_indicatior = True
-                stop_notify_event.set()
-                raise
-
-        upload_queue = Queue()
-        notify_queue = Queue()
-        stop_upload_event = Event()
-        stop_notify_event = Event()
-        upload_thread = Thread(
-            target=_upload_loop,
-            args=[upload_queue, notify_queue, stop_upload_event, stop_notify_event],
-            daemon=True,
-        )
-        upload_thread.start()
-        notify_thread = Thread(
-            target=_nofify_loop,
-            args=[notify_queue, stop_notify_event],
-            daemon=True,
-        )
-        notify_thread.start()
+        tracker_interface.upload_f = _upload_f
+        tracker_interface.notify_f = _notify_f
 
         api.logger.info("Start tracking.")
         try:
-            for fig_i, figure in enumerate(figures):
-                figure = api.video.figure._convert_json_info(figure)
-                if not figure.geometry_type == Rectangle.geometry_name():
-                    stop_upload_event.set()
-                    raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
-                api.logger.info("figure:", extra={"figure": figure._asdict()})
-                sly_geometry: Rectangle = deserialize_geometry(
-                    figure.geometry_type, figure.geometry
-                )
-                init = False
-                for i, frame_i in enumerate(range(*range_of_frames, direction_n)):
-                    frame_i_next = frame_i + direction_n
-                    t = time.time()
-                    frame, frame_next = self.cache.download_frames(
-                        api,
-                        video_id,
-                        [frame_i, frame_i_next] if direction_n == 1 else [frame_i_next, frame_i],
+            with tracker_interface:
+                for fig_i, figure in enumerate(figures):
+                    figure = api.video.figure._convert_json_info(figure)
+                    if not figure.geometry_type == Rectangle.geometry_name():
+                        raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
+                    api.logger.info("figure:", extra={"figure": figure._asdict()})
+                    sly_geometry: Rectangle = deserialize_geometry(
+                        figure.geometry_type, figure.geometry
                     )
-                    api.logger.debug(
-                        "Frames %d, %d downloaded. Time: %f",
-                        frame_i,
-                        frame_i_next,
-                        time.time() - t,
+                    init = False
+                    for i, (frame, next_frame) in enumerate(
+                        tracker_interface.frames_loader_generator()
+                    ):
+                        target = PredictionBBox(
+                            "",  # TODO: can this be useful?
+                            [
+                                sly_geometry.top,
+                                sly_geometry.left,
+                                sly_geometry.bottom,
+                                sly_geometry.right,
+                            ],
+                            None,
+                        )
+
+                        if not init:
+                            self.initialize(frame.image, target)
+                            init = True
+
+                        logger.debug("Start prediction")
+                        t = time.time()
+                        geometry = self.predict(
+                            rgb_image=next_frame.image,
+                            prev_rgb_image=frame.image,
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
+                        )
+                        logger.debug("Prediction done. Time: %f sec", time.time() - t)
+                        sly_geometry = self._to_sly_geometry(geometry)
+
+                        figure_id = uuid.uuid5(
+                            namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+                        ).hex
+                        figure = api.video.figure._convert_json_info(
+                            {
+                                ApiField.ID: figure_id,
+                                ApiField.OBJECT_ID: figure.object_id,
+                                "meta": {"frame": next_frame.frame_index},
+                                ApiField.GEOMETRY_TYPE: sly_geometry.geometry_name(),
+                                ApiField.GEOMETRY: sly_geometry.to_json(),
+                                ApiField.TRACK_ID: tracker_interface.track_id,
+                            }
+                        )
+
+                        tracker_interface.add_prediction(figure)
+
+                        logger.debug(
+                            "Frame processed. Frame: [%d / %d]", i, tracker_interface.frames_count
+                        )
+
+                        if tracker_interface.is_stopped():
+                            reason = tracker_interface.stop_reason()
+                            if isinstance(reason, Exception):
+                                raise reason
+                            return
+
+                    api.logger.info(
+                        "Figure tracked. Figure: [%d, %d]",
+                        fig_i,
+                        len(figures),
+                        extra={"figure_id": figure.id},
                     )
-                    if direction_n == -1:
-                        frame, frame_next = frame_next, frame
-
-                    target = PredictionBBox(
-                        "",  # TODO: can this be useful?
-                        [
-                            sly_geometry.top,
-                            sly_geometry.left,
-                            sly_geometry.bottom,
-                            sly_geometry.right,
-                        ],
-                        None,
-                    )
-
-                    if not init:
-                        self.initialize(frame, target)
-                        init = True
-
-                    logger.debug("Start prediction")
-                    t = time.time()
-                    geometry = self.predict(
-                        rgb_image=frame_next,
-                        prev_rgb_image=frame,
-                        target_bbox=target,
-                        settings=self.custom_inference_settings_dict,
-                    )
-                    logger.debug("Prediction done. Time: %f sec", time.time() - t)
-                    sly_geometry = self._to_sly_geometry(geometry)
-                    upload_queue.put((sly_geometry, figure.object_id, frame_i_next))
-
-                    logger.debug("Frame processed. Frame: [%d / %d]", i, frames_count)
-
-                    if global_stop_indicatior:
-                        stop_upload_event.set()
-                        return
-
-                api.logger.info(
-                    "Figure tracked. Figure: [%d, %d]",
-                    fig_i,
-                    len(figures),
-                    extra={"figure_id": figure.id},
-                )
-        except Exception as e:
-            if direct_progress:
-                api.vid_ann_tool.set_direct_tracking_error(
-                    session_id,
-                    video_id,
-                    track_id,
-                    message=f"An error occured during tracking. Error: {e}",
-                )
-            error = True
+        except Exception:
+            progress.message = "Error occured during tracking"
             raise
         else:
-            error = False
+            progress.message = "Ready"
         finally:
-            stop_upload_event.set()
-            if upload_thread.is_alive():
-                upload_thread.join()
-            stop_notify_event.set()
-            if notify_thread.is_alive():
-                notify_thread.join()
-            if error:
-                progress.message = "Error occured during tracking"
-                progress.set(current=0, total=1, report=True)
-            else:
-                progress.message = "Ready"
-                progress.set(current=0, total=1, report=True)
+            progress.set(current=0, total=1, report=True)
 
     def track(self, api: Api, state: Dict, context: Dict):
         return self._track(api, context, notify_annotation_tool=True)
@@ -540,6 +433,7 @@ class BBoxTracking(BaseTracking):
             inference_request_uuid,
             self._track_async,
             api,
+            state,
             context,
             inference_request_uuid,
         )
