@@ -338,6 +338,10 @@ class TrackerInterfaceV2:
     ):
         self.api = api
         self.context = context
+        logger.debug("TrackerInterfaceV2 context: %s", extra=self.context)
+        logger.debug(
+            f"videoId in context: {'videoId' in context}",
+        )
         self.video_id = context.get("videoId", context["video_id"])
         self.frame_index = context.get("frameIndex", context["frame_index"])
         self.frames_count = context.get("frames", context["frames_count"])

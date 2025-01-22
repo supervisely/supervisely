@@ -155,6 +155,7 @@ class BaseTracking(Inference):
                 try:
                     logger.error(f"An error occured: {exc}", exc_info=True)
                     # args = [api, state, context]
+                    logger.debug(f"args: {args}")
                     api: Api = args[0]
                     context = args[2]
                     track_id = context["trackId"]
