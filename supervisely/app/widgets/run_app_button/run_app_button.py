@@ -76,8 +76,6 @@ class RunAppButton(Widget):
                 visible_by_vue_field="isStaticVersion",
             )
         """
-        self._widget_routes = {}
-
         self._text = text
         self._button_type = button_type
         self._button_size = button_size
