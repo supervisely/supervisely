@@ -319,7 +319,7 @@ class BBoxTracking(BaseTracking):
         api.logger.info("Start tracking.")
         try:
             with tracker_interface:
-                for fig_i, figure in enumerate(figures):
+                for fig_i, figure in enumerate(figures, 1):
                     figure = api.video.figure._convert_json_info(figure)
                     if not figure.geometry_type == Rectangle.geometry_name():
                         raise TypeError(f"Tracking does not work with {figure.geometry_type}.")
@@ -328,8 +328,8 @@ class BBoxTracking(BaseTracking):
                         figure.geometry_type, figure.geometry
                     )
                     init = False
-                    for i, (frame, next_frame) in enumerate(
-                        tracker_interface.frames_loader_generator()
+                    for frame_i, (frame, next_frame) in enumerate(
+                        tracker_interface.frames_loader_generator(), 1
                     ):
                         target = PredictionBBox(
                             "",  # TODO: can this be useful?
@@ -374,7 +374,9 @@ class BBoxTracking(BaseTracking):
                         tracker_interface.add_prediction(figure)
 
                         logger.debug(
-                            "Frame processed. Frame: [%d / %d]", i, tracker_interface.frames_count
+                            "Frame [%d / %d] processed.",
+                            frame_i,
+                            tracker_interface.frames_count,
                         )
 
                         if tracker_interface.is_stopped():
@@ -384,7 +386,7 @@ class BBoxTracking(BaseTracking):
                             return
 
                     api.logger.info(
-                        "Figure tracked. Figure: [%d, %d]",
+                        "Figure [%d, %d] tracked.",
                         fig_i,
                         len(figures),
                         extra={"figure_id": figure.id},

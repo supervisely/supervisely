@@ -347,10 +347,6 @@ class TrackerInterfaceV2:
     ):
         self.api = api
         self.context = context
-        logger.debug("TrackerInterfaceV2 context:", extra=self.context)
-        logger.debug(
-            f"videoId in context: {'videoId' in context}",
-        )
         self.video_id = get_value_from_dict(context, ["videoId", "video_id"])
         self.frame_index = get_value_from_dict(context, ["frameIndex", "frame_index"])
         self.frames_count = get_value_from_dict(context, ["frames", "framesCount", "frames_count"])
@@ -369,6 +365,7 @@ class TrackerInterfaceV2:
                 self.direction_n,
             )
         )
+        logger.debug("Frame indexes: %s", self.frame_indexes)
 
         self.log_extra = {
             "video_id": self.video_id,
