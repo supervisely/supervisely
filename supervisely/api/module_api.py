@@ -882,7 +882,10 @@ class ModuleApiBase(_JsonConvertibleModule):
             if type(field_name) is str:
                 json_info[field_name] = value
             elif isinstance(field_name, tuple):
-                json_info.update(_create_nested_dict(field_name[0], value))
+                if len(field_name[0]) == 0:
+                    json_info[field_name[1]] = value
+                else:
+                    json_info.update(_create_nested_dict(field_name[0], value))
             else:
                 raise RuntimeError("Can not parse field {!r}".format(field_name))
         return json_info
