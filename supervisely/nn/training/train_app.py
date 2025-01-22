@@ -39,7 +39,7 @@ from supervisely import (
     is_production,
     logger,
 )
-from supervisely._utils import get_filename_from_headers
+from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
@@ -526,6 +526,7 @@ class TrainApp:
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
         mb_eval_report_id, eval_metrics = None, {}
+        evaluation_report_link, primary_metric_name = None, None
         if self.is_model_benchmark_enabled:
             try:
                 # Convert GT project
@@ -543,6 +544,7 @@ class TrainApp:
                     mb_eval_report,
                     mb_eval_report_id,
                     eval_metrics,
+                    primary_metric_name,
                 ) = self._run_model_benchmark(
                     self.output_dir,
                     remote_dir,
@@ -551,6 +553,7 @@ class TrainApp:
                     model_meta,
                     gt_project_id,
                 )
+                evaluation_report_link = abs_url(f"/model-benchmark?id={str(mb_eval_report_id)}")
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
@@ -566,7 +569,13 @@ class TrainApp:
         # Step 9. Generate and upload additional files
         self._set_text_status("metadata")
         self._generate_experiment_info(
-            remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
+            remote_dir,
+            experiment_info,
+            eval_metrics,
+            mb_eval_report_id,
+            evaluation_report_link,
+            primary_metric_name,
+            export_weights,
         )
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_hyperparameters(remote_dir, experiment_info)
@@ -1456,6 +1465,8 @@ class TrainApp:
         experiment_info: Dict,
         eval_metrics: Dict = {},
         evaluation_report_id: Optional[int] = None,
+        evaluation_report_link: Optional[str] = None,
+        primary_metric_name: str = None,
         export_weights: Dict = {},
     ) -> None:
         """
@@ -1469,6 +1480,8 @@ class TrainApp:
         :type eval_metrics: dict
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
+        :param evaluation_report_link: Evaluation report file link.
+        :type evaluation_report_link: str
         :param export_weights: Export data.
         :type export_weights: dict
         """
@@ -1488,12 +1501,19 @@ class TrainApp:
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
             "train_val_split": self._train_val_split_file,
+            "train_size": len(self._train_split),
+            "val_size": len(self._val_split),
             "hyperparameters": self._hyperparameters_file,
             "artifacts_dir": remote_dir,
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "evaluation_report_id": evaluation_report_id,
+            "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "charts": {"type": "tensorboard", "link": f"{remote_dir}/logs/"},
         }
+
+        # Add to task meta
+        # meta["experiment_info"]["primary_metric"] = primary_metric_name # dont save to json, only add to meta
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
@@ -1987,6 +2007,7 @@ class TrainApp:
             report = bm.report
             report_id = bm.report.id
             eval_metrics = bm.key_metrics
+            primary_metric_name = bm.primary_metric_name
 
             # 8. UI updates
             self.progress_bar_main.hide()
@@ -2008,7 +2029,7 @@ class TrainApp:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
                 return lnk_file_info, report, report_id, eval_metrics
-        return lnk_file_info, report, report_id, eval_metrics
+        return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
 

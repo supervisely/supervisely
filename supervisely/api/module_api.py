@@ -602,6 +602,10 @@ class ApiField:
     """"""
     WITH_SHARED = "withShared"
     """"""
+    EXTRA_FIELDS = "extraFields"
+    """"""
+    CUSTOM_SORT = "customSort"
+    """"""
 
 
 def _get_single_item(items):
