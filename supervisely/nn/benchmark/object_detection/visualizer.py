@@ -90,11 +90,16 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         self.header = overview.get_header(me.login)
         self.overview_md = overview.md
 
+        # IOU Per Class (optional)
+        self.iou_per_class_md = overview.iou_per_class_md
+        self.iou_per_class_table = overview.iou_per_class_table
+
         # Key Metrics
         key_metrics = KeyMetrics(self.vis_texts, self.eval_result)
         self.key_metrics_md = key_metrics.md
         self.key_metrics_table = key_metrics.table
         self.overview_chart = key_metrics.chart
+        self.custom_ap_description = key_metrics.custom_ap_description_md
 
         # Explore Predictions
         explore_predictions = ExplorePredictions(
@@ -238,9 +243,24 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             # Overview
             (0, self.header),
             (1, self.overview_md),
+        ]
+
+        if self.iou_per_class_table is not None:
+            is_anchors_widgets += [
+                (0, self.iou_per_class_md),
+                (0, self.iou_per_class_table),
+            ]
+
+        is_anchors_widgets += [
             # KeyMetrics
             (1, self.key_metrics_md),
             (0, self.key_metrics_table),
+        ]
+
+        if self.custom_ap_description is not None:
+            is_anchors_widgets.append((0, self.custom_ap_description))
+
+        is_anchors_widgets += [
             (0, self.overview_chart),
             # ExplorePredictions
             (1, self.explore_predictions_md),

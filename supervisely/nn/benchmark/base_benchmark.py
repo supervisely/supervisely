@@ -1,5 +1,6 @@
 import os
-from typing import Callable, List, Optional, Tuple, Union
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple, Union, Type
 
 import numpy as np
 
@@ -80,7 +81,7 @@ class BaseBenchmark:
         self.report_id = None
         self._validate_evaluation_params()
 
-    def _get_evaluator_class(self) -> type:
+    def _get_evaluator_class(self) -> Type[BaseEvaluator]:
         raise NotImplementedError()
 
     @property
@@ -95,6 +96,10 @@ class BaseBenchmark:
     def key_metrics(self):
         eval_results = self.get_eval_result()
         return eval_results.key_metrics
+    
+    @property
+    def primary_metric_name(self) -> str:
+        return self._get_evaluator_class().eval_result_cls.PRIMARY_METRIC
 
     def run_evaluation(
         self,
@@ -492,6 +497,8 @@ class BaseBenchmark:
                 "It should be defined in the subclass of BaseBenchmark (e.g. ObjectDetectionBenchmark)."
             )
         eval_result = self.get_eval_result()
+        self._dump_key_metrics(eval_result)
+
         layout_dir = self.get_layout_results_dir()
         self.visualizer = self.visualizer_cls(  # pylint: disable=not-callable
             self.api, [eval_result], layout_dir, self.pbar
@@ -621,3 +628,7 @@ class BaseBenchmark:
             self.diff_project_info = eval_result.diff_project_info
             return self.diff_project_info
         return None
+
+    def _dump_key_metrics(self, eval_result: BaseEvaluator):
+        path = str(Path(self.get_eval_results_dir(), "key_metrics.json"))
+        json.dump_json_file(eval_result.key_metrics, path)
