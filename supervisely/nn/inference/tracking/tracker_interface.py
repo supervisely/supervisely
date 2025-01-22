@@ -361,11 +361,10 @@ class TrackerInterfaceV2:
         self.frame_indexes = list(
             range(
                 self.frame_index,
-                self.frame_index + self.frames_count * self.direction_n,
+                self.frame_index + self.frames_count * self.direction_n + self.direction_n,
                 self.direction_n,
             )
         )
-        logger.debug("Frame indexes: %s", self.frame_indexes)
 
         self.log_extra = {
             "video_id": self.video_id,
