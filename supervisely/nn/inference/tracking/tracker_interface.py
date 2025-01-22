@@ -353,7 +353,7 @@ class TrackerInterfaceV2:
         )
         self.video_id = get_value_from_dict(context, ["videoId", "video_id"])
         self.frame_index = get_value_from_dict(context, ["frameIndex", "frame_index"])
-        self.frames_count = get_value_from_dict(context, ["frames", "frames_count"])
+        self.frames_count = get_value_from_dict(context, ["frames", "framesCount", "frames_count"])
         self.track_id = context.get("trackId", "auto")
         self.direction = context.get("direction", "forward")
         self.session_id = get_value_from_dict(context, ["sessionId", "session_id"], None)
@@ -385,6 +385,8 @@ class TrackerInterfaceV2:
         self.notify_queue = Queue()
         self.upload_thread = None
         self.notify_thread = None
+        self._upload_f = None
+        self._notify_f = None
 
     def _upload_exception_handler(self, exception: Exception):
         logger.error(
@@ -402,18 +404,18 @@ class TrackerInterfaceV2:
 
     @property
     def upload_f(self):
-        return self.upload_f
+        return self._upload_f
 
     @upload_f.setter
     def upload_f(self, upload_f):
-        self.upload_f = upload_f
+        self._upload_f = upload_f
         self.upload_thread = Thread(
             target=self._upload_loop,
             args=[
                 self.upload_queue,
                 self.notify_queue,
                 self.stop_indicator,
-                self.upload_f,
+                self._upload_f,
                 self.upload_sleep_time,
                 self._upload_exception_handler,
             ],
@@ -422,17 +424,17 @@ class TrackerInterfaceV2:
 
     @property
     def notify_f(self):
-        return self.notify_f
+        return self._notify_f
 
     @notify_f.setter
     def notify_f(self, notify_f):
-        self.notify_f = notify_f
+        self._notify_f = notify_f
         self.notify_thread = Thread(
             target=self._nofify_loop,
             args=[
                 self.notify_queue,
                 self.stop_indicator,
-                notify_f,
+                self._notify_f,
                 self.notify_sleep_time,
                 self._notify_exception_handler,
             ],
