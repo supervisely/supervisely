@@ -454,6 +454,7 @@ class TrackerInterfaceV2:
         upload_sleep_time: float = None,
         exception_handler: callable = None,
     ):
+        logger.debug("Upload loop started")
         if upload_f is None:
             logger.warning("Upload function is not provided. Exiting upload loop.")
             return
@@ -486,6 +487,7 @@ class TrackerInterfaceV2:
         notify_sleep_time: float = None,
         exception_handler: callable = None,
     ):
+        logger.debug("Notify loop started")
         if notify_f is None:
             logger.warning("Notify function is not provided. Exiting notify loop.")
             return
