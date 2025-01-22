@@ -9,6 +9,7 @@ from typing import OrderedDict as OrderedDictType
 
 import numpy as np
 
+from supervisely._utils import find_value_by_keys
 from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
@@ -326,15 +327,6 @@ class ThreadSafeStopIndicator:
 FrameImage = namedtuple("FrameImage", ["frame_index", "image"])
 
 
-def get_value_from_dict(d: Dict, keys: List[str], default=object()):
-    for key in keys:
-        if key in d:
-            return d[key]
-    if default is object():
-        raise KeyError(f"None of the keys {keys} are in the dictionary.")
-    return default
-
-
 class TrackerInterfaceV2:
     UPLOAD_SLEEP_TIME = 0.001  # 1ms
     NOTIFY_SLEEP_TIME = 1  # 1s
@@ -347,12 +339,12 @@ class TrackerInterfaceV2:
     ):
         self.api = api
         self.context = context
-        self.video_id = get_value_from_dict(context, ["videoId", "video_id"])
-        self.frame_index = get_value_from_dict(context, ["frameIndex", "frame_index"])
-        self.frames_count = get_value_from_dict(context, ["frames", "framesCount", "frames_count"])
+        self.video_id = find_value_by_keys(context, ["videoId", "video_id"])
+        self.frame_index = find_value_by_keys(context, ["frameIndex", "frame_index"])
+        self.frames_count = find_value_by_keys(context, ["frames", "framesCount", "frames_count"])
         self.track_id = context.get("trackId", "auto")
         self.direction = context.get("direction", "forward")
-        self.session_id = get_value_from_dict(context, ["sessionId", "session_id"], None)
+        self.session_id = find_value_by_keys(context, ["sessionId", "session_id"], None)
         self.figures = context.get("figures", None)
         self.direct_progress = context.get("useDirectProgressMessages", False)
         self.direction_n = 1 if self.direction == "forward" else -1
@@ -384,19 +376,18 @@ class TrackerInterfaceV2:
         self._upload_f = None
         self._notify_f = None
 
-    def _upload_exception_handler(self, exception: Exception):
-        logger.error(
-            "Error in upload loop: %s", str(exception), exc_info=True, extra=self.log_extra
-        )
-        self.stop_indicator.stop(exception)
-        raise exception
+    def __call__(self, upload_f, notify_f):
+        self.upload_f = upload_f
+        self.notify_f = notify_f
+        return self
 
-    def _notify_exception_handler(self, exception: Exception):
-        logger.error(
-            "Error in notify loop: %s", str(exception), exc_info=True, extra=self.log_extra
-        )
-        self.stop_indicator.stop(exception)
-        raise exception
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.wait_stop(exception=exc_value)
+        return False
 
     @property
     def upload_f(self):
@@ -442,6 +433,25 @@ class TrackerInterfaceV2:
             self.upload_thread.start()
         if self.notify_thread is not None:
             self.notify_thread.start()
+
+    def stop(self, exception: Exception = None):
+        self.stop_indicator.stop(exception)
+
+    def join(self, timeout: Optional[float] = 5 * 60):
+        if self.upload_thread is not None and self.upload_thread.is_alive():
+            self.upload_thread.join(timeout=timeout)
+        if self.notify_thread is not None and self.notify_thread.is_alive():
+            self.notify_thread.join(timeout=timeout)
+
+    def wait_stop(self, exception: Exception = None, timeout: Optional[float] = 5 * 60):
+        self.stop(exception)
+        self.join(timeout=timeout)
+
+    def is_stopped(self):
+        return self.stop_indicator.is_stopped()
+
+    def stop_reason(self):
+        return self.stop_indicator.get_reason()
 
     @classmethod
     def _upload_loop(
@@ -525,33 +535,6 @@ class TrackerInterfaceV2:
             video_id=self.video_id,
         )
 
-    def stop(self, exception: Exception = None):
-        self.stop_indicator.stop(exception)
-
-    def join(self, timeout: Optional[float] = 5 * 60):
-        if self.upload_thread is not None and self.upload_thread.is_alive():
-            self.upload_thread.join(timeout=timeout)
-        if self.notify_thread is not None and self.notify_thread.is_alive():
-            self.notify_thread.join(timeout=timeout)
-
-    def wait_stop(self, exception: Exception = None, timeout: Optional[float] = 5 * 60):
-        self.stop(exception)
-        self.join(timeout=timeout)
-
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.wait_stop(exception=exc_value)
-        return False
-
-    def is_stopped(self):
-        return self.stop_indicator.is_stopped()
-
-    def stop_reason(self):
-        return self.stop_indicator.get_reason()
-
     def frames_loader_generator(
         self, batch_size=2, step=1
     ) -> Generator[List[FrameImage], None, None]:
@@ -619,3 +602,17 @@ class TrackerInterfaceV2:
             if stopped and progress_current < progress_total:
                 logger.info("Task stopped by user.", extra=self.log_extra)
                 self.stop()
+
+    def _upload_exception_handler(self, exception: Exception):
+        logger.error(
+            "Error in upload loop: %s", str(exception), exc_info=True, extra=self.log_extra
+        )
+        self.stop_indicator.stop(exception)
+        raise exception
+
+    def _notify_exception_handler(self, exception: Exception):
+        logger.error(
+            "Error in notify loop: %s", str(exception), exc_info=True, extra=self.log_extra
+        )
+        self.stop_indicator.stop(exception)
+        raise exception

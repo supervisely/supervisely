@@ -285,9 +285,7 @@ class BBoxTracking(BaseTracking):
                 )
         return results
 
-    @BaseTracking.send_error_data
     def _track_async(self, api: Api, state: dict, context: dict, request_uuid: str = None):
-        api.logger.info("context", extra=context)
         inference_request = self._inference_requests[request_uuid]
         tracker_interface = TrackerInterfaceV2(api, context, self.cache)
         progress: Progress = inference_request["progress"]
@@ -313,12 +311,9 @@ class BBoxTracking(BaseTracking):
                 progress.iters_done_report(len(object_items))
                 tracker_interface.notify_progress(progress.current, progress.total, frame_range)
 
-        tracker_interface.upload_f = _upload_f
-        tracker_interface.notify_f = _notify_f
-
         api.logger.info("Start tracking.")
         try:
-            with tracker_interface:
+            with tracker_interface(_upload_f, _notify_f):
                 for fig_i, figure in enumerate(figures, 1):
                     figure = api.video.figure._convert_json_info(figure)
                     if not figure.geometry_type == Rectangle.geometry_name():
@@ -400,7 +395,8 @@ class BBoxTracking(BaseTracking):
             progress.set(current=0, total=1, report=True)
 
     def track(self, api: Api, state: Dict, context: Dict):
-        return self._track(api, context, notify_annotation_tool=True)
+        self.schedule_task(self._track, api, context, notify_annotation_tool=True)
+        return {"message": "Track task started."}
 
     def track_api(self, api: Api, state: Dict, context: Dict):
         inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
@@ -428,21 +424,11 @@ class BBoxTracking(BaseTracking):
             raise ValidationError(
                 f"Batch size should be less than or equal to {self.max_batch_size} for this model."
             )
+
         inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
-        self._on_inference_start(inference_request_uuid)
-        future = self._executor.submit(
-            self._handle_error_in_async,
-            inference_request_uuid,
-            self._track_async,
-            api,
-            state,
-            context,
-            inference_request_uuid,
-        )
-        end_callback = functools.partial(
-            self._on_inference_end, inference_request_uuid=inference_request_uuid
-        )
-        future.add_done_callback(end_callback)
+        fn = self.send_error_data(api, context)(self._track_async)
+        self.schedule_task(fn, api, state, context, inference_request_uuid)
+
         logger.debug(
             "Inference has scheduled from 'track_async' endpoint",
             extra={"inference_request_uuid": inference_request_uuid},

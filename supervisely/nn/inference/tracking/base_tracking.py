@@ -7,6 +7,7 @@ from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 from fastapi import Form, Request, Response, UploadFile, status
 
+from supervisely._utils import find_value_by_keys
 from supervisely.api.api import Api
 from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.api.module_api import ApiField
@@ -134,51 +135,69 @@ class BaseTracking(Inference):
             message=f"{error_name}: {message}",
         )
 
-    def _handle_error_in_async(self, uuid, func, *args, notify_error_func=None, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            inf_request = self._inference_requests.get(uuid, None)
-            if inf_request is not None:
-                inf_request["exception"] = str(e)
-            logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
-            raise e
+    def _handle_error_in_async(self, uuid, func):
+        def inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                inf_request = self._inference_requests.get(uuid, None)
+                if inf_request is not None:
+                    inf_request["exception"] = str(e)
+                logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+                raise e
+
+        return inner
 
     @staticmethod
-    def send_error_data(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            value = None
-            try:
-                value = func(*args, **kwargs)
-            except Exception as exc:
+    def send_error_data(api, context):
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
                 try:
-                    logger.error(f"An error occured: {exc}", exc_info=True)
-                    # args = [api, state, context]
-                    logger.debug(f"args: {args}")
-                    api: Api = args[0]
-                    context = args[2]
-                    track_id = context["trackId"]
-                    if ApiField.USE_DIRECT_PROGRESS_MESSAGES in context:
-                        session_id = context.get("sessionId", context.get("session_id", None))
-                        video_id = context.get("videoId", context.get("video_id", None))
-                        BaseTracking._notify_error_direct(
-                            api=api,
-                            session_id=session_id,
-                            video_id=video_id,
-                            track_id=track_id,
-                            exception=exc,
-                            with_traceback=False,
-                        )
-                    else:
-                        BaseTracking._notify_error_default(
-                            api=api, track_id=track_id, exception=exc, with_traceback=False
-                        )
-                except Exception:
-                    logger.error("An error occured while sending error data", exc_info=True)
-            return value
+                    return func(*args, **kwargs)
+                except Exception as exc:
+                    try:
+                        logger.error(f"An error occurred: {exc}", exc_info=True)
+                        track_id = context["trackId"]
+                        if ApiField.USE_DIRECT_PROGRESS_MESSAGES in context:
+                            session_id = find_value_by_keys(context, ["sessionId", "session_id"])
+                            video_id = find_value_by_keys(context, ["videoId", "video_id"])
+                            BaseTracking._notify_error_direct(
+                                api=api,
+                                session_id=session_id,
+                                video_id=video_id,
+                                track_id=track_id,
+                                exception=exc,
+                                with_traceback=False,
+                            )
+                        else:
+                            BaseTracking._notify_error_default(
+                                api=api, track_id=track_id, exception=exc, with_traceback=False
+                            )
+                    except Exception:
+                        logger.error("An error occurred while sending error data", exc_info=True)
+                    raise exc
 
-        return wrapper
+            return wrapper
+
+        return decorator
+
+    def schedule_task(self, func, *args, **kwargs):
+        inference_request_uuid = kwargs.get("inference_request_uuid", None)
+        if inference_request_uuid is None:
+            self._executor.submit(func, *args, **kwargs)
+        else:
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async(inference_request_uuid, func),
+                *args,
+                **kwargs,
+            )
+            end_callback = functools.partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+        logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
     def _figure_info_to_json(self, figure: FigureInfo):
         return FigureApi.convert_info_to_json(figure)
@@ -278,8 +297,7 @@ class BaseTracking(Inference):
             state = request.state.state
             context = request.state.context
             logger.info("Received track request.", extra={"context": context, "state": state})
-            self.schedule_task(self.track, api, state, context)
-            return {"message": "Track task started."}
+            return self.track(api, state, context)
 
         @server.post("/track-api")
         @handle_validation
