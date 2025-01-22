@@ -75,11 +75,11 @@ def calculate_metrics(
     iou_threshold_per_class = evaluation_params.get("iou_threshold_per_class")
     if iou_threshold_per_class is not None:
         iou_idx_per_class = {
-            cocoGt.getCatIds(catNms=[class_name])[0]: np.where(iouThrs == iou_thres)[0][0]
+            cocoGt.getCatIds(catNms=[class_name])[0]: np.where(np.isclose(iouThrs, iou_thres))[0][0]
             for class_name, iou_thres in iou_threshold_per_class.items()
         }
     else:
-        iou_idx = np.where(iouThrs == iou_threshold)[0][0]
+        iou_idx = np.where(np.isclose(iouThrs, iou_threshold))[0][0]
         iou_idx_per_class = {cat_id: iou_idx for cat_id in cocoGt.getCatIds()}
 
     eval_img_dict = get_eval_img_dict(cocoEval)

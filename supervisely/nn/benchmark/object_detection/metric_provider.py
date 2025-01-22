@@ -92,7 +92,7 @@ class MetricProvider:
 
         eval_params = params.get("evaluation_params", {})
         self.iou_threshold = eval_params.get("iou_threshold", 0.5)
-        self.iou_threshold_idx = np.searchsorted(self.iouThrs, self.iou_threshold)
+        self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
 
         # IoU per class (optional)
         self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
@@ -294,6 +294,9 @@ class _MetricProvider:
             ious.append(match["iou"])
             cats.append(cat_id_to_idx[match["category_id"]])
         ious = np.array(ious) + np.spacing(1)
+        if 0.8999999999999999 in iouThrs:
+            iouThrs = iouThrs.copy()
+            iouThrs[iouThrs == 0.8999999999999999] = 0.9
         iou_idxs = np.searchsorted(iouThrs, ious) - 1
         cats = np.array(cats)
         # TP
@@ -466,6 +469,9 @@ class _MetricProvider:
         )
         scores = np.array([m["score"] for m in matches_sorted])
         ious = np.array([m["iou"] if m["type"] == "TP" else 0.0 for m in matches_sorted])
+        if 0.8999999999999999 in iouThrs:
+            iouThrs = iouThrs.copy()
+            iouThrs[iouThrs == 0.8999999999999999] = 0.9
         iou_idxs = np.searchsorted(iouThrs, ious + np.spacing(1))
 
         # Check
