@@ -6,6 +6,7 @@ from threading import Lock
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 from fastapi import Form, Request, Response, UploadFile, status
+from pydantic import ValidationError
 
 from supervisely._utils import find_value_by_keys
 from supervisely.api.api import Api
@@ -18,10 +19,6 @@ from supervisely.nn.inference.inference import (
     _get_log_extra_for_inference_request,
 )
 from supervisely.sly_logger import logger
-
-
-class ValidationError(Exception):
-    pass
 
 
 def validate_key(data: Dict, key: str, type_: type):

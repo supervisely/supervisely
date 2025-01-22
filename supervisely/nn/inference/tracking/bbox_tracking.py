@@ -7,6 +7,7 @@ from threading import Event, Thread
 from typing import Any, BinaryIO, Dict, List, Optional
 
 import numpy as np
+from pydantic import ValidationError
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Geometry, Label
@@ -17,10 +18,7 @@ from supervisely.api.video.video_figure_api import FigureInfo
 from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
-from supervisely.nn.inference.tracking.base_tracking import (
-    BaseTracking,
-    ValidationError,
-)
+from supervisely.nn.inference.tracking.base_tracking import BaseTracking
 from supervisely.nn.inference.tracking.tracker_interface import (
     TrackerInterface,
     TrackerInterfaceV2,
