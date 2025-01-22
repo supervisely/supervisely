@@ -526,7 +526,7 @@ class TrainApp:
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
         mb_eval_report_id, eval_metrics = None, {}
-        evaluation_report_link = None
+        evaluation_report_link, primary_metric_name = None, None
         if self.is_model_benchmark_enabled:
             try:
                 # Convert GT project
@@ -544,6 +544,7 @@ class TrainApp:
                     mb_eval_report,
                     mb_eval_report_id,
                     eval_metrics,
+                    primary_metric_name,
                 ) = self._run_model_benchmark(
                     self.output_dir,
                     remote_dir,
@@ -573,6 +574,7 @@ class TrainApp:
             eval_metrics,
             mb_eval_report_id,
             evaluation_report_link,
+            primary_metric_name,
             export_weights,
         )
         self._generate_app_state(remote_dir, experiment_info)
@@ -1464,6 +1466,7 @@ class TrainApp:
         eval_metrics: Dict = {},
         evaluation_report_id: Optional[int] = None,
         evaluation_report_link: Optional[str] = None,
+        primary_metric_name: str = None,
         export_weights: Dict = {},
     ) -> None:
         """
@@ -1510,8 +1513,7 @@ class TrainApp:
         }
 
         # Add to task meta
-        # meta["experiment_info"]["primary_metric"] dont save to json, only add to meta
-        # meta["experiment_info"]["tensorboard"] = meta["experiment_info"]["artifacts_dir"] + "logs"
+        # meta["experiment_info"]["primary_metric"] = primary_metric_name # dont save to json, only add to meta
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
@@ -2001,6 +2003,7 @@ class TrainApp:
             report = bm.report
             report_id = bm.report.id
             eval_metrics = bm.key_metrics
+            primary_metric_name = bm.primary_metric_name
 
             # 8. UI updates
             self.progress_bar_main.hide()
@@ -2022,7 +2025,7 @@ class TrainApp:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
                 return lnk_file_info, report, report_id, eval_metrics
-        return lnk_file_info, report, report_id, eval_metrics
+        return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
 
