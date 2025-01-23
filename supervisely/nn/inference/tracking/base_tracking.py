@@ -131,18 +131,22 @@ class BaseTracking(Inference):
             message=f"{error_name}: {message}",
         )
 
-    def _handle_error_in_async(self, uuid, func):
-        def inner(*args, **kwargs):
-            try:
-                return func(*args, **kwargs)
-            except Exception as e:
-                inf_request = self._inference_requests.get(uuid, None)
-                if inf_request is not None:
-                    inf_request["exception"] = str(e)
-                logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
-                raise e
+    def _handle_error_in_async(self, uuid):
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    inf_request = self._inference_requests.get(uuid, None)
+                    if inf_request is not None:
+                        inf_request["exception"] = str(e)
+                    logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+                    raise e
 
-        return inner
+            return wrapper
+
+        return decorator
 
     @staticmethod
     def send_error_data(api, context):
@@ -153,7 +157,6 @@ class BaseTracking(Inference):
                     return func(*args, **kwargs)
                 except Exception as exc:
                     try:
-                        logger.error(f"An error occurred: {exc}", exc_info=True)
                         track_id = context["trackId"]
                         if ApiField.USE_DIRECT_PROGRESS_MESSAGES in context:
                             session_id = find_value_by_keys(context, ["sessionId", "session_id"])
@@ -184,8 +187,9 @@ class BaseTracking(Inference):
             self._executor.submit(func, *args, **kwargs)
         else:
             self._on_inference_start(inference_request_uuid)
+            fn = self._handle_error_in_async(inference_request_uuid)(func)
             future = self._executor.submit(
-                self._handle_error_in_async(inference_request_uuid, func),
+                fn,
                 *args,
                 **kwargs,
             )
