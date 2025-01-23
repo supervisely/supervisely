@@ -10,7 +10,6 @@ from pydantic import ValidationError
 
 from supervisely._utils import find_value_by_keys
 from supervisely.api.api import Api
-from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.api.module_api import ApiField
 from supervisely.io import env
 from supervisely.nn.inference.inference import (

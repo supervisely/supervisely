@@ -5,7 +5,6 @@ from threading import Event, Thread
 from typing import BinaryIO, Dict, List, Tuple
 
 import numpy as np
-from fastapi import Request
 from pydantic import ValidationError
 
 from supervisely._utils import find_value_by_keys
