@@ -352,7 +352,7 @@ class BBoxTracking(BaseTracking):
                         figure_id = uuid.uuid5(
                             namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
                         ).hex
-                        figure = api.video.figure._convert_json_info(
+                        result_figure = api.video.figure._convert_json_info(
                             {
                                 ApiField.ID: figure_id,
                                 ApiField.OBJECT_ID: figure.object_id,
@@ -363,7 +363,7 @@ class BBoxTracking(BaseTracking):
                             }
                         )
 
-                        tracker_interface.add_prediction(figure)
+                        tracker_interface.add_prediction(result_figure)
 
                         logger.debug(
                             "Frame [%d / %d] processed.",
@@ -394,7 +394,8 @@ class BBoxTracking(BaseTracking):
             progress.set(current=0, total=1, report=True)
 
     def track(self, api: Api, state: Dict, context: Dict):
-        self.schedule_task(self._track, api, context, notify_annotation_tool=True)
+        fn = self.send_error_data(api, context)(self._track)
+        self.schedule_task(fn, api, context, notify_annotation_tool=True)
         return {"message": "Track task started."}
 
     def track_api(self, api: Api, state: Dict, context: Dict):
@@ -404,7 +405,7 @@ class BBoxTracking(BaseTracking):
         return result
 
     def track_api_files(self, files: List[BinaryIO], settings: Dict):
-        logger.info(f"Start tracking with settings: {settings}.")
+        logger.info("Start tracking with settings:", extra={"settings": settings})
         frame_indexes = list(
             range(settings["frame_index"], settings["frame_index"] + settings["frames"] + 1)
         )

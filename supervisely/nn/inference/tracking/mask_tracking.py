@@ -93,16 +93,6 @@ class MaskTracking(BaseTracking):
                             )
         return results
 
-    def _track_api_cached(self, request: Request, context: dict):
-        logger.info(f"Start tracking with settings: {context}.")
-        video_id = context["video_id"]
-        frame_indexes = list(
-            range(context["frame_index"], context["frame_index"] + context["frames"] + 1)
-        )
-        geometries = map(self._deserialize_geometry, context["input_geometries"])
-        frames = self.cache.get_frames_from_cache(video_id, frame_indexes)
-        return self._inference(frames, geometries)
-
     def _track(self, api: Api, context: Dict):
         self.video_interface = TrackerInterface(
             context=context,
@@ -320,6 +310,11 @@ class MaskTracking(BaseTracking):
                     }
                     if inference_request["cancel_inference"]:
                         return
+                    if tracker_interface.is_stopped():
+                        reason = tracker_interface.stop_reason()
+                        if isinstance(reason, Exception):
+                            raise reason
+                        return
 
                 # predict
                 tracked_multilabel_masks = self.predict(
@@ -331,19 +326,28 @@ class MaskTracking(BaseTracking):
                 for i in np.unique(tracked_multilabel_masks):
                     if inference_request["cancel_inference"]:
                         return
+                    if tracker_interface.is_stopped():
+                        reason = tracker_interface.stop_reason()
+                        if isinstance(reason, Exception):
+                            raise reason
+                        return
                     if i != 0:
                         binary_masks = tracked_multilabel_masks == i
                         fig_id = label2id[i]["fig_id"]
                         obj_id = label2id[i]["obj_id"]
                         geometry_type = label2id[i]["original_geometry"]
-                        for j, mask in enumerate(binary_masks[1:]):
+                        for j, mask in enumerate(binary_masks[1:], 1):
                             if inference_request["cancel_inference"]:
                                 return
+                            if tracker_interface.is_stopped():
+                                reason = tracker_interface.stop_reason()
+                                if isinstance(reason, Exception):
+                                    raise reason
+                                return
+                            this_figure_index = frame_index + j * direction_n
                             # check if mask is not empty
                             if not np.any(mask):
-                                api.logger.info(
-                                    f"Skipping empty mask on frame {frame_index + j*direction_n + direction_n}"
-                                )
+                                api.logger.info(f"Skipping empty mask on frame {this_figure_index}")
                                 # update progress bar anyway (otherwise it will not be finished)
                                 progress.iter_done_report()
                             else:
@@ -364,7 +368,7 @@ class MaskTracking(BaseTracking):
                                         {
                                             ApiField.ID: figure_id,
                                             ApiField.OBJECT_ID: obj_id,
-                                            "meta": {"frame": frame_index},
+                                            "meta": {"frame": this_figure_index},
                                             ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
                                             ApiField.GEOMETRY: geometry.to_json(),
                                             ApiField.TRACK_ID: tracker_interface.track_id,
@@ -388,7 +392,8 @@ class MaskTracking(BaseTracking):
 
     # Implement the following methods in the derived class
     def track(self, api: Api, state: Dict, context: Dict):
-        self.schedule_task(self._track, api, context)
+        fn = self.send_error_data(api, context)(self._track_async)
+        self.schedule_task(fn, api, context)
         return {"message": "Tracking has started."}
 
     def track_api(self, api: Api, state: Dict, context: Dict):
@@ -495,7 +500,7 @@ class MaskTracking(BaseTracking):
         files: List[BinaryIO],
         settings: Dict,
     ):
-        logger.info(f"Start tracking with settings: {settings}.")
+        logger.info(f"Start tracking with settings:", extra={"settings": settings})
         frame_index = find_value_by_keys(settings, ["frame_index", "frameIndex"])
         frames_count = find_value_by_keys(settings, ["frames", "framesCount"])
         input_geometries = find_value_by_keys(settings, ["input_geometries", "inputGeometries"])
