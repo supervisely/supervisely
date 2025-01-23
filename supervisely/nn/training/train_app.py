@@ -2010,6 +2010,7 @@ class TrainApp:
             # 7. Prepare visualizations, report and upload
             bm.visualize()
             _ = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+            bm.upload_report_link(remote_artifacts_dir, bm.report.id, self.output_dir)
             lnk_file_info = bm.lnk
             report = bm.report
             report_id = bm.report.id
@@ -2022,17 +2023,6 @@ class TrainApp:
             logger.info("Model benchmark evaluation completed successfully")
             logger.info(
                 f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
-            )
-
-            # 9. Upload open_report.lnk
-            bm_report_link_path = join(self.output_dir, "open_report.lnk")
-            report_link = "/model-benchmark?id=" + str(report_id)
-            with open(bm_report_link_path, "w") as text_file:
-                print(report_link, file=text_file)
-            self._upload_file_to_team_files(
-                bm_report_link_path,
-                join(remote_artifacts_dir, "open_report.lnk"),
-                "Uploading 'open_report.lnk' to Team Files",
             )
 
         except Exception as e:
