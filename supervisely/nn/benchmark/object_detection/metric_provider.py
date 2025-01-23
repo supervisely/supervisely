@@ -92,7 +92,11 @@ class MetricProvider:
 
         eval_params = params.get("evaluation_params", {})
         self.iou_threshold = eval_params.get("iou_threshold", 0.5)
-        self.iou_threshold_idx = np.searchsorted(self.iouThrs, self.iou_threshold)
+        self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
+
+        # IoU per class (optional)
+        self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
+        self.iou_idx_per_class = params.get("iou_idx_per_class")  # {cat id: iou_idx}
 
     def calculate(self):
         self.m_full = _MetricProvider(
@@ -142,6 +146,8 @@ class MetricProvider:
     def json_metrics(self):
         base = self.base_metrics()
         iou_name = int(self.iou_threshold * 100)
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
         ap_by_class = self.AP_per_class().tolist()
         ap_by_class = dict(zip(self.cat_names, ap_by_class))
         ap_custom_by_class = self.AP_custom_per_class().tolist()
@@ -166,6 +172,8 @@ class MetricProvider:
 
     def key_metrics(self):
         iou_name = int(self.iou_threshold * 100)
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
         json_metrics = self.json_metrics()
         json_metrics.pop("AP_by_class")
         json_metrics.pop(f"AP{iou_name}_by_class")
@@ -174,6 +182,8 @@ class MetricProvider:
     def metric_table(self):
         table = self.json_metrics()
         iou_name = int(self.iou_threshold * 100)
+        if self.iou_threshold_per_class is not None:
+            iou_name = "_custom"
         return {
             "mAP": table["mAP"],
             "AP50": table["AP50"],
@@ -196,6 +206,10 @@ class MetricProvider:
 
     def AP_custom_per_class(self):
         s = self.coco_precision[self.iou_threshold_idx, :, :, 0, 2]
+        s = s.copy()
+        if self.iou_threshold_per_class is not None:
+            for cat_id, iou_idx in self.iou_idx_per_class.items():
+                s[:, cat_id - 1] = self.coco_precision[iou_idx, :, cat_id - 1, 0, 2]
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=0)
         return ap
@@ -280,6 +294,9 @@ class _MetricProvider:
             ious.append(match["iou"])
             cats.append(cat_id_to_idx[match["category_id"]])
         ious = np.array(ious) + np.spacing(1)
+        if 0.8999999999999999 in iouThrs:
+            iouThrs = iouThrs.copy()
+            iouThrs[iouThrs == 0.8999999999999999] = 0.9
         iou_idxs = np.searchsorted(iouThrs, ious) - 1
         cats = np.array(cats)
         # TP
@@ -452,6 +469,9 @@ class _MetricProvider:
         )
         scores = np.array([m["score"] for m in matches_sorted])
         ious = np.array([m["iou"] if m["type"] == "TP" else 0.0 for m in matches_sorted])
+        if 0.8999999999999999 in iouThrs:
+            iouThrs = iouThrs.copy()
+            iouThrs[iouThrs == 0.8999999999999999] = 0.9
         iou_idxs = np.searchsorted(iouThrs, ious + np.spacing(1))
 
         # Check

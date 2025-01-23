@@ -60,6 +60,13 @@ Here, we comprehensively assess the model's performance by presenting a broad se
 - **Calibration Score**: This score represents the consistency of predicted probabilities (or <abbr title="{}">confidence scores</abbr>) made by the model. We evaluate how well predicted probabilities align with actual outcomes. A well-calibrated model means that when it predicts an object with, say, 80% confidence, approximately 80% of those predictions should actually be correct.
 """
 
+markdown_AP_custom_description = """> * AP_custom - Average Precision with different IoU thresholds for each class, that was set in evaluation params by the user."""
+
+markdown_iou_per_class = """### IoU Threshold per Class
+
+The model is evaluated using different IoU thresholds for each class.
+"""
+
 markdown_explorer = """## Explore Predictions
 In this section you can visually assess the model performance through examples. This helps users better understand model capabilities and limitations, giving an intuitive grasp of prediction quality in different scenarios.
 
