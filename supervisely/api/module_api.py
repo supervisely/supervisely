@@ -612,6 +612,11 @@ class ApiField:
     WITH_SHARED = "withShared"
     """"""
     USE_DIRECT_PROGRESS_MESSAGES = "useDirectProgressMessages"
+    """"""
+    EXTRA_FIELDS = "extraFields"
+    """"""
+    CUSTOM_SORT = "customSort"
+    """"""
 
 
 def _get_single_item(items):

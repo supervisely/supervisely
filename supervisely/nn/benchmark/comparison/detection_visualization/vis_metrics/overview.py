@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List
 
 from supervisely._utils import abs_url
@@ -15,6 +16,7 @@ class Overview(BaseVisMetrics):
     MARKDOWN_OVERVIEW = "markdown_overview"
     MARKDOWN_OVERVIEW_INFO = "markdown_overview_info"
     MARKDOWN_COMMON_OVERVIEW = "markdown_common_overview"
+    MARKDOWN_DIFF_IOU = "markdown_different_iou_thresholds_warning"
     CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
@@ -237,3 +239,26 @@ class Overview(BaseVisMetrics):
             ),
         )
         return fig
+
+    @property
+    def not_matched_iou_per_class_thresholds_md(self) -> MarkdownWidget:
+        if all([not r.different_iou_thresholds_per_class for r in self.eval_results]):
+            return None
+
+        iou_thrs_map = defaultdict(set)
+        matched = True
+        for eval_result in self.eval_results:
+            for cat_id, iou_thr in eval_result.mp.iou_threshold_per_class.items():
+                iou_thrs_map[cat_id].add(iou_thr)
+                if len(iou_thrs_map[cat_id]) > 1:
+                    matched = False
+                    break
+
+        if matched:
+            return None
+
+        return MarkdownWidget(
+            name="markdown_different_iou_thresholds_warning",
+            title="IoU per class thresholds mismatch",
+            text=self.vis_texts.markdown_different_iou_thresholds_warning,
+        )

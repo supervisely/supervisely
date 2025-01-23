@@ -19,6 +19,8 @@ from supervisely.io.fs import (
     silent_remove,
     unpack_archive,
 )
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -56,6 +58,7 @@ class AvailablePointcloudConverters:
     BAG = "rosbag"
     LYFT = "lyft"
     NUSCENES = "nuscenes"
+    KITTI3D = "kitti3d"
 
 
 class AvailablePointcloudEpisodesConverters:
@@ -165,6 +168,7 @@ class BaseConverter:
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
+        self._force_shape_for_links = False
         self._api = Api.from_env() if self._upload_as_links else None
         self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
@@ -343,8 +347,17 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+            def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
+                if old_cls.geometry_type == new_cls.geometry_type:
+                    if old_cls.geometry_type == GraphNodes:
+                        old_nodes = old_cls.geometry_config["nodes"]
+                        new_nodes = new_cls.geometry_config["nodes"]
+                        return old_nodes.keys() == new_nodes.keys()
+                    return True
+                return False
+
             while meta1.obj_classes.get(new_name) is not None:
-                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                if _is_matched(meta1.get_obj_class(new_name), new_cls):
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"

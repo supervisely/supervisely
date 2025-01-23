@@ -25,6 +25,7 @@ import supervisely.io.json as sly_json
 from supervisely import (
     Api,
     Application,
+    Dataset,
     DatasetInfo,
     OpenMode,
     Project,
@@ -32,6 +33,7 @@ from supervisely import (
     ProjectMeta,
     WorkflowMeta,
     WorkflowSettings,
+    batched,
     download_project,
     is_development,
     is_production,
@@ -341,22 +343,6 @@ class TrainApp:
         return self.gui.model_selector.get_model_info()
 
     @property
-    def model_meta(self) -> ProjectMeta:
-        """
-        Returns the model metadata.
-
-        :return: Model metadata.
-        :rtype: dict
-        """
-        project_meta_json = self.project_meta.to_json()
-        model_meta = {
-            "classes": [
-                item for item in project_meta_json["classes"] if item["title"] in self.classes
-            ]
-        }
-        return ProjectMeta.from_json(model_meta)
-
-    @property
     def device(self) -> str:
         """
         Returns the selected device for training.
@@ -496,7 +482,6 @@ class TrainApp:
         downloading project and model data.
         """
         logger.info("Preparing for training")
-        self.gui.disable_select_buttons()
 
         # Step 1. Workflow Input
         if is_production():
@@ -505,8 +490,7 @@ class TrainApp:
         self._download_project()
         # Step 3. Split Project
         self._split_project()
-        # Step 4. Convert Supervisely to X format
-        # Step 5. Download Model files
+        # Step 4. Download Model files
         self._download_model()
 
     def _finalize(self, experiment_info: dict) -> None:
@@ -518,31 +502,41 @@ class TrainApp:
         :type experiment_info: dict
         """
         logger.info("Finalizing training")
+        # Step 1. Validate experiment TaskType
+        experiment_info = self._validate_experiment_task_type(experiment_info)
 
-        # Step 1. Validate experiment_info
+        # Step 2. Validate experiment_info
         success, reason = self._validate_experiment_info(experiment_info)
         if not success:
             raise ValueError(f"{reason}. Failed to upload artifacts")
 
-        # Step 2. Preprocess artifacts
+        # Step 3. Preprocess artifacts
         experiment_info = self._preprocess_artifacts(experiment_info)
 
-        # Step3. Postprocess splits
-        splits_data = self._postprocess_splits()
+        # Step 4. Postprocess splits
+        train_splits_data = self._postprocess_splits()
 
-        # Step 3. Upload artifacts
+        # Step 5. Upload artifacts
         self._set_text_status("uploading")
         remote_dir, file_info = self._upload_artifacts()
 
-        # Step 4. Run Model Benchmark
-        mb_eval_lnk_file_info, mb_eval_report, mb_eval_report_id, eval_metrics = (
-            None,
-            None,
-            None,
-            {},
-        )
+        # Step 6. Create model meta according to model CV task type
+        model_meta = self.create_model_meta(experiment_info["task_type"])
+
+        # Step 7. [Optional] Run Model Benchmark
+        mb_eval_lnk_file_info, mb_eval_report = None, None
+        mb_eval_report_id, eval_metrics = None, {}
         if self.is_model_benchmark_enabled:
             try:
+                # Convert GT project
+                gt_project_id, bm_splits_data = None, train_splits_data
+                if self._app_options.get("auto_convert_classes", True):
+                    if self.gui.need_convert_shapes_for_bm:
+                        self._set_text_status("convert_gt_project")
+                        gt_project_id, bm_splits_data = self._convert_and_split_gt_project(
+                            experiment_info["task_type"]
+                        )
+
                 self._set_text_status("benchmark")
                 (
                     mb_eval_lnk_file_info,
@@ -550,12 +544,17 @@ class TrainApp:
                     mb_eval_report_id,
                     eval_metrics,
                 ) = self._run_model_benchmark(
-                    self.output_dir, remote_dir, experiment_info, splits_data
+                    self.output_dir,
+                    remote_dir,
+                    experiment_info,
+                    bm_splits_data,
+                    model_meta,
+                    gt_project_id,
                 )
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
-        # Step 5. [Optional] Convert weights
+        # Step 8. [Optional] Convert weights
         export_weights = {}
         if self.gui.hyperparameters_selector.is_export_required():
             try:
@@ -564,23 +563,23 @@ class TrainApp:
             except Exception as e:
                 logger.error(f"Export weights failed: {e}")
 
-        # Step 6. Generate and upload additional files
+        # Step 9. Generate and upload additional files
         self._set_text_status("metadata")
         self._generate_experiment_info(
             remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
         )
         self._generate_app_state(remote_dir, experiment_info)
         self._generate_hyperparameters(remote_dir, experiment_info)
-        self._generate_train_val_splits(remote_dir, splits_data)
-        self._generate_model_meta(remote_dir, experiment_info)
+        self._generate_train_val_splits(remote_dir, train_splits_data)
+        self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-        # Step 7. Set output widgets
+        # Step 10. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(remote_dir, file_info, mb_eval_report)
         self._set_ws_progress_status("completed")
 
-        # Step 8. Workflow output
+        # Step 11. Workflow output
         if is_production():
             self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
@@ -1120,6 +1119,24 @@ class TrainApp:
     # ----------------------------------------- #
 
     # Postprocess
+    def _validate_experiment_task_type(self, experiment_info: dict) -> dict:
+        """
+        Checks if the task_type key if returned from the user's training function.
+        If not, it will be set to the task type of the model selected in the model selector.
+
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        :return: Experiment info with task_type key.
+        :rtype: dict
+        """
+        task_type = experiment_info.get("task_type", None)
+        if task_type is None:
+            logger.debug(
+                "Task type not found in experiment_info. Task type from model config will be used."
+            )
+            task_type = self.gui.model_selector.get_selected_task_type()
+            experiment_info["task_type"] = task_type
+        return experiment_info
 
     def _validate_experiment_info(self, experiment_info: dict) -> tuple:
         """
@@ -1200,9 +1217,14 @@ class TrainApp:
         logger.debug("Validation successful")
         return True, None
 
-    def _postprocess_splits(self) -> dict:
+    def _postprocess_splits(self, project_id: Optional[int] = None) -> dict:
         """
         Processes the train and val splits to generate the necessary data for the experiment_info.json file.
+
+        :param project_id: ID of the ground truth project for model benchmark. Provide only when cv task convertion is required.
+        :type project_id: Optional[int]
+        :return: Splits data.
+        :rtype: dict
         """
         val_dataset_ids = None
         val_images_ids = None
@@ -1212,10 +1234,30 @@ class TrainApp:
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_set, val_set = self._train_split, self._val_split
         if split_method == "Based on datasets":
-            val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
-            train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids
+            if project_id is None:
+                val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
+                train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
+            else:
+                src_datasets_map = {
+                    dataset.id: dataset
+                    for _, dataset in self._api.dataset.tree(self.project_info.id)
+                }
+                val_dataset_ids = self.gui.train_val_splits_selector.get_val_dataset_ids()
+                train_dataset_ids = self.gui.train_val_splits_selector.get_train_dataset_ids()
+
+                train_dataset_names = [src_datasets_map[ds_id].name for ds_id in train_dataset_ids]
+                val_dataset_names = [src_datasets_map[ds_id].name for ds_id in val_dataset_ids]
+
+                gt_datasets_map = {
+                    dataset.name: dataset.id for _, dataset in self._api.dataset.tree(project_id)
+                }
+                train_dataset_ids = [gt_datasets_map[ds_name] for ds_name in train_dataset_names]
+                val_dataset_ids = [gt_datasets_map[ds_name] for ds_name in val_dataset_names]
         else:
-            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
+            if project_id is None:
+                project_id = self.project_id
+
+            dataset_infos = [dataset for _, dataset in self._api.dataset.tree(project_id)]
             ds_infos_dict = {}
             for dataset in dataset_infos:
                 if dataset.parent_id is not None:
@@ -1232,18 +1274,19 @@ class TrainApp:
                 image_infos = []
                 for dataset_name, image_names in image_names_per_dataset.items():
                     ds_info = ds_infos_dict[dataset_name]
-                    image_infos.extend(
-                        self._api.image.get_list(
-                            ds_info.id,
-                            filters=[
-                                {
-                                    "field": "name",
-                                    "operator": "in",
-                                    "value": image_names,
-                                }
-                            ],
+                    for names_batch in batched(image_names, 200):
+                        image_infos.extend(
+                            self._api.image.get_list(
+                                ds_info.id,
+                                filters=[
+                                    {
+                                        "field": "name",
+                                        "operator": "in",
+                                        "value": names_batch,
+                                    }
+                                ],
+                            )
                         )
-                    )
                 return image_infos
 
             val_image_infos = get_image_infos_by_split(ds_infos_dict, val_set)
@@ -1373,7 +1416,7 @@ class TrainApp:
             f"Uploading '{self._train_val_split_file}' to Team Files",
         )
 
-    def _generate_model_meta(self, remote_dir: str, experiment_info: dict) -> None:
+    def _generate_model_meta(self, remote_dir: str, model_meta: ProjectMeta) -> None:
         """
         Generates and uploads the model_meta.json file to the output directory.
 
@@ -1382,16 +1425,30 @@ class TrainApp:
         :param experiment_info: Information about the experiment results.
         :type experiment_info: dict
         """
-        # @TODO: Handle tags for classification tasks
         local_path = join(self.output_dir, self._model_meta_file)
         remote_path = join(remote_dir, self._model_meta_file)
 
-        sly_json.dump_json_file(self.model_meta.to_json(), local_path)
+        sly_json.dump_json_file(model_meta.to_json(), local_path)
         self._upload_file_to_team_files(
             local_path,
             remote_path,
             f"Uploading '{self._model_meta_file}' to Team Files",
         )
+
+    def create_model_meta(self, task_type: str):
+        """
+        Convert project meta according to task type.
+        """
+        names_to_delete = [
+            c.name for c in self.project_meta.obj_classes if c.name not in self.classes
+        ]
+        model_meta = self.project_meta.delete_obj_classes(names_to_delete)
+
+        if task_type == TaskType.OBJECT_DETECTION:
+            model_meta, _ = model_meta.to_detection_task(True)
+        elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+            model_meta, _ = model_meta.to_segmentation_task()  # @TODO: check background class
+        return model_meta
 
     def _generate_experiment_info(
         self,
@@ -1674,8 +1731,9 @@ class TrainApp:
                 self.gui.training_artifacts.model_benchmark_report_thumbnail.show()
                 self.gui.training_artifacts.model_benchmark_report_field.show()
             else:
-                self.gui.training_artifacts.model_benchmark_fail_text.show()
-                self.gui.training_artifacts.model_benchmark_report_field.show()
+                if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value():
+                    self.gui.training_artifacts.model_benchmark_fail_text.show()
+                    self.gui.training_artifacts.model_benchmark_report_field.show()
         # ---------------------------- #
 
         # Set instruction to GUI
@@ -1739,6 +1797,8 @@ class TrainApp:
         remote_artifacts_dir: str,
         experiment_info: dict,
         splits_data: dict,
+        model_meta: ProjectInfo,
+        gt_project_id: int = None,
     ) -> tuple:
         """
         Runs the Model Benchmark evaluation process. Model benchmark runs only in production mode.
@@ -1751,6 +1811,10 @@ class TrainApp:
         :type experiment_info: dict
         :param splits_data: Information about the train and val splits.
         :type splits_data: dict
+        :param model_meta: Model meta with object classes.
+        :type model_meta: ProjectInfo
+        :param gt_project_id: Ground truth project ID with converted shapes.
+        :type gt_project_id: int
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
@@ -1766,6 +1830,7 @@ class TrainApp:
         supported_task_types = [
             TaskType.OBJECT_DETECTION,
             TaskType.INSTANCE_SEGMENTATION,
+            TaskType.SEMANTIC_SEGMENTATION,
         ]
         task_type = experiment_info["task_type"]
         if task_type not in supported_task_types:
@@ -1806,7 +1871,7 @@ class TrainApp:
                 "artifacts_dir": remote_artifacts_dir,
                 "model_name": experiment_info["model_name"],
                 "framework_name": self.framework_name,
-                "model_meta": self.model_meta.to_json(),
+                "model_meta": model_meta.to_json(),
             }
 
             logger.info(f"Deploy parameters: {self._benchmark_params}")
@@ -1826,12 +1891,15 @@ class TrainApp:
             train_images_ids = splits_data["train"]["images_ids"]
 
             bm = None
+            if gt_project_id is None:
+                gt_project_id = self.project_info.id
+
             if task_type == TaskType.OBJECT_DETECTION:
                 eval_params = ObjectDetectionEvaluator.load_yaml_evaluation_params()
                 eval_params = yaml.safe_load(eval_params)
                 bm = ObjectDetectionBenchmark(
                     self._api,
-                    self.project_info.id,
+                    gt_project_id,
                     output_dir=benchmark_dir,
                     gt_dataset_ids=benchmark_dataset_ids,
                     gt_images_ids=benchmark_images_ids,
@@ -1845,7 +1913,7 @@ class TrainApp:
                 eval_params = yaml.safe_load(eval_params)
                 bm = InstanceSegmentationBenchmark(
                     self._api,
-                    self.project_info.id,
+                    gt_project_id,
                     output_dir=benchmark_dir,
                     gt_dataset_ids=benchmark_dataset_ids,
                     gt_images_ids=benchmark_images_ids,
@@ -1859,7 +1927,7 @@ class TrainApp:
                 eval_params = yaml.safe_load(eval_params)
                 bm = SemanticSegmentationBenchmark(
                     self._api,
-                    self.project_info.id,
+                    gt_project_id,
                     output_dir=benchmark_dir,
                     gt_dataset_ids=benchmark_dataset_ids,
                     gt_images_ids=benchmark_images_ids,
@@ -2167,6 +2235,7 @@ class TrainApp:
         Wrapper function to wrap the training process.
         """
         experiment_info = None
+        check_logs_text = "Please check the logs for more details."
 
         try:
             self._set_train_widgets_state_on_start()
@@ -2175,7 +2244,7 @@ class TrainApp:
             self._prepare_working_dir()
             self._init_logger()
         except Exception as e:
-            message = "Error occurred during training initialization. Please check the logs for more details."
+            message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2186,9 +2255,7 @@ class TrainApp:
             self._set_ws_progress_status("preparing")
             self._prepare()
         except Exception as e:
-            message = (
-                "Error occurred during data preparation. Please check the logs for more details."
-            )
+            message = f"Error occurred during data preparation. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2199,8 +2266,18 @@ class TrainApp:
             if self._app_options.get("train_logger", None) is None:
                 self._set_ws_progress_status("training")
             experiment_info = self._train_func()
+        except ZeroDivisionError as e:
+            message = (
+                "'ZeroDivisionError' occurred during training. "
+                "The error was caused by an insufficient dataset size relative to the specified batch size in hyperparameters. "
+                "Please check input data and hyperparameters."
+            )
+            self._show_error(message, e)
+            self._restore_train_widgets_state_on_error()
+            self._set_ws_progress_status("reset")
+            return
         except Exception as e:
-            message = "Error occurred during training. Please check the logs for more details."
+            message = f"Error occurred during training. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2212,7 +2289,7 @@ class TrainApp:
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
         except Exception as e:
-            message = "Error occurred during finalizing and uploading training artifacts . Please check the logs for more details."
+            message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
@@ -2229,6 +2306,7 @@ class TrainApp:
         self._restore_train_widgets_state_on_error()
 
     def _set_train_widgets_state_on_start(self):
+        self.gui.disable_select_buttons()
         self.gui.training_artifacts.validator_text.hide()
         self._validate_experiment_name()
         self.gui.training_process.experiment_name_input.disable()
@@ -2254,6 +2332,7 @@ class TrainApp:
         if self._app_options.get("device_selector", False):
             self.gui.training_process.select_device._select.enable()
             self.gui.training_process.select_device.enable()
+        self.gui.enable_select_buttons()
 
     def _validate_experiment_name(self) -> bool:
         experiment_name = self.gui.training_process.get_experiment_name()
@@ -2279,6 +2358,7 @@ class TrainApp:
             "metadata",
             "export_onnx",
             "export_trt",
+            "convert_gt_project",
         ],
     ):
 
@@ -2312,6 +2392,8 @@ class TrainApp:
             self.gui.training_process.validator_text.set("Validating experiment...", "info")
         elif status == "metadata":
             self.gui.training_process.validator_text.set("Generating training metadata...", "info")
+        elif status == "convert_gt_project":
+            self.gui.training_process.validator_text.set("Converting GT project...", "info")
 
     def _set_ws_progress_status(
         self,
@@ -2390,3 +2472,55 @@ class TrainApp:
             for runtime, path in export_weights.items()
         }
         return remote_export_weights
+
+    def _convert_and_split_gt_project(self, task_type: str):
+        # 1. Convert GT project to cv task
+        Project.download(
+            self._api, self.project_info.id, "tmp_project", save_images=False, save_image_info=True
+        )
+        project = Project("tmp_project", OpenMode.READ)
+
+        pr_prefix = ""
+        if task_type == TaskType.OBJECT_DETECTION:
+            Project.to_detection_task(project.directory, inplace=True)
+            pr_prefix = "[detection]: "
+        # @TODO: dont convert segmentation?
+        elif (
+            task_type == TaskType.INSTANCE_SEGMENTATION
+            or task_type == TaskType.SEMANTIC_SEGMENTATION
+        ):
+            Project.to_segmentation_task(project.directory, inplace=True)
+            pr_prefix = "[segmentation]: "
+
+        gt_project_info = self._api.project.create(
+            self.workspace_id,
+            f"{pr_prefix}{self.project_info.name}",
+            description=(
+                f"Converted ground truth project for trainig session: '{self.task_id}'. "
+                f"Original project id: '{self.project_info.id}. "
+                "Removing this project will affect model benchmark evaluation report."
+            ),
+            change_name_if_conflict=True,
+        )
+
+        # 3. Upload converted gt project
+        project = Project("tmp_project", OpenMode.READ)
+        self._api.project.update_meta(gt_project_info.id, project.meta)
+        for dataset in project.datasets:
+            dataset: Dataset
+            ds_info = self._api.dataset.create(
+                gt_project_info.id, dataset.name, change_name_if_conflict=True
+            )
+            for batch_names in batched(dataset.get_items_names(), 100):
+                img_infos = [dataset.get_item_info(name) for name in batch_names]
+                img_ids = [img_info.id for img_info in img_infos]
+                anns = [dataset.get_ann(name, project.meta) for name in batch_names]
+
+                img_infos = self._api.image.copy_batch(ds_info.id, img_ids)
+                img_ids = [img_info.id for img_info in img_infos]
+                self._api.annotation.upload_anns(img_ids, anns)
+        sly_fs.remove_dir(project.directory)
+
+        # 4. Match splits with original project
+        gt_split_data = self._postprocess_splits(gt_project_info.id)
+        return gt_project_info.id, gt_split_data

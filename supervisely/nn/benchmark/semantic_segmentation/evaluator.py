@@ -25,6 +25,7 @@ from supervisely.sly_logger import logger
 
 class SemanticSegmentationEvalResult(BaseEvalResult):
     mp_cls = MetricProvider
+    PRIMARY_METRIC = "mIoU"
 
     def _read_files(self, path: str) -> None:
         """Read all necessary files from the directory"""
