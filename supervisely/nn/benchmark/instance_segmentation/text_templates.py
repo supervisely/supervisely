@@ -14,7 +14,7 @@ definitions = SimpleNamespace(
 )
 
 docs_url = (
-    "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/instant-segmentation"
+    "https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/instance-segmentation"
 )
 
 # <i class="zmdi zmdi-check-circle" style="color: #13ce66; margin-right: 5px"></i>
