@@ -1187,7 +1187,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 'primary_metric': 'mAP'
                 'logs': {
                     'type': 'tensorboard',
-                    'link': '/experiments/76_Lemons/247_RT-DETRv2//logs/'
+                    'link': '/experiments/76_Lemons/247_RT-DETRv2/logs/'
                 },
             }
         """
