@@ -1151,7 +1151,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         Example of experiment_info:
 
             experiment_info = {
-                'experiment_name': '247_Lemons (Rectangle)_RT-DETRv2-M',
+                'experiment_name': '247_Lemons_RT-DETRv2-M',
                 'framework_name': 'RT-DETRv2',
                 'model_name': 'RT-DETRv2-M',
                 'task_type': 'object detection',
@@ -1167,7 +1167,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 'train_size': 4,
                 'val_size': 2,
                 'hyperparameters': 'hyperparameters.yaml',
-                'artifacts_dir': '/experiments/76_Lemons (Rectangle)/247_RT-DETRv2/',
+                'artifacts_dir': '/experiments/76_Lemons/247_RT-DETRv2/',
                 'datetime': '2025-01-22 18:13:43',
                 'evaluation_report_id': 12961,
                 'evaluation_report_link': 'https://app.supervisely.com/model-benchmark?id=12961',
@@ -1187,7 +1187,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 'primary_metric': 'mAP'
                 'logs': {
                     'type': 'tensorboard',
-                    'link': '/experiments/76_Lemons (Rectangle)/247_RT-DETRv2//logs/'
+                    'link': '/experiments/76_Lemons/247_RT-DETRv2//logs/'
                 },
             }
         """
