@@ -1728,6 +1728,7 @@ class TrainApp:
             self.gui.training_logs.tensorboard_offline_button.payload = {
                 "state": {"slyFolder": f"{join(remote_dir, 'logs')}"}
             }
+            self.gui.training_logs.tensorboard_offline_button.enable()
         return remote_dir, file_info
 
     def _set_training_output(

@@ -71,6 +71,7 @@ class TrainingLogs:
                     available_in_offline=True,
                     visible_by_vue_field="isStaticVersion",
                 )
+                self.tensorboard_offline_button.disable()
                 self.display_widgets.extend([self.tensorboard_offline_button])
             else:
                 logger.warning(
