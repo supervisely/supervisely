@@ -2010,12 +2010,12 @@ class TrainApp:
             # 7. Prepare visualizations, report and upload
             bm.visualize()
             _ = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-            bm.upload_report_link(remote_artifacts_dir, bm.report.id, self.output_dir)
             lnk_file_info = bm.lnk
             report = bm.report
             report_id = bm.report.id
             eval_metrics = bm.key_metrics
             primary_metric_name = bm.primary_metric_name
+            bm.upload_report_link(remote_artifacts_dir, report_id, self.output_dir)
 
             # 8. UI updates
             self.progress_bar_main.hide()
