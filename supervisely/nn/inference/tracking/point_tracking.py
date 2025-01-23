@@ -288,7 +288,7 @@ class PointTracking(BaseTracking):
             progress.set(current=0, total=1, report=True)
 
     def track(self, api: Api, state: Dict, context: Dict):
-        fn = self.send_error_data(api, context)(self._track_async)
+        fn = self.send_error_data(api, context)(self._track)
         self.schedule_task(fn, api, context)
         return {"message": "Track task started."}
 
@@ -403,7 +403,7 @@ class PointTracking(BaseTracking):
 
         inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         fn = self.send_error_data(api, context)(self._track_async)
-        self.schedule_task(fn, api, state, context, inference_request_uuid)
+        self.schedule_task(fn, api, context, inference_request_uuid=inference_request_uuid)
 
         logger.debug(
             "Inference has scheduled from 'track_async' endpoint",

@@ -282,8 +282,8 @@ class BBoxTracking(BaseTracking):
                 )
         return results
 
-    def _track_async(self, api: Api, state: dict, context: dict, request_uuid: str = None):
-        inference_request = self._inference_requests[request_uuid]
+    def _track_async(self, api: Api, context: dict, inference_request_uuid: str = None):
+        inference_request = self._inference_requests[inference_request_uuid]
         tracker_interface = TrackerInterfaceV2(api, context, self.cache)
         progress: Progress = inference_request["progress"]
         frames_count = tracker_interface.frames_count
@@ -399,9 +399,9 @@ class BBoxTracking(BaseTracking):
         return {"message": "Track task started."}
 
     def track_api(self, api: Api, state: Dict, context: Dict):
-        inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
-        result = self._track_api(api, context, inference_request_uuid)
-        logger.info("Track-api request processed.", extra={"request_uuid": inference_request_uuid})
+        request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
+        result = self._track_api(api, context, request_uuid)
+        logger.info("Track-api request processed.", extra={"request_uuid": request_uuid})
         return result
 
     def track_api_files(self, files: List[BinaryIO], settings: Dict):
@@ -427,7 +427,7 @@ class BBoxTracking(BaseTracking):
 
         inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         fn = self.send_error_data(api, context)(self._track_async)
-        self.schedule_task(fn, api, state, context, inference_request_uuid)
+        self.schedule_task(fn, api, context, inference_request_uuid=inference_request_uuid)
 
         logger.debug(
             "Inference has scheduled from 'track_async' endpoint",

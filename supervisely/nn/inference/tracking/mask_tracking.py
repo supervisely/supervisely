@@ -239,8 +239,8 @@ class MaskTracking(BaseTracking):
             raise
         stop_upload_event.set()
 
-    def _track_async(self, api: Api, state: dict, context: dict, request_uuid: str = None):
-        inference_request = self._inference_requests[request_uuid]
+    def _track_async(self, api: Api, context: dict, inference_request_uuid: str = None):
+        inference_request = self._inference_requests[inference_request_uuid]
         tracker_interface = TrackerInterfaceV2(api, context, self.cache)
         progress: Progress = inference_request["progress"]
         frames_count = tracker_interface.frames_count
@@ -391,7 +391,7 @@ class MaskTracking(BaseTracking):
 
     # Implement the following methods in the derived class
     def track(self, api: Api, state: Dict, context: Dict):
-        fn = self.send_error_data(api, context)(self._track_async)
+        fn = self.send_error_data(api, context)(self._track)
         self.schedule_task(fn, api, context)
         return {"message": "Tracking has started."}
 
@@ -526,7 +526,7 @@ class MaskTracking(BaseTracking):
 
         inference_request_uuid = uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}").hex
         fn = self.send_error_data(api, context)(self._track_async)
-        self.schedule_task(fn, api, state, context, inference_request_uuid)
+        self.schedule_task(fn, api, context, inference_request_uuid=inference_request_uuid)
 
         logger.debug(
             "Inference has scheduled from 'track_async' endpoint",
