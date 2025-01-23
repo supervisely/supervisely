@@ -1195,22 +1195,4 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
-        # [discuss] @TODO: set output for workspace tasks page in this method
-        # file_path = os.path.join(experiment_info["artifacts_dir"], "open_app.lnk")
-        # file_url = self._api.file.get_info_by_path(file_path).storage_path
-
-        # output = {
-        #     ApiField.GENERAL: {
-        #         "icon": {
-        #             "className": "zmdi zmdi-folder",
-        #             "color": "#33c94c",
-        #             "backgroundColor": "#d9f7e4",
-        #         },
-        #         "title": experiment_info["experiment_name"],
-        #         "titleUrl": file_url,
-        #         "download": False,
-        #         "description": "Directory",
-        #     }
-        # }
-        # resp = self._api.post("tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output})
         return resp.json()
