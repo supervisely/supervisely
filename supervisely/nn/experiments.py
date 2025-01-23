@@ -122,7 +122,9 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
 
             missing_required_fields = required_fields - response_json.keys()
             if missing_required_fields:
-                logger.debug(f"Missing fields: {missing_required_fields} for '{experiment_path}'")
+                logger.debug(
+                    f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
+                )
                 return None
             return ExperimentInfo(**response_json)
         except requests.exceptions.RequestException as e:
