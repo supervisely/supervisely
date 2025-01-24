@@ -497,8 +497,6 @@ class Rectangle(Geometry):
         if geometries is None or len(geometries) == 0:
             raise ValueError("No geometries provided to create a Rectangle.")
         bboxes = [g.to_bbox() for g in geometries]
-        if len(bboxes) == 0:
-            raise ValueError("No bounding boxes converted from provided geometries.")
         top = min(bbox.top for bbox in bboxes)
         left = min(bbox.left for bbox in bboxes)
         bottom = max(bbox.bottom for bbox in bboxes)
