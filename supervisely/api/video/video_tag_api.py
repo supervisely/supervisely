@@ -102,6 +102,8 @@ class VideoTagApi(TagApi):
         video_id: int,
         value: Optional[Union[str, int]] = None,
         frame_range: Optional[List[int]] = None,
+        is_finished: Optional[bool] = True,
+        non_final_value: Optional[bool] = False,
     ) -> int:
         """
         Add VideoTag to video.
@@ -114,6 +116,10 @@ class VideoTagApi(TagApi):
         :type value: str or int
         :param frame_range: New VideoTag frame range.
         :type frame_range: List[int]
+        :param is_finished: Specify if the tag is finished.
+        :type is_finished: bool
+        :param non_final_value: Specify if the tag value is non-final.
+        :type non_final_value: bool
         :return: None
         :rtype: dict
         :Usage example:
@@ -135,9 +141,11 @@ class VideoTagApi(TagApi):
             request_data[ApiField.VALUE] = value
         if frame_range:
             request_data[ApiField.FRAME_RANGE] = frame_range
+        request_data[ApiField.IS_FINISHED] = is_finished
+        request_data[ApiField.NON_FINAL_VALUE] = non_final_value
 
         resp = self._api.post("videos.tags.add", request_data)
-        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296676, 'createdAt': '2022-09-20T11:52:33.829Z', 'updatedAt': '2022-09-20T11:52:33.829Z', 'labelerLogin': 'max'}
+        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296676, 'createdAt': '2022-09-20T11:52:33.829Z', 'updatedAt': '2022-09-20T11:52:33.829Z', 'labelerLogin': 'max', isFinished: true, nonFinalValue: false}
         return resp.json()
 
     def add(self, video_id: int, tag: VideoTag, update_id_inplace=True) -> int:
@@ -186,7 +194,14 @@ class VideoTagApi(TagApi):
             else:
                 raise ValueError("tag_meta.sly_id is None, get updated project meta from server")
 
-        resp_json = self.add_tag(tag.meta.sly_id, video_id, tag.value, tag.frame_range)
+        resp_json = self.add_tag(
+            tag.meta.sly_id,
+            video_id,
+            tag.value,
+            tag.frame_range,
+            tag.is_finished,
+            tag.non_final_value,
+        )
         tag_id = resp_json.get("id")
         created_at = resp_json.get("createdAt")
         updated_at = resp_json.get("updatedAt")
@@ -284,6 +299,8 @@ class VideoObjectTagApi(TagApi):
         object_id: int,
         value: Optional[Union[str, int]] = None,
         frame_range: Optional[List[int]] = None,
+        is_finished: Optional[bool] = True,
+        non_final_value: Optional[bool] = False,
     ) -> int:
         """Add a tag to an annotation object.
 
@@ -306,6 +323,8 @@ class VideoObjectTagApi(TagApi):
             request_body[ApiField.VALUE] = value
         if frame_range is not None:
             request_body[ApiField.FRAME_RANGE] = frame_range
+        request_body[ApiField.IS_FINISHED] = is_finished
+        request_body[ApiField.NON_FINAL_VALUE] = non_final_value
 
         response = self._api.post("annotation-objects.tags.add", request_body)
         id = response.json()[ApiField.ID]
