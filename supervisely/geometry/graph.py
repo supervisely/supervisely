@@ -219,6 +219,8 @@ class GraphNodes(Geometry):
         self._nodes = nodes
         if isinstance(nodes, (list, tuple)):
             self._nodes = {}
+            if len(nodes) == 0:
+                raise ValueError("Empty list of nodes is not allowed for GraphNodes")
             for i, node in enumerate(nodes):
                 if node._label is not None:
                     self._nodes[node._label] = Node(node._location, node._disabled)
