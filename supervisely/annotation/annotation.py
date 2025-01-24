@@ -556,8 +556,6 @@ class Annotation:
                 canvas_rect = Rectangle.from_size(self.img_size)
                 try:
                     cropped_labels = label.crop(canvas_rect)
-                    if not cropped_labels:
-                        continue
                     dest.extend(cropped_labels)
                 except ValueError:
                     logger.error(
