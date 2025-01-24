@@ -86,11 +86,10 @@ class PerClassOutcomeCounts(DetectionVisMetric):
         import plotly.express as px  # pylint: disable=import-error
 
         # Per-class Counts
-        iou_thres = 0
-
-        tp = self.eval_result.mp.true_positives[:, iou_thres]
-        fp = self.eval_result.mp.false_positives[:, iou_thres]
-        fn = self.eval_result.mp.false_negatives[:, iou_thres]
+        mp = self.eval_result.mp
+        tp = mp.m._take_iou_thresholds(mp.true_positives).flatten()
+        fp = mp.m._take_iou_thresholds(mp.false_positives).flatten()
+        fn = mp.m._take_iou_thresholds(mp.false_negatives).flatten()
 
         # normalize
         support = tp + fn
