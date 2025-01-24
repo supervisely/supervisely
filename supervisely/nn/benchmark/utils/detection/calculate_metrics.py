@@ -73,6 +73,7 @@ def calculate_metrics(
     evaluation_params = evaluation_params or {}
     iou_threshold = evaluation_params.get("iou_threshold", 0.5)
     iou_threshold_per_class = evaluation_params.get("iou_threshold_per_class")
+    average_across_iou_thresholds = evaluation_params.get("average_across_iou_thresholds", True)
     if iou_threshold_per_class is not None:
         iou_idx_per_class = {
             cocoGt.getCatIds(catNms=[class_name])[0]: np.where(np.isclose(iouThrs, iou_thres))[0][0]
