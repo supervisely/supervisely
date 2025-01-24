@@ -72,13 +72,13 @@ class ConfidenceScore(DetectionVisMetric):
             self.eval_result.dfsp_down,
             x="scores",
             y=["precision", "recall", "f1"],
-            labels={"value": "Value", "variable": "Metric", "scores": "Confidence Score"},
+            labels={"value": "Metric", "variable": "Metric", "scores": "Confidence Score"},
             width=None,
             height=500,
             color_discrete_map=color_map,
         )
         fig.update_traces(
-            hovertemplate="Confidence Score: %{x:.2f}<br>Value: %{y:.2f}<extra></extra>"
+            hovertemplate="Confidence score: %{x:.2f}<br>Metric: %{y:.2f}<extra></extra>"
         )
         fig.update_layout(yaxis=dict(range=[0, 1]), xaxis=dict(range=[0, 1], tick0=0, dtick=0.1))
 
