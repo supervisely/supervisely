@@ -476,7 +476,7 @@ class Rectangle(Geometry):
         return cls(0, 0, size[0] - 1, size[1] - 1)
 
     @classmethod
-    def from_geometries_list(cls, geometries: List[sly.geometry.geometry]) -> Rectangle:
+    def from_geometries_list(cls, geometries: List[Geometry]) -> Rectangle:
         """
         Create Rectangle from given geometry objects.
 
@@ -494,7 +494,11 @@ class Rectangle(Geometry):
             geom_objs = [sly.Point(100, 200), sly.Polyline([sly.PointLocation(730, 2104), sly.PointLocation(2479, 402)])]
             figure_from_geom_objs = sly.Rectangle.from_geometries_list(geom_objs)
         """
+        if geometries is None or len(geometries) == 0:
+            raise ValueError("No geometries provided to create a Rectangle.")
         bboxes = [g.to_bbox() for g in geometries]
+        if len(bboxes) == 0:
+            raise ValueError("No bounding boxes converted from provided geometries.")
         top = min(bbox.top for bbox in bboxes)
         left = min(bbox.left for bbox in bboxes)
         bottom = max(bbox.bottom for bbox in bboxes)

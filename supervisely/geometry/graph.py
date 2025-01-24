@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
+from supervisely import logger
 from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
@@ -593,6 +594,10 @@ class GraphNodes(Geometry):
 
             rectangle = figure.to_bbox()
         """
+        if self._nodes is None or len(self._nodes) == 0:
+            logger.warning(
+                f"Cannot create a bounding box from an empty graph(keypoints) with ID: {self.sly_id}"
+            )
         return Rectangle.from_geometries_list(
             [Point.from_point_location(node.location) for node in self._nodes.values()]
         )
