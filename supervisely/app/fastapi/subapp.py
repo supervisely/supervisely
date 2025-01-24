@@ -976,6 +976,9 @@ class Application(metaclass=Singleton):
         """Indicates whether the application is in the process of being terminated."""
         return self._stop_event.is_set()
 
+    def reload_page(self):
+        run_sync(self.hot_reload.notify.notify())
+
     def get_static_dir(self):
         return self._static_dir
 
