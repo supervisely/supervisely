@@ -31,6 +31,7 @@ class Overview(DetectionVisMetric):
 
         # link to scroll to the optimal confidence section
         opt_conf_url = self.vis_texts.docs_url + "#f1-optimal-confidence-threshold"
+        average_url = self.vis_texts.docs_url + "#averaging-iou-thresholds"
 
         iou_threshold = self.eval_result.mp.iou_threshold
         if self.eval_result.different_iou_thresholds_per_class:
@@ -52,6 +53,8 @@ class Overview(DetectionVisMetric):
             iou_threshold,
             round(self.eval_result.mp.f1_optimal_conf, 4),
             opt_conf_url,
+            self.eval_result.mp.average_across_iou_thresholds,
+            average_url,
             self.vis_texts.docs_url,
         ]
 

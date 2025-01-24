@@ -44,6 +44,7 @@ markdown_overview = """
 {}
 - **IoU threshold**: {}
 - **Optimal confidence threshold**: {} (calculated automatically), <a href="{}" target="_blank">learn more</a>.
+- **Averaging across IoU thresholds:** {}, <a href="{}" target="_blank">learn more</a>.
 
 Learn more about Model Benchmark, implementation details, and how to use the charts in our <a href="{}" target="_blank">Technical Report</a>.
 """
