@@ -415,7 +415,6 @@ class BaseBenchmark:
                 "id": app_info["id"],
             }
         else:
-            logger.warning("session.task_id is not set. App info will not be fetched.")
             app_info = None
         model_info = {
             **deploy_info,
