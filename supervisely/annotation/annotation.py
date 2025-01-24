@@ -559,9 +559,10 @@ class Annotation:
                     if not cropped_labels:
                         continue
                     dest.extend(cropped_labels)
-                except ValueError as e:
-                    logger.warning(
-                        f"Cropped label(s) for '{label.obj_class.name}' were not added to annotation: {e}"
+                except ValueError:
+                    logger.error(
+                        f"Cropped label(s) for '{label.obj_class.name}' were not added to annotation",
+                        exc_info=True,
                     )
             else:
                 # image was uploaded by link and does not have resolution in DB
