@@ -620,6 +620,9 @@ class BaseBenchmark:
     def get_eval_result(self):
         if self._eval_results is None:
             self._eval_results = self.evaluator.get_eval_result()
+            if not self._eval_results.inference_info:
+                self._eval_results.inference_info["gt_project_id"] = self.gt_project_info.id
+                self._eval_results.inference_info["dt_project_id"] = self.dt_project_info.id
         return self._eval_results
 
     def get_diff_project_info(self):
