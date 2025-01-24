@@ -1191,7 +1191,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 },
             }
         """
-        output = {ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}}}
+        output = {
+            ApiField.PROJECT: {ApiField.ID: experiment_info["project_id"]},
+            ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}},
+        }
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
