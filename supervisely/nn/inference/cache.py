@@ -119,6 +119,8 @@ class PersistentImageTTLCache(TTLCache):
             shutil.rmtree(self._base_dir)
 
     def save_image(self, key, image: np.ndarray) -> None:
+        t = time.monotonic()
+        sly.logger.debug(f"Saving image #{key} to disk")
         if not self._base_dir.exists():
             self._base_dir.mkdir()
 
@@ -128,6 +130,7 @@ class PersistentImageTTLCache(TTLCache):
         if filepath.exists():
             sly.logger.debug(f"Rewrite image {str(filepath)}")
         sly.image.write(str(filepath), image)
+        sly.logger.debug(f"Image #{key} saved to {filepath} in {time.monotonic() - t:.3f} sec")
 
     def get_image_path(self, key: Any) -> Path:
         return self[key]
@@ -136,11 +139,15 @@ class PersistentImageTTLCache(TTLCache):
         return sly.image.read(str(self[key]))
 
     def save_video(self, video_id: int, src_video_path: str) -> None:
+        t = time.monotonic()
         video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
         self[video_id] = video_path
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
-        sly.logger.debug(f"Video #{video_id} saved to {video_path}", extra={"video_id": video_id})
+        sly.logger.debug(
+            f"Video #{video_id} saved to {video_path} in {time.monotonic() - t:.3f} sec",
+            extra={"video_id": video_id},
+        )
 
     def get_video_path(self, video_id: int) -> Path:
         return self[video_id]
@@ -223,9 +230,13 @@ class InferenceImageCache:
 
         if name not in self._cache:
             self._load_queue.set(name, image_id)
-            api.logger.debug(f"Add image #{image_id} to cache")
+            api.logger.debug(f"Downloading image #{image_id} to cache")
+            t = time.monotonic()
             img = api.image.download_np(image_id)
+            sly.logger.debug(f"Image #{image_id} downloaded in {time.monotonic() - t:.3f} sec")
+            t = time.monotonic()
             self._add_to_cache(name, img)
+            sly.logger.debug(f"Image #{image_id} added to cache in {time.monotonic() - t:.3f} sec")
             return img
 
         api.logger.debug(f"Get image #{image_id} from cache")
@@ -251,8 +262,17 @@ class InferenceImageCache:
 
         if image_key not in self._cache:
             self._load_queue.set(image_key, img_hash)
+            api.logger.debug(f"Downloading image by hash {img_hash} to cache")
+            t = time.monotonic()
             image = api.image.download_nps_by_hashes([img_hash])
+            sly.logger.debug(
+                f"Image by hash {img_hash} downloaded in {time.monotonic() - t:.3f} sec"
+            )
+            t = time.monotonic()
             self._add_to_cache(image_key, image)
+            sly.logger.debug(
+                f"Image by hash {img_hash} added to cache in {time.monotonic() - t:.3f} sec"
+            )
             return image
         return self._cache.get_image(image_key)
 
@@ -335,10 +355,18 @@ class InferenceImageCache:
                         f"Frame {frame_index} not found in video {video_id}", exc_info=True
                     )
 
+            api.logger.debug(f"Downloading frame #{frame_index} for video #{video_id} to cache")
+            t = time.monotonic()
             self._load_queue.set(name, (video_id, frame_index))
             frame = api.video.frame.download_np(video_id, frame_index)
+            sly.logger.debug(
+                f"Frame #{frame_index} for video #{video_id} downloaded in {time.monotonic() - t:.3f} sec"
+            )
+            t = time.monotonic()
             self._add_to_cache(name, frame)
-            api.logger.debug(f"Add frame #{frame_index} for video #{video_id} to cache")
+            api.logger.debug(
+                f"Frame #{frame_index} for video #{video_id} added to cache in {time.monotonic() - t:.3f} sec"
+            )
             return frame
 
         api.logger.debug(f"Get frame #{frame_index} for video #{video_id} from cache")
@@ -357,12 +385,7 @@ class InferenceImageCache:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
-                Thread(
-                    target=self.download_video,
-                    args=(api, video_id),
-                    kwargs={**kwargs, "return_images": False},
-                ).start()
-        elif redownload_video:
+        if redownload_video:
             Thread(
                 target=self.download_video,
                 args=(api, video_id),
@@ -464,7 +487,7 @@ class InferenceImageCache:
                 self.add_video_to_cache(video_id, temp_video_path)
                 download_time = time.monotonic() - download_time
                 api.logger.debug(
-                    f"Video #{video_id} downloaded to cache in {download_time:.2f} sec",
+                    f"Video #{video_id} downloaded to cache in {download_time:.3f} sec",
                     extra={"video_id": video_id, "download_time": download_time},
                 )
             except Exception as e:
@@ -601,6 +624,7 @@ class InferenceImageCache:
 
         thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
         thread.start()
+        api.logger.debug("Scheduled cache task", extra=state)
 
     def set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
@@ -740,7 +764,7 @@ class InferenceImageCache:
 
         # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
         logger.debug(
-            f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
+            f"Images/Frames added to cache: {indexes_to_load} in {download_time:.3f} sec",
             extra={"indexes": indexes_to_load, "download_time": download_time},
         )
         logger.debug(f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}")
@@ -750,6 +774,7 @@ class InferenceImageCache:
         return
 
     def _wait_if_in_queue(self, name, logger: Logger):
+        t = time.monotonic()
         if name in self._load_queue:
             logger.debug(f"Waiting for other task to load {name}")
 
@@ -757,6 +782,7 @@ class InferenceImageCache:
             # TODO: time.sleep if slowdown
             time.sleep(0.1)
             continue
+        logger.debug(f"Item {name} awaited in {time.monotonic() - t:.3f} sec")
 
     def download_frames_to_paths(self, api, video_id, frame_indexes, paths, progress_cb=None):
         def _download_frame(frame_index):
