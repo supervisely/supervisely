@@ -114,6 +114,25 @@ def calculate_metrics(
     return eval_data
 
 
+def get_counts(eval_img_dict: dict, cocoEval_cls):
+    cat_ids = cocoEval_cls.cocoGt.getCatIds()
+    iouThrs = cocoEval_cls.params.iouThrs
+    catId2idx = {cat_id: i for i, cat_id in enumerate(cat_ids)}
+    true_positives = np.zeros((len(cat_ids), len(iouThrs)))
+    false_positives = np.zeros((len(cat_ids), len(iouThrs)))
+    false_negatives = np.zeros((len(cat_ids), len(iouThrs)))
+    for img_id, eval_imgs in eval_img_dict.items():
+        for eval_img in eval_imgs:
+            cat_id = eval_img["category_id"]
+            cat_idx = catId2idx[cat_id]
+            gtIgnore = eval_img["gtIgnore"]
+            gt_not_ignore_idxs = np.where(~gtIgnore)[0]
+            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & ~eval_img["dtIgnore"]).sum(1)
+            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & ~eval_img["dtIgnore"]).sum(1)
+            false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
+    return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
+
+
 def get_counts_and_scores(cocoEval, cat_id: int, t: int):
     """
     tps, fps, scores, n_positives
@@ -197,25 +216,6 @@ def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t
     elif len(gt_idx) > 1:
         raise ValueError("Multiple matches")
     return None, None
-
-
-def get_counts(eval_img_dict: dict, cocoEval_cls):
-    cat_ids = cocoEval_cls.cocoGt.getCatIds()
-    iouThrs = cocoEval_cls.params.iouThrs
-    catId2idx = {cat_id: i for i, cat_id in enumerate(cat_ids)}
-    true_positives = np.zeros((len(cat_ids), len(iouThrs)))
-    false_positives = np.zeros((len(cat_ids), len(iouThrs)))
-    false_negatives = np.zeros((len(cat_ids), len(iouThrs)))
-    for img_id, eval_imgs in eval_img_dict.items():
-        for eval_img in eval_imgs:
-            cat_id = eval_img["category_id"]
-            cat_idx = catId2idx[cat_id]
-            gtIgnore = eval_img["gtIgnore"]
-            gt_not_ignore_idxs = np.where(~gtIgnore)[0]
-            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & ~eval_img["dtIgnore"]).sum(1)
-            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & ~eval_img["dtIgnore"]).sum(1)
-            false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
-    return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
 
 
 def get_matches(
