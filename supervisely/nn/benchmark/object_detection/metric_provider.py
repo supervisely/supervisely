@@ -90,13 +90,16 @@ class MetricProvider:
         self.iouThrs = params["iouThrs"]
         self.recThrs = params["recThrs"]
 
+        # Evaluation params
         eval_params = params.get("evaluation_params", {})
         self.iou_threshold = eval_params.get("iou_threshold", 0.5)
         self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
-
-        # IoU per class (optional)
         self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
         self.iou_idx_per_class = params.get("iou_idx_per_class")  # {cat id: iou_idx}
+        if self.iou_threshold_per_class is not None:
+            # TODO: temporary solution
+            eval_params["average_across_iou_thresholds"] = False
+        self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def calculate(self):
         self.m_full = _MetricProvider(
@@ -199,9 +202,10 @@ class MetricProvider:
         }
 
     def AP_per_class(self):
-        s = self.coco_precision[:, :, :, 0, 2]
+        s = self.coco_precision[:, :, :, 0, 2].copy()
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=(0, 1))
+        ap = np.nan_to_num(ap, nan=0)
         return ap
 
     def AP_custom_per_class(self):
@@ -212,6 +216,7 @@ class MetricProvider:
                 s[:, cat_id - 1] = self.coco_precision[iou_idx, :, cat_id - 1, 0, 2]
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=0)
+        ap = np.nan_to_num(ap, nan=0)
         return ap
 
     def AP_custom(self):
@@ -284,6 +289,14 @@ class _MetricProvider:
         self.fp_not_confused_matches = [m for m in self.fp_matches if not m["miss_cls"]]
         self.ious = np.array([m["iou"] for m in self.tp_matches])
 
+        # Evaluation params
+        self.params = params
+        self.iou_idx_per_class = np.array(
+            [params["iou_idx_per_class"][cat_id] for cat_id in self.cat_ids]
+        )[:, None]
+        eval_params = params.get("evaluation_params", {})
+        self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
+        
     def _init_counts(self):
         cat_ids = self.cat_ids
         iouThrs = self.iouThrs
@@ -328,14 +341,22 @@ class _MetricProvider:
         self.true_positives = true_positives
         self.false_negatives = false_negatives
         self.false_positives = false_positives
-        self.TP_count = int(self.true_positives[:, 0].sum(0))
-        self.FP_count = int(self.false_positives[:, 0].sum(0))
-        self.FN_count = int(self.false_negatives[:, 0].sum(0))
+        self.TP_count = int(self._take_iou_thresholds(true_positives).sum())
+        self.FP_count = int(self._take_iou_thresholds(false_positives).sum())
+        self.FN_count = int(self._take_iou_thresholds(false_negatives).sum())
 
+    def _take_iou_thresholds(self, x):
+        return np.take_along_axis(x, self.iou_idx_per_class, axis=1)
+    
     def base_metrics(self):
-        tp = self.true_positives
-        fp = self.false_positives
-        fn = self.false_negatives
+        if self.average_across_iou_thresholds:
+            tp = self.true_positives
+            fp = self.false_positives
+            fn = self.false_negatives
+        else:
+            tp = self._take_iou_thresholds(self.true_positives)
+            fp = self._take_iou_thresholds(self.false_positives)
+            fn = self._take_iou_thresholds(self.false_negatives)
         confuse_count = len(self.confused_matches)
 
         mAP = self.coco_mAP
@@ -358,9 +379,14 @@ class _MetricProvider:
         }
 
     def per_class_metrics(self):
-        tp = self.true_positives.mean(1)
-        fp = self.false_positives.mean(1)
-        fn = self.false_negatives.mean(1)
+        if self.average_across_iou_thresholds:
+            tp = self.true_positives.mean(1)
+            fp = self.false_positives.mean(1)
+            fn = self.false_negatives.mean(1)
+        else:
+            tp = self._take_iou_thresholds(self.true_positives).flatten()
+            fp = self._take_iou_thresholds(self.false_positives).flatten()
+            fn = self._take_iou_thresholds(self.false_negatives).flatten()
         pr = tp / (tp + fp)
         rc = tp / (tp + fn)
         f1 = 2 * pr * rc / (pr + rc)
