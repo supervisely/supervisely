@@ -1,7 +1,7 @@
 # Intersection over Union threshold that will be used for object matching.
-# It affects some visualizations, such as Outcome couts, confusion matrix, and image previews.
+# It mostly affects visualizations, such as Outcome Counts, Confusion Matrix, and image previews.
 iou_threshold: 0.5
 
 # If true, the main metrics will be computed across a range of IoU thresholds, which is recommended.
-# Disable it, when you need to restrict calculations to a single IoU threshold that you set above.
+# Disable it, if you need to restrict calculations to a single IoU threshold that you set above.
 average_across_iou_thresholds: true

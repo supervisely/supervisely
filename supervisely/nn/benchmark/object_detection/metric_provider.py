@@ -94,9 +94,6 @@ class MetricProvider:
         self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
         self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
         self.iou_idx_per_class = self.params.get("iou_idx_per_class")  # {cat id: iou_idx}
-        if self.iou_threshold_per_class is not None:
-            # TODO: temporary solution
-            eval_params["average_across_iou_thresholds"] = False
         self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def calculate(self):
