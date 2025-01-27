@@ -562,6 +562,7 @@ class Annotation:
                         f"Cropped label(s) for '{label.obj_class.name}' was not added to annotation",
                         exc_info=True,
                     )
+                    raise
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
