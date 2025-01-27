@@ -56,7 +56,7 @@ def filter_by_conf(matches: list, conf: float):
 
 
 class MetricProvider:
-    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt, cocoDt):
+    def __init__(self, eval_data: dict, cocoGt, cocoDt):
         """
         Main class for calculating prediction metrics.
 
@@ -71,11 +71,16 @@ class MetricProvider:
         :param cocoDt: COCO object with predicted annotations
         :type cocoDt: COCO
         """
-        self.matches = matches
-        self.coco_metrics = coco_metrics
-        self.params = params
+        self.eval_data = eval_data
+        self.matches = eval_data["matches"]
+        self.coco_metrics = eval_data["coco_metrics"]
+        self.params = eval_data["params"]
         self.cocoGt = cocoGt
         self.cocoDt = cocoDt
+        self.coco_mAP = self.coco_metrics["mAP"]
+        self.coco_precision = self.coco_metrics["precision"]
+        self.iouThrs = self.params["iouThrs"]
+        self.recThrs = self.params["recThrs"]
 
         self.metric_names = METRIC_NAMES
 
@@ -83,24 +88,17 @@ class MetricProvider:
         self.cat_ids = cocoGt.getCatIds()
         self.cat_names = [cocoGt.cats[cat_id]["name"] for cat_id in self.cat_ids]
 
-        # eval_data
-        self.matches = matches
-        self.coco_mAP = coco_metrics["mAP"]
-        self.coco_precision = coco_metrics["precision"]
-        self.iouThrs = params["iouThrs"]
-        self.recThrs = params["recThrs"]
-
         # Evaluation params
-        eval_params = params.get("evaluation_params", {})
+        eval_params = self.params.get("evaluation_params", {})
         self.iou_threshold = eval_params.get("iou_threshold", 0.5)
         self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
         self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
-        self.iou_idx_per_class = params.get("iou_idx_per_class")  # {cat id: iou_idx}
-        self.average_across_iou_thresholds = params.get("average_across_iou_thresholds", True)
+        self.iou_idx_per_class = self.params.get("iou_idx_per_class")  # {cat id: iou_idx}
+        self.average_across_iou_thresholds = self.params.get("average_across_iou_thresholds", True)
 
     def calculate(self):
         self.m_full = _MetricProvider(
-            self.matches, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
+            self.matches, self.eval_data, self.cocoGt, self.cocoDt
         )
         self.m_full._calculate_score_profile()
 
@@ -113,7 +111,7 @@ class MetricProvider:
         else:
             matches_filtered = self.matches
         self.m = _MetricProvider(
-            matches_filtered, self.coco_metrics, self.params, self.cocoGt, self.cocoDt
+            matches_filtered, self.eval_data, self.cocoGt, self.cocoDt
         )
         self.matches_filtered = matches_filtered
         self.m._init_counts()
@@ -257,24 +255,26 @@ class MetricProvider:
 
 
 class _MetricProvider:
-    def __init__(self, matches: list, coco_metrics: dict, params: dict, cocoGt, cocoDt):
+    def __init__(self, matches: list, eval_data: dict, cocoGt, cocoDt):
         """
         type cocoGt: COCO
         type cocoDt: COCO
         """
 
+        self.matches = matches
+        self.eval_data = eval_data
+        self.coco_metrics = eval_data["coco_metrics"]
+        self.params = eval_data["params"]
         self.cocoGt = cocoGt
+        self.cocoDt = cocoDt
+        self.coco_mAP = self.coco_metrics["mAP"]
+        self.coco_precision = self.coco_metrics["precision"]
+        self.iouThrs = self.params["iouThrs"]
+        self.recThrs = self.params["recThrs"]
 
         # metainfo
         self.cat_ids = cocoGt.getCatIds()
         self.cat_names = [cocoGt.cats[cat_id]["name"] for cat_id in self.cat_ids]
-
-        # eval_data
-        self.matches = matches
-        self.coco_mAP = coco_metrics["mAP"]
-        self.coco_precision = coco_metrics["precision"]
-        self.iouThrs = params["iouThrs"]
-        self.recThrs = params["recThrs"]
 
         # Matches
         self.tp_matches = [m for m in self.matches if m["type"] == "TP"]
@@ -285,59 +285,56 @@ class _MetricProvider:
         self.ious = np.array([m["iou"] for m in self.tp_matches])
 
         # Evaluation params
-        self.params = params
-        x = sorted(params["iou_idx_per_class"].items(), key=lambda x: x[0])
+        x = sorted(self.params["iou_idx_per_class"].items(), key=lambda x: x[0])
         x = [t[1] for t in x]
         self.iou_idx_per_class = np.array(x)[:, None]
-        self.average_across_iou_thresholds = params["evaluation_params"].get("average_across_iou_thresholds", True)
+        self.average_across_iou_thresholds = self.params["evaluation_params"].get("average_across_iou_thresholds", True)
         
     def _init_counts(self):
-        cat_ids = self.cat_ids
-        iouThrs = self.iouThrs
-        cat_id_to_idx = {cat_id: idx for idx, cat_id in enumerate(cat_ids)}
-        ious = []
-        cats = []
-        for match in self.tp_matches:
-            ious.append(match["iou"])
-            cats.append(cat_id_to_idx[match["category_id"]])
-        ious = np.array(ious) + np.spacing(1)
-        if 0.8999999999999999 in iouThrs:
-            iouThrs = iouThrs.copy()
-            iouThrs[iouThrs == 0.8999999999999999] = 0.9
-        iou_idxs = np.searchsorted(iouThrs, ious) - 1
-        cats = np.array(cats)
-        # TP
-        true_positives = np.histogram2d(
-            cats,
-            iou_idxs,
-            bins=(len(cat_ids), len(iouThrs)),
-            range=((0, len(cat_ids)), (0, len(iouThrs))),
-        )[0].astype(int)
-        true_positives = true_positives[:, ::-1].cumsum(1)[:, ::-1]
-        tp_count = true_positives[:, 0]
-        # FN
-        cats_fn = np.array([cat_id_to_idx[match["category_id"]] for match in self.fn_matches])
-        if cats_fn.size == 0:
-            fn_count = np.zeros((len(cat_ids),), dtype=int)
-        else:
-            fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
-        gt_count = fn_count + tp_count
-        false_negatives = gt_count[:, None] - true_positives
-        # FP
-        cats_fp = np.array([cat_id_to_idx[match["category_id"]] for match in self.fp_matches])
-        if cats_fp.size == 0:
-            fp_count = np.zeros((len(cat_ids),), dtype=int)
-        else:
-            fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
-        dt_count = fp_count + tp_count
-        false_positives = dt_count[:, None] - true_positives
-
-        self.true_positives = true_positives
-        self.false_negatives = false_negatives
-        self.false_positives = false_positives
-        self.TP_count = int(self._take_iou_thresholds(true_positives).sum())
-        self.FP_count = int(self._take_iou_thresholds(false_positives).sum())
-        self.FN_count = int(self._take_iou_thresholds(false_negatives).sum())
+        if True:
+            cat_ids = self.cat_ids
+            iouThrs = self.iouThrs
+            cat_id_to_idx = {cat_id: idx for idx, cat_id in enumerate(cat_ids)}
+            ious = []
+            cats = []
+            for match in self.tp_matches:
+                ious.append(match["iou"])
+                cats.append(cat_id_to_idx[match["category_id"]])
+            ious = np.array(ious) + np.spacing(1)
+            iou_idxs = np.searchsorted(iouThrs, ious) - 1
+            cats = np.array(cats)
+            # TP
+            true_positives = np.histogram2d(
+                cats,
+                iou_idxs,
+                bins=(len(cat_ids), len(iouThrs)),
+                range=((0, len(cat_ids)), (0, len(iouThrs))),
+            )[0].astype(int)
+            true_positives = true_positives[:, ::-1].cumsum(1)[:, ::-1]
+            tp_count = true_positives[:, 0]
+            # FN
+            cats_fn = np.array([cat_id_to_idx[match["category_id"]] for match in self.fn_matches])
+            if cats_fn.size == 0:
+                fn_count = np.zeros((len(cat_ids),), dtype=int)
+            else:
+                fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
+            gt_count = fn_count + tp_count
+            false_negatives = gt_count[:, None] - true_positives
+            # FP
+            cats_fp = np.array([cat_id_to_idx[match["category_id"]] for match in self.fp_matches])
+            if cats_fp.size == 0:
+                fp_count = np.zeros((len(cat_ids),), dtype=int)
+            else:
+                fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
+            dt_count = fp_count + tp_count
+            false_positives = dt_count[:, None] - true_positives
+        
+        self.true_positives = self.eval_data["true_positives"]
+        self.false_negatives = self.eval_data["false_negatives"]
+        self.false_positives = self.eval_data["false_positives"]
+        self.TP_count = int(self._take_iou_thresholds(self.true_positives).sum())
+        self.FP_count = int(self._take_iou_thresholds(self.false_positives).sum())
+        self.FN_count = int(self._take_iou_thresholds(self.false_negatives).sum())
 
     def _take_iou_thresholds(self, x):
         return np.take_along_axis(x, self.iou_idx_per_class, axis=1)
@@ -489,9 +486,6 @@ class _MetricProvider:
         )
         scores = np.array([m["score"] for m in matches_sorted])
         ious = np.array([m["iou"] if m["type"] == "TP" else 0.0 for m in matches_sorted])
-        if 0.8999999999999999 in iouThrs:
-            iouThrs = iouThrs.copy()
-            iouThrs[iouThrs == 0.8999999999999999] = 0.9
         iou_idxs = np.searchsorted(iouThrs, ious + np.spacing(1))
 
         # Check
