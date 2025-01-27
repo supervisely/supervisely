@@ -4785,14 +4785,17 @@ async def _download_project_async(
 
     async def worker(queue: asyncio.Queue, stop_event: asyncio.Event):
         while not stop_event.is_set():
-            task = await queue.get()
-            if task is None:
-                break
             try:
+                task = await asyncio.wait_for(queue.get(), timeout=10)
+                if task is None:
+                    break
                 await task
+            except asyncio.TimeoutError:
+                continue
             except Exception as e:
                 logger.error(f"Error in _download_project_async worker: {e}")
                 stop_event.set()
+                break
             finally:
                 queue.task_done()
 
@@ -4916,8 +4919,11 @@ async def _download_project_async(
                     progress_cb=ds_progress,
                 )
                 await queue.put(task)
-
-        await queue.join()
+        try:
+            await queue.join()
+        except Exception as e:
+            stop_event.set()
+            raise e
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
@@ -5068,7 +5074,9 @@ async def _download_project_items_batch_async(
                     tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
                 ann_jsons.append(tmp_ann.to_json())
             except Exception:
-                logger.error(f"Error while deserializing annotation for image with ID: {img_info.id}")
+                logger.error(
+                    f"Error while deserializing annotation for image with ID: {img_info.id}"
+                )
                 raise
     else:
         ann_jsons = []
