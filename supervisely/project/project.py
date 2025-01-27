@@ -5060,18 +5060,16 @@ async def _download_project_items_batch_async(
             semaphore=semaphore,
             force_metadata_for_links=not save_images,
         )
-        tmps_anns = []
-        for img_id, ann_info in zip(img_ids, ann_infos):
-            try:
-                tmps_anns.append(Annotation.from_json(ann_info.annotation, meta))
-            except Exception:
-                logger.error(f"Error while deserializing annotation for image with ID: {img_id}")
-                raise
         ann_jsons = []
-        for tmp_ann in tmps_anns:
-            if None in tmp_ann.img_size:
-                tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-            ann_jsons.append(tmp_ann.to_json())
+        for img_info, ann_info in zip(img_infos, ann_infos):
+            try:
+                tmp_ann = Annotation.from_json(ann_info.annotation, meta)
+                if None in tmp_ann.img_size:
+                    tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+                ann_jsons.append(tmp_ann.to_json())
+            except Exception:
+                logger.error(f"Error while deserializing annotation for image with ID: {img_info.id}")
+                raise
     else:
         ann_jsons = []
         for img_info in img_infos:
