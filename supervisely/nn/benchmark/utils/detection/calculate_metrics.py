@@ -73,7 +73,6 @@ def calculate_metrics(
     evaluation_params = evaluation_params or {}
     iou_threshold = evaluation_params.get("iou_threshold", 0.5)
     iou_threshold_per_class = evaluation_params.get("iou_threshold_per_class")
-    average_across_iou_thresholds = evaluation_params.get("average_across_iou_thresholds", True)
     if iou_threshold_per_class is not None:
         iou_idx_per_class = {
             cocoGt.getCatIds(catNms=[class_name])[0]: np.where(np.isclose(iouThrs, iou_thres))[0][0]
@@ -91,6 +90,7 @@ def calculate_metrics(
         cocoEval_cls,
         iou_idx_per_class=iou_idx_per_class,
     )
+    true_positives, false_positives, false_negatives = get_counts(eval_img_dict, cocoEval_cls)
 
     params = {
         "iouThrs": cocoEval.params.iouThrs,
@@ -103,51 +103,15 @@ def calculate_metrics(
     coco_metrics["AP75"] = cocoEval.stats[2]
     eval_data = {
         "matches": matches,
+        "true_positives": true_positives,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
         "coco_metrics": coco_metrics,
         "params": params,
     }
     progress_cb(1) if progress_cb is not None else None
 
     return eval_data
-
-
-def get_counts(cocoEval):
-    """
-    true_positives, false_positives, false_negatives
-
-    type cocoEval: COCOeval
-    """
-    aRng = cocoEval.params.areaRng[0]
-    cat_ids = cocoEval.params.catIds
-    eval_imgs = [ev for ev in cocoEval.evalImgs if ev is not None and ev["aRng"] == aRng]
-
-    N = len(eval_imgs)
-    T = len(cocoEval.params.iouThrs)
-    K = max(cat_ids) + 1
-
-    true_positives = np.zeros((K, N, T))
-    false_positives = np.zeros((K, N, T))
-    false_negatives = np.zeros((K, N, T))
-
-    for i, eval_img in enumerate(eval_imgs):
-        catId = eval_img["category_id"]
-        dt_matches = eval_img["dtMatches"]
-        gt_matches = eval_img["gtMatches"]
-
-        # Ignore
-        if np.any(eval_img["gtIgnore"]):
-            dt_matches = eval_img["dtMatches"].copy()
-            dt_matches[eval_img["dtIgnore"]] = -1
-
-            gt_matches = eval_img["gtMatches"].copy()
-            gt_ignore_mask = eval_img["gtIgnore"][None,].repeat(T, axis=0).astype(bool)
-            gt_matches[gt_ignore_mask] = -1
-
-        true_positives[catId, i] = np.sum(dt_matches > 0, axis=1)
-        false_positives[catId, i] = np.sum(dt_matches == 0, axis=1)
-        false_negatives[catId, i] = np.sum(gt_matches == 0, axis=1)
-
-    return true_positives[cat_ids], false_positives[cat_ids], false_negatives[cat_ids]
 
 
 def get_counts_and_scores(cocoEval, cat_id: int, t: int):
@@ -233,6 +197,25 @@ def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t
     elif len(gt_idx) > 1:
         raise ValueError("Multiple matches")
     return None, None
+
+
+def get_counts(eval_img_dict: dict, cocoEval_cls):
+    cat_ids = cocoEval_cls.cocoGt.getCatIds()
+    iouThrs = cocoEval_cls.params.iouThrs
+    catId2idx = {cat_id: i for i, cat_id in enumerate(cat_ids)}
+    true_positives = np.zeros((len(cat_ids), len(iouThrs)))
+    false_positives = np.zeros((len(cat_ids), len(iouThrs)))
+    false_negatives = np.zeros((len(cat_ids), len(iouThrs)))
+    for img_id, eval_imgs in eval_img_dict.items():
+        for eval_img in eval_imgs:
+            cat_id = eval_img["category_id"]
+            cat_idx = catId2idx[cat_id]
+            gtIgnore = eval_img["gtIgnore"]
+            gt_not_ignore_idxs = np.where(~gtIgnore)[0]
+            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & ~eval_img["dtIgnore"]).sum(1)
+            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & ~eval_img["dtIgnore"]).sum(1)
+            false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
+    return true_positives, false_positives, false_negatives
 
 
 def get_matches(
