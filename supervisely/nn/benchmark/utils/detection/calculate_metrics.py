@@ -215,7 +215,7 @@ def get_counts(eval_img_dict: dict, cocoEval_cls):
             true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & ~eval_img["dtIgnore"]).sum(1)
             false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & ~eval_img["dtIgnore"]).sum(1)
             false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
-    return true_positives, false_positives, false_negatives
+    return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
 
 
 def get_matches(
