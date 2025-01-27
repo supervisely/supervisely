@@ -94,7 +94,10 @@ class MetricProvider:
         self.iou_threshold_idx = np.where(np.isclose(self.iouThrs, self.iou_threshold))[0][0]
         self.iou_threshold_per_class = eval_params.get("iou_threshold_per_class")
         self.iou_idx_per_class = self.params.get("iou_idx_per_class")  # {cat id: iou_idx}
-        self.average_across_iou_thresholds = self.params.get("average_across_iou_thresholds", True)
+        if self.iou_threshold_per_class is not None:
+            # TODO: temporary solution
+            eval_params["average_across_iou_thresholds"] = False
+        self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def calculate(self):
         self.m_full = _MetricProvider(
@@ -197,9 +200,10 @@ class MetricProvider:
         }
 
     def AP_per_class(self):
-        s = self.coco_precision[:, :, :, 0, 2]
+        s = self.coco_precision[:, :, :, 0, 2].copy()
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=(0, 1))
+        ap = np.nan_to_num(ap, nan=0)
         return ap
 
     def AP_custom_per_class(self):
@@ -210,6 +214,7 @@ class MetricProvider:
                 s[:, cat_id - 1] = self.coco_precision[iou_idx, :, cat_id - 1, 0, 2]
         s[s == -1] = np.nan
         ap = np.nanmean(s, axis=0)
+        ap = np.nan_to_num(ap, nan=0)
         return ap
 
     def AP_custom(self):
@@ -285,11 +290,12 @@ class _MetricProvider:
         self.ious = np.array([m["iou"] for m in self.tp_matches])
 
         # Evaluation params
-        x = sorted(self.params["iou_idx_per_class"].items(), key=lambda x: x[0])
-        x = [t[1] for t in x]
-        self.iou_idx_per_class = np.array(x)[:, None]
-        self.average_across_iou_thresholds = self.params["evaluation_params"].get("average_across_iou_thresholds", True)
-        
+        self.iou_idx_per_class = np.array(
+            [self.params["iou_idx_per_class"][cat_id] for cat_id in self.cat_ids]
+        )[:, None]
+        eval_params = self.params.get("evaluation_params", {})
+        self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
+
     def _init_counts(self):
         if True:
             cat_ids = self.cat_ids
