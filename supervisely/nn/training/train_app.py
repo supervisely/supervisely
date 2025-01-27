@@ -578,7 +578,7 @@ class TrainApp:
             export_weights,
         )
         self._generate_app_state(remote_dir, experiment_info)
-        self._generate_hyperparameters(remote_dir, experiment_info)
+        experiment_info = self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, train_splits_data)
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
@@ -1387,7 +1387,9 @@ class TrainApp:
         return experiment_info
 
     # Generate experiment_info.json and app_state.json
-    def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
+    def _upload_file_to_team_files(
+        self, local_path: str, remote_path: str, message: str
+    ) -> Union[FileInfo, None]:
         """Helper function to upload a file with progress."""
         logger.debug(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
@@ -1395,13 +1397,14 @@ class TrainApp:
             message=message, total=total_size, unit="bytes", unit_scale=True
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            self._api.file.upload(
+            file_info = self._api.file.upload(
                 self.team_id,
                 local_path,
                 remote_path,
                 progress_cb=upload_artifacts_pbar,
             )
             self.progress_bar_main.hide()
+            return file_info
 
     def _generate_train_val_splits(self, remote_dir: str, splits_data: dict) -> None:
         """
@@ -1555,11 +1558,13 @@ class TrainApp:
         with open(local_path, "w") as file:
             file.write(self.hyperparameters_yaml)
 
-        self._upload_file_to_team_files(
+        file_info = self._upload_file_to_team_files(
             local_path,
             remote_path,
             f"Uploading '{self._hyperparameters_file}' to Team Files",
         )
+        experiment_info["hyperparameters_id"] = file_info.id
+        return experiment_info
 
     def _generate_app_state(self, remote_dir: str, experiment_info: Dict) -> None:
         """

@@ -1167,6 +1167,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 'train_size': 4,
                 'val_size': 2,
                 'hyperparameters': 'hyperparameters.yaml',
+                'hyperparameters_id': 45234,
                 'artifacts_dir': '/experiments/76_Lemons/247_RT-DETRv2/',
                 'datetime': '2025-01-22 18:13:43',
                 'evaluation_report_id': 12961,
