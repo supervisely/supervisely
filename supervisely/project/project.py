@@ -4964,7 +4964,7 @@ async def _download_project_item_async(
     """
     if save_images:
         logger.debug(
-            f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
+            f"Downloading 1 image in single mode with _download_project_item_async. ID: {img_info.id}, Name: {img_info.name}"
         )
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
@@ -4982,7 +4982,11 @@ async def _download_project_item_async(
             force_metadata_for_links=not save_images,
         )
         ann_json = ann_info.annotation
-        tmp_ann = Annotation.from_json(ann_json, meta)
+        try:
+            tmp_ann = Annotation.from_json(ann_json, meta)
+        except Exception:
+            logger.error(f"Error while deserializing annotation for image with ID: {img_info.id}")
+            raise
         if None in tmp_ann.img_size:
             tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
             ann_json = tmp_ann.to_json()
@@ -5056,7 +5060,13 @@ async def _download_project_items_batch_async(
             semaphore=semaphore,
             force_metadata_for_links=not save_images,
         )
-        tmps_anns = [Annotation.from_json(ann_info.annotation, meta) for ann_info in ann_infos]
+        tmps_anns = []
+        for img_id, ann_info in zip(img_ids, ann_infos):
+            try:
+                tmps_anns.append(Annotation.from_json(ann_info.annotation, meta))
+            except Exception:
+                logger.error(f"Error while deserializing annotation for image with ID: {img_id}")
+                raise
         ann_jsons = []
         for tmp_ann in tmps_anns:
             if None in tmp_ann.img_size:

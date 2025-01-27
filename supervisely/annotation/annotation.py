@@ -559,7 +559,7 @@ class Annotation:
                     dest.extend(cropped_labels)
                 except ValueError:
                     logger.error(
-                        f"Cropped label(s) for '{label.obj_class.name}' were not added to annotation",
+                        f"Cropped label(s) for '{label.obj_class.name}' was not added to annotation",
                         exc_info=True,
                     )
             else:
