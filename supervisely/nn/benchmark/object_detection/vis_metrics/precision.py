@@ -51,9 +51,9 @@ class Precision(DetectionVisMetric):
     def _get_figure(self):  #  -> go.Figure
         import plotly.express as px  # pylint: disable=import-error
 
-        sorted_by_precision = self.eval_result.mp.per_class_metrics().sort_values(by="precision")
+        sorted_by_f1 = self.eval_result.mp.per_class_metrics().sort_values(by="f1")
         fig = px.bar(
-            sorted_by_precision,
+            sorted_by_f1,
             x="category",
             y="precision",
             # title="Per-class Precision (Sorted by F1)",
@@ -62,14 +62,14 @@ class Precision(DetectionVisMetric):
             color_continuous_scale="Plasma",
         )
         fig.update_traces(hovertemplate="Class: %{x}<br>Precision: %{y:.2f}<extra></extra>")
-        if len(sorted_by_precision) <= 20:
+        if len(sorted_by_f1) <= 20:
             fig.update_traces(
-                text=sorted_by_precision["precision"].round(2),
+                text=sorted_by_f1["precision"].round(2),
                 textposition="outside",
             )
         fig.update_xaxes(title_text="Class")
         fig.update_yaxes(title_text="Precision", range=[0, 1])
         fig.update_layout(
-            width=700 if len(sorted_by_precision) < 10 else None,
+            width=700 if len(sorted_by_f1) < 10 else None,
         )
         return fig
