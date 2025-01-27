@@ -64,7 +64,7 @@ class Precision(DetectionVisMetric):
         fig.update_traces(hovertemplate="Class: %{x}<br>Precision: %{y:.2f}<extra></extra>")
         if len(sorted_by_precision) <= 20:
             fig.update_traces(
-                text=sorted_by_precision.round(2),
+                text=sorted_by_precision["precision"].round(2),
                 textposition="outside",
             )
         fig.update_xaxes(title_text="Class")
