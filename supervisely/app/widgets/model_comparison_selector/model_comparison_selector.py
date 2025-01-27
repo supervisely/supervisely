@@ -1,12 +1,14 @@
 import os
+import requests
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from json import JSONDecodeError
 from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Union
 
 from supervisely import env, logger
 from supervisely._utils import abs_url, is_development
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import (
@@ -21,21 +23,21 @@ from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.utils import ModelSource
 
+
 WEIGHTS_DIR = "weights"
 
 COL_ID = "task id".upper()
 COL_MODEL = "model".upper()
-COL_PROJECT = "training data".upper()
-COL_CHECKPOINTS = "checkpoints".upper()
-COL_SESSION = "session".upper()
-COL_BENCHMARK = "benchmark".upper()
+COL_SOURCE = "model source".upper()
+COL_CHECKPOINT = "checkpoint".upper()
+COL_REPORT = "report".upper()
 
-columns = [COL_ID, COL_MODEL, COL_PROJECT, COL_CHECKPOINTS, COL_SESSION, COL_BENCHMARK]
+columns = [COL_ID, COL_MODEL, COL_SOURCE, COL_CHECKPOINT, COL_REPORT]
 
 
 class ModelComparisonSelector(Widget):
     class Routes:
-        PROJECT_CHANGED = "task_type_changed"
+        PROJECT_CHANGED = "project_changed"
         VALUE_CHANGED = "value_changed"
 
     class ModelRow:
@@ -43,72 +45,57 @@ class ModelComparisonSelector(Widget):
             self,
             api: Api,
             team_id: int,
-            task_type: str,
-            experiment_info: ExperimentInfo,
+            becnhmark_info: dict,
         ):
             self._api = api
             self._team_id = team_id
-            self._task_type = task_type
-            self._experiment_info = experiment_info
+            self._benchmark_info = becnhmark_info
+            self._eval_dir = becnhmark_info["eval_dir"]
 
-            task_id = experiment_info.task_id
+            task_id = self._benchmark_info["task_id"]
             if task_id == "debug-session":
                 pass
             elif type(task_id) is str:
                 if task_id.isdigit():
                     task_id = int(task_id)
                 else:
-                    raise ValueError(f"Task id {task_id} is not a number")
+                    raise ValueError(f"Task ID: '{task_id}' is not a number")
 
             # col 1 task
             self._task_id = task_id
-            self._task_path = experiment_info.artifacts_dir
-            self._task_date = experiment_info.datetime
-            self._task_link = self._create_task_link()
-            self._config_path = experiment_info.model_files.get("config")
-            if self._config_path is not None:
-                self._config_path = os.path.join(experiment_info.artifacts_dir, self._config_path)
+            self._task_type = self._benchmark_info["task_type"]
+            self._report_path = self._benchmark_info["report_path"]
+            self._report_date = self._benchmark_info["created_at"]
+            self._report_link = self._create_tf_report_link()
 
             # col 2 model
-            self._model_name = experiment_info.model_name
+            self._model_name = self._benchmark_info["model_name"]
 
-            # col 3 project
-            self._training_project_id = experiment_info.project_id
-            if self._training_project_id is None:
-                self._training_project_info = None
+            # col 3 model source
+            self._model_source = self._benchmark_info["model_source"]
+
+            # col 4 checkpoint
+            self._checkpoint_name = self._benchmark_info["checkpoint_name"]
+            checkpoint_link = self._benchmark_info["checkpoint_url"]
+            if self._model_source == ModelSource.PRETRAINED:
+                self._checkpoint_link = checkpoint_link
             else:
-                self._training_project_info = self._api.project.get_info_by_id(
-                    self._training_project_id
-                )
+                if is_development():
+                    self._checkpoint_link = abs_url(f"{checkpoint_link}")
+                else:
+                    self._checkpoint_link = checkpoint_link
 
-            # col 4 checkpoints
-            self._checkpoints = experiment_info.checkpoints
+            # col 5 benchmark report
+            self._report_id = self._benchmark_info["report_id"]
 
-            self._checkpoints_names = []
-            self._checkpoints_paths = []
-            self._best_checkpoint_value = None
-            for checkpoint_path in self._checkpoints:
-                self._checkpoints_names.append(get_file_name_with_ext(checkpoint_path))
-                self._checkpoints_paths.append(
-                    os.path.join(experiment_info.artifacts_dir, checkpoint_path)
-                )
-                if experiment_info.best_checkpoint == get_file_name_with_ext(checkpoint_path):
-                    self._best_checkpoint = os.path.join(
-                        experiment_info.artifacts_dir, checkpoint_path
-                    )
-
-            # col 5 session
-            self._session_link = self._generate_session_link()
-
-            # col 6 benchmark report
-            self._benchmark_report_id = experiment_info.evaluation_report_id
+            # ----------------------------- #
+            self._gt_project_id = self._benchmark_info["gt_project_id"]
 
             # widgets
-            self._task_widget = self._create_task_widget()
-            self._model_wiget = self._create_model_widget()
-            self._training_project_widget = self._create_training_project_widget()
-            self._checkpoints_widget = self._create_checkpoints_widget()
-            self._session_widget = self._create_session_widget()
+            self._task_widget = self._create_tf_report_widget()
+            self._model_widget = self._create_model_widget()
+            self._model_source_widget = self._create_model_source_widget()
+            self._checkpoints_widget = self._create_checkpoint_widget()
             self._benchmark_widget = self._create_benchmark_widget()
 
         @property
@@ -116,77 +103,61 @@ class ModelComparisonSelector(Widget):
             return self._task_id
 
         @property
-        def task_date(self) -> str:
-            return self._task_date
-
-        @property
-        def task_link(self) -> str:
-            return self._task_link
-
-        @property
         def task_type(self) -> str:
             return self._task_type
 
         @property
-        def training_project_info(self) -> ProjectInfo:
-            return self._training_project_info
+        def report_date(self) -> str:
+            return self._report_date
 
         @property
-        def checkpoints_names(self) -> List[str]:
-            return self._checkpoints_names
+        def report_id(self) -> str:
+            return self._report_id
 
         @property
-        def checkpoints_paths(self) -> List[str]:
-            return self._checkpoints_paths
+        def report_link(self) -> str:
+            return self._report_link
 
         @property
-        def checkpoints_selector(self) -> Select:
-            return self._checkpoints_widget
+        def gt_project_id(self) -> ProjectInfo:
+            return self._gt_project_id
 
         @property
-        def session_link(self) -> str:
-            return self._session_link
+        def eval_dir(self) -> str:
+            return self._eval_dir
 
         @property
-        def config_path(self) -> str:
-            return self._config_path
+        def model_name(self) -> str:
+            return self._model_name
 
-        def get_selected_checkpoint_path(self) -> str:
-            return self._checkpoints_widget.get_value()
+        @property
+        def model_source(self) -> str:
+            return self._model_source
 
-        def get_selected_checkpoint_name(self) -> str:
-            return self._checkpoints_widget.get_label()
+        @property
+        def checkpoint_name(self) -> str:
+            return self._checkpoint_name
 
-        def set_selected_checkpoint_by_name(self, checkpoint_name: str):
-            for i, name in enumerate(self._checkpoints_names):
-                if name == checkpoint_name:
-                    self._checkpoints_widget.set_value(self._checkpoints_paths[i])
-                    return
-
-        def set_selected_checkpoint_by_path(self, checkpoint_path: str):
-            for i, path in enumerate(self._checkpoints_paths):
-                if path == checkpoint_path:
-                    self._checkpoints_widget.set_value(path)
-                    return
+        @property
+        def checkpoint_link(self) -> str:
+            return self._checkpoint_link
 
         def to_html(self) -> List[str]:
             return [
                 f"<div> {self._task_widget.to_html()} </div>",
-                f"<div> {self._model_wiget.to_html()} </div>",
-                f"<div> {self._training_project_widget.to_html()} </div>",
+                f"<div> {self._model_widget.to_html()} </div>",
+                f"<div> {self._model_source_widget.to_html()} </div>",
                 f"<div> {self._checkpoints_widget.to_html()} </div>",
-                f"<div> {self._session_widget.to_html()} </div>",
                 f"<div> {self._benchmark_widget.to_html()} </div>",
             ]
 
-        def _create_task_link(self) -> str:
-            remote_path = os.path.join(self._task_path, "open_app.lnk")
-            task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
-            if task_file is not None:
+        def _create_tf_report_link(self) -> str:
+            report_file = self._api.file.get_info_by_path(self._team_id, self._report_path)
+            if report_file is not None:
                 if is_development():
-                    return abs_url(f"/files/{task_file.id}")
+                    return abs_url(f"/files/{report_file.id}")
                 else:
-                    return f"/files/{task_file.id}"
+                    return f"/files/{report_file.id}"
             else:
                 return ""
 
@@ -197,15 +168,15 @@ class ModelComparisonSelector(Widget):
                 session_link = f"/apps/sessions/{self._task_id}"
             return session_link
 
-        def _create_task_widget(self) -> Flexbox:
+        def _create_tf_report_widget(self) -> Flexbox:
             task_widget = Container(
                 [
                     Text(
-                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._task_link}' target='_blank'>{self._task_id}</a>",
+                        f"<i class='zmdi zmdi-folder' style='color: #7f858e'></i> <a href='{self._report_link}' target='_blank'>{self._task_id}</a>",
                         "text",
                     ),
                     Text(
-                        f"<span class='field-description text-muted' style='color: #7f858e'>{self._task_date}</span>",
+                        f"<span class='field-description text-muted' style='color: #7f858e'>{self._report_date}</span>",
                         "text",
                         font_size=13,
                     ),
@@ -215,9 +186,6 @@ class ModelComparisonSelector(Widget):
             return task_widget
 
         def _create_model_widget(self) -> Text:
-            if self._model_name is None:
-                self._model_name = "Unknown model"
-
             model_widget = Text(
                 f"<span class='field-description text-muted' style='color: #7f858e'>{self._model_name}</span>",
                 "text",
@@ -225,55 +193,31 @@ class ModelComparisonSelector(Widget):
             )
             return model_widget
 
-        def _create_training_project_widget(self) -> Union[ProjectThumbnail, Text]:
-            if self.training_project_info is not None:
-                training_project_widget = ProjectThumbnail(
-                    self._training_project_info, remove_margins=True
-                )
-            else:
-                training_project_widget = Text(
-                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was deleted</span>",
-                    "text",
-                    font_size=13,
-                )
-            return training_project_widget
+        def _create_model_source_widget(self) -> Text:
+            model_source_widget = Text(
+                f"<span class='field-description text-muted' style='color: #7f858e'>{self._model_source}</span>",
+                "text",
+                font_size=13,
+            )
+            return model_source_widget
 
-        def _create_checkpoints_widget(self) -> Select:
-            checkpoint_selector_items = []
-            for path, name in zip(self._checkpoints_paths, self._checkpoints_names):
-                checkpoint_selector_items.append(Select.Item(value=path, label=name))
-            checkpoint_selector = Select(items=checkpoint_selector_items)
-            if self._best_checkpoint_value is not None:
-                checkpoint_selector.set_value(self._best_checkpoint)
-            return checkpoint_selector
-
-        def _create_session_widget(self) -> Text:
-            session_link_widget = Text(
-                f"<a href='{self._session_link}' target='_blank'>Preview</a> <i class='zmdi zmdi-open-in-new'></i>",
+        def _create_checkpoint_widget(self) -> Select:
+            checkpoint_widget = Text(
+                f"<i class='zmdi zmdi-file' style='color: #7f858e'></i> <a href='{self._checkpoint_link}' target='_blank'>{self._checkpoint_name}</a>",
                 "text",
             )
-            return session_link_widget
+            return checkpoint_widget
 
         def _create_benchmark_widget(self) -> Text:
-            if self._benchmark_report_id is None:
-                self._benchmark_report_id = "No evaluation report available"
-                benchmark_widget = Text(
-                    "<span class='field-description text-muted' style='color: #7f858e'>No evaluation report available</span>",
-                    "text",
-                    font_size=13,
-                )
+            if is_development():
+                benchmark_report_link = abs_url(f"/model-benchmark?id={self._report_id}")
             else:
-                if is_development():
-                    benchmark_report_link = abs_url(
-                        f"/model-benchmark?id={self._benchmark_report_id}"
-                    )
-                else:
-                    benchmark_report_link = f"/model-benchmark?id={self._benchmark_report_id}"
+                benchmark_report_link = f"/model-benchmark?id={self._report_id}"
 
-                benchmark_widget = Text(
-                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
-                    "text",
-                )
+            benchmark_widget = Text(
+                f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
+                "text",
+            )
             return benchmark_widget
 
     def __init__(
@@ -283,33 +227,29 @@ class ModelComparisonSelector(Widget):
         widget_id: str = None,
     ):
         self._api = Api.from_env()
-
         self._team_id = team_id
+
+        benchmark_infos = self._parse_benchmark_infos()
+
         self.__debug_row = None
 
         with ThreadPoolExecutor() as executor:
-            future = executor.submit(self._generate_table_rows, experiment_infos)
+            future = executor.submit(self._generate_table_rows, benchmark_infos)
             table_rows = future.result()
 
         self._columns = columns
         self._rows = table_rows
         # self._rows_html = #[row.to_html() for row in self._rows]
 
-        task_types = [task_type for task_type in table_rows]
+        self._project_ids = [project_id for project_id in table_rows]
         self._rows_html = defaultdict(list)
-        for task_type in table_rows:
-            self._rows_html[task_type].extend(
-                [model_row.to_html() for model_row in table_rows[task_type]]
+        for project_id in table_rows:
+            self._rows_html[project_id].extend(
+                [model_row.to_html() for model_row in table_rows[project_id]]
             )
 
-        self._task_types = self._filter_task_types(task_types)
-        if len(self._task_types) == 0:
-            self.__default_selected_task_type = None
-        else:
-            self.__default_selected_task_type = self._task_types[0]
-
         self._changes_handled = False
-        self._task_type_changes_handled = False
+        self._project_changes_handled = False
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
@@ -324,33 +264,33 @@ class ModelComparisonSelector(Widget):
         return {
             "columns": self._columns,
             "rowsHtml": self._rows_html,
-            "taskTypes": self._task_types,
+            "projectIds": self._project_ids,
         }
 
     def get_json_state(self) -> Dict:
         return {
-            "selectedRow": 0,
-            "selectedTaskType": self.__default_selected_task_type,
+            "selectedRows": [],
+            "selectedProjectId": self._project_ids[0],
         }
 
-    def set_active_task_type(self, task_type: str):
-        if task_type not in self._task_types:
-            raise ValueError(f'Task Type "{task_type}" does not exist')
-        StateJson()[self.widget_id]["selectedTaskType"] = task_type
+    def set_active_project_id(self, project_id: str):
+        if project_id not in self._project_ids:
+            raise ValueError(f'Project ID: "{project_id}" does not exist')
+        StateJson()[self.widget_id]["selectedProjectId"] = project_id
         StateJson().send_changes()
 
-    def get_available_task_types(self) -> List[str]:
-        return self._task_types
+    def get_available_project_ids(self) -> List[str]:
+        return self._project_ids
 
     def disable_table(self) -> None:
-        for task_type in self._rows:
-            for row in self._rows[task_type]:
+        for project_id in self._rows:
+            for row in self._rows[project_id]:
                 row.checkpoints_selector.disable()
         super().disable()
 
     def enable_table(self) -> None:
-        for task_type in self._rows:
-            for row in self._rows[task_type]:
+        for project_id in self._rows:
+            for row in self._rows[project_id]:
                 row.checkpoints_selector.enable()
         super().enable()
 
@@ -362,90 +302,69 @@ class ModelComparisonSelector(Widget):
         self.disable_table()
         super().disable()
 
-    def _generate_table_rows(
-        self, experiment_infos: List[ExperimentInfo]
-    ) -> Dict[str, List[ModelRow]]:
+    def _generate_table_rows(self, benchmark_infos: List[dict]) -> Dict[str, List[ModelRow]]:
         """Method to generate table rows from remote path to training app save directory"""
 
-        def process_experiment_info(experiment_info: ExperimentInfo):
+        def process_experiment_info(becnhmark_info: ExperimentInfo):
             try:
-                model_row = ExperimentSelector.ModelRow(
+                model_row = ModelComparisonSelector.ModelRow(
                     api=self._api,
                     team_id=self._team_id,
-                    task_type=experiment_info.task_type,
-                    experiment_info=experiment_info,
+                    becnhmark_info=becnhmark_info,
                 )
-                return experiment_info.task_type, model_row
+                return becnhmark_info["src_project_id"], model_row
             except Exception as e:
-                logger.warn(f"Failed to process experiment info: {experiment_info}")
+                logger.warning(f"Failed to process benchmark info. Error: '{repr(e)}'")
                 return None, None
 
         table_rows = defaultdict(list)
         with ThreadPoolExecutor() as executor:
             futures = {
-                executor.submit(process_experiment_info, experiment_info): experiment_info
-                for experiment_info in experiment_infos
+                executor.submit(process_experiment_info, benchmark_info): benchmark_info
+                for benchmark_info in benchmark_infos
             }
 
             for future in as_completed(futures):
                 result = future.result()
                 if result:
-                    task_type, model_row = result
-                    if task_type is not None and model_row is not None:
+                    project_id, model_row = result
+                    if project_id is not None and model_row is not None:
                         if model_row.task_id == "debug-session":
-                            self.__debug_row = (task_type, model_row)
+                            self.__debug_row = (project_id, model_row)
                             continue
-                        table_rows[task_type].append(model_row)
+                        table_rows[project_id].append(model_row)
         self._sort_table_rows(table_rows)
         if self.__debug_row and is_development():
-            task_type, model_row = self.__debug_row
-            table_rows[task_type].insert(0, model_row)
+            project_id, model_row = self.__debug_row
+            table_rows[project_id].insert(0, model_row)
         return table_rows
 
     def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
-        for task_type in table_rows:
-            table_rows[task_type].sort(key=lambda row: int(row.task_id), reverse=True)
+        for project_id in table_rows:
+            table_rows[project_id].sort(key=lambda row: int(row.task_id), reverse=True)
 
-    def _filter_task_types(self, task_types: List[str]):
-        sorted_tt = []
-        if "object detection" in task_types:
-            sorted_tt.append("object detection")
-        if "instance segmentation" in task_types:
-            sorted_tt.append("instance segmentation")
-        if "pose estimation" in task_types:
-            sorted_tt.append("pose estimation")
-        other_tasks = sorted(
-            set(task_types)
-            - set(
-                [
-                    "object detection",
-                    "instance segmentation",
-                    "semantic segmentation",
-                    "pose estimation",
-                ]
-            )
-        )
-        sorted_tt.extend(other_tasks)
-        return sorted_tt
-
-    def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
+    def get_selected_rows(self, state=StateJson()) -> Union[ModelRow, None]:
         if len(self._rows) == 0:
             return
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
-        task_type = widget_actual_state["selectedTaskType"]
+        project_id = widget_actual_state["selectedProjectId"]
         if widget_actual_state is not None and widget_actual_data is not None:
-            selected_row_index = int(widget_actual_state["selectedRow"])
-            return self._rows[task_type][selected_row_index]
+            selected_row_indexes = widget_actual_state["selectedRows"]
 
-    def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
+            rows = []
+            for i in selected_row_indexes:
+                rows.append(self._rows[project_id][i])
+            return rows
+
+    def get_selected_row_indexes(self, state=StateJson()) -> Union[int, None]:
         widget_actual_state = state[self.widget_id]
         widget_actual_data = DataJson()[self.widget_id]
         if widget_actual_state is not None and widget_actual_data is not None:
-            return widget_actual_state["selectedRow"]
+            return widget_actual_state["selectedRows"]
 
-    def get_selected_task_type(self) -> str:
-        return StateJson()[self.widget_id]["selectedTaskType"]
+    def get_selected_project_id(self) -> str:
+        return StateJson()[self.widget_id]["selectedProjectId"]
 
     def get_selected_experiment_info(self) -> Dict[str, Any]:
         if len(self._rows) == 0:
@@ -454,77 +373,103 @@ class ModelComparisonSelector(Widget):
         selected_row_json = asdict(selected_row._experiment_info)
         return selected_row_json
 
-    def get_selected_checkpoint_path(self) -> str:
-        if len(self._rows) == 0:
-            return
-        selected_row = self.get_selected_row()
-        return selected_row.get_selected_checkpoint_path()
-
-    def get_model_files(self) -> Dict[str, str]:
-        """
-        Returns a dictionary with full paths to model files in Supervisely Team Files.
-        """
-        experiment_info = self.get_selected_experiment_info()
-        artifacts_dir = experiment_info.get("artifacts_dir")
-        model_files = experiment_info.get("model_files", {})
-
-        full_model_files = {
-            name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
-        }
-        full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
-        return full_model_files
-
-    def get_deploy_params(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary with deploy parameters except runtime and device keys.
-        """
-        deploy_params = {
-            "model_source": ModelSource.CUSTOM,
-            "model_files": self.get_model_files(),
-            "model_info": self.get_selected_experiment_info(),
-        }
-        return deploy_params
-
-    def set_active_row(self, row_index: int) -> None:
-        if row_index < 0 or row_index > len(self._rows) - 1:
-            raise ValueError(f'Row with index "{row_index}" does not exist')
-        StateJson()[self.widget_id]["selectedRow"] = row_index
+    def set_active_row(self, row_indexes: List[int]) -> None:
+        indexes_to_set = []
+        for row_index in row_indexes:
+            if row_index < 0 or row_index > len(self._rows) - 1:
+                raise ValueError(f'Row with index "{row_index}" does not exist')
+            indexes_to_set.append(row_index)
+        StateJson()[self.widget_id]["selectedRows"] = indexes_to_set
         StateJson().send_changes()
 
     def set_by_task_id(self, task_id: int) -> None:
-        for task_type in self._rows:
-            for i, row in enumerate(self._rows[task_type]):
+        for project_id in self._rows:
+            for i, row in enumerate(self._rows[project_id]):
                 if row.task_id == task_id:
                     self.set_active_row(i)
                     return
 
     def get_by_task_id(self, task_id: int) -> Union[ModelRow, None]:
-        for task_type in self._rows:
-            for row in self._rows[task_type]:
+        for project_id in self._rows:
+            for row in self._rows[project_id]:
                 if row.task_id == task_id:
                     return row
         return None
 
-    def task_type_changed(self, func: Callable):
-        route_path = self.get_route_path(ExperimentSelector.Routes.TASK_TYPE_CHANGED)
+    def project_changed(self, func: Callable):
+        route_path = self.get_route_path(ModelComparisonSelector.Routes.PROJECT_CHANGED)
         server = self._sly_app.get_server()
-        self._task_type_changes_handled = True
+        self._project_changes_handled = True
 
         @server.post(route_path)
-        def _task_type_changed():
-            res = self.get_selected_task_type()
+        def _project_changed():
+            res = self.get_selected_project_id()
             func(res)
 
-        return _task_type_changed
+        return _project_changed
 
     def value_changed(self, func: Callable):
-        route_path = self.get_route_path(ExperimentSelector.Routes.VALUE_CHANGED)
+        route_path = self.get_route_path(ModelComparisonSelector.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
 
         @server.post(route_path)
         def _value_changed():
-            res = self.get_selected_row()
+            res = self.get_selected_rows()
             func(res)
 
         return _value_changed
+
+    def _parse_benchmark_infos(self) -> List[dict]:
+        reports_folder = "/model-benchmark/"
+        report_file_name = "inference_info.json"
+
+        report_paths = []
+        all_files = self._api.file.list(self._team_id, reports_folder, True, "fileinfo")
+        for file in all_files:
+            if file.name == report_file_name:
+                report_paths.append(file.path)
+
+            def fetch_report_data(report_path: str) -> None:
+                try:
+                    path_parts = report_path.split("/")
+                    project_part = path_parts[2]
+                    task_part = path_parts[3]
+
+                    project_id = project_part.split("_")[0]
+                    task_id = task_part.split("_")[0]
+
+                    response = self._api.post(
+                        "file-storage.download",
+                        {ApiField.TEAM_ID: self._team_id, ApiField.PATH: report_path},
+                        stream=True,
+                    )
+                    response.raise_for_status()
+                    response_json = response.json()
+                    response_json["src_project_id"] = project_id
+                    response_json["task_id"] = task_id
+                    response_json["report_path"] = report_path
+                    response_json["created_at"] = file.created_at
+                    response_json["eval_dir"] = f"/model-benchmark/{project_part}/{task_part}/"
+
+                    # Get report vue file id
+                    report_vue_path = f"{response_json['eval_dir']}visualizations/template.vue"
+                    report_file_info = self._api.file.get_info_by_path(
+                        self._team_id, report_vue_path
+                    )
+                    if report_file_info is not None:
+                        response_json["report_id"] = report_file_info.id
+                    else:
+                        response_json["report_id"] = None
+                    return response_json
+                except requests.exceptions.RequestException as e:
+                    logger.debug(f"Request failed for '{report_path}': {e}")
+                except JSONDecodeError as e:
+                    logger.debug(f"JSON decode failed for '{report_path}': {e}")
+                except TypeError as e:
+                    logger.error(f"TypeError for '{report_path}': {e}")
+
+        report_infos = []
+        with ThreadPoolExecutor() as executor:
+            report_infos = list(executor.map(fetch_report_data, report_paths))
+        return report_infos

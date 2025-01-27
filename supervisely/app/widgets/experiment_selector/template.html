@@ -9,8 +9,8 @@
     <div v-if="Object.keys(data.{{{widget.widget_id}}}.rowsHtml).length === 0"> You don't have any custom models</div>
     <div v-else>
 
-        <div v-if="data.{{{widget.widget_id}}}.taskTypes.length > 1">
-            <sly-field
+    <div v-if="data.{{{widget.widget_id}}}.taskTypes.length > 1">
+        <sly-field
             title="Task Type"
             >
                 <el-radio-group
@@ -35,8 +35,7 @@
         </sly-field>
     </div>
 
-        <div>
-        
+<div> 
     <table class="custom-models-selector-table">
         <thead>
         <tr>
@@ -70,13 +69,6 @@
         </tr>
         </tbody>
     </table>
-</div>
-    <div class="mt10" v-if="{{{widget.show_custom_checkpoint_path}}}"
-    >
-    {{{widget.show_custom_checkpoint_path_checkbox}}}
-    <div class="mt10">
-    {{{widget.custom_tab_widgets}}}
-</div>
 </div>
 </div>
 </div>

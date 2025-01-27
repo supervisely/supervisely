@@ -6,37 +6,33 @@
     {% endif %}
     >
 
-    <div v-if="Object.keys(data.{{{widget.widget_id}}}.rowsHtml).length === 0"> You don't have any custom models</div>
+    <div v-if="Object.keys(data.{{{widget.widget_id}}}.rowsHtml).length === 0"> You don't have any evaluation reports</div>
     <div v-else>
 
-        <div v-if="data.{{{widget.widget_id}}}.taskTypes.length > 1">
+        <div v-if="data.{{{widget.widget_id}}}.projectIds.length > 1">
             <sly-field
-            title="Task Type"
+            title="Select Project"
             >
-                <el-radio-group
-                    class="multi-line mt10"
-                    :value="state.{{{widget.widget_id}}}.selectedTaskType"
-    
-                    {% if widget._task_type_changes_handled == true %}
-                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0; post('/{{{widget.widget_id}}}/task_type_changed')}"
-                    {% else %}
-                        @input="(evt) => {state.{{{widget.widget_id}}}.selectedTaskType = evt; state.{{{widget.widget_id}}}.selectedRow = 0;}"
-                    {% endif %}
-                    >
-    
-                    <el-radio 
-                        v-for="(item, idx) in {{{widget._task_types}}}"
-                        :key="item"
-                        :label="item"
-                        >
-                            {{ item }}
-                    </el-radio>
-                </el-radio-group>
+            <el-select :value="state.{{{widget.widget_id}}}.selectedProjectId" placeholder="Select project"
+            
+            {% if widget._project_changes_handled == true %}
+                @input="(evt) => {state.{{{widget.widget_id}}}.selectedProjectId = evt; state.{{{widget.widget_id}}}.selectedRows = []; post('/{{{widget.widget_id}}}/project_changed')}"
+            {% else %}
+                @input="(evt) => {state.{{{widget.widget_id}}}.selectedProjectId = evt; state.{{{widget.widget_id}}}.selectedRows = [];}"
+            {% endif %}
+            >
+                <el-option
+                  v-for="(item, idx) in {{{widget._project_ids}}}"
+                  :key="item"
+                  :label="item"
+                  :value="item">
+                  {{ item }}
+                </el-option>
+            </el-select>
         </sly-field>
-    </div>
+</div>
 
-        <div>
-        
+<div>       
     <table class="custom-models-selector-table">
         <thead>
         <tr>
@@ -46,14 +42,14 @@
         </tr> 
         </thead>
         <tbody>
-        <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rowsHtml[state.{{{widget.widget_id}}}.selectedTaskType]">
+        <tr v-for="row, ridx in data.{{{widget.widget_id}}}.rowsHtml[state.{{{widget.widget_id}}}.selectedProjectId]">
             <td v-for="col, vidx in row">
                 <div v-if="vidx === 0" style="display: flex;">
-                    <el-radio
+                    <el-checkbox
                     style="display: flex;"
-                    v-model="state.{{{widget.widget_id}}}.selectedRow"
+                    v-model="state.{{{widget.widget_id}}}.selectedRows"
                     :label="ridx"
-                    >&#8205;</el-radio>
+                    >&#8205;</el-checkbox>
                     
                     <sly-html-compiler :params="{ridx: ridx, vidx: vidx}" :template="col" :data="data" :state="state"></sly-html-compiler>
                     
@@ -70,13 +66,6 @@
         </tr>
         </tbody>
     </table>
-</div>
-    <div class="mt10" v-if="{{{widget.show_custom_checkpoint_path}}}"
-    >
-    {{{widget.show_custom_checkpoint_path_checkbox}}}
-    <div class="mt10">
-    {{{widget.custom_tab_widgets}}}
-</div>
 </div>
 </div>
 </div>

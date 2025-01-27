@@ -106,7 +106,7 @@ class ExperimentSelector(Widget):
 
             # widgets
             self._task_widget = self._create_task_widget()
-            self._model_wiget = self._create_model_widget()
+            self._model_widget = self._create_model_widget()
             self._training_project_widget = self._create_training_project_widget()
             self._checkpoints_widget = self._create_checkpoints_widget()
             self._session_widget = self._create_session_widget()
@@ -173,7 +173,7 @@ class ExperimentSelector(Widget):
         def to_html(self) -> List[str]:
             return [
                 f"<div> {self._task_widget.to_html()} </div>",
-                f"<div> {self._model_wiget.to_html()} </div>",
+                f"<div> {self._model_widget.to_html()} </div>",
                 f"<div> {self._training_project_widget.to_html()} </div>",
                 f"<div> {self._checkpoints_widget.to_html()} </div>",
                 f"<div> {self._session_widget.to_html()} </div>",
@@ -378,7 +378,7 @@ class ExperimentSelector(Widget):
                 )
                 return experiment_info.task_type, model_row
             except Exception as e:
-                logger.warn(f"Failed to process experiment info: {experiment_info}")
+                logger.warning(f"Failed to process experiment info. Error: '{repr(e)}'")
                 return None, None
 
         table_rows = defaultdict(list)
