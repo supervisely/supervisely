@@ -4868,48 +4868,36 @@ async def _download_project_async(
             small_images = await check_items(small_images)
             large_images = await check_items(large_images)
 
-            async def create_task(semaphore, coro):
-                async with semaphore:
-                    return await coro
-
-            task_semaphore = asyncio.Semaphore(semaphore_value - 1)
-
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
             for images_batch in batched(small_images, batch_size=batch_size):
 
-                task = create_task(
-                    semaphore=task_semaphore,
-                    coro=_download_project_items_batch_async(
-                        api=api,
-                        dataset_id=dataset_id,
-                        img_infos=images_batch,
-                        meta=meta,
-                        dataset_fs=dataset_fs,
-                        id_to_tagmeta=id_to_tagmeta,
-                        semaphore=semaphore,
-                        save_images=save_images,
-                        save_image_info=save_image_info,
-                        only_image_tags=only_image_tags,
-                        progress_cb=ds_progress,
-                    ),
+                task = _download_project_items_batch_async(
+                    api=api,
+                    dataset_id=dataset_id,
+                    img_infos=images_batch,
+                    meta=meta,
+                    dataset_fs=dataset_fs,
+                    id_to_tagmeta=id_to_tagmeta,
+                    semaphore=semaphore,
+                    save_images=save_images,
+                    save_image_info=save_image_info,
+                    only_image_tags=only_image_tags,
+                    progress_cb=ds_progress,
                 )
                 tasks.append(task)
             for image in large_images:
-                task = create_task(
-                    semaphore=task_semaphore,
-                    coro=_download_project_item_async(
-                        api=api,
-                        img_info=image,
-                        meta=meta,
-                        dataset_fs=dataset_fs,
-                        id_to_tagmeta=id_to_tagmeta,
-                        semaphore=semaphore,
-                        save_images=save_images,
-                        save_image_info=save_image_info,
-                        only_image_tags=only_image_tags,
-                        progress_cb=ds_progress,
-                    ),
+                task = _download_project_item_async(
+                    api=api,
+                    img_info=image,
+                    meta=meta,
+                    dataset_fs=dataset_fs,
+                    id_to_tagmeta=id_to_tagmeta,
+                    semaphore=semaphore,
+                    save_images=save_images,
+                    save_image_info=save_image_info,
+                    only_image_tags=only_image_tags,
+                    progress_cb=ds_progress,
                 )
                 tasks.append(task)
 
