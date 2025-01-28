@@ -4870,6 +4870,9 @@ async def _download_project_async(
                     created_task = asyncio.create_task(task)
                     created_tasks.append(created_task)
                     await asyncio.sleep(delay)
+                logger.debug(
+                    f"{len(created_tasks)} tasks have been created for dataset ID: {dataset.id}, Name: {dataset.name}"
+                )
                 return created_tasks
 
             tasks = []
