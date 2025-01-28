@@ -6,12 +6,12 @@ import sys
 import time
 
 import supervisely as sly
-from supervisely.project.download import download_to_cache
-from supervisely.project.project import _download_project, _download_project_async
+from supervisely.project.download import download_async_or_sync, download_to_cache
+from supervisely.project.project import _download_project, _download_project_async, upload_project
 
 LOG_LEVEL = "INFO"
 # LOG_LEVEL = "DEBUG"
-PROJECT_ID = 325865  #  41862
+PROJECT_ID = 986  #  41862
 DATSET_ID = 98429
 home_dir = os.path.expanduser("~")
 common_path = os.path.join(home_dir, "test_project_download/")
@@ -23,17 +23,11 @@ api = sly.Api.from_env()
 # sly.fs.clean_dir(common_path)
 
 
-def main_dpa(project_id: int, semaphore_size: int):
-    if semaphore_size is None:
-        sema = None
-    else:
-        sema = asyncio.Semaphore(semaphore_size)
+def main_dpa(project_id: int):
     start = time.time()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
-        _download_project_async(
-            api, project_id, save_path_async, semaphore=sema, resume_download=True
-        )
+        _download_project_async(api, project_id, save_path_async, resume_download=True)
     )
     finish = time.time() - start
     print(f"Time taken for async method: {finish}")
@@ -93,8 +87,12 @@ if __name__ == "__main__":
         # ann_db()
         # api = sly.Api(args.server, args.token)
         # api.logger.setLevel(LOG_LEVEL)
-        main_dpa(PROJECT_ID, 200)  # to download and save project as files (async)
+        # main_dpa(PROJECT_ID)  # to download and save project as files (async)
         # main_dps(args.id)  # to download and save project as files (sync)
         # compare_downloads(args.id, args.semaphore)  # to compare the time taken for downloading and saving project as files (sync vs async)
+        # download_async_or_sync(
+        #     api, PROJECT_ID, save_path_async, save_image_info=True, include_custom_data=True
+        # )
+        upload_project(save_path_async, api, 210, "test_project")
     except KeyboardInterrupt:
         sly.logger.info("Stopped by user")

@@ -4872,7 +4872,7 @@ async def _download_project_async(
                 async with semaphore:
                     return await coro
 
-            task_semaphore = semaphore
+            task_semaphore = asyncio.Semaphore(semaphore_value - 1)
 
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
