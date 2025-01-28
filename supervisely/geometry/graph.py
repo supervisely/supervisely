@@ -598,7 +598,7 @@ class GraphNodes(Geometry):
         """
         if self._nodes is None or len(self._nodes) == 0:
             logger.warning(
-                f"Cannot create a bounding box from an empty graph(keypoints) with ID: {self.sly_id}"
+                f"Cannot create a bounding box from {self.name()} with empty nodes. Geometry ID: {self.sly_id} "
             )
         return Rectangle.from_geometries_list(
             [Point.from_point_location(node.location) for node in self._nodes.values()]
