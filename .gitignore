@@ -47,7 +47,6 @@ ecosystem/import/*
 .venv
 venv
 build
-.venv3
 
 docs/build
 docs/source/rst_templates/api
