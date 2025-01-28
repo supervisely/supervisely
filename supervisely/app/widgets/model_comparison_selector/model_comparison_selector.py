@@ -26,13 +26,14 @@ from supervisely.nn.utils import ModelSource
 
 WEIGHTS_DIR = "weights"
 
+COL_CHECKBOX = "".upper()
 COL_ID = "task id".upper()
 COL_MODEL = "model".upper()
 COL_SOURCE = "model source".upper()
 COL_CHECKPOINT = "checkpoint".upper()
 COL_REPORT = "report".upper()
 
-columns = [COL_ID, COL_MODEL, COL_SOURCE, COL_CHECKPOINT, COL_REPORT]
+columns = [COL_CHECKBOX, COL_ID, COL_MODEL, COL_SOURCE, COL_CHECKPOINT, COL_REPORT]
 
 
 class ModelComparisonSelector(Widget):
@@ -312,12 +313,13 @@ class ModelComparisonSelector(Widget):
                     team_id=self._team_id,
                     becnhmark_info=becnhmark_info,
                 )
-                return becnhmark_info["src_project_id"], model_row
+                return becnhmark_info["src_project_id"], model_row.task_type, model_row
             except Exception as e:
                 logger.warning(f"Failed to process benchmark info. Error: '{repr(e)}'")
                 return None, None
 
-        table_rows = defaultdict(list)
+        # table_rows = defaultdict(list)
+        table_rows = defaultdict(lambda: defaultdict(list))
         with ThreadPoolExecutor() as executor:
             futures = {
                 executor.submit(process_experiment_info, benchmark_info): benchmark_info
@@ -327,21 +329,24 @@ class ModelComparisonSelector(Widget):
             for future in as_completed(futures):
                 result = future.result()
                 if result:
-                    project_id, model_row = result
+                    project_id, task_type, model_row = result
                     if project_id is not None and model_row is not None:
                         if model_row.task_id == "debug-session":
-                            self.__debug_row = (project_id, model_row)
+                            self.__debug_row = (project_id, model_row.task_type, model_row)
                             continue
-                        table_rows[project_id].append(model_row)
+                        table_rows[project_id][task_type].append(model_row)
         self._sort_table_rows(table_rows)
         if self.__debug_row and is_development():
-            project_id, model_row = self.__debug_row
-            table_rows[project_id].insert(0, model_row)
+            project_id, model_row.task_type, model_row = self.__debug_row
+            table_rows[project_id][model_row.task_type].insert(0, model_row)
         return table_rows
 
     def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
         for project_id in table_rows:
-            table_rows[project_id].sort(key=lambda row: int(row.task_id), reverse=True)
+            for task_type in table_rows[project_id]:
+                table_rows[project_id][task_type].sort(
+                    key=lambda row: int(row.task_id), reverse=True
+                )
 
     def get_selected_rows(self, state=StateJson()) -> Union[ModelRow, None]:
         if len(self._rows) == 0:
