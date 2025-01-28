@@ -5037,8 +5037,6 @@ async def _download_project_items_batch_async(
         )
         ann_jsons = []
         for img_info, ann_info in zip(img_infos, ann_infos):
-            # if ann_info.image_id == 1235 and img_info.id == 1235:
-            #     ann_info.annotation["objects"][2]["nodes"] = {}
             try:
                 tmp_ann = Annotation.from_json(ann_info.annotation, meta)
                 if None in tmp_ann.img_size:

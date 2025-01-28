@@ -556,9 +556,10 @@ class Annotation:
                 canvas_rect = Rectangle.from_size(self.img_size)
                 try:
                     dest.extend(label.crop(canvas_rect))
-                except ValueError:
+                except Exception:
                     logger.error(
-                        f"Cropped label of '{label.obj_class.name}' class was not added to annotation",
+                        f"Cannot crop label of '{label.obj_class.name}' class "
+                        "when extend list of the labels of the current Annotation object",
                         exc_info=True,
                     )
                     raise
