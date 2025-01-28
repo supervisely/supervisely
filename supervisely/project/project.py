@@ -4982,7 +4982,7 @@ async def _download_project_item_async(
     )
     if progress_cb is not None:
         progress_cb(1)
-    logger.info(f"Single project item has been downloaded. Semaphore state: {semaphore._value}")
+    logger.debug(f"Single project item has been downloaded. Semaphore state: {semaphore._value}")
 
 
 async def _download_project_items_batch_async(
@@ -5070,7 +5070,7 @@ async def _download_project_items_batch_async(
         if progress_cb is not None:
             progress_cb(1)
 
-    logger.info(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
+    logger.debug(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
 
 
 DatasetDict = Project.DatasetDict
