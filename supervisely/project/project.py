@@ -4865,9 +4865,12 @@ async def _download_project_async(
                 return to_download
 
             async def run_tasks_with_delay(tasks, delay=0.1):
+                created_tasks = []
                 for task in tasks:
-                    asyncio.create_task(task)
+                    created_task = asyncio.create_task(task)
+                    created_tasks.append(created_task)
                     await asyncio.sleep(delay)
+                return created_tasks
 
             tasks = []
             small_images = await check_items(small_images)
@@ -4906,8 +4909,8 @@ async def _download_project_async(
                 )
                 tasks.append(task)
 
-            await run_tasks_with_delay(tasks)
-            await asyncio.gather(*tasks)
+            created_tasks = await run_tasks_with_delay(tasks)
+            await asyncio.gather(*created_tasks)
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
