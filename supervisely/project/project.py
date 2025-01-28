@@ -4955,6 +4955,8 @@ async def _download_project_item_async(
             semaphore=semaphore,
             force_metadata_for_links=not save_images,
         )
+        if img_info.name == "pexels-photo-744487.png":
+            ann_info.annotation["objects"][3]["nodes"] = {}
         ann_json = ann_info.annotation
         try:
             tmp_ann = Annotation.from_json(ann_json, meta)
@@ -5037,6 +5039,8 @@ async def _download_project_items_batch_async(
         )
         ann_jsons = []
         for img_info, ann_info in zip(img_infos, ann_infos):
+            if img_info.name == "pexels-photo-744487.png":
+                ann_info.annotation["objects"][3]["nodes"] = {}
             try:
                 tmp_ann = Annotation.from_json(ann_info.annotation, meta)
                 if None in tmp_ann.img_size:
