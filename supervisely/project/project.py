@@ -4864,6 +4864,11 @@ async def _download_project_async(
                             ds_progress(1)
                 return to_download
 
+            async def run_tasks_with_delay(tasks, delay=0.1):
+                for task in tasks:
+                    asyncio.create_task(task)
+                    await asyncio.sleep(delay)
+
             tasks = []
             small_images = await check_items(small_images)
             large_images = await check_items(large_images)
@@ -4901,6 +4906,7 @@ async def _download_project_async(
                 )
                 tasks.append(task)
 
+            await run_tasks_with_delay(tasks)
             await asyncio.gather(*tasks)
 
         if save_image_meta:

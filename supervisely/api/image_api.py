@@ -4456,26 +4456,26 @@ class ImageApi(RemoveableBulkModuleApi):
                 json=json_body,
                 headers=headers,
             )
-            decoder = MultipartDecoder.from_response(response)
-            for part in decoder.parts:
-                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-                # The regex has 2 capture group: one for the prefix and one for the actual name value.
-                img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
-                if check_hash:
-                    hhash = part.headers.get("x-content-checksum-sha256", None)
-                    if hhash is not None:
-                        downloaded_bytes_hash = get_bytes_hash(part)
-                        if hhash != downloaded_bytes_hash:
-                            raise RuntimeError(
-                                f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
-                            )
-                if progress_cb is not None and progress_cb_type == "number":
-                    progress_cb(1)
-                elif progress_cb is not None and progress_cb_type == "size":
-                    progress_cb(len(part.content))
+        decoder = MultipartDecoder.from_response(response)
+        for part in decoder.parts:
+            content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+            # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+            # The regex has 2 capture group: one for the prefix and one for the actual name value.
+            img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+            if check_hash:
+                hhash = part.headers.get("x-content-checksum-sha256", None)
+                if hhash is not None:
+                    downloaded_bytes_hash = get_bytes_hash(part)
+                    if hhash != downloaded_bytes_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+            elif progress_cb is not None and progress_cb_type == "size":
+                progress_cb(len(part.content))
 
-                yield img_id, part.content
+            yield img_id, part.content
 
     async def get_list_generator_async(
         self,
