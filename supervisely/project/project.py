@@ -4779,7 +4779,6 @@ async def _download_project_async(
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
-        semaphore_value = semaphore._value
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
