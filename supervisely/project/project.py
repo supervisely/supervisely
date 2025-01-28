@@ -4780,29 +4780,6 @@ async def _download_project_async(
     if semaphore is None:
         semaphore = api.get_default_semaphore()
 
-    # number of workers
-    num_workers = min(kwargs.get("num_workers", semaphore._value), 10)
-
-    async def worker(queue: asyncio.Queue, stop_event: asyncio.Event):
-        while not stop_event.is_set():
-            try:
-                task = await asyncio.wait_for(queue.get(), timeout=10)
-                if task is None:
-                    break
-                await task
-            except asyncio.TimeoutError:
-                continue
-            except Exception as e:
-                logger.error(f"Error in _download_project_async worker: {e}")
-                stop_event.set()
-                break
-            finally:
-                queue.task_done()
-
-    queue = asyncio.Queue()
-    stop_event = asyncio.Event()
-    workers = [asyncio.create_task(worker(queue, stop_event)) for _ in range(num_workers)]
-
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
@@ -4886,6 +4863,7 @@ async def _download_project_async(
                             ds_progress(1)
                 return to_download
 
+            tasks = []
             small_images = await check_items(small_images)
             large_images = await check_items(large_images)
             if len(small_images) == 1:
@@ -4904,7 +4882,7 @@ async def _download_project_async(
                     only_image_tags=only_image_tags,
                     progress_cb=ds_progress,
                 )
-                await queue.put(task)
+                tasks.append(task)
             for image in large_images:
                 task = _download_project_item_async(
                     api=api,
@@ -4918,12 +4896,9 @@ async def _download_project_async(
                     only_image_tags=only_image_tags,
                     progress_cb=ds_progress,
                 )
-                await queue.put(task)
-        try:
-            await queue.join()
-        except Exception as e:
-            stop_event.set()
-            raise e
+                tasks.append(task)
+
+            await asyncio.gather(*tasks)
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
@@ -4939,13 +4914,6 @@ async def _download_project_async(
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
-
-    for _ in range(num_workers):
-        await queue.put(None)
-    await asyncio.gather(*workers)
-
-    if stop_event.is_set():
-        raise RuntimeError("Download process was stopped due to an error in one of the workers.")
 
     try:
         create_readme(dest_dir, project_id, api)
@@ -5014,6 +4982,7 @@ async def _download_project_item_async(
     )
     if progress_cb is not None:
         progress_cb(1)
+    logger.info(f"Single project item has been downloaded. Semaphore state: {semaphore._value}")
 
 
 async def _download_project_items_batch_async(
@@ -5068,6 +5037,8 @@ async def _download_project_items_batch_async(
         )
         ann_jsons = []
         for img_info, ann_info in zip(img_infos, ann_infos):
+            # if ann_info.image_id == 1235 and img_info.id == 1235:
+            #     ann_info.annotation["objects"][2]["nodes"] = {}
             try:
                 tmp_ann = Annotation.from_json(ann_info.annotation, meta)
                 if None in tmp_ann.img_size:
@@ -5098,6 +5069,8 @@ async def _download_project_items_batch_async(
         )
         if progress_cb is not None:
             progress_cb(1)
+
+    logger.info(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
 
 
 DatasetDict = Project.DatasetDict

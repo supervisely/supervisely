@@ -543,7 +543,7 @@ class Annotation:
             image_id=take_with_default(image_id, self.image_id),
         )
 
-    def _add_labels_impl(self, dest: List, labels: List):
+    def _add_labels_impl(self, dest: List, labels: List[Label]):
         """
         The function _add_labels_impl extend list of the labels of the current Annotation object
         :param dest: destination list of the Label class objects
@@ -555,11 +555,10 @@ class Annotation:
                 # image has resolution in DB
                 canvas_rect = Rectangle.from_size(self.img_size)
                 try:
-                    cropped_labels = label.crop(canvas_rect)
-                    dest.extend(cropped_labels)
+                    dest.extend(label.crop(canvas_rect))
                 except ValueError:
                     logger.error(
-                        f"Cropped label(s) for '{label.obj_class.name}' was not added to annotation",
+                        f"Cropped label of '{label.obj_class.name}' class was not added to annotation",
                         exc_info=True,
                     )
                     raise
