@@ -384,9 +384,10 @@ Join our constantly growing [Supervisely community](https://app.supervise.ly/) w
 
 If you have any questions, ideas or feedback please:
 
-1. [Suggest a feature or idea](https://ideas.supervise.ly/), or [give a technical feedback ](https://github.com/supervisely/supervisely/issues)
-2. [Join our slack](https://supervise.ly/slack)
-3. [Contact us](https://supervise.ly/contact-us)
+1. Suggest a feature or idea or give a technical feedback- hello@supervisely.com
+2. If you have any problems or questions - support@supervisely.com 
+3. [Join our slack](https://supervise.ly/slack)
+4. [Contact us](https://supervise.ly/contact-us)
 
 Your feedback 👍 helps us a lot and we appreciate it
 
