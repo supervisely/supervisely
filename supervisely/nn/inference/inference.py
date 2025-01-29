@@ -2654,6 +2654,7 @@ class Inference:
 
             # Ger rid of `pending_results` to less response size
             inference_request["pending_results"] = []
+            inference_request.pop("lock", None)
             return inference_request
 
         @server.post(f"/pop_inference_results")

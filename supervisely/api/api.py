@@ -66,10 +66,10 @@ import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
+    RetryableRequestException,
     process_requests_exception,
     process_requests_exception_async,
     process_unhandled_request,
-    RetryableRequestException,
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -380,6 +380,7 @@ class Api:
         self.async_httpx_client: httpx.AsyncClient = None
         self.httpx_client: httpx.Client = None
         self._semaphore = None
+        self._instance_version = None
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -515,11 +516,14 @@ class Api:
                 # '6.9.13'
         """
         try:
-            version = self.post("instance.version", {}).json().get(ApiField.VERSION)
+            if self._instance_version is None:
+                self._instance_version = (
+                    self.post("instance.version", {}).json().get(ApiField.VERSION)
+                )
         except Exception as e:
             logger.warning(f"Failed to get instance version from server: {e}")
-            version = "unknown"
-        return version
+            self._instance_version = "unknown"
+        return self._instance_version
 
     def is_version_supported(self, version: Optional[str] = None) -> Union[bool, None]:
         """Check if the given version is lower or equal to the current Supervisely instance version.
