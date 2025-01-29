@@ -642,13 +642,13 @@ class FigureApi(RemoveableBulkModuleApi):
                 response = await self._api.post_async(
                     "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
                 )
-            decoder = MultipartDecoder.from_response(response)
-            for part in decoder.parts:
-                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-                # The regex has 2 capture group: one for the prefix and one for the actual name value.
-                figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
-                yield figure_id, part.content
+                decoder = MultipartDecoder.from_response(response)
+                for part in decoder.parts:
+                    content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                    # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                    # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                    figure_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                    yield figure_id, part.content
 
     async def download_geometries_batch_async(
         self,

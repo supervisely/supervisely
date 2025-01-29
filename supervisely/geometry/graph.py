@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
+from supervisely import logger
 from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
@@ -215,6 +216,8 @@ class GraphNodes(Geometry):
             updated_at=updated_at,
             created_at=created_at,
         )
+        if len(nodes) == 0:
+            raise ValueError("Empty list of nodes is not allowed for GraphNodes")
         self._nodes = nodes
         if isinstance(nodes, (list, tuple)):
             self._nodes = {}
@@ -593,6 +596,10 @@ class GraphNodes(Geometry):
 
             rectangle = figure.to_bbox()
         """
+        if self._nodes is None or len(self._nodes) == 0:
+            logger.warning(
+                f"Cannot create a bounding box from {self.name()} with empty nodes. Geometry ID: {self.sly_id} "
+            )
         return Rectangle.from_geometries_list(
             [Point.from_point_location(node.location) for node in self._nodes.values()]
         )
