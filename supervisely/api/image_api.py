@@ -78,6 +78,7 @@ from supervisely.project.project_type import (
 from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
+API_DEFAULT_PER_PAGE = 500
 
 
 class ImageInfo(NamedTuple):
@@ -4486,7 +4487,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
-        per_page: Optional[int] = 500,
+        per_page: Optional[int] = None,
         semaphore: Optional[List[asyncio.Semaphore]] = None,
         **kwargs,
     ) -> AsyncGenerator[List[ImageInfo]]:
@@ -4529,12 +4530,32 @@ class ImageApi(RemoveableBulkModuleApi):
                     loop = sly.utils.get_or_create_event_loop()
                     images = loop.run_until_complete(api.image.get_list_async(123456, per_page=600))
         """
-
+        
         method = "images.list"
         dataset_info = kwargs.get("dataset_info", None)
 
         if dataset_info is None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        if per_page is None:
+            async with semaphore:
+                # optimized request to get perPage value that predefined on Supervisely instance
+                response = await self._api.post_async(
+                    method,
+                    {
+                        ApiField.DATASET_ID: dataset_info.id,
+                        ApiField.FIELDS: [ApiField.ID, ApiField.PATH_ORIGINAL],
+                        ApiField.FILTER: [
+                            {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: 1}
+                        ],
+                        ApiField.FORCE_METADATA_FOR_LINKS: False,
+                    },
+                )
+                response_json = response.json()
+            per_page = response_json.get("perPage", API_DEFAULT_PER_PAGE)
 
         total_pages = ceil(dataset_info.items_count / per_page)
 
@@ -4561,9 +4582,6 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-
-        if semaphore is None:
-            semaphore = self._api.get_default_semaphore()
 
         async for page in self.get_list_page_generator_async(method, data, total_pages, semaphore):
             yield page
