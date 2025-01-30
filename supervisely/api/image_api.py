@@ -80,6 +80,7 @@ from supervisely.sly_logger import logger
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 API_DEFAULT_PER_PAGE = 500
 
+
 class ImageInfo(NamedTuple):
     """
     Object with image parameters from Supervisely.
@@ -4541,19 +4542,22 @@ class ImageApi(RemoveableBulkModuleApi):
 
         if per_page is None:
             async with semaphore:
+                # optimized request to get perPage value that predefined on Supervisely instance
                 response = await self._api.post_async(
                     method,
-                    # optimized request to get only fields that are needed
                     {
                         ApiField.DATASET_ID: dataset_info.id,
                         ApiField.FIELDS: [ApiField.ID, ApiField.PATH_ORIGINAL],
+                        ApiField.FILTER: [
+                            {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: 1}
+                        ],
+                        ApiField.FORCE_METADATA_FOR_LINKS: False,
                     },
                 )
                 response_json = response.json()
             per_page = response_json.get("perPage", API_DEFAULT_PER_PAGE)
-            total_pages = response_json.get("totalPages", ceil(dataset_info.items_count / per_page))
-        else:
-            total_pages = ceil(dataset_info.items_count / per_page)
+
+        total_pages = ceil(dataset_info.items_count / per_page)
 
         data = {
             ApiField.DATASET_ID: dataset_info.id,
