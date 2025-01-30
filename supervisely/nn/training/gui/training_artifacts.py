@@ -2,7 +2,8 @@ import os
 from typing import Any, Dict
 
 import supervisely.io.env as sly_env
-from supervisely import Api
+import supervisely.nn.training.gui.utils as gui_utils
+from supervisely import Api, logger
 from supervisely._utils import is_production
 from supervisely.api.api import ApiField
 from supervisely.app.widgets import (
@@ -37,7 +38,7 @@ class TrainingArtifacts:
         self.success_message_text = (
             "Training completed. Training artifacts were uploaded to Team Files. "
             "You can find and open tensorboard logs in the artifacts folder via the "
-            "<a href='https://ecosystem.supervisely.com/apps/tensorboard-logs-viewer' target='_blank'>Tensorboard</a> app."
+            "<a href='https://ecosystem.supervisely.com/apps/tensorboard-experiments-viewer' target='_blank'>Tensorboard Experiment Viewer</a> app."
         )
         self.app_options = app_options
 
@@ -90,6 +91,9 @@ class TrainingArtifacts:
             model_demo_path = model_demo.get("path", None)
             if model_demo_path is not None:
                 model_demo_gh_link = None
+                self.pytorch_instruction = None
+                self.onnx_instruction = None
+                self.trt_instruction = None
                 if is_production():
                     task_id = sly_env.task_id()
                     task_info = api.task.get_info_by_id(task_id)
@@ -98,15 +102,13 @@ class TrainingArtifacts:
                     model_demo_gh_link = app_info.repo
                 else:
                     app_name = sly_env.app_name()
-                    team_id = sly_env.team_id()
-                    apps = api.app.get_list(
-                        team_id,
-                        filter=[{"field": "name", "operator": "=", "value": app_name}],
-                        only_running=False,
-                    )
-                    if len(apps) == 1:
-                        app_info = apps[0]
-                        model_demo_gh_link = app_info.repo
+                    module_info = gui_utils.get_module_info_by_name(api, app_name)
+                    if module_info is not None:
+                        model_demo_gh_link = module_info["repo"]
+                    else:
+                        logger.warning(
+                            f"App '{app_name}' not found in Supervisely Ecosystem. Demo artifacts will not be displayed."
+                        )
 
                 if model_demo_gh_link is not None:
                     gh_branch = "blob/main"

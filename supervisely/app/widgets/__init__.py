@@ -149,3 +149,4 @@ from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import GridGalleryV
 from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThumbnail
 from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
 from supervisely.app.widgets.bokeh.bokeh import Bokeh
+from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton

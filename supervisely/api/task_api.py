@@ -1136,3 +1136,64 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 f"Invalid status value: {status}. Allowed values: {self.Status.values()}"
             )
         self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
+
+    def set_output_experiment(self, task_id: int, experiment_info: dict) -> Dict:
+        """
+        Sets output for the task with experiment info.
+
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :param experiment_info: Experiment info from TrainApp.
+        :type experiment_info: dict
+        :return: None
+        :rtype: :class:`NoneType`
+
+        Example of experiment_info:
+
+            experiment_info = {
+                'experiment_name': '247_Lemons_RT-DETRv2-M',
+                'framework_name': 'RT-DETRv2',
+                'model_name': 'RT-DETRv2-M',
+                'task_type': 'object detection',
+                'project_id': 76,
+                'task_id': 247,
+                'model_files': {'config': 'model_config.yml'},
+                'checkpoints': ['checkpoints/best.pth', 'checkpoints/checkpoint0025.pth', 'checkpoints/checkpoint0050.pth', 'checkpoints/last.pth'],
+                'best_checkpoint': 'best.pth',
+                'export': {'ONNXRuntime': 'export/best.onnx'},
+                'app_state': 'app_state.json',
+                'model_meta': 'model_meta.json',
+                'train_val_split': 'train_val_split.json',
+                'train_size': 4,
+                'val_size': 2,
+                'hyperparameters': 'hyperparameters.yaml',
+                'hyperparameters_id': 45234,
+                'artifacts_dir': '/experiments/76_Lemons/247_RT-DETRv2/',
+                'datetime': '2025-01-22 18:13:43',
+                'evaluation_report_id': 12961,
+                'evaluation_report_link': 'https://app.supervisely.com/model-benchmark?id=12961',
+                'evaluation_metrics': {
+                    'mAP': 0.994059405940594,
+                    'AP50': 1.0, 'AP75': 1.0,
+                    'f1': 0.9944444444444445,
+                    'precision': 0.9944444444444445,
+                    'recall': 0.9944444444444445,
+                    'iou': 0.9726227736959404,
+                    'classification_accuracy': 1.0,
+                    'calibration_score': 0.8935745942476048,
+                    'f1_optimal_conf': 0.500377893447876,
+                    'expected_calibration_error': 0.10642540575239527,
+                    'maximum_calibration_error': 0.499622106552124
+                },
+                'primary_metric': 'mAP'
+                'logs': {
+                    'type': 'tensorboard',
+                    'link': '/experiments/76_Lemons/247_RT-DETRv2/logs/'
+                },
+            }
+        """
+        output = {ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}}}
+        resp = self._api.post(
+            "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
+        )
+        return resp.json()
