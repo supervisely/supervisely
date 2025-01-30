@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import time
 from typing import Callable, Generator, List, Optional, Tuple, Union
 
 import numpy as np
@@ -14,6 +15,7 @@ from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import ensure_base_path
+from supervisely.sly_logger import logger
 
 
 class VideoFrameAPI(ModuleApi):
@@ -90,8 +92,12 @@ class VideoFrameAPI(ModuleApi):
             image_np = api.video.frame.download_np(video_id, frame_idx)
         """
 
+        t = time.monotonic()
         response = self._download(video_id, frame_index)
+        logger.trace("download_np: download time: {}".format(time.monotonic() - t))
+        t = time.monotonic()
         frame = sly_image.read_bytes(response.content)
+        logger.trace("download_np: read_bytes time: {}".format(time.monotonic() - t))
         return frame
 
     def download_nps(

@@ -9,6 +9,7 @@ import copy
 import io
 import json
 import re
+import time
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -731,8 +732,12 @@ class ImageApi(RemoveableBulkModuleApi):
 
             image_np = api.image.download_np(770918)
         """
+        t = time.monotonic()
         response = self._download(id)
+        logger.trace("download_np: download time: {}".format(time.monotonic() - t))
+        t = time.monotonic()
         img = sly_image.read_bytes(response.content, keep_alpha)
+        logger.trace("download_np: read_bytes time: {}".format(time.monotonic() - t))
         return img
 
     def download_path(self, id: int, path: str) -> None:
