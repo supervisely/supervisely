@@ -4530,7 +4530,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     loop = sly.utils.get_or_create_event_loop()
                     images = loop.run_until_complete(api.image.get_list_async(123456, per_page=600))
         """
-        total_pages = None
+        
         method = "images.list"
         dataset_info = kwargs.get("dataset_info", None)
 
