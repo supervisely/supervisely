@@ -1,6 +1,5 @@
 # isort: skip_file
 from supervisely.nn.benchmark.utils.detection.calculate_metrics import calculate_metrics
-from supervisely.nn.benchmark.utils.detection.metric_provider import MetricProvider
 from supervisely.nn.benchmark.utils.detection.sly2coco import sly2coco
 from supervisely.nn.benchmark.utils.detection.utlis import read_coco_datasets
 from supervisely.nn.benchmark.utils.detection.utlis import try_set_conf_auto

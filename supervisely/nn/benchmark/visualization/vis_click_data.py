@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from supervisely.nn.benchmark.utils.detection.metric_provider import (
-    MetricProvider,
-)
+from supervisely.nn.benchmark.object_detection.metric_provider import MetricProvider
 
 
 class IdMapper:
