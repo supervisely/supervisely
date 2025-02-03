@@ -1027,7 +1027,10 @@ class ImageApi(RemoveableBulkModuleApi):
         return results
 
     def check_existing_links(
-        self, links: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        links: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        team_id: Optional[int] = None,
     ) -> List[str]:
         """
         Checks existing links for Images.
@@ -1036,6 +1039,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type links: List[str]
         :param progress_cb: Function for tracking progress of checking.
         :type progress_cb: tqdm or callable, optional
+        :param team_id: Team ID in Supervisely (will be used to get remote storage settings).
+        :type team_id: int
         :return: List of existing links
         :rtype: List[str]
         """
@@ -1043,9 +1048,9 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(links) == 0:
             return []
 
-        def _is_image_available(url, progress_cb=None):
+        def _is_image_available(url, team_id, progress_cb=None):
             if self._api.remote_storage.is_bucket_url(url):
-                response = self._api.remote_storage.is_path_exist(url)
+                response = self._api.remote_storage.is_path_exist(url, team_id)
                 result = url if response else None
             else:
                 response = requests.head(url)
@@ -1054,7 +1059,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 progress_cb(1)
             return result
 
-        _is_image_available_with_progress = partial(_is_image_available, progress_cb=progress_cb)
+        _is_image_available_with_progress = partial(
+            _is_image_available, team_id=team_id, progress_cb=progress_cb
+        )
 
         with ThreadPoolExecutor(max_workers=20) as executor:
             results = list(executor.map(_is_image_available_with_progress, links))

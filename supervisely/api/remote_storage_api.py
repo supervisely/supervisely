@@ -1,14 +1,15 @@
 # coding: utf-8
-from typing import Optional, Callable, Union, List
+import mimetypes
+from typing import Callable, List, Optional, Union
 
+from requests_toolbelt import MultipartEncoder
 from tqdm import tqdm
 
-from supervisely.api.module_api import ModuleApiBase, ApiField
-from supervisely.collection.str_enum import StrEnum
-from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 from supervisely import logger
-from requests_toolbelt import MultipartEncoder
-import mimetypes
+from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.collection.str_enum import StrEnum
+from supervisely.io import env
+from supervisely.io.fs import ensure_base_path, get_file_name_with_ext
 
 
 class Provider(StrEnum):
@@ -53,12 +54,15 @@ class RemoteStorageApi(ModuleApiBase):
     def get_file_info_by_path(
         self,
         path: str,
+        team_id: int = None,
     ) -> dict:
         """
         Get info about file for given remote path.
 
         :param path: Remote path to file.
         :type path: str
+        :param team_id: Team ID
+        :type team_id: int
         :returns: List of files in the given remote path
         :rtype: dict
 
@@ -75,6 +79,7 @@ class RemoteStorageApi(ModuleApiBase):
                 "folders": False,
                 "limit": 1,
                 "startAfter": "",
+                ApiField.GROUP_ID: team_id,
             },
         )
         return resp.json()[0]
@@ -87,6 +92,7 @@ class RemoteStorageApi(ModuleApiBase):
         folders: bool = True,
         limit: int = 10000,
         start_after: str = "",
+        team_id: int = None,
     ) -> list:
         """
         List files and directories for given remote path.
@@ -103,10 +109,13 @@ class RemoteStorageApi(ModuleApiBase):
         :type limit: int
         :param start_after: Start listing path after given file name.
         :type start_after: str
+        :param team_id: Team ID
+        :type team_id: int
         :returns: List of files in the given remote path
         :rtype: dict
 
         """
+        team_id = team_id or env.team_id()
 
         Provider.validate_path(path)
         path = path.rstrip("/") + "/"
@@ -119,12 +128,17 @@ class RemoteStorageApi(ModuleApiBase):
                 "folders": folders,
                 "limit": limit,
                 "startAfter": start_after,
+                ApiField.GROUP_ID: team_id,
             },
         )
         return resp.json()
 
     def download_path(
-        self, remote_path: str, save_path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        remote_path: str,
+        save_path: str,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        team_id: int = None,
     ):
         """
         Downloads item from given remote path to given local path.
@@ -135,6 +149,8 @@ class RemoteStorageApi(ModuleApiBase):
         :type save_path: str
         :param progress_cb: Progress function to download.
         :type progress_cb: tqdm or callable, optional
+        :param team_id: Team ID
+        :type team_id: int
 
 
         .. code-block:: python
@@ -145,12 +161,18 @@ class RemoteStorageApi(ModuleApiBase):
             remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
             # or alternatively use this:
             # remote_path = f"{provider}://{bucket}{path_in_bucket}"
-            api.remote_storage.upload_path(local_path="images/my-cats.jpg", remote_path=remote_path)
+            api.remote_storage.download_path(local_path="images/my-cats.jpg", remote_path=remote_path)
         """
+        team_id = team_id or env.team_id()
         Provider.validate_path(remote_path)
         ensure_base_path(save_path)
         response = self._api.post(
-            "remote-storage.download", {ApiField.LINK: remote_path}, stream=True
+            "remote-storage.download",
+            {
+                ApiField.LINK: remote_path,
+                ApiField.GROUP_ID: team_id,
+            },
+            stream=True,
         )
         # if "Content-Length" in response.headers:
         #     length = int(response.headers['Content-Length'])
@@ -160,7 +182,7 @@ class RemoteStorageApi(ModuleApiBase):
                 if progress_cb is not None:
                     progress_cb(len(chunk))
 
-    def upload_path(self, local_path: str, remote_path: str):
+    def upload_path(self, local_path: str, remote_path: str, team_id: int = None):
         """
         Uploads item from given local path to given remote path.
 
@@ -168,6 +190,8 @@ class RemoteStorageApi(ModuleApiBase):
         :type local_path: str
         :param remote_path: Remote destination path.
         :type remote_path: str
+        :param team_id: Team ID
+        :type team_id: int
         :Usage example:
 
         .. code-block:: python
@@ -176,15 +200,17 @@ class RemoteStorageApi(ModuleApiBase):
             bucket = "bucket-test-export"
             path_in_bucket = "/demo/image.jpg"
             remote_path = api.remote_storage.get_remote_path(provider, bucket, path_in_bucket)
+            team_id = 123
             # or alternatively use this:
             # remote_path = f"{provider}://{bucket}{path_in_bucket}"
-            api.remote_storage.upload_path(local_path="images/my-cats.jpg", remote_path=remote_path)
+            api.remote_storage.upload_path("images/my-cats.jpg", remote_path, team_id)
         """
         Provider.validate_path(remote_path)
-        return self._upload_paths_batch([local_path], [remote_path])
+        return self._upload_paths_batch([local_path], [remote_path], team_id)
 
-    def _upload_paths_batch(self, local_paths, remote_paths):
+    def _upload_paths_batch(self, local_paths, remote_paths, team_id: int = None):
         """_upload_paths_batch"""
+        team_id = team_id or env.team_id()
 
         if len(local_paths) != len(remote_paths):
             raise ValueError("Inconsistency in paths, len(local_paths) != len(remote_paths)")
@@ -209,7 +235,7 @@ class RemoteStorageApi(ModuleApiBase):
                 )
             )
         encoder = MultipartEncoder(fields=content)
-        resp = self._api.post("remote-storage.upload", encoder)
+        resp = self._api.post(f"remote-storage.upload?teamId={team_id}", encoder)
         return resp.json()
 
     def get_remote_path(self, provider: str, bucket: str, path_in_bucket: str) -> str:
@@ -236,10 +262,15 @@ class RemoteStorageApi(ModuleApiBase):
         Provider.validate_path(res_path)
         return res_path
 
-    def get_list_available_providers(self) -> List[dict]:
+    def get_list_available_providers(
+        self,
+        team_id: int = None,
+    ) -> List[dict]:
         """
         Get the list of available providers for the instance.
 
+        :param team_id: Team ID
+        :type team_id: int
         :return: List of available providers
         :rtype: List[dict]
         :Usage example:
@@ -260,7 +291,8 @@ class RemoteStorageApi(ModuleApiBase):
             # Pass values into the API constructor (optional, not recommended)
             # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
-            available_providers = api.remote_storage.get_list_available_providers()
+            team_id = 123
+            available_providers = api.remote_storage.get_list_available_providers(team_id)
 
             # Output example
 
@@ -281,13 +313,19 @@ class RemoteStorageApi(ModuleApiBase):
             #    ]
 
         """
-        resp = self._api.get("remote-storage.available_providers", {})
+        team_id = team_id or env.team_id()
+        resp = self._api.get("remote-storage.available_providers", {ApiField.GROUP_ID: team_id})
         return resp.json()
 
-    def get_list_supported_providers(self) -> List[dict]:
+    def get_list_supported_providers(
+        self,
+        team_id: int = None,
+    ) -> List[dict]:
         """
         Get the list of supported providers for the instance.
 
+        :param team_id: Team ID
+        :type team_id: int
         :return: List of supported providers
         :rtype: List[dict]
         :Usage example:
@@ -308,7 +346,8 @@ class RemoteStorageApi(ModuleApiBase):
             # Pass values into the API constructor (optional, not recommended)
             # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
-            supported_providers = api.remote_storage.get_list_supported_providers()
+            team_id = 123
+            supported_providers = api.remote_storage.get_list_supported_providers(team_id)
 
             # Output example
 
@@ -325,15 +364,22 @@ class RemoteStorageApi(ModuleApiBase):
             #    ]
 
         """
-        resp = self._api.get("remote-storage.supported_providers", {})
+        team_id = team_id or env.team_id()
+        resp = self._api.get("remote-storage.supported_providers", {ApiField.GROUP_ID: team_id})
         return resp.json()
 
-    def is_path_exist(self, path: str) -> bool:
+    def is_path_exist(
+        self,
+        path: str,
+        team_id: int = None,
+    ) -> bool:
         """
         Check if the file path exists.
 
         :param path: URL of the file in the bucket storage
         :type path: str
+        :param team_id: Team ID
+        :type team_id: int
         :return: True if the file exists, False otherwise
         :rtype: bool
         :Usage example:
@@ -358,12 +404,12 @@ class RemoteStorageApi(ModuleApiBase):
             is_exist = api.remote_storage.is_path_exist(path)
 
         """
-
+        team_id = team_id or env.team_id()
         Provider.validate_path(path)
 
         resp = self._api.get(
             "remote-storage.exists",
-            {ApiField.PATH: path},
+            {ApiField.PATH: path, ApiField.GROUP_ID: team_id},
         )
         resp = resp.json()
 
@@ -372,12 +418,18 @@ class RemoteStorageApi(ModuleApiBase):
         else:
             return False
 
-    def get_path_stats(self, path: str) -> Optional[dict]:
+    def get_path_stats(
+        self,
+        path: str,
+        team_id: int = None,
+    ) -> Optional[dict]:
         """
         Get information about file size and the date of its last modification in bucket storage.
 
         :param path: URL of the file in the bucket storage
         :type path: str
+        :param team_id: Team ID
+        :type team_id: int
         :return: File 'size' in bytes and 'lastModified' date if file exists, otherwise None
         :rtype: Optional[dict]
         :Usage example:
@@ -399,7 +451,8 @@ class RemoteStorageApi(ModuleApiBase):
             # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
             path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
-            stats = api.remote_storage.get_path_stats(path)
+            team_id = 123
+            stats = api.remote_storage.get_path_stats(path, team_id)
 
             # Output example
 
@@ -409,10 +462,12 @@ class RemoteStorageApi(ModuleApiBase):
             #   }
 
         """
-        if self.is_path_exist(path):
+        team_id = team_id or env.team_id()
+
+        if self.is_path_exist(path, team_id):
             resp = self._api.get(
                 "remote-storage.stat",
-                {ApiField.PATH: path},
+                {ApiField.PATH: path, ApiField.GROUP_ID: team_id},
             )
             return resp.json()
         else:
