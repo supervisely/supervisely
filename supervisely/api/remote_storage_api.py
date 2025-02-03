@@ -61,13 +61,13 @@ class RemoteStorageApi(ModuleApiBase):
 
         :param path: Remote path to file.
         :type path: str
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :returns: List of files in the given remote path
         :rtype: dict
 
         """
-
+        team_id = team_id or env.team_id()
         Provider.validate_path(path)
         path = path.rstrip("/")
         resp = self._api.get(
@@ -109,7 +109,7 @@ class RemoteStorageApi(ModuleApiBase):
         :type limit: int
         :param start_after: Start listing path after given file name.
         :type start_after: str
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :returns: List of files in the given remote path
         :rtype: dict
@@ -149,7 +149,7 @@ class RemoteStorageApi(ModuleApiBase):
         :type save_path: str
         :param progress_cb: Progress function to download.
         :type progress_cb: tqdm or callable, optional
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
 
 
@@ -190,7 +190,7 @@ class RemoteStorageApi(ModuleApiBase):
         :type local_path: str
         :param remote_path: Remote destination path.
         :type remote_path: str
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :Usage example:
 
@@ -270,7 +270,7 @@ class RemoteStorageApi(ModuleApiBase):
         """
         Get the list of available providers for the instance.
 
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :return: List of available providers
         :rtype: List[dict]
@@ -325,7 +325,7 @@ class RemoteStorageApi(ModuleApiBase):
         """
         Get the list of supported providers for the instance.
 
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :return: List of supported providers
         :rtype: List[dict]
@@ -379,7 +379,7 @@ class RemoteStorageApi(ModuleApiBase):
 
         :param path: URL of the file in the bucket storage
         :type path: str
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :return: True if the file exists, False otherwise
         :rtype: bool
@@ -429,7 +429,7 @@ class RemoteStorageApi(ModuleApiBase):
 
         :param path: URL of the file in the bucket storage
         :type path: str
-        :param team_id: Team ID
+        :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :return: File 'size' in bytes and 'lastModified' date if file exists, otherwise None
         :rtype: Optional[dict]
