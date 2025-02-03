@@ -49,7 +49,6 @@ def get_release_commit(tag: str):
 
 
 def get_version():
-    return "v6.73.287+remote.storage.group" # ! TODO: remove after testing
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
