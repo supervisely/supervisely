@@ -170,7 +170,7 @@ class RemoteStorageApi(ModuleApiBase):
         Provider.validate_path(remote_path)
         ensure_base_path(save_path)
 
-        json_body = {ApiField.PATH: remote_path}
+        json_body = {ApiField.LINK: remote_path}
         if team_id is not None:
             json_body[ApiField.GROUP_ID] = team_id
 
