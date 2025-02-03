@@ -1694,7 +1694,7 @@ class AnnotationApi(ModuleApi):
             labels_group_name = 'left_wheel'
 
             # upload group of labels to corresponding multiview images
-            api.annotation.append_label_group(image_ids, labels, labels_group_name)
+            api.annotation.append_labels_group(image_ids, labels, labels_group_name)
         """
 
         if len(image_ids) != len(labels):
@@ -1714,20 +1714,17 @@ class AnnotationApi(ModuleApi):
             dataset_info = self._api.dataset.get_info_by_id(dataset_id)
             if dataset_info is None:
                 raise ValueError(f"Dataset with ID {dataset_id} not found")
+
             project_id = dataset_info.project_id
             project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
 
         tag_meta = TagMeta(_LABEL_GROUP_TAG_NAME, TagValueType.ANY_STRING)
-        tag = Tag(meta=tag_meta, value=group_name)
-        labels = [label.add_tag(tag) for label in labels if label is not None]
+        labels = [l.add_tag(Tag(tag_meta, group_name)) for l in labels if l is not None]
 
         anns_json = self._api.annotation.download_json_batch(
             dataset_id=dataset_id, image_ids=image_ids, force_metadata_for_links=False
         )
         anns = [Annotation.from_json(ann_json, project_meta) for ann_json in anns_json]
-        updated_anns = []
-        for ann, label in zip(anns, labels):
-            updated_ann = ann.add_label(label)
-            updated_anns.append(updated_ann)
+        updated_anns = [ann.add_label(label) for ann, label in zip(anns, labels)]
 
         self._api.annotation.upload_anns(image_ids, updated_anns)
