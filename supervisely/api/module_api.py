@@ -617,6 +617,8 @@ class ApiField:
     """"""
     CUSTOM_SORT = "customSort"
     """"""
+    GROUP_ID = "groupId"
+    """"""
 
 
 def _get_single_item(items):

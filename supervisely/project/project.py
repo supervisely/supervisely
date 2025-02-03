@@ -3352,8 +3352,9 @@ class Project:
             existing_hashes = api.image.check_existing_hashes(
                 list(set([inf.hash for inf in image_infos if inf.hash and not inf.link]))
             )
+            workspace_info = api.workspace.get_info_by_id(workspace_id)
             existing_links = api.image.check_existing_links(
-                list(set([inf.link for inf in image_infos if inf.link]))
+                list(set([inf.link for inf in image_infos if inf.link])), team_id=workspace_info.team_id
             )
         image_infos = sorted(image_infos, key=lambda info: info.link is not None)
 
