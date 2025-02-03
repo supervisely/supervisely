@@ -55,7 +55,7 @@ class RemoteStorageApi(ModuleApiBase):
         self,
         path: str,
         team_id: int = None,
-    ) -> dict:
+    ) -> Optional[dict]:
         """
         Get info about file for given remote path.
 
@@ -63,8 +63,8 @@ class RemoteStorageApi(ModuleApiBase):
         :type path: str
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
-        :returns: List of files in the given remote path
-        :rtype: dict
+        :returns: file  info in the given remote path
+        :rtype: Optional[dict]
 
         """
         team_id = team_id or env.team_id(raise_not_found=False)
@@ -83,6 +83,8 @@ class RemoteStorageApi(ModuleApiBase):
             json_body[ApiField.GROUP_ID] = team_id
 
         resp = self._api.get("remote-storage.list", json_body)
+        if resp is None:
+            return None
 
         return resp.json()[0]
 
@@ -114,7 +116,7 @@ class RemoteStorageApi(ModuleApiBase):
         :param team_id: Team ID (to get cloud storages connected to the team)
         :type team_id: int
         :returns: List of files in the given remote path
-        :rtype: dict
+        :rtype: list
 
         """
         team_id = team_id or env.team_id(raise_not_found=False)
@@ -134,6 +136,8 @@ class RemoteStorageApi(ModuleApiBase):
             json_body[ApiField.GROUP_ID] = team_id
 
         resp = self._api.get("remote-storage.list", json_body)
+        if resp is None:
+            return []
         return resp.json()
 
     def download_path(
@@ -426,6 +430,9 @@ class RemoteStorageApi(ModuleApiBase):
             json_body[ApiField.GROUP_ID] = team_id
 
         resp = self._api.get("remote-storage.exists", json_body)
+        if resp is None:
+            return False
+            
         resp = resp.json()
 
         if resp.get("exists"):
