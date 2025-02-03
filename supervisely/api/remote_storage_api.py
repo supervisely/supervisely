@@ -67,21 +67,23 @@ class RemoteStorageApi(ModuleApiBase):
         :rtype: dict
 
         """
-        team_id = team_id or env.team_id()
+        team_id = team_id or env.team_id(raise_not_found=False)
         Provider.validate_path(path)
         path = path.rstrip("/")
-        resp = self._api.get(
-            "remote-storage.list",
-            {
-                ApiField.PATH: path,
-                "recursive": False,
-                "files": True,
-                "folders": False,
-                "limit": 1,
-                "startAfter": "",
-                ApiField.GROUP_ID: team_id,
-            },
-        )
+
+        json_body = {
+            ApiField.PATH: path,
+            ApiField.RECURSIVE: False,
+            ApiField.FILES: True,
+            ApiField.FOLDERS: False,
+            ApiField.LIMIT: 1,
+            "startAfter": "",
+        }
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
+
+        resp = self._api.get("remote-storage.list", json_body)
+
         return resp.json()[0]
 
     def list(
@@ -115,22 +117,23 @@ class RemoteStorageApi(ModuleApiBase):
         :rtype: dict
 
         """
-        team_id = team_id or env.team_id()
+        team_id = team_id or env.team_id(raise_not_found=False)
 
         Provider.validate_path(path)
         path = path.rstrip("/") + "/"
-        resp = self._api.get(
-            "remote-storage.list",
-            {
-                ApiField.PATH: path,
-                "recursive": recursive,
-                "files": files,
-                "folders": folders,
-                "limit": limit,
-                "startAfter": start_after,
-                ApiField.GROUP_ID: team_id,
-            },
-        )
+
+        json_body = {
+            ApiField.PATH: path,
+            ApiField.RECURSIVE: recursive,
+            ApiField.FILES: files,
+            ApiField.FOLDERS: folders,
+            ApiField.LIMIT: limit,
+            "startAfter": start_after,
+        }
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
+
+        resp = self._api.get("remote-storage.list", json_body)
         return resp.json()
 
     def download_path(
@@ -163,17 +166,15 @@ class RemoteStorageApi(ModuleApiBase):
             # remote_path = f"{provider}://{bucket}{path_in_bucket}"
             api.remote_storage.download_path(local_path="images/my-cats.jpg", remote_path=remote_path)
         """
-        team_id = team_id or env.team_id()
+        team_id = team_id or env.team_id(raise_not_found=False)
         Provider.validate_path(remote_path)
         ensure_base_path(save_path)
-        response = self._api.post(
-            "remote-storage.download",
-            {
-                ApiField.LINK: remote_path,
-                ApiField.GROUP_ID: team_id,
-            },
-            stream=True,
-        )
+
+        json_body = {ApiField.PATH: remote_path}
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
+
+        response = self._api.post("remote-storage.download", json_body, stream=True)
         # if "Content-Length" in response.headers:
         #     length = int(response.headers['Content-Length'])
         with open(save_path, "wb") as fd:
@@ -210,7 +211,7 @@ class RemoteStorageApi(ModuleApiBase):
 
     def _upload_paths_batch(self, local_paths, remote_paths, team_id: int = None):
         """_upload_paths_batch"""
-        team_id = team_id or env.team_id()
+        team_id = team_id or env.team_id(raise_not_found=False)
 
         if len(local_paths) != len(remote_paths):
             raise ValueError("Inconsistency in paths, len(local_paths) != len(remote_paths)")
@@ -218,8 +219,7 @@ class RemoteStorageApi(ModuleApiBase):
             return {}
 
         def path_to_bytes_stream(path):
-            with open(path, "rb") as f:
-                return f.read()
+            return open(path, "rb")
 
         content = []
         for idx, (src, dst) in enumerate(zip(local_paths, remote_paths)):
@@ -236,7 +236,10 @@ class RemoteStorageApi(ModuleApiBase):
                 )
             )
         encoder = MultipartEncoder(fields=content)
-        resp = self._api.post(f"remote-storage.upload?teamId={team_id}", encoder)
+        url = f"remote-storage.upload"
+        if team_id is not None:
+            url += f"?teamId={team_id}"
+        resp = self._api.post(url, encoder)
         return resp.json()
 
     def get_remote_path(self, provider: str, bucket: str, path_in_bucket: str) -> str:
@@ -314,8 +317,13 @@ class RemoteStorageApi(ModuleApiBase):
             #    ]
 
         """
-        team_id = team_id or env.team_id()
-        resp = self._api.get("remote-storage.available_providers", {ApiField.GROUP_ID: team_id})
+        team_id = team_id or env.team_id(raise_not_found=False)
+
+        json_body = {}
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
+
+        resp = self._api.get("remote-storage.available_providers", json_body)
         return resp.json()
 
     def get_list_supported_providers(
@@ -365,8 +373,13 @@ class RemoteStorageApi(ModuleApiBase):
             #    ]
 
         """
-        team_id = team_id or env.team_id()
-        resp = self._api.get("remote-storage.supported_providers", {ApiField.GROUP_ID: team_id})
+        team_id = team_id or env.team_id(raise_not_found=False)
+
+        json_body = {}
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
+
+        resp = self._api.get("remote-storage.supported_providers", json_body)
         return resp.json()
 
     def is_path_exist(
@@ -405,13 +418,14 @@ class RemoteStorageApi(ModuleApiBase):
             is_exist = api.remote_storage.is_path_exist(path)
 
         """
-        team_id = team_id or env.team_id()
+        team_id = team_id or env.team_id(raise_not_found=False)
         Provider.validate_path(path)
 
-        resp = self._api.get(
-            "remote-storage.exists",
-            {ApiField.PATH: path, ApiField.GROUP_ID: team_id},
-        )
+        json_body = {ApiField.PATH: path}
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
+
+        resp = self._api.get("remote-storage.exists", json_body)
         resp = resp.json()
 
         if resp.get("exists"):
@@ -463,13 +477,14 @@ class RemoteStorageApi(ModuleApiBase):
             #   }
 
         """
-        team_id = team_id or env.team_id()
+        team_id = team_id or env.team_id(raise_not_found=False)
+
+        json_body = {ApiField.PATH: path}
+        if team_id is not None:
+            json_body[ApiField.GROUP_ID] = team_id
 
         if self.is_path_exist(path, team_id):
-            resp = self._api.get(
-                "remote-storage.stat",
-                {ApiField.PATH: path, ApiField.GROUP_ID: team_id},
-            )
+            resp = self._api.get("remote-storage.stat", json_body)
             return resp.json()
         else:
             path_folers = path.split("/")[3:]
