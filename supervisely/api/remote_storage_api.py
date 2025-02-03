@@ -218,7 +218,8 @@ class RemoteStorageApi(ModuleApiBase):
             return {}
 
         def path_to_bytes_stream(path):
-            return open(path, "rb")
+            with open(path, "rb") as f:
+                return f.read()
 
         content = []
         for idx, (src, dst) in enumerate(zip(local_paths, remote_paths)):
