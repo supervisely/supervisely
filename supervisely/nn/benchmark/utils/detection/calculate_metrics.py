@@ -126,9 +126,11 @@ def get_counts(eval_img_dict: dict, cocoEval_cls):
             cat_id = eval_img["category_id"]
             cat_idx = catId2idx[cat_id]
             gtIgnore = eval_img["gtIgnore"]
-            gt_not_ignore_idxs = np.where(~gtIgnore)[0]
-            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & ~eval_img["dtIgnore"]).sum(1)
-            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & ~eval_img["dtIgnore"]).sum(1)
+
+            gt_not_ignore_idxs = np.where(np.logical_not(gtIgnore))[0]
+            dt_not_ignore = np.logical_not(eval_img["dtIgnore"])
+            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & dt_not_ignore).sum(1)
+            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & dt_not_ignore).sum(1)
             false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
     return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
 
