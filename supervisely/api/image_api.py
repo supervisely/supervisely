@@ -391,6 +391,7 @@ class ImageApi(RemoveableBulkModuleApi):
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
+        recursive: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -415,6 +416,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type only_labelled: bool, optional
         :param fields: List of fields to return. If None, returns all fields.
         :type fields: List[str], optional
+        :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
+        :type recursive: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -474,6 +477,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.RECURSIVE: recursive,
         }
         if only_labelled:
             data[ApiField.FILTERS] = [
@@ -4537,7 +4541,7 @@ class ImageApi(RemoveableBulkModuleApi):
                     loop = sly.utils.get_or_create_event_loop()
                     images = loop.run_until_complete(api.image.get_list_async(123456, per_page=600))
         """
-        
+
         method = "images.list"
         dataset_info = kwargs.get("dataset_info", None)
 
