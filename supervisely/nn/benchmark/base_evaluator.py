@@ -16,7 +16,7 @@ class BaseEvalResult:
 
     def __init__(self, directory: Optional[str] = None):
         self.directory = directory
-        self.inference_info: Dict = None
+        self.inference_info: Dict = {}
         self.speedtest_info: Dict = None
         self.eval_data: Dict = None
         self.mp = None

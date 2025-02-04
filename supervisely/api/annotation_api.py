@@ -1403,37 +1403,33 @@ class AnnotationApi(ModuleApi):
                 progress_cb(len(response.content))
 
             result = response.json()
-            # Convert annotation to pixel coordinate system
-            result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
-                result[ApiField.ANNOTATION]
-            )
-            # check if there are any AlphaMask geometries in the batch
-            additonal_geometries = defaultdict(int)
-            labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
-            for idx, label in enumerate(labels):
-                if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
-                    figure_id = label[LabelJsonFields.ID]
-                    additonal_geometries[figure_id] = idx
+        # Convert annotation to pixel coordinate system
+        result[ApiField.ANNOTATION] = Annotation._to_pixel_coordinate_system_json(
+            result[ApiField.ANNOTATION]
+        )
+        # check if there are any AlphaMask geometries in the batch
+        additonal_geometries = defaultdict(int)
+        labels = result[ApiField.ANNOTATION][AnnotationJsonFields.LABELS]
+        for idx, label in enumerate(labels):
+            if label[LabelJsonFields.GEOMETRY_TYPE] == AlphaMask.geometry_name():
+                figure_id = label[LabelJsonFields.ID]
+                additonal_geometries[figure_id] = idx
 
-            # if so, download them separately and update the annotation
-            if len(additonal_geometries) > 0:
-                figure_ids = list(additonal_geometries.keys())
-                figures = await self._api.image.figure.download_geometries_batch_async(
-                    figure_ids,
-                    (
-                        progress_cb
-                        if progress_cb is not None and progress_cb_type == "size"
-                        else None
-                    ),
-                    semaphore=semaphore,
-                )
-                for figure_id, geometry in zip(figure_ids, figures):
-                    label_idx = additonal_geometries[figure_id]
-                    labels[label_idx].update({BITMAP: geometry})
-            ann_info = self._convert_json_info(result)
-            if progress_cb is not None and progress_cb_type == "number":
-                progress_cb(1)
-            return ann_info
+        # if so, download them separately and update the annotation
+        if len(additonal_geometries) > 0:
+            figure_ids = list(additonal_geometries.keys())
+            figures = await self._api.image.figure.download_geometries_batch_async(
+                figure_ids,
+                (progress_cb if progress_cb is not None and progress_cb_type == "size" else None),
+                semaphore=semaphore,
+            )
+            for figure_id, geometry in zip(figure_ids, figures):
+                label_idx = additonal_geometries[figure_id]
+                labels[label_idx].update({BITMAP: geometry})
+        ann_info = self._convert_json_info(result)
+        if progress_cb is not None and progress_cb_type == "number":
+            progress_cb(1)
+        return ann_info
 
     async def download_batch_async(
         self,
