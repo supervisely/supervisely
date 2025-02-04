@@ -9,16 +9,21 @@ import json
 from collections import defaultdict
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
+from uuid import uuid4
 
 from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
 from supervisely.annotation.label import Label, LabelJsonFields
+from supervisely.annotation.tag import Tag
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.constants import BITMAP
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_type import _LABEL_GROUP_TAG_NAME
+from supervisely.sly_logger import logger
 
 
 class AnnotationInfo(NamedTuple):
@@ -1640,3 +1645,86 @@ class AnnotationApi(ModuleApi):
                 progress_cb(len(batch))
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
         return ordered_results
+
+    def append_labels_group(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        labels: List[Label],
+        project_meta: Optional[ProjectMeta] = None,
+        group_name: Optional[str] = None,
+    ) -> None:
+        """
+        Append group of labels to corresponding multiview images.
+        This method will automatically add a tech tag to the labels to group them together.
+        Please note that grouped labels is supported only in images project with multiview setup.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param labels: List of Labels in Supervisely.
+        :type labels: List[Label]
+        :param project_meta: Project meta. If not provided, will try to get it from the server.
+        :type project_meta: ProjectMeta, optional
+        :param group_name: Group name. Labels will be assigned by tag with this value.
+        :type group_name: str, optional
+        :return: :class:`None<None>`
+        :rtype: :class:`NoneType<NoneType>`
+        :raises ValueError: if number of images and labels are not the same
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 123456
+            paths = ['path/to/audi_01.png', 'path/to/audi_02.png']
+            images_group_name = 'audi'
+
+            image_infos = api.image.upload_multiview_images(dataset_id, images_group_name, paths)
+
+            image_ids = [info.id for info in image_infos]
+            labels = [label1, label2]
+            labels_group_name = 'left_wheel'
+
+            # upload group of labels to corresponding multiview images
+            api.annotation.append_labels_group(image_ids, labels, labels_group_name)
+        """
+
+        if len(image_ids) != len(labels):
+            raise ValueError(
+                "Number of images and labels must be the same."
+                "If specific image does not have label, pass None instead."
+            )
+
+        if group_name is None:
+            group_name = str(uuid4().hex)
+
+        if project_meta is None:
+            logger.warning(
+                "Project meta is not provided. Will try to get it from the server. "
+                "It is recommended to provide project meta to avoid extra API requests."
+            )
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+            if dataset_info is None:
+                raise ValueError(f"Dataset with ID {dataset_id} not found")
+
+            project_id = dataset_info.project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+
+        tag_meta = TagMeta(_LABEL_GROUP_TAG_NAME, TagValueType.ANY_STRING)
+        labels = [l.add_tag(Tag(tag_meta, group_name)) for l in labels if l is not None]
+
+        anns_json = self._api.annotation.download_json_batch(
+            dataset_id=dataset_id, image_ids=image_ids, force_metadata_for_links=False
+        )
+        anns = [Annotation.from_json(ann_json, project_meta) for ann_json in anns_json]
+        updated_anns = [ann.add_label(label) for ann, label in zip(anns, labels)]
+
+        self._api.annotation.upload_anns(image_ids, updated_anns)

@@ -52,6 +52,7 @@ from supervisely.project.project_settings import (
     ProjectSettingsJsonFields,
 )
 from supervisely.project.project_type import (
+    _LABEL_GROUP_TAG_NAME,
     _METADATA_SYSTEM_KEY,
     _METADATA_TIMESTAMP_KEY,
     _METADATA_VALIDATION_SCHEMA_KEY,
@@ -430,7 +431,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
 
         fields = [
-            x for x in self.info_sequence() if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS, ApiField.CREATED_BY_ID)
+            x
+            for x in self.info_sequence()
+            if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS, ApiField.CREATED_BY_ID)
         ]
 
         info = super().get_info_by_name(parent_id, name, fields)
@@ -1795,7 +1798,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         meta = meta.add_obj_classes(classes)
         self.update_meta(id, meta)
 
-    def _set_custom_grouping_settings(self, id: int, group_images: bool, tag_name: str, sync: bool):
+    def _set_custom_grouping_settings(
+        self, id: int, group_images: bool, tag_name: str, sync: bool, label_group_tag_name: str = None
+    ) -> None:
         """Sets the project settings for custom grouping.
 
         :param id: Project ID to set custom grouping settings.
@@ -1806,9 +1811,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type tag_name: str
         :param sync: if True images will have synchronized view and labeling
         :type sync: bool
+        :param label_group_tag_name: Name of the tag. Labels will be grouped by this tag
+        :type label_group_tag_name: str
+        :raises ValueError: if tag value type is not 'any_string'
+        :return: None
+        :rtype: :class:`NoneType`
         """
         meta = ProjectMeta.from_json(self.get_meta(id, with_settings=True))
         existing_tag_meta = meta.get_tag_meta(tag_name)
+        need_update = False
         if existing_tag_meta is not None:
             if existing_tag_meta.value_type != TagValueType.ANY_STRING:
                 raise ValueError(
@@ -1817,8 +1828,23 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 )
         else:
             new_tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
-            project_meta = meta.add_tag_meta(new_tag_meta)
-            self.update_meta(id, project_meta)
+            meta = meta.add_tag_meta(new_tag_meta)
+            need_update = True
+        if label_group_tag_name is not None:
+            label_group_tag_meta = meta.get_tag_meta(label_group_tag_name)
+            if label_group_tag_meta is not None:
+                if label_group_tag_meta.value_type != TagValueType.ANY_STRING:
+                    raise ValueError(
+                        f"Tag '{label_group_tag_name}' should have value type 'any_string', "
+                        f"but got '{label_group_tag_meta.value_type}' value type."
+                    )
+            else:
+                label_group_tag_meta = TagMeta(label_group_tag_name, TagValueType.ANY_STRING)
+                meta = meta.add_tag_meta(label_group_tag_meta)
+                need_update = True
+        if need_update:
+            self.update_meta(id, meta)
+
         self.images_grouping(id, enable=group_images, tag_name=tag_name, sync=sync)
 
     def set_multispectral_settings(self, project_id: int) -> None:
@@ -1885,6 +1911,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             group_images=True,
             tag_name=_MULTIVIEW_TAG_NAME,
             sync=False,
+            label_group_tag_name=_LABEL_GROUP_TAG_NAME,
         )
 
     def remove_permanently(
