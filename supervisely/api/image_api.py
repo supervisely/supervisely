@@ -78,6 +78,7 @@ from supervisely.project.project_type import (
 from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
+API_DEFAULT_PER_PAGE = 500
 
 
 class ImageInfo(NamedTuple):
@@ -390,6 +391,7 @@ class ImageApi(RemoveableBulkModuleApi):
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
+        recursive: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -414,6 +416,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type only_labelled: bool, optional
         :param fields: List of fields to return. If None, returns all fields.
         :type fields: List[str], optional
+        :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
+        :type recursive: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -473,6 +477,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.RECURSIVE: recursive,
         }
         if only_labelled:
             data[ApiField.FILTERS] = [
@@ -1027,7 +1032,10 @@ class ImageApi(RemoveableBulkModuleApi):
         return results
 
     def check_existing_links(
-        self, links: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        links: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        team_id: Optional[int] = None,
     ) -> List[str]:
         """
         Checks existing links for Images.
@@ -1036,6 +1044,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type links: List[str]
         :param progress_cb: Function for tracking progress of checking.
         :type progress_cb: tqdm or callable, optional
+        :param team_id: Team ID in Supervisely (will be used to get remote storage settings).
+        :type team_id: int
         :return: List of existing links
         :rtype: List[str]
         """
@@ -1043,9 +1053,9 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(links) == 0:
             return []
 
-        def _is_image_available(url, progress_cb=None):
+        def _is_image_available(url, team_id, progress_cb=None):
             if self._api.remote_storage.is_bucket_url(url):
-                response = self._api.remote_storage.is_path_exist(url)
+                response = self._api.remote_storage.is_path_exist(url, team_id)
                 result = url if response else None
             else:
                 response = requests.head(url)
@@ -1054,7 +1064,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 progress_cb(1)
             return result
 
-        _is_image_available_with_progress = partial(_is_image_available, progress_cb=progress_cb)
+        _is_image_available_with_progress = partial(
+            _is_image_available, team_id=team_id, progress_cb=progress_cb
+        )
 
         with ThreadPoolExecutor(max_workers=20) as executor:
             results = list(executor.map(_is_image_available_with_progress, links))
@@ -4456,26 +4468,26 @@ class ImageApi(RemoveableBulkModuleApi):
                 json=json_body,
                 headers=headers,
             )
-        decoder = MultipartDecoder.from_response(response)
-        for part in decoder.parts:
-            content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-            # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-            # The regex has 2 capture group: one for the prefix and one for the actual name value.
-            img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
-            if check_hash:
-                hhash = part.headers.get("x-content-checksum-sha256", None)
-                if hhash is not None:
-                    downloaded_bytes_hash = get_bytes_hash(part)
-                    if hhash != downloaded_bytes_hash:
-                        raise RuntimeError(
-                            f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
-                        )
-            if progress_cb is not None and progress_cb_type == "number":
-                progress_cb(1)
-            elif progress_cb is not None and progress_cb_type == "size":
-                progress_cb(len(part.content))
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                if check_hash:
+                    hhash = part.headers.get("x-content-checksum-sha256", None)
+                    if hhash is not None:
+                        downloaded_bytes_hash = get_bytes_hash(part)
+                        if hhash != downloaded_bytes_hash:
+                            raise RuntimeError(
+                                f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
+                            )
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
+                elif progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(part.content))
 
-            yield img_id, part.content
+                yield img_id, part.content
 
     async def get_list_generator_async(
         self,
@@ -4486,7 +4498,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
-        per_page: Optional[int] = 500,
+        per_page: Optional[int] = None,
         semaphore: Optional[List[asyncio.Semaphore]] = None,
         **kwargs,
     ) -> AsyncGenerator[List[ImageInfo]]:
@@ -4536,6 +4548,26 @@ class ImageApi(RemoveableBulkModuleApi):
         if dataset_info is None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
 
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        if per_page is None:
+            async with semaphore:
+                # optimized request to get perPage value that predefined on Supervisely instance
+                response = await self._api.post_async(
+                    method,
+                    {
+                        ApiField.DATASET_ID: dataset_info.id,
+                        ApiField.FIELDS: [ApiField.ID, ApiField.PATH_ORIGINAL],
+                        ApiField.FILTER: [
+                            {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: 1}
+                        ],
+                        ApiField.FORCE_METADATA_FOR_LINKS: False,
+                    },
+                )
+                response_json = response.json()
+            per_page = response_json.get("perPage", API_DEFAULT_PER_PAGE)
+
         total_pages = ceil(dataset_info.items_count / per_page)
 
         data = {
@@ -4561,9 +4593,6 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-
-        if semaphore is None:
-            semaphore = self._api.get_default_semaphore()
 
         async for page in self.get_list_page_generator_async(method, data, total_pages, semaphore):
             yield page
