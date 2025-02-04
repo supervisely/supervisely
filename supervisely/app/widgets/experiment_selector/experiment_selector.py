@@ -21,7 +21,6 @@ from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.utils import ModelSource
 
-
 WEIGHTS_DIR = "weights"
 
 COL_ID = "task id".upper()
@@ -378,7 +377,7 @@ class ExperimentSelector(Widget):
                 )
                 return experiment_info.task_type, model_row
             except Exception as e:
-                logger.warn(f"Failed to process experiment info: {experiment_info}")
+                logger.debug(f"Failed to process experiment info: {experiment_info}")
                 return None, None
 
         table_rows = defaultdict(list)

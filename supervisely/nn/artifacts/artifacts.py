@@ -372,7 +372,7 @@ class BaseTrainArtifacts:
             _upload_metadata(train_json)
             logger.info(f"Metadata for '{artifacts_folder}' was generated")
         else:
-            logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+            logger.debug(f"Invalid metadata for '{artifacts_folder}'")
             train_json = None
         return train_json
 
@@ -436,7 +436,7 @@ class BaseTrainArtifacts:
             )
             is_valid = self._validate_train_json(json_data)
             if not is_valid:
-                logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+                logger.debug(f"Invalid metadata for '{artifacts_folder}'")
                 json_data = None
         return json_data
 
@@ -590,7 +590,7 @@ class BaseTrainArtifacts:
 
                 return ExperimentInfo(**experiment_info_data)
             except Exception as e:
-                logger.warning(f"Failed to build experiment info: {e}")
+                logger.debug(f"Failed to build experiment info: {e}")
                 return None
 
         train_infos = self.get_list(sort)
