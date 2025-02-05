@@ -27,6 +27,7 @@ class Overview(BaseVisMetrics):
         evaluation result metrics displayed
         """
         super().__init__(vis_texts, eval_results)
+        self.team_id = None  # will be set in the visualizer
 
     @property
     def overview_md(self) -> List[MarkdownWidget]:
