@@ -125,7 +125,7 @@ To measure this, we calculate **Recall**. Recall counts errors, when the model d
 """
 
 notification_recall = {
-    "title": "Recall = {}",
+    "title": "{}",
     "description": "The model correctly found <b>{} of {}</b> total instances in the dataset.",
 }
 
@@ -148,7 +148,7 @@ To measure this, we calculate **Precision**. Precision counts errors, when the m
 """
 
 notification_precision = {
-    "title": "Precision = {}",
+    "title": "{}",
     "description": "The model correctly predicted <b>{} of {}</b> predictions made by the model in total.",
 }
 
