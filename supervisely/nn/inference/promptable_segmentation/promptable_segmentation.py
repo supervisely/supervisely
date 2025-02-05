@@ -12,6 +12,7 @@ from supervisely.sly_logger import logger
 
 
 class PromptableSegmentation(Inference):
+
     def __init__(
         self,
         model_dir: Optional[str] = None,
@@ -20,8 +21,18 @@ class PromptableSegmentation(Inference):
         ] = None,  # dict with settings or path to .yml file
         sliding_window_mode: Optional[Literal["basic", "advanced", "none"]] = "basic",
         use_gui: Optional[bool] = False,
+        multithread_inference: Optional[bool] = True,
+        use_serving_gui_template: Optional[bool] = False,
     ):
-        Inference.__init__(self, model_dir, custom_inference_settings, sliding_window_mode, use_gui)
+        Inference.__init__(
+            self,
+            model_dir,
+            custom_inference_settings,
+            sliding_window_mode,
+            use_gui,
+            multithread_inference,
+            use_serving_gui_template,
+        )
         logger.debug(
             "Smart cache params",
             extra={"ttl": sly_env.smart_cache_ttl(), "maxsize": sly_env.smart_cache_size()},
