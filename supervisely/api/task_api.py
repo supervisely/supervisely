@@ -1136,3 +1136,48 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 f"Invalid status value: {status}. Allowed values: {self.Status.values()}"
             )
         self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
+
+    def deploy_model_from_api(self, task_id, deploy_params):
+        self.send_request(task_id, "deploy_from_api", data={"deploy_params": deploy_params})
+
+    def deploy_model_app(
+        self,
+        module_id: int,
+        workspace_id: int,
+        agent_id: Optional[int] = None,
+        description: Optional[str] = "application description",
+        params: Dict[str, Any] = None,
+        log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
+        users_ids: Optional[List[int]] = None,
+        app_version: Optional[str] = "",
+        is_branch: Optional[bool] = False,
+        task_name: Optional[str] = "pythonSpawned",
+        restart_policy: Optional[Literal["never", "on_error"]] = "never",
+        proxy_keep_url: Optional[bool] = False,
+        redirect_requests: Optional[Dict[str, int]] = {},
+        limit_by_workspace: bool = False,
+        deploy_params: Dict[str, Any] = None,
+    ):
+        if deploy_params is None:
+            deploy_params = {}
+        task_info = self.start(
+            agent_id=agent_id,
+            workspace_id=workspace_id,
+            module_id=module_id,
+            description=description,
+            params=params,
+            log_level=log_level,
+            users_ids=users_ids,
+            app_version=app_version,
+            is_branch=is_branch,
+            task_name=task_name,
+            restart_policy=restart_policy,
+            proxy_keep_url=proxy_keep_url,
+            redirect_requests=redirect_requests,
+            limit_by_workspace=limit_by_workspace,
+        )
+        self._api.app.wait_until_ready_for_api_calls(task_info["id"])
+        return self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
+
+    def deploy_from_train_session(self, task_id: int):
+        pass
