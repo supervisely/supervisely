@@ -1180,4 +1180,18 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         return self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
 
     def deploy_from_train_session(self, task_id: int):
-        pass
+        task_info = self.get_info_by_id(task_id)
+        workspace_id = task_info["workspace_id"]
+        module_id = task_info["meta"]["app"]["id"]
+        data = task_info["meta"]["output"]["experiment"]["data"]
+        deploy_params = {
+            "model_files": {
+                "checkpoint": data["artifacts_dir"] + data["checkpoints"][0],
+                "config": data["model_files"]["config"],
+            },
+            "model_source": "Custom models",
+            "model_info": data,
+            "device": "cuda",
+            "runtime": "PyTorch",
+        }
+        self.deploy_model_app(module_id, workspace_id, deploy_params=deploy_params)
