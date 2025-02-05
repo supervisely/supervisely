@@ -82,6 +82,11 @@ def calculate_metrics(
         iou_idx = np.where(np.isclose(iouThrs, iou_threshold))[0][0]
         iou_idx_per_class = {cat_id: iou_idx for cat_id in cocoGt.getCatIds()}
 
+    # TODO: Add support for average_across_iou_thresholds
+    if iou_threshold_per_class is not None or iou_threshold != 0.5:
+        average_across_iou_thresholds = False
+        evaluation_params["average_across_iou_thresholds"] = average_across_iou_thresholds
+    
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
     matches = get_matches(
@@ -90,7 +95,7 @@ def calculate_metrics(
         cocoEval_cls,
         iou_idx_per_class=iou_idx_per_class,
     )
-    true_positives, false_positives, false_negatives = get_counts(eval_img_dict, cocoEval_cls)
+    # true_positives, false_positives, false_negatives = get_counts(eval_img_dict, cocoEval_cls)
 
     params = {
         "iouThrs": cocoEval.params.iouThrs,
@@ -103,9 +108,6 @@ def calculate_metrics(
     coco_metrics["AP75"] = cocoEval.stats[2]
     eval_data = {
         "matches": matches,
-        "true_positives": true_positives,
-        "false_positives": false_positives,
-        "false_negatives": false_negatives,
         "coco_metrics": coco_metrics,
         "params": params,
     }
@@ -126,9 +128,17 @@ def get_counts(eval_img_dict: dict, cocoEval_cls):
             cat_id = eval_img["category_id"]
             cat_idx = catId2idx[cat_id]
             gtIgnore = eval_img["gtIgnore"]
-            gt_not_ignore_idxs = np.where(~gtIgnore)[0]
-            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & ~eval_img["dtIgnore"]).sum(1)
-            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & ~eval_img["dtIgnore"]).sum(1)
+            # if conf_thresh is not None:
+            #     scores = np.array(eval_img["dtScores"])
+            #     dt_conf_mask = scores < conf_thresh
+            #     dt_not_ignore[:, dt_conf_mask] = False
+            #     for idx, dt_id in enumerate(eval_img['dtIds']):
+            #         if dt_conf_mask[idx]:
+            #             eval_img["gtMatches"][eval_img["gtMatches"] == dt_id] = 0.
+            gt_not_ignore_idxs = np.where(np.logical_not(gtIgnore))[0]
+            dt_not_ignore = np.logical_not(eval_img["dtIgnore"])
+            true_positives[cat_idx] += ((eval_img["dtMatches"] > 0) & dt_not_ignore).sum(1)
+            false_positives[cat_idx] += ((eval_img["dtMatches"] == 0) & dt_not_ignore).sum(1)
             false_negatives[cat_idx] += (eval_img["gtMatches"][:, gt_not_ignore_idxs] == 0).sum(1)
     return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
 

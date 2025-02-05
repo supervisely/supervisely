@@ -452,7 +452,7 @@ class ObjectDetectionVisualizer(BaseVisualizer):
                                     conf = tag.value
                                     break
 
-                            if conf < self.eval_result.mp.f1_optimal_conf:
+                            if conf < self.eval_result.mp.conf_threshold:
                                 continue  # do not add labels with low confidence to diff project
                             if match_tag_id:
                                 continue  # do not add TP labels to diff project

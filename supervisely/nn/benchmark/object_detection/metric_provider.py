@@ -97,22 +97,22 @@ class MetricProvider:
         self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def calculate(self):
-        self.m_full = _MetricProvider(
-            self.matches, self.eval_data, self.cocoGt, self.cocoDt
-        )
+        self.m_full = _MetricProvider(self.matches, self.eval_data, self.cocoGt, self.cocoDt)
         self.m_full._calculate_score_profile()
 
         # Find optimal confidence threshold
         self.f1_optimal_conf, self.best_f1 = self.m_full.get_f1_optimal_conf()
+        self.custom_conf_threshold, self.custom_f1 = self.m_full.get_custom_conf_threshold()
+
+        # Confidence threshold that will be used in visualizations
+        self.conf_threshold = self.custom_conf_threshold or self.f1_optimal_conf
 
         # Filter by optimal confidence threshold
-        if self.f1_optimal_conf is not None:
-            matches_filtered = filter_by_conf(self.matches, self.f1_optimal_conf)
+        if self.conf_threshold is not None:
+            matches_filtered = filter_by_conf(self.matches, self.conf_threshold)
         else:
             matches_filtered = self.matches
-        self.m = _MetricProvider(
-            matches_filtered, self.eval_data, self.cocoGt, self.cocoDt
-        )
+        self.m = _MetricProvider(matches_filtered, self.eval_data, self.cocoGt, self.cocoDt)
         self.matches_filtered = matches_filtered
         self.m._init_counts()
 
@@ -150,7 +150,7 @@ class MetricProvider:
         ap_by_class = dict(zip(self.cat_names, ap_by_class))
         ap_custom_by_class = self.AP_custom_per_class().tolist()
         ap_custom_by_class = dict(zip(self.cat_names, ap_custom_by_class))
-        return {
+        data = {
             "mAP": base["mAP"],
             "AP50": self.coco_metrics.get("AP50"),
             "AP75": self.coco_metrics.get("AP75"),
@@ -167,6 +167,9 @@ class MetricProvider:
             "AP_by_class": ap_by_class,
             f"AP{iou_name}_by_class": ap_custom_by_class,
         }
+        if self.custom_conf_threshold is not None:
+            data["custom_confidence_threshold"] = self.custom_conf_threshold
+        return data
 
     def key_metrics(self):
         iou_name = int(self.iou_threshold * 100)
@@ -182,7 +185,7 @@ class MetricProvider:
         iou_name = int(self.iou_threshold * 100)
         if self.iou_threshold_per_class is not None:
             iou_name = "_custom"
-        return {
+        data = {
             "mAP": table["mAP"],
             "AP50": table["AP50"],
             "AP75": table["AP75"],
@@ -193,8 +196,11 @@ class MetricProvider:
             "Avg. IoU": table["iou"],
             "Classification Acc.": table["classification_accuracy"],
             "Calibration Score": table["calibration_score"],
-            "optimal confidence threshold": table["f1_optimal_conf"],
+            "Optimal confidence threshold": table["f1_optimal_conf"],
         }
+        if self.custom_conf_threshold is not None:
+            data["Custom confidence threshold"] = table["custom_confidence_threshold"]
+        return data
 
     def AP_per_class(self):
         s = self.coco_precision[:, :, :, 0, 2].copy()
@@ -294,16 +300,60 @@ class _MetricProvider:
         self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def _init_counts(self):
-        self.true_positives = self.eval_data["true_positives"]
-        self.false_negatives = self.eval_data["false_negatives"]
-        self.false_positives = self.eval_data["false_positives"]
-        self.TP_count = int(self._take_iou_thresholds(self.true_positives).sum())
-        self.FP_count = int(self._take_iou_thresholds(self.false_positives).sum())
-        self.FN_count = int(self._take_iou_thresholds(self.false_negatives).sum())
+        cat_ids = self.cat_ids
+        iouThrs = self.iouThrs
+        cat_id_to_idx = {cat_id: idx for idx, cat_id in enumerate(cat_ids)}
+        ious = []
+        cats = []
+        for match in self.tp_matches:
+            ious.append(match["iou"])
+            cats.append(cat_id_to_idx[match["category_id"]])
+        ious = np.array(ious) + np.spacing(1)
+        iou_idxs = np.searchsorted(iouThrs, ious) - 1
+        cats = np.array(cats)
+        # TP
+        true_positives = np.histogram2d(
+            cats,
+            iou_idxs,
+            bins=(len(cat_ids), len(iouThrs)),
+            range=((0, len(cat_ids)), (0, len(iouThrs))),
+        )[0].astype(int)
+        true_positives = true_positives[:, ::-1].cumsum(1)[:, ::-1]
+        tp_count = true_positives[:, 0]
+        # FN
+        cats_fn = np.array([cat_id_to_idx[match["category_id"]] for match in self.fn_matches])
+        if cats_fn.size == 0:
+            fn_count = np.zeros((len(cat_ids),), dtype=int)
+        else:
+            fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
+        gt_count = fn_count + tp_count
+        false_negatives = gt_count[:, None] - true_positives
+        # FP
+        cats_fp = np.array([cat_id_to_idx[match["category_id"]] for match in self.fp_matches])
+        if cats_fp.size == 0:
+            fp_count = np.zeros((len(cat_ids),), dtype=int)
+        else:
+            fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
+        dt_count = fp_count + tp_count
+        false_positives = dt_count[:, None] - true_positives
+
+        self.true_positives = true_positives
+        self.false_negatives = false_negatives
+        self.false_positives = false_positives
+        self.TP_count = int(self._take_iou_thresholds(true_positives).sum())
+        self.FP_count = int(self._take_iou_thresholds(false_positives).sum())
+        self.FN_count = int(self._take_iou_thresholds(false_negatives).sum())
+
+        # self.true_positives = self.eval_data["true_positives"]
+        # self.false_negatives = self.eval_data["false_negatives"]
+        # self.false_positives = self.eval_data["false_positives"]
+        # self.TP_count = int(self._take_iou_thresholds(self.true_positives).sum())
+        # self.FP_count = int(self._take_iou_thresholds(self.false_positives).sum())
+        # self.FN_count = int(self._take_iou_thresholds(self.false_negatives).sum())
 
     def _take_iou_thresholds(self, x):
         return np.take_along_axis(x, self.iou_idx_per_class, axis=1)
-    
+
     def base_metrics(self):
         if self.average_across_iou_thresholds:
             tp = self.true_positives
@@ -517,6 +567,16 @@ class _MetricProvider:
         f1_optimal_conf = self.score_profile["scores"][argmax]
         best_f1 = self.score_profile["f1"][argmax]
         return f1_optimal_conf, best_f1
+
+    def get_custom_conf_threshold(self):
+        if (~np.isnan(self.score_profile["f1"])).sum() == 0:
+            return None, None
+        conf_threshold = self.params.get("evaluation_params", {}).get("confidence_threshold")
+        if conf_threshold is not None and conf_threshold != "auto":
+            idx = np.argmin(np.abs(self.score_profile["scores"] - conf_threshold))
+            custom_f1 = self.score_profile["f1"][idx]
+            return conf_threshold, custom_f1
+        return None, None
 
     def calibration_curve(self):
         from sklearn.calibration import (  # pylint: disable=import-error
