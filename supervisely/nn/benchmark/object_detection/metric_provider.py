@@ -300,12 +300,56 @@ class _MetricProvider:
         self.average_across_iou_thresholds = eval_params.get("average_across_iou_thresholds", True)
 
     def _init_counts(self):
-        self.true_positives = self.eval_data["true_positives"]
-        self.false_negatives = self.eval_data["false_negatives"]
-        self.false_positives = self.eval_data["false_positives"]
-        self.TP_count = int(self._take_iou_thresholds(self.true_positives).sum())
-        self.FP_count = int(self._take_iou_thresholds(self.false_positives).sum())
-        self.FN_count = int(self._take_iou_thresholds(self.false_negatives).sum())
+        cat_ids = self.cat_ids
+        iouThrs = self.iouThrs
+        cat_id_to_idx = {cat_id: idx for idx, cat_id in enumerate(cat_ids)}
+        ious = []
+        cats = []
+        for match in self.tp_matches:
+            ious.append(match["iou"])
+            cats.append(cat_id_to_idx[match["category_id"]])
+        ious = np.array(ious) + np.spacing(1)
+        iou_idxs = np.searchsorted(iouThrs, ious) - 1
+        cats = np.array(cats)
+        # TP
+        true_positives = np.histogram2d(
+            cats,
+            iou_idxs,
+            bins=(len(cat_ids), len(iouThrs)),
+            range=((0, len(cat_ids)), (0, len(iouThrs))),
+        )[0].astype(int)
+        true_positives = true_positives[:, ::-1].cumsum(1)[:, ::-1]
+        tp_count = true_positives[:, 0]
+        # FN
+        cats_fn = np.array([cat_id_to_idx[match["category_id"]] for match in self.fn_matches])
+        if cats_fn.size == 0:
+            fn_count = np.zeros((len(cat_ids),), dtype=int)
+        else:
+            fn_count = np.bincount(cats_fn, minlength=len(cat_ids)).astype(int)
+        gt_count = fn_count + tp_count
+        false_negatives = gt_count[:, None] - true_positives
+        # FP
+        cats_fp = np.array([cat_id_to_idx[match["category_id"]] for match in self.fp_matches])
+        if cats_fp.size == 0:
+            fp_count = np.zeros((len(cat_ids),), dtype=int)
+        else:
+            fp_count = np.bincount(cats_fp, minlength=len(cat_ids)).astype(int)
+        dt_count = fp_count + tp_count
+        false_positives = dt_count[:, None] - true_positives
+
+        self.true_positives = true_positives
+        self.false_negatives = false_negatives
+        self.false_positives = false_positives
+        self.TP_count = int(self._take_iou_thresholds(true_positives).sum())
+        self.FP_count = int(self._take_iou_thresholds(false_positives).sum())
+        self.FN_count = int(self._take_iou_thresholds(false_negatives).sum())
+
+        # self.true_positives = self.eval_data["true_positives"]
+        # self.false_negatives = self.eval_data["false_negatives"]
+        # self.false_positives = self.eval_data["false_positives"]
+        # self.TP_count = int(self._take_iou_thresholds(self.true_positives).sum())
+        # self.FP_count = int(self._take_iou_thresholds(self.false_positives).sum())
+        # self.FN_count = int(self._take_iou_thresholds(self.false_negatives).sum())
 
     def _take_iou_thresholds(self, x):
         return np.take_along_axis(x, self.iou_idx_per_class, axis=1)

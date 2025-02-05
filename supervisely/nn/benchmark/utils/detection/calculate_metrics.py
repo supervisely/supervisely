@@ -82,6 +82,11 @@ def calculate_metrics(
         iou_idx = np.where(np.isclose(iouThrs, iou_threshold))[0][0]
         iou_idx_per_class = {cat_id: iou_idx for cat_id in cocoGt.getCatIds()}
 
+    # TODO: Add support for average_across_iou_thresholds
+    if iou_threshold_per_class is not None or iou_threshold != 0.5:
+        average_across_iou_thresholds = False
+        evaluation_params["average_across_iou_thresholds"] = average_across_iou_thresholds
+    
     eval_img_dict = get_eval_img_dict(cocoEval)
     eval_img_dict_cls = get_eval_img_dict(cocoEval_cls)
     matches = get_matches(
@@ -90,7 +95,7 @@ def calculate_metrics(
         cocoEval_cls,
         iou_idx_per_class=iou_idx_per_class,
     )
-    true_positives, false_positives, false_negatives = get_counts(eval_img_dict, cocoEval_cls)
+    # true_positives, false_positives, false_negatives = get_counts(eval_img_dict, cocoEval_cls)
 
     params = {
         "iouThrs": cocoEval.params.iouThrs,
@@ -103,9 +108,6 @@ def calculate_metrics(
     coco_metrics["AP75"] = cocoEval.stats[2]
     eval_data = {
         "matches": matches,
-        "true_positives": true_positives,
-        "false_positives": false_positives,
-        "false_negatives": false_negatives,
         "coco_metrics": coco_metrics,
         "params": params,
     }
