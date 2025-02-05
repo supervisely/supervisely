@@ -26,16 +26,21 @@ class Precision(DetectionVisMetric):
     @property
     def notification(self) -> NotificationWidget:
         title, desc = self.vis_texts.notification_precision.values()
-        tp_plus_fp = self.eval_result.mp.TP_count + self.eval_result.mp.FP_count
-        precision = self.eval_result.mp.base_metrics()["precision"].round(2)
-        if self.eval_result.mp.average_across_iou_thresholds:
-            title = f"{title}@IoU=[0.5,0.55,...,0.95] = {precision}"
+        mp = self.eval_result.mp
+        tp_plus_fp = mp.TP_count + mp.FP_count
+        precision = mp.base_metrics()["precision"].round(2)
+        if mp.average_across_iou_thresholds:
+            iou_text = "[0.5,0.55,...,0.95]"
         else:
-            title = f"{title}@IoU={self.eval_result.mp.iou_threshold} = {precision}"
+            if mp.iou_idx_per_class is not None:
+                iou_text = "custom"
+            else:
+                iou_text = mp.iou_threshold
+        title = f"Precision (IoU={iou_text}) = {precision}"
         return NotificationWidget(
             self.NOTIFICATION,
             title,
-            desc.format(self.eval_result.mp.TP_count, tp_plus_fp),
+            desc.format(mp.TP_count, tp_plus_fp),
         )
 
     @property
