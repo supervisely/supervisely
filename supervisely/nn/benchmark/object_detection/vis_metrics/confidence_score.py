@@ -114,7 +114,7 @@ class ConfidenceScore(DetectionVisMetric):
             fig.add_annotation(
                 x=self.eval_result.mp.custom_conf_threshold,
                 y=self.eval_result.mp.custom_f1 + 0.04,
-                text=f"Custom threshold: {self.eval_result.mp.custom_conf_threshold:.2f}",
+                text=f"Confidence threshold: {self.eval_result.mp.custom_conf_threshold:.2f}",
                 showarrow=False,
             )
         fig.update_layout(

@@ -162,7 +162,7 @@ class CalibrationScore(BaseVisMetrics):
                     y0=0,
                     y1=eval_result.mp.custom_f1,
                     line=dict(color="black", width=2, dash="dash"),
-                    name=f"Custom threshold ({eval_result.name})",
+                    name=f"Confidence threshold ({eval_result.name})",
                 )
 
         # Update the layout
