@@ -32,7 +32,7 @@ class Precision(DetectionVisMetric):
         if mp.average_across_iou_thresholds:
             iou_text = "[0.5,0.55,...,0.95]"
         else:
-            if mp.iou_idx_per_class is not None:
+            if mp.iou_threshold_per_class is not None:
                 iou_text = "custom"
             else:
                 iou_text = mp.iou_threshold
