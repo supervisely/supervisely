@@ -76,11 +76,11 @@ class TrainApp:
     :param framework_name: Name of the ML framework used.
     :type framework_name: str
     :param models: List of model configurations.
-    :type models: List[Dict[str, Any]]
+    :type models: Union[str, List[Dict[str, Any]]]
     :param hyperparameters: Path or string content of hyperparameters in YAML format.
     :type hyperparameters: str
     :param app_options: Options for the application layout and behavior.
-    :type app_options: Optional[Dict[str, Any]]
+    :type app_options: Optional[Union[str, Dict[str, Any]]]
     :param work_dir: Path to the working directory for storing intermediate files.
     :type work_dir: Optional[str]
     """
@@ -90,8 +90,8 @@ class TrainApp:
         framework_name: str,
         models: Union[str, List[Dict[str, Any]]],
         hyperparameters: str,
-        app_options: Union[str, Dict[str, Any]] = None,
-        work_dir: str = None,
+        app_options: Optional[Union[str, Dict[str, Any]]] = None,
+        work_dir: Optional[str] = None,
     ):
 
         # Init
@@ -120,6 +120,8 @@ class TrainApp:
             self.task_id = sly_env.task_id()
         else:
             self._app_name = sly_env.app_name(raise_not_found=False)
+            if self._app_name is None:
+                self._app_name = "custom-app"
             self.task_id = sly_env.task_id(raise_not_found=False)
             if self.task_id is None:
                 self.task_id = "debug-session"
@@ -1458,7 +1460,10 @@ class TrainApp:
 
         if task_type == TaskType.OBJECT_DETECTION:
             model_meta, _ = model_meta.to_detection_task(True)
-        elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+        elif task_type in [
+            TaskType.INSTANCE_SEGMENTATION,
+            TaskType.SEMANTIC_SEGMENTATION,
+        ]:
             model_meta, _ = model_meta.to_segmentation_task()  # @TODO: check background class
         return model_meta
 
@@ -1737,7 +1742,11 @@ class TrainApp:
         return remote_dir, file_info
 
     def _set_training_output(
-        self, experiment_info: dict, remote_dir: str, file_info: FileInfo, mb_eval_report=None
+        self,
+        experiment_info: dict,
+        remote_dir: str,
+        file_info: FileInfo,
+        mb_eval_report=None,
     ) -> None:
         """
         Sets the training output in the GUI.
@@ -2515,7 +2524,11 @@ class TrainApp:
     def _convert_and_split_gt_project(self, task_type: str):
         # 1. Convert GT project to cv task
         Project.download(
-            self._api, self.project_info.id, "tmp_project", save_images=False, save_image_info=True
+            self._api,
+            self.project_info.id,
+            "tmp_project",
+            save_images=False,
+            save_image_info=True,
         )
         project = Project("tmp_project", OpenMode.READ)
 

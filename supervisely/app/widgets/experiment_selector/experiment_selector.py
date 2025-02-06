@@ -271,7 +271,7 @@ class ExperimentSelector(Widget):
                     benchmark_report_link = f"/model-benchmark?id={self._benchmark_report_id}"
 
                 benchmark_widget = Text(
-                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
+                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>Evaluation report</a>",
                     "text",
                 )
             return benchmark_widget
