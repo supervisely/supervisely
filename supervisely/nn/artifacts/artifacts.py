@@ -3,6 +3,7 @@ import string
 from abc import abstractmethod
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import fields
 from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
@@ -580,15 +581,10 @@ class BaseTrainArtifacts:
                     "datetime": date_time,
                 }
 
-                experiment_info_fields = {
-                    field.name
-                    for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
-                }
-                for field in experiment_info_fields:
-                    if field not in experiment_info_data:
-                        experiment_info_data[field] = None
-
-                return ExperimentInfo(**experiment_info_data)
+                required_fields = {field.name for field in fields(ExperimentInfo)}
+                return ExperimentInfo(
+                    **{k: v for k, v in experiment_info_data.items() if k in required_fields}
+                )
             except Exception as e:
                 logger.warning(f"Failed to build experiment info: {e}")
                 return None

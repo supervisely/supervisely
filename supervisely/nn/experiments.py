@@ -10,7 +10,7 @@ from supervisely import logger
 from supervisely.api.api import Api, ApiField
 
 
-@dataclass
+@dataclass(init=False)
 class ExperimentInfo:
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
@@ -49,10 +49,19 @@ class ExperimentInfo:
     evaluation_metrics: dict
     """Evaluation metrics"""
 
+    def __init__(self, **kwargs):
+        field_names = set(f.name for f in fields(self.__class__))
+        missing_fields = field_names - set(kwargs.keys())
+        if missing_fields:
+            raise ValueError(
+                f"ExperimentInfo missing required arguments: '{', '.join(missing_fields)}'"
+            )
+        kwargs = {k: v for k, v in kwargs.items() if k in field_names}
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
-def get_experiment_infos(
-    api: Api, team_id: int, framework_name: str
-) -> List[ExperimentInfo]:
+
+def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
     """
     Get experiments from the specified framework folder for Train v2
 
@@ -79,9 +88,7 @@ def get_experiment_infos(
     experiments_folder = "/experiments"
     experiment_infos = []
 
-    file_infos = api.file.list(
-        team_id, experiments_folder, recursive=True, return_type="fileinfo"
-    )
+    file_infos = api.file.list(team_id, experiments_folder, recursive=True, return_type="fileinfo")
     sorted_experiment_paths = []
     for file_info in file_infos:
         if not file_info.path.endswith(metadata_name):
@@ -104,11 +111,11 @@ def get_experiment_infos(
             required_fields = {field.name for field in fields(ExperimentInfo)}
             missing_fields = required_fields - response_json.keys()
             if missing_fields:
-                logger.debug(
-                    f"Missing fields: {missing_fields} for '{experiment_path}'"
-                )
+                logger.debug(f"Missing fields: {missing_fields} for '{experiment_path}'")
                 return None
-            return ExperimentInfo(**response_json)
+            return ExperimentInfo(
+                **{k: v for k, v in response_json.items() if k in required_fields}
+            )
         except requests.exceptions.RequestException as e:
             logger.debug(f"Request failed for '{experiment_path}': {e}")
         except JSONDecodeError as e:
@@ -118,9 +125,7 @@ def get_experiment_infos(
         return None
 
     with ThreadPoolExecutor() as executor:
-        experiment_infos = list(
-            executor.map(fetch_experiment_data, sorted_experiment_paths)
-        )
+        experiment_infos = list(executor.map(fetch_experiment_data, sorted_experiment_paths))
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
