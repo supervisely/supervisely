@@ -670,6 +670,41 @@ class Inference:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
 
+    def load_custom_checkpoint(self, model_files: dict, model_meta: dict, device: str = "cuda"):
+        """
+        Loads custom model checkpoint.
+
+        :param model_files: dict with paths to model files
+        :param model_meta: dict with model meta
+        :param device: device to load model on
+        :return: None
+        :rtype: None
+        """
+
+        checkpoint = model_files.get("checkpoint")
+        if checkpoint is None:
+            raise ValueError("Model checkpoint is not provided")
+        checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
+
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=checkpoint_name,
+            model_name=None,
+            architecture=None,
+            checkpoint_url=None,
+            custom_checkpoint_path=None,
+            model_source=ModelSource.CUSTOM,
+        )
+
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": model_files,
+            "model_info": {},
+            "device": device,
+            "runtime": RuntimeType.PYTORCH,
+        }
+        self._set_model_meta_custom_model(deploy_params)
+        self._load_model(deploy_params)
+
     def _load_model_headless(
         self,
         model_files: dict,
