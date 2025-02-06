@@ -60,6 +60,7 @@ from supervisely.nn.utils import ModelSource
 from supervisely.output import set_directory
 from supervisely.project.download import (
     copy_from_cache,
+    download_async_or_sync,
     download_to_cache,
     get_cache_size,
     is_cached,
@@ -793,7 +794,7 @@ class TrainApp:
         """
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
             self.progress_bar_main.show()
-            download_project(
+            download_async_or_sync(
                 api=self._api,
                 project_id=self.project_id,
                 dest_dir=self.project_dir,
@@ -1582,7 +1583,7 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory(
+            remote_dir = self._api.file.upload_directory_async_fallback(
                 self.team_id,
                 local_demo_dir,
                 remote_demo_dir,
@@ -1693,7 +1694,7 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory(
+            remote_dir = self._api.file.upload_directory_async_fallback(
                 self.team_id,
                 self.output_dir,
                 remote_artifacts_dir,
@@ -2440,32 +2441,27 @@ class TrainApp:
     def _upload_export_weights(
         self, export_weights: Dict[str, str], remote_dir: str
     ) -> Dict[str, str]:
+        file_dest_paths = []
+        size = 0
+        for path in export_weights.values():
+            file_name = sly_fs.get_file_name_with_ext(path)
+            file_dest_paths.append(join(remote_dir, self._export_dir_name, file_name))
+            size += sly_fs.get_file_size(path)
         with self.progress_bar_main(
-            message="Uploading export weights",
-            total=len(export_weights),
+            message=f"Uploading {len(export_weights)} export weights",
+            total=size,
+            unit="B",
+            unit_scale=True,
         ) as export_upload_main_pbar:
             self.progress_bar_main.show()
-            for path in export_weights.values():
-                file_name = sly_fs.get_file_name_with_ext(path)
-                file_size = sly_fs.get_file_size(path)
-                with self.progress_bar_secondary(
-                    message=f"Uploading '{file_name}' ",
-                    total=file_size,
-                    unit="bytes",
-                    unit_scale=True,
-                ) as export_upload_secondary_pbar:
-                    self.progress_bar_secondary.show()
-                    destination_path = join(remote_dir, self._export_dir_name, file_name)
-                    self._api.file.upload(
-                        self.team_id,
-                        path,
-                        destination_path,
-                        export_upload_secondary_pbar,
-                    )
-                export_upload_main_pbar.update(1)
+            self._api.file.upload_bulk_async_fallback(
+                self.team_id,
+                export_weights.values(),
+                file_dest_paths,
+                export_upload_main_pbar,
+            )
 
         self.progress_bar_main.hide()
-        self.progress_bar_secondary.hide()
 
         remote_export_weights = {
             runtime: join(self._export_dir_name, sly_fs.get_file_name_with_ext(path))
