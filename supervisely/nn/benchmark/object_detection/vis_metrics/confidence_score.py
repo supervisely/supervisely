@@ -101,6 +101,22 @@ class ConfidenceScore(DetectionVisMetric):
                 text=f"F1-optimal threshold: {self.eval_result.mp.f1_optimal_conf:.2f}",
                 showarrow=False,
             )
+        if self.eval_result.mp.custom_conf_threshold is not None:
+            # Add vertical line for the custom threshold
+            fig.add_shape(
+                type="line",
+                x0=self.eval_result.mp.custom_conf_threshold,
+                x1=self.eval_result.mp.custom_conf_threshold,
+                y0=0,
+                y1=self.eval_result.mp.custom_f1,
+                line=dict(color="black", width=2, dash="dash"),
+            )
+            fig.add_annotation(
+                x=self.eval_result.mp.custom_conf_threshold,
+                y=self.eval_result.mp.custom_f1 + 0.04,
+                text=f"Confidence threshold: {self.eval_result.mp.custom_conf_threshold:.2f}",
+                showarrow=False,
+            )
         fig.update_layout(
             dragmode=False,
             modebar=dict(

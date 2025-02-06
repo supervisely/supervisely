@@ -28,7 +28,8 @@ class ConfidenceDistribution(DetectionVisMetric):
     def _get_figure(self):  # -> go.Figure:
         import plotly.graph_objects as go  # pylint: disable=import-error
 
-        f1_optimal_conf, best_f1 = self.eval_result.mp.m_full.get_f1_optimal_conf()
+        f1_optimal_conf = self.eval_result.mp.f1_optimal_conf
+        custom_conf_threshold = self.eval_result.mp.custom_conf_threshold
 
         # Histogram of confidence scores (TP vs FP)
         scores_tp, scores_fp = self.eval_result.mp.m_full.scores_tp_and_fp()
@@ -88,7 +89,7 @@ class ConfidenceDistribution(DetectionVisMetric):
                 x1=f1_optimal_conf,
                 y0=0,
                 y1=tp_y.max() * 1.3,
-                line=dict(color="orange", width=1, dash="dash"),
+                line=dict(color="orange", width=2, dash="dash"),
             )
             fig.add_annotation(
                 x=f1_optimal_conf,
@@ -104,4 +105,21 @@ class ConfidenceDistribution(DetectionVisMetric):
             )
             fig.update_xaxes(title_text="Confidence Score", range=[0, 1])
             fig.update_yaxes(title_text="Count", range=[0, tp_y.max() * 1.3])
+
+        if custom_conf_threshold is not None:
+            # Custom threshold
+            fig.add_shape(
+                type="line",
+                x0=custom_conf_threshold,
+                x1=custom_conf_threshold,
+                y0=0,
+                y1=tp_y.max() * 1.3,
+                line=dict(color="orange", width=2, dash="dash"),
+            )
+            fig.add_annotation(
+                x=custom_conf_threshold,
+                y=tp_y.max() * 1.3,
+                text=f"Confidence threshold: {custom_conf_threshold:.2f}",
+                showarrow=False,
+            )
         return fig

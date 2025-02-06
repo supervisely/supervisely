@@ -587,7 +587,11 @@ class VideoAnnotation:
 
     @classmethod
     def from_json(
-        cls, data: Dict, project_meta: ProjectMeta, key_id_map: KeyIdMap = None
+        cls,
+        data: Dict,
+        project_meta: ProjectMeta,
+        key_id_map: KeyIdMap = None,
+        skip_corrupted: Optional[bool] = False,
     ) -> VideoAnnotation:
         """
         Convert a json dict to VideoAnnotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
@@ -598,6 +602,8 @@ class VideoAnnotation:
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: Union[KeyIdMap, None]
+        :param skip_corrupted: Skip corrupted items (currently only frames) during conversion.
+        :type skip_corrupted: bool, optional
         :return: VideoAnnotation object
         :rtype: :class:`VideoAnnotation`
 
@@ -638,7 +644,7 @@ class VideoAnnotation:
 
         tags = VideoTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
         objects = VideoObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
-        frames = FrameCollection.from_json(data[FRAMES], objects, frames_count, key_id_map)
+        frames = FrameCollection.from_json(data[FRAMES], objects, frames_count, key_id_map, skip_corrupted)
 
         return cls(
             img_size=img_size,

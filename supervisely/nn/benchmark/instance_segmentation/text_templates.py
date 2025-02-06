@@ -43,7 +43,7 @@ markdown_overview = """
 - **Ground Truth project**: <a href="/projects/{}/datasets" target="_blank">{}</a>, {}{}
 {}
 - **IoU threshold**: {}
-- **Optimal confidence threshold**: {} (calculated automatically), <a href="{}" target="_blank">learn more</a>.
+{}
 - **Averaging across IoU thresholds:** {}, <a href="{}" target="_blank">learn more</a>.
 
 Learn more about Model Benchmark, implementation details, and how to use the charts in our <a href="{}" target="_blank">Technical Report</a>.
@@ -73,7 +73,7 @@ In this section you can visually assess the model performance through examples. 
 
 > Click on the image to view the **Ground Truth**, **Prediction**, and **Difference** annotations side-by-side. 
 
-> Filtering options allow you to adjust the confidence threshold (only for predictions) and the model's false outcomes (only for differences). Differences are calculated only for the optimal confidence threshold, allowing you to focus on the most accurate predictions made by the model.
+> Filtering options allow you to adjust the confidence threshold (only for predictions) and the model's false outcomes (only for differences). {}
 """
 
 markdown_predictions_table = """### Prediction details for every image
@@ -100,7 +100,7 @@ To measure this, we calculate **Recall**. Recall counts errors, when the model d
 """
 
 notification_recall = {
-    "title": "Recall = {}",
+    "title": "{}",
     "description": "The model correctly found <b>{} of {}</b> total instances in the dataset.",
 }
 
@@ -123,7 +123,7 @@ To measure this, we calculate **Precision**. Precision counts errors, when the m
 """
 
 notification_precision = {
-    "title": "Precision = {}",
+    "title": "{}",
     "description": "The model correctly predicted <b>{} of {}</b> predictions made by the model in total.",
 }
 
