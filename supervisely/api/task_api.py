@@ -5,6 +5,7 @@ import json
 import os
 import time
 from collections import OrderedDict, defaultdict
+from pathlib import Path
 
 # docs
 from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
@@ -1138,7 +1139,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
 
     def deploy_model_from_api(self, task_id, deploy_params):
-        self.send_request(task_id, "deploy_from_api", data={"deploy_params": deploy_params})
+        self.send_request(
+            task_id, "deploy_from_api", data={"deploy_params": deploy_params}, raise_error=True
+        )
 
     def deploy_model_app(
         self,
@@ -1157,6 +1160,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         redirect_requests: Optional[Dict[str, int]] = {},
         limit_by_workspace: bool = False,
         deploy_params: Dict[str, Any] = None,
+        timeout: int = 100,
     ):
         if deploy_params is None:
             deploy_params = {}
@@ -1176,22 +1180,92 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             redirect_requests=redirect_requests,
             limit_by_workspace=limit_by_workspace,
         )
-        self._api.app.wait_until_ready_for_api_calls(task_info["id"])
-        return self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
 
-    def deploy_from_train_session(self, task_id: int):
+        attempt_delay_sec = 10
+        attempts = (timeout + attempt_delay_sec) // attempt_delay_sec
+        ready = self._api.app.wait_until_ready_for_api_calls(
+            task_info["id"], attempts, attempt_delay_sec
+        )
+        if not ready:
+            raise TimeoutError(
+                f"Task {task_info['id']} is not ready for API calls after {timeout} seconds."
+            )
+        self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
+        return task_info
+
+    def deploy_from_train_session(
+        self,
+        task_id: int,
+        module_id: Optional[int] = None,
+        workspace_id: Optional[int] = None,
+        agent_id: Optional[int] = None,
+        description: Optional[str] = None,
+        params: Dict[str, Any] = None,
+        log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
+        users_ids: Optional[List[int]] = None,
+        app_version: Optional[str] = "",
+        is_branch: Optional[bool] = False,
+        task_name: Optional[str] = None,
+        restart_policy: Optional[Literal["never", "on_error"]] = "never",
+        proxy_keep_url: Optional[bool] = False,
+        redirect_requests: Optional[Dict[str, int]] = {},
+        limit_by_workspace: bool = False,
+        deploy_params_overwrite: Dict[str, Any] = None,
+        checkpoint_name: Optional[str] = None,
+        timeout: int = 100,
+    ):
         task_info = self.get_info_by_id(task_id)
-        workspace_id = task_info["workspace_id"]
-        module_id = task_info["meta"]["app"]["id"]
-        data = task_info["meta"]["output"]["experiment"]["data"]
+        try:
+            data = task_info["meta"]["output"]["experiment"]["data"]
+        except KeyError:
+            raise ValueError("Task output does not contain experiment data")
+        if module_id is None:
+            slug = data["serve_app_slug"]
+            module_id = self._api.app.get_ecosystem_module_id(slug)
+        if workspace_id is None:
+            workspace_id = task_info["workspaceId"]
+        experiment_name = data["experiment_name"]
+        if deploy_params_overwrite is None:
+            deploy_params_overwrite = {}
+        if checkpoint_name is None:
+            checkpoint_name = data["best_checkpoint"]
+        if task_name is None:
+            task_name = experiment_name + f" ({checkpoint_name})"
+        if description is None:
+            description = f"""Serve from experiment
+                Experiment name:   {experiment_name}
+                Evaluation report: {data["evaluation_report_link"]}
+            """
+            while len(description) > 255:
+                description = description.rsplit("\n", 1)[0]
         deploy_params = {
             "model_files": {
-                "checkpoint": data["artifacts_dir"] + data["checkpoints"][0],
-                "config": data["model_files"]["config"],
+                "checkpoint": Path(
+                    data["artifacts_dir"], "checkpoints", checkpoint_name
+                ).as_posix(),
+                "config": Path(data["artifacts_dir"], data["model_files"]["config"]).as_posix(),
             },
             "model_source": "Custom models",
             "model_info": data,
             "device": "cuda",
             "runtime": "PyTorch",
         }
-        self.deploy_model_app(module_id, workspace_id, deploy_params=deploy_params)
+        deploy_params = {**deploy_params, **deploy_params_overwrite}
+        return self.deploy_model_app(
+            module_id=module_id,
+            workspace_id=workspace_id,
+            agent_id=agent_id,
+            description=description,
+            params=params,
+            log_level=log_level,
+            users_ids=users_ids,
+            app_version=app_version,
+            is_branch=is_branch,
+            task_name=task_name,
+            restart_policy=restart_policy,
+            proxy_keep_url=proxy_keep_url,
+            redirect_requests=redirect_requests,
+            limit_by_workspace=limit_by_workspace,
+            deploy_params=deploy_params,
+            timeout=timeout,
+        )
