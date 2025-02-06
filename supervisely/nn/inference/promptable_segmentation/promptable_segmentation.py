@@ -12,7 +12,6 @@ from supervisely.sly_logger import logger
 
 
 class PromptableSegmentation(Inference):
-
     def __init__(
         self,
         model_dir: Optional[str] = None,
