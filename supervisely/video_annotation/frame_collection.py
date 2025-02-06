@@ -288,11 +288,7 @@ class FrameCollection(KeyIndexedCollection):
                 frames.append(frame)
             except Exception as e:
                 if skip_corrupted:
-                    frame_index = frame_json.get("index")
-                    msg = "Skipping corrupted frame"
-                    if frame_index is not None:
-                        msg += f" with index {frame_index}"
-                    logger.warning(f"{msg}: {e}", exc_info=True)
+                    logger.warning(f"Skipping corrupted frame: {e}", exc_info=True)
                     continue
                 else:
                     raise e
