@@ -37,6 +37,15 @@ class Overview(DetectionVisMetric):
         if self.eval_result.different_iou_thresholds_per_class:
             iou_threshold = "Different IoU thresholds for each class (see the table below)"
 
+        conf_text = (
+            f"- **Optimal confidence threshold**: "
+            f"{round(self.eval_result.mp.f1_optimal_conf, 4)} (calculated automatically), "
+            f"<a href='{opt_conf_url}' target='_blank'>learn more</a>."
+        )
+        custom_conf_thrs = self.eval_result.mp.custom_conf_threshold
+        if custom_conf_thrs is not None:
+            conf_text += f"\n- **Custom confidence threshold**: {custom_conf_thrs}"
+
         formats = [
             model_name.replace("_", "\_"),
             checkpoint_name.replace("_", "\_"),
@@ -51,8 +60,7 @@ class Overview(DetectionVisMetric):
             note_about_images,
             starter_app_info,
             iou_threshold,
-            round(self.eval_result.mp.f1_optimal_conf, 4),
-            opt_conf_url,
+            conf_text,
             self.eval_result.mp.average_across_iou_thresholds,
             average_url,
             self.vis_texts.docs_url,
@@ -119,7 +127,7 @@ class Overview(DetectionVisMetric):
         starter_app_info = train_session or evaluator_session or ""
 
         return classes_str, images_str, starter_app_info
-    
+
     @property
     def iou_per_class_md(self) -> List[MarkdownWidget]:
         if not self.eval_result.different_iou_thresholds_per_class:
