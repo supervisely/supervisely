@@ -2795,7 +2795,7 @@ class Inference:
                 elif isinstance(self.gui, GUI.ServingGUI):
                     self._load_model(deploy_params)
                 elif isinstance(self.gui, GUI.InferenceGUI):
-                    self.load_on_device(deploy_params)
+                    self.load_on_device(**deploy_params)
 
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device
