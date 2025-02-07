@@ -1619,9 +1619,9 @@ class TrainApp:
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory_async_fallback(
-                self.team_id,
-                local_demo_dir,
-                remote_demo_dir,
+                team_id=self.team_id,
+                local_dir=local_demo_dir,
+                remote_dir=remote_demo_dir,
                 progress_size_cb=upload_artifacts_pbar.update,
             )
             self.progress_bar_main.hide()
@@ -1731,9 +1731,9 @@ class TrainApp:
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory_async_fallback(
-                self.team_id,
-                self.output_dir,
-                remote_artifacts_dir,
+                team_id=self.team_id,
+                local_dir=self.output_dir,
+                remote_dir=remote_artifacts_dir,
                 progress_size_cb=upload_artifacts_pbar.update,
             )
             self.progress_bar_main.hide()
@@ -2513,10 +2513,10 @@ class TrainApp:
             logger.debug(f"Destination paths: {file_dest_paths}")
             self.progress_bar_main.show()
             self._api.file.upload_bulk_async_fallback(
-                self.team_id,
-                export_weights.values(),
-                file_dest_paths,
-                export_upload_main_pbar.update,
+                team_id=self.team_id,
+                src_paths=export_weights.values(),
+                dst_paths=file_dest_paths,
+                progress_cb=export_upload_main_pbar.update,
             )
 
         self.progress_bar_main.hide()
