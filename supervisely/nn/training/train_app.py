@@ -1694,11 +1694,12 @@ class TrainApp:
         Path: /experiments/{project_id}_{project_name}/{task_id}_{framework_name}/
         Example path: /experiments/43192_Apples/68271_rt-detr/
         """
-        logger.info(f"Uploading artifacts directory: '{self.output_dir}' to Supervisely")
         task_id = self.task_id
 
         remote_artifacts_dir = f"/{self._experiments_dir_name}/{self.project_id}_{self.project_name}/{task_id}_{self.framework_name}/"
-
+        logger.info(
+            f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
+        )
         # Clean debug directory if exists
         if task_id == "debug-session":
             if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
