@@ -154,6 +154,16 @@ class CalibrationScore(BaseVisMetrics):
                     line=dict(color="gray", width=2, dash="dash"),
                     name=f"F1-optimal threshold ({eval_result.name})",
                 )
+            if eval_result.mp.custom_conf_threshold is not None:
+                fig.add_shape(
+                    type="line",
+                    x0=eval_result.mp.custom_conf_threshold,
+                    x1=eval_result.mp.custom_conf_threshold,
+                    y0=0,
+                    y1=eval_result.mp.custom_f1,
+                    line=dict(color="black", width=2, dash="dash"),
+                    name=f"Confidence threshold ({eval_result.name})",
+                )
 
         # Update the layout
         fig.update_layout(

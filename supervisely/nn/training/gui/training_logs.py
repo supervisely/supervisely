@@ -1,9 +1,18 @@
 from typing import Any, Dict
 
-from supervisely import Api
+import supervisely.io.env as sly_env
+import supervisely.nn.training.gui.utils as gui_utils
+from supervisely import Api, logger
 from supervisely._utils import is_production
-from supervisely.app.widgets import Button, Card, Container, Progress, TaskLogs, Text
-from supervisely.io.env import task_id as get_task_id
+from supervisely.app.widgets import (
+    Button,
+    Card,
+    Container,
+    Progress,
+    RunAppButton,
+    TaskLogs,
+    Text,
+)
 
 
 class TrainingLogs:
@@ -21,7 +30,7 @@ class TrainingLogs:
         self.validator_text.hide()
 
         if is_production():
-            task_id = get_task_id(raise_not_found=False)
+            task_id = sly_env.task_id(raise_not_found=False)
         else:
             task_id = None
 
@@ -39,10 +48,35 @@ class TrainingLogs:
             plain=True,
             icon="zmdi zmdi-chart",
             link=self.tensorboard_link,
+            visible_by_vue_field="!isStaticVersion",
         )
         self.tensorboard_button.disable()
-
         self.display_widgets.extend([self.validator_text, self.tensorboard_button])
+
+        # Offline session Tensorboard button
+        self.tensorboard_offline_button = None
+        if is_production():
+            workspace_id = sly_env.workspace_id()
+            app_name = "Tensorboard Experiments Viewer"
+            module_info = gui_utils.get_module_info_by_name(api, app_name)
+            if module_info is not None:
+                self.tensorboard_offline_button = RunAppButton(
+                    workspace_id=workspace_id,
+                    module_id=module_info["id"],
+                    payload={},
+                    text="Open Tensorboard",
+                    button_type="info",
+                    plain=True,
+                    icon="zmdi zmdi-chart",
+                    available_in_offline=True,
+                    visible_by_vue_field="isStaticVersion",
+                )
+                self.tensorboard_offline_button.disable()
+                self.display_widgets.extend([self.tensorboard_offline_button])
+            else:
+                logger.warning(
+                    f"App '{app_name}' not found. Tensorboard button will not be displayed in offline mode."
+                )
 
         # Optional Show logs button
         if app_options.get("show_logs_in_gui", False):

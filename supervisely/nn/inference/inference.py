@@ -2252,6 +2252,25 @@ class Inference:
     def is_model_deployed(self):
         return self._model_served
 
+    def schedule_task(self, func, *args, **kwargs):
+        inference_request_uuid = kwargs.get("inference_request_uuid", None)
+        if inference_request_uuid is None:
+            self._executor.submit(func, *args, **kwargs)
+        else:
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                func,
+                *args,
+                **kwargs,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+        logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
+
     def serve(self):
         if not self._use_gui:
             Progress("Deploying model ...", 1)
@@ -2319,6 +2338,9 @@ class Inference:
             Progress("Model deployed", 1).iter_done_report()
         else:
             autostart_func()
+
+        self.cache.add_cache_endpoint(server)
+        self.cache.add_cache_files_endpoint(server)
 
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
@@ -2632,6 +2654,7 @@ class Inference:
 
             # Ger rid of `pending_results` to less response size
             inference_request["pending_results"] = []
+            inference_request.pop("lock", None)
             return inference_request
 
         @server.post(f"/pop_inference_results")

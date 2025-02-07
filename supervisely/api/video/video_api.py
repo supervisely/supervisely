@@ -1361,7 +1361,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :return: None
         """
 
-        response = self._api.post(
+        self._api.post(
             "videos.notify-annotation-tool",
             {
                 "type": "videos:tracking-error",

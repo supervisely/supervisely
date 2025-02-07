@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Callable, Dict, List, Union
 
+import supervisely.io.env as sly_env
 from supervisely import env, logger
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
@@ -25,7 +26,6 @@ from supervisely.app.widgets import (
 )
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.artifacts.artifacts import TrainInfo
-import supervisely.io.env as sly_env
 
 WEIGHTS_DIR = "weights"
 
@@ -428,7 +428,7 @@ class CustomModelsSelector(Widget):
                 )
                 return train_info.task_type, model_row
             except Exception as e:
-                logger.warning(f"Failed to process train info: {train_info}. Error: {repr(e)}")
+                logger.debug(f"Failed to process train info: {train_info}. Error: {repr(e)}")
                 return None, None
 
         table_rows = defaultdict(list)

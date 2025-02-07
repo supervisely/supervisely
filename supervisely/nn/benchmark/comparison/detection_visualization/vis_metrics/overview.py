@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List
 
 from supervisely._utils import abs_url
@@ -15,6 +16,7 @@ class Overview(BaseVisMetrics):
     MARKDOWN_OVERVIEW = "markdown_overview"
     MARKDOWN_OVERVIEW_INFO = "markdown_overview_info"
     MARKDOWN_COMMON_OVERVIEW = "markdown_common_overview"
+    MARKDOWN_DIFF_IOU = "markdown_different_iou_thresholds_warning"
     CHART = "chart_key_metrics"
 
     def __init__(self, vis_texts, eval_results: List[EvalResult]) -> None:
@@ -25,6 +27,7 @@ class Overview(BaseVisMetrics):
         evaluation result metrics displayed
         """
         super().__init__(vis_texts, eval_results)
+        self.team_id = None  # will be set in the visualizer
 
     @property
     def overview_md(self) -> List[MarkdownWidget]:
@@ -118,8 +121,7 @@ class Overview(BaseVisMetrics):
             if idx == 3 and not same_iou_thr:
                 continue
             metric_name = metric_renames_map.get(metric, metric)
-            values = [m[metric] for m in all_metrics]
-            values = [v if v is not None else "―" for v in values]
+            values = [m.get(metric, "―") for m in all_metrics]
             values = [round(v, 2) if isinstance(v, float) else v for v in values]
             row = [metric_name] + values
             dct = {"row": row, "id": metric, "items": row}
@@ -237,3 +239,32 @@ class Overview(BaseVisMetrics):
             ),
         )
         return fig
+
+    @property
+    def not_matched_iou_per_class_thresholds_md(self) -> MarkdownWidget:
+        if all([not r.different_iou_thresholds_per_class for r in self.eval_results]):
+            return None
+
+        iou_thrs_map = defaultdict(set)
+        matched = True
+
+        if not all([not r.different_iou_thresholds_per_class for r in self.eval_results]):
+            matched = False
+        else:
+            for eval_result in self.eval_results:
+                iou_thrs_per_class = eval_result.mp.iou_threshold_per_class
+                if iou_thrs_per_class is not None:
+                    for cat_id, iou_thr in eval_result.mp.iou_threshold_per_class.items():
+                        iou_thrs_map[cat_id].add(iou_thr)
+                        if len(iou_thrs_map[cat_id]) > 1:
+                            matched = False
+                            break
+
+        if matched:
+            return None
+
+        return MarkdownWidget(
+            name="markdown_different_iou_thresholds_warning",
+            title="IoU per class thresholds mismatch",
+            text=self.vis_texts.markdown_different_iou_thresholds_warning,
+        )

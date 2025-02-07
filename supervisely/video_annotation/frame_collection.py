@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from supervisely.sly_logger import logger
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.video_annotation.frame import Frame
@@ -244,6 +245,7 @@ class FrameCollection(KeyIndexedCollection):
         objects: VideoObjectCollection,
         frames_count: Optional[int] = None,
         key_id_map: Optional[KeyIdMap] = None,
+        skip_corrupted: Optional[bool] = False,
     ) -> FrameCollection:
         """
         Convert a list of json dicts to FrameCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
@@ -279,10 +281,17 @@ class FrameCollection(KeyIndexedCollection):
             objects = []
             fr_collection = sly.FrameCollection.from_json(fr_collection_json, objects)
         """
-        frames = [
-            cls.item_type.from_json(frame_json, objects, frames_count, key_id_map)
-            for frame_json in data
-        ]
+        frames = []
+        for frame_json in data:
+            try:
+                frame = cls.item_type.from_json(frame_json, objects, frames_count, key_id_map)
+                frames.append(frame)
+            except Exception as e:
+                if skip_corrupted:
+                    logger.warning(f"Skipping corrupted frame: {e}", exc_info=True)
+                    continue
+                else:
+                    raise e
         return cls(frames)
 
     def __str__(self):
