@@ -2506,7 +2506,7 @@ class TrainApp:
                 self.team_id,
                 export_weights.values(),
                 file_dest_paths,
-                export_upload_main_pbar,
+                export_upload_main_pbar.update,
             )
 
         self.progress_bar_main.hide()
