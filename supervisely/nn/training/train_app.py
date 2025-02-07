@@ -2086,6 +2086,7 @@ class TrainApp:
                 self.project_info.id, version_id=project_version_id
             )
 
+            file_info = None
             if self.model_source == ModelSource.CUSTOM:
                 file_info = self._api.file.get_info_by_path(
                     self.team_id,
