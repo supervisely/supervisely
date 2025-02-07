@@ -2157,6 +2157,8 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
         tasks = []
         for s, d in zip(src_paths, dst_paths):
             task = asyncio.create_task(
@@ -2172,7 +2174,8 @@ class FileApi(ModuleApiBase):
                 )
             )
             tasks.append(task)
-        await asyncio.gather(*tasks)
+        for task in tasks:
+            await task
 
     async def upload_directory_async(
         self,
