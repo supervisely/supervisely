@@ -2494,6 +2494,8 @@ class TrainApp:
     def _upload_export_weights(
         self, export_weights: Dict[str, str], remote_dir: str
     ) -> Dict[str, str]:
+        """Uploads export weights (any other specified formats) to Supervisely Team Files.
+        The default export is handled by the `_upload_artifacts` method."""
         file_dest_paths = []
         size = 0
         for path in export_weights.values():
