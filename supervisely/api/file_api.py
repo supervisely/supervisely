@@ -2155,19 +2155,19 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
-        if semaphore is None:
-            semaphore = self._api.get_default_semaphore()
         tasks = []
         for s, d in zip(src_paths, dst_paths):
-            task = self.upload_async(
-                team_id,
-                s,
-                d,
-                semaphore=semaphore,
-                # chunk_size=chunk_size, #TODO add with resumaple api
-                # check_hash=check_hash, #TODO add with resumaple api
-                progress_cb=progress_cb,
-                progress_cb_type=progress_cb_type,
+            task = asyncio.create_task(
+                self.upload_async(
+                    team_id,
+                    s,
+                    d,
+                    semaphore=semaphore,
+                    # chunk_size=chunk_size, #TODO add with resumaple api
+                    # check_hash=check_hash, #TODO add with resumaple api
+                    progress_cb=progress_cb,
+                    progress_cb_type=progress_cb_type,
+                )
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
