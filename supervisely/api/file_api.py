@@ -2289,7 +2289,8 @@ class FileApi(ModuleApiBase):
                 remote_dir = loop.run_until_complete(upload_coro)
         except Exception as e:
             logger.warning(
-                f"Upload directory asynchronously failed. Error: {repr(e)}. Fallback to synchronous upload."
+                f"Upload directory asynchronously failed. Fallback to synchronous upload.",
+                exc_info=True,
             )
             remote_dir = self.upload_directory(
                 team_id=team_id,
@@ -2346,7 +2347,8 @@ class FileApi(ModuleApiBase):
                 loop.run_until_complete(upload_coro)
         except Exception as e:
             logger.warning(
-                f"Upload files bulk asynchronously failed. Error: {repr(e)}. Fallback to synchronous upload."
+                f"Upload files bulk asynchronously failed. Fallback to synchronous upload.",
+                exc_info=True,
             )
             if progress_cb_type == "number":
                 logger.warning(
