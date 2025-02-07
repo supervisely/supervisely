@@ -804,6 +804,7 @@ class TrainApp:
         :type total_images: int
         """
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
+            logger.debug("Downloading project data without cache")
             self.progress_bar_main.show()
             download_async_or_sync(
                 api=self._api,
@@ -835,6 +836,7 @@ class TrainApp:
 
         logger.info(self._get_cache_log_message(cached, to_download))
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
+            logger.debug("Downloading project data with cache")
             self.progress_bar_main.show()
             download_to_cache(
                 api=self._api,
@@ -1603,10 +1605,12 @@ class TrainApp:
             logger.info(f"Demo directory '{local_demo_dir}' does not exist")
             return
 
-        logger.debug(f"Uploading demo files to Supervisely")
         remote_demo_dir = join(remote_dir, "demo")
         local_files = sly_fs.list_files_recursively(local_demo_dir)
         total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
+        logger.debug(
+            f"Uploading demo files of total size {total_size} bytes to Supervisely Team Files directory '{remote_demo_dir}'"
+        )
         with self.progress_bar_main(
             message="Uploading demo files to Team Files",
             total=total_size,
@@ -1690,7 +1694,7 @@ class TrainApp:
         Path: /experiments/{project_id}_{project_name}/{task_id}_{framework_name}/
         Example path: /experiments/43192_Apples/68271_rt-detr/
         """
-        logger.info(f"Uploading directory: '{self.output_dir}' to Supervisely")
+        logger.info(f"Uploading artifacts directory: '{self.output_dir}' to Supervisely")
         task_id = self.task_id
 
         remote_artifacts_dir = f"/{self._experiments_dir_name}/{self.project_id}_{self.project_name}/{task_id}_{self.framework_name}/"
@@ -2501,6 +2505,8 @@ class TrainApp:
             unit="B",
             unit_scale=True,
         ) as export_upload_main_pbar:
+            logger.debug(f"Uploading {len(export_weights)} export weights of size {size} bytes")
+            logger.debug(f"Destination paths: {file_dest_paths}")
             self.progress_bar_main.show()
             self._api.file.upload_bulk_async_fallback(
                 self.team_id,
