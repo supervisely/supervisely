@@ -1040,7 +1040,10 @@ class Inference:
             settings = self._get_inference_settings({})
 
         if isinstance(source[0], int):
-            anns = self._inference_batch_ids(self.api, {"batch_ids": source, "settings": settings})
+            ann_jsons = self._inference_batch_ids(
+                self.api, {"batch_ids": source, "settings": settings}
+            )
+            anns = [Annotation.from_json(ann_json, self.model_meta) for ann_json in ann_jsons]
         else:
             anns, _ = self._inference_auto(source, settings)
         if not input_is_list:
