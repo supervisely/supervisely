@@ -2090,7 +2090,7 @@ class FileApi(ModuleApiBase):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
         logger.debug(f"Uploading with async to: {dst}")
-        logger.debug(f"Semaphore object: {semaphore}. State: {semaphore._value}")
+        logger.debug(f"Semaphore object: {semaphore}")
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
                 item = await fd.read()
