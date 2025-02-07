@@ -106,7 +106,12 @@ class BBoxTracking(BaseTracking):
                     imgs = video_interface.frames
                     target = PredictionBBox(
                         "",  # TODO: can this be useful?
-                        [geom.top, geom.left, geom.bottom, geom.right],
+                        [
+                            geom.top,
+                            geom.left,
+                            geom.bottom,
+                            geom.right,
+                        ],
                         None,
                     )
 
@@ -120,10 +125,8 @@ class BBoxTracking(BaseTracking):
                         target_bbox=target,
                         settings=self.custom_inference_settings_dict,
                     )
-                    sly_geometry = self._to_sly_geometry(geometry)
-                    upload_queue.put(
-                        (sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])
-                    )
+                    geom = self._to_sly_geometry(geometry)
+                    upload_queue.put((geom, obj_id, video_interface._cur_frames_indexes[-1]))
 
                     if video_interface.global_stop_indicatior:
                         stop_upload_event.set()
