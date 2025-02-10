@@ -44,8 +44,8 @@ ecosystem/projects/*
 !ecosystem/projects/init.sh
 ecosystem/import/*
 !ecosystem/import/init.sh
-.venv
-venv
+.venv*
+venv*
 build
 
 docs/build
