@@ -426,20 +426,17 @@ class BaseConverter:
         """
         existing = meta1.project_settings.labeling_interface
         new = meta2.project_settings.labeling_interface
-        if existing == new:
+        if existing == new or new == LabelingInterface.DEFAULT:
             return meta1
 
-        if new is None or new == LabelingInterface.DEFAULT:
-            return meta1
-
-        if existing == LabelingInterface.DEFAULT:
-            group_tag_name = meta2.project_settings.multiview_tag_name
-            if group_tag_name and renamed_tags:
-                group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+        group_tag_name = meta2.project_settings.multiview_tag_name
+        if group_tag_name:
+            group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
             new_settings = meta2.project_settings.clone(multiview_tag_name=group_tag_name)
+        else:
+            new_settings = meta2.project_settings
 
-            return meta1.clone(project_settings=new_settings)
-        return meta1
+        return meta1.clone(project_settings=new_settings)
 
     def _download_remote_ann_files(self) -> None:
         """

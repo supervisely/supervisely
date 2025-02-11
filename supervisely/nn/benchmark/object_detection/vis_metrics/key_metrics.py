@@ -56,6 +56,7 @@ class KeyMetrics(DetectionVisMetric):
             width="60%",
             show_header_controls=False,
             main_column=columns[0],
+            page_size=15,
         )
         return table
 

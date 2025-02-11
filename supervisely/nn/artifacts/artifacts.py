@@ -373,7 +373,7 @@ class BaseTrainArtifacts:
             _upload_metadata(train_json)
             logger.info(f"Metadata for '{artifacts_folder}' was generated")
         else:
-            logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+            logger.debug(f"Invalid metadata for '{artifacts_folder}'")
             train_json = None
         return train_json
 
@@ -437,7 +437,7 @@ class BaseTrainArtifacts:
             )
             is_valid = self._validate_train_json(json_data)
             if not is_valid:
-                logger.warn(f"Invalid metadata for '{artifacts_folder}'")
+                logger.debug(f"Invalid metadata for '{artifacts_folder}'")
                 json_data = None
         return json_data
 
@@ -577,12 +577,16 @@ class BaseTrainArtifacts:
                 "datetime": date_time,
             }
 
-            required_fields = {field.name for field in fields(ExperimentInfo)}
-            return ExperimentInfo(
-                **{k: v for k, v in experiment_info_data.items() if k in required_fields}
-            )
+            experiment_info_fields = {
+                field.name
+                for field in ExperimentInfo.__dataclass_fields__.values()  # pylint: disable=no-member
+            }
+            for field in experiment_info_fields:
+                if field not in experiment_info_data:
+                    experiment_info_data[field] = None
+            return ExperimentInfo(**experiment_info_data)
         except Exception as e:
-            logger.warning(f"Failed to build experiment info: {e}")
+            logger.debug(f"Failed to build experiment info: {e}")
             return None
 
     def get_list_experiment_info(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:

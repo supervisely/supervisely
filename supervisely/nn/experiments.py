@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import List
+from typing import List, Optional
 
 import requests
 
@@ -26,28 +26,36 @@ class ExperimentInfo:
     """Task ID in Supervisely"""
     model_files: dict
     """Dictionary with paths to model files that needs to be downloaded for training"""
+    model_meta: str
+    """Path to file with model metadata such as model name, project id, project name and classes used for training"""
     checkpoints: List[str]
     """List of relative paths to checkpoints"""
     best_checkpoint: str
     """Name of the best checkpoint. Defined by the user in the training app"""
-    export: dict
-    """Dictionary with exported weights in different formats"""
-    app_state: str
-    """Path to file with settings that were used in the app"""
-    model_meta: str
-    """Path to file with model metadata such as model name, project id, project name and classes used for training"""
-    train_val_split: str
-    """Path to train and validation splits, which contains IDs of the images used in each split"""
     hyperparameters: str
     """Path to .yaml file with hyperparameters used in the experiment"""
     artifacts_dir: str
     """Path to the directory with artifacts"""
-    datetime: str
+    export: Optional[dict] = None
+    """Dictionary with exported weights in different formats"""
+    app_state: Optional[str] = None
+    """Path to file with settings that were used in the app"""
+    train_val_split: Optional[str] = None
+    """Path to train and validation splits, which contains IDs of the images used in each split"""
+    train_size: Optional[int] = None
+    """Number of images in the training set"""
+    val_size: Optional[int] = None
+    """Number of images in the validation set"""
+    datetime: Optional[str] = None
     """Date and time when the experiment was started"""
-    evaluation_report_id: int
-    """ID of the evaluation report"""
-    evaluation_metrics: dict
+    evaluation_report_id: Optional[int] = None
+    """ID of the model benchmark evaluation report"""
+    evaluation_report_link: Optional[str] = None
+    """Link to the model benchmark evaluation report"""
+    evaluation_metrics: Optional[dict] = None
     """Evaluation metrics"""
+    logs: Optional[dict] = None
+    """Dictionary with link and type of logger"""
 
     def __init__(self, **kwargs):
         field_names = set(f.name for f in fields(self.__class__))
@@ -108,10 +116,26 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
             )
             response.raise_for_status()
             response_json = response.json()
-            required_fields = {field.name for field in fields(ExperimentInfo)}
-            missing_fields = required_fields - response_json.keys()
-            if missing_fields:
-                logger.debug(f"Missing fields: {missing_fields} for '{experiment_path}'")
+            required_fields = {
+                field.name for field in fields(ExperimentInfo) if field.default is not None
+            }
+            optional_fields = {
+                field.name for field in fields(ExperimentInfo) if field.default is None
+            }
+
+            missing_optional_fields = optional_fields - response_json.keys()
+            if missing_optional_fields:
+                logger.debug(
+                    f"Missing optional fields: {missing_optional_fields} for '{experiment_path}'"
+                )
+                for field in missing_optional_fields:
+                    response_json[field] = None
+
+            missing_required_fields = required_fields - response_json.keys()
+            if missing_required_fields:
+                logger.debug(
+                    f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
+                )
                 return None
             return ExperimentInfo(
                 **{k: v for k, v in response_json.items() if k in required_fields}
