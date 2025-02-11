@@ -26,5 +26,20 @@ from supervisely.nn.inference.tracking.bbox_tracking import BBoxTracking
 from supervisely.nn.inference.tracking.mask_tracking import MaskTracking
 from supervisely.nn.inference.tracking.object_tracking_3d import ObjectTracking3D
 from supervisely.nn.inference.object_detection_3d import ObjectDetection3D
-from supervisely.nn.utils import CheckpointInfo, DeployInfo, RuntimeType, ModelSource, ModelPrecision
+from supervisely.nn.utils import (
+    CheckpointInfo,
+    DeployInfo,
+    RuntimeType,
+    ModelSource,
+    ModelPrecision,
+)
 from supervisely.nn.task_type import TaskType
+from supervisely.nn.auto_labeling.auto_labeling import (
+    get_supported_models,
+    get_supported_checkpoints,
+    deploy_foundation_model,
+    object_detection,
+    object_pointing,
+    instance_segmentation,
+    preview,
+)
