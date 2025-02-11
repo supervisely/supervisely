@@ -8,7 +8,7 @@ from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
-from typing import Any, Dict, List, Literal, NamedTuple
+from typing import Any, Dict, List, Literal, NamedTuple, Union
 
 import requests
 
@@ -532,65 +532,61 @@ class BaseTrainArtifacts:
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return train_infos
 
+    def convert_train_to_experiment_info(self, train_info: TrainInfo) -> ExperimentInfo:
+        try:
+            checkpoints = []
+            for chk in train_info.checkpoints:
+                if self.weights_folder:
+                    checkpoints.append(join(self.weights_folder, chk.name))
+                else:
+                    checkpoints.append(chk.name)
+
+            best_checkpoint = next(
+                (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
+            )
+            if not best_checkpoint and checkpoints:
+                best_checkpoint = get_file_name_with_ext(checkpoints[-1])
+
+            task_info = self._api.task.get_info_by_id(train_info.task_id)
+            workspace_id = task_info["workspaceId"]
+
+            project = self._api.project.get_info_by_name(workspace_id, train_info.project_name)
+            project_id = project.id if project else None
+
+            model_files = {}
+            if train_info.config_path:
+                model_files["config"] = self.get_config_path(train_info.artifacts_folder).replace(
+                    train_info.artifacts_folder, ""
+                )
+
+            input_datetime = task_info["startedAt"]
+            parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
+            date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+            experiment_info_data = {
+                "experiment_name": f"Unknown {self.framework_name} experiment",
+                "framework_name": self.framework_name,
+                "model_name": f"Unknown {self.framework_name} model",
+                "task_type": train_info.task_type,
+                "project_id": project_id,
+                "task_id": train_info.task_id,
+                "model_files": model_files,
+                "checkpoints": checkpoints,
+                "best_checkpoint": best_checkpoint,
+                "artifacts_dir": train_info.artifacts_folder,
+                "datetime": date_time,
+            }
+
+            required_fields = {field.name for field in fields(ExperimentInfo)}
+            return ExperimentInfo(
+                **{k: v for k, v in experiment_info_data.items() if k in required_fields}
+            )
+        except Exception as e:
+            logger.warning(f"Failed to build experiment info: {e}")
+            return None
+
     def get_list_experiment_info(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
-        def build_experiment_info_from_train_info(
-            api: Api, train_info: TrainInfo
-        ) -> ExperimentInfo:
-
-            try:
-                checkpoints = []
-                for chk in train_info.checkpoints:
-                    if self.weights_folder:
-                        checkpoints.append(join(self.weights_folder, chk.name))
-                    else:
-                        checkpoints.append(chk.name)
-
-                best_checkpoint = next(
-                    (chk.name for chk in train_info.checkpoints if "best" in chk.name), None
-                )
-                if not best_checkpoint and checkpoints:
-                    best_checkpoint = get_file_name_with_ext(checkpoints[-1])
-
-                task_info = api.task.get_info_by_id(train_info.task_id)
-                workspace_id = task_info["workspaceId"]
-
-                project = api.project.get_info_by_name(workspace_id, train_info.project_name)
-                project_id = project.id if project else None
-
-                model_files = {}
-                if train_info.config_path:
-                    model_files["config"] = self.get_config_path(
-                        train_info.artifacts_folder
-                    ).replace(train_info.artifacts_folder, "")
-
-                input_datetime = task_info["startedAt"]
-                parsed_datetime = datetime.strptime(input_datetime, "%Y-%m-%dT%H:%M:%S.%fZ")
-                date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
-
-                experiment_info_data = {
-                    "experiment_name": f"Unknown {self.framework_name} experiment",
-                    "framework_name": self.framework_name,
-                    "model_name": f"Unknown {self.framework_name} model",
-                    "task_type": train_info.task_type,
-                    "project_id": project_id,
-                    "task_id": train_info.task_id,
-                    "model_files": model_files,
-                    "checkpoints": checkpoints,
-                    "best_checkpoint": best_checkpoint,
-                    "artifacts_dir": train_info.artifacts_folder,
-                    "datetime": date_time,
-                }
-
-                required_fields = {field.name for field in fields(ExperimentInfo)}
-                return ExperimentInfo(
-                    **{k: v for k, v in experiment_info_data.items() if k in required_fields}
-                )
-            except Exception as e:
-                logger.warning(f"Failed to build experiment info: {e}")
-                return None
-
         train_infos = self.get_list(sort)
-
         # Sync version
         # Uncomment for debug
         # experiment_infos = [
@@ -603,7 +599,7 @@ class BaseTrainArtifacts:
         with ThreadPoolExecutor() as executor:
             experiment_infos = list(
                 executor.map(
-                    lambda t: build_experiment_info_from_train_info(self._api, t),
+                    lambda t: self.convert_train_to_experiment_info(t),
                     train_infos,
                 )
             )
@@ -617,3 +613,29 @@ class BaseTrainArtifacts:
         :rtype: List[str]
         """
         return self._available_task_types
+
+    def get_by_artifacts_dir(
+        self,
+        artifacts_dir: str,
+        return_type: Literal["train_info", "experiment_info"] = "experiment_info",
+    ) -> Union[TrainInfo, ExperimentInfo, None]:
+        """
+        Get training info by artifacts directory.
+
+        :param artifacts_dir: The artifacts directory.
+        :type artifacts_dir: str
+        :param return_type: The return type, either "train_info" or "experiment_info". Default is "experiment_info".
+        :type return_type: Literal["train_info", "experiment_info"]
+        :return: The training info.
+        :rtype: TrainInfo
+        """
+        for train_info in self.get_list():
+            if train_info.artifacts_folder == artifacts_dir:
+                if return_type == "train_info":
+                    return train_info
+                else:
+                    return self.convert_train_to_experiment_info(train_info)
+
+    # load_custom_checkpoint
+    # inference
+    # fix docstrings :param: x -> :param x:

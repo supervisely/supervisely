@@ -1269,3 +1269,49 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             deploy_params=deploy_params,
             timeout=timeout,
         )
+
+    def deploy_model(
+        team_id: int,
+        artifacts_dir: str,
+        checkpoint_name=None,
+    ):
+        from supervisely.nn.artifacts import (
+            RITM,
+            RTDETR,
+            Detectron2,
+            MMClassification,
+            MMDetection,
+            MMDetection3,
+            MMSegmentation,
+            UNet,
+            YOLOv5,
+            YOLOv5v2,
+            YOLOv8,
+        )
+
+        # Get framework
+        # @TODO: change to map?
+        if artifacts_dir.startswith("/detectron2"):
+            framework = Detectron2(team_id)
+        elif artifacts_dir.startswith("/mmclassification"):
+            framework = MMClassification(team_id)
+        elif artifacts_dir.startswith("/mmdetection"):
+            framework = MMDetection(team_id)
+        elif artifacts_dir.startswith("/mmdetection-3"):
+            framework = MMDetection3(team_id)
+        elif artifacts_dir.startswith("/mmsegmentation"):
+            framework = MMSegmentation(team_id)
+        elif artifacts_dir.startswith("/RITM_training"):
+            framework = RITM(team_id)
+        elif artifacts_dir.startswith("/RT-DETR"):
+            framework = RTDETR(team_id)
+        elif artifacts_dir.startswith("/unet"):
+            framework = UNet(team_id)
+        elif artifacts_dir.startswith("/yolov5_train"):
+            framework = YOLOv5(team_id)
+        elif artifacts_dir.startswith("/yolov5_2.0_train"):
+            framework = YOLOv5v2(team_id)
+        elif artifacts_dir.startswith("/yolov8_train"):
+            framework = YOLOv8(team_id)
+
+        experiment_info = framework.get_by_artifacts_dir(artifacts_dir)
