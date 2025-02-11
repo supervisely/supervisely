@@ -10,6 +10,9 @@ class RITM(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train RITM"
+        self._serve_app_name = None
+        self._slug = "supervisely-ecosystem/ritm-training/supervisely/train"
+        self._serve_slug = None
         self._framework_name = "RITM"
         self._framework_folder = "/RITM_training"
         self._weights_folder = "checkpoints"

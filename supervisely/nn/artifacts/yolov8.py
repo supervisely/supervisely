@@ -10,6 +10,9 @@ class YOLOv8(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv8 | v9 | v10 | v11"
+        self._slug = "supervisely-ecosystem/yolov8/train"
+        self._serve_app_name = "Serve YOLOv8 | v9 | v10 | v11"
+        self._serve_slug = "supervisely-ecosystem/yolov8/serve"
         self._framework_name = "YOLOv8+"
         self._framework_folder = "/yolov8_train"
         self._weights_folder = "weights"

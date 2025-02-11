@@ -10,6 +10,9 @@ class YOLOv5(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5"
+        self._slug = "supervisely-ecosystem/yolov5/supervisely/train"
+        self._serve_app_name = "Serve YOLOv5"
+        self._serve_slug = "supervisely-ecosystem/yolov5/supervisely/serve"
         self._framework_name = "YOLOv5"
         self._framework_folder = "/yolov5_train"
         self._weights_folder = "weights"
@@ -40,6 +43,9 @@ class YOLOv5v2(YOLOv5):
         super().__init__(team_id)
 
         self._app_name = "Train YOLOv5 2.0"
+        self._slug = "supervisely-ecosystem/yolov5_2.0/train"
+        self._serve_app_name = "Serve YOLOv5 2.0"
+        self._serve_slug = "supervisely-ecosystem/yolov5_2.0/serve"
         self._framework_name = "YOLOv5 2.0"
         self._framework_folder = "/yolov5_2.0_train"
         self._weights_folder = "weights"

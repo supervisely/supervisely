@@ -10,6 +10,9 @@ class UNet(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train UNet"
+        self._slug = "supervisely-ecosystem/unet/supervisely/train"
+        self._serve_app_name = "Serve UNet"
+        self._serve_slug = "supervisely-ecosystem/unet/supervisely/serve"
         self._framework_name = "UNet"
         self._framework_folder = "/unet"
         self._weights_folder = "checkpoints"

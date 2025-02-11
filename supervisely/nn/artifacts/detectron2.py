@@ -10,6 +10,11 @@ class Detectron2(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train Detectron2"
+        self._slug = "supervisely-ecosystem/detectron2/supervisely/train"
+        self._serve_app_name = "Serve Detectron2"
+        self._serve_slug = (
+            "supervisely-ecosystem/detectron2/supervisely/instance_segmentation/serve"
+        )
         self._framework_name = "Detectron2"
         self._framework_folder = "/detectron2"
         self._weights_folder = "checkpoints"

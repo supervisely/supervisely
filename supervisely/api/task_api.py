@@ -1332,10 +1332,14 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
 
     def deploy_model(
+        self,
         team_id: int,
+        workspace_id: int,
         artifacts_dir: str,
         checkpoint_name=None,
     ):
+
+        # WIP
         from supervisely.nn.artifacts import (
             RITM,
             RTDETR,
@@ -1349,30 +1353,51 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             YOLOv5v2,
             YOLOv8,
         )
+        from supervisely.nn.utils import ModelSource, RuntimeType
 
         # Get framework
-        # @TODO: change to map?
-        if artifacts_dir.startswith("/detectron2"):
-            framework = Detectron2(team_id)
-        elif artifacts_dir.startswith("/mmclassification"):
-            framework = MMClassification(team_id)
-        elif artifacts_dir.startswith("/mmdetection"):
-            framework = MMDetection(team_id)
-        elif artifacts_dir.startswith("/mmdetection-3"):
-            framework = MMDetection3(team_id)
-        elif artifacts_dir.startswith("/mmsegmentation"):
-            framework = MMSegmentation(team_id)
-        elif artifacts_dir.startswith("/RITM_training"):
-            framework = RITM(team_id)
-        elif artifacts_dir.startswith("/RT-DETR"):
-            framework = RTDETR(team_id)
-        elif artifacts_dir.startswith("/unet"):
-            framework = UNet(team_id)
-        elif artifacts_dir.startswith("/yolov5_train"):
-            framework = YOLOv5(team_id)
-        elif artifacts_dir.startswith("/yolov5_2.0_train"):
-            framework = YOLOv5v2(team_id)
-        elif artifacts_dir.startswith("/yolov8_train"):
-            framework = YOLOv8(team_id)
+        if not artifacts_dir.startswith("/experiments/"):
+            frameworks = {
+                "/detectron2": Detectron2,
+                "/mmclassification": MMClassification,
+                "/mmdetection": MMDetection,
+                "/mmdetection-3": MMDetection3,
+                "/mmsegmentation": MMSegmentation,
+                "/RITM_training": RITM,
+                "/RT-DETR": RTDETR,
+                "/unet": UNet,
+                "/yolov5_train": YOLOv5,
+                "/yolov5_2.0_train": YOLOv5v2,
+                "/yolov8_train": YOLOv8,
+            }
 
+            framework = None
+            framework_cls = next(
+                (cls for prefix, cls in frameworks.items() if artifacts_dir.startswith(prefix)),
+                None,
+            )
+            if framework_cls:
+                framework = framework_cls(team_id)
+            else:
+                raise ValueError(f"Unknown framework for artifacts_dir: {artifacts_dir}")
+
+        module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
         experiment_info = framework.get_by_artifacts_dir(artifacts_dir)
+
+        # Get deploy params from experiment_info
+        checkpoint_name = checkpoint_name or experiment_info["best_checkpoint"]
+
+        checkpoint = None
+        config = None
+        model_source = None
+        model_files = None
+
+        deploy_params = {
+            "model_files": model_files,
+            "model_source": ModelSource.CUSTOM,
+            "model_info": experiment_info,
+            "device": "cuda",
+            "runtime": RuntimeType.PYTORCH,
+        }
+
+        self.deploy_model_app(module_id, workspace_id, deploy_params=deploy_params)

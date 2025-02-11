@@ -10,6 +10,9 @@ class MMSegmentation(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMSegmentation"
+        self._slug = "supervisely-ecosystem/mmsegmentation/train"
+        self._serve_app_name = "Serve MMSegmentation"
+        self._serve_slug = "supervisely-ecosystem/mmsegmentation/serve"
         self._framework_name = "MMSegmentation"
         self._framework_folder = "/mmsegmentation"
         self._weights_folder = "checkpoints/data"

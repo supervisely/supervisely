@@ -56,6 +56,9 @@ class BaseTrainArtifacts:
         self._metadata_file_name: str = "train_info.json"
 
         self._app_name: str = None
+        self._slug = None
+        self._serve_app_name = None
+        self._serve_slug = None
         self._framework_name: str = None
         self._framework_folder: str = None
         self._weights_folder: str = None
@@ -94,6 +97,36 @@ class BaseTrainArtifacts:
         :rtype: str
         """
         return self._app_name
+
+    @property
+    def slug(self):
+        """
+        Train app slug.
+
+        :return: Train app slug.
+        :rtype: str
+        """
+        return self._slug
+
+    @property
+    def serve_app_name(self):
+        """
+        Serve application name.
+
+        :return: The serve application name.
+        :rtype: str
+        """
+        return self._serve_app_name
+
+    @property
+    def serve_slug(self):
+        """
+        Serve app slug.
+
+        :return: Serve app slug.
+        :rtype: str
+        """
+        return self._serve_slug
 
     @property
     def framework_name(self):
