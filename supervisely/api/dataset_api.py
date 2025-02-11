@@ -4,6 +4,7 @@
 # docs
 from __future__ import annotations
 
+from collections import deque
 from typing import (
     Any,
     Dict,
@@ -1090,3 +1091,113 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :rtype: bool
         """
         return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None
+
+    def get_dataset_chain(
+        self,
+        dataset: Union[DatasetInfo, int],
+    ) -> Optional[List[DatasetInfo]]:
+        """Find the chain of datasets from the root to the target dataset.
+
+        :param dataset: The target dataset to find.
+        :type dataset: DatasetInfo or ID
+        :return: List of datasets from the root to the target, or None if not found.
+        :rtype: Optional[List[DatasetInfo]]
+        """
+        target_id = dataset.id if isinstance(dataset, DatasetInfo) else dataset
+        if isinstance(dataset, int):
+            dataset = self.get_info_by_id(dataset)
+            if dataset is None:
+                return None
+        tree = self.get_tree(project_id=dataset.project_id)
+
+        def search(node: DatasetInfo, childrens: dict, path: list):
+            path.append(node)
+            if node.id == target_id:
+                return path
+            for child, grand_childrens in childrens.items():
+                result = search(child, grand_childrens, path.copy())
+                if result:
+                    return result
+            return None
+
+        for root, children in tree.items():
+            result = search(root, children, [])
+            if result:
+                return result
+        return None
+
+    def get_flatten_tree(self, project_id: int, parents_first: bool = True) -> List[DatasetInfo]:
+        """Get a tree of datasets as a flatten list.
+        You can choose what type of order you want to get.
+        By default is used layered hierarchical datasets structure.
+        If you want to get sequential datset chains, set parents_first to False.
+        See examples in Examples section.
+
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :return: List of all datasets in the tree.
+        :rtype: List[DatasetInfo]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+
+            1. Flatten tree as layered hierarchical datasets.
+
+                dataset_tree = api.dataset.get_flatten_tree(project_id)
+                for dataset in dataset_tree:
+                    print(dataset.name)
+
+                # Output:
+                # ds1
+                # ds2
+                # ds1-1
+                # ds1-2
+                # ds2-1
+                # ds1-1-1
+                # ds1-1-2
+                # ds1-2-1
+                # ds2-1-1
+
+            2. Flatten tree as sequntial dataset chains.
+
+                dataset_tree = api.dataset.get_flatten_tree(project_id, parents_first=False)
+                for dataset in dataset_tree:
+                    print(dataset.name)
+
+                # Output:
+                # ds1
+                # ds1-1
+                # ds1-1-1
+                # ds1-1-2
+                # ds1-2
+                # ds1-2-1
+                # ds2
+                # ds2-1
+                # ds2-1-1
+        """
+        datasets = []
+        tree = self.get_tree(project_id=project_id)
+        if parents_first:
+            queue = deque([(dataset, children) for dataset, children in tree.items()])
+            while queue:
+                dataset, children = queue.popleft()
+                datasets.append(dataset)
+                for child, grand_children in children.items():
+                    queue.append((child, grand_children))
+        else:
+
+            def traverse(node, result: list):
+                result.append(node)
+                for child in tree.get(node, {}):
+                    traverse(child, result)
+
+            for root in tree:
+                traverse(root, datasets)
+        return datasets

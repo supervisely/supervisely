@@ -21,6 +21,7 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.constants import BITMAP
+from supervisely.io.fs import get_or_create_event_loop
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import _LABEL_GROUP_TAG_NAME
 from supervisely.sly_logger import logger
@@ -1645,6 +1646,79 @@ class AnnotationApi(ModuleApi):
                 progress_cb(len(batch))
         ordered_results = [id_to_ann[image_id] for image_id in image_ids]
         return ordered_results
+
+    def download_bulk_async_fallback(
+        self,
+        dataset_id: int,
+        image_ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        with_custom_data: Optional[bool] = False,
+        force_metadata_for_links: Optional[bool] = True,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> List[AnnotationInfo]:
+        """
+        Downloads AnnotationInfos for given image IDs asynchronously.
+        If an error occurs, the method will fallback to synchronous upload.
+
+        :param dataset_id: Dataset ID in Supervisely for additional verification that the image belongs to the dataset.
+        :type dataset_id: int
+        :param image_ids: List of image IDs.
+        :type image_ids: List[int]
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param with_custom_data: Include custom data in the response.
+        :type with_custom_data: bool, optional
+        :param force_metadata_for_links: Specifies whether to force retrieving metadata for images from links.
+        :type force_metadata_for_links: bool, optional
+        :param semaphore: Semaphore
+        :type semaphore: asyncio.Semaphore, optional
+        :return: Information about Annotations. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[AnnotationInfo]`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            image_ids = [121236918, 121236919]
+            pbar = tqdm(desc="Download annotations", total=len(image_ids))
+
+            ann_infos = api.annotation.download_bulk_async_fallback(dataset_id, image_ids, progress_cb=pbar)
+        """
+        try:
+            download_coro = self.download_bulk_async(
+                dataset_id=dataset_id,
+                image_ids=image_ids,
+                progress_cb=progress_cb,
+                with_custom_data=with_custom_data,
+                force_metadata_for_links=force_metadata_for_links,
+                semaphore=semaphore,
+            )
+            loop = get_or_create_event_loop()
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+                ann_infos = future.result()
+            else:
+                ann_infos = loop.run_until_complete(download_coro)
+        except Exception as e:
+            logger.warning(
+                f"Download annotations asynchronously failed. Fallback to synchronous download.",
+                exc_info=True,
+            )
+            ann_infos = self.download_batch(
+                dataset_id=dataset_id,
+                image_ids=image_ids,
+                progress_cb=progress_cb,
+                with_custom_data=with_custom_data,
+                force_metadata_for_links=force_metadata_for_links,
+            )
+        return ann_infos
 
     def append_labels_group(
         self,
