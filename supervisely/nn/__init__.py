@@ -13,4 +13,5 @@ from supervisely.nn.prediction_dto import (
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.utils import ModelSource, RuntimeType
 from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
+from supervisely.nn.inference.session import Session, SessionJSON
 import supervisely.nn.auto_labeling as auto_labeling
