@@ -21,7 +21,6 @@ from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.utils import ModelSource
 
-
 WEIGHTS_DIR = "weights"
 
 COL_ID = "task id".upper()
@@ -272,7 +271,7 @@ class ExperimentSelector(Widget):
                     benchmark_report_link = f"/model-benchmark?id={self._benchmark_report_id}"
 
                 benchmark_widget = Text(
-                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>evaluation report</a>",
+                    f"<i class='zmdi zmdi-chart' style='color: #7f858e'></i> <a href='{benchmark_report_link}' target='_blank'>Evaluation report</a>",
                     "text",
                 )
             return benchmark_widget
@@ -378,7 +377,7 @@ class ExperimentSelector(Widget):
                 )
                 return experiment_info.task_type, model_row
             except Exception as e:
-                logger.warn(f"Failed to process experiment info: {experiment_info}")
+                logger.debug(f"Failed to process experiment info: {experiment_info}")
                 return None, None
 
         table_rows = defaultdict(list)
