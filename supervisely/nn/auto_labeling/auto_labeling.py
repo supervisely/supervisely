@@ -248,6 +248,17 @@ def instance_segmentation(
     # get image ids and annotations (for prompts)
     image_ids = []
     download_anns = False
+    # validate inference settings
+    if not inference_settings.get("mode"):
+        sly.logger.warning(
+            "Instance segmentation model inference settings must contain 'mode' parameter ('bbox' or 'points')"
+        )
+        sly.logger.warning("Setting inference mode to 'bbox'")
+        inference_settings["mode"] == "bbox"
+    if inference_settings["mode"] not in ["bbox", "points"]:
+        sly.logger.warning("Inference mode must be either 'bbox' or 'points'")
+        sly.logger.warning("Setting inference mode to 'bbox'")
+        inference_settings["mode"] == "bbox"
     if (
         inference_settings.get("mode") == "bbox" and not inference_settings.get("bbox_predictions")
     ) or (
@@ -339,6 +350,9 @@ def preview(
     dataset_id: int = None,
     image_id: int = None,
 ) -> np.ndarray:
+    """
+    Previews model predictions with given inference settings on specific image or random image from given dataset
+    """
     # get image id if necessary
     if not image_id:
         if not dataset_id:
@@ -347,6 +361,8 @@ def preview(
         image_id = random.choice(ds_image_infos).id
     # set inference settings
     if inference_settings:
+        if inference_settings.get("batch_size"):
+            del inference_settings["batch_size"]
         nn_session.set_inference_settings(inference_settings)
     # get image annotation
     image_ann = nn_session.inference_image_id(image_id)
