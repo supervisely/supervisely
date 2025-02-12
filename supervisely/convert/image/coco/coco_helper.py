@@ -4,6 +4,7 @@ import sys
 import uuid
 from copy import deepcopy
 from datetime import datetime
+from itertools import groupby
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
@@ -351,12 +352,41 @@ def _get_graph_info(idx, obj_class):
     return data
 
 
-def get_categories_from_meta(meta: ProjectMeta):
+def get_categories_from_meta(meta: ProjectMeta) -> List[Dict[str, Any]]:
+    """Get categories from Supervisely project meta."""
     cat = lambda idx, c: {"supercategory": c.name, "id": idx, "name": c.name}
     return [
         cat(idx, c) if c.geometry_type != GraphNodes else _get_graph_info(idx, c)
         for idx, c in enumerate(meta.obj_classes)
     ]
+
+
+def extend_mask_up_to_image(
+    binary_mask: np.ndarray, image_shape: Tuple[int, int], origin: PointLocation
+) -> np.ndarray:
+    """Extend binary mask up to image shape."""
+    y, x = origin.col, origin.row
+    new_mask = np.zeros(image_shape, dtype=binary_mask.dtype)
+    try:
+        new_mask[x : x + binary_mask.shape[0], y : y + binary_mask.shape[1]] = binary_mask
+    except ValueError as e:
+        raise ValueError(
+            f"Binary mask size {binary_mask.shape} with origin {origin} "
+            f"exceeds image boundaries {image_shape}"
+        ) from e
+    return new_mask
+
+
+def coco_segmentation_rle(segmentation: np.ndarray) -> Dict[str, Any]:
+    """Convert COCO segmentation to RLE format."""
+    binary_mask = np.asfortranarray(segmentation)
+    rle = {"counts": [], "size": list(binary_mask.shape)}
+    counts = rle.get("counts")
+    for i, (value, elements) in enumerate(groupby(binary_mask.ravel(order="F"))):
+        if i == 0 and value == 1:
+            counts.append(0)
+        counts.append(len(list(elements)))
+    return rle
 
 
 def sly_ann_to_coco(
@@ -491,17 +521,14 @@ def sly_ann_to_coco(
 
     res_inst = []  # result list of COCO objects
 
+    h, w = ann.img_size
     for binding_key, labels in ann.get_bindings().items():
         if binding_key is None:
             polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
             masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
             bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
             graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
-            if len(masks) > 0:
-                for l in masks:
-                    polygon_cls = l.obj_class.clone(geometry_type=Polygon)
-                    polygons.extend(l.convert(polygon_cls))
-            for label in polygons + bboxes:
+            for label in polygons + bboxes + masks:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
                 coco_obj["bbox"] = _get_common_bbox([label])
@@ -510,6 +537,11 @@ def sly_ann_to_coco(
                     poly = label.geometry.to_json()["points"]["exterior"]
                     poly = np.array(poly).flatten().astype(float).tolist()
                     coco_obj["segmentation"] = [poly]
+                elif label.obj_class.geometry_type == Bitmap:
+                    segmentation = extend_mask_up_to_image(
+                        label.geometry.data, (h, w), label.geometry.origin
+                    )
+                    coco_obj["segmentation"] = coco_segmentation_rle(segmentation)
 
                 label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
 
@@ -525,28 +557,16 @@ def sly_ann_to_coco(
         masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
         graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
 
-        if len(masks) > 0:  # convert Bitmap to Polygon
-            for l in masks:
-                polygon_cls = l.obj_class.clone(geometry_type=Polygon)
-                polygons.extend(l.convert(polygon_cls))
-
-        matched_bbox = False
-        if len(polygons) > 0:  # process polygons
-            cat_id = class_mapping[polygons[0].obj_class.name]
-            coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
-            if len(bboxes) > 0:
-                found = _get_common_bbox(bboxes, sly_bbox=True, approx=True)
-                new = _get_common_bbox(polygons, sly_bbox=True)
-                matched_bbox = found.contains(new)
-
-            polys = [l.geometry.to_json()["points"]["exterior"] for l in polygons]
-            polys = [np.array(p).flatten().astype(float).tolist() for p in polys]
-            coco_obj["segmentation"] = polys
-            coco_obj["area"] = sum([l.geometry.area for l in polygons])
-            coco_obj["bbox"] = _get_common_bbox(bboxes if matched_bbox else polygons)
-            label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
+        need_to_process_separately = len(masks) > 0 and len(polygons) > 0
+        bbox_matched_w_mask = False
+        bbox_matched_w_poly = False
 
         if len(graphs) > 0:
+            if len(masks) > 0 or len(polygons) > 0:
+                logger.warning(
+                    "Keypoints and Polygons/Bitmaps in one binding key are not supported. "
+                    "Objects will be converted separately."
+                )
             if len(graphs) > 1:
                 logger.warning(
                     "Multiple Keypoints in one binding key are not supported. "
@@ -556,7 +576,41 @@ def sly_ann_to_coco(
             coco_obj = _create_keypoints_obj(graphs[0], cat_id, label_id, coco_image_id)
             label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
 
-        if len(bboxes) > 0 and not matched_bbox:  # process bboxes separately
+        # convert Bitmap to Polygon
+        if len(masks) > 0:
+            for label in masks:
+                cat_id = class_mapping[label.obj_class.name]
+                coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
+                segmentation = extend_mask_up_to_image(
+                    label.geometry.data, (h, w), label.geometry.origin
+                )
+                coco_obj["segmentation"] = coco_segmentation_rle(segmentation)
+                coco_obj["area"] = label.geometry.area
+                if len(bboxes) > 0 and not need_to_process_separately:
+                    found = _get_common_bbox(bboxes, sly_bbox=True, approx=True)
+                    new = _get_common_bbox([label], sly_bbox=True)
+                    bbox_matched_w_mask = found.contains(new)
+                coco_obj["bbox"] = _get_common_bbox(bboxes if bbox_matched_w_mask else [label])
+                label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
+
+        # process polygons
+        if len(polygons) > 0:
+            cat_id = class_mapping[polygons[0].obj_class.name]
+            coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
+            if len(bboxes) > 0 and not need_to_process_separately:
+                found = _get_common_bbox(bboxes, sly_bbox=True, approx=True)
+                new = _get_common_bbox(polygons, sly_bbox=True)
+                bbox_matched_w_poly = found.contains(new)
+
+            polys = [l.geometry.to_json()["points"]["exterior"] for l in polygons]
+            polys = [np.array(p).flatten().astype(float).tolist() for p in polys]
+            coco_obj["segmentation"] = polys
+            coco_obj["area"] = sum([l.geometry.area for l in polygons])
+            coco_obj["bbox"] = _get_common_bbox(bboxes if bbox_matched_w_poly else polygons)
+            label_id = _update_inst_results(label_id, coco_ann, coco_obj, res_inst)
+
+        # process bboxes separately if they are not matched with masks/polygons
+        if len(bboxes) > 0 and not bbox_matched_w_poly and not bbox_matched_w_mask:
             for label in bboxes:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
@@ -713,7 +767,9 @@ def sly_ds_to_coco(
 
         coco_ann["images"].append(image_coco(image_info, image_idx))
         if with_captions is True:
-            coco_captions["images"].append(image_coco(image_info, image_idx))  # pylint: disable=unsubscriptable-object
+            # pylint: disable=unsubscriptable-object
+            coco_captions["images"].append(image_coco(image_info, image_idx))
+            # pylint: enable=unsubscriptable-object
 
         ann = Annotation.load_json_file(ann_path, meta)
         if ann.img_size is None or ann.img_size == (0, 0) or ann.img_size == (None, None):
@@ -815,3 +871,97 @@ def sly_project_to_coco(
         )
         logger.info(f"Dataset '{ds.short_name}' has been converted to COCO format.")
     logger.info(f"Project '{project.name}' has been converted to COCO format.")
+
+
+def to_coco(
+    input_data: Union[Project, Dataset, str],
+    dest_dir: Optional[str] = None,
+    meta: Optional[ProjectMeta] = None,
+    copy_images: bool = True,
+    with_captions: bool = False,
+    log_progress: bool = True,
+    progress_cb: Optional[Callable] = None,
+) -> Union[None, str]:
+    """
+    Universal function to convert Supervisely project or dataset to COCO format.
+    Note:
+        - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
+            You can use the dedicated functions for each data type:
+
+                - :func:`sly.convert.sly_project_to_coco()`
+                - :func:`sly.convert.sly_ds_to_coco()`
+
+        - If the input_data is a Project, the dest_dir parameters are required.
+        - If the input_data is a Dataset, the meta and dest_dir parameters are required.
+
+    :param input_data: Supervisely project, dataset, or path to the project or dataset.
+    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.project.dataset.Dataset>` or :class:`str`
+
+    # Project or Dataset conversion arguments:
+    :param dest_dir: Destination directory to save project or dataset in COCO format.
+    :type dest_dir: :class:`str`, optional
+    :param meta: Project meta information (required for dataset conversion).
+    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
+    :param copy_images: Copy images to destination directory
+    :type copy_images: :class:`bool`, optional
+    :param with_captions: If True, returns COCO captions
+    :type with_captions: :class:`bool`, optional
+    :param log_progress: Show uploading progress bar
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project or dataset).
+    :type progress_cb: callable, optional
+
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project in Supervisely format
+        project_directory = "./source/project"
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+
+        # Convert Project to COCO format
+        sly.convert.to_coco(project_directory, dest_dir="./coco")
+        # or
+        sly.convert.to_coco(project_fs, dest_dir="./coco")
+
+        # Convert Dataset to COCO format
+        # dataset: sly.Dataset
+        sly.convert.to_coco(dataset, dest_dir="./coco", meta=project_fs.meta)
+    """
+    if isinstance(input_data, str):
+        try:
+            input_data = Project(input_data, mode=OpenMode.READ)
+        except Exception:
+            try:
+                input_data = Dataset(input_data, mode=OpenMode.READ)
+            except Exception:
+                raise ValueError("Please check the path or the input data.")
+
+    if isinstance(input_data, Project):
+        return sly_project_to_coco(
+            project=input_data,
+            dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    if isinstance(input_data, Dataset):
+        if meta is None:
+            raise ValueError("Project meta information is required for dataset conversion.")
+        return sly_ds_to_coco(
+            dataset=input_data,
+            meta=meta,
+            return_type="path",
+            dest_dir=dest_dir,
+            copy_images=copy_images,
+            with_captions=with_captions,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    raise ValueError("Unsupported input type. Only Project or Dataset are supported.")
