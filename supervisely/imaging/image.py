@@ -489,7 +489,7 @@ def draw_text(
 
     canvas = PILImage.new("RGBA", source_img.size, (0, 0, 0, 0))
     drawer = ImageDraw.Draw(canvas, "RGBA")
-    text_width, text_height = drawer.textsize(text, font=font)
+    _, _, text_width, text_height = drawer.textbbox((0, 0), text=text, font=font)
     rect_top, rect_left = anchor_point
 
     if corner_snap == CornerAnchorMode.TOP_LEFT:
