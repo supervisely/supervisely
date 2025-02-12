@@ -670,16 +670,20 @@ class Inference:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
 
-    def load_custom_checkpoint(self, model_files: dict, model_meta: dict, device: str = "cuda"):
+    def load_custom_checkpoint(
+        self, model_files: dict, model_meta: dict, device: str = "cuda", **kwargs
+    ):
         """
         Loads local custom model checkpoint.
 
-        :param: model_files: dict with paths to model files
+        :param: model_files: dict with local paths to model files
         :type: model_files: dict
         :param: model_meta: dict with model meta
         :type: model_meta: dict
         :param: device: device to load model on
         :type: device: str
+        :param: kwargs: additional parameters will be passed to load_model method.
+        :type: kwargs: dict
         :return: None
         :rtype: None
 
@@ -717,6 +721,8 @@ class Inference:
             "device": device,
             "runtime": RuntimeType.PYTORCH,
         }
+        deploy_params.update(kwargs)
+
         # TODO: add support for **kwargs (user arguments)
         self._set_model_meta_custom_model({"model_meta": model_meta})
         self._load_model(deploy_params)

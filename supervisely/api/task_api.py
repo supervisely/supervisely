@@ -1290,8 +1290,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """
         Deploy a custom model based on the artifacts directory.
 
-        :param team_id: Team ID in Supervisely.
-        :type team_id: int
         :param workspace_id: Workspace ID in Supervisely.
         :type workspace_id: int
         :param artifacts_dir: Path to the artifacts directory.
@@ -1322,13 +1320,16 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
         from supervisely.nn.utils import ModelSource, RuntimeType
 
-        if not isinstance(team_id, int) or team_id <= 0:
-            raise ValueError(f"team_id must be a positive integer. Received: {team_id}")
         if not isinstance(workspace_id, int) or workspace_id <= 0:
             raise ValueError(f"workspace_id must be a positive integer. Received: {workspace_id}")
         if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
             raise ValueError("artifacts_dir must be a non-empty string.")
 
+        workspace_info = self._api.workspace.get_info_by_id(workspace_id)
+        if workspace_info is None:
+            raise ValueError(f"Workspace with ID '{workspace_id}' not found.")
+
+        team_id = workspace_info.team_id
         logger.debug(
             f"Starting model deployment. Team: {team_id}, Workspace: {workspace_id}, Artifacts Dir: '{artifacts_dir}'"
         )
