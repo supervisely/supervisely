@@ -13,8 +13,9 @@ from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Uni
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
-from supervisely._utils import batched, take_with_default
 from supervisely import logger
+from supervisely._utils import batched, take_with_default
+
 from supervisely.api.module_api import (
     ApiField,
     ModuleApiBase,
@@ -22,7 +23,12 @@ from supervisely.api.module_api import (
     WaitingTimeExceeded,
 )
 from supervisely.collection.str_enum import StrEnum
-from supervisely.io.fs import ensure_base_path, get_file_hash, get_file_name
+from supervisely.io.fs import (
+    ensure_base_path,
+    get_file_hash,
+    get_file_name,
+    get_file_name_with_ext,
+)
 
 
 class TaskFinishedWithError(Exception):
@@ -249,7 +255,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             print(task_status)
             # Output: finished
         """
-        status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
+        status_str = self.get_info_by_id(task_id)[
+            ApiField.STATUS
+        ]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
     def raise_for_status(self, status: Status) -> None:
@@ -262,7 +270,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`NoneType`
         """
         if status is self.Status.ERROR:
-            raise TaskFinishedWithError(f"Task finished with status {str(self.Status.ERROR)}")
+            raise TaskFinishedWithError(
+                f"Task finished with status {str(self.Status.ERROR)}"
+            )
 
     def wait(
         self,
@@ -286,7 +296,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`bool`
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
-        effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
+        effective_wait_timeout = (
+            wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
+        )
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
@@ -303,7 +315,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
 
     def upload_dtl_archive(
-        self, task_id: int, archive_path: str, progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        task_id: int,
+        archive_path: str,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
         """upload_dtl_archive"""
         encoder = MultipartEncoder(
@@ -389,7 +404,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """_convert_json_info"""
         return info
 
-    def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None):
+    def run_dtl(
+        self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None
+    ):
         """run_dtl"""
         response = self._api.post(
             "tasks.run.dtl",
@@ -579,9 +596,13 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             )
         """
         if app_id is not None and module_id is not None:
-            raise ValueError("Only one of the arguments (app_id or module_id) have to be defined")
+            raise ValueError(
+                "Only one of the arguments (app_id or module_id) have to be defined"
+            )
         if app_id is None and module_id is None:
-            raise ValueError("One of the arguments (app_id or module_id) have to be defined")
+            raise ValueError(
+                "One of the arguments (app_id or module_id) have to be defined"
+            )
 
         advanced_settings = {
             ApiField.LIMIT_BY_WORKSPACE: limit_by_workspace,
@@ -703,7 +724,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 path, name, hash = item
                 if hash in remote_hashes:
                     continue
-                content_dict["{}".format(idx)] = json.dumps({"fullpath": name, "hash": hash})
+                content_dict["{}".format(idx)] = json.dumps(
+                    {"fullpath": name, "hash": hash}
+                )
                 content_dict["{}-file".format(idx)] = (name, open(path, "rb"), "")
 
             if len(content_dict) > 0:
@@ -741,7 +764,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         for idx, obj in enumerate(fields):
             for key in [ApiField.FIELD, ApiField.PAYLOAD]:
                 if key not in obj:
-                    raise KeyError("Object #{} does not have field {!r}".format(idx, key))
+                    raise KeyError(
+                        "Object #{} does not have field {!r}".format(idx, key)
+                    )
         data = {ApiField.TASK_ID: task_id, ApiField.FIELDS: fields}
         resp = self._api.post("tasks.data.set", data)
         return resp.json()
@@ -817,18 +842,28 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             project = self._api.project.get_info_by_id(project_id, raise_error=True)
             project_name = project.name
 
-        output = {ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}}
+        output = {
+            ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}
+        }
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
         return resp.json()
 
     def set_output_report(
-        self, task_id: int, file_id: int, file_name: str, description: Optional[str] = "Report"
+        self,
+        task_id: int,
+        file_id: int,
+        file_name: str,
+        description: Optional[str] = "Report",
     ) -> Dict:
         """set_output_report"""
         return self._set_custom_output(
-            task_id, file_id, file_name, description=description, icon="zmdi zmdi-receipt"
+            task_id,
+            file_id,
+            file_name,
+            description=description,
+            icon="zmdi zmdi-receipt",
         )
 
     def _set_custom_output(
@@ -944,7 +979,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         )
 
     def update_meta(
-        self, id: int, data: dict, agent_storage_folder: str = None, relative_app_dir: str = None
+        self,
+        id: int,
+        data: dict,
+        agent_storage_folder: str = None,
+        relative_app_dir: str = None,
     ):
         """
         Update given task metadata
@@ -969,7 +1008,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         self._api.post("tasks.meta.update", data)
 
-    def _update_app_content(self, task_id: int, data_patch: List[Dict] = None, state: Dict = None):
+    def _update_app_content(
+        self, task_id: int, data_patch: List[Dict] = None, state: Dict = None
+    ):
         payload = {}
         if data_patch is not None and len(data_patch) > 0:
             payload[ApiField.DATA] = data_patch
@@ -1137,7 +1178,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             raise ValueError(
                 f"Invalid status value: {status}. Allowed values: {self.Status.values()}"
             )
-        self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
+        self._api.post(
+            "tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status}
+        )
 
     def set_output_experiment(self, task_id: int, experiment_info: dict) -> Dict:
         """
@@ -1202,7 +1245,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def deploy_model_from_api(self, task_id, deploy_params):
         self.send_request(
-            task_id, "deploy_from_api", data={"deploy_params": deploy_params}, raise_error=True
+            task_id,
+            "deploy_from_api",
+            data={"deploy_params": deploy_params},
+            raise_error=True,
         )
 
     def deploy_model_app(
@@ -1305,7 +1351,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "checkpoint": Path(
                     data["artifacts_dir"], "checkpoints", checkpoint_name
                 ).as_posix(),
-                "config": Path(data["artifacts_dir"], data["model_files"]["config"]).as_posix(),
+                "config": Path(
+                    data["artifacts_dir"], data["model_files"]["config"]
+                ).as_posix(),
             },
             "model_source": "Custom models",
             "model_info": data,
@@ -1337,10 +1385,27 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         team_id: int,
         workspace_id: int,
         artifacts_dir: str,
-        checkpoint_name=None,
-        agent_id:int = None,
+        checkpoint_name: str = None,
+        agent_id: int = None,
         device: str = "cuda",
     ):
+        """
+        Deploy a custom model based on the artifacts directory.
+
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param workspace_id: Workspace ID in Supervisely.
+        :type workspace_id: int
+        :param artifacts_dir: Path to the artifacts directory.
+        :type artifacts_dir: str
+        :param checkpoint_name: Checkpoint name (with extension) to deploy.
+        :type checkpoint_name: Optional[str]
+        :param agent_id: Agent ID in Supervisely.
+        :type agent_id: Optional[int]
+        :param device: Device string (default is "cuda").
+        :type device: str
+        :raises ValueError: if validations fail.
+        """
         from dataclasses import asdict
         from supervisely.nn.artifacts import (
             RITM,
@@ -1358,7 +1423,20 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
         from supervisely.nn.utils import ModelSource, RuntimeType
 
-        # Get Framework | Train V1
+        if not isinstance(team_id, int) or team_id <= 0:
+            raise ValueError(f"team_id must be a positive integer. Received: {team_id}")
+        if not isinstance(workspace_id, int) or workspace_id <= 0:
+            raise ValueError(
+                f"workspace_id must be a positive integer. Received: {workspace_id}"
+            )
+        if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
+            raise ValueError("artifacts_dir must be a non-empty string.")
+
+        logger.debug(
+            f"Starting model deployment. Team: {team_id}, Workspace: {workspace_id}, Artifacts Dir: '{artifacts_dir}'"
+        )
+
+        # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
             logger.debug("Deploying model from Train V1 artifacts")
             frameworks = {
@@ -1375,58 +1453,114 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "/yolov8_train": YOLOv8,
             }
 
-            framework = None
             framework_cls = next(
-                (cls for prefix, cls in frameworks.items() if artifacts_dir.startswith(prefix)),
+                (
+                    cls
+                    for prefix, cls in frameworks.items()
+                    if artifacts_dir.startswith(prefix)
+                ),
                 None,
             )
-            if framework_cls:
-                framework = framework_cls(team_id)
-            else:
-                raise ValueError(f"Unknown framework for artifacts_dir: {artifacts_dir}")
+            if not framework_cls:
+                raise ValueError(
+                    f"Unsupported framework for artifacts_dir: '{artifacts_dir}'"
+                )
+            if framework_cls is RITM:
+                raise ValueError("RITM framework is not supported for deployment")
+
+            framework = framework_cls(team_id)
+            logger.debug(f"Detected framework: '{framework.framework_name}'")
 
             module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
-            train_info = framework.get_info_by_artifacts_dir(artifacts_dir.rstrip("/"), "train_info")
+            serve_app_name = framework.serve_app_name
+            logger.debug(
+                f"Module ID fetched:' {module_id}'. App name: '{serve_app_name}'"
+            )
 
-            checkpoint = checkpoint_name or train_info.checkpoints[-1]
+            train_info = framework.get_info_by_artifacts_dir(
+                artifacts_dir.rstrip("/"), "train_info"
+            )
+            if not hasattr(train_info, "checkpoints") or not train_info.checkpoints:
+                raise ValueError("No checkpoints found in train info.")
 
+            checkpoint = None
+            if checkpoint_name is not None:
+                for cp in train_info.checkpoints:
+                    if cp.name == checkpoint_name:
+                        checkpoint = cp
+                        break
+            if checkpoint is None:
+                logger.debug(
+                    f"Provided checkpoint '{checkpoint_name}' not found. Using the last checkpoint."
+                )
+                checkpoint = train_info.checkpoints[-1]
+
+            checkpoint_name = checkpoint.name
             deploy_params = {
                 "device": device,
                 "model_source": ModelSource.CUSTOM,
                 "task_type": train_info.task_type,
-                "checkpoint_name": checkpoint_name or checkpoint.name,
+                "checkpoint_name": checkpoint_name,
                 "checkpoint_url": checkpoint.path,
             }
 
-            config_path = train_info.config_path
-            if config_path is not None:
-                deploy_params["config_url"] = config_path
+            if getattr(train_info, "config_path", None) is not None:
+                deploy_params["config_url"] = train_info.config_path
+
             if framework.framework_name == "YOLOv8":
                 deploy_params["runtime"] = RuntimeType.PYTORCH
-                
-        else:  # Experiments | Train V2
+
+        else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
             logger.debug("Deploying model from Train V2 artifacts")
-            def get_framework_from_artifacts_dir(artifacts_dir):
-                clean_path = artifacts_dir.rstrip('/')
-                parts = clean_path.split('/')
-                last_part = parts[-1]
-                framework_name = last_part.split('_', 1)[1]
-                return framework_name
+
+            def get_framework_from_artifacts_dir(artifacts_dir: str) -> str:
+                clean_path = artifacts_dir.rstrip("/")
+                parts = clean_path.split("/")
+                if not parts or "_" not in parts[-1]:
+                    raise ValueError(f"Invalid artifacts_dir format: '{artifacts_dir}'")
+                return parts[-1].split("_", 1)[1]
 
             framework_name = get_framework_from_artifacts_dir(artifacts_dir)
+            logger.debug(f"Detected framework: {framework_name}")
+
             modules = self._api.app.get_list_all_pages(
                 method="ecosystem.list",
                 data={"filter": [], "search": framework_name, "categories": ["serve"]},
                 convert_json_info_cb=lambda x: x,
             )
+            if not modules:
+                raise ValueError(
+                    f"No serve apps found for framework: '{framework_name}'"
+                )
+
             module = modules[0]
             module_id = module["id"]
+            serve_app_name = module["name"]
+            logger.debug(
+                f"Serving app delected: '{serve_app_name}'. Module ID: '{module_id}'"
+            )
 
             experiment_info = get_experiment_info_by_artifacts_dir(
                 self._api, team_id, artifacts_dir
             )
-            checkpoint_name = checkpoint_name or experiment_info.best_checkpoint
+            if not experiment_info:
+                raise ValueError(
+                    f"Failed to retrieve experiment info for artifacts_dir: '{artifacts_dir}'"
+                )
 
+            checkpoint = None
+            if checkpoint_name is not None:
+                for checkpoint_path in experiment_info.checkpoints:
+                    if get_file_name_with_ext(checkpoint_path) == checkpoint_name:
+                        checkpoint = get_file_name_with_ext(checkpoint_path)
+                        break
+            if checkpoint is None:
+                logger.debug(
+                    f"Provided checkpoint '{checkpoint_name}' not found. Using the best checkpoint."
+                )
+                checkpoint = experiment_info.best_checkpoint
+
+            checkpoint_name = checkpoint
             deploy_params = {
                 "device": device,
                 "model_source": ModelSource.CUSTOM,
@@ -1437,8 +1571,18 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "runtime": RuntimeType.PYTORCH,
             }
 
-            config = experiment_info.model_files.get("config", None)
+            config = experiment_info.model_files.get("config")
             if config is not None:
-                deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
+                deploy_params["model_files"][
+                    "config"
+                ] = f"{experiment_info.artifacts_dir}{config}"
+                logger.debug(
+                    f"Config file added: {experiment_info.artifacts_dir}{config}"
+                )
 
-        self.deploy_model_app(module_id, workspace_id, agent_id, deploy_params=deploy_params)
+        logger.info(
+            f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
+        )
+        self.deploy_model_app(
+            module_id, workspace_id, agent_id, deploy_params=deploy_params
+        )
