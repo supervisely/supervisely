@@ -697,7 +697,7 @@ class TrainApp:
             if model_files is None:
                 raise ValueError(
                     "Model files not found in model metadata. "
-                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
+                    "Please update provided models parameter to include key 'model_files' in 'meta' key."
                 )
         return models
 
