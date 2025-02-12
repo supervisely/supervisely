@@ -9,8 +9,10 @@ import requests
 from supervisely import logger
 from supervisely.api.api import Api, ApiField
 
+EXPERIMENT_INFO_FILENAME = "experiment_info.json"
 
-@dataclass(init=False)
+
+@dataclass
 class ExperimentInfo:
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
@@ -56,17 +58,6 @@ class ExperimentInfo:
     """Evaluation metrics"""
     logs: Optional[dict] = None
     """Dictionary with link and type of logger"""
-
-    def __init__(self, **kwargs):
-        field_names = set(f.name for f in fields(self.__class__))
-        missing_fields = field_names - set(kwargs.keys())
-        if missing_fields:
-            raise ValueError(
-                f"ExperimentInfo missing required arguments: '{', '.join(missing_fields)}'"
-            )
-        kwargs = {k: v for k, v in kwargs.items() if k in field_names}
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
 
 def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
@@ -137,9 +128,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
                     f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
                 )
                 return None
-            return ExperimentInfo(
-                **{k: v for k, v in response_json.items() if k in required_fields}
-            )
+            return ExperimentInfo(**response_json)
         except requests.exceptions.RequestException as e:
             logger.debug(f"Request failed for '{experiment_path}': {e}")
         except JSONDecodeError as e:
@@ -153,3 +142,72 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
 
     experiment_infos = [info for info in experiment_infos if info is not None]
     return experiment_infos
+
+
+def _fetch_experiment_data(api, team_id: int, experiment_path: str):
+    try:
+        response = api.post(
+            "file-storage.download",
+            {ApiField.TEAM_ID: team_id, ApiField.PATH: experiment_path},
+            stream=True,
+        )
+        response.raise_for_status()
+        response_json = response.json()
+        required_fields = {
+            field.name for field in fields(ExperimentInfo) if field.default is not None
+        }
+        optional_fields = {field.name for field in fields(ExperimentInfo) if field.default is None}
+
+        missing_optional_fields = optional_fields - response_json.keys()
+        if missing_optional_fields:
+            logger.debug(
+                f"Missing optional fields: {missing_optional_fields} for '{experiment_path}'"
+            )
+            for field in missing_optional_fields:
+                response_json[field] = None
+
+        missing_required_fields = required_fields - response_json.keys()
+        if missing_required_fields:
+            logger.debug(
+                f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
+            )
+            return None
+        return ExperimentInfo(**{k: v for k, v in response_json.items() if k in required_fields})
+    except requests.exceptions.RequestException as e:
+        logger.debug(f"Request failed for '{experiment_path}': {e}")
+    except JSONDecodeError as e:
+        logger.debug(f"JSON decode failed for '{experiment_path}': {e}")
+    except TypeError as e:
+        logger.error(f"TypeError for '{experiment_path}': {e}")
+    return None
+
+
+def get_experiment_info_by_artifacts_dir(
+    api: Api, team_id: int, artifacts_dir: str
+) -> Optional[ExperimentInfo]:
+    """
+    Get experiment info by artifacts directory
+
+    :param api: Supervisely API client
+    :type api: Api
+    :param team_id: Team ID
+    :type team_id: int
+    :param artifacts_dir: Path to the directory with artifacts
+    :type artifacts_dir: str
+    :return: ExperimentInfo object
+    :rtype: Optional[ExperimentInfo]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+        team_id = sly.env.team_id()
+        artifacts_dir = "/experiments/rt-detr/2021-09-30_14-45-00"
+        experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)
+    """
+    if not artifacts_dir.startswith("/experiments"):
+        raise ValueError("Artifacts directory should start with '/experiments'")
+    experiment_path = join(artifacts_dir, EXPERIMENT_INFO_FILENAME)
+    return _fetch_experiment_data(api, team_id, experiment_path)

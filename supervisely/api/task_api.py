@@ -14,6 +14,7 @@ from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
 from supervisely._utils import batched, take_with_default
+from supervisely import logger
 from supervisely.api.module_api import (
     ApiField,
     ModuleApiBase,
@@ -1331,15 +1332,16 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             timeout=timeout,
         )
 
-    def deploy_model(
+    def deploy_custom_model(
         self,
         team_id: int,
         workspace_id: int,
         artifacts_dir: str,
         checkpoint_name=None,
+        agent_id:int = None,
+        device: str = "cuda",
     ):
-
-        # WIP
+        from dataclasses import asdict
         from supervisely.nn.artifacts import (
             RITM,
             RTDETR,
@@ -1353,10 +1355,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             YOLOv5v2,
             YOLOv8,
         )
+        from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
         from supervisely.nn.utils import ModelSource, RuntimeType
 
-        # Get framework
-        if not artifacts_dir.startswith("/experiments/"):
+        # Get Framework | Train V1
+        if not artifacts_dir.startswith("/experiments"):
+            logger.debug("Deploying model from Train V1 artifacts")
             frameworks = {
                 "/detectron2": Detectron2,
                 "/mmclassification": MMClassification,
@@ -1381,23 +1385,60 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             else:
                 raise ValueError(f"Unknown framework for artifacts_dir: {artifacts_dir}")
 
-        module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
-        experiment_info = framework.get_by_artifacts_dir(artifacts_dir)
+            module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
+            train_info = framework.get_info_by_artifacts_dir(artifacts_dir.rstrip("/"), "train_info")
 
-        # Get deploy params from experiment_info
-        checkpoint_name = checkpoint_name or experiment_info["best_checkpoint"]
+            checkpoint = checkpoint_name or train_info.checkpoints[-1]
 
-        checkpoint = None
-        config = None
-        model_source = None
-        model_files = None
+            deploy_params = {
+                "device": device,
+                "model_source": ModelSource.CUSTOM,
+                "task_type": train_info.task_type,
+                "checkpoint_name": checkpoint_name or checkpoint.name,
+                "checkpoint_url": checkpoint.path,
+            }
 
-        deploy_params = {
-            "model_files": model_files,
-            "model_source": ModelSource.CUSTOM,
-            "model_info": experiment_info,
-            "device": "cuda",
-            "runtime": RuntimeType.PYTORCH,
-        }
+            config_path = train_info.config_path
+            if config_path is not None:
+                deploy_params["config_url"] = config_path
+            if framework.framework_name == "YOLOv8":
+                deploy_params["runtime"] = RuntimeType.PYTORCH
+                
+        else:  # Experiments | Train V2
+            logger.debug("Deploying model from Train V2 artifacts")
+            def get_framework_from_artifacts_dir(artifacts_dir):
+                clean_path = artifacts_dir.rstrip('/')
+                parts = clean_path.split('/')
+                last_part = parts[-1]
+                framework_name = last_part.split('_', 1)[1]
+                return framework_name
 
-        self.deploy_model_app(module_id, workspace_id, deploy_params=deploy_params)
+            framework_name = get_framework_from_artifacts_dir(artifacts_dir)
+            modules = self._api.app.get_list_all_pages(
+                method="ecosystem.list",
+                data={"filter": [], "search": framework_name, "categories": ["serve"]},
+                convert_json_info_cb=lambda x: x,
+            )
+            module = modules[0]
+            module_id = module["id"]
+
+            experiment_info = get_experiment_info_by_artifacts_dir(
+                self._api, team_id, artifacts_dir
+            )
+            checkpoint_name = checkpoint_name or experiment_info.best_checkpoint
+
+            deploy_params = {
+                "device": device,
+                "model_source": ModelSource.CUSTOM,
+                "model_files": {
+                    "checkpoint": f"{experiment_info.artifacts_dir}checkpoints/{checkpoint_name}"
+                },
+                "model_info": asdict(experiment_info),
+                "runtime": RuntimeType.PYTORCH,
+            }
+
+            config = experiment_info.model_files.get("config", None)
+            if config is not None:
+                deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
+
+        self.deploy_model_app(module_id, workspace_id, agent_id, deploy_params=deploy_params)

@@ -651,7 +651,7 @@ class BaseTrainArtifacts:
         """
         return self._available_task_types
 
-    def get_by_artifacts_dir(
+    def get_info_by_artifacts_dir(
         self,
         artifacts_dir: str,
         return_type: Literal["train_info", "experiment_info"] = "experiment_info",
