@@ -198,7 +198,7 @@ class BaseTrainArtifacts:
         :rtype: re.Pattern
         """
         return self._pattern
-    
+
     @property
     def require_runtime(self):
         """
@@ -665,7 +665,7 @@ class BaseTrainArtifacts:
     def get_info_by_artifacts_dir(
         self,
         artifacts_dir: str,
-        return_type: Literal["train_info", "experiment_info"] = "experiment_info",
+        return_type: Literal["train_info", "experiment_info"] = "train_info",
     ) -> Union[TrainInfo, ExperimentInfo, None]:
         """
         Get training info by artifacts directory.

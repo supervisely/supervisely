@@ -254,9 +254,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             print(task_status)
             # Output: finished
         """
-        status_str = self.get_info_by_id(task_id)[
-            ApiField.STATUS
-        ]  # @TODO: convert json to tuple
+        status_str = self.get_info_by_id(task_id)[ApiField.STATUS]  # @TODO: convert json to tuple
         return self.Status(status_str)
 
     def raise_for_status(self, status: Status) -> None:
@@ -269,9 +267,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`NoneType`
         """
         if status is self.Status.ERROR:
-            raise TaskFinishedWithError(
-                f"Task finished with status {str(self.Status.ERROR)}"
-            )
+            raise TaskFinishedWithError(f"Task finished with status {str(self.Status.ERROR)}")
 
     def wait(
         self,
@@ -295,9 +291,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: :class:`bool`
         """
         wait_attempts = wait_attempts or self.MAX_WAIT_ATTEMPTS
-        effective_wait_timeout = (
-            wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
-        )
+        effective_wait_timeout = wait_attempt_timeout_sec or self.WAIT_ATTEMPT_TIMEOUT_SEC
         for attempt in range(wait_attempts):
             status = self.get_status(id)
             self.raise_for_status(status)
@@ -403,9 +397,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """_convert_json_info"""
         return info
 
-    def run_dtl(
-        self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None
-    ):
+    def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None):
         """run_dtl"""
         response = self._api.post(
             "tasks.run.dtl",
@@ -595,13 +587,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             )
         """
         if app_id is not None and module_id is not None:
-            raise ValueError(
-                "Only one of the arguments (app_id or module_id) have to be defined"
-            )
+            raise ValueError("Only one of the arguments (app_id or module_id) have to be defined")
         if app_id is None and module_id is None:
-            raise ValueError(
-                "One of the arguments (app_id or module_id) have to be defined"
-            )
+            raise ValueError("One of the arguments (app_id or module_id) have to be defined")
 
         advanced_settings = {
             ApiField.LIMIT_BY_WORKSPACE: limit_by_workspace,
@@ -723,9 +711,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 path, name, hash = item
                 if hash in remote_hashes:
                     continue
-                content_dict["{}".format(idx)] = json.dumps(
-                    {"fullpath": name, "hash": hash}
-                )
+                content_dict["{}".format(idx)] = json.dumps({"fullpath": name, "hash": hash})
                 content_dict["{}-file".format(idx)] = (name, open(path, "rb"), "")
 
             if len(content_dict) > 0:
@@ -763,9 +749,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         for idx, obj in enumerate(fields):
             for key in [ApiField.FIELD, ApiField.PAYLOAD]:
                 if key not in obj:
-                    raise KeyError(
-                        "Object #{} does not have field {!r}".format(idx, key)
-                    )
+                    raise KeyError("Object #{} does not have field {!r}".format(idx, key))
         data = {ApiField.TASK_ID: task_id, ApiField.FIELDS: fields}
         resp = self._api.post("tasks.data.set", data)
         return resp.json()
@@ -841,9 +825,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             project = self._api.project.get_info_by_id(project_id, raise_error=True)
             project_name = project.name
 
-        output = {
-            ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}
-        }
+        output = {ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}}
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
@@ -1007,9 +989,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
         self._api.post("tasks.meta.update", data)
 
-    def _update_app_content(
-        self, task_id: int, data_patch: List[Dict] = None, state: Dict = None
-    ):
+    def _update_app_content(self, task_id: int, data_patch: List[Dict] = None, state: Dict = None):
         payload = {}
         if data_patch is not None and len(data_patch) > 0:
             payload[ApiField.DATA] = data_patch
@@ -1177,9 +1157,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             raise ValueError(
                 f"Invalid status value: {status}. Allowed values: {self.Status.values()}"
             )
-        self._api.post(
-            "tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status}
-        )
+        self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
 
     def set_output_experiment(self, task_id: int, experiment_info: dict) -> Dict:
         """
@@ -1350,9 +1328,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "checkpoint": Path(
                     data["artifacts_dir"], "checkpoints", checkpoint_name
                 ).as_posix(),
-                "config": Path(
-                    data["artifacts_dir"], data["model_files"]["config"]
-                ).as_posix(),
+                "config": Path(data["artifacts_dir"], data["model_files"]["config"]).as_posix(),
             },
             "model_source": "Custom models",
             "model_info": data,
@@ -1426,9 +1402,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         if not isinstance(team_id, int) or team_id <= 0:
             raise ValueError(f"team_id must be a positive integer. Received: {team_id}")
         if not isinstance(workspace_id, int) or workspace_id <= 0:
-            raise ValueError(
-                f"workspace_id must be a positive integer. Received: {workspace_id}"
-            )
+            raise ValueError(f"workspace_id must be a positive integer. Received: {workspace_id}")
         if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
             raise ValueError("artifacts_dir must be a non-empty string.")
 
@@ -1454,33 +1428,25 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             }
 
             framework_cls = next(
-                (
-                    cls
-                    for prefix, cls in frameworks.items()
-                    if artifacts_dir.startswith(prefix)
-                ),
+                (cls for prefix, cls in frameworks.items() if artifacts_dir.startswith(prefix)),
                 None,
             )
             if not framework_cls:
-                raise ValueError(
-                    f"Unsupported framework for artifacts_dir: '{artifacts_dir}'"
-                )
-                
+                raise ValueError(f"Unsupported framework for artifacts_dir: '{artifacts_dir}'")
+
             framework = framework_cls(team_id)
             if framework_cls is RITM or framework_cls is YOLOv5:
-                raise ValueError(f"{framework.framework_name} framework is not supported for deployment")
+                raise ValueError(
+                    f"{framework.framework_name} framework is not supported for deployment"
+                )
 
             logger.debug(f"Detected framework: '{framework.framework_name}'")
 
             module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
             serve_app_name = framework.serve_app_name
-            logger.debug(
-                f"Module ID fetched:' {module_id}'. App name: '{serve_app_name}'"
-            )
+            logger.debug(f"Module ID fetched:' {module_id}'. App name: '{serve_app_name}'")
 
-            train_info = framework.get_info_by_artifacts_dir(
-                artifacts_dir.rstrip("/"), "train_info"
-            )
+            train_info = framework.get_info_by_artifacts_dir(artifacts_dir.rstrip("/"))
             if not hasattr(train_info, "checkpoints") or not train_info.checkpoints:
                 raise ValueError("No checkpoints found in train info.")
 
@@ -1530,16 +1496,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 convert_json_info_cb=lambda x: x,
             )
             if not modules:
-                raise ValueError(
-                    f"No serve apps found for framework: '{framework_name}'"
-                )
+                raise ValueError(f"No serve apps found for framework: '{framework_name}'")
 
             module = modules[0]
             module_id = module["id"]
             serve_app_name = module["name"]
-            logger.debug(
-                f"Serving app delected: '{serve_app_name}'. Module ID: '{module_id}'"
-            )
+            logger.debug(f"Serving app delected: '{serve_app_name}'. Module ID: '{module_id}'")
 
             experiment_info = get_experiment_info_by_artifacts_dir(
                 self._api, team_id, artifacts_dir
@@ -1577,12 +1539,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
             config = experiment_info.model_files.get("config")
             if config is not None:
-                deploy_params["model_files"][
-                    "config"
-                ] = f"{experiment_info.artifacts_dir}{config}"
-                logger.debug(
-                    f"Config file added: {experiment_info.artifacts_dir}{config}"
-                )
+                deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
+                logger.debug(f"Config file added: {experiment_info.artifacts_dir}{config}")
 
         logger.info(
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
