@@ -717,6 +717,7 @@ class Inference:
             "device": device,
             "runtime": RuntimeType.PYTORCH,
         }
+        # TODO: add support for **kwargs (user arguments)
         self._set_model_meta_custom_model({"model_meta": model_meta})
         self._load_model(deploy_params)
 

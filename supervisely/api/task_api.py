@@ -1278,83 +1278,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
         return task_info
 
-    def deploy_from_train_session(
-        self,
-        task_id: int,
-        module_id: Optional[int] = None,
-        workspace_id: Optional[int] = None,
-        agent_id: Optional[int] = None,
-        description: Optional[str] = None,
-        params: Dict[str, Any] = None,
-        log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
-        users_ids: Optional[List[int]] = None,
-        app_version: Optional[str] = "",
-        is_branch: Optional[bool] = False,
-        task_name: Optional[str] = None,
-        restart_policy: Optional[Literal["never", "on_error"]] = "never",
-        proxy_keep_url: Optional[bool] = False,
-        redirect_requests: Optional[Dict[str, int]] = {},
-        limit_by_workspace: bool = False,
-        deploy_params_overwrite: Dict[str, Any] = None,
-        checkpoint_name: Optional[str] = None,
-        timeout: int = 100,
-    ):
-        task_info = self.get_info_by_id(task_id)
-        try:
-            data = task_info["meta"]["output"]["experiment"]["data"]
-        except KeyError:
-            raise ValueError("Task output does not contain experiment data")
-        if module_id is None:
-            slug = data["serve_app_slug"]
-            module_id = self._api.app.get_ecosystem_module_id(slug)
-        if workspace_id is None:
-            workspace_id = task_info["workspaceId"]
-        experiment_name = data["experiment_name"]
-        if deploy_params_overwrite is None:
-            deploy_params_overwrite = {}
-        if checkpoint_name is None:
-            checkpoint_name = data["best_checkpoint"]
-        if task_name is None:
-            task_name = experiment_name + f" ({checkpoint_name})"
-        if description is None:
-            description = f"""Serve from experiment
-                Experiment name:   {experiment_name}
-                Evaluation report: {data["evaluation_report_link"]}
-            """
-            while len(description) > 255:
-                description = description.rsplit("\n", 1)[0]
-        deploy_params = {
-            "model_files": {
-                "checkpoint": Path(
-                    data["artifacts_dir"], "checkpoints", checkpoint_name
-                ).as_posix(),
-                "config": Path(data["artifacts_dir"], data["model_files"]["config"]).as_posix(),
-            },
-            "model_source": "Custom models",
-            "model_info": data,
-            "device": "cuda",
-            "runtime": "PyTorch",
-        }
-        deploy_params = {**deploy_params, **deploy_params_overwrite}
-        return self.deploy_model_app(
-            module_id=module_id,
-            workspace_id=workspace_id,
-            agent_id=agent_id,
-            description=description,
-            params=params,
-            log_level=log_level,
-            users_ids=users_ids,
-            app_version=app_version,
-            is_branch=is_branch,
-            task_name=task_name,
-            restart_policy=restart_policy,
-            proxy_keep_url=proxy_keep_url,
-            redirect_requests=redirect_requests,
-            limit_by_workspace=limit_by_workspace,
-            deploy_params=deploy_params,
-            timeout=timeout,
-        )
-
     def deploy_custom_model(
         self,
         team_id: int,
@@ -1456,10 +1379,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     if cp.name == checkpoint_name:
                         checkpoint = cp
                         break
-            if checkpoint is None:
-                logger.debug(
-                    f"Provided checkpoint '{checkpoint_name}' not found. Using the last checkpoint."
-                )
+                if checkpoint is None:
+                    raise ValueError(f"Checkpoint '{checkpoint_name}' not found in train info.")
+            else:
+                logger.debug("Checkpoint name not provided. Using the last checkpoint.")
                 checkpoint = train_info.checkpoints[-1]
 
             checkpoint_name = checkpoint.name
@@ -1487,6 +1410,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     raise ValueError(f"Invalid artifacts_dir format: '{artifacts_dir}'")
                 return parts[-1].split("_", 1)[1]
 
+            # TODO: temporary solution, need to add Serve App Name into config.json
             framework_name = get_framework_from_artifacts_dir(artifacts_dir)
             logger.debug(f"Detected framework: {framework_name}")
 
@@ -1520,10 +1444,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     if get_file_name_with_ext(checkpoint_path) == checkpoint_name:
                         checkpoint = get_file_name_with_ext(checkpoint_path)
                         break
-            if checkpoint is None:
-                logger.debug(
-                    f"Provided checkpoint '{checkpoint_name}' not found. Using the best checkpoint."
-                )
+                if checkpoint is None:
+                    raise ValueError(
+                        f"Provided checkpoint '{checkpoint_name}' not found. Using the best checkpoint."
+                    )
+            else:
+                logger.debug("Checkpoint name not provided. Using the best checkpoint.")
                 checkpoint = experiment_info.best_checkpoint
 
             checkpoint_name = checkpoint
@@ -1536,6 +1462,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 "model_info": asdict(experiment_info),
                 "runtime": RuntimeType.PYTORCH,
             }
+            # TODO: add support for **kwargs
 
             config = experiment_info.model_files.get("config")
             if config is not None:
@@ -1549,7 +1476,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             module_id,
             workspace_id,
             agent_id,
-            description=f"Serve from artifacts dir: {artifacts_dir}",
+            description=f"Deployed via deploy_custom_model",
             task_name=f"{serve_app_name} ({checkpoint_name})",
             deploy_params=deploy_params,
         )
