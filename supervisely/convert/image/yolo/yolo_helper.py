@@ -679,7 +679,7 @@ def to_yolo(
         - If the input_data is a Project, the dest_dir parameters are required.
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
-    :param input_data: Supervisely project or dataset, or path to the directory with the project.
+    :param input_data: Supervisely project or dataset, or path to the directory with the project/dataset.
     :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, or :class:`str`
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
