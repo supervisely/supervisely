@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import requests
 
@@ -80,7 +80,7 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
 
         api = sly.Api.from_env()
         team_id = sly.env.team_id()
-        framework_name = "rt-detr"
+        framework_name = "RT-DETRv2"
         experiment_infos = sly.nn.training.experiments.get_experiment_infos(api, team_id, framework_name)
     """
     metadata_name = "experiment_info.json"
@@ -144,7 +144,19 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
     return experiment_infos
 
 
-def _fetch_experiment_data(api, team_id: int, experiment_path: str):
+def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[ExperimentInfo, None]:
+    """
+    Fetch experiment data from the specified path in Supervisely Team Files
+
+    :param api: Supervisely API client
+    :type api: Api
+    :param team_id: Team ID
+    :type team_id: int
+    :param experiment_path: Path to the experiment data
+    :type experiment_path: str
+    :return: ExperimentInfo object
+    :rtype: Union[ExperimentInfo, None]
+    """
     try:
         response = api.post(
             "file-storage.download",
@@ -184,7 +196,7 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str):
 
 def get_experiment_info_by_artifacts_dir(
     api: Api, team_id: int, artifacts_dir: str
-) -> Optional[ExperimentInfo]:
+) -> Union[ExperimentInfo, None]:
     """
     Get experiment info by artifacts directory
 
@@ -204,7 +216,7 @@ def get_experiment_info_by_artifacts_dir(
 
         api = sly.Api.from_env()
         team_id = sly.env.team_id()
-        artifacts_dir = "/experiments/rt-detr/2021-09-30_14-45-00"
+        artifacts_dir = "/experiments/27_Lemons (Rectangle)/265_RT-DETRv2/"
         experiment_info = sly.nn.training.experiments.get_experiment_info_by_artifacts_dir(api, team_id, artifacts_dir)
     """
     if not artifacts_dir.startswith("/experiments"):

@@ -576,7 +576,9 @@ class BaseTrainArtifacts:
         logger.debug(f"Listing time: '{format(end_time - start_time, '.6f')}' sec")
         return train_infos
 
-    def convert_train_to_experiment_info(self, train_info: TrainInfo) -> ExperimentInfo:
+    def convert_train_to_experiment_info(
+        self, train_info: TrainInfo
+    ) -> Union[ExperimentInfo, None]:
         try:
             checkpoints = []
             for chk in train_info.checkpoints:
@@ -633,8 +635,11 @@ class BaseTrainArtifacts:
             logger.debug(f"Failed to build experiment info: {e}")
             return None
 
-    def get_list_experiment_info(self, sort: Literal["desc", "asc"] = "desc") -> List[TrainInfo]:
+    def get_list_experiment_info(
+        self, sort: Literal["desc", "asc"] = "desc"
+    ) -> List[ExperimentInfo]:
         train_infos = self.get_list(sort)
+
         # Sync version
         # Uncomment for debug
         # experiment_infos = [
