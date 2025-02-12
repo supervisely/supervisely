@@ -658,7 +658,7 @@ def to_pascal_voc(
         - If the input_data is a Project, the dest_dir parameters are required.
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
-    :param input_data: Input data to convert (Project, Dataset, or path to the project directory).
+    :param input_data: Input data to convert (Project, Dataset, or path to the project/dataset directory).
     :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, or :class:`str`
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
