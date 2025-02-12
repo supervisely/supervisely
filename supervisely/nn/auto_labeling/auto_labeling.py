@@ -168,9 +168,10 @@ def object_detection(
         image_ids[i : i + batch_size] for i in range(0, len(image_ids), batch_size)
     ]
     # set inference settings
-    if inference_settings and inference_settings.get("batch_size"):
-        del inference_settings["batch_size"]
-    nn_session.set_inference_settings(inference_settings)
+    if inference_settings:
+        if inference_settings.get("batch_size"):
+            del inference_settings["batch_size"]
+        nn_session.set_inference_settings(inference_settings)
     # get project meta
     project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     # apply model to image batches
