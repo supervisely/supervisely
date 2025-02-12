@@ -2262,14 +2262,10 @@ class FileApi(ModuleApiBase):
                 res_remote_dir = remote_dir
 
             local_files = await list_files_recursively_async(local_dir)
-            remote_files = []
-            dir_parts = local_dir.strip("/").split("/")
-            for file in local_files:
-                path_parts = file.strip("/").split("/")
-                path_parts = path_parts[len(dir_parts) :]
-                remote_parts = [res_remote_dir.rstrip("/")] + path_parts
-                remote_file = "/".join(remote_parts)
-                remote_files.append(remote_file)
+            dir_prefix = local_dir.rstrip("/") + "/"
+            remote_files = [
+                res_remote_dir.rstrip("/") + "/" + file[len(dir_prefix) :] for file in local_files
+            ]
 
             await self.upload_bulk_async(
                 team_id=team_id,
