@@ -39,7 +39,7 @@ from supervisely import (
     is_production,
     logger,
 )
-from supervisely._utils import abs_url, get_filename_from_headers
+from supervisely._utils import abs_url, get_filename_from_headers, sync_call
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
@@ -1618,11 +1618,13 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory_async_fallback(
-                team_id=self.team_id,
-                local_dir=local_demo_dir,
-                remote_dir=remote_demo_dir,
-                progress_size_cb=upload_artifacts_pbar.update,
+            remote_dir = sync_call(
+                self._api.file.upload_directory_async(
+                    team_id=self.team_id,
+                    local_dir=local_demo_dir,
+                    remote_dir=remote_demo_dir,
+                    progress_size_cb=upload_artifacts_pbar.update,
+                )
             )
             self.progress_bar_main.hide()
 
@@ -1730,11 +1732,13 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory_async_fallback(
-                team_id=self.team_id,
-                local_dir=self.output_dir,
-                remote_dir=remote_artifacts_dir,
-                progress_size_cb=upload_artifacts_pbar.update,
+            remote_dir = sync_call(
+                self._api.file.upload_directory_async(
+                    team_id=self.team_id,
+                    local_dir=self.output_dir,
+                    remote_dir=remote_artifacts_dir,
+                    progress_size_cb=upload_artifacts_pbar.update,
+                )
             )
             self.progress_bar_main.hide()
 
@@ -2512,11 +2516,13 @@ class TrainApp:
             logger.debug(f"Uploading {len(export_weights)} export weights of size {size} bytes")
             logger.debug(f"Destination paths: {file_dest_paths}")
             self.progress_bar_main.show()
-            self._api.file.upload_bulk_async_fallback(
-                team_id=self.team_id,
-                src_paths=export_weights.values(),
-                dst_paths=file_dest_paths,
-                progress_cb=export_upload_main_pbar.update,
+            sync_call(
+                self._api.file.upload_bulk_async(
+                    team_id=self.team_id,
+                    src_paths=export_weights.values(),
+                    dst_paths=file_dest_paths,
+                    progress_cb=export_upload_main_pbar.update,
+                )
             )
 
         self.progress_bar_main.hide()
