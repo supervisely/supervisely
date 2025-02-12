@@ -5,6 +5,7 @@ from tqdm import tqdm
 import random
 from typing import List
 import numpy as np
+from supervisely.nn.inference import Session
 
 
 def get_supported_models() -> List[str]:
@@ -47,7 +48,7 @@ def get_supported_checkpoints(model_name: str) -> List[str]:
 
 def deploy_foundation_model(
     model_name: str, checkpoint_name: str, api: sly.Api, additional_params: dict = None
-) -> sly.nn.inference.Session:
+) -> Session:
     """
     Deploys given foundation  model from api
     """
@@ -148,7 +149,7 @@ def deploy_foundation_model(
 def object_detection(
     project_id: int,
     dataset_ids: List[int],
-    nn_session: sly.nn.inference.Session,
+    nn_session: Session,
     api: sly.Api,
     inference_settings: dict = None,
 ) -> List[sly.Annotation]:
@@ -199,7 +200,7 @@ def object_detection(
 def object_pointing(
     project_id: int,
     dataset_ids: List[int],
-    nn_session: sly.nn.inference.Session,
+    nn_session: Session,
     api: sly.Api,
     inference_settings: dict = None,
 ) -> List[sly.Annotation]:
@@ -235,7 +236,7 @@ def object_pointing(
 def instance_segmentation(
     project_id: int,
     dataset_ids: List[int],
-    nn_session: sly.nn.inference.Session,
+    nn_session: Session,
     api: sly.Api,
     inference_settings: dict,
 ) -> List[sly.Annotation]:
@@ -332,7 +333,7 @@ def instance_segmentation(
 
 
 def preview(
-    nn_session: sly.nn.inference.Session,
+    nn_session: Session,
     api: sly.Api,
     inference_settings: dict = None,
     dataset_id: int = None,
