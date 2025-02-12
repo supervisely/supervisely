@@ -474,7 +474,7 @@ def label_to_yolo_lines(
                 max_kpts_count=max_kpts_count,
             )
         else:
-            raise ValueError(f"Unsupported geometry type: {type(label.obj_class.geometry_type)}")
+            raise ValueError(f"Unsupported task type: {task_type}")
 
         if yolo_line is not None:
             lines.append(yolo_line)
