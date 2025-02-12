@@ -5,12 +5,14 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import io
 import json
 import re
 import urllib.parse
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from datetime import datetime
 from functools import partial
 from math import ceil
@@ -76,6 +78,7 @@ from supervisely.project.project_type import (
 from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
+API_DEFAULT_PER_PAGE = 500
 
 
 class ImageInfo(NamedTuple):
@@ -103,7 +106,8 @@ class ImageInfo(NamedTuple):
             meta={},
             path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
             full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
-            tags=[]
+            tags=[],
+            created_by='admin'
         )
     """
 
@@ -148,7 +152,13 @@ class ImageInfo(NamedTuple):
     #: :class:`str`: Time of last image update. e.g. "2019-02-22T14:59:53.381Z".
     updated_at: str
 
-    #: :class:`dict`: Custom additional image info.
+    #: :class:`dict`: Custom additional image info that contain image technical and/or user-generated data.
+    #: To set custom sort parameter for image, you can do the follwoing:
+    #: 1. With the uploading use `add_custom_sort` context manager to set the key name of meta object that will be used for custom sorting.
+    #: 2. Before uploading add value to meta dict with method `update_custom_sort`
+    #: 3. Before uploading add key-value pair with key `customSort` to meta dict, image info file or meta file.
+    #: 4. After uploading `set_custom_sort` method to set custom sort value for image.
+    #: e.g. {'my-key':'a', 'my-key: "b", "customSort": "c"}.
     meta: dict
 
     #: :class:`str`: Relative storage URL to image. e.g.
@@ -249,12 +259,62 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         return "ImageInfo"
 
+    def _add_custom_sort(self, meta: dict, name: Optional[str] = None) -> dict:
+        """
+        Add `customSort` key with value to meta dict based on the `sort_by` attribute of `ImageApi` object:
+         - `sort_by` attribute is set by `add_custom_sort` context manager and available for the duration of the context.
+         - `sort_by` attribute is used to set the key name of meta object that will "link" its value to the custom sorting.
+
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
+        :type meta: dict
+        :param name: Name of the image. Used for improved debug logging.
+        :type name: str, optional
+        :return: Updated meta.
+        :rtype: dict
+        """
+        sort_value = meta.get(self.sort_by, None)
+        if sort_value:
+            meta[ApiField.CUSTOM_SORT] = str(sort_value)
+            message = f"Custom sorting applied with key '{self.sort_by}' and value '{sort_value}'."
+        else:
+            message = f"Custom sorting will not be applied. Key '{self.sort_by}' not found in meta."
+        if name:
+            message = f"Image '{name}': {message}"
+        logger.debug(message)
+        return meta
+
+    @contextmanager
+    def add_custom_sort(self, key: str):
+        """
+        Use this context manager to set the key name of meta object that will be used for custom sorting.
+        This context manager allows you to set the `sort_by` attribute of ImageApi object for the duration of the context, then delete it.
+        If nested functions support this functionality, each image they process will automatically receive a custom sorting parameter based on the available meta object.
+
+        :param key: It is a key name of meta object that will be used for sorting.
+        :type key: str
+        """
+        # pylint: disable=access-member-before-definition
+        if hasattr(self, "sort_by") and self.sort_by != key:
+            raise AttributeError(
+                f"Attribute 'sort_by' already exists and has different value: {self.sort_by}"
+            )
+        # pylint: enable=access-member-before-definition
+        self.sort_by = key
+        self.sort_by_context_counter = getattr(self, "sort_by_context_counter", 0) + 1
+        try:
+            yield
+        finally:
+            self.sort_by_context_counter -= 1
+            if self.sort_by_context_counter == 0:
+                del self.sort_by
+                del self.sort_by_context_counter
+
     def get_list_generator(
         self,
         dataset_id: int = None,
         filters: Optional[List[Dict[str, str]]] = None,
-        sort: Optional[str] = "id",
-        sort_order: Optional[str] = "asc",
+        sort: Optional[str] = "id",  #! Does not work with pagination mode 'token'
+        sort_order: Optional[str] = "asc",  #! Does not work with pagination mode 'token'
         limit: Optional[int] = None,
         force_metadata_for_links: Optional[bool] = False,
         batch_size: Optional[int] = None,
@@ -267,7 +327,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
-        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}
+        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt', `customSort`}
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
@@ -331,6 +391,7 @@ class ImageApi(RemoveableBulkModuleApi):
         project_id: Optional[int] = None,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
+        recursive: Optional[bool] = False,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -339,7 +400,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
-        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}
+        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt', `customSort`}
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
@@ -355,6 +416,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type only_labelled: bool, optional
         :param fields: List of fields to return. If None, returns all fields.
         :type fields: List[str], optional
+        :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
+        :type recursive: bool, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -414,6 +477,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.RECURSIVE: recursive,
         }
         if only_labelled:
             data[ApiField.FILTERS] = [
@@ -455,7 +519,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: :class:`int`
         :param filters: List of params to sort output Images.
         :type filters: :class:`List[Dict]`, optional
-        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt'}.
+        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt', 'customSort'}.
         :type sort: :class:`str`, optional
         :param sort_order: Sort order. One of {'asc' (default), 'desc'}
         :type sort_order: :class:`str`, optional
@@ -968,7 +1032,10 @@ class ImageApi(RemoveableBulkModuleApi):
         return results
 
     def check_existing_links(
-        self, links: List[str], progress_cb: Optional[Union[tqdm, Callable]] = None
+        self,
+        links: List[str],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        team_id: Optional[int] = None,
     ) -> List[str]:
         """
         Checks existing links for Images.
@@ -977,6 +1044,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type links: List[str]
         :param progress_cb: Function for tracking progress of checking.
         :type progress_cb: tqdm or callable, optional
+        :param team_id: Team ID in Supervisely (will be used to get remote storage settings).
+        :type team_id: int
         :return: List of existing links
         :rtype: List[str]
         """
@@ -984,9 +1053,9 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(links) == 0:
             return []
 
-        def _is_image_available(url, progress_cb=None):
+        def _is_image_available(url, team_id, progress_cb=None):
             if self._api.remote_storage.is_bucket_url(url):
-                response = self._api.remote_storage.is_path_exist(url)
+                response = self._api.remote_storage.is_path_exist(url, team_id)
                 result = url if response else None
             else:
                 response = requests.head(url)
@@ -995,7 +1064,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 progress_cb(1)
             return result
 
-        _is_image_available_with_progress = partial(_is_image_available, progress_cb=progress_cb)
+        _is_image_available_with_progress = partial(
+            _is_image_available, team_id=team_id, progress_cb=progress_cb
+        )
 
         with ThreadPoolExecutor(max_workers=20) as executor:
             results = list(executor.map(_is_image_available_with_progress, links))
@@ -1157,13 +1228,17 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Image with given name from given local path to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
         :type name: str
         :param path: Local Image path.
         :type path: str
-        :param meta: Image metadata.
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
         :param validate_meta: If True, validates provided meta with saved JSON schema.
         :type validate_meta: bool, optional
@@ -1184,6 +1259,12 @@ class ImageApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg")
+
+            # Add custom sort parameter for image
+            img_meta = {'my-key':'a'}
+            with api.image.add_custom_sort(key="my-key"):
+                img_info = api.image.upload_path(dataset_id, name="7777.jpeg", path="/home/admin/Downloads/7777.jpeg", meta=img_meta)
+
         """
         metas = None if meta is None else [meta]
         return self.upload_paths(
@@ -1211,6 +1292,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Images with given names from given local path to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: List of Images names with extension.
@@ -1219,7 +1304,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type paths: List[str]
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
-        :param metas: Images metadata.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
@@ -1243,7 +1328,12 @@ class ImageApi(RemoveableBulkModuleApi):
             img_names = ["7777.jpeg", "8888.jpeg", "9999.jpeg"]
             image_paths = ["/home/admin/Downloads/img/770918.jpeg", "/home/admin/Downloads/img/770919.jpeg", "/home/admin/Downloads/img/770920.jpeg"]
 
-            img_infos = api.image.upload_path(dataset_id, names=img_names, paths=img_paths)
+            img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths)
+
+            # Add custom sort parameter for images
+            img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+            with api.image.add_custom_sort(key="my-key"):
+                img_infos = api.image.upload_paths(dataset_id, names=img_names, paths=img_paths, metas=img_metas)
         """
 
         def path_to_bytes_stream(path):
@@ -1270,13 +1360,17 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload given Image in numpy format with given name to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
         :type name: str
         :param img: image in RGB format(numpy matrix)
         :type img: np.ndarray
-        :param meta: Image metadata.
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
@@ -1292,6 +1386,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_np = sly.image.read("/home/admin/Downloads/7777.jpeg")
             img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np)
+
+            # Add custom sort parameter for image
+            img_meta = {'my-key':'a'}
+            with api.image.add_custom_sort(key="my-key"):
+                img_info = api.image.upload_np(dataset_id, name="7777.jpeg", img=img_np, meta=img_meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_nps(dataset_id, [name], [img], metas=metas)[0]
@@ -1308,6 +1407,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload given Images in numpy format with given names to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Images names with extension.
@@ -1316,7 +1419,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type imgs: List[np.ndarray]
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
-        :param metas: Images metadata.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: List[dict], optional
         :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
         :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
@@ -1340,6 +1443,11 @@ class ImageApi(RemoveableBulkModuleApi):
             img_nps = [img_np_1, img_np_2, img_np_3]
 
             img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps)
+
+            # Add custom sort parameter for images
+            img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+            with api.image.add_custom_sort(key="my-key"):
+                img_infos = api.image.upload_nps(dataset_id, names=img_names, imgs=img_nps, metas=img_metas)
         """
 
         def img_to_bytes_stream(item):
@@ -1372,13 +1480,17 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Image from given link to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
         :type name: str
         :param link: Link to Image.
         :type link: str
-        :param meta: Image metadata.
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
         :param force_metadata_for_links: Calculate metadata for link. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
@@ -1398,6 +1510,11 @@ class ImageApi(RemoveableBulkModuleApi):
             img_link = 'https://m.media-amazon.com/images/M/MV5BMTYwOTEwNjAzMl5BMl5BanBnXkFtZTcwODc5MTUwMw@@._V1_.jpg'
 
             img_info = api.image.upload_link(dataset_id, img_name, img_link)
+
+            # Add custom sort parameter for image
+            img_meta = {"my-key": "a"}
+            with api.image.add_custom_sort(key="my-key"):
+                img_info = api.image.upload_link(dataset_id, img_name, img_link, meta=img_meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_links(
@@ -1423,6 +1540,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Uploads Images from given links to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Images names with extension.
@@ -1431,7 +1552,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type links: List[str]
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
-        :param metas: Images metadata.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: List[dict], optional
         :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
@@ -1457,6 +1578,11 @@ class ImageApi(RemoveableBulkModuleApi):
                          'https://m.media-amazon.com/images/M/MV5BNjQ3NWNlNmQtMTE5ZS00MDdmLTlkZjUtZTBlM2UxMGFiMTU3XkEyXkFqcGdeQXVyNjUwNzk3NDc@._V1_.jpg']
 
             img_infos = api.image.upload_links(dataset_id, img_names, img_links)
+
+            # Add custom sort parameter for images
+            img_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+            with api.image.add_custom_sort(key="my-key"):
+                img_infos = api.image.upload_links(dataset_id, names=img_names, links=img_links, metas=img_metas)
         """
         return self._upload_bulk_add(
             lambda item: (ApiField.LINK, item),
@@ -1477,13 +1603,17 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image from given hash to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
         :type name: str
         :param hash: Image hash.
         :type hash: str
-        :param meta: Image metadata.
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
@@ -1525,6 +1655,14 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
             #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
             # ]
+
+            # Add custom sort parameter for image
+            new_dataset_id = 452985
+            im_info = api.image.get_info_by_id(193940090)
+            print(im_info.meta)
+            # Output: {'my-key':'a'}
+            with api.image.add_custom_sort(key="my-key"):
+                img_info = api.image.upload_hash(new_dataset_id, name=im_info.name, hash=im_info.hash, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_hashes(dataset_id, [name], [hash], metas=metas)[0]
@@ -1546,6 +1684,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload images from given hashes to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Images names with extension.
@@ -1554,7 +1696,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
-        :param metas: Images metadata.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: List[dict], optional
         :param batch_size: Number of images to upload in one batch.
         :type batch_size: int, optional
@@ -1598,6 +1740,12 @@ class ImageApi(RemoveableBulkModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T11:59:07.444Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T11:59:07.644Z", "level": "info"}
+
+            # Add custom sort parameter for images
+            new_dataset_id = 452985
+            new_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+            with api.image.add_custom_sort(key="my-key"):
+                img_infos = api.image.upload_hashes(new_dataset_id, names=names, hashes=hashes, metas=new_metas)
         """
         return self._upload_bulk_add(
             lambda item: (ApiField.HASH, item),
@@ -1620,13 +1768,17 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Image by ID to Dataset.
 
+        If you include `meta` during the upload, you can add a custom sort parameter for image.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
         :param name: Image name with extension.
         :type name: str
         :param id: Source image ID in Supervisely.
         :type id: int
-        :param meta: Image metadata.
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
         :return: Information about Image. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ImageInfo`
@@ -1668,6 +1820,14 @@ class ImageApi(RemoveableBulkModuleApi):
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
             #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
             # ]
+
+            # Add custom sort parameter for image
+            new_dataset_id = 452985
+            im_info = api.image.get_info_by_id(193940090)
+            print(im_info.meta)
+            # Output: {"my-key": "a"}
+            with api.image.add_custom_sort(key="my-key"):
+                img_info = api.image.upload_id(new_dataset_id, name=im_info.name, id=im_info.id, meta=im_info.meta)
         """
         metas = None if meta is None else [meta]
         return self.upload_ids(dataset_id, [name], [id], metas=metas)[0]
@@ -1688,6 +1848,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload Images by IDs to Dataset.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Destination Dataset ID in Supervisely.
         :type dataset_id: int
         :param names: Source images names with extension.
@@ -1696,7 +1860,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type ids: List[int]
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
-        :param metas: Images metadata.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: List[dict], optional
         :param batch_size: Number of images to upload in one batch.
         :type batch_size: int, optional
@@ -1739,6 +1903,12 @@ class ImageApi(RemoveableBulkModuleApi):
             # Output:
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 0, "total": 10, "timestamp": "2021-03-16T12:31:36.550Z", "level": "info"}
             # {"message": "progress", "event_type": "EventType.PROGRESS", "subtask": "Images downloaded: ", "current": 10, "total": 10, "timestamp": "2021-03-16T12:31:37.119Z", "level": "info"}
+
+            # Add custom sort parameter for images
+            new_dataset_id = 452985
+            new_metas = [{'my-key':'a'}, {'my-key':'b'}, {'my-key':'c'}]
+            with api.image.add_custom_sort(key="my-key"):
+                img_infos = api.image.upload_ids(new_dataset_id, names=names, ids=ids, metas=new_metas)
         """
         if metas is None:
             metas = [{}] * len(names)
@@ -1868,6 +2038,8 @@ class ImageApi(RemoveableBulkModuleApi):
             for name, item, meta in zip(names, items, metas):
                 item_tuple = func_item_to_kv(item)
                 image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
+                if hasattr(self, "sort_by") and self.sort_by is not None:
+                    meta = self._add_custom_sort(meta, name)
                 if len(meta) != 0 and type(meta) == dict:
                     image_data[ApiField.META] = meta
                 images.append(image_data)
@@ -2743,7 +2915,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :param id: Image ID in Supervisely.
         :type id: int
-        :param meta: Image metadata.
+        :param meta: Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict
         :raises: :class:`TypeError` if meta type is not dict
         :return: Image information in dict format with new meta
@@ -2794,7 +2966,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type name: str, optional
         :param description: New Image description.
         :type description: str, optional
-        :param meta: New Image metadata.
+        :param meta: New Image metadata. Custom additional image info that contain image technical and/or user-generated data.
         :type meta: dict, optional
         :return_json: If True, return response in JSON format, otherwise convert it ImageInfo object.
             This parameter is only added for backward compatibility for update_meta method.
@@ -3137,6 +3309,10 @@ class ImageApi(RemoveableBulkModuleApi):
         Uploads images to Supervisely and adds a tag to them.
         At least one of `paths` or `links` must be provided.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param tag_name: Tag name in Supervisely.
@@ -3147,7 +3323,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type group_name: str
         :param paths: List of paths to images.
         :type paths: List[str]
-        :param metas: List of dictionaries which adds a customizable meta for every image provided in `paths` parameter.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: Optional[List[Dict]]
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: Optional[Union[tqdm, Callable]]
@@ -3190,6 +3366,10 @@ class ImageApi(RemoveableBulkModuleApi):
 
             image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths)
 
+            # Add custom sort parameter for images
+            metas = [{'my-key':'a'}, {'my-key':'b'}]
+            with api.image.add_custom_sort(key="my-key"):
+                image_infos = api.image.upload_multiview_images(dataset_id, group_name, paths, metas)
         """
 
         if paths is None and links is None:
@@ -3389,13 +3569,17 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Upload medical 2D images (DICOM) to Supervisely and group them by specified or default tag.
 
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
         :param paths: List of paths to images.
         :type paths: List[str]
         :param group_tag_name: Group name. All images will be assigned by tag with this group name. If `group_tag_name` is None, the images will be grouped by one of the default tags.
         :type group_tag_name: str, optional
-        :param metas: List of dictionaries which adds a customizable meta for every image provided in `paths` parameter.
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
         :type metas: List[Dict], optional
         :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
@@ -3431,6 +3615,10 @@ class ImageApi(RemoveableBulkModuleApi):
             pbar = tqdm(desc="Uploading images", total=len(paths))
             image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
 
+            # Add custom sort parameter for images
+            metas = [{'my-key':'a'}, {'my-key':'b'}]
+            with api.image.add_custom_sort(key="my-key"):
+                image_infos = api.image.upload_medical_images(dataset_id, paths, group_tag_name, metas)
         """
 
         if metas is None:
@@ -3702,6 +3890,51 @@ class ImageApi(RemoveableBulkModuleApi):
         data = {ApiField.IMAGES: images_list, ApiField.CLEAR_LOCAL_DATA_SOURCE: True}
         r = self._api.post("images.update.links", data)
         return r.json()
+
+    def set_custom_sort(
+        self,
+        id: int,
+        sort_value: str,
+    ) -> Dict[str, Any]:
+        """
+        Sets custom sort value for image with given ID.
+
+        :param id: Image ID in Supervisely.
+        :type id: int
+        :param sort_value: Sort value.
+        :type sort_value: str
+        :return: json-encoded content of a response.
+        :rtype: Dict[str, Any]
+        """
+        return self.set_custom_sort_bulk([id], [sort_value])
+
+    def set_custom_sort_bulk(
+        self,
+        ids: List[int],
+        sort_values: List[str],
+    ) -> Dict[str, Any]:
+        """
+        Sets custom sort values for images with given IDs.
+
+        :param ids: Image IDs in Supervisely.
+        :type ids: List[int]
+        :param sort_values: List of custom sort values that will be set for images. It is stored as a key `customSort` value in the image `meta`.
+        :type sort_values: List[str]
+        :return: json-encoded content of a response.
+        :rtype: Dict[str, Any]
+        """
+        if len(ids) != len(sort_values):
+            raise ValueError(
+                f"Length of 'ids' and 'sort_values' is not equal, {len(ids)} != {len(sort_values)}."
+            )
+        data = {
+            ApiField.IMAGES: [
+                {ApiField.ID: id, ApiField.CUSTOM_SORT: sort_value}
+                for id, sort_value in zip(ids, sort_values)
+            ]
+        }
+        response = self._api.post("images.bulk.set-custom-sort", data)
+        return response.json()
 
     async def _download_async(
         self,
@@ -4235,26 +4468,26 @@ class ImageApi(RemoveableBulkModuleApi):
                 json=json_body,
                 headers=headers,
             )
-        decoder = MultipartDecoder.from_response(response)
-        for part in decoder.parts:
-            content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
-            # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
-            # The regex has 2 capture group: one for the prefix and one for the actual name value.
-            img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
-            if check_hash:
-                hhash = part.headers.get("x-content-checksum-sha256", None)
-                if hhash is not None:
-                    downloaded_bytes_hash = get_bytes_hash(part)
-                    if hhash != downloaded_bytes_hash:
-                        raise RuntimeError(
-                            f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
-                        )
-            if progress_cb is not None and progress_cb_type == "number":
-                progress_cb(1)
-            elif progress_cb is not None and progress_cb_type == "size":
-                progress_cb(len(part.content))
+            decoder = MultipartDecoder.from_response(response)
+            for part in decoder.parts:
+                content_utf8 = part.headers[b"Content-Disposition"].decode("utf-8")
+                # Find name="1245" preceded by a whitespace, semicolon or beginning of line.
+                # The regex has 2 capture group: one for the prefix and one for the actual name value.
+                img_id = int(re.findall(r'(^|[\s;])name="(\d*)"', content_utf8)[0][1])
+                if check_hash:
+                    hhash = part.headers.get("x-content-checksum-sha256", None)
+                    if hhash is not None:
+                        downloaded_bytes_hash = get_bytes_hash(part)
+                        if hhash != downloaded_bytes_hash:
+                            raise RuntimeError(
+                                f"Downloaded hash of image with ID:{img_id} does not match the expected hash: {downloaded_bytes_hash} != {hhash}"
+                            )
+                if progress_cb is not None and progress_cb_type == "number":
+                    progress_cb(1)
+                elif progress_cb is not None and progress_cb_type == "size":
+                    progress_cb(len(part.content))
 
-            yield img_id, part.content
+                yield img_id, part.content
 
     async def get_list_generator_async(
         self,
@@ -4265,7 +4498,7 @@ class ImageApi(RemoveableBulkModuleApi):
         force_metadata_for_links: Optional[bool] = True,
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
-        per_page: Optional[int] = 500,
+        per_page: Optional[int] = None,
         semaphore: Optional[List[asyncio.Semaphore]] = None,
         **kwargs,
     ) -> AsyncGenerator[List[ImageInfo]]:
@@ -4276,9 +4509,9 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param filters: Filters for images.
         :type filters: List[Dict[str, str]], optional
-        :param sort: Sort images by field.
+        :param sort: Field name to sort. One of {'id' (default), 'name', 'description', 'labelsCount', 'createdAt', 'updatedAt', 'customSort'}.
         :type sort: str, optional
-        :param sort_order: Sort order for images.
+        :param sort_order: Sort order for images. One of {'asc' (default), 'desc'}
         :type sort_order: str, optional
         :param force_metadata_for_links: If True, forces metadata for links.
         :type force_metadata_for_links: bool, optional
@@ -4315,6 +4548,26 @@ class ImageApi(RemoveableBulkModuleApi):
         if dataset_info is None:
             dataset_info = self._api.dataset.get_info_by_id(dataset_id, raise_error=True)
 
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        if per_page is None:
+            async with semaphore:
+                # optimized request to get perPage value that predefined on Supervisely instance
+                response = await self._api.post_async(
+                    method,
+                    {
+                        ApiField.DATASET_ID: dataset_info.id,
+                        ApiField.FIELDS: [ApiField.ID, ApiField.PATH_ORIGINAL],
+                        ApiField.FILTER: [
+                            {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "=", ApiField.VALUE: 1}
+                        ],
+                        ApiField.FORCE_METADATA_FOR_LINKS: False,
+                    },
+                )
+                response_json = response.json()
+            per_page = response_json.get("perPage", API_DEFAULT_PER_PAGE)
+
         total_pages = ceil(dataset_info.items_count / per_page)
 
         data = {
@@ -4341,8 +4594,21 @@ class ImageApi(RemoveableBulkModuleApi):
                 }
             ]
 
-        if semaphore is None:
-            semaphore = self._api.get_default_semaphore()
-
         async for page in self.get_list_page_generator_async(method, data, total_pages, semaphore):
             yield page
+
+    @staticmethod
+    def update_custom_sort(meta: Dict[str, Any], custom_sort: str) -> Dict[str, Any]:
+        """
+        Updates a copy of the meta dictionary with a new custom sort value.
+
+        :param meta: Image meta dictionary.
+        :type meta: Dict[str, Any]
+        :param custom_sort: Custom sort value.
+        :type custom_sort: str
+        :return: Updated meta dictionary.
+        :rtype: Dict[str, Any]
+        """
+        meta_copy = copy.deepcopy(meta)
+        meta_copy[ApiField.CUSTOM_SORT] = custom_sort
+        return meta_copy

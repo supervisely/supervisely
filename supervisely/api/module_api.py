@@ -3,7 +3,16 @@ import asyncio
 from collections import namedtuple
 from copy import deepcopy
 from math import ceil
-from typing import TYPE_CHECKING, Any, AsyncGenerator, List, NamedTuple, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 import requests
 
@@ -602,6 +611,16 @@ class ApiField:
     """"""
     WITH_SHARED = "withShared"
     """"""
+    USE_DIRECT_PROGRESS_MESSAGES = "useDirectProgressMessages"
+    """"""
+    EXTRA_FIELDS = "extraFields"
+    """"""
+    CUSTOM_SORT = "customSort"
+    """"""
+    GROUP_ID = "groupId"
+    """"""
+    EXPERIMENT = "experiment"
+    """"""
 
 
 def _get_single_item(items):
@@ -856,6 +875,29 @@ class ModuleApiBase(_JsonConvertibleModule):
                 else:
                     raise RuntimeError("Can not parse field {!r}".format(field_name))
             return self.InfoType(*field_values)
+
+    @classmethod
+    def convert_info_to_json(cls, info: NamedTuple) -> Dict:
+        """_convert_info_to_json"""
+
+        def _create_nested_dict(keys, value):
+            if len(keys) == 1:
+                return {keys[0]: value}
+            else:
+                return {keys[0]: _create_nested_dict(keys[1:], value)}
+
+        json_info = {}
+        for field_name, value in zip(cls.info_sequence(), info):
+            if type(field_name) is str:
+                json_info[field_name] = value
+            elif isinstance(field_name, tuple):
+                if len(field_name[0]) == 0:
+                    json_info[field_name[1]] = value
+                else:
+                    json_info.update(_create_nested_dict(field_name[0], value))
+            else:
+                raise RuntimeError("Can not parse field {!r}".format(field_name))
+        return json_info
 
     def _get_response_by_id(self, id, method, id_field, fields=None):
         """_get_response_by_id"""

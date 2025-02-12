@@ -670,6 +670,56 @@ class Inference:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
 
+    def load_custom_checkpoint(self, model_files: dict, model_meta: dict, device: str = "cuda"):
+        """
+        Loads local custom model checkpoint.
+
+        :param: model_files: dict with paths to model files
+        :type: model_files: dict
+        :param: model_meta: dict with model meta
+        :type: model_meta: dict
+        :param: device: device to load model on
+        :type: device: str
+        :return: None
+        :rtype: None
+
+        :Usage Example:
+
+         .. code-block:: python
+
+            model_files = {
+                "checkpoint": "supervisely_integration/serve/best.pth",
+                "config": "supervisely_integration/serve/model_config.yml",
+            }
+            model_meta = sly.json.load_json_file("model_meta.json")
+
+            model.load_custom_checkpoint(model_files, model_meta)
+        """
+
+        checkpoint = model_files.get("checkpoint")
+        if checkpoint is None:
+            raise ValueError("Model checkpoint is not provided")
+        checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
+
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=checkpoint_name,
+            model_name=None,
+            architecture=None,
+            checkpoint_url=None,
+            custom_checkpoint_path=None,
+            model_source=ModelSource.CUSTOM,
+        )
+
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": model_files,
+            "model_info": {},
+            "device": device,
+            "runtime": RuntimeType.PYTORCH,
+        }
+        self._set_model_meta_custom_model({"model_meta": model_meta})
+        self._load_model(deploy_params)
+
     def _load_model_headless(
         self,
         model_files: dict,
@@ -958,6 +1008,47 @@ class Inference:
             return self._inference_batched_wrapper(source, settings)
         else:
             return self._inference_one_by_one_wrapper(source, settings)
+
+    def inference(
+        self,
+        source: Union[str, int, np.ndarray, List[str], List[int], List[np.ndarray]],
+        settings: dict = None,
+    ) -> Union[Annotation, List[Annotation], dict, List[dict]]:
+        """
+        Inference method for images. Provide image path or numpy array of image.
+
+        :param: source: image path,image id, numpy array of image or list of image paths, image ids or numpy arrays
+        :type: source: Union[str, int, np.ndarray, List[str], List[int], List[np.ndarray]]
+        :param: settings: inference settings
+        :type: settings: dict
+        :return: annotation or list of annotations
+        :rtype: Union[Annotation, List[Annotation], dict, List[dict]]
+
+        :Usage Example:
+
+            .. code-block:: python
+
+            image_path = "/root/projects/demo/img/sample.jpg"
+            ann = model.inference(image_path)
+        """
+        input_is_list = True
+        if not isinstance(source, list):
+            input_is_list = False
+            source = [source]
+
+        if settings is None:
+            settings = self._get_inference_settings({})
+
+        if isinstance(source[0], int):
+            ann_jsons = self._inference_batch_ids(
+                self.api, {"batch_ids": source, "settings": settings}
+            )
+            anns = [Annotation.from_json(ann_json, self.model_meta) for ann_json in ann_jsons]
+        else:
+            anns, _ = self._inference_auto(source, settings)
+        if not input_is_list:
+            return anns[0]
+        return anns
 
     def _inference_batched_wrapper(
         self,
@@ -2252,6 +2343,25 @@ class Inference:
     def is_model_deployed(self):
         return self._model_served
 
+    def schedule_task(self, func, *args, **kwargs):
+        inference_request_uuid = kwargs.get("inference_request_uuid", None)
+        if inference_request_uuid is None:
+            self._executor.submit(func, *args, **kwargs)
+        else:
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                func,
+                *args,
+                **kwargs,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+        logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
+
     def serve(self):
         if not self._use_gui:
             Progress("Deploying model ...", 1)
@@ -2319,6 +2429,9 @@ class Inference:
             Progress("Model deployed", 1).iter_done_report()
         else:
             autostart_func()
+
+        self.cache.add_cache_endpoint(server)
+        self.cache.add_cache_files_endpoint(server)
 
         @server.post(f"/get_session_info")
         @self._check_serve_before_call
@@ -2632,6 +2745,7 @@ class Inference:
 
             # Ger rid of `pending_results` to less response size
             inference_request["pending_results"] = []
+            inference_request.pop("lock", None)
             return inference_request
 
         @server.post(f"/pop_inference_results")

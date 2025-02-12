@@ -1,6 +1,6 @@
 import os
 from collections import defaultdict
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 
 from supervisely import ProjectMeta, generate_free_name, is_development, logger
 from supervisely.api.api import Api, ApiContext
@@ -12,6 +12,18 @@ from supervisely.project.project_settings import LabelingInterface
 
 
 class MultiViewImageConverter(ImageConverter):
+
+    def __init__(
+            self,
+            input_data: str,
+            labeling_interface: Optional[Union[LabelingInterface, str]],
+            upload_as_links: bool,
+            remote_files_map: Optional[Dict[str, str]] = None,
+    ):
+        super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
+
+        self._supports_links = True
+        self._force_shape_for_links = self.upload_as_links
 
     def __str__(self):
         return AvailableImageConverters.MULTI_VIEW
@@ -79,13 +91,16 @@ class MultiViewImageConverter(ImageConverter):
                     logger.warn(f"Image '{name}' already exists. Renamed to '{new_name}'.")
                     os.rename(image, os.path.join(group_path, new_name))
                     image = os.path.join(group_path, new_name)
+                if self._upload_as_links:
+                    image = self.remote_files_map.get(image, image)
                 images.append(image)
 
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
+                kwarg = {"links": images} if self.upload_as_links else {"paths": images}
                 api.image.upload_multiview_images(
-                    dataset.id, group_name, images, progress_cb=progress_cb
+                    dataset.id, group_name, **kwarg, progress_cb=progress_cb
                 )
 
         if log_progress:

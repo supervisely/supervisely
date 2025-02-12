@@ -3352,8 +3352,9 @@ class Project:
             existing_hashes = api.image.check_existing_hashes(
                 list(set([inf.hash for inf in image_infos if inf.hash and not inf.link]))
             )
+            workspace_info = api.workspace.get_info_by_id(workspace_id)
             existing_links = api.image.check_existing_links(
-                list(set([inf.link for inf in image_infos if inf.link]))
+                list(set([inf.link for inf in image_infos if inf.link])), team_id=workspace_info.team_id
             )
         image_infos = sorted(image_infos, key=lambda info: info.link is not None)
 
@@ -3544,6 +3545,11 @@ class Project:
         """
         Uploads project to Supervisely from the given directory.
 
+        If you have a metadata.json files in the project directory for images, you will be able to upload images with added custom sort parameter.
+        To do this, use context manager :func:`api.image.add_custom_sort` with the desired key name from the metadata.json file which will be used for sorting.
+        More about project struture: https://developer.supervisely.com/getting-started/supervisely-annotation-format/project-structure#project-structure-example
+        Refer to the example section for usage details.
+
         :param dir: Path to project directory.
         :type dir: :class:`str`
         :param api: Supervisely API address and token.
@@ -3582,6 +3588,18 @@ class Project:
                 workspace_id=45,
                 project_name="My Project"
             )
+
+            # Upload project with added custom sort order
+            # This context manager processes every image and adds a custom sort order
+            # if `meta` is present in the image info file or image meta file.
+            # Otherwise, it will be uploaded without a custom sort order.
+            with api.image.add_custom_sort(key="key_name"):
+                project_id, project_name = sly.Project.upload(
+                    project_directory,
+                    api,
+                    workspace_id=45,
+                    project_name="My Project"
+                )
         """
         return upload_project(
             dir=dir,
@@ -4136,12 +4154,16 @@ def upload_project(
 
                 if os.path.isfile(img_info_path):
                     img_infos.append(ds_fs.get_image_info(item_name=item_name))
+                else:
+                    img_infos.append(None)
 
             img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
             metas = [{} for _ in names]
 
-            if img_paths == []:
+            img_infos_count = sum(1 for item in img_infos if item is not None)
+
+            if len(img_paths) == 0 and img_infos_count == 0:
                 # Dataset is empty
                 continue
 
@@ -4162,17 +4184,31 @@ def upload_project(
                     total=len(names),
                 )
 
+            if img_infos_count != 0:
+                merged_metas = []
+                for img_info, meta in zip(img_infos, metas):
+                    if img_info is None:
+                        merged_metas.append(meta)
+                        continue
+                    merged_meta = {**(img_info.meta or {}), **meta}
+                    merged_metas.append(merged_meta)
+                metas = merged_metas
+
             if len(img_paths) != 0:
                 uploaded_img_infos = api.image.upload_paths(
                     dataset.id, names, img_paths, ds_progress, metas=metas
                 )
-            elif len(img_paths) == 0 and len(img_infos) != 0:
+            elif img_infos_count != 0:
+                if img_infos_count != len(names):
+                    raise ValueError(
+                        f"Cannot upload Project: image info files count ({img_infos_count}) doesn't match with images count ({len(names)}) that are going to be uploaded. "
+                        "Check the directory structure, all annotation files should have corresponding image info files."
+                    )
                 # uploading links and hashes (the code from api.image.upload_ids)
-                img_metas = [{}] * len(names)
                 links, links_names, links_order, links_metas = [], [], [], []
                 hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
                 dataset_id = dataset.id
-                for idx, (name, info, meta) in enumerate(zip(names, img_infos, img_metas)):
+                for idx, (name, info, meta) in enumerate(zip(names, img_infos, metas)):
                     if info.link is not None:
                         links.append(info.link)
                         links_names.append(name)
@@ -4745,26 +4781,6 @@ async def _download_project_async(
     if semaphore is None:
         semaphore = api.get_default_semaphore()
 
-    # number of workers
-    num_workers = min(kwargs.get("num_workers", semaphore._value), 10)
-
-    async def worker(queue: asyncio.Queue, stop_event: asyncio.Event):
-        while not stop_event.is_set():
-            task = await queue.get()
-            if task is None:
-                break
-            try:
-                await task
-            except Exception as e:
-                logger.error(f"Error in _download_project_async worker: {e}")
-                stop_event.set()
-            finally:
-                queue.task_done()
-
-    queue = asyncio.Queue()
-    stop_event = asyncio.Event()
-    workers = [asyncio.create_task(worker(queue, stop_event)) for _ in range(num_workers)]
-
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
@@ -4848,11 +4864,25 @@ async def _download_project_async(
                             ds_progress(1)
                 return to_download
 
+            async def run_tasks_with_delay(tasks, delay=0.1):
+                created_tasks = []
+                for task in tasks:
+                    created_task = asyncio.create_task(task)
+                    created_tasks.append(created_task)
+                    await asyncio.sleep(delay)
+                logger.debug(
+                    f"{len(created_tasks)} tasks have been created for dataset ID: {dataset.id}, Name: {dataset.name}"
+                )
+                return created_tasks
+
+            tasks = []
             small_images = await check_items(small_images)
             large_images = await check_items(large_images)
+
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
             for images_batch in batched(small_images, batch_size=batch_size):
+
                 task = _download_project_items_batch_async(
                     api=api,
                     dataset_id=dataset_id,
@@ -4866,7 +4896,7 @@ async def _download_project_async(
                     only_image_tags=only_image_tags,
                     progress_cb=ds_progress,
                 )
-                await queue.put(task)
+                tasks.append(task)
             for image in large_images:
                 task = _download_project_item_async(
                     api=api,
@@ -4880,9 +4910,10 @@ async def _download_project_async(
                     only_image_tags=only_image_tags,
                     progress_cb=ds_progress,
                 )
-                await queue.put(task)
+                tasks.append(task)
 
-        await queue.join()
+            created_tasks = await run_tasks_with_delay(tasks)
+            await asyncio.gather(*created_tasks)
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
@@ -4898,13 +4929,6 @@ async def _download_project_async(
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
-
-    for _ in range(num_workers):
-        await queue.put(None)
-    await asyncio.gather(*workers)
-
-    if stop_event.is_set():
-        raise RuntimeError("Download process was stopped due to an error in one of the workers.")
 
     try:
         create_readme(dest_dir, project_id, api)
@@ -4929,7 +4953,7 @@ async def _download_project_item_async(
     """
     if save_images:
         logger.debug(
-            f"Downloading 1 image in single mode: {img_info.name} with _download_project_item_async"
+            f"Downloading 1 image in single mode with _download_project_item_async. ID: {img_info.id}, Name: {img_info.name}"
         )
         img_bytes = await api.image.download_bytes_single_async(
             img_info.id, semaphore=semaphore, check_hash=True
@@ -4947,7 +4971,11 @@ async def _download_project_item_async(
             force_metadata_for_links=not save_images,
         )
         ann_json = ann_info.annotation
-        tmp_ann = Annotation.from_json(ann_json, meta)
+        try:
+            tmp_ann = Annotation.from_json(ann_json, meta)
+        except Exception:
+            logger.error(f"Error while deserializing annotation for image with ID: {img_info.id}")
+            raise
         if None in tmp_ann.img_size:
             tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
             ann_json = tmp_ann.to_json()
@@ -4969,6 +4997,7 @@ async def _download_project_item_async(
     )
     if progress_cb is not None:
         progress_cb(1)
+    logger.debug(f"Single project item has been downloaded. Semaphore state: {semaphore._value}")
 
 
 async def _download_project_items_batch_async(
@@ -5021,12 +5050,18 @@ async def _download_project_items_batch_async(
             semaphore=semaphore,
             force_metadata_for_links=not save_images,
         )
-        tmps_anns = [Annotation.from_json(ann_info.annotation, meta) for ann_info in ann_infos]
         ann_jsons = []
-        for tmp_ann in tmps_anns:
-            if None in tmp_ann.img_size:
-                tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
-            ann_jsons.append(tmp_ann.to_json())
+        for img_info, ann_info in zip(img_infos, ann_infos):
+            try:
+                tmp_ann = Annotation.from_json(ann_info.annotation, meta)
+                if None in tmp_ann.img_size:
+                    tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+                ann_jsons.append(tmp_ann.to_json())
+            except Exception:
+                logger.error(
+                    f"Error while deserializing annotation for image with ID: {img_info.id}"
+                )
+                raise
     else:
         ann_jsons = []
         for img_info in img_infos:
@@ -5047,6 +5082,8 @@ async def _download_project_items_batch_async(
         )
         if progress_cb is not None:
             progress_cb(1)
+
+    logger.debug(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
 
 
 DatasetDict = Project.DatasetDict

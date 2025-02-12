@@ -34,12 +34,18 @@ class CityscapesConverter(ImageConverter):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._classes_mapping = {}
+        self._supports_links = True
+        self._force_shape_for_links = self.upload_as_links
 
     def __str__(self):
         return AvailableImageConverters.CITYSCAPES
 
     @property
     def key_file_ext(self) -> str:
+        return ".json"
+    
+    @property
+    def ann_ext(self) -> str:
         return ".json"
 
     def ann_file_ext(self) -> str:
@@ -108,6 +114,8 @@ class CityscapesConverter(ImageConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.upload_as_links:
+            self._download_remote_ann_files()
         detected_ann_cnt = 0
         images_list, ann_dict = [], {}
         for root, _, files in os.walk(self._input_data):

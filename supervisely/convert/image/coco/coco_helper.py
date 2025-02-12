@@ -183,7 +183,7 @@ def convert_rle_mask_to_polygon(coco_ann):
     return Bitmap(mask).to_contours()
 
 
-def convert_polygon_vertices(coco_ann, image_size):
+def convert_polygon_vertices(coco_ann, image_size: Tuple[int, int]):
     polygons = coco_ann["segmentation"]
     if all(type(coord) is float for coord in polygons):
         polygons = [polygons]

@@ -83,6 +83,15 @@ def take_with_default(v, default):
     return v if v is not None else default
 
 
+def find_value_by_keys(d: Dict, keys: List[str], default=object()):
+    for key in keys:
+        if key in d:
+            return d[key]
+    if default is object():
+        raise KeyError(f"None of the keys {keys} are in the dictionary.")
+    return default
+
+
 def batched(seq, batch_size=50):
     for i in range(0, len(seq), batch_size):
         yield seq[i : i + batch_size]
