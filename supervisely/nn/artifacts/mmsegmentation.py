@@ -21,6 +21,7 @@ class MMSegmentation(BaseTrainArtifacts):
         self._config_file = "config.py"
         self._pattern = re_compile(r"^/mmsegmentation/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["instance segmentation"]
+        self._require_runtime = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         return artifacts_folder.split("/")[2].split("_")[0]

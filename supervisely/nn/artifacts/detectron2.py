@@ -24,6 +24,7 @@ class Detectron2(BaseTrainArtifacts):
         self._config_file = "model_config.yaml"
         self._pattern = re_compile(r"^/detectron2/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["instance segmentation"]
+        self._require_runtime = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

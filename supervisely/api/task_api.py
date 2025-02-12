@@ -1465,10 +1465,11 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 raise ValueError(
                     f"Unsupported framework for artifacts_dir: '{artifacts_dir}'"
                 )
-            if framework_cls is RITM:
-                raise ValueError("RITM framework is not supported for deployment")
-
+                
             framework = framework_cls(team_id)
+            if framework_cls is RITM or framework_cls is YOLOv5:
+                raise ValueError(f"{framework.framework_name} framework is not supported for deployment")
+
             logger.debug(f"Detected framework: '{framework.framework_name}'")
 
             module_id = self._api.app.get_ecosystem_module_id(framework.serve_slug)
@@ -1507,7 +1508,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             if getattr(train_info, "config_path", None) is not None:
                 deploy_params["config_url"] = train_info.config_path
 
-            if framework.framework_name == "YOLOv8":
+            if framework.require_runtime:
                 deploy_params["runtime"] = RuntimeType.PYTORCH
 
         else:  # Train V2 logic (when artifacts_dir starts with '/experiments')

@@ -27,6 +27,7 @@ class YOLOv8(BaseTrainArtifacts):
             "instance segmentation",
             "pose estimation",
         ]
+        self._require_runtime = True
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

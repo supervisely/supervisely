@@ -20,6 +20,7 @@ class MMClassification(BaseTrainArtifacts):
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/mmclassification/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["classification"]
+        self._require_runtime = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

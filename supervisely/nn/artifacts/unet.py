@@ -21,6 +21,7 @@ class UNet(BaseTrainArtifacts):
         self._config_file = "train_args.json"
         self._pattern = re_compile(r"^/unet/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["semantic segmentation"]
+        self._require_runtime = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

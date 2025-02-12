@@ -21,6 +21,7 @@ class YOLOv5(BaseTrainArtifacts):
         self._config_file = None
         self._pattern = re_compile(r"^/yolov5_train/[^/]+/\d+/?$")
         self._available_task_types: List[str] = ["object detection"]
+        self._require_runtime = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         return artifacts_folder.split("/")[-1]

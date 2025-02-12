@@ -67,6 +67,7 @@ class BaseTrainArtifacts:
         self._config_file: str = None
         self._pattern: str = None
         self._available_task_types: List[str] = []
+        self._require_runtime = False
 
     @property
     def team_id(self) -> int:
@@ -197,6 +198,16 @@ class BaseTrainArtifacts:
         :rtype: re.Pattern
         """
         return self._pattern
+    
+    @property
+    def require_runtime(self):
+        """
+        Whether providing runtime is required for the framework.
+
+        :return: True if runtime is required, False otherwise.
+        :rtype: bool
+        """
+        return self._require_runtime
 
     def is_valid_artifacts_path(self, path):
         """
