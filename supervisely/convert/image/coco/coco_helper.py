@@ -367,7 +367,13 @@ def extend_mask_up_to_image(
     """Extend binary mask up to image shape."""
     y, x = origin.col, origin.row
     new_mask = np.zeros(image_shape, dtype=binary_mask.dtype)
-    new_mask[x : x + binary_mask.shape[0], y : y + binary_mask.shape[1]] = binary_mask
+    try:
+        new_mask[x : x + binary_mask.shape[0], y : y + binary_mask.shape[1]] = binary_mask
+    except ValueError as e:
+        raise ValueError(
+            f"Binary mask size {binary_mask.shape} with origin {origin} "
+            f"exceeds image boundaries {image_shape}"
+        ) from e
     return new_mask
 
 
@@ -888,7 +894,7 @@ def to_coco(
         - If the input_data is a Project, the dest_dir parameters are required.
         - If the input_data is a Dataset, the meta and dest_dir parameters are required.
 
-    :param input_data: Supervisely project, dataset, or path to the project.
+    :param input_data: Supervisely project, dataset, or path to the project or dataset.
     :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.project.dataset.Dataset>` or :class:`str`
 
     # Project or Dataset conversion arguments:
