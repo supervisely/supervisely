@@ -15,7 +15,6 @@ from tqdm import tqdm
 
 from supervisely import logger
 from supervisely._utils import batched, take_with_default
-
 from supervisely.api.module_api import (
     ApiField,
     ModuleApiBase,
@@ -1407,6 +1406,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :raises ValueError: if validations fail.
         """
         from dataclasses import asdict
+
         from supervisely.nn.artifacts import (
             RITM,
             RTDETR,
@@ -1548,6 +1548,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     f"Failed to retrieve experiment info for artifacts_dir: '{artifacts_dir}'"
                 )
 
+            if len(experiment_info.checkpoints) == 0:
+                raise ValueError(f"No checkpoints found in: '{artifacts_dir}'.")
+
             checkpoint = None
             if checkpoint_name is not None:
                 for checkpoint_path in experiment_info.checkpoints:
@@ -1584,5 +1587,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
         )
         self.deploy_model_app(
-            module_id, workspace_id, agent_id, deploy_params=deploy_params
+            module_id,
+            workspace_id,
+            agent_id,
+            description=f"Serve from artifacts dir: {artifacts_dir}",
+            task_name=f"{serve_app_name} ({checkpoint_name})",
+            deploy_params=deploy_params,
         )
