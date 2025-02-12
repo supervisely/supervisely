@@ -2112,6 +2112,7 @@ class FileApi(ModuleApiBase):
         # check_hash: bool = True, #TODO add with resumaple api
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
+        enable_fallback: Optional[bool] = True,
     ) -> None:
         """
         Upload multiple files from local paths to Team Files asynchronously.
@@ -2128,6 +2129,8 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
+        :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
+        :type enable_fallback: bool, optional
         :return: None
         :rtype: :class:`NoneType`
         :Usage example:
@@ -2156,25 +2159,46 @@ class FileApi(ModuleApiBase):
                     api.file.upload_bulk_async(8, paths_to_files, paths_to_save)
                 )
         """
-        if semaphore is None:
-            semaphore = self._api.get_default_semaphore()
-        tasks = []
-        for s, d in zip(src_paths, dst_paths):
-            task = asyncio.create_task(
-                self.upload_async(
-                    team_id,
-                    s,
-                    d,
-                    semaphore=semaphore,
-                    # chunk_size=chunk_size, #TODO add with resumaple api
-                    # check_hash=check_hash, #TODO add with resumaple api
-                    progress_cb=progress_cb,
-                    progress_cb_type=progress_cb_type,
+        try:
+            if semaphore is None:
+                semaphore = self._api.get_default_semaphore()
+            tasks = []
+            for s, d in zip(src_paths, dst_paths):
+                task = asyncio.create_task(
+                    self.upload_async(
+                        team_id,
+                        s,
+                        d,
+                        semaphore=semaphore,
+                        # chunk_size=chunk_size, #TODO add with resumaple api
+                        # check_hash=check_hash, #TODO add with resumaple api
+                        progress_cb=progress_cb,
+                        progress_cb_type=progress_cb_type,
+                    )
                 )
-            )
-            tasks.append(task)
-        for task in tasks:
-            await task
+                tasks.append(task)
+            for task in tasks:
+                await task
+        except Exception as e:
+            if enable_fallback:
+                logger.warning(
+                    f"Upload files bulk asynchronously failed. Fallback to synchronous upload.",
+                    exc_info=True,
+                )
+                if progress_cb_type == "number":
+                    logger.warning(
+                        "Progress callback type 'number' is not supported for synchronous upload. "
+                        "Progress callback will be disabled."
+                    )
+                    progress_cb = None
+                self.upload_bulk(
+                    team_id=team_id,
+                    src_paths=src_paths,
+                    dst_paths=dst_paths,
+                    progress_cb=progress_cb,
+                )
+            else:
+                raise e
 
     async def upload_directory_async(
         self,
@@ -2184,6 +2208,7 @@ class FileApi(ModuleApiBase):
         change_name_if_conflict: Optional[bool] = True,
         progress_size_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
+        enable_fallback: Optional[bool] = True,
     ) -> str:
         """
         Upload Directory to Team Files from local path.
@@ -2199,6 +2224,10 @@ class FileApi(ModuleApiBase):
         :type change_name_if_conflict: bool, optional
         :param progress_size_cb: Function for tracking download progress.
         :type progress_size_cb: Progress, optional
+        :param replace_if_conflict: If True, replace existing dir.
+        :type replace_if_conflict: bool, optional
+        :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
+        :type enable_fallback: bool, optional
         :return: Path to Directory in Team Files
         :rtype: :class:`str`
         :Usage example:
@@ -2216,153 +2245,52 @@ class FileApi(ModuleApiBase):
 
             api.file.upload_directory(9, local_path, path_to_dir)
         """
-        if not remote_dir.startswith("/"):
-            remote_dir = "/" + remote_dir
+        try:
+            if not remote_dir.startswith("/"):
+                remote_dir = "/" + remote_dir
 
-        if self.dir_exists(team_id, remote_dir):
-            if change_name_if_conflict is True:
-                res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
-            elif replace_if_conflict is True:
+            if self.dir_exists(team_id, remote_dir):
+                if change_name_if_conflict is True:
+                    res_remote_dir = self.get_free_dir_name(team_id, remote_dir)
+                elif replace_if_conflict is True:
+                    res_remote_dir = remote_dir
+                else:
+                    raise FileExistsError(
+                        f"Directory {remote_dir} already exists in your team (id={team_id})"
+                    )
+            else:
                 res_remote_dir = remote_dir
-            else:
-                raise FileExistsError(
-                    f"Directory {remote_dir} already exists in your team (id={team_id})"
-                )
-        else:
-            res_remote_dir = remote_dir
 
-        local_files = await list_files_recursively_async(local_dir)
-        remote_files = []
-        dir_parts = local_dir.strip("/").split("/")
-        for file in local_files:
-            path_parts = file.strip("/").split("/")
-            path_parts = path_parts[len(dir_parts) :]
-            remote_parts = [res_remote_dir.rstrip("/")] + path_parts
-            remote_file = "/".join(remote_parts)
-            remote_files.append(remote_file)
+            local_files = await list_files_recursively_async(local_dir)
+            remote_files = []
+            dir_parts = local_dir.strip("/").split("/")
+            for file in local_files:
+                path_parts = file.strip("/").split("/")
+                path_parts = path_parts[len(dir_parts) :]
+                remote_parts = [res_remote_dir.rstrip("/")] + path_parts
+                remote_file = "/".join(remote_parts)
+                remote_files.append(remote_file)
 
-        await self.upload_bulk_async(
-            team_id=team_id,
-            src_paths=local_files,
-            dst_paths=remote_files,
-            progress_cb=progress_size_cb,
-        )
-        return res_remote_dir
-
-    def upload_directory_async_fallback(
-        self,
-        team_id: int,
-        local_dir: str,
-        remote_dir: str,
-        change_name_if_conflict: Optional[bool] = True,
-        progress_size_cb: Optional[Union[tqdm, Callable]] = None,
-        replace_if_conflict: Optional[bool] = False,
-    ) -> str:
-        """
-        Upload Directory to Team Files from local path.
-        Files are uploaded asynchronously.
-        If an error occurs, the method will fallback to synchronous upload.
-
-        :param team_id: Team ID in Supervisely.
-        :type team_id: int
-        :param local_dir: Path to local Directory.
-        :type local_dir: str
-        :param remote_dir: Path to Directory in Team Files.
-        :type remote_dir: str
-        :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
-        :type change_name_if_conflict: bool, optional
-        :param progress_size_cb: Function for tracking download progress.
-        :type progress_size_cb: Progress, optional
-        :return: Path to Directory in Team Files
-        :rtype: :class:`str`
-        """
-        try:
-            upload_coro = self.upload_directory_async(
+            await self.upload_bulk_async(
                 team_id=team_id,
-                local_dir=local_dir,
-                remote_dir=remote_dir,
-                change_name_if_conflict=change_name_if_conflict,
-                progress_size_cb=progress_size_cb,
-                replace_if_conflict=replace_if_conflict,
+                src_paths=local_files,
+                dst_paths=remote_files,
+                progress_cb=progress_size_cb,
             )
-            loop = get_or_create_event_loop()
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(upload_coro, loop=loop)
-                remote_dir = future.result()
-            else:
-                remote_dir = loop.run_until_complete(upload_coro)
         except Exception as e:
-            logger.warning(
-                f"Upload directory asynchronously failed. Fallback to synchronous upload.",
-                exc_info=True,
-            )
-            remote_dir = self.upload_directory(
-                team_id=team_id,
-                local_dir=local_dir,
-                remote_dir=remote_dir,
-                change_name_if_conflict=change_name_if_conflict,
-                progress_size_cb=progress_size_cb,
-                replace_if_conflict=replace_if_conflict,
-            )
-        return remote_dir
-
-    def upload_bulk_async_fallback(
-        self,
-        team_id: int,
-        src_paths: List[str],
-        dst_paths: List[str],
-        semaphore: Optional[asyncio.Semaphore] = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None,
-        progress_cb_type: Literal["number", "size"] = "size",
-    ) -> None:
-        """
-        Upload multiple files from local paths to Team Files asynchronously.
-        If an error occurs, the method will fallback to synchronous upload.
-
-        :param team_id: Team ID in Supervisely.
-        :type team_id: int
-        :param src_paths: List of local paths to files.
-        :type src_paths: List[str]
-        :param dst_paths: List of paths to save files in Team Files.
-        :type dst_paths: List[str]
-        :param semaphore: Semaphore for limiting the number of simultaneous uploads.
-        :type semaphore: asyncio.Semaphore, optional
-        :param progress_cb: Function for tracking download progress.
-        :type progress_cb: tqdm or callable, optional
-        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
-        :type progress_cb_type: Literal["number", "size"], optional
-        :return: None
-        :rtype: :class:`NoneType`
-        """
-        try:
-            upload_coro = self.upload_bulk_async(
-                team_id=team_id,
-                src_paths=src_paths,
-                dst_paths=dst_paths,
-                semaphore=semaphore,
-                progress_cb=progress_cb,
-                progress_cb_type=progress_cb_type,
-            )
-            loop = get_or_create_event_loop()
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(upload_coro, loop=loop)
-                future.result()
-            else:
-                loop.run_until_complete(upload_coro)
-        except Exception as e:
-            logger.warning(
-                f"Upload files bulk asynchronously failed. Fallback to synchronous upload.",
-                exc_info=True,
-            )
-            if progress_cb_type == "number":
+            if enable_fallback:
                 logger.warning(
-                    "Progress callback type 'number' is not supported for synchronous upload. "
-                    "Progress callback will be disabled."
+                    f"Upload directory asynchronously failed. Fallback to synchronous upload.",
+                    exc_info=True,
                 )
-                progress_cb = None
-            self.upload_bulk(
-                team_id=team_id,
-                src_paths=src_paths,
-                dst_paths=dst_paths,
-                progress_cb=progress_cb,
-            )
+                res_remote_dir = self.upload_directory(
+                    team_id=team_id,
+                    local_dir=local_dir,
+                    remote_dir=res_remote_dir,
+                    change_name_if_conflict=change_name_if_conflict,
+                    progress_size_cb=progress_size_cb,
+                    replace_if_conflict=replace_if_conflict,
+                )
+            else:
+                raise e
+        return res_remote_dir
