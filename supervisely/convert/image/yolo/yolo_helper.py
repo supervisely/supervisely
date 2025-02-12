@@ -474,7 +474,7 @@ def label_to_yolo_lines(
                 max_kpts_count=max_kpts_count,
             )
         else:
-            raise ValueError(f"Unsupported geometry type: {type(label.obj_class.geometry_type)}")
+            raise ValueError(f"Unsupported task type: {task_type}")
 
         if yolo_line is not None:
             lines.append(yolo_line)
@@ -657,3 +657,86 @@ def sly_project_to_yolo(
         )
         logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
     logger.info(f"Project '{project.name}' has been converted to YOLO format.")
+
+
+def to_yolo(
+    input_data: Union[Project, Dataset, str],
+    dest_dir: Optional[str] = None,
+    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    meta: Optional[ProjectMeta] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Callable] = None,
+) -> Union[None, str]:
+    """
+    Universal function to convert Supervisely project or dataset  to YOLO format.
+    Note:
+        - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
+            You can use the dedicated functions for each data type:
+
+                - :func:`sly.convert.sly_project_to_yolo()`
+                - :func:`sly.convert.sly_ds_to_yolo()`
+
+        - If the input_data is a Project, the dest_dir parameters are required.
+        - If the input_data is a Dataset, the meta and dest_dir parameters are required.
+
+    :param input_data: Supervisely project or dataset, or path to the directory with the project/dataset.
+    :type input_data: :class:`supervisely.project.project.Project`, :class:`supervisely.project.dataset.Dataset`, or :class:`str`
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param task_type: Task type.
+    :type task_type: :class:`str`, optional
+    :param meta: Project meta (required for Dataset conversion).
+    :type meta: :class:`supervisely.project.project_meta.ProjectMeta`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :return: None, list of YOLO lines, or path to the destination directory.
+    :rtype: NoneType, list, str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+
+        # Convert Project to YOLO format
+        sly.convert.to_yolo(project_directory, dest_dir="./yolo")
+        # or
+        sly.convert.to_yolo(project_fs, dest_dir="./yolo")
+
+        # Convert Dataset to YOLO format
+        dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
+        sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta)
+    """
+    if isinstance(input_data, str):
+        try:
+            input_data = Project(input_data, mode=OpenMode.READ)
+        except Exception:
+            try:
+                input_data = Dataset(input_data, mode=OpenMode.READ)
+            except Exception:
+                raise ValueError("Please check the path or the input data.")
+    if isinstance(input_data, Project):
+        return sly_project_to_yolo(
+            project=input_data,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    elif isinstance(input_data, Dataset):
+        return sly_ds_to_yolo(
+            dataset=input_data,
+            meta=meta,
+            dest_dir=dest_dir,
+            task_type=task_type,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    else:
+        raise ValueError("Unsupported input type. Only Project or Dataset are supported.")
