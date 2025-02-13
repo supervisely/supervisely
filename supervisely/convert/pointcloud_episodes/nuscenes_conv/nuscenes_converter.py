@@ -64,7 +64,7 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
         def _contains_tables(p):
             return all(fs.file_exists(Path(p) / f"{name}.json") for name in helpers.TABLE_NAMES)
 
-        def filter_fn(path):
+        def _filter_fn(path):
             has_tables = False
             for p in os.scandir(path):
                 if p.is_dir() and _contains_tables(p.path):
@@ -72,12 +72,11 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
                     break
             return has_tables and (Path(path) / "samples").exists()
 
-        input_path = next((d for d in fs.dirs_filter(self._input_data, filter_fn)), None)
+        input_path = next((d for d in fs.dirs_filter(self._input_data, _filter_fn)), None)
         if input_path is None:
             return False
 
-        fil_fn = lambda p: all(fs.file_exists(Path(p) / f"{name}.json") for name in helpers.TABLE_NAMES)
-        ann_dir = next((d for d in fs.dirs_filter(input_path, fil_fn)), None)
+        ann_dir = next((d for d in fs.dirs_filter(input_path, _contains_tables)), None)
         if ann_dir is None:
             return False
 
