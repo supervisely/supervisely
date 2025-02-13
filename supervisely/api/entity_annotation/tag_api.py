@@ -138,7 +138,11 @@ class TagApi(ModuleApi):
         if len(tags) == 0:
             return []
         tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
-        ids = self._append_json(entity_id, tags_json)
+        tags_to_add = []
+        for tag in tags_json:
+            tag[ApiField.OBJECT_ID] = entity_id
+            tags_to_add.append(tag)
+        ids = self._append_json(entity_id, tags_to_add)
         KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
         return ids
 
