@@ -3979,7 +3979,7 @@ def _download_project(
 
         all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
         # normalize image extension case
-        existing_names = [info.name for info in all_images]
+        existing_names = {info.name for info in all_images}
         for i, image_info in enumerate(all_images):
             new_name = get_file_name(image_info.name) + get_file_ext(image_info.name).lower()
             if new_name != image_info.name and new_name in existing_names:
