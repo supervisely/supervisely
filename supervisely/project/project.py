@@ -62,6 +62,8 @@ from supervisely.io.fs import (
     mkdir,
     silent_remove,
     subdirs_tree,
+    get_file_name,
+    get_file_ext,
 )
 from supervisely.io.fs_cache import FileCache
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
@@ -3976,6 +3978,14 @@ def _download_project(
             dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
 
         all_images = api.image.get_list(dataset_id, force_metadata_for_links=False)
+        # normalize image extension case
+        existing_names = {info.name for info in all_images}
+        for i, image_info in enumerate(all_images):
+            new_name = get_file_name(image_info.name) + get_file_ext(image_info.name).lower()
+            if new_name != image_info.name and new_name in existing_names:
+                new_name = generate_free_name(existing_names, new_name, True, True)
+            all_images[i] = image_info._replace(name=new_name)
+
         images = [image for image in all_images if images_ids is None or image.id in images_ids]
         ds_total = len(images)
 
@@ -4488,7 +4498,9 @@ def _download_dataset(
     image_filters = None
     if images_ids is not None:
         image_filters = [{"field": "id", "operator": "in", "value": images_ids}]
-    images = api.image.get_list(dataset_id, filters=image_filters)
+
+    lower_ext = lambda x: x._replace(name=get_file_name(x.name) + get_file_ext(x.name).lower())
+    images = [lower_ext(image_info) for image_info in api.image.get_list(dataset_id, filters=image_filters)]
     images_to_download = images
     if only_image_tags is True:
         if project_meta is None:
