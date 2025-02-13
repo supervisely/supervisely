@@ -1281,7 +1281,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def deploy_custom_model(
         self,
-        team_id: int,
         workspace_id: int,
         artifacts_dir: str,
         checkpoint_name: str = None,
