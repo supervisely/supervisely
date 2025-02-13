@@ -139,7 +139,11 @@ class VideoTagApi(TagApi):
         request_data = {ApiField.TAG_ID: project_meta_tag_id, ApiField.VIDEO_ID: video_id}
         if value:
             request_data[ApiField.VALUE] = value
+        if non_final_value is True:
+            is_finished = False
         if frame_range:
+            if is_finished is False and frame_range[0] != frame_range[1]:
+                raise ValueError("Start frame and end frame must be equal for unfinished tags")
             request_data[ApiField.FRAME_RANGE] = frame_range
         request_data[ApiField.IS_FINISHED] = is_finished
         request_data[ApiField.NON_FINAL_VALUE] = non_final_value
@@ -321,7 +325,11 @@ class VideoObjectTagApi(TagApi):
         }
         if value is not None:
             request_body[ApiField.VALUE] = value
+        if non_final_value is True:
+            is_finished = False
         if frame_range is not None:
+            if is_finished is False and frame_range[0] != frame_range[1]:
+                raise ValueError("Start frame and end frame must be equal for unfinished tags")
             request_body[ApiField.FRAME_RANGE] = frame_range
         request_body[ApiField.IS_FINISHED] = is_finished
         request_body[ApiField.NON_FINAL_VALUE] = non_final_value

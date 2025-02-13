@@ -113,6 +113,8 @@ class VideoTag(Tag):
             if not self.meta.is_valid_value(self.value) and self.value is None:
                 non_final_value = True
             self._non_final_value = take_with_default(non_final_value, False)
+            if self._non_final_value is True:
+                self._is_finished = False
 
     @property
     def frame_range(self) -> Tuple[int, int]:
