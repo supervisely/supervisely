@@ -1,5 +1,7 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from supervisely import Api
+from supervisely.api.app_api import AppInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import Button, Card, Stepper, Text, Widget
 
@@ -126,3 +128,11 @@ def set_stepper_step(stepper: Stepper, button: Button, next_pos: int):
         stepper.set_active_step(next_pos)
     else:
         stepper.set_active_step(next_pos - 1)
+
+
+def get_module_info_by_name(api: Api, app_name: str) -> Union[Dict, None]:
+    all_modules = api.app.get_list_ecosystem_modules()
+    for module in all_modules:
+        if module["name"] == app_name:
+            app_info = api.app.get_info(module["id"])
+            return app_info

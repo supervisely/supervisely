@@ -86,7 +86,7 @@
 
   <div id="sly-app">
     <sly-app>
-      <template v-slot="{ post, state, data, session }">
+      <template v-slot="{ post, state, data, session, isStaticVersion, publicApiInstance }">
         <div
           :style="{'padding': `${state.app_body_padding} ${state.app_body_padding} 0`, 'display': 'flex', 'flex-direction': 'row', 'place-items': 'center'}"
           {% if __app_session_info_solid__ %} {% if __app_session_info_extra_content__ %}

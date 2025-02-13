@@ -67,6 +67,7 @@ class Button(Widget):
         emit_on_click: Optional[str] = None,
         style: Optional[str] = None,
         call_on_click: Optional[str] = None,
+        visible_by_vue_field: Optional[str] = "",
     ):
         self._widget_routes = {}
 
@@ -88,6 +89,7 @@ class Button(Widget):
         self._emit_on_click = emit_on_click
         self._style = style
         self._call_on_click = call_on_click
+        self._visible_by_vue_field = visible_by_vue_field
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -117,7 +119,7 @@ class Button(Widget):
 
     def get_json_state(self) -> None:
         """Button widget doesn't have state, so this method returns None."""
-        return None
+        return {"visible_by_vue_field": self._visible_by_vue_field}
 
     @property
     def text(self) -> str:
