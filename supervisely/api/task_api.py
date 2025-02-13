@@ -1275,6 +1275,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             raise TimeoutError(
                 f"Task {task_info['id']} is not ready for API calls after {timeout} seconds."
             )
+        logger.info("Deploying model from API")
         self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
         return task_info
 
@@ -1286,7 +1287,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         checkpoint_name: str = None,
         agent_id: int = None,
         device: str = "cuda",
-    ):
+    ) -> int:
         """
         Deploy a custom model based on the artifacts directory.
 
@@ -1473,7 +1474,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         logger.info(
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
         )
-        self.deploy_model_app(
+        task_info = self.deploy_model_app(
             module_id,
             workspace_id,
             agent_id,
@@ -1481,3 +1482,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             task_name=f"{serve_app_name} ({checkpoint_name})",
             deploy_params=deploy_params,
         )
+        if task_info is None:
+            raise RuntimeError(f"Failed to run '{serve_app_name}'.")
+        return task_info["id"]
