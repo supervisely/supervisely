@@ -2895,11 +2895,16 @@ class Inference:
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
                     self._load_model(deploy_params)
+                elif isinstance(self.gui, GUI.InferenceGUI):
+                    self.load_on_device(**deploy_params)
 
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device
                 device = deploy_params.get("device", "cpu")
-                self.gui.set_deployed(device)
+                if isinstance(self.gui, GUI.InferenceGUI):
+                    self.gui.set_deployed()
+                else:
+                    self.gui.set_deployed(device)
                 return {"result": "model was successfully deployed"}
             except Exception as e:
                 self.gui._success_label.hide()
