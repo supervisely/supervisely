@@ -1,3 +1,4 @@
+import os
 from os import path as osp
 from pathlib import Path
 from typing import Dict, Optional
@@ -60,19 +61,22 @@ class NuscenesEpisodesConverter(PointcloudEpisodeConverter):
             logger.warning("Please, run 'pip install nuscenes-devkit' to import NuScenes data.")
             return False
 
-        def filter_fn(path):
-            return all([(Path(path) / name).exists() for name in ["maps", "samples"]])
+        def _contains_tables(p):
+            return all(fs.file_exists(Path(p) / f"{name}.json") for name in helpers.TABLE_NAMES)
 
-        input_path = next((d for d in fs.dirs_filter(self._input_data, filter_fn)), None)
+        def _filter_fn(path):
+            has_tables = False
+            for p in os.scandir(path):
+                if p.is_dir() and _contains_tables(p.path):
+                    has_tables = True
+                    break
+            return has_tables and (Path(path) / "samples").exists()
+
+        input_path = next((d for d in fs.dirs_filter(self._input_data, _filter_fn)), None)
         if input_path is None:
             return False
 
-        sample_dir = input_path + "/samples/"
-        if any([not fs.dir_exists(f"{sample_dir}/{d}") for d in helpers.DIR_NAMES]):
-            return False
-
-        fil_fn = lambda p: all(fs.file_exists(f"{p}/{name}.json") for name in helpers.TABLE_NAMES)
-        ann_dir = next((d for d in fs.dirs_filter(input_path, fil_fn)), None)
+        ann_dir = next((d for d in fs.dirs_filter(input_path, _contains_tables)), None)
         if ann_dir is None:
             return False
 
