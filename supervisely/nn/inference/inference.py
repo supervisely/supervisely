@@ -3161,13 +3161,13 @@ class Inference:
                     ann = predict_image_np(image_np)
                     pred_ann_path = image + ".json"
                     sly_json.dump_json_file(ann.to_json(), pred_ann_path)
-                    # Save image for debug
-                    ann.draw_pretty(image_np)
-                    pred_path = os.path.join(
-                        os.path.dirname(self._args.predict_image),
-                        "pred_" + os.path.basename(self._args.predict_image),
-                    )
-                    sly_image.write(pred_path, image_np)
+                    # Save image and ann for debug
+                    # ann.draw_pretty(image_np)
+                    # pred_path = os.path.join(
+                    #     os.path.dirname(self._args.predict_image),
+                    #     "pred_" + os.path.basename(self._args.predict_image),
+                    # )
+                    # sly_image.write(pred_path, image_np)
 
         if self._args.predict_project is not None:
             predict_project_by_args(self.api, self._args.predict_project)
