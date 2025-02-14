@@ -2789,6 +2789,8 @@ class Inference:
                 if deploy_params is None:
                     self.gui.deploy_with_current_params()
                 else:
+                    current_params = self.get_params_from_gui()
+                    deploy_params = {**current_params, **deploy_params}
                     if isinstance(self.gui, GUI.ServingGUITemplate):
                         model_files = self._download_model_files(
                             deploy_params["model_source"], deploy_params["model_files"]
