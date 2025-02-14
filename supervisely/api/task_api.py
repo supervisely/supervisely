@@ -1159,7 +1159,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             )
         self._api.post("tasks.status.update", {ApiField.ID: task_id, ApiField.STATUS: status})
 
-    def set_output_experiment(self, task_id: int, experiment_info: dict) -> Dict:
+    def set_output_experiment(
+        self, task_id: int, experiment_info: dict, project_name: str = None
+    ) -> Dict:
         """
         Sets output for the task with experiment info.
 
@@ -1214,7 +1216,17 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 },
             }
         """
-        output = {ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}}}
+        project_id = experiment_info.get("project_id")
+        if project_id is None:
+            raise ValueError("Key 'project_id' is required in experiment_info")
+        if project_name is None:
+            project = self._api.project.get_info_by_id(project_id, raise_error=True)
+            project_name = project.name
+
+        output = {
+            ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name},
+            ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}},
+        }
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
