@@ -785,9 +785,11 @@ class Inference:
             checkpoint_file_path = os.path.join(
                 model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
             )
-            checkpoint_file_info = self.api.file.get_info_by_path(
-                sly_env.team_id(), checkpoint_file_path
-            )
+            checkpoint_file_info = None
+            if not self._is_local_deploy:
+                checkpoint_file_info = self.api.file.get_info_by_path(
+                    sly_env.team_id(), checkpoint_file_path
+                )
             if checkpoint_file_info is None:
                 checkpoint_url = None
             else:
@@ -3017,6 +3019,8 @@ class Inference:
         def _load_experiment_info(artifacts_dir):
             experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
             model_info = self._load_json_file(experiment_path)
+            model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
+            model_info["model_meta"] = self._load_json_file(model_meta_path)
             original_model_files = model_info.get("model_files")
             if not original_model_files:
                 raise ValueError("Invalid 'experiment_info.json'. Missing 'model_files' key.")
@@ -3106,7 +3110,7 @@ class Inference:
             "runtime": runtime,
         }
 
-        logger.info(f"Deploy parameters: {deploy_params}")
+        logger.debug(f"Deploy parameters: {deploy_params}")
         return deploy_params, need_download
 
     def _run_server(self):
@@ -3151,15 +3155,18 @@ class Inference:
                 ann = predict_image_np(image_np)
                 api.annotation.upload_ann(image, ann)
             elif isinstance(image, str):
-                if sly_fs.file_exists(self._args.predict):
-                    image_np = sly_image.read(self._args.predict)
+                if sly_fs.file_exists(self._args.predict_image):
+                    image_np = sly_image.read(self._args.predict_image)
                     ann = predict_image_np(image_np)
                     pred_ann_path = image + ".json"
                     sly_json.dump_json_file(ann.to_json(), pred_ann_path)
                     # Save image for debug
-                    # ann.draw_pretty(image_np)
-                    # pred_path = os.path.join(os.path.dirname(self._args.predict), "pred_" + os.path.basename(self._args.predict))
-                    # sly_image.write(pred_path, image_np)
+                    ann.draw_pretty(image_np)
+                    pred_path = os.path.join(
+                        os.path.dirname(self._args.predict_image),
+                        "pred_" + os.path.basename(self._args.predict_image),
+                    )
+                    sly_image.write(pred_path, image_np)
 
         if self._args.predict_project is not None:
             predict_project_by_args(self.api, self._args.predict_project)
