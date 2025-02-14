@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import tarfile
+import hashlib
+import base64
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import aiofiles
@@ -878,6 +880,32 @@ def get_file_hash(path: str) -> str:
     with open(path, "rb") as file:
         file_bytes = file.read()
         return get_bytes_hash(file_bytes)
+
+
+def get_file_hash_chunked(path: str, chunk_size: Optional[int] = 1024 * 1024) -> str:
+    """
+    Get hash from target file by reading it in chunks.
+
+    :param path: Target file path.
+    :type path: str
+    :param chunk_size: Number of bytes to read per iteration. Default is 1 MB.
+    :type chunk_size: int, optional
+    :returns: File hash as a base64 encoded string.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+       file_hash = sly.fs.get_file_hash_chunked('/home/admin/work/projects/examples/1.jpeg')
+       print(file_hash)  # Example output: rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
+    """
+    hash_sha256 = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            hash_sha256.update(chunk)
+    digest = hash_sha256.digest()
+    return base64.b64encode(digest).decode("utf-8")
 
 
 def tree(dir_path: str) -> str:
