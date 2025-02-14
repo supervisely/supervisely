@@ -1162,8 +1162,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         deploy_params: Dict[str, Any] = None,
         timeout: int = 100,
     ):
-        if deploy_params is None:
-            deploy_params = {}
         task_info = self.start(
             agent_id=agent_id,
             workspace_id=workspace_id,
@@ -1193,6 +1191,72 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         self.deploy_model_from_api(task_info["id"], deploy_params=deploy_params)
         return task_info
 
+    def _get_serving_app_module_id(self, train_app_module_id: int):
+        train_module_info = self._api.app.get_ecosystem_module_info(train_app_module_id)
+        train_app_config = train_module_info.config
+        categories = train_app_config["categories"]
+        framework = None
+        for category in categories:
+            if category.lower().startswith("framework:"):
+                framework = category
+                break
+        if framework is None:
+            raise ValueError(
+                "Unable to define serving app. Framework is not specified in the train app"
+            )
+
+        modules = self._api.app.get_list_ecosystem_modules(
+            categories=["serve", framework], categories_operation="and"
+        )
+        if len(modules) == 0:
+            raise ValueError(f"No serving apps found for framework {framework}")
+        module_id = modules[0]["id"]
+        return module_id
+
+    def deploy_from_train_app(
+        self,
+        workspace_id: int,
+        app_id: Optional[int] = None,
+        module_id: Optional[int] = None,
+        agent_id: Optional[int] = None,
+        description: Optional[str] = "application description",
+        params: Dict[str, Any] = None,
+        log_level: Optional[Literal["info", "debug", "warning", "error"]] = "info",
+        users_ids: Optional[List[int]] = None,
+        app_version: Optional[str] = "",
+        is_branch: Optional[bool] = False,
+        task_name: Optional[str] = "pythonSpawned",
+        restart_policy: Optional[Literal["never", "on_error"]] = "never",
+        proxy_keep_url: Optional[bool] = False,
+        redirect_requests: Optional[Dict[str, int]] = {},
+        limit_by_workspace: bool = False,
+        deploy_params: Dict[str, Any] = None,
+        timeout: int = 100,
+    ):
+        if module_id is None:
+            if app_id is None:
+                raise ValueError("Either app_id or module_id has to be defined")
+            module_id = self._api.app.get_info_by_id(app_id).module_id
+        serve_module_id = self._get_serving_app_module_id(module_id)
+        return self.deploy_model_app(
+            serve_module_id,
+            workspace_id,
+            agent_id,
+            description,
+            params,
+            log_level,
+            users_ids,
+            app_version,
+            is_branch,
+            task_name,
+            restart_policy,
+            proxy_keep_url,
+            redirect_requests,
+            limit_by_workspace,
+            deploy_params,
+            timeout,
+        )
+
     def deploy_from_train_session(
         self,
         task_id: int,
@@ -1220,8 +1284,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         except KeyError:
             raise ValueError("Task output does not contain experiment data")
         if module_id is None:
-            slug = data["serve_app_slug"]
-            module_id = self._api.app.get_ecosystem_module_id(slug)
+            train_module_id = task_info["meta"]["app"]["moduleId"]
+            module_id = self._get_serving_app_module_id(train_module_id)
+
         if workspace_id is None:
             workspace_id = task_info["workspaceId"]
         experiment_name = data["experiment_name"]

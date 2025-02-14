@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
+from typing_extensions import Literal
+
 from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
@@ -1522,10 +1524,18 @@ class AppApi(TaskApi):
             )
         return modules[0]["id"]
 
-    def get_list_ecosystem_modules(self):
+    def get_list_ecosystem_modules(
+        self,
+        categories: Optional[List[str]] = None,
+        categories_operation: Literal["or", "and"] = "or",
+    ):
+        data = {}
+        if categories is not None:
+            data["categories"] = categories
+            data["categoriesOperation"] = categories_operation
         modules = self.get_list_all_pages(
             method="ecosystem.list",
-            data={},
+            data=data,
             convert_json_info_cb=lambda x: x,
         )
         if len(modules) == 0:
