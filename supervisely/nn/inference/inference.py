@@ -2413,8 +2413,9 @@ class Inference:
                 ]
             ):
                 self._inference_by_local_deploy_args()
-                # Gracefully shut down the server
+                # Gracefully shut down the server (dont work)
                 self._app.shutdown()
+                exit(0)
         # else: run server after endpoints
 
         @call_on_autostart()
