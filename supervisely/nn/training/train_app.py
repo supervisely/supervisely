@@ -697,7 +697,7 @@ class TrainApp:
             if model_files is None:
                 raise ValueError(
                     "Model files not found in model metadata. "
-                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
+                    "Please update provided models parameter to include key 'model_files' in 'meta' key."
                 )
         return models
 
@@ -1759,7 +1759,7 @@ class TrainApp:
         # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
-        self._api.task.set_output_experiment(self.task_id, experiment_info)
+        self._api.task.set_output_experiment(self.task_id, experiment_info, self.project_name)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()

@@ -7,17 +7,11 @@ import numpy as np
 from PIL import Image
 from tqdm import tqdm
 
-from supervisely import (
-    Annotation,
-    Dataset,
-    Label,
-    ObjClass,
-    ObjClassCollection,
-    Project,
-    ProjectMeta,
-    generate_free_name,
-    logger,
-)
+from supervisely._utils import generate_free_name
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -26,6 +20,9 @@ from supervisely.imaging.color import generate_rgb
 from supervisely.imaging.image import read
 from supervisely.io.fs import file_exists, get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
+from supervisely.project.project import Dataset, OpenMode, Project
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.sly_logger import logger
 from supervisely.task.progress import tqdm_sly
 
 MASKS_EXTENSION = ".png"
@@ -374,7 +371,7 @@ def sly_ds_to_pascal_voc(
     train_val_split_coef: float = 0.8,
     log_progress: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
-) -> Tuple[Dict, Optional[Dict]]:
+) -> None:
     """
     Convert Supervisely dataset to Pascal VOC format.
 
@@ -612,6 +609,9 @@ def sly_project_to_pascal_voc(
         # Convert Project to Pascal VOC format
         sly.Project(project_directory).to_pascal_voc(log_progress=True)
     """
+    if isinstance(project, str):
+        project = Project(project, mode=OpenMode.READ)
+
     if dest_dir is None:
         dest_dir = project.directory
 
@@ -636,3 +636,87 @@ def sly_project_to_pascal_voc(
         )
         logger.info(f"Dataset '{dataset.short_name}' has been converted to Pascal VOC format.")
     logger.info(f"Project '{project.name}' has been converted to Pascal VOC format.")
+
+
+def to_pascal_voc(
+    input_data: Union[Project, Dataset, str],
+    dest_dir: Optional[str] = None,
+    meta: Optional[ProjectMeta] = None,
+    train_val_split_coef: float = 0.8,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+) -> None:
+    """
+    Universal function to convert Supervisely project or dataset to Pascal VOC format.
+    Note:
+        - For better compatibility, please pass named arguments explicitly. Otherwise, the function may not work as expected.
+            You can use the dedicated functions for each data type:
+
+                - :func:`sly.convert.sly_project_to_pascal_voc()`
+                - :func:`sly.convert.sly_ds_to_pascal_voc()`
+
+        - If the input_data is a Project, the dest_dir parameters are required.
+        - If the input_data is a Dataset, the meta and dest_dir parameters are required.
+
+    :param input_data: Input data to convert (Project, Dataset, or path to the project/dataset directory).
+    :type input_data: :class:`Project<supervisely.project.project.Project>`, :class:`Dataset<supervisely.dataset.dataset.Dataset>`, or :class:`str`
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`, optional
+    :param meta: Project meta information (required for Dataset conversion).
+    :type meta: :class:`ProjectMeta<supervisely.project.project_meta.ProjectMeta>`, optional
+    :param train_val_split_coef: Coefficient for splitting images into train and validation sets.
+    :type train_val_split_coef: :class:`float`, optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking conversion progress (for all items in the project).
+    :type progress_cb: callable, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        # Local folder with Project
+        project_directory = "/home/admin/work/supervisely/source/project"
+        project_fs = sly.Project(project_directory, sly.OpenMode.READ)
+
+        # Convert Project to Pascal VOC format
+        sly.convert.to_pascal_voc(project_directory, dest_dir="./pascal_voc")
+        # or
+        sly.convert.to_pascal_voc(project_fs, dest_dir="./pascal_voc")
+
+        # Convert Dataset to Pascal VOC format
+        dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
+        sly.convert.to_pascal_voc(dataset, dest_dir="./pascal_voc")
+    """
+    if isinstance(input_data, str):
+        try:
+            input_data = Project(input_data, mode=OpenMode.READ)
+        except Exception as e:
+            try:
+                input_data = Dataset(input_data, mode=OpenMode.READ)
+            except Exception as e:
+                raise ValueError("Please check the path or the input data.")
+
+    if isinstance(input_data, (Project, str)):
+        return sly_project_to_pascal_voc(
+            project=input_data,
+            dest_dir=dest_dir,
+            train_val_split_coef=train_val_split_coef,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    elif isinstance(input_data, Dataset):
+        return sly_ds_to_pascal_voc(
+            dataset=input_data,
+            meta=meta,
+            dest_dir=dest_dir,
+            train_val_split_coef=train_val_split_coef,
+            log_progress=log_progress,
+            progress_cb=progress_cb,
+        )
+    else:
+        raise ValueError(f"Unsupported input data type: {type(input_data)}")
