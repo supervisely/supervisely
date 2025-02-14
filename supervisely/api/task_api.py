@@ -1216,9 +1216,12 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 },
             }
         """
-        project_id = experiment_info["project_id"]
+        project_id = experiment_info.get("project_id")
+        if project_id is None:
+            raise ValueError("Key 'project_id' is required in experiment_info")
         if project_name is None:
-            project_name = self._api.project.get_info_by_id(project_id).name
+            project = self._api.project.get_info_by_id(project_id, raise_error=True)
+            project_name = project.name
 
         output = {
             ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name},
