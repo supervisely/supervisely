@@ -54,6 +54,22 @@ from supervisely.sly_logger import logger
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
+import logging
+
+uvicorn_logger = logging.getLogger("uvicorn.access")
+
+
+class ReadyzFilter(logging.Filter):
+    def filter(self, record):
+        if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
+            record.levelno = logging.DEBUG  # Change log level to DEBUG
+            record.levelname = "DEBUG"
+        return True
+
+
+# Apply the filter
+uvicorn_logger.addFilter(ReadyzFilter())
+
 
 class Event:
     class Brush:
