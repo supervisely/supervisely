@@ -6,7 +6,9 @@ from typing import List, Optional, Union
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.module_api import ApiField
+from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
@@ -294,7 +296,7 @@ class VideoTagApi(TagApi):
 
 
 class VideoObjectTagApi(TagApi):
-    _entity_id_field = ApiField.OBJECT_ID
+    _entity_id_field = ApiField.ENTITY_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"
 
     def add(
@@ -376,3 +378,40 @@ class VideoObjectTagApi(TagApi):
             ApiField.FRAME_RANGE: frame_range,
         }
         self._api.post("annotation-objects.tags.update", request_body)
+
+    def append_to_entity(
+        self,
+        entity_id: int,
+        project_id: int,
+        tags: KeyIndexedCollection,
+        object_id: int,
+        key_id_map: KeyIdMap = None,
+    ):
+        """
+        Add tags to entity in project with given ID.
+
+        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :type entity_id: int
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags: Collection of tags
+        :type tags: KeyIndexedCollection
+        :param object_id: ID of the object in Supervisely to add a tag to
+        :type object_id: int, optional
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: List of tags IDs
+        :rtype: list
+        """
+
+        if len(tags) == 0:
+            return []
+        tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
+        tags_to_add = []
+        for tag in tags_json:
+            if object_id is not None:
+                tag[ApiField.OBJECT_ID] = object_id
+            tags_to_add.append(tag)
+        ids = self._append_json(entity_id, tags_to_add)
+        KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
+        return ids
