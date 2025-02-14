@@ -60,7 +60,7 @@ class PointcloudEpisodeTag(VideoTag):
         # Output: ValueError: Tag car color can not have value yellow
     """
 
-    support_unfinished_tags = False
+    _SUPPORT_UNFINISHED_TAGS = False
 
     def __init__(
         self,

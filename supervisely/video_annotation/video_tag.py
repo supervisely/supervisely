@@ -71,7 +71,7 @@ class VideoTag(Tag):
         # Output: ValueError: Tag coat color can not have value yellow
     """
 
-    support_unfinished_tags = True
+    _SUPPORT_UNFINISHED_TAGS = True
 
     def __init__(
         self,
@@ -104,7 +104,7 @@ class VideoTag(Tag):
         self._is_finished = None
         self._non_final_value = None
 
-        if self.support_unfinished_tags is True:
+        if self._SUPPORT_UNFINISHED_TAGS is True:
             self._is_finished = take_with_default(is_finished, True)
             if self._is_finished is False:
                 if self._frame_range is None:
@@ -340,7 +340,7 @@ class VideoTag(Tag):
             print(tag_lemon_1 == tag_cucumber)     # False
         """
         unfinished_tag_comparison = True
-        if self.support_unfinished_tags:
+        if self._SUPPORT_UNFINISHED_TAGS:
             unfinished_tag_comparison = (
                 self.is_finished == other.is_finished
                 and self.non_final_value == other.non_final_value
@@ -438,7 +438,7 @@ class VideoTag(Tag):
             "FrameRange",
             str(self.frame_range),
         )
-        if self.support_unfinished_tags:
+        if self._SUPPORT_UNFINISHED_TAGS:
             s += "{:<7s} {:<10} {:<12}".format(
                 "Is finished:",
                 str(self.is_finished),
@@ -451,7 +451,7 @@ class VideoTag(Tag):
     @classmethod
     def get_header_ptable(cls) -> List[str]:
         header = ["Name", "Value type", "Value", "Frame range"]
-        if cls.support_unfinished_tags:
+        if cls._SUPPORT_UNFINISHED_TAGS:
             header += ["Is finished", "Non final value"]
         return header
 
@@ -462,7 +462,7 @@ class VideoTag(Tag):
             self.value,
             self.frame_range,
         ]
-        if self.support_unfinished_tags:
+        if self._SUPPORT_UNFINISHED_TAGS:
             row += [self.is_finished, self.non_final_value]
 
         return row

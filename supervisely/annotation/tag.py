@@ -82,7 +82,7 @@ class Tag(KeyObject):
         # Output: ValueError: Tag coat color can not have value yellow
     """
 
-    support_unfinished_tags = False
+    _SUPPORT_UNFINISHED_TAGS = False
 
     def __init__(
         self,
@@ -98,7 +98,7 @@ class Tag(KeyObject):
         self._meta = meta
         self._value = value
         if not self._meta.is_valid_value(value):
-            if not (self.support_unfinished_tags and value is None):
+            if not (self._SUPPORT_UNFINISHED_TAGS and value is None):
                 raise ValueError(f"Tag {self.meta.name} can not have value {value}")
         self.labeler_login = labeler_login
         self.updated_at = updated_at
