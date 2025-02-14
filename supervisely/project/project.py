@@ -3991,7 +3991,7 @@ def _download_project(
                 new_name = get_file_name(image_info.name) + get_file_ext(image_info.name).lower()
                 if new_name != image_info.name and new_name in existing_names:
                     new_name = generate_free_name(existing_names, new_name, True, True)
-                    all_images[i] = image_info._replace(name=new_name)
+                all_images[i] = image_info._replace(name=new_name)
 
         images = [image for image in all_images if images_ids is None or image.id in images_ids]
         ds_total = len(images)
@@ -4521,7 +4521,7 @@ def _download_dataset(
             new_name = get_file_name(image_info.name) + get_file_ext(image_info.name).lower()
             if new_name != image_info.name and new_name in existing_names:
                 new_name = generate_free_name(existing_names, new_name, True, True)
-                images[i] = image_info._replace(name=new_name)
+            images[i] = image_info._replace(name=new_name)
 
     images_to_download = images
     if only_image_tags is True:
