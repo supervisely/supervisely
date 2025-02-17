@@ -3,9 +3,15 @@ from typing import Callable, List, Literal, Optional
 
 import numpy as np
 
+from supervisely.nn.benchmark.utils.detection.coco_eval import (
+    COCO,
+    SlyCOCOeval,
+    pycocotools_installed,
+)
+
 
 def set_cocoeval_params(
-    cocoeval,
+    cocoeval: SlyCOCOeval,
     parameters: dict,
 ):
     """
@@ -28,8 +34,8 @@ def set_cocoeval_params(
 
 
 def calculate_metrics(
-    cocoGt,
-    cocoDt,
+    cocoGt: COCO,
+    cocoDt: COCO,
     iouType: Literal["bbox", "segm"],
     progress_cb: Optional[Callable] = None,
     evaluation_params: Optional[dict] = None,
@@ -48,11 +54,8 @@ def calculate_metrics(
     :return: Results of the evaluation
     :rtype: dict
     """
-    from pycocotools.coco import COCO  # pylint: disable=import-error
-
-    from supervisely.nn.benchmark.utils.detection.coco_eval import SlyCOCOeval
-
-    cocoGt: COCO = cocoGt
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
 
     evaluation_params = evaluation_params or {}
     max_dets = evaluation_params.get("max_detections", 100)
@@ -121,7 +124,7 @@ def calculate_metrics(
     return eval_data
 
 
-def get_counts(eval_img_dict: dict, cocoEval_cls):
+def get_counts(eval_img_dict: dict, cocoEval_cls: SlyCOCOeval):
     cat_ids = cocoEval_cls.cocoGt.getCatIds()
     iouThrs = cocoEval_cls.params.iouThrs
     catId2idx = {cat_id: i for i, cat_id in enumerate(cat_ids)}
@@ -148,7 +151,7 @@ def get_counts(eval_img_dict: dict, cocoEval_cls):
     return true_positives.astype(int), false_positives.astype(int), false_negatives.astype(int)
 
 
-def get_counts_and_scores(cocoEval, cat_id: int, t: int):
+def get_counts_and_scores(cocoEval: SlyCOCOeval, cat_id: int, t: int):
     """
     tps, fps, scores, n_positives
 
@@ -197,7 +200,7 @@ def get_counts_and_scores(cocoEval, cat_id: int, t: int):
     return tps, fps, scores, n_positives
 
 
-def get_eval_img_dict(cocoEval):
+def get_eval_img_dict(cocoEval: SlyCOCOeval):
     """
     type cocoEval: COCOeval
     """
@@ -216,7 +219,7 @@ def get_eval_img_dict(cocoEval):
     return eval_img_dict
 
 
-def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t):
+def _get_missclassified_match(eval_img_cls: SlyCOCOeval, dt_id, gtIds_orig, dtIds_orig, iou_t):
     # Correction on miss-classification
     gt_idx = np.nonzero(eval_img_cls["gtMatches"][iou_t] == dt_id)[0]
     if len(gt_idx) == 1:
@@ -236,7 +239,7 @@ def _get_missclassified_match(eval_img_cls, dt_id, gtIds_orig, dtIds_orig, iou_t
 def get_matches(
     eval_img_dict: dict,
     eval_img_dict_cls: dict,
-    cocoEval_cls,
+    cocoEval_cls: SlyCOCOeval,
     iou_idx_per_class: dict = None,
 ):
     """
@@ -331,7 +334,7 @@ def get_matches(
     return matches
 
 
-def get_rare_classes(cocoGt, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
+def get_rare_classes(cocoGt: COCO, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
     """
     :param cocoGt: Ground truth dataset in COCO format
     :type cocoGt: COCO

@@ -1,9 +1,13 @@
 import numpy as np
 
+pycocotools_installed = False
 try:
+    from pycocotools.coco import COCO  # pylint: disable=import-error
     from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
+
+    pycocotools_installed = True
 except ImportError:
-    COCOeval = None
+    pass
 
 
 class SlyCOCOeval(COCOeval):
