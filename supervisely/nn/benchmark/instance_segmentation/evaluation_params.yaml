@@ -7,4 +7,4 @@ iou_threshold: 0.5
 confidence_threshold: auto
 
 # Maximum number of detections per image.
-max_detection: 100
+max_detections: 100
