@@ -7,7 +7,8 @@ try:
 
     pycocotools_installed = True
 except ImportError:
-    pass
+    COCO = object
+    COCOeval = object
 
 
 class SlyCOCOeval(COCOeval):
