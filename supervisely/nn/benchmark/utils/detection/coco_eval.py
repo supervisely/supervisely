@@ -1,22 +1,20 @@
 import numpy as np
 
 try:
-    from pycocotools.coco import COCO  # pylint: disable=import-error
     from pycocotools.cocoeval import COCOeval  # pylint: disable=import-error
 except ImportError:
     COCOeval = None
-    COCO = None
 
 
-class SlyCOCOeval:
-    def summarize(coco_eval_obj):
+class SlyCOCOeval(COCOeval):
+    def summarize(self):
         """
         Compute and display summary metrics for evaluation results.
         Note this functin can *only* be applied on the default parameter setting
         """
 
         def _summarize(ap=1, iouThr=None, areaRng="all", maxDets=100):
-            p = coco_eval_obj.params
+            p = self.params
             iStr = " {:<18} {} @[ IoU={:<9} | area={:>6s} | maxDets={:>3d} ] = {:0.3f}"
             titleStr = "Average Precision" if ap == 1 else "Average Recall"
             typeStr = "(AP)" if ap == 1 else "(AR)"
@@ -30,7 +28,7 @@ class SlyCOCOeval:
             mind = [i for i, mDet in enumerate(p.maxDets) if mDet == maxDets]
             if ap == 1:
                 # dimension of precision: [TxRxKxAxM]
-                s = coco_eval_obj.eval["precision"]
+                s = self.eval["precision"]
                 # IoU
                 if iouThr is not None:
                     t = np.where(iouThr == p.iouThrs)[0]
@@ -38,7 +36,7 @@ class SlyCOCOeval:
                 s = s[:, :, :, aind, mind]
             else:
                 # dimension of recall: [TxKxAxM]
-                s = coco_eval_obj.eval["recall"]
+                s = self.eval["recall"]
                 if iouThr is not None:
                     t = np.where(iouThr == p.iouThrs)[0]
                     s = s[t]
@@ -52,18 +50,18 @@ class SlyCOCOeval:
 
         def _summarizeDets():
             stats = np.zeros((12,))
-            stats[0] = _summarize(1, maxDets=coco_eval_obj.params.maxDets[2])
-            stats[1] = _summarize(1, iouThr=0.5, maxDets=coco_eval_obj.params.maxDets[2])
-            stats[2] = _summarize(1, iouThr=0.75, maxDets=coco_eval_obj.params.maxDets[2])
-            stats[3] = _summarize(1, areaRng="small", maxDets=coco_eval_obj.params.maxDets[2])
-            stats[4] = _summarize(1, areaRng="medium", maxDets=coco_eval_obj.params.maxDets[2])
-            stats[5] = _summarize(1, areaRng="large", maxDets=coco_eval_obj.params.maxDets[2])
-            stats[6] = _summarize(0, maxDets=coco_eval_obj.params.maxDets[0])
-            stats[7] = _summarize(0, maxDets=coco_eval_obj.params.maxDets[1])
-            stats[8] = _summarize(0, maxDets=coco_eval_obj.params.maxDets[2])
-            stats[9] = _summarize(0, areaRng="small", maxDets=coco_eval_obj.params.maxDets[2])
-            stats[10] = _summarize(0, areaRng="medium", maxDets=coco_eval_obj.params.maxDets[2])
-            stats[11] = _summarize(0, areaRng="large", maxDets=coco_eval_obj.params.maxDets[2])
+            stats[0] = _summarize(1, maxDets=self.params.maxDets[2])
+            stats[1] = _summarize(1, iouThr=0.5, maxDets=self.params.maxDets[2])
+            stats[2] = _summarize(1, iouThr=0.75, maxDets=self.params.maxDets[2])
+            stats[3] = _summarize(1, areaRng="small", maxDets=self.params.maxDets[2])
+            stats[4] = _summarize(1, areaRng="medium", maxDets=self.params.maxDets[2])
+            stats[5] = _summarize(1, areaRng="large", maxDets=self.params.maxDets[2])
+            stats[6] = _summarize(0, maxDets=self.params.maxDets[0])
+            stats[7] = _summarize(0, maxDets=self.params.maxDets[1])
+            stats[8] = _summarize(0, maxDets=self.params.maxDets[2])
+            stats[9] = _summarize(0, areaRng="small", maxDets=self.params.maxDets[2])
+            stats[10] = _summarize(0, areaRng="medium", maxDets=self.params.maxDets[2])
+            stats[11] = _summarize(0, areaRng="large", maxDets=self.params.maxDets[2])
             return stats
 
         def _summarizeKps():
@@ -80,11 +78,11 @@ class SlyCOCOeval:
             stats[9] = _summarize(0, maxDets=20, areaRng="large")
             return stats
 
-        if not coco_eval_obj.eval:
+        if not self.eval:
             raise Exception("Please run accumulate() first")
-        iouType = coco_eval_obj.params.iouType
+        iouType = self.params.iouType
         if iouType == "segm" or iouType == "bbox":
             summarize = _summarizeDets
         elif iouType == "keypoints":
             summarize = _summarizeKps
-        coco_eval_obj.stats = summarize()
+        self.stats = summarize()
