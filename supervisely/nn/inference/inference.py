@@ -66,6 +66,7 @@ from supervisely.decorators.inference import (
 )
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
+from supervisely.io.fs import list_files
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.nn.utils import (
@@ -2958,7 +2959,7 @@ class Inference:
             "--predict-dir",
             type=str,
             required=False,
-            help="Not implemented yet. Path to the local directory with images",
+            help="Path to the local directory with images",
         )
         parser.add_argument(
             "--predict-image",
@@ -2966,11 +2967,25 @@ class Inference:
             required=False,
             help="Image ID on Supervisely instance or path to local image",
         )
+        parser.add_argument(
+            "--settings",
+            type=str,
+            required=False,
+            help="Path to the settings JSON or YAML file",
+        )
         # -------------------------- #
 
         # Output args
         parser.add_argument("--output", type=str, required=False, help="Not implemented yet")
-        parser.add_argument("--output-dir", type=str, required=False, help="Not implemented yet")
+        parser.add_argument(
+            "--output-dir",
+            type=str,
+            required=False,
+            help="Path to the output directory. Prediction results will be saved there. Default: input directory + '_predictions'",
+        )
+        parser.add_argument(
+            "--draw", type=bool, required=False, help="Draw predictions on images. Default: False"
+        )
         # -------------------------- #
 
         # Parse arguments
@@ -3119,8 +3134,22 @@ class Inference:
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
 
+    def _read_settings(settings_path):
+        if settings_path is None:
+            return {}
+        if settings_path.endswith(".json"):
+            return sly_json.load_json_file(settings_path)
+        elif settings_path.endswith(".yaml") or settings_path.endswith(".yml"):
+            with open(settings_path, "r") as f:
+                return yaml.safe_load(f)
+        raise ValueError("Settings file should be in JSON or YAML format")
+
     def _inference_by_local_deploy_args(self):
-        def predict_project_by_args(api: Api, project_id: int, dataset_ids: List[int] = None):
+        def predict_project_by_args(
+            api: Api, project_id: int, dataset_ids: List[int] = None, settings: str = None
+        ):
+            settings = self._read_settings(settings)
+            settings = self._get_inference_settings(settings)
             source_project = api.project.get_info_by_id(project_id)
             workspace_id = source_project.workspace_id
             output_project = api.project.create(
@@ -3135,16 +3164,20 @@ class Inference:
                 },
             )
 
-        def predict_datasets_by_args(api: Api, dataset_ids: List[int]):
+        def predict_datasets_by_args(api: Api, dataset_ids: List[int], settings: str = None):
+            settings = self._read_settings(settings)
+            settings = self._get_inference_settings(settings)
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
             project_ids = list(set([dataset_info.project_id for dataset_info in dataset_infos]))
             if len(project_ids) > 1:
                 raise ValueError("All datasets should belong to the same project")
             predict_project_by_args(api, project_ids[0], dataset_ids)
 
-        def predict_image_by_args(api: Api, image: Union[str, int]):
+        def predict_image_by_args(api: Api, image: Union[str, int], settings: str = None):
+            settings = self._read_settings(settings)
+            settings = self._get_inference_settings(settings)
+
             def predict_image_np(image_np):
-                settings = self._get_inference_settings({})
                 anns, _ = self._inference_auto([image_np], settings)
                 if len(anns) == 0:
                     return Annotation(img_size=image_np.shape[:2])
@@ -3169,14 +3202,41 @@ class Inference:
                     # )
                     # sly_image.write(pred_path, image_np)
 
+        def predict_directory_by_args(
+            dir_path: str, settings: str = None, output_dir: str = None, draw: str = None
+        ):
+            if output_dir is None:
+                p = Path(dir_path)
+                output_dir = p.parent / f"{p.name}_predicted"
+            settings = self._read_settings(settings)
+            settings = self._get_inference_settings(settings)
+            images = list_files(dir_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
+            anns, _ = self._inference_auto(
+                images,
+                settings=settings,
+            )
+            for image_path, ann in zip(images, anns):
+                image_name = Path(image_path).name
+                if draw:
+                    image = sly_image.read(image_path)
+                    ann.draw_pretty(image, output_path=os.path.join(output_dir, image_name))
+                pred_ann_path = os.path.join(output_dir, image_name + ".json")
+                sly_json.dump_json_file(ann.to_json(), pred_ann_path)
+
         if self._args.predict_project is not None:
-            predict_project_by_args(self.api, self._args.predict_project)
+            predict_project_by_args(self.api, self._args.predict_project, self._args.settings)
         elif self._args.predict_dataset is not None:
-            predict_datasets_by_args(self.api, self._args.predict_dataset)
+            predict_datasets_by_args(self.api, self._args.predict_dataset, self._args.settings)
         elif self._args.predict_dir is not None:
+            predict_directory_by_args(
+                self._args.predict_dir,
+                self._args.settings,
+                self._args.output_dir,
+                self._args.draw,
+            )
             raise NotImplementedError("Predict from directory is not implemented yet")
         elif self._args.predict_image is not None:
-            predict_image_by_args(self.api, self._args.predict_image)
+            predict_image_by_args(self.api, self._args.predict_image, self._args.settings)
 
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
