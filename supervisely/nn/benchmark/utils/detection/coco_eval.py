@@ -89,4 +89,4 @@ class SlyCOCOeval(COCOeval):
             summarize = _summarizeDets
         elif iouType == "keypoints":
             summarize = _summarizeKps
-        self.stats = summarize()  # pylint: disable=possibly-used-before-assignmentg
+        self.stats = summarize()  # pylint: disable=possibly-used-before-assignment
