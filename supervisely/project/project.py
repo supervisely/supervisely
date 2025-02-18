@@ -72,6 +72,12 @@ from supervisely.task.progress import Progress, tqdm_sly
 
 
 class CustomUnpickler(pickle.Unpickler):
+    """
+    Custom Unpickler to load pickled objects with fields that are not present in the class definition.
+    Used to load old pickled objects that have been pickled with a class that has been updated.
+    Supports loading namedtuple objects with missing fields.
+    """
+
     def find_class(self, module, name):
         cls = super().find_class(module, name)
         if hasattr(cls, "_fields"):
@@ -84,7 +90,7 @@ class CustomUnpickler(pickle.Unpickler):
                 return orig_new(cls, *args, **kwargs)
 
             # Create a new class dynamically
-            NewCls = type(f"New{cls.__name__}", (cls,), {"__new__": new})
+            NewCls = type(f"Pickled{cls.__name__}", (cls,), {"__new__": new})
             return NewCls
 
         return cls
