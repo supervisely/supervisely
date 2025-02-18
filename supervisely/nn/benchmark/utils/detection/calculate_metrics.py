@@ -125,6 +125,9 @@ def calculate_metrics(
 
 
 def get_counts(eval_img_dict: dict, cocoEval_cls: SlyCOCOeval):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     cat_ids = cocoEval_cls.cocoGt.getCatIds()
     iouThrs = cocoEval_cls.params.iouThrs
     catId2idx = {cat_id: i for i, cat_id in enumerate(cat_ids)}
@@ -152,11 +155,11 @@ def get_counts(eval_img_dict: dict, cocoEval_cls: SlyCOCOeval):
 
 
 def get_counts_and_scores(cocoEval: SlyCOCOeval, cat_id: int, t: int):
-    """
-    tps, fps, scores, n_positives
+    """Returns tps, fps, scores, n_positives"""
 
-    type cocoEval: COCOeval
-    """
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     aRng = cocoEval.params.areaRng[0]
     eval_imgs = [ev for ev in cocoEval.evalImgs if ev is not None and ev["aRng"] == aRng]
 
@@ -201,9 +204,9 @@ def get_counts_and_scores(cocoEval: SlyCOCOeval, cat_id: int, t: int):
 
 
 def get_eval_img_dict(cocoEval: SlyCOCOeval):
-    """
-    type cocoEval: COCOeval
-    """
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     aRng = cocoEval.params.areaRng[0]
     eval_img_dict = defaultdict(list)  # img_id : dt/gt
     for i, eval_img in enumerate(cocoEval.evalImgs):
@@ -220,6 +223,9 @@ def get_eval_img_dict(cocoEval: SlyCOCOeval):
 
 
 def _get_missclassified_match(eval_img_cls: SlyCOCOeval, dt_id, gtIds_orig, dtIds_orig, iou_t):
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     # Correction on miss-classification
     gt_idx = np.nonzero(eval_img_cls["gtMatches"][iou_t] == dt_id)[0]
     if len(gt_idx) == 1:
@@ -242,9 +248,9 @@ def get_matches(
     cocoEval_cls: SlyCOCOeval,
     iou_idx_per_class: dict = None,
 ):
-    """
-    type cocoEval_cls: COCOeval
-    """
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     cat_ids = cocoEval_cls.cocoGt.getCatIds()
     matches = []
     for img_id, eval_imgs in eval_img_dict.items():
@@ -335,10 +341,9 @@ def get_matches(
 
 
 def get_rare_classes(cocoGt: COCO, topk_ann_fraction=0.1, topk_classes_fraction=0.2):
-    """
-    :param cocoGt: Ground truth dataset in COCO format
-    :type cocoGt: COCO
-    """
+    if not pycocotools_installed:
+        raise ImportError("pycocotools is not installed")
+
     anns_cat_ids = [ann["category_id"] for ann in cocoGt.anns.values()]
     cat_ids, cat_counts = np.unique(anns_cat_ids, return_counts=True)
     inds_sorted = np.argsort(cat_counts)
