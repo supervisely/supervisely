@@ -619,6 +619,8 @@ class ApiField:
     """"""
     GROUP_ID = "groupId"
     """"""
+    EXPERIMENT = "experiment"
+    """"""
 
 
 def _get_single_item(items):

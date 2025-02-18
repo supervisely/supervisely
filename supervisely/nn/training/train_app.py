@@ -39,7 +39,7 @@ from supervisely import (
     is_production,
     logger,
 )
-from supervisely._utils import get_filename_from_headers
+from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
@@ -76,11 +76,11 @@ class TrainApp:
     :param framework_name: Name of the ML framework used.
     :type framework_name: str
     :param models: List of model configurations.
-    :type models: List[Dict[str, Any]]
+    :type models: Union[str, List[Dict[str, Any]]]
     :param hyperparameters: Path or string content of hyperparameters in YAML format.
     :type hyperparameters: str
     :param app_options: Options for the application layout and behavior.
-    :type app_options: Optional[Dict[str, Any]]
+    :type app_options: Optional[Union[str, Dict[str, Any]]]
     :param work_dir: Path to the working directory for storing intermediate files.
     :type work_dir: Optional[str]
     """
@@ -90,8 +90,8 @@ class TrainApp:
         framework_name: str,
         models: Union[str, List[Dict[str, Any]]],
         hyperparameters: str,
-        app_options: Union[str, Dict[str, Any]] = None,
-        work_dir: str = None,
+        app_options: Optional[Union[str, Dict[str, Any]]] = None,
+        work_dir: Optional[str] = None,
     ):
 
         # Init
@@ -120,6 +120,8 @@ class TrainApp:
             self.task_id = sly_env.task_id()
         else:
             self._app_name = sly_env.app_name(raise_not_found=False)
+            if self._app_name is None:
+                self._app_name = "custom-app"
             self.task_id = sly_env.task_id(raise_not_found=False)
             if self.task_id is None:
                 self.task_id = "debug-session"
@@ -526,6 +528,7 @@ class TrainApp:
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
         mb_eval_report_id, eval_metrics = None, {}
+        evaluation_report_link, primary_metric_name = None, None
         if self.is_model_benchmark_enabled:
             try:
                 # Convert GT project
@@ -543,6 +546,7 @@ class TrainApp:
                     mb_eval_report,
                     mb_eval_report_id,
                     eval_metrics,
+                    primary_metric_name,
                 ) = self._run_model_benchmark(
                     self.output_dir,
                     remote_dir,
@@ -551,6 +555,7 @@ class TrainApp:
                     model_meta,
                     gt_project_id,
                 )
+                evaluation_report_link = abs_url(f"/model-benchmark?id={str(mb_eval_report_id)}")
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
@@ -565,18 +570,24 @@ class TrainApp:
 
         # Step 9. Generate and upload additional files
         self._set_text_status("metadata")
-        self._generate_experiment_info(
-            remote_dir, experiment_info, eval_metrics, mb_eval_report_id, export_weights
+        experiment_info = self._generate_experiment_info(
+            remote_dir,
+            experiment_info,
+            eval_metrics,
+            mb_eval_report_id,
+            evaluation_report_link,
+            primary_metric_name,
+            export_weights,
         )
         self._generate_app_state(remote_dir, experiment_info)
-        self._generate_hyperparameters(remote_dir, experiment_info)
+        experiment_info = self._generate_hyperparameters(remote_dir, experiment_info)
         self._generate_train_val_splits(remote_dir, train_splits_data)
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
         # Step 10. Set output widgets
         self._set_text_status("reset")
-        self._set_training_output(remote_dir, file_info, mb_eval_report)
+        self._set_training_output(experiment_info, remote_dir, file_info, mb_eval_report)
         self._set_ws_progress_status("completed")
 
         # Step 11. Workflow output
@@ -686,7 +697,7 @@ class TrainApp:
             if model_files is None:
                 raise ValueError(
                     "Model files not found in model metadata. "
-                    "Please update provided models oarameter to include key 'model_files' in 'meta' key."
+                    "Please update provided models parameter to include key 'model_files' in 'meta' key."
                 )
         return models
 
@@ -1378,7 +1389,9 @@ class TrainApp:
         return experiment_info
 
     # Generate experiment_info.json and app_state.json
-    def _upload_file_to_team_files(self, local_path: str, remote_path: str, message: str) -> None:
+    def _upload_file_to_team_files(
+        self, local_path: str, remote_path: str, message: str
+    ) -> Union[FileInfo, None]:
         """Helper function to upload a file with progress."""
         logger.debug(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
@@ -1386,13 +1399,14 @@ class TrainApp:
             message=message, total=total_size, unit="bytes", unit_scale=True
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            self._api.file.upload(
+            file_info = self._api.file.upload(
                 self.team_id,
                 local_path,
                 remote_path,
                 progress_cb=upload_artifacts_pbar,
             )
             self.progress_bar_main.hide()
+            return file_info
 
     def _generate_train_val_splits(self, remote_dir: str, splits_data: dict) -> None:
         """
@@ -1446,7 +1460,10 @@ class TrainApp:
 
         if task_type == TaskType.OBJECT_DETECTION:
             model_meta, _ = model_meta.to_detection_task(True)
-        elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+        elif task_type in [
+            TaskType.INSTANCE_SEGMENTATION,
+            TaskType.SEMANTIC_SEGMENTATION,
+        ]:
             model_meta, _ = model_meta.to_segmentation_task()  # @TODO: check background class
         return model_meta
 
@@ -1456,8 +1473,10 @@ class TrainApp:
         experiment_info: Dict,
         eval_metrics: Dict = {},
         evaluation_report_id: Optional[int] = None,
+        evaluation_report_link: Optional[str] = None,
+        primary_metric_name: str = None,
         export_weights: Dict = {},
-    ) -> None:
+    ) -> dict:
         """
         Generates and uploads the experiment_info.json file to the output directory.
 
@@ -1469,6 +1488,8 @@ class TrainApp:
         :type eval_metrics: dict
         :param evaluation_report_id: Evaluation report file ID.
         :type evaluation_report_id: int
+        :param evaluation_report_link: Evaluation report file link.
+        :type evaluation_report_link: str
         :param export_weights: Export data.
         :type export_weights: dict
         """
@@ -1488,11 +1509,15 @@ class TrainApp:
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
             "train_val_split": self._train_val_split_file,
+            "train_size": len(self._train_split),
+            "val_size": len(self._val_split),
             "hyperparameters": self._hyperparameters_file,
             "artifacts_dir": remote_dir,
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "evaluation_report_id": evaluation_report_id,
+            "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
         }
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
@@ -1519,6 +1544,10 @@ class TrainApp:
             f"Uploading '{self._experiment_json_file}' to Team Files",
         )
 
+        # Do not include this fields to uploaded file:
+        experiment_info["primary_metric"] = primary_metric_name
+        return experiment_info
+
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
         """
         Generates and uploads the hyperparameters.yaml file to the output directory.
@@ -1534,11 +1563,13 @@ class TrainApp:
         with open(local_path, "w") as file:
             file.write(self.hyperparameters_yaml)
 
-        self._upload_file_to_team_files(
+        file_info = self._upload_file_to_team_files(
             local_path,
             remote_path,
             f"Uploading '{self._hyperparameters_file}' to Team Files",
         )
+        experiment_info["hyperparameters_id"] = file_info.id
+        return experiment_info
 
     def _generate_app_state(self, remote_dir: str, experiment_info: Dict) -> None:
         """
@@ -1702,10 +1733,20 @@ class TrainApp:
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
+        # Set offline tensorboard button payload
+        if is_production():
+            self.gui.training_logs.tensorboard_offline_button.payload = {
+                "state": {"slyFolder": f"{join(remote_dir, 'logs')}"}
+            }
+            self.gui.training_logs.tensorboard_offline_button.enable()
         return remote_dir, file_info
 
     def _set_training_output(
-        self, remote_dir: str, file_info: FileInfo, mb_eval_report=None
+        self,
+        experiment_info: dict,
+        remote_dir: str,
+        file_info: FileInfo,
+        mb_eval_report=None,
     ) -> None:
         """
         Sets the training output in the GUI.
@@ -1718,6 +1759,7 @@ class TrainApp:
         # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
+        self._api.task.set_output_experiment(self.task_id, experiment_info, self.project_name)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
@@ -1742,13 +1784,15 @@ class TrainApp:
         if demo_path is not None:
             # Show PyTorch demo if available
             if self.gui.training_artifacts.pytorch_demo_exists(demo_path):
-                self.gui.training_artifacts.pytorch_instruction.show()
+                if self.gui.training_artifacts.pytorch_instruction is not None:
+                    self.gui.training_artifacts.pytorch_instruction.show()
 
             # Show ONNX demo if supported and available
             if (
                 self._app_options.get("export_onnx_supported", False)
                 and self.gui.hyperparameters_selector.get_export_onnx_checkbox_value()
                 and self.gui.training_artifacts.onnx_demo_exists(demo_path)
+                and self.gui.training_artifacts.onnx_instruction is not None
             ):
                 self.gui.training_artifacts.onnx_instruction.show()
 
@@ -1757,6 +1801,7 @@ class TrainApp:
                 self._app_options.get("export_tensorrt_supported", False)
                 and self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value()
                 and self.gui.training_artifacts.trt_demo_exists(demo_path)
+                and self.gui.training_artifacts.trt_instruction is not None
             ):
                 self.gui.training_artifacts.trt_instruction.show()
 
@@ -1983,6 +2028,8 @@ class TrainApp:
             report = bm.report
             report_id = bm.report.id
             eval_metrics = bm.key_metrics
+            primary_metric_name = bm.primary_metric_name
+            bm.upload_report_link(remote_artifacts_dir, report_id, self.output_dir)
 
             # 8. UI updates
             self.progress_bar_main.hide()
@@ -1991,6 +2038,7 @@ class TrainApp:
             logger.info(
                 f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
             )
+
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             self._set_text_status("finalizing")
@@ -2004,7 +2052,7 @@ class TrainApp:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
                 return lnk_file_info, report, report_id, eval_metrics
-        return lnk_file_info, report, report_id, eval_metrics
+        return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
 
@@ -2476,7 +2524,11 @@ class TrainApp:
     def _convert_and_split_gt_project(self, task_type: str):
         # 1. Convert GT project to cv task
         Project.download(
-            self._api, self.project_info.id, "tmp_project", save_images=False, save_image_info=True
+            self._api,
+            self.project_info.id,
+            "tmp_project",
+            save_images=False,
+            save_image_info=True,
         )
         project = Project("tmp_project", OpenMode.READ)
 

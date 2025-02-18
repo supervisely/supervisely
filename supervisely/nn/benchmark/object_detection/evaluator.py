@@ -55,9 +55,7 @@ class ObjectDetectionEvalResult(BaseEvalResult):
             self.coco_gt, self.coco_dt = read_coco_datasets(self.coco_gt, self.coco_dt)
 
         self.mp = MetricProvider(
-            self.eval_data["matches"],
-            self.eval_data["coco_metrics"],
-            self.eval_data["params"],
+            self.eval_data,
             self.coco_gt,
             self.coco_dt,
         )
