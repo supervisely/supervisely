@@ -431,6 +431,8 @@ class TagMeta(KeyObject, JsonSerializable):
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
 
+        #! fix for the issue with the default value of the target_type
+        #! while restoring Data Version with old class definitions
         if not hasattr(self, "_target_type"):
             self._target_type = TagTargetType.ALL
 
