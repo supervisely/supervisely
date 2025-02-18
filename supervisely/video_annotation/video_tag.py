@@ -176,7 +176,7 @@ class VideoTag(Tag):
             or not isinstance(frame_range[1], int)
         ):
             raise ValueError("frame_range has to be a tuple or a list with 2 int values.")
-        return frame_range
+        return list(frame_range)
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
