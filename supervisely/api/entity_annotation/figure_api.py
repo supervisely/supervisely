@@ -67,7 +67,7 @@ class FigureInfo(NamedTuple):
     geometry_meta: dict
     tags: list
     meta: dict
-    area: Optional[str] = None
+    area: str
     priority: Optional[int] = None
 
     @property

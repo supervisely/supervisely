@@ -175,7 +175,7 @@ class ImageInfo(NamedTuple):
     tags: List[Dict]
 
     #: :class:`str`: Id of a user who created the image.
-    created_by: Optional[str] = None
+    created_by: str
 
     @property
     def preview_url(self):

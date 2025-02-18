@@ -96,7 +96,7 @@ class ProjectInfo(NamedTuple):
     settings: dict
     import_settings: dict
     version: dict
-    created_by_id: Optional[int] = None
+    created_by_id: int
 
     @property
     def image_preview_url(self):
