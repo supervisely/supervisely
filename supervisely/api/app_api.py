@@ -1526,13 +1526,18 @@ class AppApi(TaskApi):
 
     def get_list_ecosystem_modules(
         self,
+        search: Optional[str] = None,
         categories: Optional[List[str]] = None,
         categories_operation: Literal["or", "and"] = "or",
     ):
         data = {}
+        if search is not None:
+            data["search"] = search
         if categories is not None:
             data["categories"] = categories
             data["categoriesOperation"] = categories_operation
+        if filters is not None:
+            data["filter"] = filters
         modules = self.get_list_all_pages(
             method="ecosystem.list",
             data=data,
