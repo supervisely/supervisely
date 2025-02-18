@@ -71,8 +71,8 @@ class DatasetInfo(NamedTuple):
     team_id: int
     workspace_id: int
     parent_id: Union[int, None]
-    custom_data: dict
-    created_by: int
+    custom_data: Optional[dict] = None
+    created_by: Optional[int] = None
 
     @property
     def image_preview_url(self):
