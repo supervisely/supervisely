@@ -1443,6 +1443,7 @@ class Api:
         chunk_size: int = 8192,
         use_public_api: Optional[bool] = True,
         timeout: httpx._types.TimeoutTypes = 60,
+        **kwargs,
     ) -> AsyncGenerator:
         """
         Performs asynchronous streaming GET or POST request to server with given parameters.
@@ -1486,18 +1487,23 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
-        if isinstance(data, (bytes, Generator)):
-            content = data
-            json_body = None
-            params = None
-        elif isinstance(data, Dict):
-            json_body = {**data, **self.additional_fields}
-            content = None
-            params = None
+        if "content" in kwargs or "json_body" in kwargs or "params" in kwargs:
+            content = kwargs.get("content", None)
+            json_body = kwargs.get("json_body", None)
+            params = kwargs.get("params", None)
         else:
-            params = data
-            content = None
-            json_body = None
+            if isinstance(data, (bytes, Generator)):
+                content = data
+                json_body = None
+                params = None
+            elif isinstance(data, Dict):
+                json_body = {**data, **self.additional_fields}
+                content = None
+                params = None
+            else:
+                params = data
+                content = None
+                json_body = None
 
         if range_start is not None or range_end is not None:
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"

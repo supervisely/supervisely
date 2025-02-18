@@ -2043,7 +2043,7 @@ class FileApi(ModuleApiBase):
         # check_hash: bool = True, #TODO add with resumaple api
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         progress_cb_type: Literal["number", "size"] = "size",
-    ) -> httpx.Response:
+    ) -> None:
         """
         Upload file from local path to Team Files asynchronously.
 
@@ -2059,8 +2059,8 @@ class FileApi(ModuleApiBase):
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
         :type progress_cb_type: Literal["number", "size"], optional
-        :return: Response from API.
-        :rtype: :class:`httpx.Response`
+        :return: None
+        :rtype: :class:`NoneType`
         :Usage example:
 
             .. code-block:: python
@@ -2093,14 +2093,18 @@ class FileApi(ModuleApiBase):
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
                 item = await fd.read()
-                response = await self._api.post_async(
-                    api_method, content=item, params=json_body, headers=headers
-                )
-                if progress_cb is not None and progress_cb_type == "size":
-                    progress_cb(len(item))
+                async for chunk, _ in self._api.stream_async(
+                    method=api_method,
+                    method_type="POST",
+                    data=item,
+                    headers=headers,
+                    content=item,
+                    params=json_body,
+                ):
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(item))
                 if progress_cb is not None and progress_cb_type == "number":
                     progress_cb(1)
-                return response
 
     async def upload_bulk_async(
         self,
