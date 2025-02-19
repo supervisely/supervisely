@@ -3,6 +3,9 @@ from supervisely.nn.inference.gui.gui import InferenceGUI, BaseInferenceGUI
 from supervisely.nn.inference.instance_segmentation.instance_segmentation import (
     InstanceSegmentation,
 )
+from supervisely.nn.inference.instance_probability_segmentation.instance_probability_segmentation import (
+    InstanceProbabilitySegmentation,
+)
 from supervisely.nn.inference.object_detection.object_detection import ObjectDetection
 from supervisely.nn.inference.semantic_segmentation.semantic_segmentation import (
     SemanticSegmentation,
