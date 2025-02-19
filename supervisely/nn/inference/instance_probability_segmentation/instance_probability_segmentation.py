@@ -27,7 +27,7 @@ class InstanceProbabilitySegmentation(Inference):
             return None
 
         geometry = AlphaMask(dto.mask, extra_validation=False)
-        tags = None if dto.score is None else [Tag(self._get_confidence_tag_meta(), dto.score)]
+        tags = None # if dto.score is None else [Tag(self._get_confidence_tag_meta(), dto.score)]
         return Label(geometry, obj_class, tags)
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionAlphaMask]:
