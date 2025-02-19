@@ -11,6 +11,7 @@ from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
+    from supervisely.nn.inference.session import Session, SessionJSON
 
 from supervisely.nn.utils import ModelSource, RuntimeType
 
@@ -21,6 +22,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
     def __init__(self, api: "Api"):
         super().__init__(api)
 
+    # Deploy and Serve models
     def deploy_pretrained_model(
         self,
         task_id: int,
@@ -316,6 +318,50 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
+
+    def inference_session_json(self, task_id: int) -> "SessionJSON":
+        """
+        Returns a convenient class for inference of deployed models.
+        This class will return raw JSON predictions (dict).
+        If you want to work with `sly.Annotation` format, please use `api.nn.inference_session` class.
+
+        You need first to serve NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform, going to `START` -> `App sessions` page.
+        Or it can be obtained from task info after starting the serving app with any of the `serve` methods.
+
+        :param task_id: the task_id of a served model in the Supervisely platform.
+        :type task_id: int
+        :param inference_settings: a dict with settings, defaults to None.
+        :type inference_settings: Union[dict, str], optional
+        :return: a :class:`SessionJSON`
+        :rtype: SessionJSON
+        """
+        from supervisely.nn.inference.session import SessionJSON
+
+        return SessionJSON(self._api, task_id)
+
+    def inference_session(
+        self, task_id: int, inference_settins: Optional[Dict[str, Any]] = None
+    ) -> "Session":
+        """
+        Creates a convenient class for inference of deployed models.
+        This class will return predictions in the `sly.Annotation` format.
+        If you want to work with raw JSON dicts, please use `api.nn.inference_session_json` method.
+
+        You need first to serve NN model you want and get its `task_id`.
+        The `task_id` can be obtained from the Supervisely platform, going to `START` -> `App sessions` page.
+        Or it can be obtained from task info after starting the serving app with any of the `serve` methods.
+
+        :param task_id: the task_id of a served model in the Supervisely platform.
+        :type task_id: int
+        :param inference_settings: a dict with settings, defaults to None.
+        :type inference_settings: dict, optional
+        :return: a :class:`Session` object
+        :rtype: Session
+        """
+        from supervisely.nn.inference.session import Session
+
+        return Session(self._api, task_id, inference_settins)
 
     def _run_serve_app(self, module_id, timeout: int = 100, **kwargs):
         _attempt_delay_sec = 1
