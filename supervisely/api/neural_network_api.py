@@ -121,6 +121,21 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         checkpoint_name: str,
         device: str = "cuda",
     ):
+        """
+        Deploy a custom model based on the artifacts directory.
+
+        :param task_id: Task ID of Serve App in Supervisely.
+        :type task_id: int
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param artifacts_dir: Path to the artifacts directory.
+        :type artifacts_dir: str
+        :param checkpoint_name: Checkpoint name (with extension) to deploy.
+        :type checkpoint_name: Optional[str]
+        :param device: Device string (default is "cuda").
+        :type device: str
+        :raises ValueError: if validations fail.
+        """
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
             logger.debug("Deploying model from Train V1 artifacts")
@@ -145,7 +160,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Deploy a custom model based on the artifacts directory.
+        Run Serve app and deploy a custom model based on the artifacts directory.
 
         :param workspace_id: Workspace ID in Supervisely.
         :type workspace_id: int
@@ -208,6 +223,19 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         checkpoint_name: Optional[str] = None,
         device: str = "cuda",
     ):
+        """
+        Deploy a custom model based on the training task.
+
+        :param serve_task_id: Task ID of Serve App in Supervisely.
+        :type serve_task_id: int
+        :param train_task_id: Task ID of Train App in Supervisely.
+        :type train_task_id: int
+        :param checkpoint_name: Checkpoint name (with extension) to deploy.
+        :type checkpoint_name: Optional[str]
+        :param device: Device string (default is "cuda").
+        :type device: str
+        :raises ValueError: if validations fail.
+        """
         train_task_info = self._api.task.get_info_by_id(train_task_id)
         try:
             data = train_task_info["meta"]["output"]["experiment"]["data"]
@@ -238,7 +266,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Deploy a custom model based on the training task.
+        Run Serve app and deploy a custom model based on the training task.
 
         :param task_id: Task ID of Train App in Supervisely.
         :type task_id: int
