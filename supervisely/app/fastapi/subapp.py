@@ -822,7 +822,7 @@ def _init(
         import debugpy
 
         debug_host = os.getenv("DEBUG_HOST", "127.0.0.1")
-        debug_port = os.getenv("DEBUG_PORT", 5678)
+        debug_port = int(os.getenv("DEBUG_PORT", "5678"))
         debugpy.listen((debug_host, debug_port))
         return {
             "status": "success",
