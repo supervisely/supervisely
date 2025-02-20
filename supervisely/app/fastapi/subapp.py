@@ -12,6 +12,7 @@ from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import arel
+import debugpy
 import jinja2
 import numpy as np
 import psutil
@@ -819,8 +820,6 @@ def _init(
 
     @app.post("/debug", dependencies=[Depends(verify_localhost)])
     def start_debug():
-        import debugpy
-
         debug_host = os.getenv("DEBUG_HOST", "127.0.0.1")
         debug_port = int(os.getenv("DEBUG_PORT", "5678"))
         debugpy.listen((debug_host, debug_port))
