@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from supervisely.api.module_api import CloneableModuleApi, RemoveableModuleApi
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely.project import ProjectMeta
 from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
+    from supervisely.project import ProjectMeta
     from supervisely.api.api import Api
     from supervisely.nn.inference.session import Session, SessionJSON
+    from supervisely.nn.experiments import ExperimentInfo
 
 from supervisely.nn.utils import ModelSource, RuntimeType
 
@@ -90,7 +91,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         module_id: int,  # or define by framework_name
         checkpoint_url: str,
         task_type: str,
-        model_meta: Union[ProjectMeta, Dict],
+        model_meta: Union["ProjectMeta", Dict],
         model_files: List[
             str
         ] = None,  # where source of truth? Now it is defined by our Serve apps (model_config.yml for example)
@@ -390,6 +391,26 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         from supervisely.nn.inference.session import Session
 
         return Session(self._api, task_id, inference_settins)
+
+    def get_experiment_info(self, task_id: int) -> "ExperimentInfo":
+        """
+        Returns the experiment info based on the Train task ID.
+
+        :param task_id: the task_id of a Train task in the Supervisely platform.
+        :type task_id: int
+        :return: a :class:`ExperimentInfo` object
+        :rtype: ExperimentInfo
+        """
+        from supervisely.nn.experiments import ExperimentInfo
+
+        task_info = self._api.task.get_info_by_id(task_id)
+        if task_info is None:
+            raise ValueError(f"Task with ID '{task_id}' not found")
+        try:
+            data = task_info["meta"]["output"]["experiment"]["data"]
+            return ExperimentInfo(**data)
+        except KeyError:
+            raise ValueError("Task output does not contain experiment data")
 
     def _run_serve_app(self, module_id, timeout: int = 100, **kwargs):
         _attempt_delay_sec = 1
