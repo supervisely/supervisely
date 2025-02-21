@@ -10,7 +10,7 @@ from supervisely.nn.prediction_dto import (
     PredictionKeypoints,
     PredictionMask,
     PredictionSegmentation,
-    ProbabilityMap,
+    ProbabilityMask,
 )
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.utils import ModelSource, RuntimeType

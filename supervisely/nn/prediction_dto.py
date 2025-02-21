@@ -46,14 +46,14 @@ class PredictionAlphaMask(Prediction):
         self.mask = mask
 
 
-class ProbabilityMap(PredictionAlphaMask):
+class ProbabilityMask(PredictionAlphaMask):
     def __init__(self, class_name: str, mask: np.ndarray):
         """
         class_name: Name of the class.
         mask:       Numpy array with values in range [0, 255].
                     Will be converted to sly.AlphaMask geometry.
         """
-        super(ProbabilityMap, self).__init__(class_name=class_name, mask=mask)
+        super(ProbabilityMask, self).__init__(class_name=class_name, mask=mask)
 
 
 class PredictionKeypoints(Prediction):
