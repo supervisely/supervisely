@@ -176,7 +176,7 @@ class TagMeta(KeyObject, JsonSerializable):
                     self._applicable_to, SUPPORTED_APPLICABLE_TO
                 )
             )
-        
+
         if self._target_type not in SUPPORTED_TARGET_TYPES:
             raise ValueError(
                 "target_type = {!r} is unknown, should be one of {}".format(
@@ -362,7 +362,7 @@ class TagMeta(KeyObject, JsonSerializable):
             # Output: ['car', 'bicycle']
         """
         return self._applicable_classes
-    
+
     @property
     def target_type(self) -> str:
         """
@@ -430,6 +430,12 @@ class TagMeta(KeyObject, JsonSerializable):
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
+
+        #! fix for the issue with the default value of the target_type
+        #! while restoring Data Version with old class definitions
+        if not hasattr(self, "_target_type"):
+            self._target_type = TagTargetType.ALL
+
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
 
