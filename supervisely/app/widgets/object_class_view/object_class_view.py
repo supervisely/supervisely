@@ -4,6 +4,7 @@ from supervisely.annotation.obj_class import ObjClass
 
 
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.cuboid import Cuboid
 from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
@@ -23,6 +24,7 @@ type_to_zmdi_icon = {
     Rectangle: "zmdi zmdi-crop-din",  # "zmdi zmdi-square-o"
     # Polygon: "icons8-polygon",  # "zmdi zmdi-edit"
     Bitmap: "zmdi zmdi-brush",
+    AlphaMask: "zmdi zmdi-brush",
     Polyline: "zmdi zmdi-gesture",
     Point: "zmdi zmdi-dot-circle-alt",
     Cuboid: "zmdi zmdi-ungroup",  #
@@ -49,6 +51,7 @@ type_to_shape_text = {
     Rectangle: "rectangle",
     Polygon: "polygon",
     Bitmap: "bitmap (mask)",
+    AlphaMask: "alpha mask",
     Polyline: "polyline",
     Point: "point",
     Cuboid: "cuboid",  #

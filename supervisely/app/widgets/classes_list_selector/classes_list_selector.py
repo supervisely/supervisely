@@ -5,6 +5,7 @@ from supervisely.app import StateJson
 from supervisely.app.widgets import Button, NotificationBox, Widget, generate_id
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.cuboid_2d import Cuboid2d
 from supervisely.geometry.cuboid_3d import Cuboid3d
@@ -22,6 +23,7 @@ type_to_shape_text = {
     AnyGeometry: "any shape",
     Rectangle: "rectangle",
     Polygon: "polygon",
+    AlphaMask: "alpha mask",
     Bitmap: "bitmap (mask)",
     Polyline: "polyline",
     Point: "point",

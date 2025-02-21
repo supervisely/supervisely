@@ -1,5 +1,7 @@
+from typing import List, Optional
+
 import numpy as np
-from typing import Optional, List, Dict, Union
+
 from supervisely.geometry.cuboid_3d import Cuboid3d
 
 
@@ -10,6 +12,12 @@ class Prediction:
 
 class PredictionMask(Prediction):
     def __init__(self, class_name: str, mask: np.ndarray, score: Optional[float] = None):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with bool or binary ([0, 1] or [0, 255]) values.
+                    Will be converted to sly.Bitmap geometry.
+        score:      Confidence score.
+        """
         super(PredictionMask, self).__init__(class_name=class_name)
         self.mask = mask
         self.score = score
@@ -25,6 +33,27 @@ class PredictionBBox(Prediction):
 class PredictionSegmentation(Prediction):
     def __init__(self, mask: np.ndarray):
         self.mask = mask
+
+
+class PredictionAlphaMask(Prediction):
+    def __init__(self, class_name: str, mask: np.ndarray):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with values in range [0, 255].
+                    Will be converted to sly.AlphaMask geometry.
+        """
+        super(PredictionAlphaMask, self).__init__(class_name=class_name)
+        self.mask = mask
+
+
+class ProbabilityMask(PredictionAlphaMask):
+    def __init__(self, class_name: str, mask: np.ndarray):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with values in range [0, 255].
+                    Will be converted to sly.AlphaMask geometry.
+        """
+        super(ProbabilityMask, self).__init__(class_name=class_name, mask=mask)
 
 
 class PredictionKeypoints(Prediction):
