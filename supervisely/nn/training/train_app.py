@@ -1759,7 +1759,8 @@ class TrainApp:
         # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
-        self._api.task.set_output_experiment(self.task_id, experiment_info, self.project_name)
+        experiment_info["project_preview"] = self.project_info.image_preview_url
+        self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
