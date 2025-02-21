@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
 import numpy as np
 
@@ -12,6 +12,12 @@ class Prediction:
 
 class PredictionMask(Prediction):
     def __init__(self, class_name: str, mask: np.ndarray, score: Optional[float] = None):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with bool or binary ([0, 1] or [0, 255]) values.
+                    Will be converted to sly.Bitmap geometry.
+        score:      Confidence score.
+        """
         super(PredictionMask, self).__init__(class_name=class_name)
         self.mask = mask
         self.score = score
@@ -29,12 +35,15 @@ class PredictionSegmentation(Prediction):
         self.mask = mask
 
 
-# ? or PredictionAttentionMap / PredictionHeatmap / PredictionProbabilityMask
 class PredictionAlphaMask(Prediction):
-    def __init__(self, class_name: str, mask: np.ndarray, score: Optional[float] = None):
+    def __init__(self, class_name: str, mask: np.ndarray):
+        """
+        class_name: Name of the class.
+        mask:       Numpy array with values in range [0, 255].
+                    Will be converted to sly.AlphaMask geometry.
+        """
         super(PredictionAlphaMask, self).__init__(class_name=class_name)
         self.mask = mask
-        self.score = score
 
 
 class PredictionKeypoints(Prediction):

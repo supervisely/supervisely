@@ -4,6 +4,7 @@ import supervisely.nn.inference as inference
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts, TrainInfo
 from supervisely.nn.prediction_dto import (
     Prediction,
+    PredictionAlphaMask,
     PredictionBBox,
     PredictionCuboid3d,
     PredictionKeypoints,
