@@ -12,7 +12,7 @@ from supervisely.api.api import Api, ApiField
 EXPERIMENT_INFO_FILENAME = "experiment_info.json"
 
 
-@dataclass
+@dataclass(init=False)
 class ExperimentInfo:
     experiment_name: str
     """Name of the experiment. Defined by the user in the training app"""
@@ -58,6 +58,17 @@ class ExperimentInfo:
     """Evaluation metrics"""
     logs: Optional[dict] = None
     """Dictionary with link and type of logger"""
+
+    def __init__(self, **kwargs):
+        field_names = set(f.name for f in fields(self.__class__))
+        missing_fields = field_names - set(kwargs.keys())
+        if missing_fields:
+            raise ValueError(
+                f"ExperimentInfo missing required arguments: '{', '.join(missing_fields)}'"
+            )
+        kwargs = {k: v for k, v in kwargs.items() if k in field_names}
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
@@ -128,7 +139,9 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
                     f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
                 )
                 return None
-            return ExperimentInfo(**response_json)
+            return ExperimentInfo(
+                **{k: v for k, v in response_json.items() if k in required_fields}
+            )
         except requests.exceptions.RequestException as e:
             logger.debug(f"Request failed for '{experiment_path}': {e}")
         except JSONDecodeError as e:

@@ -2887,14 +2887,42 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                if isinstance(self.gui, GUI.ServingGUITemplate):
-                    model_files = self._download_model_files(
-                        deploy_params["model_source"], deploy_params["model_files"]
-                    )
-                    deploy_params["model_files"] = model_files
-                    self._load_model_headless(**deploy_params)
-                elif isinstance(self.gui, GUI.ServingGUI):
-                    self._load_model(deploy_params)
+                if (
+                    deploy_params["model_source"] == ModelSource.PRETRAINED
+                ):  # TODO: first if isinstance then Modelsource
+                    model_name = state["model_name"]
+                    if isinstance(self.gui, GUI.ServingGUITemplate):
+                        selected_model = None
+                        for model in self.pretrained_models:
+                            if model["meta"]["model_name"].lower() == model_name.lower():
+                                selected_model = model
+                                break
+                        if selected_model is None:
+                            raise ValueError(
+                                f"Model {model_name} not found in models.json of serving app"
+                            )
+                        model_files = self._download_model_files(
+                            deploy_params["model_source"], selected_model["meta"]["model_files"]
+                        )
+                        deploy_params["model_files"] = model_files
+                        deploy_params["model_info"] = selected_model
+                        deploy_params["task_type"] = selected_model["meta"]["task_type"]
+                        if "runtime" not in deploy_params:
+                            deploy_params["runtime"] = RuntimeType.PYTORCH
+                        if "device" not in deploy_params:
+                            raise ValueError("Device field is required for model deployment")
+                        self._load_model_headless(**deploy_params)
+                    elif isinstance(self.gui, GUI.ServingGUI):
+                        self._load_model(deploy_params)
+                else:
+                    if isinstance(self.gui, GUI.ServingGUITemplate):
+                        model_files = self._download_model_files(
+                            deploy_params["model_source"], deploy_params["model_files"]
+                        )
+                        deploy_params["model_files"] = model_files
+                        self._load_model_headless(**deploy_params)
+                    elif isinstance(self.gui, GUI.ServingGUI):
+                        self._load_model(deploy_params)
 
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device

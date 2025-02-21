@@ -341,7 +341,7 @@ class Api:
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
         self.project = project_api.ProjectApi(self)
-        self.model = neural_network_api.NeuralNetworkApi(self)
+        self.nn = neural_network_api.NeuralNetworkApi(self)
         self.task = task_api.TaskApi(self)
         self.dataset = dataset_api.DatasetApi(self)
         self.image = image_api.ImageApi(self)
