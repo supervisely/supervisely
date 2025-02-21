@@ -341,6 +341,7 @@ class VideoApi(RemoveableBulkModuleApi):
         raw_video_meta: Optional[bool] = False,
         fields: Optional[List[str]] = None,
         force_metadata_for_links: Optional[bool] = False,
+        recursive: Optional[bool] = False,
     ) -> List[VideoInfo]:
         """
         Get list of information about all videos for a given dataset ID.
@@ -355,6 +356,9 @@ class VideoApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param force_metadata_for_links: Specify whether to force retrieving video metadata from the server.
         :type force_metadata_for_links: Optional[bool]
+        :param recursive: If True then return all the videos from all the nested datasets in the
+            given dataset.
+        :type recursive: bool
         :return: List of information about videos in given dataset.
         :rtype: :class:`List[VideoInfo]`
 
@@ -383,6 +387,7 @@ class VideoApi(RemoveableBulkModuleApi):
             ApiField.FILTER: filters or [],
             ApiField.RAW_VIDEO_META: raw_video_meta,
             ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+            ApiField.RECURSIVE: recursive,
         }
         if fields is not None:
             data[ApiField.FIELDS] = fields
