@@ -86,34 +86,6 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         )
         return task_info
 
-    def custom(
-        self,
-        module_id: int,  # or define by framework_name
-        checkpoint_url: str,
-        task_type: str,
-        model_meta: Union["ProjectMeta", Dict],
-        model_files: List[
-            str
-        ] = None,  # where source of truth? Now it is defined by our Serve apps (model_config.yml for example)
-        model_name: Optional[str] = None,
-        device: str = "cuda",
-        **kwargs,
-    ) -> Dict[str, Any]:
-        raise NotImplementedError
-        from supervisely.nn.utils import ModelSource, RuntimeType
-
-        task_info = self._run_serve_app(module_id, **kwargs)
-
-        deploy_params = {
-            "device": device,
-            "model_source": ModelSource.CUSTOM,
-            "model_files": model_files,
-            "model_info": {},  # what arguments are required here?
-            "runtime": RuntimeType.PYTORCH,
-        }
-        self._deploy_model_from_api(task_info["id"], deploy_params)
-        return task_info
-
     def deploy_from_artifacts(
         self,
         task_id: int,
@@ -140,24 +112,23 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
             logger.debug("Deploying model from Train V1 artifacts")
-            _, _, deploy_params = self.__deploy_params_v1(
+            _, _, deploy_params = self._deploy_params_v1(
                 team_id, artifacts_dir, checkpoint_name, device, with_module=False
             )
         else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
             logger.debug("Deploying model from Train V2 artifacts")
 
-            _, _, deploy_params = self.__deploy_params_v2(
+            _, _, deploy_params = self._deploy_params_v2(
                 team_id, artifacts_dir, checkpoint_name, device, with_module=False
             )
         self._deploy_model_from_api(task_id, deploy_params)
 
     def serve_from_artifacts(
         self,
-        workspace_id: int,  # TODO: Only needed for team id
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: str = "cuda",
-        timeout: int = 100,
+        team_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -182,11 +153,6 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
             raise ValueError("artifacts_dir must be a non-empty string.")
 
-        workspace_info = self._api.workspace.get_info_by_id(workspace_id)
-        if workspace_info is None:
-            raise ValueError(f"Workspace with ID '{workspace_id}' not found.")
-
-        team_id = workspace_info.team_id
         logger.debug(
             f"Starting model deployment. Team: {team_id}, Workspace: {workspace_id}, Artifacts Dir: '{artifacts_dir}'"
         )
@@ -194,24 +160,21 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
             logger.debug("Deploying model from Train V1 artifacts")
-            module_id, serve_app_name, deploy_params = self.__deploy_params_v1(
+            module_id, serve_app_name, deploy_params = self._deploy_params_v1(
                 team_id, artifacts_dir, checkpoint_name, device, with_module=True
             )
         else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
             logger.debug("Deploying model from Train V2 artifacts")
 
-            module_id, serve_app_name, deploy_params = self.__deploy_params_v2(
+            module_id, serve_app_name, deploy_params = self._deploy_params_v2(
                 team_id, artifacts_dir, checkpoint_name, device, with_module=True
             )
-
-        if "workspace_id" not in kwargs:
-            kwargs["workspace_id"] = workspace_id
 
         logger.info(
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
         )
         try:
-            task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
+            task_info = self._run_serve_app(module_id, **kwargs)
             self._deploy_model_from_api(task_info["id"], deploy_params)
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
@@ -459,7 +422,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
             raise ValueError(f"No serving apps found for framework {framework}")
         return modules[0]
 
-    def __deploy_params_v1(
+    def _deploy_params_v1(
         self,
         team_id: int,
         artifacts_dir: str,
@@ -551,7 +514,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
             deploy_params["runtime"] = RuntimeType.PYTORCH
         return module_id, serve_app_name, deploy_params
 
-    def __deploy_params_v2(
+    def _deploy_params_v2(
         self,
         team_id: int,
         artifacts_dir: str,
@@ -619,78 +582,21 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
 
 
 # # TODO: Quesions to MAX:
-# api.nn.deploy_custom()
-# api.nn.deploy.custom()
-
 
 # NN < Api < DeployModel
 
 # 1. # api.nn.deploy_custom() or api.nn.deploy.custom()
 # # Max Eliseev proposal:
-# api.nn.deploy_custom_model()
-# api.nn.deplot_pretrained_model()
-# api.nn.deploy.from_artifacts()
-# api.nn.deploy.from_train_task()
-# # optionally
-# api.nn.deploy.custom()  # <- same as deploy_custom_model()
 
-# 2. Move DeployModel to other file:
-# supervisely/api/nn/neural_network_api.py
-# supervisely/api/nn/deploy.py
-# supervisely/api/nn/inference.py
-# Add inference now?
-# Move Session from nn.inference to api?
-# session = api.nn.inference.session() <- returns Session or SessionJson
-# session.inference_project_id()
+# 1. api.nn.deploy_pretrained_model() # <- by app name + checkpoint name returns session
+
+# 2. api.nn.deploy_custom_model() # <- by artifacts dir or checkpoint_path in artifacts_dir # returns session
+# Guide: How to create aritfacts dir from own checkpoint?
+# take our artifacts dir and add needed
 #
-# 3.from supervisely.nn.utils import ModelSource, RuntimeType <- Resolve import conflicts
+# 4. api.nn.load_model(task_id, model) # model: model name or path or task id.
 #
-
-
-# Eperiment Info:
-# What is required to run serve app?
-{
-    "experiment_name": "705_Lemons (Bitmap)_RT-DETRv2-M",  # For vis
-    "framework_name": "RT-DETRv2",  # replaced with module_id
-    "model_name": "RT-DETRv2-M",  # for benchmark
-    "task_type": "object detection",  # required
-    "project_id": 26,  # not needed
-    "task_id": 705,  # not needed
-    "model_files": {
-        "config": "model_config.yml"
-    },  # model_files defined by serving app. Maybe it should be defined by Model original repo
-    "checkpoints": [  # need 1
-        "checkpoints/best.pth",
-        "checkpoints/checkpoint0025.pth",
-        "checkpoints/checkpoint0050.pth",
-        "checkpoints/last.pth",
-    ],
-    "best_checkpoint": "best.pth",
-    # rest is optional
-    "export": {},
-    "app_state": "app_state.json",
-    "model_meta": "model_meta.json",
-    "train_val_split": "train_val_split.json",
-    "train_size": 4,
-    "val_size": 2,
-    "hyperparameters": "hyperparameters.yaml",
-    "artifacts_dir": "/experiments/26_Lemons (Bitmap)/705_RT-DETRv2/",
-    "datetime": "2025-02-14 10:48:38",
-    "evaluation_report_id": 246298,
-    "evaluation_report_link": "https://dev.internal.supervisely.com/model-benchmark?id=246298",
-    "evaluation_metrics": {
-        "mAP": 1,
-        "AP50": 1,
-        "AP75": 1,
-        "f1": 1,
-        "precision": 1,
-        "recall": 1,
-        "iou": 0.9753909782552915,
-        "classification_accuracy": 1,
-        "calibration_score": 0.8948578479821268,
-        "f1_optimal_conf": 0.7201371192932129,
-        "expected_calibration_error": 0.10514215201787325,
-        "maximum_calibration_error": 0.6445772647857666,
-    },
-    "logs": {"type": "tensorboard", "link": "/experiments/26_Lemons (Bitmap)/705_RT-DETRv2/logs/"},
-}
+# 3 self.deploy.from_train_task(task_id)
+#
+# api.nn.deploy.custom_model() # returns task_info
+# api.nn.deploy.pretrained_model() # returns task_info
