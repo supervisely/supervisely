@@ -621,6 +621,8 @@ class ApiField:
     """"""
     EXPERIMENT = "experiment"
     """"""
+    HOTKEY = "hotkey"
+    """"""
 
 
 def _get_single_item(items):

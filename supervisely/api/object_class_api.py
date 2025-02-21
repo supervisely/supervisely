@@ -201,3 +201,66 @@ class ObjectClassApi(ModuleApi):
     #     response = self._api.post('videos.tags.bulk.add', {ApiField.VIDEO_ID: video_id, ApiField.TAGS: tags_json})
     #     ids = [obj[ApiField.ID] for obj in response.json()]
     #     return ids
+
+    def update(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        hotkey: Optional[str] = None,
+        shape: Optional[str] = None,
+        color: Optional[str] = None,
+        settings: Optional[dict] = None,
+    ):
+        """
+        Update the class with the given ID on the server.
+
+        :param id: ID of the class to update.
+        :type id: int
+        :param name: New name of the class.
+        :type name: str, optional
+        :param description: New description of the class.
+        :type description: str, optional
+        :param hotkey: New hotkey of the class.
+        :type hotkey: str, optional
+        :param shape: New shape of the class.
+        :type shape: str, optional
+        :param color: New color of the class.
+        :type color: str, optional
+        :param settings: New settings of the class.
+        :type settings: dict, optional
+
+        :return: Updated class information
+        :rtype: :class:`ObjectClassInfo<ObjectClassInfo>`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            obj_class_info = api.object_class.update(
+                id=22309,
+                shape='any',
+            )
+        """
+        if all(arg is None for arg in [name, description, hotkey, shape, color, settings]):
+            raise ValueError(
+                f"To update the class with ID: {id}, you must specify at least one parameter to update; all are currently None"
+            )
+
+        response = self._api.post(
+            "advanced.object_classes.editInfo",
+            {
+                ApiField.ID: id,
+                ApiField.NAME: name,
+                ApiField.DESCRIPTION: description,
+                ApiField.HOTKEY: hotkey,
+                ApiField.SHAPE: shape,
+                ApiField.COLOR: color,
+                ApiField.SETTINGS: settings,
+            },
+        )
+        return self._convert_json_info(response.json())
