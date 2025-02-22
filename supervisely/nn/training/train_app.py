@@ -1807,8 +1807,9 @@ class TrainApp:
                 self.gui.training_artifacts.trt_instruction.show()
 
             # Show the inference demo widget if overview or any demo is available
-            if self.gui.training_artifacts.overview_demo_exists(demo_path) or any(
+            if self.gui.training_artifacts.inference_demo_field is not None and any(
                 [
+                    self.gui.training_artifacts.overview_demo_exists(demo_path),
                     self.gui.training_artifacts.pytorch_demo_exists(demo_path),
                     self.gui.training_artifacts.onnx_demo_exists(demo_path),
                     self.gui.training_artifacts.trt_demo_exists(demo_path),
