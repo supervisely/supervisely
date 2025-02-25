@@ -109,7 +109,7 @@ class CustomUnpickler(pickle.Unpickler):
                     )
                 return orig_new(cls, *args, **kwargs)
 
-            # Create a new subclass dynamically to prevent redefine current class
+            # Create a new subclass dynamically to prevent redefining the current class
             NewCls = type(f"Pickled{cls.__name__}", (cls,), {"__new__": new})
             return NewCls
 
