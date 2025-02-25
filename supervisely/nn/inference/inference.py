@@ -2993,7 +2993,7 @@ class Inference:
             "--output",
             type=str,
             required=False,
-            help="Path to local directory where predictions will be saved. Default: input directory + '_predictions'",
+            help="Path to local directory where predictions will be saved. Default: './predictions'",
         )
         parser.add_argument(
             "--upload",
