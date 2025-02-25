@@ -888,7 +888,14 @@ class Inference:
     @property
     def api(self) -> Api:
         if self._api is None:
-            self._api = Api()
+            if (
+                self._is_local_deploy
+                and os.getenv("SERVER_ADDRESS") is None
+                and os.getenv("API_TOKEN") is None
+            ):
+                return None
+            else:
+                self._api = Api()
         return self._api
 
     @property
@@ -2984,7 +2991,10 @@ class Inference:
             help="Path to the output directory. Prediction results will be saved there. Default: input directory + '_predictions'",
         )
         parser.add_argument(
-            "--draw", type=bool, required=False, help="Draw predictions on images. Default: False"
+            "--draw",
+            type=bool,
+            required=False,
+            help="Generate new images with visualized predictions. Default: False",
         )
         # -------------------------- #
 
@@ -3148,6 +3158,11 @@ class Inference:
         def predict_project_by_args(
             api: Api, project_id: int, dataset_ids: List[int] = None, settings: str = None
         ):
+            if self.api is None:
+                raise ValueError(
+                    "Provide environment variables to run inference on Supervisely platform by project id"
+                )
+
             settings = self._read_settings(settings)
             settings = self._get_inference_settings(settings)
             source_project = api.project.get_info_by_id(project_id)
@@ -3165,6 +3180,10 @@ class Inference:
             )
 
         def predict_datasets_by_args(api: Api, dataset_ids: List[int], settings: str = None):
+            if self.api is None:
+                raise ValueError(
+                    "Provide environment variables to run inference on Supervisely platform by dataset id"
+                )
             settings = self._read_settings(settings)
             settings = self._get_inference_settings(settings)
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
@@ -3185,6 +3204,10 @@ class Inference:
                 return ann
 
             if isinstance(image, int):
+                if self.api is None:
+                    raise ValueError(
+                        "Provide environment variables to run inference on Supervisely platform by image id"
+                    )
                 image_np = api.image.download_np(image)
                 ann = predict_image_np(image_np)
                 api.annotation.upload_ann(image, ann)
@@ -3203,7 +3226,7 @@ class Inference:
                     # sly_image.write(pred_path, image_np)
 
         def predict_directory_by_args(
-            dir_path: str, settings: str = None, output_dir: str = None, draw: str = None
+            dir_path: str, settings: str = None, output_dir: str = None, draw: bool = False
         ):
             if output_dir is None:
                 p = Path(dir_path)
@@ -3234,7 +3257,6 @@ class Inference:
                 self._args.output_dir,
                 self._args.draw,
             )
-            raise NotImplementedError("Predict from directory is not implemented yet")
         elif self._args.predict_image is not None:
             predict_image_by_args(self.api, self._args.predict_image, self._args.settings)
 
