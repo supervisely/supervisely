@@ -1799,7 +1799,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self.update_meta(id, meta)
 
     def _set_custom_grouping_settings(
-        self, id: int, group_images: bool, tag_name: str, sync: bool, label_group_tag_name: str = None
+        self,
+        id: int,
+        group_images: bool,
+        tag_name: str,
+        sync: bool,
+        label_group_tag_name: str = None,
     ) -> None:
         """Sets the project settings for custom grouping.
 
