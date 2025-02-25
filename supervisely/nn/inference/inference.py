@@ -2978,7 +2978,7 @@ class Inference:
             "--dataset_id",
             type=lambda x: [int(i) for i in x.split(",")] if "," in x else int(x),
             required=False,
-            help="ID of the dataset or a comma-separated list of dataset IDs",
+            help="ID of the dataset or a comma-separated list of dataset IDs e.g. '505,506,507'",
         )
         parser.add_argument(
             "--image_id",
@@ -2999,7 +2999,7 @@ class Inference:
             "--upload",
             required=False,
             action="store_true",
-            help="Upload predictions to Supervisely instance. For project and dataset predictions a new project will be created. Default: False",
+            help="Upload predictions to Supervisely instance. Works only with: '--project_id', '--dataset_id', '--image_id'. For project and dataset predictions a new project will be created. Default: False",
         )
         # -------------------------- #
 
