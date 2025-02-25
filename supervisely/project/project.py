@@ -71,6 +71,31 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 
 
+class CustomUnpickler(pickle.Unpickler):
+    """
+    Custom Unpickler to load pickled objects with fields that are not present in the class definition.
+    Used to load old pickled objects that have been pickled with a class that has been updated.
+    Supports loading namedtuple objects with missing fields.
+    """
+
+    def find_class(self, module, name):
+        cls = super().find_class(module, name)
+        if hasattr(cls, "_fields"):
+            orig_new = cls.__new__
+
+            def new(cls, *args, **kwargs):
+                if len(args) < len(cls._fields):
+                    # Set missed attrs to None
+                    args = list(args) + [None] * (len(cls._fields) - len(args))
+                return orig_new(cls, *args, **kwargs)
+
+            # Create a new class dynamically
+            NewCls = type(f"Pickled{cls.__name__}", (cls,), {"__new__": new})
+            return NewCls
+
+        return cls
+
+
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
     #: :class:`str`: Full image file path of item
@@ -3289,10 +3314,10 @@ class Project:
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
         with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
-            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = pickle.load(
-                f
+            unpickler = CustomUnpickler(f)
+            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
+                unpickler.load()
             )
-
         if project_name is None:
             project_name = project_info.name
         new_project_info = api.project.create(
@@ -3354,7 +3379,8 @@ class Project:
             )
             workspace_info = api.workspace.get_info_by_id(workspace_id)
             existing_links = api.image.check_existing_links(
-                list(set([inf.link for inf in image_infos if inf.link])), team_id=workspace_info.team_id
+                list(set([inf.link for inf in image_infos if inf.link])),
+                team_id=workspace_info.team_id,
             )
         image_infos = sorted(image_infos, key=lambda info: info.link is not None)
 
