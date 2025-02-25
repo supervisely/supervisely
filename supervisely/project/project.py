@@ -73,23 +73,43 @@ from supervisely.task.progress import Progress, tqdm_sly
 
 class CustomUnpickler(pickle.Unpickler):
     """
-    Custom Unpickler to load pickled objects with fields that are not present in the class definition.
-    Used to load old pickled objects that have been pickled with a class that has been updated.
-    Supports loading namedtuple objects with missing fields.
+    Custom Unpickler for loading pickled objects of the same class with differing definitions.
+    Handles cases where a class object is reconstructed using a newer definition with additional fields
+    or an outdated definition missing some fields.
+    Supports loading namedtuple objects with missing or extra fields.
     """
 
     def find_class(self, module, name):
         cls = super().find_class(module, name)
-        if hasattr(cls, "_fields"):
+        if hasattr(cls, "_fields") and "Info" in cls.__name__:
             orig_new = cls.__new__
 
             def new(cls, *args, **kwargs):
+                # Case when new definition of class has more fields than the old one
                 if len(args) < len(cls._fields):
+                    default_values = cls._field_defaults
                     # Set missed attrs to None
-                    args = list(args) + [None] * (len(cls._fields) - len(args))
+                    num_missing = len(cls._fields) - len(args)
+                    args = list(args) + [None] * num_missing
+                    # Replace only the added None values with default values where applicable
+                    args[-num_missing:] = [
+                        (
+                            default_values.get(field, arg)
+                            if arg is None and field in default_values
+                            else arg
+                        )
+                        for field, arg in zip(cls._fields[-num_missing:], args[-num_missing:])
+                    ]
+                # Case when the object of new class definition creating within old class definition
+                elif len(args) > len(cls._fields):
+                    end_index = len(args)
+                    args = args[: len(cls._fields)]
+                    logger.warning(
+                        f"Extra fields (idx {list(range(len(cls._fields), end_index))}) are ignored for class '{cls.__name__.lstrip('Pickled')}' due to definition being outdated"
+                    )
                 return orig_new(cls, *args, **kwargs)
 
-            # Create a new class dynamically
+            # Create a new subclass dynamically to prevent redefine current class
             NewCls = type(f"Pickled{cls.__name__}", (cls,), {"__new__": new})
             return NewCls
 
