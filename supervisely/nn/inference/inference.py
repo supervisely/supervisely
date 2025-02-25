@@ -81,6 +81,7 @@ from supervisely.project.download import download_to_cache, read_from_cached_pro
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
 
 try:
     from typing import Literal
@@ -380,7 +381,8 @@ class Inference:
 
         if isinstance(self.gui, GUI.ServingGUITemplate):
             self._app_layout = Container(
-                [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
+                [self._user_layout_card, self._api_request_model_layout, self.get_ui()],
+                gap=5,
             )
             return
 
@@ -400,7 +402,8 @@ class Inference:
             )
 
         self._app_layout = Container(
-            [self._user_layout_card, self._api_request_model_layout, self.get_ui()], gap=5
+            [self._user_layout_card, self._api_request_model_layout, self.get_ui()],
+            gap=5,
         )
 
     def support_custom_models(self) -> bool:
@@ -610,7 +613,9 @@ class Inference:
                         ) as download_pbar:
                             self.gui.download_progress.show()
                             sly_fs.download(
-                                url=file_url, save_path=file_path, progress=download_pbar.update
+                                url=file_url,
+                                save_path=file_path,
+                                progress=download_pbar.update,
                             )
                     else:
                         sly_fs.download(url=file_url, save_path=file_path)
@@ -2414,10 +2419,10 @@ class Inference:
             # Predict and shutdown
             if any(
                 [
-                    self._args.predict_project,
-                    self._args.predict_dataset,
-                    self._args.predict_dir,
-                    self._args.predict_image,
+                    self._args.input,
+                    self._args.project_id,
+                    self._args.dataset_id,
+                    self._args.image_id,
                 ]
             ):
                 self._inference_by_local_deploy_args()
@@ -2932,6 +2937,10 @@ class Inference:
     def _parse_local_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
+        # Positional args
+        parser.add_argument("mode", choices=["predict"], help="Mode of operation")
+        parser.add_argument("input", nargs="?", type=str, help="Local path to input data")
+
         # Deploy args
         parser.add_argument(
             "--model",
@@ -2948,52 +2957,63 @@ class Inference:
         parser.add_argument(
             "--runtime",
             type=str,
-            choices=[RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT],
+            choices=[
+                RuntimeType.PYTORCH,
+                RuntimeType.ONNXRUNTIME,
+                RuntimeType.TENSORRT,
+            ],
             default=RuntimeType.PYTORCH,
             help="Runtime type for inference (default: PYTORCH)",
         )
         # -------------------------- #
 
-        # Predict args
-        parser.add_argument("--predict-project", type=int, required=False, help="ID of the project")
+        # Remote predict
         parser.add_argument(
-            "--predict-dataset",
+            "--project_id",
+            type=int,
+            required=False,
+            help="Project ID on Supervisely instance",
+        )
+        parser.add_argument(
+            "--dataset_id",
             type=lambda x: [int(i) for i in x.split(",")] if "," in x else int(x),
             required=False,
             help="ID of the dataset or a comma-separated list of dataset IDs",
         )
         parser.add_argument(
-            "--predict-dir",
+            "--image_id",
+            type=int,
+            required=False,
+            help="Image ID on Supervisely instance",
+        )
+        # -------------------------- #
+
+        # Output args
+        parser.add_argument(
+            "--output",
             type=str,
             required=False,
-            help="Path to the local directory with images",
+            help="Path to local directory where predictions will be saved. Default: input directory + '_predictions'",
         )
         parser.add_argument(
-            "--predict-image",
-            type=str,
+            "--upload",
             required=False,
-            help="Image ID on Supervisely instance or path to local image",
+            action="store_true",
+            help="Upload predictions to Supervisely instance. For project and dataset predictions a new project will be created. Default: False",
         )
+        # -------------------------- #
+
+        # Other args
         parser.add_argument(
             "--settings",
             type=str,
             required=False,
             help="Path to the settings JSON or YAML file",
         )
-        # -------------------------- #
-
-        # Output args
-        parser.add_argument("--output", type=str, required=False, help="Not implemented yet")
-        parser.add_argument(
-            "--output-dir",
-            type=str,
-            required=False,
-            help="Path to the output directory. Prediction results will be saved there. Default: input directory + '_predictions'",
-        )
         parser.add_argument(
             "--draw",
-            type=bool,
             required=False,
+            action="store_true",
             help="Generate new images with visualized predictions. Default: False",
         )
         # -------------------------- #
@@ -3003,11 +3023,12 @@ class Inference:
         if args.model is None:
             # raise ValueError("Argument '--model' is required for local deployment")
             return None, False
-        if isinstance(args.predict_dataset, int):
-            args.predict_dataset = [args.predict_dataset]
-        if args.predict_image is not None:
-            if args.predict_image.isdigit():
-                args.predict_image = int(args.predict_image)
+        if args.mode != "predict":
+            raise ValueError("Invalid operation. Only 'predict' is supported.")
+        if args.output is None:
+            args.output = "./predictions"
+        if isinstance(args.dataset_id, int):
+            args.dataset_id = [args.dataset_id]
         return args, True
 
     def _get_pretrained_model_params_from_args(self):
@@ -3144,7 +3165,7 @@ class Inference:
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
 
-    def _read_settings(settings_path):
+    def _read_settings(self, settings_path):
         if settings_path is None:
             return {}
         if settings_path.endswith(".json"):
@@ -3155,8 +3176,14 @@ class Inference:
         raise ValueError("Settings file should be in JSON or YAML format")
 
     def _inference_by_local_deploy_args(self):
-        def predict_project_by_args(
-            api: Api, project_id: int, dataset_ids: List[int] = None, settings: str = None
+        def predict_project_id_by_args(
+            api: Api,
+            project_id: int,
+            dataset_ids: List[int] = None,
+            output_dir: str = "./predictions",
+            settings: str = None,
+            draw: bool = False,
+            upload: bool = False,
         ):
             if self.api is None:
                 raise ValueError(
@@ -3165,34 +3192,66 @@ class Inference:
 
             settings = self._read_settings(settings)
             settings = self._get_inference_settings(settings)
-            source_project = api.project.get_info_by_id(project_id)
-            workspace_id = source_project.workspace_id
-            output_project = api.project.create(
-                workspace_id, f"{source_project.name} predicted", change_name_if_conflict=True
-            )
-            results = self._inference_project_id(
-                api=self.api,
-                state={
-                    "projectId": project_id,
-                    "dataset_ids": dataset_ids,
-                    "output_project_id": output_project.id,
-                },
-            )
+            state = {"projectId": project_id, "dataset_ids": dataset_ids}
+            if upload:
+                source_project = api.project.get_info_by_id(project_id)
+                workspace_id = source_project.workspace_id
+                output_project = api.project.create(
+                    workspace_id,
+                    f"{source_project.name} predicted",
+                    change_name_if_conflict=True,
+                )
+                state["output_project_id"] = output_project.id
+            results = self._inference_project_id(api=self.api, state=state)
 
-        def predict_datasets_by_args(api: Api, dataset_ids: List[int], settings: str = None):
+            dataset_infos = api.dataset.get_list(project_id)
+            datasets_map = {dataset_info.id: dataset_info.name for dataset_info in dataset_infos}
+
+            for prediction in results:
+                dataset_name = datasets_map[prediction["dataset_id"]]
+                image_name = prediction["image_name"]
+                pred_dir = os.path.join(output_dir, dataset_name)
+                pred_path = os.path.join(pred_dir, f"{image_name}.json")
+                ann_json = prediction["annotation"]
+                if not sly_fs.dir_exists(pred_dir):
+                    sly_fs.mkdir(pred_dir)
+                sly_json.dump_json_file(ann_json, pred_path)
+                # if draw:
+                # @TODO: add draw visualization
+
+        def predict_dataset_id_by_args(
+            api: Api,
+            dataset_ids: List[int],
+            output_dir: str = "./predictions",
+            settings: str = None,
+            draw: bool = False,
+            upload: bool = False,
+        ):
             if self.api is None:
                 raise ValueError(
                     "Provide environment variables to run inference on Supervisely platform by dataset id"
                 )
-            settings = self._read_settings(settings)
-            settings = self._get_inference_settings(settings)
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
             project_ids = list(set([dataset_info.project_id for dataset_info in dataset_infos]))
             if len(project_ids) > 1:
                 raise ValueError("All datasets should belong to the same project")
-            predict_project_by_args(api, project_ids[0], dataset_ids)
+            predict_project_id_by_args(
+                api, project_ids[0], dataset_ids, output_dir, settings, draw, upload
+            )
 
-        def predict_image_by_args(api: Api, image: Union[str, int], settings: str = None):
+        def predict_image_id_by_args(
+            api: Api,
+            image_id: int,
+            output_dir: str = "./predictions",
+            settings: str = None,
+            draw: bool = False,
+            upload: bool = False,
+        ):
+            if self.api is None:
+                raise ValueError(
+                    "Provide environment variables to run inference on Supervisely platform by image id"
+                )
+
             settings = self._read_settings(settings)
             settings = self._get_inference_settings(settings)
 
@@ -3203,62 +3262,120 @@ class Inference:
                 ann = anns[0]
                 return ann
 
-            if isinstance(image, int):
-                if self.api is None:
-                    raise ValueError(
-                        "Provide environment variables to run inference on Supervisely platform by image id"
-                    )
-                image_np = api.image.download_np(image)
-                ann = predict_image_np(image_np)
-                api.annotation.upload_ann(image, ann)
-            elif isinstance(image, str):
-                if sly_fs.file_exists(self._args.predict_image):
-                    image_np = sly_image.read(self._args.predict_image)
-                    ann = predict_image_np(image_np)
-                    pred_ann_path = image + ".json"
-                    sly_json.dump_json_file(ann.to_json(), pred_ann_path)
-                    # Save image and ann for debug
-                    # ann.draw_pretty(image_np)
-                    # pred_path = os.path.join(
-                    #     os.path.dirname(self._args.predict_image),
-                    #     "pred_" + os.path.basename(self._args.predict_image),
-                    # )
-                    # sly_image.write(pred_path, image_np)
+            image_np = api.image.download_np(image_id)
+            ann = predict_image_np(image_np)
+            ann_json = ann.to_json()
 
-        def predict_directory_by_args(
-            dir_path: str, settings: str = None, output_dir: str = None, draw: bool = False
+            image_info = api.image.get_info_by_id(image_id)
+            dataset_info = api.dataset.get_info_by_id(image_info.dataset_id)
+            pred_dir = os.path.join(output_dir, dataset_info.name)
+            pred_path = os.path.join(pred_dir, f"{image_info.name}.json")
+            if not sly_fs.dir_exists(pred_dir):
+                sly_fs.mkdir(pred_dir)
+            sly_json.dump_json_file(ann_json, pred_path)
+
+            if draw:
+                vis_path = os.path.join(output_dir, dataset_info.name, f"{image_info.name}.png")
+                ann.draw_pretty(image_np, output_path=vis_path)
+            if upload:
+                api.annotation.upload_ann(image_id, ann)
+
+            # elif isinstance(image, str):
+            #     if sly_fs.file_exists(self._args.predict_image):
+            #         image_np = sly_image.read(self._args.predict_image)
+            #         ann = predict_image_np(image_np)
+            #         pred_ann_path = image + ".json"
+            #         sly_json.dump_json_file(ann.to_json(), pred_ann_path)
+            # Save image and ann for debug
+            # ann.draw_pretty(image_np)
+            # pred_path = os.path.join(
+            #     os.path.dirname(self._args.predict_image),
+            #     "pred_" + os.path.basename(self._args.predict_image),
+            # )
+            # sly_image.write(pred_path, image_np)
+
+        def predict_local_data_by_args(
+            input_path: str,
+            settings: str = None,
+            output_dir: str = "./predictions",
+            draw: bool = False,
         ):
-            if output_dir is None:
-                p = Path(dir_path)
-                output_dir = p.parent / f"{p.name}_predicted"
-            settings = self._read_settings(settings)
-            settings = self._get_inference_settings(settings)
-            images = list_files(dir_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
-            anns, _ = self._inference_auto(
-                images,
-                settings=settings,
-            )
-            for image_path, ann in zip(images, anns):
-                image_name = Path(image_path).name
+
+            def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
+                image_name = sly_fs.get_file_name_with_ext(image_path)
+                if pred_dir is not None:
+                    pred_dir = os.path.join(output_dir, pred_dir)
+                    pred_ann_path = os.path.join(pred_dir, f"{image_name}.json")
+                else:
+                    pred_dir = output_dir
+                    pred_ann_path = os.path.join(pred_dir, f"{image_name}.json")
+
+                if not os.path.exists(pred_dir):
+                    sly_fs.mkdir(pred_dir)
+                sly_json.dump_json_file(ann.to_json(), pred_ann_path)
                 if draw:
                     image = sly_image.read(image_path)
-                    ann.draw_pretty(image, output_path=os.path.join(output_dir, image_name))
-                pred_ann_path = os.path.join(output_dir, image_name + ".json")
-                sly_json.dump_json_file(ann.to_json(), pred_ann_path)
+                    ann.draw_pretty(image, output_path=os.path.join(pred_dir, image_name))
 
-        if self._args.predict_project is not None:
-            predict_project_by_args(self.api, self._args.predict_project, self._args.settings)
-        elif self._args.predict_dataset is not None:
-            predict_datasets_by_args(self.api, self._args.predict_dataset, self._args.settings)
-        elif self._args.predict_dir is not None:
-            predict_directory_by_args(
-                self._args.predict_dir,
+            settings = self._read_settings(settings)
+            settings = self._get_inference_settings(settings)
+            # 1. Input Directory
+            if os.path.isdir(input_path):
+                pred_dir = os.path.basename(input_path)
+                images = list_files(input_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
+                anns, _ = self._inference_auto(images, settings)
+                for image_path, ann in zip(images, anns):
+                    postprocess_image(image_path, ann, pred_dir)
+            # 2. Input File
+            elif os.path.isfile(input_path):
+                if input_path.endswith(tuple(sly_image.SUPPORTED_IMG_EXTS)):
+                    image_np = sly_image.read(input_path)
+                    anns, _ = self._inference_auto([image_np], settings)
+                    ann = anns[0]
+                    postprocess_image(input_path, ann)
+                elif input_path.endswith(tuple(ALLOWED_VIDEO_EXTENSIONS)):
+                    raise NotImplementedError("Video inference is not implemented yet")
+                else:
+                    raise ValueError(
+                        f"Unsupported input format: '{input_path}'. Expect image or directory with images"
+                    )
+            else:
+                raise ValueError(f"Please provide a valid input path: '{input_path}'")
+
+        if self._args.project_id is not None:
+            predict_project_id_by_args(
+                self.api,
+                self._args.project_id,
+                self._args.output,
                 self._args.settings,
-                self._args.output_dir,
+                self._args.draw,
+                self._args.upload,
+            )
+        elif self._args.dataset_id is not None:
+            predict_dataset_id_by_args(
+                self.api,
+                self._args.dataset_id,
+                self._args.output,
+                self._args.settings,
+                self._args.draw,
+                self._args.upload,
+            )
+        elif self._args.image_id is not None:
+            predict_image_id_by_args(
+                self.api,
+                self._args.image_id,
+                self._args.output,
+                self._args.settings,
+                self._args.draw,
+                self._args.upload,
+            )
+        elif self._args.input is not None:
+            predict_local_data_by_args(
+                self._args.input,
+                self._args.settings,
+                self._args.output,
                 self._args.draw,
             )
-        elif self._args.predict_image is not None:
-            predict_image_by_args(self.api, self._args.predict_image, self._args.settings)
 
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
