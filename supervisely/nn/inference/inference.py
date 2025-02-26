@@ -3008,7 +3008,8 @@ class Inference:
             "--settings",
             type=str,
             required=False,
-            help="Path to the settings JSON or YAML file",
+            nargs="*",
+            help="Path to the settings JSON/YAML file or key=value pairs",
         )
         parser.add_argument(
             "--draw",
@@ -3029,6 +3030,18 @@ class Inference:
             args.output = "./predictions"
         if isinstance(args.dataset_id, int):
             args.dataset_id = [args.dataset_id]
+
+        # Parse settings argument
+        settings_dict = {}
+        if args.settings:
+            for setting in args.settings:
+                if "=" in setting:
+                    key, value = setting.split("=", 1)
+                    settings_dict[key] = value
+                elif ":" in setting:
+                    key, value = setting.split(":", 1)
+                    settings_dict[key] = value
+        args.settings = settings_dict
         return args, True
 
     def _get_pretrained_model_params_from_args(self):
@@ -3165,7 +3178,11 @@ class Inference:
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
 
-    def _read_settings(self, settings_path):
+    def _read_settings(self, settings: Union[str, Dict[str, Any]]):
+        if isinstance(settings, dict):
+            return settings
+
+        settings_path = settings
         if settings_path is None:
             return {}
         if settings_path.endswith(".json"):
@@ -3176,6 +3193,8 @@ class Inference:
         raise ValueError("Settings file should be in JSON or YAML format")
 
     def _inference_by_local_deploy_args(self):
+        missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
+
         def predict_project_id_by_args(
             api: Api,
             project_id: int,
@@ -3186,9 +3205,7 @@ class Inference:
             upload: bool = False,
         ):
             if self.api is None:
-                raise ValueError(
-                    "Provide environment variables to run inference on Supervisely platform by project id"
-                )
+                raise ValueError(missing_env_message)
 
             settings = self._read_settings(settings)
             settings = self._get_inference_settings(settings)
@@ -3228,9 +3245,7 @@ class Inference:
             upload: bool = False,
         ):
             if self.api is None:
-                raise ValueError(
-                    "Provide environment variables to run inference on Supervisely platform by dataset id"
-                )
+                raise ValueError(missing_env_message)
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
             project_ids = list(set([dataset_info.project_id for dataset_info in dataset_infos]))
             if len(project_ids) > 1:
@@ -3248,9 +3263,7 @@ class Inference:
             upload: bool = False,
         ):
             if self.api is None:
-                raise ValueError(
-                    "Provide environment variables to run inference on Supervisely platform by image id"
-                )
+                raise ValueError(missing_env_message)
 
             settings = self._read_settings(settings)
             settings = self._get_inference_settings(settings)
