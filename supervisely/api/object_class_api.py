@@ -211,9 +211,10 @@ class ObjectClassApi(ModuleApi):
         shape: Optional[str] = None,
         color: Optional[str] = None,
         settings: Optional[dict] = None,
-    ):
+    ) -> NamedTuple:
         """
         Update the class with the given ID on the server.
+        Returned object contains updated information about the class except settings.
 
         :param id: ID of the class to update.
         :type id: int
@@ -221,13 +222,15 @@ class ObjectClassApi(ModuleApi):
         :type name: str, optional
         :param description: New description of the class.
         :type description: str, optional
-        :param hotkey: New hotkey of the class.
+        :param hotkey: New hotkey of the class (e.g., "K").
         :type hotkey: str, optional
         :param shape: New shape of the class.
         :type shape: str, optional
-        :param color: New color of the class.
+        :param color: New color of the class in HEX format (e.g., #FFFFFF).
         :type color: str, optional
         :param settings: New settings of the class.
+                        Do not pass "availableShapes" for shape other than "any".
+                        Do not pass "availableShapes" that does not contain the current shape.
         :type settings: dict, optional
 
         :return: Updated class information
@@ -244,6 +247,12 @@ class ObjectClassApi(ModuleApi):
             obj_class_info = api.object_class.update(
                 id=22309,
                 shape='any',
+                settings={
+                    "availableShapes": [
+                        "bitmap",
+                        "polygon",
+                    ],
+                },
             )
         """
         if all(arg is None for arg in [name, description, hotkey, shape, color, settings]):
@@ -251,16 +260,19 @@ class ObjectClassApi(ModuleApi):
                 f"To update the class with ID: {id}, you must specify at least one parameter to update; all are currently None"
             )
 
-        response = self._api.post(
-            "advanced.object_classes.editInfo",
-            {
-                ApiField.ID: id,
-                ApiField.NAME: name,
-                ApiField.DESCRIPTION: description,
-                ApiField.HOTKEY: hotkey,
-                ApiField.SHAPE: shape,
-                ApiField.COLOR: color,
-                ApiField.SETTINGS: settings,
-            },
-        )
-        return self._convert_json_info(response.json())
+        data = {ApiField.ID: id}
+        if name is not None:
+            data[ApiField.NAME] = name
+        if description is not None:
+            data[ApiField.DESCRIPTION] = description
+        if hotkey is not None:
+            data[ApiField.HOTKEY] = hotkey
+        if shape is not None:
+            data[ApiField.SHAPE] = shape
+        if color is not None:
+            data[ApiField.COLOR] = color
+        if settings is not None:
+            data[ApiField.SETTINGS] = settings
+
+        response = self._api.post("advanced.object_classes.editInfo", data)
+        return self._convert_json_info(response.json(), skip_missing=True)
