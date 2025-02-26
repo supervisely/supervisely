@@ -84,12 +84,13 @@ class CustomUnpickler(pickle.Unpickler):
         self.warned_classes = set()  # To prevent multiple warnings for the same class
 
     def find_class(self, module, name):
+        prefix = "Pickled"
         cls = super().find_class(module, name)
         if hasattr(cls, "_fields") and "Info" in cls.__name__:
             orig_new = cls.__new__
 
             def new(cls, *args, **kwargs):
-                orig_class_name = cls.__name__.lstrip("Pickled")
+                orig_class_name = cls.__name__[len(prefix) :]
                 # Case when new definition of class has more fields than the old one
                 if len(args) < len(cls._fields):
                     default_values = cls._field_defaults
@@ -123,7 +124,7 @@ class CustomUnpickler(pickle.Unpickler):
                 return orig_new(cls, *args, **kwargs)
 
             # Create a new subclass dynamically to prevent redefining the current class
-            NewCls = type(f"Pickled{cls.__name__}", (cls,), {"__new__": new})
+            NewCls = type(f"{prefix}{cls.__name__}", (cls,), {"__new__": new})
             return NewCls
 
         return cls
