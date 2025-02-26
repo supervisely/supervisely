@@ -3035,6 +3035,7 @@ class Inference:
 
     def _parse_inference_settings_from_args(self):
         def try_convert_to_number(value: str):
+            # @TODO: add support for bool values?
             try:
                 if "." in value:
                     return float(value)
