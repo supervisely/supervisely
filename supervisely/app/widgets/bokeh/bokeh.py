@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app.widgets import Widget
-from supervisely.io.env import task_id
+from supervisely.io.env import task_id as env_task_id
 
 
 class DebouncedEventHandler:
@@ -247,7 +247,7 @@ class Bokeh(Widget):
 
         if is_production():
             api = Api()
-            task_info = api.task.get_info_by_id(task_id())
+            task_info = api.task.get_info_by_id(env_task_id())
             if task_info is not None:
                 route_path = f"/net/{task_info['meta']['sessionToken']}{route_path}"
         callback = CustomJS(
