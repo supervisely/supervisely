@@ -79,12 +79,17 @@ class CustomUnpickler(pickle.Unpickler):
     Supports loading namedtuple objects with missing or extra fields.
     """
 
+    def __init__(self, file, **kwargs):
+        super().__init__(file, **kwargs)
+        self.warned_classes = set()  # To prevent multiple warnings for the same class
+
     def find_class(self, module, name):
         cls = super().find_class(module, name)
         if hasattr(cls, "_fields") and "Info" in cls.__name__:
             orig_new = cls.__new__
 
             def new(cls, *args, **kwargs):
+                orig_class_name = cls.__name__.lstrip("Pickled")
                 # Case when new definition of class has more fields than the old one
                 if len(args) < len(cls._fields):
                     default_values = cls._field_defaults
@@ -100,13 +105,21 @@ class CustomUnpickler(pickle.Unpickler):
                         )
                         for field, arg in zip(cls._fields[-num_missing:], args[-num_missing:])
                     ]
+                    if orig_class_name not in self.warned_classes:
+                        new_fields = cls._fields[len(cls._fields) - num_missing :]
+                        logger.warning(
+                            f"New fields {new_fields} for the '{orig_class_name}' class objects are set to their default values or None due to an updated definition of this class."
+                        )
+                        self.warned_classes.add(orig_class_name)
                 # Case when the object of new class definition creating within old class definition
                 elif len(args) > len(cls._fields):
                     end_index = len(args)
                     args = args[: len(cls._fields)]
-                    logger.warning(
-                        f"Extra fields (idx {list(range(len(cls._fields), end_index))}) are ignored for class '{cls.__name__.lstrip('Pickled')}' due to definition being outdated"
-                    )
+                    if orig_class_name not in self.warned_classes:
+                        logger.warning(
+                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for class '{cls.__name__.lstrip('Pickled')}' objects due to definition being outdated"
+                        )
+                        self.warned_classes.add(orig_class_name)
                 return orig_new(cls, *args, **kwargs)
 
             # Create a new subclass dynamically to prevent redefining the current class
