@@ -401,8 +401,30 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 tags_limit_per_image=3
             )
             print(new_labeling_jobs)
-            
+
             # >>> List[LabelingJobInfo(id=2,...)]
+
+            # Create video labeling job with toolbox settings
+
+            user_id = 4
+            dataset_id = 277
+            video_id = 24897
+            toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
+
+            new_labeling_jobs = api.labeling_job.create(
+                name="Labeling Job name",
+                dataset_id=dataset_id,
+                user_ids=[user_id],
+                readme="Labeling Job readme",
+                description="Some description",
+                classes_to_label=["car", "animal"],
+                tags_to_label=["animal_age_group"],
+                images_ids=[video_id],
+                toolbox_settings=toolbox_settings,
+            )
+            print(new_labeling_jobs)
+
+            # >>> List[LabelingJobInfo(id=3,...)]
         """
         if classes_to_label is None:
             classes_to_label = []
