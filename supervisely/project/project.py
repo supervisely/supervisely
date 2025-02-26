@@ -73,24 +73,64 @@ from supervisely.task.progress import Progress, tqdm_sly
 
 class CustomUnpickler(pickle.Unpickler):
     """
-    Custom Unpickler to load pickled objects with fields that are not present in the class definition.
-    Used to load old pickled objects that have been pickled with a class that has been updated.
-    Supports loading namedtuple objects with missing fields.
+    Custom Unpickler for loading pickled objects of the same class with differing definitions.
+    Handles cases where a class object is reconstructed using a newer definition with additional fields
+    or an outdated definition missing some fields.
+    Supports loading namedtuple objects with missing or extra fields.
     """
 
+    def __init__(self, file, **kwargs):
+        super().__init__(file, **kwargs)
+        self.warned_classes = set()  # To prevent multiple warnings for the same class
+        self.sdk_update_notified = False
+
     def find_class(self, module, name):
+        prefix = "Pickled"
         cls = super().find_class(module, name)
-        if hasattr(cls, "_fields"):
+        if hasattr(cls, "_fields") and "Info" in cls.__name__:
             orig_new = cls.__new__
 
             def new(cls, *args, **kwargs):
+                orig_class_name = cls.__name__[len(prefix) :]
+                # Case when new definition of class has more fields than the old one
                 if len(args) < len(cls._fields):
+                    default_values = cls._field_defaults
                     # Set missed attrs to None
-                    args = list(args) + [None] * (len(cls._fields) - len(args))
+                    num_missing = len(cls._fields) - len(args)
+                    args = list(args) + [None] * num_missing
+                    # Replace only the added None values with default values where applicable
+                    args[-num_missing:] = [
+                        (
+                            default_values.get(field, arg)
+                            if arg is None and field in default_values
+                            else arg
+                        )
+                        for field, arg in zip(cls._fields[-num_missing:], args[-num_missing:])
+                    ]
+                    if orig_class_name not in self.warned_classes:
+                        new_fields = cls._fields[len(cls._fields) - num_missing :]
+                        logger.warning(
+                            f"New fields {new_fields} for the '{orig_class_name}' class objects are set to their default values or None due to an updated definition of this class."
+                        )
+                        self.warned_classes.add(orig_class_name)
+                # Case when the object of new class definition creating within old class definition
+                elif len(args) > len(cls._fields):
+                    end_index = len(args)
+                    args = args[: len(cls._fields)]
+                    if orig_class_name not in self.warned_classes:
+                        logger.warning(
+                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for '{orig_class_name}' class objects due to an outdated class definition"
+                        )
+                        self.warned_classes.add(orig_class_name)
+                        if not self.sdk_update_notified:
+                            logger.warning(
+                                "It is recommended to update the SDK version to restore the project version correctly."
+                            )
+                            self.sdk_update_notified = True
                 return orig_new(cls, *args, **kwargs)
 
-            # Create a new class dynamically
-            NewCls = type(f"Pickled{cls.__name__}", (cls,), {"__new__": new})
+            # Create a new subclass dynamically to prevent redefining the current class
+            NewCls = type(f"{prefix}{cls.__name__}", (cls,), {"__new__": new})
             return NewCls
 
         return cls
