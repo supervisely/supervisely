@@ -44,6 +44,7 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
+    get_file_hash_chunked,
     get_file_hash_async,
     get_file_name_with_ext,
     get_file_size,
@@ -1516,7 +1517,7 @@ class VideoApi(RemoveableBulkModuleApi):
             self._api.add_header("x-skip-processing", "true")
 
         video_info_results = []
-        hashes = [get_file_hash(x) for x in paths]
+        hashes = [get_file_hash_chunked(x) for x in paths]
 
         self._upload_data_bulk(
             path_to_bytes_stream,
