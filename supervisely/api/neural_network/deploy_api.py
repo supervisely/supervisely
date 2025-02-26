@@ -1,41 +1,33 @@
-# coding: utf-8
-"""download/upload/manipulate neural networks"""
-
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
-from supervisely.api.module_api import CloneableModuleApi, RemoveableModuleApi
+import supervisely.io.env as env
 from supervisely.io.fs import get_file_name_with_ext
+from supervisely.nn.utils import ModelSource, RuntimeType
 from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
-    from supervisely.project import ProjectMeta
     from supervisely.api.api import Api
-    from supervisely.nn.inference.session import Session, SessionJSON
-    from supervisely.nn.experiments import ExperimentInfo
-
-from supervisely.nn.utils import ModelSource, RuntimeType
 
 
-class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
+class DeployApi:
     """ """
 
     def __init__(self, api: "Api"):
-        super().__init__(api)
+        self._api = api
 
-    # Deploy and Serve models
-    def deploy_pretrained_model(
+    def load_pretrained_model(
         self,
         task_id: int,
         model_name: str,
         device: str = "cuda",
-        runtime: str = "PyTorch",
+        runtime: str = RuntimeType.PYTORCH,
     ):
         """
-        Deploy a pretrained model in running serving App.
+        Load a pretrained model in running serving App.
 
-        :param app_name: App name in Supervisely.
-        :type app_name: str
+        :param task_id: Task ID of the serving App.
+        :type task_id: int
         :param model_name: Model name to deploy.
         :type model_name: str
         :param device: Device string (default is "cuda").
@@ -50,19 +42,106 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         deploy_params["runtime"] = runtime
         self._deploy_model_from_api(task_id, deploy_params, model_name=model_name)
 
-    def serve_pretrained_model(
+    def load_custom_model(
         self,
-        app_name: str,  # or module_id?
-        model_name: str,
+        task_id: int,
+        team_id: int,
+        artifacts_dir: str,
+        checkpoint_name: str = None,
         device: str = "cuda",
-        runtime: str = "PyTorch",
-        **kwargs,
+        runtime: str = RuntimeType.PYTORCH,
     ):
         """
-        Deploy a pretrained model based on the app name.
+        Load a custom model in running serving App.
 
-        :param app_name: App name in Supervisely.
-        :type app_name: str
+        :param task_id: Task ID of the serving App.
+        :type task_id: int
+        :param team_id: Team ID in Supervisely.
+        :type team_id: int
+        :param artifacts_dir: Path to the artifacts directory.
+        :type artifacts_dir: str
+        :param checkpoint_name: Checkpoint name (with extension) to deploy. If not provided, the last checkpoint will be used.
+        :type checkpoint_name: Optional[str]
+        :param device: Device string (default is "cuda").
+        :type device: str
+        :param runtime: Runtime string (default is "PyTorch").
+        :type runtime: str
+        """
+        # Train V1 logic (if artifacts_dir does not start with '/experiments')
+        if not artifacts_dir.startswith("/experiments"):
+            logger.debug("Deploying model from Train V1 artifacts")
+            _, _, deploy_params = self._deploy_params_v1(
+                team_id, artifacts_dir, checkpoint_name, device, runtime, with_module=False
+            )
+        else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
+            logger.debug("Deploying model from Train V2 artifacts")
+
+            _, _, deploy_params = self._deploy_params_v2(
+                team_id, artifacts_dir, checkpoint_name, device, runtime, with_module=False
+            )
+        deploy_params["model_source"] = ModelSource.CUSTOM
+        self._deploy_model_from_api(task_id, deploy_params)
+
+    def load_model_from_train_task(
+        self,
+        task_id: int,
+        train_task: Union[int, Dict],
+        checkpoint_name: str = None,
+        device: str = "cuda",
+        runtime: str = RuntimeType.PYTORCH,
+    ):
+        """
+        Load a custom model in running serving App based on the training session.
+
+        :param task_id: Task ID of the serving App.
+        :type task_id: int
+        :param train_task: Task ID or Task Info of the Train App.
+        :type train_task: Union[int, Dict]
+        :param checkpoint_name: Checkpoint name (with extension) to deploy. If not provided, the best checkpoint will be used.
+        :type checkpoint_name: Optional[str]
+        :param device: Device string (default is "cuda").
+        :type device: str
+        :param runtime: Runtime string (default is "PyTorch").
+        :type runtime: str
+        """
+        if train_task is None:
+            train_task = self._api.task.get_info_by_id(train_task)
+        try:
+            experiment_info = train_task["meta"]["output"]["experiment"]["data"]
+        except KeyError:
+            raise ValueError("Task output does not contain experiment data")
+
+        if checkpoint_name is None:
+            checkpoint_name = experiment_info["best_checkpoint"]
+        deploy_params = {
+            "device": device,
+            "model_source": ModelSource.CUSTOM,
+            "model_files": {
+                "checkpoint": Path(
+                    experiment_info["artifacts_dir"], "checkpoints", checkpoint_name
+                ).as_posix(),
+                "config": Path(
+                    experiment_info["artifacts_dir"], experiment_info["model_files"]["config"]
+                ).as_posix(),
+            },
+            "model_info": experiment_info,
+            "runtime": runtime,
+        }
+        self._deploy_model_from_api(task_id, deploy_params)
+
+    def pretrained_model(
+        self,
+        app: Union[str, int],
+        model_name: str,
+        device: str = "cuda",
+        runtime: str = RuntimeType.PYTORCH,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Deploy a pretrained model in running serving App.
+
+        :param app_name: App name or App module ID in Supervisely.
+        :type app_name: Union[str, int]
         :param model_name: Model name to deploy.
         :type model_name: str
         :param device: Device string (default is "cuda").
@@ -71,235 +150,78 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         :type runtime: str
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
-        :raises ValueError: if validations fail.
+        :return: Task Info
+        :rtype: Dict[str, Any]
+        :raises ValueError: if no serving apps found for the app name or multiple serving apps found for the app name.
         """
-
-        modules = self._api.app.get_list_ecosystem_modules(search=app_name)
-        if len(modules) == 0:
-            raise ValueError(f"No serving apps found for app name {app_name}")
-        if len(modules) > 1:
-            raise ValueError(f"Multiple serving apps found for app name {app_name}")
-        module_id = modules[0]["id"]
+        if isinstance(app, int):
+            module_id = app
+        else:
+            modules = self._api.app.get_list_ecosystem_modules(search=app)
+            if len(modules) == 0:
+                raise ValueError(f"No serving apps found for app name {app}")
+            if len(modules) > 1:
+                raise ValueError(f"Multiple serving apps found for app name {app}")
+            module_id = modules[0]["id"]
         task_info = self._run_serve_app(module_id, **kwargs)
-        self.deploy_pretrained_model(
+        self.load_pretrained_model(
             task_info["id"], model_name=model_name, device=device, runtime=runtime
         )
         return task_info
 
-    def deploy_from_artifacts(
-        self,
-        task_id: int,
-        team_id: int,
-        artifacts_dir: str,
-        checkpoint_name: str,
-        device: str = "cuda",
-    ):
-        """
-        Deploy a custom model based on the artifacts directory.
-
-        :param task_id: Task ID of Serve App in Supervisely.
-        :type task_id: int
-        :param team_id: Team ID in Supervisely.
-        :type team_id: int
-        :param artifacts_dir: Path to the artifacts directory.
-        :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with extension) to deploy.
-        :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :raises ValueError: if validations fail.
-        """
-        # Train V1 logic (if artifacts_dir does not start with '/experiments')
-        if not artifacts_dir.startswith("/experiments"):
-            logger.debug("Deploying model from Train V1 artifacts")
-            _, _, deploy_params = self._deploy_params_v1(
-                team_id, artifacts_dir, checkpoint_name, device, with_module=False
-            )
-        else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
-            logger.debug("Deploying model from Train V2 artifacts")
-
-            _, _, deploy_params = self._deploy_params_v2(
-                team_id, artifacts_dir, checkpoint_name, device, with_module=False
-            )
-        self._deploy_model_from_api(task_id, deploy_params)
-
-    def serve_from_artifacts(
+    def custom_model(
         self,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: str = "cuda",
+        runtime: str = RuntimeType.PYTORCH,
         team_id: int = None,
+        timeout: int = 100,
         **kwargs,
     ) -> Dict[str, Any]:
         """
         Run Serve app and deploy a custom model based on the artifacts directory.
 
-        :param workspace_id: Workspace ID in Supervisely.
-        :type workspace_id: int
         :param artifacts_dir: Path to the artifacts directory.
         :type artifacts_dir: str
         :param checkpoint_name: Checkpoint name (with extension) to deploy.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
+        :param runtime: Runtime string (default is "PyTorch").
+        :type runtime: str
+        :param team_id: Team ID in Supervisely. Artifacts directory will be searched in this team.
+        :type team_id: int
         :param timeout: Timeout in seconds (default is 100).
         :type timeout: int
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
+        :return: Task Info
+        :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
-        if not isinstance(workspace_id, int) or workspace_id <= 0:
-            raise ValueError(f"workspace_id must be a positive integer. Received: {workspace_id}")
         if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
             raise ValueError("artifacts_dir must be a non-empty string.")
 
+        if team_id is None:
+            team_id = env.team_id()
         logger.debug(
-            f"Starting model deployment. Team: {team_id}, Workspace: {workspace_id}, Artifacts Dir: '{artifacts_dir}'"
+            f"Starting custom model deployment. Team: {team_id}, Artifacts Dir: '{artifacts_dir}'"
         )
 
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
             logger.debug("Deploying model from Train V1 artifacts")
             module_id, serve_app_name, deploy_params = self._deploy_params_v1(
-                team_id, artifacts_dir, checkpoint_name, device, with_module=True
+                team_id, artifacts_dir, checkpoint_name, device, runtime, with_module=True
             )
         else:  # Train V2 logic (when artifacts_dir starts with '/experiments')
             logger.debug("Deploying model from Train V2 artifacts")
 
             module_id, serve_app_name, deploy_params = self._deploy_params_v2(
-                team_id, artifacts_dir, checkpoint_name, device, with_module=True
+                team_id, artifacts_dir, checkpoint_name, device, runtime, with_module=True
             )
-
-        logger.info(
-            f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
-        )
-        try:
-            task_info = self._run_serve_app(module_id, **kwargs)
-            self._deploy_model_from_api(task_info["id"], deploy_params)
-        except Exception as e:
-            raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
-        return task_info
-
-    def deploy_from_train_task(
-        self,
-        serve_task_id: int,
-        train_task_id: int,
-        checkpoint_name: Optional[str] = None,
-        device: str = "cuda",
-    ):
-        """
-        Deploy a custom model based on the training task.
-
-        :param serve_task_id: Task ID of Serve App in Supervisely.
-        :type serve_task_id: int
-        :param train_task_id: Task ID of Train App in Supervisely.
-        :type train_task_id: int
-        :param checkpoint_name: Checkpoint name (with extension) to deploy.
-        :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :raises ValueError: if validations fail.
-        """
-        train_task_info = self._api.task.get_info_by_id(train_task_id)
-        try:
-            data = train_task_info["meta"]["output"]["experiment"]["data"]
-        except KeyError:
-            raise ValueError("Task output does not contain experiment data")
-
-        deploy_params = {
-            "device": device,
-            "model_source": ModelSource.CUSTOM,
-            "model_files": {
-                "checkpoint": Path(
-                    data["artifacts_dir"], "checkpoints", checkpoint_name
-                ).as_posix(),
-                "config": Path(data["artifacts_dir"], data["model_files"]["config"]).as_posix(),
-            },
-            "model_info": data,
-            "runtime": RuntimeType.PYTORCH,
-        }
-        self._deploy_model_from_api(serve_task_id, deploy_params)
-
-    def serve_from_train_task(
-        self,
-        task_id: int,
-        checkpoint_name: Optional[str] = None,
-        workspace_id: int = None,  # TODO: <- Optional ? Needed for deploy? Can be passed in kwargs and get from task
-        device: str = "cuda",
-        timeout: int = 100,
-        **kwargs,
-    ) -> Dict[str, Any]:
-        """
-        Run Serve app and deploy a custom model based on the training task.
-
-        :param task_id: Task ID of Train App in Supervisely.
-        :type task_id: int
-        :param checkpoint_name: Checkpoint name (with extension) to deploy.
-        :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param timeout: Timeout in seconds (default is 100).
-        :type timeout: int
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
-        :type kwargs: Dict[str, Any]
-        :raises ValueError: if validations fail.
-        """
-        from supervisely.nn.utils import ModelSource, RuntimeType
-
-        task_info = self._api.task.get_info_by_id(task_id)
-        try:
-            data = task_info["meta"]["output"]["experiment"]["data"]
-        except KeyError:
-            raise ValueError("Task output does not contain experiment data")
-
-        if workspace_id is None:
-            workspace_id = task_info["workspaceId"]
-        workspace_info = self._api.workspace.get_info_by_id(workspace_id)
-        if workspace_info is None:
-            raise ValueError(f"Workspace with ID '{workspace_id}' not found.")
-
-        team_id = workspace_info.team_id
-        logger.debug(
-            f"Starting model deployment. Team: {team_id}, Workspace: {workspace_id}, Task ID: '{task_id}'"
-        )
-        train_module_id = task_info["meta"]["app"]["moduleId"]
-        module = self._get_serving_from_train(train_module_id)
-        serve_app_name = module["name"]
-        module_id = module["id"]
-        logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
-
-        experiment_name = data["experiment_name"]
-        if checkpoint_name is None:
-            checkpoint_name = data["best_checkpoint"]
-
-        deploy_params = {
-            "device": device,
-            "model_source": ModelSource.CUSTOM,
-            "model_files": {
-                "checkpoint": Path(
-                    data["artifacts_dir"], "checkpoints", checkpoint_name
-                ).as_posix(),
-                "config": Path(data["artifacts_dir"], data["model_files"]["config"]).as_posix(),
-            },
-            "model_info": data,
-            "runtime": RuntimeType.PYTORCH,
-        }
-
-        # Task parameters
-        if "workspace_id" not in kwargs:
-            kwargs["workspace_id"] = workspace_id
-        task_name = experiment_name + f" ({checkpoint_name})"
-        if "task_name" not in kwargs:
-            kwargs["task_name"] = task_name
-
-        description = f"""Serve from experiment
-                Experiment name:   {experiment_name}
-                Evaluation report: {data["evaluation_report_link"]}
-            """
-        while len(description) > 255:
-            description = description.rsplit("\n", 1)[0]
-        if "description" not in kwargs:
-            kwargs["description"] = description
+        deploy_params["model_source"] = ModelSource.CUSTOM
 
         logger.info(
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
@@ -311,69 +233,72 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
 
-    def inference_session_json(self, task_id: int) -> "SessionJSON":
+    def from_train_task(
+        self,
+        task_id: int,
+        checkpoint_name: Optional[str] = None,
+        device: str = "cuda",
+        runtime: str = RuntimeType.PYTORCH,
+        timeout: int = 100,
+        **kwargs,
+    ) -> Dict[str, Any]:
         """
-        Returns a convenient class for inference of deployed models.
-        This class will return raw JSON predictions (dict).
-        If you want to work with `sly.Annotation` format, please use `api.nn.inference_session` class.
+        Run Serve app and deploy a custom model based on the training session.
 
-        You need first to serve NN model you want and get its `task_id`.
-        The `task_id` can be obtained from the Supervisely platform, going to `START` -> `App sessions` page.
-        Or it can be obtained from task info after starting the serving app with any of the `serve` methods.
-
-        :param task_id: the task_id of a served model in the Supervisely platform.
+        :param task_id: Task ID of Train App in Supervisely.
         :type task_id: int
-        :param inference_settings: a dict with settings, defaults to None.
-        :type inference_settings: Union[dict, str], optional
-        :return: a :class:`SessionJSON`
-        :rtype: SessionJSON
+        :param checkpoint_name: Checkpoint name (with extension) to deploy. If not provided, the best checkpoint will be used.
+        :type checkpoint_name: Optional[str]
+        :param device: Device string (default is "cuda").
+        :type device: str
+        :param timeout: Timeout in seconds (default is 100).
+        :type timeout: int
+        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :type kwargs: Dict[str, Any]
+        :return: Task Info
+        :rtype: Dict[str, Any]
+        :raises ValueError: if validations fail.
         """
-        from supervisely.nn.inference.session import SessionJSON
-
-        return SessionJSON(self._api, task_id)
-
-    def inference_session(
-        self, task_id: int, inference_settins: Optional[Dict[str, Any]] = None
-    ) -> "Session":
-        """
-        Creates a convenient class for inference of deployed models.
-        This class will return predictions in the `sly.Annotation` format.
-        If you want to work with raw JSON dicts, please use `api.nn.inference_session_json` method.
-
-        You need first to serve NN model you want and get its `task_id`.
-        The `task_id` can be obtained from the Supervisely platform, going to `START` -> `App sessions` page.
-        Or it can be obtained from task info after starting the serving app with any of the `serve` methods.
-
-        :param task_id: the task_id of a served model in the Supervisely platform.
-        :type task_id: int
-        :param inference_settings: a dict with settings, defaults to None.
-        :type inference_settings: dict, optional
-        :return: a :class:`Session` object
-        :rtype: Session
-        """
-        from supervisely.nn.inference.session import Session
-
-        return Session(self._api, task_id, inference_settins)
-
-    def get_experiment_info(self, task_id: int) -> "ExperimentInfo":
-        """
-        Returns the experiment info based on the Train task ID.
-
-        :param task_id: the task_id of a Train task in the Supervisely platform.
-        :type task_id: int
-        :return: a :class:`ExperimentInfo` object
-        :rtype: ExperimentInfo
-        """
-        from supervisely.nn.experiments import ExperimentInfo
-
-        task_info = self._api.task.get_info_by_id(task_id)
-        if task_info is None:
-            raise ValueError(f"Task with ID '{task_id}' not found")
+        train_task_info = self._api.task.get_info_by_id(task_id)
         try:
-            data = task_info["meta"]["output"]["experiment"]["data"]
-            return ExperimentInfo(**data)
+            experiment_info = train_task_info["meta"]["output"]["experiment"]["data"]
         except KeyError:
             raise ValueError("Task output does not contain experiment data")
+
+        logger.debug(f"Starting model deployment from train session. Task ID: '{task_id}'")
+        train_module_id = train_task_info["meta"]["app"]["moduleId"]
+        module = self._get_serving_from_train(train_module_id)
+        serve_app_name = module["name"]
+        module_id = module["id"]
+        logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
+
+        if checkpoint_name is None:
+            checkpoint_name = experiment_info["best_checkpoint"]
+
+        # Task parameters
+        experiment_name = experiment_info["experiment_name"]
+        task_name = experiment_name + f" ({checkpoint_name})"
+        if "task_name" not in kwargs:
+            kwargs["task_name"] = task_name
+
+        description = f"""Serve from experiment
+                Experiment name:   {experiment_name}
+                Evaluation report: {experiment_info["evaluation_report_link"]}
+            """
+        while len(description) > 255:
+            description = description.rsplit("\n", 1)[0]
+        if "description" not in kwargs:
+            kwargs["description"] = description
+
+        logger.info(f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'.")
+        try:
+            task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
+            self.load_model_from_train_task(
+                task_info["id"], train_task_info, checkpoint_name, device, runtime
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
+        return task_info
 
     def _run_serve_app(self, module_id, timeout: int = 100, **kwargs):
         _attempt_delay_sec = 1
@@ -428,6 +353,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         artifacts_dir: str,
         checkpoint_name: str,
         device: str,
+        runtime: str,
         with_module: bool = True,
     ) -> Tuple[int, Dict[str, Any]]:
         from supervisely.nn.artifacts import (
@@ -444,7 +370,6 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
             YOLOv8,
         )
         from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
-        from supervisely.nn.utils import ModelSource, RuntimeType
 
         frameworks = {
             "/detectron2": Detectron2,
@@ -511,7 +436,7 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
             deploy_params["config_url"] = train_info.config_path
 
         if framework.require_runtime:
-            deploy_params["runtime"] = RuntimeType.PYTORCH
+            deploy_params["runtime"] = runtime
         return module_id, serve_app_name, deploy_params
 
     def _deploy_params_v2(
@@ -520,12 +445,12 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
         artifacts_dir: str,
         checkpoint_name: str,
         device: str,
+        runtime: str,
         with_module: bool = True,
     ):
         from dataclasses import asdict
 
         from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
-        from supervisely.nn.utils import ModelSource, RuntimeType
 
         experiment_info = get_experiment_info_by_artifacts_dir(self._api, team_id, artifacts_dir)
         if not experiment_info:
@@ -570,33 +495,11 @@ class NeuralNetworkApi(CloneableModuleApi, RemoveableModuleApi):
                 "checkpoint": f"{experiment_info.artifacts_dir}checkpoints/{checkpoint_name}"
             },
             "model_info": asdict(experiment_info),
-            "runtime": RuntimeType.PYTORCH,
+            "runtime": runtime,
         }
-        # TODO: add support for **kwargs
 
         config = experiment_info.model_files.get("config")
         if config is not None:
             deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
             logger.debug(f"Config file added: {experiment_info.artifacts_dir}{config}")
         return module_id, serve_app_name, deploy_params
-
-
-# # TODO: Quesions to MAX:
-
-# NN < Api < DeployModel
-
-# 1. # api.nn.deploy_custom() or api.nn.deploy.custom()
-# # Max Eliseev proposal:
-
-# 1. api.nn.deploy_pretrained_model() # <- by app name + checkpoint name returns session
-
-# 2. api.nn.deploy_custom_model() # <- by artifacts dir or checkpoint_path in artifacts_dir # returns session
-# Guide: How to create aritfacts dir from own checkpoint?
-# take our artifacts dir and add needed
-#
-# 4. api.nn.load_model(task_id, model) # model: model name or path or task id.
-#
-# 3 self.deploy.from_train_task(task_id)
-#
-# api.nn.deploy.custom_model() # returns task_info
-# api.nn.deploy.pretrained_model() # returns task_info

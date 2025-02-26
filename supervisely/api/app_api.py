@@ -1536,8 +1536,6 @@ class AppApi(TaskApi):
         if categories is not None:
             data["categories"] = categories
             data["categoriesOperation"] = categories_operation
-        if filters is not None:
-            data["filter"] = filters
         modules = self.get_list_all_pages(
             method="ecosystem.list",
             data=data,
