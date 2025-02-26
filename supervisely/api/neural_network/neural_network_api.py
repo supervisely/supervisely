@@ -68,7 +68,8 @@ class NeuralNetworkApi:
         :type workspace_id: int
         :param artifacts_dir: Path to the artifacts directory.
         :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with extension) to deploy.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+            If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
@@ -110,3 +111,17 @@ class NeuralNetworkApi:
             return ExperimentInfo(**data)
         except KeyError:
             raise ValueError("Task output does not contain experiment data")
+    
+    def inference_session(self, session_id: int, inference_settings = None) -> "Session":
+        # @TODO: support inference_settings
+        """
+        Create a new inference session based on the Serve App session ID.
+
+        :param task_id: the task_id of a Deploy task in the Supervisely platform.
+        :type task_id: int
+        :return: a :class:`Session` object
+        :rtype: Session
+        """
+        from supervisely.nn.inference.session import Session
+
+        return Session(self._api, session_id)

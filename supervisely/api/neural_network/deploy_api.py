@@ -35,12 +35,13 @@ class DeployApi:
         :param runtime: Runtime string (default is "PyTorch").
         :type runtime: str
         """
-        deploy_info = self._get_deploy_info(task_id)
-        deploy_params = deploy_info["deploy_params"]
+        # TODO: check that it's working
+        # deploy_info = self._get_deploy_info(task_id)
+        deploy_params = {}
         deploy_params["model_source"] = ModelSource.PRETRAINED
         deploy_params["device"] = device
         deploy_params["runtime"] = runtime
-        self._deploy_model_from_api(task_id, deploy_params, model_name=model_name)
+        self._load_model_from_api(task_id, deploy_params, model_name=model_name)
 
     def load_custom_model(
         self,
@@ -60,7 +61,8 @@ class DeployApi:
         :type team_id: int
         :param artifacts_dir: Path to the artifacts directory.
         :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with extension) to deploy. If not provided, the last checkpoint will be used.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+            If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
@@ -80,9 +82,9 @@ class DeployApi:
                 team_id, artifacts_dir, checkpoint_name, device, runtime, with_module=False
             )
         deploy_params["model_source"] = ModelSource.CUSTOM
-        self._deploy_model_from_api(task_id, deploy_params)
+        self._load_model_from_api(task_id, deploy_params)
 
-    def load_model_from_train_task(
+    def load_custom_model_from_train_task(
         self,
         task_id: int,
         train_task: Union[int, Dict],
@@ -95,9 +97,10 @@ class DeployApi:
 
         :param task_id: Task ID of the serving App.
         :type task_id: int
-        :param train_task: Task ID or Task Info of the Train App.
+        :param train_task: Task ID of a finished training, or ExperimentInfo object.
         :type train_task: Union[int, Dict]
-        :param checkpoint_name: Checkpoint name (with extension) to deploy. If not provided, the best checkpoint will be used.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+            If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
@@ -127,7 +130,7 @@ class DeployApi:
             "model_info": experiment_info,
             "runtime": runtime,
         }
-        self._deploy_model_from_api(task_id, deploy_params)
+        self._load_model_from_api(task_id, deploy_params)
 
     def pretrained_model(
         self,
@@ -140,8 +143,8 @@ class DeployApi:
         """
         Deploy a pretrained model in running serving App.
 
-        :param app_name: App name or App module ID in Supervisely.
-        :type app_name: Union[str, int]
+        :param app: App name or App module ID in Supervisely.
+        :type app: Union[str, int]
         :param model_name: Model name to deploy.
         :type model_name: str
         :param device: Device string (default is "cuda").
@@ -180,11 +183,12 @@ class DeployApi:
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Run Serve app and deploy a custom model based on the artifacts directory.
+        Run Serve app and load a custom model based on the artifacts directory.
 
         :param artifacts_dir: Path to the artifacts directory.
         :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with extension) to deploy.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+            If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
@@ -228,7 +232,7 @@ class DeployApi:
         )
         try:
             task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
-            self._deploy_model_from_api(task_info["id"], deploy_params)
+            self._load_model_from_api(task_info["id"], deploy_params)
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
@@ -243,11 +247,12 @@ class DeployApi:
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Run Serve app and deploy a custom model based on the training session.
+        Run Serve app and load a custom model based on the training session.
 
         :param task_id: Task ID of Train App in Supervisely.
         :type task_id: int
-        :param checkpoint_name: Checkpoint name (with extension) to deploy. If not provided, the best checkpoint will be used.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+            If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
@@ -267,7 +272,7 @@ class DeployApi:
 
         logger.debug(f"Starting model deployment from train session. Task ID: '{task_id}'")
         train_module_id = train_task_info["meta"]["app"]["moduleId"]
-        module = self._get_serving_from_train(train_module_id)
+        module = self.get_serving_app_by_train_app(train_module_id)
         serve_app_name = module["name"]
         module_id = module["id"]
         logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
@@ -293,12 +298,16 @@ class DeployApi:
         logger.info(f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'.")
         try:
             task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
-            self.load_model_from_train_task(
+            self.load_custom_model_from_train_task(
                 task_info["id"], train_task_info, checkpoint_name, device, runtime
             )
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
+
+    def start_serve_app(self, app_name=None, module_id=None, **kwargs) -> Dict[str, Any]:
+        # TODO: implement
+        pass
 
     def _run_serve_app(self, module_id, timeout: int = 100, **kwargs):
         _attempt_delay_sec = 1
@@ -314,7 +323,7 @@ class DeployApi:
             )
         return task_info
 
-    def _deploy_model_from_api(self, task_id, deploy_params, model_name: Optional[str] = None):
+    def _load_model_from_api(self, task_id, deploy_params, model_name: Optional[str] = None):
         self._api.task.send_request(
             task_id,
             "deploy_from_api",
@@ -322,10 +331,8 @@ class DeployApi:
             raise_error=True,
         )
 
-    def _get_deploy_info(self, task_id: int):
-        return self._api.task.send_request(task_id, "get_deploy_info", raise_error=True)
-
-    def _get_serving_from_train(self, train_app_module_id: int):
+    def get_serving_app_by_train_app(self, train_app_module_id: int):
+        # TODO: train_app_name=None, module_id=None
         train_module_info = self._api.app.get_ecosystem_module_info(train_app_module_id)
         train_app_config = train_module_info.config
         categories = train_app_config["categories"]
@@ -420,7 +427,7 @@ class DeployApi:
             if checkpoint is None:
                 raise ValueError(f"Checkpoint '{checkpoint_name}' not found in train info.")
         else:
-            logger.debug("Checkpoint name not provided. Using the last checkpoint.")
+            logger.info("Checkpoint name not provided. Using the last checkpoint.")
             checkpoint = train_info.checkpoints[-1]
 
         checkpoint_name = checkpoint.name
@@ -467,7 +474,7 @@ class DeployApi:
         serve_app_name = None
         if with_module:
             train_module_id = experiment_task_info["meta"]["app"]["moduleId"]
-            module = self._get_serving_from_train(train_module_id)
+            module = self.get_serving_app_by_train_app(train_module_id)
             serve_app_name = module["name"]
             module_id = module["id"]
             logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
@@ -484,7 +491,7 @@ class DeployApi:
             if checkpoint is None:
                 raise ValueError(f"Provided checkpoint '{checkpoint_name}' not found")
         else:
-            logger.debug("Checkpoint name not provided. Using the best checkpoint.")
+            logger.info("Checkpoint name not provided. Using the best checkpoint.")
             checkpoint = experiment_info.best_checkpoint
 
         checkpoint_name = checkpoint
