@@ -3047,7 +3047,7 @@ class Inference:
         def parse_value(value: str):
             if value.lower() in ("true", "false"):
                 return value.lower() == "true"
-            if value.lower() == "null":
+            if value.lower() == ("none", "null"):
                 return None
             if value.isdigit():
                 return int(value)
