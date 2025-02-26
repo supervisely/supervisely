@@ -3308,6 +3308,7 @@ class Inference:
             image_np = api.image.download_np(image_id)
             ann = predict_image_np(image_np)
 
+            image_info = None
             if not upload:
                 ann_json = ann.to_json()
                 image_info = api.image.get_info_by_id(image_id)
@@ -3319,6 +3320,8 @@ class Inference:
                 sly_json.dump_json_file(ann_json, pred_path)
 
             if draw:
+                if image_info is None:
+                    image_info = api.image.get_info_by_id(image_id)
                 vis_path = os.path.join(output_dir, dataset_info.name, f"{image_info.name}.png")
                 ann.draw_pretty(image_np, output_path=vis_path)
             if upload:
