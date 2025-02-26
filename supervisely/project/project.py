@@ -82,6 +82,7 @@ class CustomUnpickler(pickle.Unpickler):
     def __init__(self, file, **kwargs):
         super().__init__(file, **kwargs)
         self.warned_classes = set()  # To prevent multiple warnings for the same class
+        self.sdk_update_notified = False
 
     def find_class(self, module, name):
         prefix = "Pickled"
@@ -118,9 +119,14 @@ class CustomUnpickler(pickle.Unpickler):
                     args = args[: len(cls._fields)]
                     if orig_class_name not in self.warned_classes:
                         logger.warning(
-                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for class '{orig_class_name}' objects due to definition being outdated"
+                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for '{orig_class_name}' class objects due to an outdated class definition"
                         )
                         self.warned_classes.add(orig_class_name)
+                        if not self.sdk_update_notified:
+                            logger.warning(
+                                "It is recommended to update the SDK version to restore the project version correctly."
+                            )
+                            self.sdk_update_notified = True
                 return orig_new(cls, *args, **kwargs)
 
             # Create a new subclass dynamically to prevent redefining the current class
