@@ -115,7 +115,6 @@ class Inference:
     ):
 
         self._args, self._is_local_deploy = self._parse_local_deploy_args()
-
         if model_dir is None:
             if self._is_local_deploy is True:
                 try:
@@ -171,7 +170,6 @@ class Inference:
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
         if self._is_local_deploy:
-            # self._args = self._parse_local_deploy_args()
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
@@ -2417,7 +2415,7 @@ class Inference:
 
         if self._is_local_deploy:
             # Predict and shutdown
-            if any(
+            if self._args.mode == "predict" and any(
                 [
                     self._args.input,
                     self._args.project_id,
@@ -2425,6 +2423,8 @@ class Inference:
                     self._args.image_id,
                 ]
             ):
+
+                self._parse_inference_settings_from_args()
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
                 self._app.shutdown()
@@ -2938,7 +2938,7 @@ class Inference:
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
-        parser.add_argument("mode", choices=["predict"], help="Mode of operation")
+        parser.add_argument("mode", choices=["deploy", "predict"], help="Mode of operation")
         parser.add_argument("input", nargs="?", type=str, help="Local path to input data")
 
         # Deploy args
@@ -3024,25 +3024,39 @@ class Inference:
         if args.model is None:
             # raise ValueError("Argument '--model' is required for local deployment")
             return None, False
-        if args.mode != "predict":
-            raise ValueError("Invalid operation. Only 'predict' is supported.")
+        if args.mode not in ["deploy", "predict"]:
+            raise ValueError("Invalid operation. Only 'deploy' or 'predict' is supported.")
         if args.output is None:
             args.output = "./predictions"
         if isinstance(args.dataset_id, int):
             args.dataset_id = [args.dataset_id]
 
+        return args, True
+
+    def _parse_inference_settings_from_args(self):
+        args = self._args
+
         # Parse settings argument
         settings_dict = {}
         if args.settings:
-            for setting in args.settings:
-                if "=" in setting:
-                    key, value = setting.split("=", 1)
-                    settings_dict[key] = value
-                elif ":" in setting:
-                    key, value = setting.split(":", 1)
-                    settings_dict[key] = value
-        args.settings = settings_dict
-        return args, True
+            is_settings_file = args.settings[0].endswith(tuple([".json", ".yaml", ".yml"]))
+            if len(args.settings) == 1 and is_settings_file:
+                args.settings = args.settings[0]
+            else:
+                for setting in args.settings:
+                    if "=" in setting:
+                        key, value = setting.split("=", 1)
+                        settings_dict[key] = value
+                    elif ":" in setting:
+                        key, value = setting.split(":", 1)
+                        settings_dict[key] = value
+                    else:
+                        raise ValueError(
+                            f"Invalid setting: '{setting}'. Please use key value pairs separated by '=', e.g. conf=0.4'"
+                        )
+                args.settings = settings_dict
+        args.settings = self._read_settings(args.settings)
+        args.settings = self._validate_settings(args.settings)
 
     def _get_pretrained_model_params_from_args(self):
         model_files = None
@@ -3192,6 +3206,15 @@ class Inference:
                 return yaml.safe_load(f)
         raise ValueError("Settings file should be in JSON or YAML format")
 
+    def _validate_settings(self, settings: dict):
+        default_settings = self.custom_inference_settings_dict
+        for key, value in settings.items():
+            if key not in default_settings and key != "classes":
+                acceptable_keys = ", ".join(default_settings.keys()) + ", 'classes'"
+                raise ValueError(
+                    f"Inference settings doesn't have key: '{key}'. Available keys are: '{acceptable_keys}'"
+                )
+
     def _inference_by_local_deploy_args(self):
         missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
 
@@ -3207,9 +3230,10 @@ class Inference:
             if self.api is None:
                 raise ValueError(missing_env_message)
 
-            settings = self._read_settings(settings)
-            settings = self._get_inference_settings(settings)
-            state = {"projectId": project_id, "dataset_ids": dataset_ids}
+            if draw:
+                raise ValueError("Draw visualization is not supported for project inference")
+
+            state = {"projectId": project_id, "dataset_ids": dataset_ids, "settings": settings}
             if upload:
                 source_project = api.project.get_info_by_id(project_id)
                 workspace_id = source_project.workspace_id
@@ -3244,6 +3268,8 @@ class Inference:
             draw: bool = False,
             upload: bool = False,
         ):
+            if draw:
+                raise ValueError("Draw visualization is not supported for dataset inference")
             if self.api is None:
                 raise ValueError(missing_env_message)
             dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
@@ -3264,9 +3290,6 @@ class Inference:
         ):
             if self.api is None:
                 raise ValueError(missing_env_message)
-
-            settings = self._read_settings(settings)
-            settings = self._get_inference_settings(settings)
 
             def predict_image_np(image_np):
                 anns, _ = self._inference_auto([image_np], settings)
@@ -3330,8 +3353,6 @@ class Inference:
                     image = sly_image.read(image_path)
                     ann.draw_pretty(image, output_path=os.path.join(pred_dir, image_name))
 
-            settings = self._read_settings(settings)
-            settings = self._get_inference_settings(settings)
             # 1. Input Directory
             if os.path.isdir(input_path):
                 pred_dir = os.path.basename(input_path)
