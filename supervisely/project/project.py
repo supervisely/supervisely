@@ -117,7 +117,7 @@ class CustomUnpickler(pickle.Unpickler):
                     args = args[: len(cls._fields)]
                     if orig_class_name not in self.warned_classes:
                         logger.warning(
-                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for class '{cls.__name__.lstrip('Pickled')}' objects due to definition being outdated"
+                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for class '{orig_class_name}' objects due to definition being outdated"
                         )
                         self.warned_classes.add(orig_class_name)
                 return orig_new(cls, *args, **kwargs)
