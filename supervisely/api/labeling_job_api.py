@@ -486,7 +486,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 if playback_rate is not None:
                     if playback_rate not in playback_rate_possible_values:
                         raise ValueError(
-                            f"playbackRate must be one of: '{','.join(playback_rate_possible_values)}'"
+                            f"'playbackRate' must be one of: '{','.join(playback_rate_possible_values)}'"
                         )
                 meta["toolboxSettings"] = toolbox_settings
 
