@@ -114,6 +114,7 @@ class Inference:
         use_serving_gui_template: Optional[bool] = False,
     ):
 
+        self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         self._args, self._is_local_deploy = self._parse_local_deploy_args()
         if model_dir is None:
             if self._is_local_deploy is True:
@@ -144,7 +145,6 @@ class Inference:
         self._autostart_delay_time = 5 * 60  # 5 min
         self._tracker = None
         self._hardware: str = None
-        self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
                 custom_inference_settings = self.INFERENCE_SETTINGS
@@ -3022,8 +3022,18 @@ class Inference:
         # Parse arguments
         args, _ = parser.parse_known_args()
         if args.model is None:
-            # raise ValueError("Argument '--model' is required for local deployment")
-            return None, False
+            if len(self.pretrained_models) == 0:
+                raise ValueError("No pretrained models found.")
+
+            model = self.pretrained_models[0]
+            model_name = model.get("meta", {}).get("model_name", None)
+            if model_name is None:
+                raise ValueError("No model name found in the first pretrained model.")
+
+            args.model = model_name
+            logger.info(
+                f"Argument '--model' is not provided. Model: '{model_name}' will be deployed."
+            )
         if args.mode not in ["deploy", "predict"]:
             raise ValueError("Invalid operation. Only 'deploy' or 'predict' is supported.")
         if args.output is None:
@@ -3034,31 +3044,34 @@ class Inference:
         return args, True
 
     def _parse_inference_settings_from_args(self):
-        def try_convert_to_number(value: str):
-            # @TODO: add support for bool values?
-            try:
-                if "." in value:
+        def parse_value(value: str):
+            if value.lower() in ("true", "false"):
+                return value.lower() == "true"
+            if value.lower() == "null":
+                return None
+            if value.isdigit():
+                return int(value)
+            if "." in value:
+                parts = value.split(".")
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
                     return float(value)
-                else:
-                    return int(value)
-            except ValueError:
-                return value
+            return value
 
         args = self._args
         # Parse settings argument
         settings_dict = {}
         if args.settings:
-            is_settings_file = args.settings[0].endswith(tuple([".json", ".yaml", ".yml"]))
+            is_settings_file = args.settings[0].endswith((".json", ".yaml", ".yml"))
             if len(args.settings) == 1 and is_settings_file:
                 args.settings = args.settings[0]
             else:
                 for setting in args.settings:
                     if "=" in setting:
                         key, value = setting.split("=", 1)
-                        settings_dict[key] = try_convert_to_number(value)
+                        settings_dict[key] = parse_value(value)
                     elif ":" in setting:
                         key, value = setting.split(":", 1)
-                        settings_dict[key] = try_convert_to_number(value)
+                        settings_dict[key] = parse_value(value)
                     else:
                         raise ValueError(
                             f"Invalid setting: '{setting}'. Please use key value pairs separated by '=', e.g. conf=0.4'"
@@ -3217,6 +3230,9 @@ class Inference:
 
     def _validate_settings(self, settings: dict):
         default_settings = self.custom_inference_settings_dict
+        if settings == {}:
+            self._args.settings = default_settings
+            return
         for key, value in settings.items():
             if key not in default_settings and key != "classes":
                 acceptable_keys = ", ".join(default_settings.keys()) + ", 'classes'"
