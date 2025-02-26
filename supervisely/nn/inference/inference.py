@@ -3034,8 +3034,16 @@ class Inference:
         return args, True
 
     def _parse_inference_settings_from_args(self):
-        args = self._args
+        def try_convert_to_number(value: str):
+            try:
+                if "." in value:
+                    return float(value)
+                else:
+                    return int(value)
+            except ValueError:
+                return value
 
+        args = self._args
         # Parse settings argument
         settings_dict = {}
         if args.settings:
@@ -3046,17 +3054,17 @@ class Inference:
                 for setting in args.settings:
                     if "=" in setting:
                         key, value = setting.split("=", 1)
-                        settings_dict[key] = value
+                        settings_dict[key] = try_convert_to_number(value)
                     elif ":" in setting:
                         key, value = setting.split(":", 1)
-                        settings_dict[key] = value
+                        settings_dict[key] = try_convert_to_number(value)
                     else:
                         raise ValueError(
                             f"Invalid setting: '{setting}'. Please use key value pairs separated by '=', e.g. conf=0.4'"
                         )
                 args.settings = settings_dict
         args.settings = self._read_settings(args.settings)
-        args.settings = self._validate_settings(args.settings)
+        self._validate_settings(args.settings)
 
     def _get_pretrained_model_params_from_args(self):
         model_files = None
@@ -3248,17 +3256,16 @@ class Inference:
             dataset_infos = api.dataset.get_list(project_id)
             datasets_map = {dataset_info.id: dataset_info.name for dataset_info in dataset_infos}
 
-            for prediction in results:
-                dataset_name = datasets_map[prediction["dataset_id"]]
-                image_name = prediction["image_name"]
-                pred_dir = os.path.join(output_dir, dataset_name)
-                pred_path = os.path.join(pred_dir, f"{image_name}.json")
-                ann_json = prediction["annotation"]
-                if not sly_fs.dir_exists(pred_dir):
-                    sly_fs.mkdir(pred_dir)
-                sly_json.dump_json_file(ann_json, pred_path)
-                # if draw:
-                # @TODO: add draw visualization
+            if not upload:
+                for prediction in results:
+                    dataset_name = datasets_map[prediction["dataset_id"]]
+                    image_name = prediction["image_name"]
+                    pred_dir = os.path.join(output_dir, dataset_name)
+                    pred_path = os.path.join(pred_dir, f"{image_name}.json")
+                    ann_json = prediction["annotation"]
+                    if not sly_fs.dir_exists(pred_dir):
+                        sly_fs.mkdir(pred_dir)
+                    sly_json.dump_json_file(ann_json, pred_path)
 
         def predict_dataset_id_by_args(
             api: Api,
@@ -3300,35 +3307,22 @@ class Inference:
 
             image_np = api.image.download_np(image_id)
             ann = predict_image_np(image_np)
-            ann_json = ann.to_json()
 
-            image_info = api.image.get_info_by_id(image_id)
-            dataset_info = api.dataset.get_info_by_id(image_info.dataset_id)
-            pred_dir = os.path.join(output_dir, dataset_info.name)
-            pred_path = os.path.join(pred_dir, f"{image_info.name}.json")
-            if not sly_fs.dir_exists(pred_dir):
-                sly_fs.mkdir(pred_dir)
-            sly_json.dump_json_file(ann_json, pred_path)
+            if not upload:
+                ann_json = ann.to_json()
+                image_info = api.image.get_info_by_id(image_id)
+                dataset_info = api.dataset.get_info_by_id(image_info.dataset_id)
+                pred_dir = os.path.join(output_dir, dataset_info.name)
+                pred_path = os.path.join(pred_dir, f"{image_info.name}.json")
+                if not sly_fs.dir_exists(pred_dir):
+                    sly_fs.mkdir(pred_dir)
+                sly_json.dump_json_file(ann_json, pred_path)
 
             if draw:
                 vis_path = os.path.join(output_dir, dataset_info.name, f"{image_info.name}.png")
                 ann.draw_pretty(image_np, output_path=vis_path)
             if upload:
                 api.annotation.upload_ann(image_id, ann)
-
-            # elif isinstance(image, str):
-            #     if sly_fs.file_exists(self._args.predict_image):
-            #         image_np = sly_image.read(self._args.predict_image)
-            #         ann = predict_image_np(image_np)
-            #         pred_ann_path = image + ".json"
-            #         sly_json.dump_json_file(ann.to_json(), pred_ann_path)
-            # Save image and ann for debug
-            # ann.draw_pretty(image_np)
-            # pred_path = os.path.join(
-            #     os.path.dirname(self._args.predict_image),
-            #     "pred_" + os.path.basename(self._args.predict_image),
-            # )
-            # sly_image.write(pred_path, image_np)
 
         def predict_local_data_by_args(
             input_path: str,
