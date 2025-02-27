@@ -2383,7 +2383,7 @@ class Inference:
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
     def serve(self):
-        if not self._use_gui:
+        if not self._use_gui and not self._is_local_deploy:
             Progress("Deploying model ...", 1)
 
         if is_debug_with_sly_net():
@@ -2401,18 +2401,6 @@ class Inference:
             if not self._is_local_deploy:
                 self._task_id = sly_env.task_id() if is_production() else None
 
-        if isinstance(self.gui, GUI.InferenceGUI):
-            self._app = Application(layout=self.get_ui())
-        elif isinstance(self.gui, GUI.ServingGUI):
-            self._app = Application(layout=self._app_layout)
-        # elif isinstance(self.gui, GUI.InferenceGUI):
-        #     self._app = Application(layout=self.get_ui())
-        else:
-            self._app = Application(layout=self.get_ui())
-
-        server = self._app.get_server()
-        self._app.set_ready_check_function(self.is_model_deployed)
-
         if self._is_local_deploy:
             # Predict and shutdown
             if self._args.mode == "predict" and any(
@@ -2427,9 +2415,20 @@ class Inference:
                 self._parse_inference_settings_from_args()
                 self._inference_by_local_deploy_args()
                 # Gracefully shut down the server
-                self._app.shutdown()
                 exit(0)
         # else: run server after endpoints
+
+        if isinstance(self.gui, GUI.InferenceGUI):
+            self._app = Application(layout=self.get_ui())
+        elif isinstance(self.gui, GUI.ServingGUI):
+            self._app = Application(layout=self._app_layout)
+        # elif isinstance(self.gui, GUI.InferenceGUI):
+        #     self._app = Application(layout=self.get_ui())
+        else:
+            self._app = Application(layout=self.get_ui())
+
+        server = self._app.get_server()
+        self._app.set_ready_check_function(self.is_model_deployed)
 
         @call_on_autostart()
         def autostart_func():
