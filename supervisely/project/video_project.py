@@ -1608,15 +1608,14 @@ async def download_video_project_async(
     if progress_cb is not None:
         log_progress = False
 
-    datasets = []
-    if dataset_ids is not None:
-        for ds_id in dataset_ids:
-            datasets.append(api.dataset.get_info_by_id(ds_id))
-    else:
-        datasets = api.dataset.get_list(project_id, recursive=True)
+    dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+    for parents, dataset in api.dataset.tree(project_id):
+        if dataset_ids is not None and dataset.id not in dataset_ids:
+            continue
 
-    for dataset in datasets:
-        dataset_fs = project_fs.create_dataset(dataset.name)
+        dataset_path = Dataset._get_dataset_path(dataset.name, parents)
+
+        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         if log_progress is True:
