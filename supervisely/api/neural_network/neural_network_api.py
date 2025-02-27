@@ -1,7 +1,7 @@
 # coding: utf-8
 """download/upload/manipulate neural networks"""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 from supervisely.api.neural_network.deploy_api import DeployApi
 
@@ -31,7 +31,7 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> "Session":
         """
-        Deploy a pretrained model in running serving App.
+        Deploy pretrained model in running serving App.
 
         :param app_name: App name in Supervisely.
         :type app_name: str
@@ -62,7 +62,7 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> "Session":
         """
-        Run Serve app and deploy a custom model based on the artifacts directory.
+        Deploy custom model based on the artifacts directory.
 
         :param workspace_id: Workspace ID in Supervisely.
         :type workspace_id: int
@@ -111,17 +111,23 @@ class NeuralNetworkApi:
             return ExperimentInfo(**data)
         except KeyError:
             raise ValueError("Task output does not contain experiment data")
-    
-    def inference_session(self, session_id: int, inference_settings = None) -> "Session":
+
+    def inference_session(
+        self,
+        session_id: int,
+        inference_settings: Union[dict, str] = None,
+    ) -> "Session":
         # @TODO: support inference_settings
         """
         Create a new inference session based on the Serve App session ID.
 
         :param task_id: the task_id of a Deploy task in the Supervisely platform.
         :type task_id: int
+        :param inference_settings: a dict or a path to YAML file with settings, defaults to None
+        :type inference_settings: Union[dict, str], optional
         :return: a :class:`Session` object
         :rtype: Session
         """
         from supervisely.nn.inference.session import Session
 
-        return Session(self._api, session_id)
+        return Session(self._api, session_id, inference_settings=inference_settings)

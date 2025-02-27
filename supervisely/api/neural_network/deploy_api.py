@@ -8,6 +8,7 @@ from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
+    from supervisely.nn.experiments import ExperimentInfo
 
 
 class DeployApi:
@@ -18,7 +19,7 @@ class DeployApi:
 
     def load_pretrained_model(
         self,
-        task_id: int,
+        session_id: int,
         model_name: str,
         device: str = "cuda",
         runtime: str = RuntimeType.PYTORCH,
@@ -26,8 +27,8 @@ class DeployApi:
         """
         Load a pretrained model in running serving App.
 
-        :param task_id: Task ID of the serving App.
-        :type task_id: int
+        :param session_id: Task ID of the serving App.
+        :type session_id: int
         :param model_name: Model name to deploy.
         :type model_name: str
         :param device: Device string (default is "cuda").
@@ -35,17 +36,15 @@ class DeployApi:
         :param runtime: Runtime string (default is "PyTorch").
         :type runtime: str
         """
-        # TODO: check that it's working
-        # deploy_info = self._get_deploy_info(task_id)
         deploy_params = {}
         deploy_params["model_source"] = ModelSource.PRETRAINED
         deploy_params["device"] = device
         deploy_params["runtime"] = runtime
-        self._load_model_from_api(task_id, deploy_params, model_name=model_name)
+        self._load_model_from_api(session_id, deploy_params, model_name=model_name)
 
     def load_custom_model(
         self,
-        task_id: int,
+        session_id: int,
         team_id: int,
         artifacts_dir: str,
         checkpoint_name: str = None,
@@ -55,8 +54,8 @@ class DeployApi:
         """
         Load a custom model in running serving App.
 
-        :param task_id: Task ID of the serving App.
-        :type task_id: int
+        :param session_id: Task ID of the serving App.
+        :type session_id: int
         :param team_id: Team ID in Supervisely.
         :type team_id: int
         :param artifacts_dir: Path to the artifacts directory.
@@ -82,12 +81,12 @@ class DeployApi:
                 team_id, artifacts_dir, checkpoint_name, device, runtime, with_module=False
             )
         deploy_params["model_source"] = ModelSource.CUSTOM
-        self._load_model_from_api(task_id, deploy_params)
+        self._load_model_from_api(session_id, deploy_params)
 
-    def load_custom_model_from_train_task(
+    def load_custom_model_from_experiment_info(
         self,
-        task_id: int,
-        train_task: Union[int, Dict],
+        session_id: int,
+        experiment_info: "ExperimentInfo",
         checkpoint_name: str = None,
         device: str = "cuda",
         runtime: str = RuntimeType.PYTORCH,
@@ -95,8 +94,8 @@ class DeployApi:
         """
         Load a custom model in running serving App based on the training session.
 
-        :param task_id: Task ID of the serving App.
-        :type task_id: int
+        :param session_id: Task ID of the serving App.
+        :type session_id: int
         :param train_task: Task ID of a finished training, or ExperimentInfo object.
         :type train_task: Union[int, Dict]
         :param checkpoint_name: Checkpoint name (with file extension) to deploy.
@@ -107,30 +106,23 @@ class DeployApi:
         :param runtime: Runtime string (default is "PyTorch").
         :type runtime: str
         """
-        if train_task is None:
-            train_task = self._api.task.get_info_by_id(train_task)
-        try:
-            experiment_info = train_task["meta"]["output"]["experiment"]["data"]
-        except KeyError:
-            raise ValueError("Task output does not contain experiment data")
-
         if checkpoint_name is None:
-            checkpoint_name = experiment_info["best_checkpoint"]
+            checkpoint_name = experiment_info.best_checkpoint
         deploy_params = {
             "device": device,
             "model_source": ModelSource.CUSTOM,
             "model_files": {
                 "checkpoint": Path(
-                    experiment_info["artifacts_dir"], "checkpoints", checkpoint_name
+                    experiment_info.artifacts_dir, "checkpoints", checkpoint_name
                 ).as_posix(),
                 "config": Path(
-                    experiment_info["artifacts_dir"], experiment_info["model_files"]["config"]
+                    experiment_info.artifacts_dir, experiment_info.model_files["config"]
                 ).as_posix(),
             },
-            "model_info": experiment_info,
+            "model_info": experiment_info.to_json(),
             "runtime": runtime,
         }
-        self._load_model_from_api(task_id, deploy_params)
+        self._load_model_from_api(session_id, deploy_params)
 
     def pretrained_model(
         self,
@@ -160,12 +152,7 @@ class DeployApi:
         if isinstance(app, int):
             module_id = app
         else:
-            modules = self._api.app.get_list_ecosystem_modules(search=app)
-            if len(modules) == 0:
-                raise ValueError(f"No serving apps found for app name {app}")
-            if len(modules) > 1:
-                raise ValueError(f"Multiple serving apps found for app name {app}")
-            module_id = modules[0]["id"]
+            module_id = self._api.app.find_module_id_by_app_name(app)
         task_info = self._run_serve_app(module_id, **kwargs)
         self.load_pretrained_model(
             task_info["id"], model_name=model_name, device=device, runtime=runtime
@@ -237,9 +224,9 @@ class DeployApi:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
 
-    def from_train_task(
+    def from_experiment_info(
         self,
-        task_id: int,
+        experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: str = "cuda",
         runtime: str = RuntimeType.PYTORCH,
@@ -264,13 +251,10 @@ class DeployApi:
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
+        task_id = experiment_info.task_id
         train_task_info = self._api.task.get_info_by_id(task_id)
-        try:
-            experiment_info = train_task_info["meta"]["output"]["experiment"]["data"]
-        except KeyError:
-            raise ValueError("Task output does not contain experiment data")
 
-        logger.debug(f"Starting model deployment from train session. Task ID: '{task_id}'")
+        logger.debug(f"Starting model deployment from experiment info. Task ID: '{task_id}'")
         train_module_id = train_task_info["meta"]["app"]["moduleId"]
         module = self.get_serving_app_by_train_app(train_module_id)
         serve_app_name = module["name"]
@@ -278,17 +262,17 @@ class DeployApi:
         logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
 
         if checkpoint_name is None:
-            checkpoint_name = experiment_info["best_checkpoint"]
+            checkpoint_name = experiment_info.best_checkpoint
 
         # Task parameters
-        experiment_name = experiment_info["experiment_name"]
+        experiment_name = experiment_info.experiment_name
         task_name = experiment_name + f" ({checkpoint_name})"
         if "task_name" not in kwargs:
             kwargs["task_name"] = task_name
 
         description = f"""Serve from experiment
                 Experiment name:   {experiment_name}
-                Evaluation report: {experiment_info["evaluation_report_link"]}
+                Evaluation report: {experiment_info.evaluation_report_link}
             """
         while len(description) > 255:
             description = description.rsplit("\n", 1)[0]
@@ -298,16 +282,21 @@ class DeployApi:
         logger.info(f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'.")
         try:
             task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
-            self.load_custom_model_from_train_task(
-                task_info["id"], train_task_info, checkpoint_name, device, runtime
+            self.load_custom_model_from_experiment_info(
+                task_info["id"], experiment_info, checkpoint_name, device, runtime
             )
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
 
     def start_serve_app(self, app_name=None, module_id=None, **kwargs) -> Dict[str, Any]:
-        # TODO: implement
-        pass
+        if app_name is None and module_id is None:
+            raise ValueError("Either app_name or module_id must be provided.")
+        if app_name is not None and module_id is not None:
+            raise ValueError("Only one of app_name or module_id must be provided.")
+        if module_id is None:
+            module_id = self._api.app.find_module_id_by_app_name(app_name)
+        self._run_serve_app(module_id, **kwargs)
 
     def _run_serve_app(self, module_id, timeout: int = 100, **kwargs):
         _attempt_delay_sec = 1
@@ -331,9 +320,12 @@ class DeployApi:
             raise_error=True,
         )
 
-    def get_serving_app_by_train_app(self, train_app_module_id: int):
-        # TODO: train_app_name=None, module_id=None
-        train_module_info = self._api.app.get_ecosystem_module_info(train_app_module_id)
+    def get_serving_app_by_train_app(self, app_name: str = None, module_id: int = None):
+        if app_name is None and module_id is None:
+            raise ValueError("Either app_name or module_id must be provided.")
+        if app_name is not None:
+            module_id = self._api.app.find_module_id_by_app_name(app_name)
+        train_module_info = self._api.app.get_ecosystem_module_info(module_id)
         train_app_config = train_module_info.config
         categories = train_app_config["categories"]
         framework = None
