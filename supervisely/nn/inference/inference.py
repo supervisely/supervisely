@@ -2932,6 +2932,8 @@ class Inference:
             self._run_server()
 
     def _parse_local_deploy_args(self):
+        if len(sys.argv) == 1:
+            return None, False
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
