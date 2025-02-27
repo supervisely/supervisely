@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from supervisely.nn.artifacts.artifacts import TrainInfo
+from supervisely.nn.experiments import ExperimentInfo
+
 
 class ModelSource:
     PRETRAINED = "Pretrained models"
