@@ -60,7 +60,7 @@ class DeployApi:
         :type team_id: int
         :param artifacts_dir: Path to the artifacts directory.
         :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
@@ -98,7 +98,7 @@ class DeployApi:
         :type session_id: int
         :param train_task: Task ID of a finished training, or ExperimentInfo object.
         :type train_task: Union[int, Dict]
-        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
@@ -124,7 +124,7 @@ class DeployApi:
         }
         self._load_model_from_api(session_id, deploy_params)
 
-    def pretrained_model(
+    def deploy_pretrained_model(
         self,
         app: Union[str, int],
         model_name: str,
@@ -159,7 +159,7 @@ class DeployApi:
         )
         return task_info
 
-    def custom_model(
+    def deploy_custom_model_by_artifacts_dir(
         self,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
@@ -174,7 +174,7 @@ class DeployApi:
 
         :param artifacts_dir: Path to the artifacts directory.
         :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
@@ -224,7 +224,7 @@ class DeployApi:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
 
-    def from_experiment_info(
+    def deploy_custom_model_from_experiment_info(
         self,
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
@@ -238,8 +238,8 @@ class DeployApi:
 
         :param task_id: Task ID of Train App in Supervisely.
         :type task_id: int
-        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
-            If not provided, checkpoint will be chosen automatically, depending on the app version.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
+            If not provided, the best checkpoint will be chosen.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str

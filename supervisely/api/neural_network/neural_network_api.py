@@ -31,11 +31,11 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> "Session":
         """
-        Deploy pretrained model in running serving App.
+        Start a new serving app and deploy pretrained model by model_name.
 
-        :param app_name: App name in Supervisely.
+        :param app_name: App name in Supervisely (e.g., "Serve RT-DETRv2").
         :type app_name: str
-        :param model_name: Model name to deploy.
+        :param model_name: Model name to deploy (e.g., "RT-DETRv2-M").
         :type model_name: str
         :param device: Device string (default is "cuda").
         :type device: str
@@ -44,7 +44,7 @@ class NeuralNetworkApi:
         """
         from supervisely.nn.inference.session import Session
 
-        task_info = self.deploy.pretrained_model(
+        task_info = self.deploy.deploy_pretrained_model(
             app_name=app_name,
             model_name=model_name,
             device=device,
@@ -62,14 +62,14 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> "Session":
         """
-        Deploy custom model based on the artifacts directory.
+        Start a new serving app and deploy custom model based on the directory path in Team Files where the model is stored.
 
         :param workspace_id: Workspace ID in Supervisely.
         :type workspace_id: int
-        :param artifacts_dir: Path to the artifacts directory.
+        :param artifacts_dir: Path to the artifacts directory in Team Files.
         :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with file extension) to deploy.
-            If not provided, checkpoint will be chosen automatically, depending on the app version.
+        :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
+            If not provided, checkpoint will be chosen automatically, trying to pick the "best" checkpoint if available.
         :type checkpoint_name: Optional[str]
         :param device: Device string (default is "cuda").
         :type device: str
@@ -83,7 +83,7 @@ class NeuralNetworkApi:
         """
         from supervisely.nn.inference.session import Session
 
-        task_info = self.deploy.custom_model(
+        task_info = self.deploy.deploy_custom_model_by_artifacts_dir(
             artifacts_dir=artifacts_dir,
             checkpoint_name=checkpoint_name,
             device=device,
@@ -94,11 +94,11 @@ class NeuralNetworkApi:
 
     def get_experiment_info(self, task_id: int) -> "ExperimentInfo":
         """
-        Returns the experiment info based on the Train task ID.
+        Returns the experiment info of a finished training task by its task_id.
 
-        :param task_id: the task_id of a Train task in the Supervisely platform.
+        :param task_id: the task_id of a finished training task in the Supervisely platform.
         :type task_id: int
-        :return: a :class:`ExperimentInfo` object
+        :return: a :class:`ExperimentInfo` object with information about the training, model, and results.
         :rtype: ExperimentInfo
         """
         from supervisely.nn.experiments import ExperimentInfo
@@ -117,12 +117,11 @@ class NeuralNetworkApi:
         session_id: int,
         inference_settings: Union[dict, str] = None,
     ) -> "Session":
-        # @TODO: support inference_settings
         """
-        Create a new inference session based on the Serve App session ID.
+        Attach to a running Serving App session to run the inference via API.
 
-        :param task_id: the task_id of a Deploy task in the Supervisely platform.
-        :type task_id: int
+        :param session_id: the session_id of a running Serving App session in the Supervisely platform.
+        :type session_id: int
         :param inference_settings: a dict or a path to YAML file with settings, defaults to None
         :type inference_settings: Union[dict, str], optional
         :return: a :class:`Session` object
