@@ -2935,7 +2935,7 @@ class Inference:
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
-        parser.add_argument("mode", choices=["deploy", "predict"], help="Mode of operation")
+        parser.add_argument("mode", nargs="?", type=str, help="Mode of operation: 'deploy' or 'predict'")
         parser.add_argument("input", nargs="?", type=str, help="Local path to input data")
 
         # Deploy args
@@ -3018,6 +3018,11 @@ class Inference:
 
         # Parse arguments
         args, _ = parser.parse_known_args()
+        if args.mode is None:
+            return None, False
+        elif args.mode not in ["predict", "deploy"]:
+            return None, False
+
         if args.model is None:
             if len(self.pretrained_models) == 0:
                 raise ValueError("No pretrained models found.")
