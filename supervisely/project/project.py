@@ -1936,6 +1936,7 @@ class Dataset(KeyObject):
         task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
+        is_val: Optional[bool] = None,
     ):
         """
         Convert Supervisely dataset to YOLO format.
@@ -1950,6 +1951,8 @@ class Dataset(KeyObject):
         :type log_progress: :class:`str`, optional
         :param progress_cb: Progress callback.
         :type progress_cb: :class:`Callable`, optional
+        :param is_val: If True, the dataset is a validation dataset.
+        :type is_val: :class:`bool`, optional
         :return: YOLO dataset in dictionary format.
         :rtype: :class:`dict`
 
@@ -1975,6 +1978,7 @@ class Dataset(KeyObject):
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            is_val=is_val,
         )
 
     def to_pascal_voc(
@@ -3824,16 +3828,24 @@ class Project:
         task_type: Literal["detection", "segmentation", "pose"] = "detection",
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
+        val_datasets: Optional[List[str]] = None,
     ) -> None:
         """
         Convert Supervisely project to YOLO format.
 
         :param dest_dir: Destination directory.
         :type dest_dir: :class:`str`, optional
+        :param task_type: Task type for YOLO format. Possible values: 'detection', 'segmentation', 'pose'.
+        :type task_type: :class:`str` or :class:`TaskType`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
         :type progress_cb: callable, optional
+        :param val_datasets:    List of dataset names for validation.
+                            Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
+                            If specified, datasets from the list will be marked as val, others as train.
+                            If not specified, the function will determine the validation datasets automatically.
+        :type val_datasets: :class:`list` [ :class:`str` ], optional
         :return: None
         :rtype: NoneType
 
@@ -3855,12 +3867,13 @@ class Project:
 
         from supervisely.convert import project_to_yolo
 
-        project_to_yolo(
+        return project_to_yolo(
             project=self,
             dest_dir=dest_dir,
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            val_datasets=val_datasets,
         )
 
     def to_pascal_voc(
