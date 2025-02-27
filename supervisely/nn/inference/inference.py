@@ -2888,7 +2888,7 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 if isinstance(self.gui, GUI.ServingGUITemplate):
-                    if deploy_params["model_source"] == ModelSource.PRETRAINED:
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and state.get("model_name"):
                         model_name = state["model_name"]
                         selected_model = None
                         for model in self.pretrained_models:
