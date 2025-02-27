@@ -307,58 +307,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             f"Waiting time exceeded: total waiting time {wait_attempts * effective_wait_timeout} seconds, i.e. {wait_attempts} attempts for {effective_wait_timeout} seconds each"
         )
 
-    # TODO: LEGACY - to remove
-    # def upload_dtl_archive(
-    #     self,
-    #     task_id: int,
-    #     archive_path: str,
-    #     progress_cb: Optional[Union[tqdm, Callable]] = None,
-    # ):
-    #     """upload_dtl_archive"""
-    #     encoder = MultipartEncoder(
-    #         {
-    #             "id": str(task_id).encode("utf-8"),
-    #             "name": get_file_name(archive_path),
-    #             "archive": (
-    #                 os.path.basename(archive_path),
-    #                 open(archive_path, "rb"),
-    #                 "application/x-tar",
-    #             ),
-    #         }
-    #     )
-
-    #     def callback(monitor_instance):
-    #         read_mb = monitor_instance.bytes_read / 1024.0 / 1024.0
-    #         if progress_cb is not None:
-    #             progress_cb(read_mb)
-
-    #     monitor = MultipartEncoderMonitor(encoder, callback)
-    #     self._api.post("tasks.upload.dtl_archive", monitor)
-
-    # TODO: LEGACY - to remove
-    # def _deploy_model(
-    #     self,
-    #     agent_id,
-    #     model_id,
-    #     plugin_id=None,
-    #     version=None,
-    #     restart_policy=RestartPolicy.NEVER,
-    #     settings=None,
-    # ):
-    #     """_deploy_model"""
-    #     response = self._api.post(
-    #         "tasks.run.deploy",
-    #         {
-    #             ApiField.AGENT_ID: agent_id,
-    #             ApiField.MODEL_ID: model_id,
-    #             ApiField.RESTART_POLICY: restart_policy.value,
-    #             ApiField.SETTINGS: settings or {"gpu_device": 0},
-    #             ApiField.PLUGIN_ID: plugin_id,
-    #             ApiField.VERSION: version,
-    #         },
-    #     )
-    #     return response.json()[ApiField.TASK_ID]
-
     def get_context(self, id: int) -> Dict:
         """
         Get context information by task ID.
@@ -398,120 +346,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
     def _convert_json_info(self, info: dict):
         """_convert_json_info"""
         return info
-
-    # TODO: LEGACY - to remove
-    # def run_dtl(self, workspace_id: int, dtl_graph: Dict, agent_id: Optional[int] = None):
-    #     """run_dtl"""
-    #     response = self._api.post(
-    #         "tasks.run.dtl",
-    #         {
-    #             ApiField.WORKSPACE_ID: workspace_id,
-    #             ApiField.CONFIG: dtl_graph,
-    #             "advanced": {ApiField.AGENT_ID: agent_id},
-    #         },
-    #     )
-    #     return response.json()[ApiField.TASK_ID]
-
-    # TODO: LEGACY - to remove
-    # def _run_plugin_task(
-    #     self,
-    #     task_type,
-    #     agent_id,
-    #     plugin_id,
-    #     version,
-    #     config,
-    #     input_projects,
-    #     input_models,
-    #     result_name,
-    # ):
-    #     """_run_plugin_task"""
-    #     response = self._api.post(
-    #         "tasks.run.plugin",
-    #         {
-    #             "taskType": task_type,
-    #             ApiField.AGENT_ID: agent_id,
-    #             ApiField.PLUGIN_ID: plugin_id,
-    #             ApiField.VERSION: version,
-    #             ApiField.CONFIG: config,
-    #             "projects": input_projects,
-    #             "models": input_models,
-    #             ApiField.NAME: result_name,
-    #         },
-    #     )
-    #     return response.json()[ApiField.TASK_ID]
-
-    # TODO: LEGACY - to remove
-    # def run_train(
-    #     self,
-    #     agent_id: int,
-    #     input_project_id: int,
-    #     input_model_id: int,
-    #     result_nn_name: str,
-    #     train_config: Optional[Dict] = None,
-    # ):
-    #     """run_train"""
-    #     model_info = self._api.model.get_info_by_id(input_model_id)
-    #     return self._run_plugin_task(
-    #         task_type=TaskApi.PluginTaskType.TRAIN.value,
-    #         agent_id=agent_id,
-    #         plugin_id=model_info.plugin_id,
-    #         version=None,
-    #         input_projects=[input_project_id],
-    #         input_models=[input_model_id],
-    #         result_name=result_nn_name,
-    #         config={} if train_config is None else train_config,
-    #     )
-
-    # TODO: LEGACY - to remove
-    # def run_inference(
-    #     self,
-    #     agent_id: int,
-    #     input_project_id: int,
-    #     input_model_id: int,
-    #     result_project_name: str,
-    #     inference_config: Optional[Dict] = None,
-    # ):
-    #     """run_inference"""
-    #     model_info = self._api.model.get_info_by_id(input_model_id)
-    #     return self._run_plugin_task(
-    #         task_type=TaskApi.PluginTaskType.INFERENCE.value,
-    #         agent_id=agent_id,
-    #         plugin_id=model_info.plugin_id,
-    #         version=None,
-    #         input_projects=[input_project_id],
-    #         input_models=[input_model_id],
-    #         result_name=result_project_name,
-    #         config={} if inference_config is None else inference_config,
-    #     )
-
-    # TODO: LEGACY - to remove
-    # def get_training_metrics(self, task_id: int):
-    #     """get_training_metrics"""
-    #     response = self._get_response_by_id(
-    #         id=task_id, method="tasks.train-metrics", id_field=ApiField.TASK_ID
-    #     )
-    #     return response.json() if (response is not None) else None
-
-    # TODO: LEGACY - to remove
-    # def deploy_model(self, agent_id: int, model_id: int) -> int:
-    #     """deploy_model"""
-    #     task_ids = self._api.model.get_deploy_tasks(model_id)
-    #     if len(task_ids) == 0:
-    #         task_id = self._deploy_model(agent_id, model_id)
-    #     else:
-    #         task_id = task_ids[0]
-    #     self.wait(task_id, self.Status.DEPLOYED)
-    #     return task_id
-
-    # TODO: LEGACY - to remove
-    # def deploy_model_async(self, agent_id: int, model_id: int) -> int:
-    #     """deploy_model_async"""
-    #     task_ids = self._api.model.get_deploy_tasks(model_id)
-    #     if len(task_ids) == 0:
-    #         task_id = self._deploy_model(agent_id, model_id)
-    #     else:
-    #         task_id = task_ids[0]
-    #     return task_id
 
     def start(
         self,
@@ -636,39 +470,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """stop"""
         response = self._api.post("tasks.stop", {ApiField.ID: id})
         return self.Status(response.json()[ApiField.STATUS])
-
-    # TODO: LEGACY - to remove ?
-    # def get_import_files_list(self, id: int) -> Union[Dict, None]:
-    #     """get_import_files_list"""
-    #     response = self._api.post("tasks.import.files_list", {ApiField.ID: id})
-    #     return response.json() if (response is not None) else None
-
-    # TODO: LEGACY - to remove
-    # def download_import_file(self, id, file_path, save_path):
-    #     """download_import_file"""
-    #     response = self._api.post(
-    #         "tasks.import.download_file",
-    #         {ApiField.ID: id, ApiField.FILENAME: file_path},
-    #         stream=True,
-    #     )
-
-    #     ensure_base_path(save_path)
-    #     with open(save_path, "wb") as fd:
-    #         for chunk in response.iter_content(chunk_size=1024 * 1024):
-    #             fd.write(chunk)
-
-    # TODO: LEGACY - to remove
-    # def create_task_detached(self, workspace_id: int, task_type: Optional[str] = None):
-    #     """create_task_detached"""
-    #     response = self._api.post(
-    #         "tasks.run.python",
-    #         {
-    #             ApiField.WORKSPACE_ID: workspace_id,
-    #             ApiField.SCRIPT: "xxx",
-    #             ApiField.ADVANCED: {ApiField.IGNORE_AGENT: True},
-    #         },
-    #     )
-    #     return response.json()[ApiField.TASK_ID]
 
     def submit_logs(self, logs) -> None:
         """submit_logs"""
@@ -802,31 +603,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """get_field"""
         result = self.get_fields(task_id, [field])
         return result[field]
-
-    # TODO: LEGACY - to remove
-    # def _validate_checkpoints_support(self, task_id):
-    #     """_validate_checkpoints_support"""
-    #     # pylint: disable=too-few-format-args
-    #     info = self.get_info_by_id(task_id)
-    #     if info["type"] != str(TaskApi.PluginTaskType.TRAIN):
-    #         raise RuntimeError(
-    #             "Task (id={!r}) has type {!r}. "
-    #             "Checkpoints are available only for tasks of type {!r}".format()
-    #         )
-
-    # TODO: LEGACY - to remove
-    # def list_checkpoints(self, task_id: int):
-    #     """list_checkpoints"""
-    #     self._validate_checkpoints_support(task_id)
-    #     resp = self._api.post("tasks.checkpoints.list", {ApiField.ID: task_id})
-    #     return resp.json()
-
-    # TODO: LEGACY - to remove
-    # def delete_unused_checkpoints(self, task_id: int) -> Dict:
-    #     """delete_unused_checkpoints"""
-    #     self._validate_checkpoints_support(task_id)
-    #     resp = self._api.post("tasks.checkpoints.clear", {ApiField.ID: task_id})
-    #     return resp.json()
 
     def _set_output(self):
         """_set_output"""
