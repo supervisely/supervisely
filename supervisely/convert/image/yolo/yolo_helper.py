@@ -17,7 +17,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.color import generate_rgb
-from supervisely.io.fs import get_file_name_with_ext, touch
+from supervisely.io.fs import get_file_name, get_file_name_with_ext, touch
 from supervisely.nn.task_type import TaskType
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
@@ -557,7 +557,7 @@ def sly_ds_to_yolo(
         img_name = generate_free_name(used_names, img_name, with_ext=True, extend_used_names=True)
         shutil.copy2(img_path, images_dir / img_name)
 
-        label_path = str(labels_dir / f"{img_name}.txt")
+        label_path = str(labels_dir / f"{get_file_name(img_name)}.txt")
         yolo_lines = ann.to_yolo(class_names, task_type)
         if len(yolo_lines) > 0:
             with open(label_path, "w") as f:
@@ -599,6 +599,7 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
                 field_name = obj_class.geometry_type.items_json_field
                 max_kpts_count = max(max_kpts_count, len(obj_class.geometry_config[field_name]))
         data_yaml["kpt_shape"] = [max_kpts_count, 3]
+        data_yaml["flip_idx"] = [i for i in range(max_kpts_count)]
     with open(save_path, "w") as f:
         yaml.dump(data_yaml, f, default_flow_style=None)
 
