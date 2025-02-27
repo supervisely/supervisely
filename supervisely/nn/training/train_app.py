@@ -1865,13 +1865,19 @@ class TrainApp:
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        lnk_file_info, report, report_id, eval_metrics = None, None, None, {}
+        lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
+            None,
+            None,
+            None,
+            {},
+            None,
+        )
         if self._inference_class is None:
             logger.warning(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return lnk_file_info, report, report_id, eval_metrics
+            return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1885,7 +1891,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return lnk_file_info, report, report_id, eval_metrics
+            return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -2053,7 +2059,7 @@ class TrainApp:
                 if diff_project_info:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
-                return lnk_file_info, report, report_id, eval_metrics
+                return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
         return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
