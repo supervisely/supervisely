@@ -2888,7 +2888,9 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 if isinstance(self.gui, GUI.ServingGUITemplate):
-                    if deploy_params["model_source"] == ModelSource.PRETRAINED and state.get("model_name"):
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and state.get(
+                        "model_name"
+                    ):
                         model_name = state["model_name"]
                         selected_model = None
                         for model in self.pretrained_models:
@@ -2908,7 +2910,7 @@ class Inference:
                         if "runtime" not in deploy_params:
                             deploy_params["runtime"] = RuntimeType.PYTORCH
                         if "device" not in deploy_params:
-                            raise ValueError("Device field is required for model deployment")
+                            deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
                     else:
                         model_files = self._download_model_files(
                             deploy_params["model_source"], deploy_params["model_files"]
