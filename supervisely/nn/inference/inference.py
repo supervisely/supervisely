@@ -3254,6 +3254,11 @@ class Inference:
             if self.api is None:
                 raise ValueError(missing_env_message)
 
+            if dataset_ids:
+                logger.info(f"Predicting datasets: '{dataset_ids}'")
+            else:
+                logger.info(f"Predicting project: '{project_id}'")
+
             if draw:
                 raise ValueError("Draw visualization is not supported for project inference")
 
@@ -3314,6 +3319,8 @@ class Inference:
             if self.api is None:
                 raise ValueError(missing_env_message)
 
+            logger.info(f"Predicting image: '{image_id}'")
+
             def predict_image_np(image_np):
                 anns, _ = self._inference_auto([image_np], settings)
                 if len(anns) == 0:
@@ -3349,6 +3356,7 @@ class Inference:
             output_dir: str = "./predictions",
             draw: bool = False,
         ):
+            logger.info(f"Predicting '{input_path}'")
 
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
