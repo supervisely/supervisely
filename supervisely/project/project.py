@@ -1933,7 +1933,7 @@ class Dataset(KeyObject):
         self,
         meta: ProjectMeta,
         dest_dir: Optional[str] = None,
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
     ):

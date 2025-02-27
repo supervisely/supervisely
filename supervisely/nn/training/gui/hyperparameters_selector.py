@@ -125,10 +125,11 @@ class HyperparametersSelector:
         return False
 
     def set_model_benchmark_checkbox_value(self, is_checked: bool) -> bool:
-        if is_checked:
-            self.run_model_benchmark_checkbox.check()
-        else:
-            self.run_model_benchmark_checkbox.uncheck()
+        if hasattr(self, "run_model_benchmark_checkbox"):
+            if is_checked:
+                self.run_model_benchmark_checkbox.check()
+            else:
+                self.run_model_benchmark_checkbox.uncheck()
 
     def get_speedtest_checkbox_value(self) -> bool:
         if self.app_options.get("model_benchmark", True):
@@ -136,10 +137,11 @@ class HyperparametersSelector:
         return False
 
     def set_speedtest_checkbox_value(self, is_checked: bool) -> bool:
-        if is_checked:
-            self.run_speedtest_checkbox.check()
-        else:
-            self.run_speedtest_checkbox.uncheck()
+        if hasattr(self, "run_speedtest_checkbox"):
+            if is_checked:
+                self.run_speedtest_checkbox.check()
+            else:
+                self.run_speedtest_checkbox.uncheck()
 
     def toggle_mb_speedtest(self, is_checked: bool) -> None:
         if is_checked:

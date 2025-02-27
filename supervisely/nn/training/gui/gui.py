@@ -144,33 +144,40 @@ class TrainGUI:
             self.training_process.set_experiment_name(experiment_name)
 
         def need_convert_class_shapes() -> bool:
-            if not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
-                self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
-                self.need_convert_shapes_for_bm = False
-            else:
-                task_type = self.model_selector.get_selected_task_type()
-
-                def _need_convert(shape):
-                    if task_type == TaskType.OBJECT_DETECTION:
-                        return shape != Rectangle.geometry_name()
-                    elif task_type in [
-                        TaskType.INSTANCE_SEGMENTATION,
-                        TaskType.SEMANTIC_SEGMENTATION,
-                    ]:
-                        return shape == Polygon.geometry_name()
-                    return
-
-                data = self.classes_selector.classes_table._table_data
-                selected_classes = set(self.classes_selector.classes_table.get_selected_classes())
-                empty = set(r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0)
-                need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
-
-                if need_convert.intersection(selected_classes - empty):
-                    self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
-                    self.need_convert_shapes_for_bm = True
-                else:
+            if hasattr(self.hyperparameters_selector, "run_model_benchmark_checkbox"):
+                if not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
                     self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
                     self.need_convert_shapes_for_bm = False
+                else:
+                    task_type = self.model_selector.get_selected_task_type()
+
+                    def _need_convert(shape):
+                        if task_type == TaskType.OBJECT_DETECTION:
+                            return shape != Rectangle.geometry_name()
+                        elif task_type in [
+                            TaskType.INSTANCE_SEGMENTATION,
+                            TaskType.SEMANTIC_SEGMENTATION,
+                        ]:
+                            return shape == Polygon.geometry_name()
+                        return
+
+                    data = self.classes_selector.classes_table._table_data
+                    selected_classes = set(
+                        self.classes_selector.classes_table.get_selected_classes()
+                    )
+                    empty = set(
+                        r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0
+                    )
+                    need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
+
+                    if need_convert.intersection(selected_classes - empty):
+                        self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
+                        self.need_convert_shapes_for_bm = True
+                    else:
+                        self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
+                        self.need_convert_shapes_for_bm = False
+            else:
+                self.need_convert_shapes_for_bm = False
 
         # ------------------------------------------------- #
 
@@ -308,10 +315,12 @@ class TrainGUI:
                 self.training_logs.toggle_logs()
 
         # Other handlers
-        @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
-        def show_mb_speedtest(is_checked: bool):
-            self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
-            need_convert_class_shapes()
+        if hasattr(self.hyperparameters_selector, "run_model_benchmark_checkbox"):
+
+            @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
+            def show_mb_speedtest(is_checked: bool):
+                self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
+                need_convert_class_shapes()
 
         # ------------------------------------------------- #
 

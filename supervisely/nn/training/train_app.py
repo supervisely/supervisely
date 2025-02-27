@@ -8,7 +8,7 @@ training workflows in a Supervisely application.
 import shutil
 import subprocess
 from datetime import datetime
-from os import getcwd, listdir
+from os import getcwd, listdir, walk
 from os.path import basename, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
@@ -1399,7 +1399,12 @@ class TrainApp:
         # Prepare logs
         if sly_fs.dir_exists(self.log_dir):
             logs_dir = join(self.output_dir, "logs")
-            shutil.copytree(self.log_dir, logs_dir)
+            for root, _, files in walk(self.log_dir):
+                for file in files:
+                    if ".tfevents." in file:
+                        src_log_path = join(root, file)
+                        dst_log_path = join(logs_dir, file)
+                        sly_fs.copy_file(src_log_path, dst_log_path)
         return experiment_info
 
     # Generate experiment_info.json and app_state.json
@@ -1545,9 +1550,9 @@ class TrainApp:
         experiment_info["best_checkpoint"] = sly_fs.get_file_name_with_ext(
             experiment_info["best_checkpoint"]
         )
-        experiment_info["model_files"]["config"] = sly_fs.get_file_name_with_ext(
-            experiment_info["model_files"]["config"]
-        )
+        model_config = experiment_info["model_files"].get("config")
+        if model_config is not None:
+            experiment_info["model_files"]["config"] = sly_fs.get_file_name_with_ext(model_config)
 
         local_path = join(self.output_dir, self._experiment_json_file)
         remote_path = join(remote_dir, self._experiment_json_file)
@@ -1773,7 +1778,8 @@ class TrainApp:
         # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
-        self._api.task.set_output_experiment(self.task_id, experiment_info, self.project_name)
+        if self.task_id != "debug-session":
+            self._api.task.set_output_experiment(self.task_id, experiment_info, self.project_name)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
@@ -1827,7 +1833,8 @@ class TrainApp:
                     self.gui.training_artifacts.trt_demo_exists(demo_path),
                 ]
             ):
-                self.gui.training_artifacts.inference_demo_field.show()
+                if hasattr(self.gui.training_artifacts, "inference_demo_field"):
+                    self.gui.training_artifacts.inference_demo_field.show()
         # ---------------------------- #
 
         # Set status to completed and unlock
