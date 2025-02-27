@@ -2414,9 +2414,7 @@ class Inference:
 
                 self._parse_inference_settings_from_args()
                 self._inference_by_local_deploy_args()
-                # Gracefully shut down the server
                 exit(0)
-        # else: run server after endpoints
 
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
