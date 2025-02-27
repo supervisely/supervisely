@@ -18,6 +18,7 @@ from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.color import generate_rgb
 from supervisely.io.fs import get_file_name_with_ext, touch
+from supervisely.nn.task_type import TaskType
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
@@ -398,16 +399,16 @@ def keypoints_to_yolo_line(
 
 def convert_label_geometry_if_needed(
     label: Label,
-    task_type: Literal["detection", "segmentation", "pose"],
+    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType],
     verbose: bool = False,
 ) -> List[Label]:
-    if task_type == "detection":
+    if str(task_type) in ["detection", TaskType.OBJECT_DETECTION]:
         available_geometry_type = Rectangle
         convertable_geometry_types = [Polygon, GraphNodes, Bitmap, Polyline, AlphaMask, AnyGeometry]
-    elif task_type == "segmentation":
+    elif str(task_type) in ["segmentation", TaskType.INSTANCE_SEGMENTATION]:
         available_geometry_type = Polygon
         convertable_geometry_types = [Bitmap, AlphaMask, AnyGeometry]
-    elif task_type == "pose":
+    elif str(task_type) in ["pose", TaskType.POSE_ESTIMATION]:
         available_geometry_type = GraphNodes
         convertable_geometry_types = []
     else:
@@ -438,7 +439,7 @@ def label_to_yolo_lines(
     img_height: int,
     img_width: int,
     class_names: List[str],
-    task_type: Literal["detection", "segmentation", "pose"],
+    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType],
 ) -> List[str]:
     """
     Convert the Supervisely Label to a line in the YOLO format.
@@ -449,21 +450,21 @@ def label_to_yolo_lines(
 
     lines = []
     for label in labels:
-        if task_type == "detection":
+        if str(task_type) in ["detection", TaskType.OBJECT_DETECTION]:
             yolo_line = rectangle_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
-        elif task_type == "segmentation":
+        elif str(task_type) in ["segmentation", TaskType.INSTANCE_SEGMENTATION]:
             yolo_line = polygon_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
-        elif task_type == "pose":
+        elif str(task_type) in ["pose", TaskType.POSE_ESTIMATION]:
             nodes_field = label.obj_class.geometry_type.items_json_field
             max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
             yolo_line = keypoints_to_yolo_line(
@@ -485,7 +486,7 @@ def label_to_yolo_lines(
 def sly_ann_to_yolo(
     ann: Annotation,
     class_names: List[str],
-    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType] = "detection",
 ) -> List[str]:
     """
     Convert the Supervisely annotation to the YOLO format.
@@ -509,9 +510,10 @@ def sly_ds_to_yolo(
     dataset: Dataset,
     meta: ProjectMeta,
     dest_dir: Optional[str] = None,
-    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType] = "detection",
     log_progress: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    is_val: Optional[bool] = None,
 ) -> str:
 
     if progress_cb is not None:
@@ -543,8 +545,12 @@ def sly_ds_to_yolo(
         ann_path = dataset.get_ann_path(name)
         ann = Annotation.load_json_file(ann_path, meta)
 
-        images_dir = val_images_dir if ann.img_tags.get("val") else train_images_dir
-        labels_dir = val_labels_dir if ann.img_tags.get("val") else train_labels_dir
+        if is_val is not None:
+            images_dir = val_images_dir if is_val else train_images_dir
+            labels_dir = val_labels_dir if is_val else train_labels_dir
+        else:
+            images_dir = val_images_dir if ann.img_tags.get("val") else train_images_dir
+            labels_dir = val_labels_dir if ann.img_tags.get("val") else train_labels_dir
 
         img_path = Path(dataset.get_img_path(name))
         img_name = f"{dataset.short_name}_{get_file_name_with_ext(img_path)}"
@@ -565,7 +571,8 @@ def sly_ds_to_yolo(
     # * save data config file if it does not exist
     config_path = dest_dir / "data_config.yaml"
     if not config_path.exists():
-        save_yolo_config(meta, dest_dir, with_keypoint=task_type == "pose")
+        with_keypoint = str(task_type) in ["pose", TaskType.POSE_ESTIMATION]
+        save_yolo_config(meta, dest_dir, with_keypoint=with_keypoint)
 
     return str(dest_dir)
 
@@ -578,6 +585,8 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
     data_yaml = {
         "train": f"../{str(dest_dir.name)}/images/train",
         "val": f"../{str(dest_dir.name)}/images/val",
+        "train_labels": f"../{str(dest_dir.name)}/labels/train",
+        "val_labels": f"../{str(dest_dir.name)}/labels/val",
         "nc": len(class_names),
         "names": class_names,
         "colors": class_colors,
@@ -599,21 +608,31 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
 def sly_project_to_yolo(
     project: Union[Project, str],
     dest_dir: Optional[str] = None,
-    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType] = "detection",
     log_progress: bool = False,
     progress_cb: Optional[Callable] = None,
+    val_datasets: Optional[List[str]] = None,
 ):
     """
     Convert Supervisely project to YOLO format.
 
+    :param project: Supervisely project or path to the directory with the project.
+    :type project: :class:`supervisely.project.project.Project` or :class:`str`
     :param dest_dir: Destination directory.
     :type dest_dir: :class:`str`, optional
+    :param task_type: Task type.
+    :type task_type: :class:`str`, optional
     :param log_progress: Show uploading progress bar.
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
-    :return: None
-    :rtype: NoneType
+    :param val_datasets:    List of dataset names for validation.
+                            Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
+                            If specified, datasets from the list will be marked as val, others as train.
+                            If not specified, the function will determine the validation datasets automatically.
+    :type val_datasets: :class:`list`, optional
+    :return: Path to the destination directory.
+    :rtype: :class:`str`
 
     :Usage example:
 
@@ -644,9 +663,15 @@ def sly_project_to_yolo(
             desc="Converting Supervisely project to YOLO format", total=project.total_items
         ).update
 
-    save_yolo_config(project.meta, dest_dir, with_keypoint=task_type == "pose")
+    with_keypoint = str(task_type) in ["pose", TaskType.POSE_ESTIMATION]
+    save_yolo_config(project.meta, dest_dir, with_keypoint=with_keypoint)
 
     for dataset in project.datasets:
+        if val_datasets is not None:
+            is_val = dataset.name in val_datasets
+        else:
+            is_val = None
+
         dataset: Dataset
         dataset.to_yolo(
             meta=project.meta,
@@ -654,18 +679,30 @@ def sly_project_to_yolo(
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            is_val=is_val,
         )
         logger.info(f"Dataset '{dataset.short_name}' has been converted to YOLO format.")
     logger.info(f"Project '{project.name}' has been converted to YOLO format.")
+
+    return str(dest_dir)
 
 
 def to_yolo(
     input_data: Union[Project, Dataset, str],
     dest_dir: Optional[str] = None,
-    task_type: Literal["detection", "segmentation", "pose"] = "detection",
+    task_type: Union[
+        Literal[
+            "detection",
+            "segmentation",
+            "pose",
+        ],
+        TaskType,
+    ] = "detection",
     meta: Optional[ProjectMeta] = None,
     log_progress: bool = True,
     progress_cb: Optional[Callable] = None,
+    val_datasets: Optional[List[str]] = None,
+    is_val: Optional[bool] = None,
 ) -> Union[None, str]:
     """
     Universal function to convert Supervisely project or dataset  to YOLO format.
@@ -691,6 +728,13 @@ def to_yolo(
     :type log_progress: :class:`bool`
     :param progress_cb: Function for tracking conversion progress (for all items in the project).
     :type progress_cb: callable, optional
+    :param val_datasets:    List of dataset names for validation.
+                            Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
+                            If specified, datasets from the list will be marked as val, others as train.
+                            If not specified, the function will determine the validation datasets automatically.
+    :type val_datasets: :class:`list`, optional
+    :param is_val: Whether the dataset is for validation.
+    :type is_val: :class:`bool`, optional
     :return: None, list of YOLO lines, or path to the destination directory.
     :rtype: NoneType, list, str
 
@@ -711,7 +755,7 @@ def to_yolo(
 
         # Convert Dataset to YOLO format
         dataset: sly.Dataset = project_fs.datasets.get("dataset_name")
-        sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta)
+        sly.convert.to_yolo(dataset, dest_dir="./yolo", meta=project_fs.meta, is_val=True)
     """
     if isinstance(input_data, str):
         try:
@@ -728,6 +772,7 @@ def to_yolo(
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            val_datasets=val_datasets,
         )
     elif isinstance(input_data, Dataset):
         return sly_ds_to_yolo(
@@ -737,6 +782,7 @@ def to_yolo(
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            is_val=is_val,
         )
     else:
         raise ValueError("Unsupported input type. Only Project or Dataset are supported.")
