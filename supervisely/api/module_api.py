@@ -625,7 +625,8 @@ class ApiField:
     """"""
     NON_FINAL_VALUE = "nonFinalValue"
     """"""
-
+    HOTKEY = "hotkey"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
