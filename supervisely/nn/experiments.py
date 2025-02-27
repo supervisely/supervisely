@@ -148,9 +148,8 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
                     f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
                 )
                 return None
-            return ExperimentInfo(
-                **{k: v for k, v in response_json.items() if k in required_fields}
-            )
+            field_names = {field.name for field in fields(ExperimentInfo)}
+            return ExperimentInfo(**{k: v for k, v in response_json.items() if k in field_names})
         except requests.exceptions.RequestException as e:
             logger.debug(f"Request failed for '{experiment_path}': {e}")
         except JSONDecodeError as e:
