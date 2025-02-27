@@ -1,5 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, fields
+from dataclasses import MISSING, dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
 from typing import Dict, List, Optional, Union
@@ -60,12 +60,15 @@ class ExperimentInfo:
     """Dictionary with link and type of logger"""
 
     def __init__(self, **kwargs):
-        field_names = set(f.name for f in fields(self.__class__))
-        missing_fields = field_names - set(kwargs.keys())
+        required_fieds = {
+            field.name for field in fields(self.__class__) if field.default is MISSING
+        }
+        missing_fields = required_fieds - set(kwargs.keys())
         if missing_fields:
             raise ValueError(
                 f"ExperimentInfo missing required arguments: '{', '.join(missing_fields)}'"
             )
+        field_names = set(f.name for f in fields(self.__class__))
         kwargs = {k: v for k, v in kwargs.items() if k in field_names}
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -185,9 +188,11 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
         response.raise_for_status()
         response_json = response.json()
         required_fields = {
-            field.name for field in fields(ExperimentInfo) if field.default is not None
+            field.name for field in fields(ExperimentInfo) if field.default is MISSING
         }
-        optional_fields = {field.name for field in fields(ExperimentInfo) if field.default is None}
+        optional_fields = {
+            field.name for field in fields(ExperimentInfo) if field.default is not MISSING
+        }
 
         missing_optional_fields = optional_fields - response_json.keys()
         if missing_optional_fields:
