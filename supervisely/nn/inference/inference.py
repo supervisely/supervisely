@@ -2887,11 +2887,9 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
-                if (
-                    deploy_params["model_source"] == ModelSource.PRETRAINED
-                ):  # TODO: first if isinstance then Modelsource
-                    model_name = state["model_name"]
-                    if isinstance(self.gui, GUI.ServingGUITemplate):
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED:
+                        model_name = state["model_name"]
                         selected_model = None
                         for model in self.pretrained_models:
                             if model["meta"]["model_name"].lower() == model_name.lower():
@@ -2911,18 +2909,16 @@ class Inference:
                             deploy_params["runtime"] = RuntimeType.PYTORCH
                         if "device" not in deploy_params:
                             raise ValueError("Device field is required for model deployment")
-                        self._load_model_headless(**deploy_params)
-                    elif isinstance(self.gui, GUI.ServingGUI):
-                        self._load_model(deploy_params)
-                else:
-                    if isinstance(self.gui, GUI.ServingGUITemplate):
+                    else:
                         model_files = self._download_model_files(
                             deploy_params["model_source"], deploy_params["model_files"]
                         )
                         deploy_params["model_files"] = model_files
-                        self._load_model_headless(**deploy_params)
-                    elif isinstance(self.gui, GUI.ServingGUI):
-                        self._load_model(deploy_params)
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
+                    self._load_model(deploy_params)
+                else:
+                    raise ValueError("Unknown GUI type")
 
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device
