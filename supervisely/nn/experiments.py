@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import requests
 
@@ -69,6 +69,12 @@ class ExperimentInfo:
         kwargs = {k: v for k, v in kwargs.items() if k in field_names}
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def to_json(self) -> Dict:
+        data = {}
+        for field in fields(self.__class__):
+            value = getattr(self, field.name)
+            data[field.name] = value
 
 
 def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
