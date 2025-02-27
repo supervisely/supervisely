@@ -514,6 +514,17 @@ class SessionJSON:
         logger.info("Inference will be stopped on the server")
         return resp
 
+    def stop_serving_app(self, timeout=60):
+        logger.debug("Stopping the serving app...")
+        self.api.task.stop(self._task_id)
+        logger.debug("Waiting for the serving app to stop...")
+        self.api.task.wait(
+            self._task_id,
+            target_status=sly.api.task_api.TaskApi.Status.STOPPED,
+            wait_attempts=timeout,
+            wait_attempt_timeout_sec=1,
+        )
+
     def _get_inference_progress(self) -> Dict[str, Any]:
         endpoint = "get_inference_progress"
         return self._get_from_endpoint_for_async_inference(endpoint)
@@ -813,7 +824,7 @@ class Session(SessionJSON):
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
-        preparing_cb = None,
+        preparing_cb=None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
