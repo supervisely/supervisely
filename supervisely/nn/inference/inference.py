@@ -3401,6 +3401,7 @@ class Inference:
             predict_project_id_by_args(
                 self.api,
                 self._args.project_id,
+                None,
                 self._args.output,
                 self._args.settings,
                 self._args.draw,
