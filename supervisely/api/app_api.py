@@ -1776,6 +1776,14 @@ class AppApi(TaskApi):
                 break
         return is_ready
 
+    def find_module_id_by_app_name(self, app_name):
+        modules = self._api.app.get_list_ecosystem_modules(search=app_name)
+        if len(modules) == 0:
+            raise ValueError(f"No serving apps found for app name {app_name}")
+        if len(modules) > 1:
+            raise ValueError(f"Multiple serving apps found for app name {app_name}")
+        return modules[0]["id"]
+
 
 # info about app in team
 # {
