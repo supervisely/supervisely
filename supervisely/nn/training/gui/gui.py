@@ -6,8 +6,10 @@ training workflows in Supervisely.
 """
 
 from os import environ
+from typing import Union
 
 import supervisely.io.env as sly_env
+import supervisely.io.json as sly_json
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
@@ -453,7 +455,7 @@ class TrainGUI:
                 raise ValueError("percent must be an integer in range 1 to 99")
         return app_state
 
-    def load_from_app_state(self, app_state: dict) -> None:
+    def load_from_app_state(self, app_state: Union[str, dict]) -> None:
         """
         Load the GUI state from app state dictionary.
 
@@ -489,6 +491,9 @@ class TrainGUI:
                 }
             }
         """
+        if isinstance(app_state, str):
+            app_state = sly_json.load_json_file(app_state)
+
         app_state = self.validate_app_state(app_state)
 
         options = app_state.get("options", {})
@@ -604,6 +609,8 @@ class TrainGUI:
             )
             self.hyperparameters_selector.set_speedtest_checkbox_value(
                 model_benchmark_settings["speed_test"]
+                if model_benchmark_settings["enable"]
+                else False
             )
         export_weights_settings = options.get("export", None)
         if export_weights_settings is not None:

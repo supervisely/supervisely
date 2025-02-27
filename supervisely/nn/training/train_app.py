@@ -134,6 +134,7 @@ class TrainApp:
         self._hyperparameters = self._load_hyperparameters(hyperparameters)
         self._app_options = self._load_app_options(app_options)
         self._inference_class = None
+        self._is_inference_class_regirested = False
         # ----------------------------------------- #
 
         # Directories
@@ -173,6 +174,8 @@ class TrainApp:
         self.gui: TrainGUI = TrainGUI(
             self.framework_name, self._models, self._hyperparameters, self._app_options
         )
+        # @TODO: here hide benchmark if _is_inference_class_regirested is False
+
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
         self._train_func = None
@@ -343,6 +346,16 @@ class TrainApp:
         :rtype: str
         """
         return self.gui.model_selector.get_model_info()
+
+    @property
+    def task_type(self) -> TaskType:
+        """
+        Returns the task type of the model.
+
+        :return: Task type.
+        :rtype: TaskType
+        """
+        return self.gui.model_selector.get_selected_task_type()
 
     @property
     def device(self) -> str:
@@ -605,6 +618,7 @@ class TrainApp:
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
+        self._is_inference_class_regirested = True
         self._inference_class = inference_class
         self._inference_settings = inference_settings
 
@@ -1863,7 +1877,13 @@ class TrainApp:
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        lnk_file_info, report, report_id, eval_metrics = None, None, None, {}
+        lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
+            None,
+            None,
+            None,
+            {},
+            None,
+        )
         if self._inference_class is None:
             logger.warning(
                 "Inference class is not registered, model benchmark disabled. "
@@ -1883,7 +1903,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return lnk_file_info, report, report_id, eval_metrics
+            return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -2051,7 +2071,7 @@ class TrainApp:
                 if diff_project_info:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
-                return lnk_file_info, report, report_id, eval_metrics
+                return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
         return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
