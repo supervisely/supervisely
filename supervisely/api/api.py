@@ -1487,23 +1487,19 @@ class Api:
         else:
             headers = {**self.headers, **headers}
 
-        if "content" in kwargs or "json_body" in kwargs or "params" in kwargs:
+        params = kwargs.get("params", None)
+        if "content" in kwargs or "json_body" in kwargs:
             content = kwargs.get("content", None)
             json_body = kwargs.get("json_body", None)
-            params = kwargs.get("params", None)
         else:
             if isinstance(data, (bytes, Generator)):
                 content = data
                 json_body = None
-                params = None
             elif isinstance(data, Dict):
                 json_body = {**data, **self.additional_fields}
                 content = None
-                params = None
             else:
-                params = data
-                content = None
-                json_body = None
+                raise ValueError("Data should be either bytes or dict")
 
         if range_start is not None or range_end is not None:
             headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
@@ -1518,17 +1514,19 @@ class Api:
                         url,
                         content=content,
                         json=json_body,
-                        params=params,
                         headers=headers,
                         timeout=timeout,
+                        params=params,
                     )
                 elif method_type == "GET":
                     response = self.async_httpx_client.stream(
                         method_type,
                         url,
-                        json=json_body or params,
+                        content=content,
+                        json=json_body,
                         headers=headers,
                         timeout=timeout,
+                        params=params,
                     )
                 else:
                     raise NotImplementedError(
