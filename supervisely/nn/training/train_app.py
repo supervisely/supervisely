@@ -39,7 +39,7 @@ from supervisely import (
     is_production,
     logger,
 )
-from supervisely._utils import abs_url, get_filename_from_headers
+from supervisely._utils import abs_url, get_filename_from_headers, sync_call
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
@@ -60,6 +60,7 @@ from supervisely.nn.utils import ModelSource
 from supervisely.output import set_directory
 from supervisely.project.download import (
     copy_from_cache,
+    download_async_or_sync,
     download_to_cache,
     get_cache_size,
     is_cached,
@@ -803,8 +804,9 @@ class TrainApp:
         :type total_images: int
         """
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
+            logger.debug("Downloading project data without cache")
             self.progress_bar_main.show()
-            download_project(
+            download_async_or_sync(
                 api=self._api,
                 project_id=self.project_id,
                 dest_dir=self.project_dir,
@@ -834,6 +836,7 @@ class TrainApp:
 
         logger.info(self._get_cache_log_message(cached, to_download))
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
+            logger.debug("Downloading project data with cache")
             self.progress_bar_main.show()
             download_to_cache(
                 api=self._api,
@@ -1603,10 +1606,12 @@ class TrainApp:
             logger.info(f"Demo directory '{local_demo_dir}' does not exist")
             return
 
-        logger.debug(f"Uploading demo files to Supervisely")
         remote_demo_dir = join(remote_dir, "demo")
         local_files = sly_fs.list_files_recursively(local_demo_dir)
         total_size = sum([sly_fs.get_file_size(file_path) for file_path in local_files])
+        logger.debug(
+            f"Uploading demo files of total size {total_size} bytes to Supervisely Team Files directory '{remote_demo_dir}'"
+        )
         with self.progress_bar_main(
             message="Uploading demo files to Team Files",
             total=total_size,
@@ -1614,11 +1619,13 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory(
-                self.team_id,
-                local_demo_dir,
-                remote_demo_dir,
-                progress_size_cb=upload_artifacts_pbar,
+            remote_dir = sync_call(
+                self._api.file.upload_directory_async(
+                    team_id=self.team_id,
+                    local_dir=local_demo_dir,
+                    remote_dir=remote_demo_dir,
+                    progress_size_cb=upload_artifacts_pbar.update,
+                )
             )
             self.progress_bar_main.hide()
 
@@ -1690,11 +1697,12 @@ class TrainApp:
         Path: /experiments/{project_id}_{project_name}/{task_id}_{framework_name}/
         Example path: /experiments/43192_Apples/68271_rt-detr/
         """
-        logger.info(f"Uploading directory: '{self.output_dir}' to Supervisely")
         task_id = self.task_id
 
         remote_artifacts_dir = f"/{self._experiments_dir_name}/{self.project_id}_{self.project_name}/{task_id}_{self.framework_name}/"
-
+        logger.info(
+            f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
+        )
         # Clean debug directory if exists
         if task_id == "debug-session":
             if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
@@ -1725,11 +1733,13 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = self._api.file.upload_directory(
-                self.team_id,
-                self.output_dir,
-                remote_artifacts_dir,
-                progress_size_cb=upload_artifacts_pbar,
+            remote_dir = sync_call(
+                self._api.file.upload_directory_async(
+                    team_id=self.team_id,
+                    local_dir=self.output_dir,
+                    remote_dir=remote_artifacts_dir,
+                    progress_size_cb=upload_artifacts_pbar.update,
+                )
             )
             self.progress_bar_main.hide()
 
@@ -2088,6 +2098,7 @@ class TrainApp:
                 self.project_info.id, version_id=project_version_id
             )
 
+            file_info = None
             if self.model_source == ModelSource.CUSTOM:
                 file_info = self._api.file.get_info_by_path(
                     self.team_id,
@@ -2496,32 +2507,33 @@ class TrainApp:
     def _upload_export_weights(
         self, export_weights: Dict[str, str], remote_dir: str
     ) -> Dict[str, str]:
+        """Uploads export weights (any other specified formats) to Supervisely Team Files.
+        The default export is handled by the `_upload_artifacts` method."""
+        file_dest_paths = []
+        size = 0
+        for path in export_weights.values():
+            file_name = sly_fs.get_file_name_with_ext(path)
+            file_dest_paths.append(join(remote_dir, self._export_dir_name, file_name))
+            size += sly_fs.get_file_size(path)
         with self.progress_bar_main(
-            message="Uploading export weights",
-            total=len(export_weights),
+            message=f"Uploading {len(export_weights)} export weights",
+            total=size,
+            unit="B",
+            unit_scale=True,
         ) as export_upload_main_pbar:
+            logger.debug(f"Uploading {len(export_weights)} export weights of size {size} bytes")
+            logger.debug(f"Destination paths: {file_dest_paths}")
             self.progress_bar_main.show()
-            for path in export_weights.values():
-                file_name = sly_fs.get_file_name_with_ext(path)
-                file_size = sly_fs.get_file_size(path)
-                with self.progress_bar_secondary(
-                    message=f"Uploading '{file_name}' ",
-                    total=file_size,
-                    unit="bytes",
-                    unit_scale=True,
-                ) as export_upload_secondary_pbar:
-                    self.progress_bar_secondary.show()
-                    destination_path = join(remote_dir, self._export_dir_name, file_name)
-                    self._api.file.upload(
-                        self.team_id,
-                        path,
-                        destination_path,
-                        export_upload_secondary_pbar,
-                    )
-                export_upload_main_pbar.update(1)
+            sync_call(
+                self._api.file.upload_bulk_async(
+                    team_id=self.team_id,
+                    src_paths=export_weights.values(),
+                    dst_paths=file_dest_paths,
+                    progress_cb=export_upload_main_pbar.update,
+                )
+            )
 
         self.progress_bar_main.hide()
-        self.progress_bar_secondary.hide()
 
         remote_export_weights = {
             runtime: join(self._export_dir_name, sly_fs.get_file_name_with_ext(path))
