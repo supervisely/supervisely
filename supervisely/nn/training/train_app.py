@@ -1546,6 +1546,7 @@ class TrainApp:
 
         # Do not include this fields to uploaded file:
         experiment_info["primary_metric"] = primary_metric_name
+        experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
 
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
