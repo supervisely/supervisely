@@ -2092,17 +2092,25 @@ class FileApi(ModuleApiBase):
         logger.debug(f"Uploading with async to: {dst}. Semaphore: {semaphore}")
         async with semaphore:
             async with aiofiles.open(src, "rb") as fd:
-                item = await fd.read()
+
+                async def file_chunk_generator():
+                    while True:
+                        chunk = await fd.read(8 * 1024 * 1024)
+                        if not chunk:
+                            break
+                        if progress_cb is not None and progress_cb_type == "size":
+                            progress_cb(len(chunk))
+                        yield chunk
+
                 async for chunk, _ in self._api.stream_async(
                     method=api_method,
                     method_type="POST",
-                    data=item,
+                    data=file_chunk_generator(),  # added as required, but not used inside
                     headers=headers,
-                    content=item,
+                    content=file_chunk_generator(),  # used instead of data inside stream_async
                     params=json_body,
                 ):
-                    if progress_cb is not None and progress_cb_type == "size":
-                        progress_cb(len(item))
+                    pass
                 if progress_cb is not None and progress_cb_type == "number":
                     progress_cb(1)
 
@@ -2167,12 +2175,12 @@ class FileApi(ModuleApiBase):
             if semaphore is None:
                 semaphore = self._api.get_default_semaphore()
             tasks = []
-            for s, d in zip(src_paths, dst_paths):
+            for src, dst in zip(src_paths, dst_paths):
                 task = asyncio.create_task(
                     self.upload_async(
-                        team_id,
-                        s,
-                        d,
+                        team_id=team_id,
+                        src=src,
+                        dst=dst,
                         semaphore=semaphore,
                         # chunk_size=chunk_size, #TODO add with resumaple api
                         # check_hash=check_hash, #TODO add with resumaple api
