@@ -27,7 +27,7 @@ from fastapi import (
 )
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute, APIRouter
+from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
