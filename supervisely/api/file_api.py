@@ -2197,7 +2197,7 @@ class FileApi(ModuleApiBase):
                     f"Upload files bulk asynchronously failed. Fallback to synchronous upload.",
                     exc_info=True,
                 )
-                if progress_cb_type == "number":
+                if progress_cb is not None and progress_cb_type == "number":
                     logger.warning(
                         "Progress callback type 'number' is not supported for synchronous upload. "
                         "Progress callback will be disabled."
