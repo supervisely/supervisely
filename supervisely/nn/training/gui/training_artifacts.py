@@ -110,7 +110,6 @@ class TrainingArtifacts:
                             f"App '{app_name}' not found in Supervisely Ecosystem. Demo artifacts will not be displayed."
                         )
 
-                self.inference_demo_field = None
                 if model_demo_gh_link is not None:
                     gh_branch = "blob/main"
                     link_to_demo = f"{model_demo_gh_link}/{gh_branch}/{model_demo_path}"
