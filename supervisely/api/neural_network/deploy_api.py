@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 
 import supervisely.io.env as env
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely.nn.utils import ModelSource, RuntimeType
 from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
+    from supervisely.nn.utils import ModelSource, RuntimeType
 
 
 class DeployApi:
@@ -22,7 +22,7 @@ class DeployApi:
         session_id: int,
         model_name: str,
         device: Optional[str] = None,
-        runtime: Optional[str] = RuntimeType.PYTORCH,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
     ):
         """
         Load a pretrained model in running serving App.
@@ -36,6 +36,8 @@ class DeployApi:
         :param runtime: Runtime string, default is "PyTorch".
         :type runtime: Optional[str]
         """
+        from supervisely.nn.utils import ModelSource
+
         deploy_params = {}
         deploy_params["model_source"] = ModelSource.PRETRAINED
         deploy_params["device"] = device
@@ -49,7 +51,7 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = RuntimeType.PYTORCH,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
     ):
         """
         Load a custom model in running serving App.
@@ -68,6 +70,8 @@ class DeployApi:
         :param runtime: Runtime string, default is "PyTorch".
         :type runtime: Optional[str]
         """
+        from supervisely.nn.utils import ModelSource
+
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
             logger.debug("Deploying model from Train V1 artifacts")
@@ -89,7 +93,7 @@ class DeployApi:
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = RuntimeType.PYTORCH,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
     ):
         """
         Load a custom model in running serving App based on the training session.
@@ -106,6 +110,8 @@ class DeployApi:
         :param runtime: Runtime string, default is "PyTorch".
         :type runtime: Optional[str]
         """
+        from supervisely.nn.utils import ModelSource
+
         if checkpoint_name is None:
             checkpoint_name = experiment_info.best_checkpoint
         deploy_params = {
@@ -129,7 +135,7 @@ class DeployApi:
         app: Union[str, int],
         model_name: str,
         device: Optional[str] = None,
-        runtime: Optional[str] = RuntimeType.PYTORCH,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -164,7 +170,7 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = RuntimeType.PYTORCH,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
         team_id: int = None,
         timeout: int = 100,
         **kwargs,
@@ -191,6 +197,8 @@ class DeployApi:
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
+        from supervisely.nn.utils import ModelSource
+
         if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
             raise ValueError("artifacts_dir must be a non-empty string.")
 
@@ -229,7 +237,7 @@ class DeployApi:
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = RuntimeType.PYTORCH,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
         timeout: int = 100,
         **kwargs,
     ) -> Dict[str, Any]:
@@ -381,6 +389,7 @@ class DeployApi:
             YOLOv8,
         )
         from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+        from supervisely.nn.utils import ModelSource
 
         frameworks = {
             "/detectron2": Detectron2,
@@ -462,6 +471,7 @@ class DeployApi:
         from dataclasses import asdict
 
         from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
+        from supervisely.nn.utils import ModelSource
 
         experiment_info = get_experiment_info_by_artifacts_dir(self._api, team_id, artifacts_dir)
         if not experiment_info:
