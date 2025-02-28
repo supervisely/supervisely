@@ -26,12 +26,12 @@ class NeuralNetworkApi:
         self,
         app_name: str,
         model_name: str,
-        device: str = "cuda",
-        runtime: str = "PyTorch",
+        device: Optional[str] = None,
+        runtime: Optional[str] = "PyTorch",
         **kwargs,
     ) -> "Session":
         """
-        Start a new serving app and deploy pretrained model by model_name.
+        Deploy pretrained model by model name.
 
         :param app_name: App name in Supervisely (e.g., "Serve RT-DETRv2").
         :type app_name: str
@@ -39,8 +39,8 @@ class NeuralNetworkApi:
         :type model_name: str
         :param device: Device string (default is "cuda").
         :type device: str
-        :param runtime: Runtime string (default is "PyTorch").
-        :type runtime: str
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
         """
         from supervisely.nn.inference.session import Session
 
@@ -57,24 +57,22 @@ class NeuralNetworkApi:
         self,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
-        device: str = "cuda",
+        device: Optional[str] = None,
         team_id: int = None,
         **kwargs,
     ) -> "Session":
         """
-        Start a new serving app and deploy custom model based on the directory path in Team Files where the model is stored.
+        Deploy custom model based on the directory path in Team Files where the artifacts are stored.
 
-        :param workspace_id: Workspace ID in Supervisely.
-        :type workspace_id: int
         :param artifacts_dir: Path to the artifacts directory in Team Files.
         :type artifacts_dir: str
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, trying to pick the "best" checkpoint if available.
         :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param timeout: Timeout in seconds (default is 100).
-        :type timeout: int
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
+        :type team_id: int
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :raises ValueError: if validations fail.
@@ -98,7 +96,7 @@ class NeuralNetworkApi:
 
         :param task_id: the task_id of a finished training task in the Supervisely platform.
         :type task_id: int
-        :return: a :class:`ExperimentInfo` object with information about the training, model, and results.
+        :return: an :class:`ExperimentInfo` object with information about the training, model, and results.
         :rtype: ExperimentInfo
         """
         from supervisely.nn.experiments import ExperimentInfo

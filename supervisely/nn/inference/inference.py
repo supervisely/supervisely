@@ -671,7 +671,7 @@ class Inference:
             self.gui.show_deployed_model_info(self)
 
     def load_custom_checkpoint(
-        self, model_files: dict, model_meta: dict, device: str = "cuda", **kwargs
+        self, model_files: dict, model_meta: dict, device: Optional[str] = None, **kwargs
     ):
         """
         Loads local custom model checkpoint.

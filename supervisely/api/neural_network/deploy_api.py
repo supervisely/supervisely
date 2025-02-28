@@ -21,8 +21,8 @@ class DeployApi:
         self,
         session_id: int,
         model_name: str,
-        device: str = "cuda",
-        runtime: str = RuntimeType.PYTORCH,
+        device: Optional[str] = None,
+        runtime: Optional[str] = RuntimeType.PYTORCH,
     ):
         """
         Load a pretrained model in running serving App.
@@ -31,10 +31,10 @@ class DeployApi:
         :type session_id: int
         :param model_name: Model name to deploy.
         :type model_name: str
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param runtime: Runtime string (default is "PyTorch").
-        :type runtime: str
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
         """
         deploy_params = {}
         deploy_params["model_source"] = ModelSource.PRETRAINED
@@ -47,9 +47,9 @@ class DeployApi:
         session_id: int,
         team_id: int,
         artifacts_dir: str,
-        checkpoint_name: str = None,
-        device: str = "cuda",
-        runtime: str = RuntimeType.PYTORCH,
+        checkpoint_name: Optional[str] = None,
+        device: Optional[str] = None,
+        runtime: Optional[str] = RuntimeType.PYTORCH,
     ):
         """
         Load a custom model in running serving App.
@@ -58,15 +58,15 @@ class DeployApi:
         :type session_id: int
         :param team_id: Team ID in Supervisely.
         :type team_id: int
-        :param artifacts_dir: Path to the artifacts directory.
+        :param artifacts_dir: Path to the artifacts directory in the team fies.
         :type artifacts_dir: str
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param runtime: Runtime string (default is "PyTorch").
-        :type runtime: str
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
         """
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
@@ -87,24 +87,24 @@ class DeployApi:
         self,
         session_id: int,
         experiment_info: "ExperimentInfo",
-        checkpoint_name: str = None,
-        device: str = "cuda",
-        runtime: str = RuntimeType.PYTORCH,
+        checkpoint_name: Optional[str] = None,
+        device: Optional[str] = None,
+        runtime: Optional[str] = RuntimeType.PYTORCH,
     ):
         """
         Load a custom model in running serving App based on the training session.
 
         :param session_id: Task ID of the serving App.
         :type session_id: int
-        :param train_task: Task ID of a finished training, or ExperimentInfo object.
-        :type train_task: Union[int, Dict]
+        :param experiment_info: an :class:`ExperimentInfo` object.
+        :type experiment_info: ExperimentInfo
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param runtime: Runtime string (default is "PyTorch").
-        :type runtime: str
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
         """
         if checkpoint_name is None:
             checkpoint_name = experiment_info.best_checkpoint
@@ -128,21 +128,21 @@ class DeployApi:
         self,
         app: Union[str, int],
         model_name: str,
-        device: str = "cuda",
-        runtime: str = RuntimeType.PYTORCH,
+        device: Optional[str] = None,
+        runtime: Optional[str] = RuntimeType.PYTORCH,
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Deploy a pretrained model in running serving App.
+        Deploy a pretrained model.
 
         :param app: App name or App module ID in Supervisely.
         :type app: Union[str, int]
         :param model_name: Model name to deploy.
         :type model_name: str
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param runtime: Runtime string (default is "PyTorch").
-        :type runtime: str
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
@@ -163,28 +163,28 @@ class DeployApi:
         self,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
-        device: str = "cuda",
-        runtime: str = RuntimeType.PYTORCH,
+        device: Optional[str] = None,
+        runtime: Optional[str] = RuntimeType.PYTORCH,
         team_id: int = None,
         timeout: int = 100,
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Run Serve app and load a custom model based on the artifacts directory.
+        Deploy a custom model based on the artifacts directory.
 
-        :param artifacts_dir: Path to the artifacts directory.
+        :param artifacts_dir: Path to the artifacts directory in the team fies.
         :type artifacts_dir: str
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, checkpoint will be chosen automatically, depending on the app version.
         :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param runtime: Runtime string (default is "PyTorch").
-        :type runtime: str
-        :param team_id: Team ID in Supervisely. Artifacts directory will be searched in this team.
-        :type team_id: int
-        :param timeout: Timeout in seconds (default is 100).
-        :type timeout: int
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
+        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
+        :type team_id: Optional[int]
+        :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
+        :type timeout: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
@@ -228,23 +228,23 @@ class DeployApi:
         self,
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
-        device: str = "cuda",
-        runtime: str = RuntimeType.PYTORCH,
+        device: Optional[str] = None,
+        runtime: Optional[str] = RuntimeType.PYTORCH,
         timeout: int = 100,
         **kwargs,
     ) -> Dict[str, Any]:
         """
-        Run Serve app and load a custom model based on the training session.
+        Deploy a custom model based on the training session.
 
-        :param task_id: Task ID of Train App in Supervisely.
-        :type task_id: int
+        :param experiment_info: an :class:`ExperimentInfo` object.
+        :type experiment_info: ExperimentInfo
         :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
             If not provided, the best checkpoint will be chosen.
         :type checkpoint_name: Optional[str]
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param timeout: Timeout in seconds (default is 100).
-        :type timeout: int
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
+        :type timeout: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
@@ -290,6 +290,18 @@ class DeployApi:
         return task_info
 
     def start_serve_app(self, app_name=None, module_id=None, **kwargs) -> Dict[str, Any]:
+        """
+        Run a serving app. Either app_name or module_id must be provided.
+
+        :param app_name: App name in Supervisely.
+        :type app_name: Optional[str]
+        :param module_id: Module ID in Supervisely.
+        :type module_id: Optional[int]
+        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :type kwargs: Dict[str, Any]
+        :return: Task Info
+        :rtype: Dict[str, Any]
+        """
         if app_name is None and module_id is None:
             raise ValueError("Either app_name or module_id must be provided.")
         if app_name is not None and module_id is not None:
@@ -320,7 +332,7 @@ class DeployApi:
             raise_error=True,
         )
 
-    def get_serving_app_by_train_app(self, app_name: str = None, module_id: int = None):
+    def get_serving_app_by_train_app(self, app_name: Optional[str] = None, module_id: int = None):
         if app_name is None and module_id is None:
             raise ValueError("Either app_name or module_id must be provided.")
         if app_name is not None:
