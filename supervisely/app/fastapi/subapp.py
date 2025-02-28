@@ -27,6 +27,7 @@ from fastapi import (
 )
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
@@ -56,6 +57,9 @@ if TYPE_CHECKING:
 
 import logging
 
+ROUTES_PREFIX = sly_env.routes_prefix()
+if not ROUTES_PREFIX.startswith("/"):
+    ROUTES_PREFIX = f"/{ROUTES_PREFIX}"
 uvicorn_logger = logging.getLogger("uvicorn.access")
 
 
@@ -69,6 +73,12 @@ class ReadyzFilter(logging.Filter):
 
 # Apply the filter
 uvicorn_logger.addFilter(ReadyzFilter())
+
+
+class PrefixedRoute(APIRoute):
+    def __init__(self, path: str, *args, **kwargs):
+        new_path = ROUTES_PREFIX + path  # Prepend the prefix to the path
+        super().__init__(new_path, *args, **kwargs)
 
 
 class Event:
@@ -958,6 +968,7 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
+        self._fastapi.router.route_class = PrefixedRoute
         self.test_client = TestClient(self._fastapi)
 
         if not headless:

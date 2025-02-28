@@ -554,3 +554,19 @@ def semaphore_size() -> int:
         postprocess_fn=lambda x: int(x),
         raise_not_found=False,
     )
+
+
+def routes_prefix() -> str:
+    """Returns routes prefix from environment variable using following
+        - ROUTES_PREFIX
+
+    :return: routes prefix
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="routes_prefix",
+        keys=["ROUTES_PREFIX"],
+        postprocess_fn=lambda x: x,
+        default="",
+        raise_not_found=False,
+    )
