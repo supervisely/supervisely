@@ -18,6 +18,7 @@ from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
+import cv2
 import numpy as np
 import requests
 import uvicorn
@@ -1347,6 +1348,7 @@ class Inference:
                 source=images_np,
                 settings=settings,
             )
+            anns = self._apply_nms_if_needed(api, anns, settings, dataset_id, ids)
             results.extend(self._format_output(anns, slides_data))
         return results
 
@@ -1394,6 +1396,10 @@ class Inference:
                     output_project_id, output_project_meta
                 )
                 self.cache.set_project_meta(output_project_id, output_project_meta)
+
+            ann = self._apply_nms_if_needed(
+                api, [ann], settings, ds_info.id, [image_id], output_project_meta
+            )[0]
 
             logger.debug(
                 "Uploading annotation...",
@@ -1786,6 +1792,15 @@ class Inference:
                 batch_results = []
                 for i, ann in enumerate(anns):
                     image_info: ImageInfo = images_infos_dict[image_ids_batch[i]]
+                    ds_info = dataset_infos_dict[image_info.dataset_id]
+                    meta = output_project_metas_dict.get(ds_info.project_id, None)
+                    iou = settings.get("nms_iou_thresh_with_gt")
+                    if meta is None and isinstance(iou, float):
+                        meta = ProjectMeta.from_json(api.project.get_meta(ds_info.project_id))
+                        output_project_metas_dict[ds_info.project_id] = meta
+                    ann = self._apply_nms_if_needed(
+                        api, [ann], settings, ds_info.id, [image_info.id], meta
+                    )[0]
                     batch_results.append(
                         {
                             "annotation": ann.to_json(),
@@ -2085,6 +2100,19 @@ class Inference:
                     anns, slides_data = self._inference_auto(
                         source=images_nps,
                         settings=settings,
+                    )
+                    iou = settings.get("nms_iou_thresh_with_gt")
+                    if output_project_meta is None and isinstance(iou, float):
+                        output_project_meta = ProjectMeta.from_json(
+                            api.project.get_meta(project_info.id)
+                        )
+                    anns = self._apply_nms_if_needed(
+                        api,
+                        anns,
+                        settings,
+                        dataset_info.id,
+                        [ii.id for ii in images_infos_batch],
+                        output_project_meta,
                     )
                     batch_results = []
                     for i, ann in enumerate(anns):
@@ -3454,6 +3482,29 @@ class Inference:
                 f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
             )
 
+    def _apply_nms_if_needed(
+        self,
+        api: Api,
+        anns: List[Annotation],
+        settings: dict,
+        dataset_id: int,
+        image_ids: List[int],
+        meta: Optional[ProjectMeta] = None,
+    ):
+        iou = settings.get("nms_iou_thresh_with_gt")
+        if isinstance(iou, float):
+            if meta is None:
+                ds = api.dataset.get_info_by_id(dataset_id)
+                meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
+            gt_anns = api.annotation.download_json_batch(dataset_id, image_ids)
+            gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
+            for i in range(0, len(anns)):
+                before = len(anns[i].labels)
+                anns[i] = apply_nms(gt_anns[i], anns[i], iou)
+                after = len(anns[i].labels)
+                logger.debug(f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}")
+        return anns
+
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
     log_extra = {
@@ -3775,3 +3826,54 @@ def get_hardware_info(device: str) -> str:
     except Exception as e:
         logger.error("Error while getting hardware info", exc_info=True)
     return "Unknown"
+
+
+def apply_nms(ann1: Annotation, ann2: Annotation, iou_threshold: float):
+    """
+    Apply NMS for Predictions and GT labels to skip predictions with high IoU with GT labels.
+
+    ann1: Ground truth annotation
+    ann2: Predicted annotation
+    """
+
+    def to_tensor(geom):
+        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+    def to_bbox(geom):
+        return np.array([geom.left, geom.top, geom.right, geom.bottom])
+
+    try:
+        import torch
+        from torchvision.ops.boxes import nms
+
+        torch_is_available = True
+    except ImportError:
+        torch_is_available = False
+        raise ImportError("Please install PyTorch to use this function")
+
+    keep_classes = set([l.obj_class.name for l in ann2.labels])
+
+    cls_bboxes = defaultdict(list)
+    for l in ann1.labels:
+        if l.obj_class.name not in keep_classes:
+            continue
+        if torch_is_available:
+            cls_bboxes[l.obj_class.name].append(to_tensor(l.geometry.to_bbox()))
+        else:
+            cls_bboxes[l.obj_class.name].append(to_bbox(l.geometry.to_bbox()))
+
+    new_labels = []
+    for label in ann2.labels:
+        name = label.obj_class.name
+        if torch_is_available:
+            bboxes = torch.stack(cls_bboxes[name] + [to_tensor(label.geometry)]).float()
+            scores = torch.tensor([1.0] * len(cls_bboxes[name]) + [0.99]).float()
+            indices = nms(bboxes, scores, iou_threshold)
+        else:
+            bboxes = cls_bboxes[name] + [to_bbox(label.geometry)]
+            scores = [1.0] * len(cls_bboxes[name]) + [0.99]
+            indices = cv2.dnn.NMSBoxes(bboxes, scores, 0.01, iou_threshold)
+        if indices.flatten()[-1] == len(cls_bboxes[name]):
+            new_labels.append(label)
+
+    return ann2.clone(labels=new_labels)
