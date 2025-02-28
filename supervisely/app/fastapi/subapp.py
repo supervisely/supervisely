@@ -54,6 +54,22 @@ from supervisely.sly_logger import logger
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
 
+import logging
+
+uvicorn_logger = logging.getLogger("uvicorn.access")
+
+
+class ReadyzFilter(logging.Filter):
+    def filter(self, record):
+        if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
+            record.levelno = logging.DEBUG  # Change log level to DEBUG
+            record.levelname = "DEBUG"
+        return True
+
+
+# Apply the filter
+uvicorn_logger.addFilter(ReadyzFilter())
+
 
 class Event:
     class Brush:
@@ -795,6 +811,25 @@ def _init(
             need_to_handle_error = is_production()
             response = await process_server_error(request, exc, need_to_handle_error)
         return response
+
+    def verify_localhost(request: Request):
+        client_host = request.client.host
+        if client_host not in ["127.0.0.1", "::1"]:
+            raise HTTPException(status_code=404, detail="Not Found")
+
+    @app.post("/debug", dependencies=[Depends(verify_localhost)])
+    def start_debug():
+        import debugpy
+
+        debug_host = os.getenv("DEBUG_HOST", "127.0.0.1")
+        debug_port = int(os.getenv("DEBUG_PORT", "5678"))
+        debugpy.listen((debug_host, debug_port))
+        return {
+            "status": "success",
+            "message": f"Debug server is listening on {debug_host}:{debug_port}",
+            "host": debug_host,
+            "port": debug_port,
+        }
 
     if headless is False:
         app.cached_template = None

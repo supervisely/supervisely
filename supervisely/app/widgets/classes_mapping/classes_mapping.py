@@ -4,6 +4,7 @@ from supervisely import ObjClass, ObjClassCollection
 from supervisely.app import DataJson, StateJson
 
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.cuboid import Cuboid
 from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
@@ -23,6 +24,7 @@ type_to_shape_text = {
     Rectangle: "rectangle",
     Polygon: "polygon",
     Bitmap: "bitmap (mask)",
+    AlphaMask: "alpha mask",
     Polyline: "polyline",
     Point: "point",
     Cuboid: "cuboid",  #

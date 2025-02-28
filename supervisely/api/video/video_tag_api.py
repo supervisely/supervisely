@@ -6,7 +6,9 @@ from typing import List, Optional, Union
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.module_api import ApiField
+from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag import VideoTag
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
@@ -102,6 +104,8 @@ class VideoTagApi(TagApi):
         video_id: int,
         value: Optional[Union[str, int]] = None,
         frame_range: Optional[List[int]] = None,
+        is_finished: Optional[bool] = True,
+        non_final_value: Optional[bool] = False,
     ) -> int:
         """
         Add VideoTag to video.
@@ -114,6 +118,10 @@ class VideoTagApi(TagApi):
         :type value: str or int
         :param frame_range: New VideoTag frame range.
         :type frame_range: List[int]
+        :param is_finished: Specify if the tag is finished.
+        :type is_finished: bool
+        :param non_final_value: Specify if the tag value is non-final.
+        :type non_final_value: bool
         :return: None
         :rtype: dict
         :Usage example:
@@ -133,11 +141,17 @@ class VideoTagApi(TagApi):
         request_data = {ApiField.TAG_ID: project_meta_tag_id, ApiField.VIDEO_ID: video_id}
         if value:
             request_data[ApiField.VALUE] = value
+        if non_final_value is True:
+            is_finished = False
         if frame_range:
+            if is_finished is False and frame_range[0] != frame_range[1]:
+                raise ValueError("Start frame and end frame must be equal for unfinished tags")
             request_data[ApiField.FRAME_RANGE] = frame_range
+        request_data[ApiField.IS_FINISHED] = is_finished
+        request_data[ApiField.NON_FINAL_VALUE] = non_final_value
 
         resp = self._api.post("videos.tags.add", request_data)
-        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296676, 'createdAt': '2022-09-20T11:52:33.829Z', 'updatedAt': '2022-09-20T11:52:33.829Z', 'labelerLogin': 'max'}
+        # {'imageId': 3267369, 'tagId': 368985, 'id': 2296676, 'createdAt': '2022-09-20T11:52:33.829Z', 'updatedAt': '2022-09-20T11:52:33.829Z', 'labelerLogin': 'max', isFinished: true, nonFinalValue: false}
         return resp.json()
 
     def add(self, video_id: int, tag: VideoTag, update_id_inplace=True) -> int:
@@ -186,7 +200,14 @@ class VideoTagApi(TagApi):
             else:
                 raise ValueError("tag_meta.sly_id is None, get updated project meta from server")
 
-        resp_json = self.add_tag(tag.meta.sly_id, video_id, tag.value, tag.frame_range)
+        resp_json = self.add_tag(
+            tag.meta.sly_id,
+            video_id,
+            tag.value,
+            tag.frame_range,
+            tag.is_finished,
+            tag.non_final_value,
+        )
         tag_id = resp_json.get("id")
         created_at = resp_json.get("createdAt")
         updated_at = resp_json.get("updatedAt")
@@ -275,7 +296,7 @@ class VideoTagApi(TagApi):
 
 
 class VideoObjectTagApi(TagApi):
-    _entity_id_field = ApiField.OBJECT_ID
+    _entity_id_field = ApiField.ENTITY_ID
     _method_bulk_add = "annotation-objects.tags.bulk.add"
 
     def add(
@@ -284,6 +305,8 @@ class VideoObjectTagApi(TagApi):
         object_id: int,
         value: Optional[Union[str, int]] = None,
         frame_range: Optional[List[int]] = None,
+        is_finished: Optional[bool] = True,
+        non_final_value: Optional[bool] = False,
     ) -> int:
         """Add a tag to an annotation object.
 
@@ -304,8 +327,14 @@ class VideoObjectTagApi(TagApi):
         }
         if value is not None:
             request_body[ApiField.VALUE] = value
+        if non_final_value is True:
+            is_finished = False
         if frame_range is not None:
+            if is_finished is False and frame_range[0] != frame_range[1]:
+                raise ValueError("Start frame and end frame must be equal for unfinished tags")
             request_body[ApiField.FRAME_RANGE] = frame_range
+        request_body[ApiField.IS_FINISHED] = is_finished
+        request_body[ApiField.NON_FINAL_VALUE] = non_final_value
 
         response = self._api.post("annotation-objects.tags.add", request_body)
         id = response.json()[ApiField.ID]
@@ -349,3 +378,40 @@ class VideoObjectTagApi(TagApi):
             ApiField.FRAME_RANGE: frame_range,
         }
         self._api.post("annotation-objects.tags.update", request_body)
+
+    def append_to_entity(
+        self,
+        entity_id: int,
+        project_id: int,
+        tags: KeyIndexedCollection,
+        object_id: int,
+        key_id_map: KeyIdMap = None,
+    ):
+        """
+        Add tags to entity in project with given ID.
+
+        :param entity_id: ID of the entity in Supervisely to add a tag to
+        :type entity_id: int
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param tags: Collection of tags
+        :type tags: KeyIndexedCollection
+        :param object_id: ID of the object in Supervisely to add a tag to
+        :type object_id: int, optional
+        :param key_id_map: KeyIdMap object.
+        :type key_id_map: KeyIdMap, optional
+        :return: List of tags IDs
+        :rtype: list
+        """
+
+        if len(tags) == 0:
+            return []
+        tags_json, tags_keys = self._tags_to_json(tags, project_id=project_id)
+        tags_to_add = []
+        for tag in tags_json:
+            if object_id is not None:
+                tag[ApiField.OBJECT_ID] = object_id
+            tags_to_add.append(tag)
+        ids = self._append_json(entity_id, tags_to_add)
+        KeyIdMap.add_tags_to(key_id_map, tags_keys, ids)
+        return ids
