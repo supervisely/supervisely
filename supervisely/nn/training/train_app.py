@@ -1549,6 +1549,7 @@ class TrainApp:
 
         # Do not include this fields to uploaded file:
         experiment_info["primary_metric"] = primary_metric_name
+        experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
 
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
@@ -1769,7 +1770,7 @@ class TrainApp:
         # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
-        self._api.task.set_output_experiment(self.task_id, experiment_info, self.project_name)
+        self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
@@ -1816,8 +1817,9 @@ class TrainApp:
                 self.gui.training_artifacts.trt_instruction.show()
 
             # Show the inference demo widget if overview or any demo is available
-            if self.gui.training_artifacts.overview_demo_exists(demo_path) or any(
+            if hasattr(self.gui.training_artifacts, "inference_demo_field") and any(
                 [
+                    self.gui.training_artifacts.overview_demo_exists(demo_path),
                     self.gui.training_artifacts.pytorch_demo_exists(demo_path),
                     self.gui.training_artifacts.onnx_demo_exists(demo_path),
                     self.gui.training_artifacts.trt_demo_exists(demo_path),
@@ -1873,13 +1875,19 @@ class TrainApp:
         :return: Evaluation report, report ID and evaluation metrics.
         :rtype: tuple
         """
-        lnk_file_info, report, report_id, eval_metrics = None, None, None, {}
+        lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
+            None,
+            None,
+            None,
+            {},
+            None,
+        )
         if self._inference_class is None:
             logger.warning(
                 "Inference class is not registered, model benchmark disabled. "
                 "Use 'register_inference_class' method to register inference class."
             )
-            return lnk_file_info, report, report_id, eval_metrics
+            return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
         # Can't get task type from session. requires before session init
         supported_task_types = [
@@ -1893,7 +1901,7 @@ class TrainApp:
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
-            return lnk_file_info, report, report_id, eval_metrics
+            return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
         logger.info("Running Model Benchmark evaluation")
         try:
@@ -2061,7 +2069,7 @@ class TrainApp:
                 if diff_project_info:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
-                return lnk_file_info, report, report_id, eval_metrics
+                return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
         return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
