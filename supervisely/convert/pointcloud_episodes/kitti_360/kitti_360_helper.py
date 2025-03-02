@@ -1,17 +1,11 @@
-from supervisely import ObjClass, ObjClassCollection, ProjectMeta, logger, Progress
+from supervisely import logger
 from supervisely.io.fs import get_file_name
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.point_3d import Vector3d
 from supervisely.geometry.point import Point
-from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
-from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from collections import defaultdict
 import xml.etree.ElementTree as ET
 import os
-try:
-    from kitti360scripts.helpers.labels import labels, id2label, kittiId2label, name2label
-except ImportError:
-    logger.warn("Please run 'pip install kitti360Scripts' to import KITTI-360 data.")
 from abc import ABCMeta
 import numpy as np
 from matplotlib import cm
@@ -58,6 +52,8 @@ class KITTI360Object:
         return np.asarray(self.cmap(idx % self.cmap_length)[:3]) * 255.0
 
     def assignColor(self):
+        from kitti360scripts.helpers.labels import id2label
+
         if self.semanticId >= 0:
             self.semanticColor = id2label[self.semanticId].color
             if self.instanceId > 0:
@@ -137,11 +133,14 @@ class KITTI360Bbox3D(KITTI360Object):
         return mat
 
     def parseVertices(self, child):
+        from open3d import ml as o3dml
         transform = self.parseOpencvMatrix(child.find("transform"))
         R = transform[:3, :3]
         T = transform[:3, 3]
         vertices = self.parseOpencvMatrix(child.find("vertices"))
         faces = self.parseOpencvMatrix(child.find("faces"))
+
+        size = 2 * np.max(np.abs(vertices), axis=0)
 
         vertices = np.matmul(R, vertices.transpose()).transpose() + T
         self.vertices = vertices
@@ -150,8 +149,13 @@ class KITTI360Bbox3D(KITTI360Object):
         self.T = T
 
         self.transform = transform
+        yaw = np.arctan2(transform[1, 0], transform[0, 0])
+        center = transform[:3, 3]
+        self.bevbox = o3dml.datasets.utils.BEVBox3D(center, size, yaw, self.name, -1.0, None)
 
     def parseBbox(self, child):
+        from kitti360scripts.helpers.labels import kittiId2label
+
         semanticIdKITTI = int(child.find("semanticId").text)
         self.semanticId = kittiId2label[semanticIdKITTI].id
         self.instanceId = int(child.find("instanceId").text)
@@ -170,6 +174,8 @@ class KITTI360Bbox3D(KITTI360Object):
         self.parseVertices(child)
 
     def parseStuff(self, child):
+        from kitti360scripts.helpers.labels import name2label
+
         classmap = {
             "driveway": "parking",
             "ground": "terrain",
@@ -220,6 +226,8 @@ class KITTI360Point3D(KITTI360Object):
 # Meta class for KITTI360Bbox3D
 class Annotation3D:
     def __init__(self, labelPath):
+        from kitti360scripts.helpers.labels import labels
+
         key_name = get_file_name(labelPath)
         # load annotation
         tree = ET.parse(labelPath)
@@ -336,6 +344,19 @@ def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
     w, h, l = Zdash[0], Zdash[1], Zdash[2]
     dimension = Vector3d(w, h, l)
 
+    return Cuboid3d(position, rotation, dimension)
+
+
+def convert_box_to_geom(box):
+
+    bbox = box.to_xyzwhlr()
+    dim = bbox[[3, 5, 4]]
+    pos = bbox[:3] + [0, 0, dim[1] / 2]
+    yaw = bbox[-1]
+
+    position = Vector3d(float(pos[0]), float(pos[1]), float(pos[2]))
+    rotation = Vector3d(0, 0, float(-yaw))
+    dimension = Vector3d(float(dim[0]), float(dim[2]), float(dim[1]))
     return Cuboid3d(position, rotation, dimension)
 
 

@@ -8,15 +8,11 @@ from supervisely.convert.base_converter import AvailablePointcloudEpisodesConver
 from supervisely.convert.pointcloud_episodes.kitti_360.kitti_360_helper import *
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import PointcloudEpisodeConverter
 from supervisely.io.fs import (
-    dirs_filter,
     file_exists,
-    get_file_ext,
     get_file_name,
     get_file_name_with_ext,
-    list_files,
     list_files_recursively,
     silent_remove,
-    list_dir_recursively,
 )
 from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import PointcloudEpisodeFrameCollection
 from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
@@ -62,7 +58,7 @@ class KITTI360Converter(PointcloudEpisodeConverter):
         except ImportError:
             logger.warn("Please run 'pip install kitti360Scripts' to import KITTI-360 data.")
             return False
-        
+
         self._items = []
         subdirs = os.listdir(self._input_data)
         if len(subdirs) == 1:
@@ -75,7 +71,7 @@ class KITTI360Converter(PointcloudEpisodeConverter):
         self._calib_path = calib_dir
 
         # * Get pointcloud files paths
-        velodyne_files = list_files_recursively(self._input_data, [".bin", ".ply"], None, True)
+        velodyne_files = list_files_recursively(self._input_data, [".bin"], None, True)
         if len(velodyne_files) == 0:
             return False
 
@@ -99,16 +95,22 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 continue
 
             # * Get related images
-            cam_name_to_rimage = {}
+            cam_name_to_rimage = defaultdict(list)
             for rimage in rimage_files:
                 path = Path(rimage)
                 if key_name in path.parts:
                     cam_name = path.parts[-3]
-                    cam_name_to_rimage[cam_name] = rimage
+                    cam_name_to_rimage[cam_name].append(rimage)
 
             # * Get poses
-            poses_filter = lambda x: Path(x).stem == "cam0_to_world.txt" and key_name in Path(x).parents
-            poses_path = next(list_files_recursively(self._input_data, filter_fn=poses_filter))
+            poses_filter = (
+                lambda x: x.endswith("cam0_to_world.txt") and key_name in Path(x).parts
+            )
+            poses_path = next(
+                path
+                for path in list_files_recursively(self._input_data, [".txt"], None, True)
+                if poses_filter(path)
+            )
             if poses_path is None:
                 logger.warn("No poses found for name: %s", key_name)
                 continue
@@ -150,8 +152,9 @@ class KITTI360Converter(PointcloudEpisodeConverter):
 
             for idx in range(frame_cnt):
                 if obj.start_frame <= idx <= obj.end_frame:
-                    tr_matrix = static_transformations.world_to_velo_transformation(obj, idx)
-                    geom = convert_kitti_cuboid_to_supervisely_geometry(tr_matrix)
+                    # tr_matrix = static_transformations.world_to_velo_transformation(obj, idx)
+                    # geom = convert_kitti_cuboid_to_supervisely_geometry(tr_matrix)
+                    geom = convert_box_to_geom(obj.bevbox)
                     frame_idx_to_figures[idx].append(PointcloudFigure(pcd_obj, geom, idx))
         for idx, figures in frame_idx_to_figures.items():
             frame = PointcloudEpisodeFrame(idx, figures)
@@ -209,7 +212,8 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                         }
                         rimage_jsons.append(image_json)
                         cam_names.append(cam_name)
-                api.pointcloud_episode.add_related_images(rimage_jsons, cam_names)
+                if rimage_jsons:
+                    api.pointcloud_episode.add_related_images(rimage_jsons, cam_names)
 
                 if log_progress:
                     progress_cb(1)
