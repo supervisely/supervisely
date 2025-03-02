@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
 from typing import Optional
-from supervisely import PointcloudAnnotation, ProjectMeta, is_development, logger
+from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, is_development, logger, ObjClass, ObjClassCollection
+from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.api.api import Api, ApiField
 from supervisely.convert.base_converter import AvailablePointcloudEpisodesConverters
-from supervisely.convert.pointcloud_episodes.kitti_360 import kitti_360_helper
+from supervisely.convert.pointcloud_episodes.kitti_360.kitti_360_helper import *
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import PointcloudEpisodeConverter
 from supervisely.io.fs import (
     dirs_filter,
@@ -15,30 +16,38 @@ from supervisely.io.fs import (
     list_files,
     list_files_recursively,
     silent_remove,
+    list_dir_recursively,
 )
-from supervisely.pointcloud_annotation.pointcloud_object_collection import (
-    PointcloudObjectCollection,
-)
-
+from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import PointcloudEpisodeFrameCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import PointcloudEpisodeObjectCollection
+from supervisely.pointcloud_annotation.pointcloud_episode_object import PointcloudEpisodeObject
+from supervisely.pointcloud_annotation.pointcloud_episode_frame import PointcloudEpisodeFrame
+from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 
 class KITTI360Converter(PointcloudEpisodeConverter):
 
-    class Item(PointcloudEpisodeConverter.Item):
+    class Item:
         def __init__(
             self,
+            scene_name,
             frame_paths,
-            labels,
+            ann,
             poses_path,
-            related_images_paths: Optional[list] = None,
+            rimages = None,
             custom_data: Optional[dict] = None,
         ):
+            self._scene_name = scene_name
             self._frame_paths = frame_paths
-            self._labels = labels
+            self._ann = ann
             self._poses_path = poses_path
-            self._related_images_paths = related_images_paths if related_images_paths is not None else []
+            self._rimages = rimages if rimages is not None else []
 
             self._type = "point_cloud_episode"
             self._custom_data = custom_data if custom_data is not None else {}
+
+    def __init__(self, *args, **kwargs):
+        self._calib_path = None
+        super().__init__(*args, **kwargs)
 
     def __str__(self) -> str:
         return AvailablePointcloudEpisodesConverters.KITTI360
@@ -48,112 +57,174 @@ class KITTI360Converter(PointcloudEpisodeConverter):
         return ".bin"
 
     def validate_format(self) -> bool:
-        def _file_filter_fn(file_path):
-            return get_file_ext(file_path).lower() == self.key_file_ext
-
-        def _dir_filter_fn(path):
-            return all([(Path(path) / name).exists() for name in kitti_360_helper.FOLDER_NAMES])
-
-        input_paths = [d for d in dirs_filter(self._input_data, _dir_filter_fn)]
-        if len(input_paths) == 0:
+        try:
+            import kitti360scripts
+        except ImportError:
+            logger.warn("Please run 'pip install kitti360Scripts' to import KITTI-360 data.")
             return False
-
-        input_path = input_paths[0]
-        velodyne_dir = os.path.join(input_path, "data_3d_raw")
-        poses_dir = os.path.join(input_path, "data_poses")
-        boxes_dir = os.path.join(input_path, "data_3d_bboxes")
-        calib_dir = os.path.join(input_path, "calibration")
-        rimage_dir = os.path.join(input_path, "data_2d_raw")
-
+        
         self._items = []
-        velodyne_files = list_files_recursively(velodyne_dir, [self.key_file_ext], None, True)
+        subdirs = os.listdir(self._input_data)
+        if len(subdirs) == 1:
+            self._input_data = os.path.join(self._input_data, subdirs[0])
+
+        # * Get calibration path
+        calib_dir = next(iter([(Path(path).parent).as_posix() for path in list_files_recursively(self._input_data, [".txt"], None, True) if Path(path).stem.startswith("calib")]), None)
+        if calib_dir is None:
+            return False
+        self._calib_path = calib_dir
+
+        # * Get pointcloud files paths
+        velodyne_files = list_files_recursively(self._input_data, [".bin", ".ply"], None, True)
         if len(velodyne_files) == 0:
             return False
-        boxes_ann_files = list_files_recursively(boxes_dir, [".xml"], None, True)
+
+        # * Get annotation files paths and related images
+        boxes_ann_files = list_files_recursively(self._input_data, [".xml"], None, True)
         if len(boxes_ann_files) == 0:
             return False
+        rimage_files = list_files_recursively(self._input_data, [".png"], None, True)
 
-        kitti_labels = []
+        kitti_anns = []
         for ann_file in boxes_ann_files:
             key_name = Path(ann_file).stem
+
+            # * Get pointcloud files
             frame_paths = []
             for path in velodyne_files:
                 if key_name in Path(path).parts:
                     frame_paths.append(path)
             if len(frame_paths) == 0:
-                logger.debug("No frames found for name: %s", key_name)
+                logger.warn("No frames found for name: %s", key_name)
                 continue
-            rimage_path = os.path.join(rimage_dir, key_name, "image_00", "data_rect") # todo: check if this is correct
-            rimage_paths = list_files(rimage_path, [".png"], None, True)
 
-            poses_path = os.path.join(poses_dir, key_name, "cam0_to_world.txt")
-            labels = kitti_360_helper.read_kitti_xml(ann_file, calib_dir)
-            kitti_labels.extend(labels)
-            self._items.append(self.Item(frame_paths, labels, poses_path, rimage_paths))
+            # * Get related images
+            cam_name_to_rimage = {}
+            for rimage in rimage_files:
+                path = Path(rimage)
+                if key_name in path.parts:
+                    cam_name = path.parts[-3]
+                    cam_name_to_rimage[cam_name] = rimage
 
-        self._meta = kitti_360_helper.convert_labels_to_meta(kitti_labels)
+            # * Get poses
+            poses_filter = lambda x: Path(x).stem == "cam0_to_world.txt" and key_name in Path(x).parents
+            poses_path = next(list_files_recursively(self._input_data, filter_fn=poses_filter))
+            if poses_path is None:
+                logger.warn("No poses found for name: %s", key_name)
+                continue
+
+            # * Parse annotation
+            ann = Annotation3D(ann_file)
+            kitti_anns.append(ann)
+
+            self._items.append(
+                self.Item(key_name, frame_paths, ann, poses_path, cam_name_to_rimage)
+            )
+
+        # * Get object class names for meta
+        obj_class_names = set()
+        for ann in kitti_anns:
+            for obj in ann.get_objects():
+                obj_class_names.add(obj.name)
+        obj_classes = [ObjClass(obj_class, Cuboid3d) for obj_class in obj_class_names]
+        self._meta = ProjectMeta(obj_classes=ObjClassCollection(obj_classes))
         return self.items_count > 0
 
     def to_supervisely(
         self,
-        item: PointcloudEpisodeConverter.Item,
+        item,
         meta: ProjectMeta,
         renamed_classes: dict = {},
         renamed_tags: dict = {},
-    ) -> PointcloudAnnotation:
-        label = item.ann_data
-        objs, figures = kitti_360_helper.convert_label_to_annotation(label, meta, renamed_classes)
-        return PointcloudAnnotation(PointcloudObjectCollection(objs), figures)
+        static_transformations: StaticTransformations = None,
+    ) -> PointcloudEpisodeAnnotation:
+        static_transformations.set_cam2world(item._poses_path)
+
+        frame_cnt = len(item._frame_paths)
+        objs, frames = [], []
+
+        frame_idx_to_figures = {idx: [] for idx in range(frame_cnt)}
+        for obj in item._ann.get_objects():
+            pcd_obj = PointcloudEpisodeObject(meta.get_obj_class(obj.name))
+            objs.append(pcd_obj)
+
+            for idx in range(frame_cnt):
+                if obj.start_frame <= idx <= obj.end_frame:
+                    tr_matrix = static_transformations.world_to_velo_transformation(obj, idx)
+                    geom = convert_kitti_cuboid_to_supervisely_geometry(tr_matrix)
+                    frame_idx_to_figures[idx].append(PointcloudFigure(pcd_obj, geom, idx))
+        for idx, figures in frame_idx_to_figures.items():
+            frame = PointcloudEpisodeFrame(idx, figures)
+            frames.append(frame)
+        obj_collection = PointcloudEpisodeObjectCollection(objs)
+        frame_collection = PointcloudEpisodeFrameCollection(frames)
+        return PointcloudEpisodeAnnotation(
+            frame_cnt, objects=obj_collection, frames=frame_collection
+        )
 
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 1, log_progress=True):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
+        dataset_info = api.dataset.get_info_by_id(dataset_id)
         if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Converting pointclouds...")
+            progress, progress_cb = self.get_progress(sum([len(item._frame_paths) for item in self._items]), "Converting pointcloud episodes...")
         else:
             progress_cb = None
-
+        static_transformations = StaticTransformations(self._calib_path)
+        scene_ds = dataset_info
+        multiple_items = self.items_count > 1
         for item in self._items:
-            # * Convert pointcloud from ".bin" to ".pcd"
-            pcd_path = str(Path(item.path).with_suffix(".pcd"))
-            if file_exists(pcd_path):
-                logger.warning(f"Overwriting file with path: {pcd_path}")
-            kitti_360_helper.convert_bin_to_pcd(item.path, pcd_path)
+            scene_ds = api.dataset.create(dataset_info.project_id, item._scene_name, parent_id=dataset_id) if multiple_items else dataset_info
+            frame_to_pcd_ids = {}
+            for idx, frame_path in enumerate(item._frame_paths):
+                # * Convert pointcloud from ".bin" to ".pcd"
+                pcd_path = str(Path(frame_path).with_suffix(".pcd"))
+                if file_exists(pcd_path):
+                    logger.warning(f"Overwriting file with path: {pcd_path}")
+                convert_bin_to_pcd(frame_path, pcd_path)
 
-            # * Upload pointcloud
-            pcd_name = get_file_name_with_ext(pcd_path)
-            info = api.pointcloud.upload_path(dataset_id, pcd_name, pcd_path, {})
-            pcd_id = info.id
+                # * Upload pointcloud
+                pcd_name = get_file_name_with_ext(pcd_path)
+                info = api.pointcloud_episode.upload_path(scene_ds.id, pcd_name, pcd_path, {"frame": idx})
+                pcd_id = info.id
+                frame_to_pcd_ids[idx] = pcd_id
+
+                # * Clean up
+                silent_remove(pcd_path)
+
+                # * Upload photocontext
+                rimage_jsons = []
+                cam_names = []
+                for cam_name, rimage_paths in item._rimages.items():
+                    imgs = api.pointcloud_episode.upload_related_images(rimage_paths)
+                    for img, rimage_path in zip(imgs, rimage_paths):
+                        rimage_info = convert_calib_to_image_meta(
+                            get_file_name(rimage_path), static_transformations, cam_name
+                        )
+                        image_json = {
+                                    ApiField.ENTITY_ID: pcd_id,
+                                    ApiField.NAME: cam_name,
+                                    ApiField.HASH: img,
+                                    ApiField.META: rimage_info[ApiField.META],
+                        }
+                        rimage_jsons.append(image_json)
+                        cam_names.append(cam_name)
+                api.pointcloud_episode.add_related_images(rimage_jsons, cam_names)
+
+                if log_progress:
+                    progress_cb(1)
 
             # * Convert annotation and upload
-            ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-            api.pointcloud.annotation.append(pcd_id, ann)
+            try:
+                ann = self.to_supervisely(
+                    item, meta, renamed_classes, renamed_tags, static_transformations
+                )
+                api.pointcloud_episode.annotation.append(scene_ds.id, ann, frame_to_pcd_ids)
+            except Exception as e:
+                logger.error(f"Failed to upload annotation for scene: {scene_ds.name}. Error: {e}", stack_info=False)
+                continue
 
-            # * Upload related images
-            image_path, calib_path = item._related_images
-            rimage_info = kitti_360_helper.convert_calib_to_image_meta(image_path, calib_path)
-
-            image_jsons = []
-            camera_names = []
-            img = api.pointcloud.upload_related_image(image_path)
-            image_jsons.append(
-                {
-                    ApiField.ENTITY_ID: pcd_id,
-                    ApiField.NAME: get_file_name_with_ext(rimage_info[ApiField.NAME]),
-                    ApiField.HASH: img,
-                    ApiField.META: rimage_info[ApiField.META],
-                }
-            )
-            camera_names.append(rimage_info[ApiField.META]["deviceId"])
-            if len(image_jsons) > 0:
-                api.pointcloud.add_related_images(image_jsons, camera_names)
-
-            # * Clean up
-            silent_remove(pcd_path)
-            if log_progress:
-                progress_cb(1)
-
-        logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
+            logger.info(f"Dataset ID:{scene_ds.id} has been successfully uploaded.")
 
         if log_progress:
             if is_development():
