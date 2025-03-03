@@ -147,7 +147,7 @@ class KITTI360Converter(PointcloudEpisodeConverter):
         objs, frames = [], []
 
         frame_idx_to_figures = {idx: [] for idx in range(frame_cnt)}
-        for obj in item._ann.get_objects():
+        for obj in item._ann_data.get_objects():
             pcd_obj = PointcloudEpisodeObject(meta.get_obj_class(obj.name))
             objs.append(pcd_obj)
 
@@ -201,8 +201,12 @@ class KITTI360Converter(PointcloudEpisodeConverter):
             # * Upload photocontext
             rimage_jsons = []
             cam_names = []
-            hashes = api.pointcloud_episode.upload_related_images([rimage_path for _, rimage_path in item._rimages])
-            for (cam_name, rimage_path), img, pcd_id in zip(item._rimages, hashes, list(frame_to_pcd_ids.values())):
+            hashes = api.pointcloud_episode.upload_related_images(
+                [rimage_path for _, rimage_path in item._related_images]
+            )
+            for (cam_name, rimage_path), img, pcd_id in zip(
+                item._related_images, hashes, list(frame_to_pcd_ids.values())
+            ):
                 cam_num = int(cam_name[-1])
                 rimage_info = convert_calib_to_image_meta(
                     get_file_name(rimage_path), static_transformations, cam_num
