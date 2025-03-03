@@ -1796,7 +1796,7 @@ class Inference:
                     ds_info = dataset_infos_dict[image_info.dataset_id]
                     meta = output_project_metas_dict.get(ds_info.project_id, None)
                     iou = settings.get("nms_iou_thresh_with_gt")
-                    if meta is None and isinstance(iou, float):
+                    if meta is None and isinstance(iou, float) and iou > 0:
                         meta = ProjectMeta.from_json(api.project.get_meta(ds_info.project_id))
                         output_project_metas_dict[ds_info.project_id] = meta
                     ann = self._apply_nms_if_needed(
@@ -2103,7 +2103,7 @@ class Inference:
                         settings=settings,
                     )
                     iou = settings.get("nms_iou_thresh_with_gt")
-                    if output_project_meta is None and isinstance(iou, float):
+                    if output_project_meta is None and isinstance(iou, float) and iou > 0:
                         output_project_meta = ProjectMeta.from_json(
                             api.project.get_meta(project_info.id)
                         )
@@ -3524,6 +3524,7 @@ class Inference:
 
         gt_ann: sly.Annotation with ground truth labels
         pred_ann: sly.Annotation with predictions
+        iou_threshold: IoU threshold to skip predictions
         """
 
         try:
