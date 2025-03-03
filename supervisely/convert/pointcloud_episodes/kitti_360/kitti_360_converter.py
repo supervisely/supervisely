@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from supervisely import PointcloudEpisodeAnnotation, ProjectMeta, is_development, logger, ObjClass, ObjClassCollection
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.api.api import Api, ApiField
@@ -23,20 +23,21 @@ from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 class KITTI360Converter(PointcloudEpisodeConverter):
 
     class Item:
+
         def __init__(
             self,
-            scene_name,
-            frame_paths,
-            ann,
-            poses_path,
-            rimages = None,
+            scene_name: str,
+            frame_paths: List[str],
+            ann_data: Annotation3D,
+            poses_path: str,
+            related_images: Optional[tuple] = None,
             custom_data: Optional[dict] = None,
         ):
             self._scene_name = scene_name
             self._frame_paths = frame_paths
-            self._ann = ann
+            self._ann_data = ann_data
             self._poses_path = poses_path
-            self._rimages = rimages if rimages is not None else []
+            self._related_images = related_images or []
 
             self._type = "point_cloud_episode"
             self._custom_data = custom_data if custom_data is not None else {}
