@@ -18,7 +18,6 @@ from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
-import cv2
 import numpy as np
 import requests
 import uvicorn
