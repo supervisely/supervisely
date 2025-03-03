@@ -459,28 +459,27 @@ class SessionJSON:
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-
-                while resp["status"] == "download_info":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "download_info":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
                 if resp["status"] == "download_project":
                     progress_widget = preparing_cb(message="Download project", total=resp["total"])
-                while resp["status"] == "download_project":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "download_project":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
                 if resp["status"] == "warmup":
                     progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
-                while resp["status"] == "warmup":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "warmup":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
