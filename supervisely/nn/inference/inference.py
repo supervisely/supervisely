@@ -3495,10 +3495,10 @@ class Inference:
     def _exclude_duplicated_predictions(
         self,
         api: Api,
-        anns: List[Annotation],
+        pred_anns: List[Annotation],
         settings: dict,
         dataset_id: int,
-        image_ids: List[int],
+        gt_image_ids: List[int],
         meta: Optional[ProjectMeta] = None,
     ):
         """
@@ -3512,14 +3512,14 @@ class Inference:
 
         :param api: Supervisely API object
         :type api: Api
-        :param anns: List of Annotation objects containing predictions
-        :type anns: List[Annotation]
+        :param pred_anns: List of Annotation objects containing predictions
+        :type pred_anns: List[Annotation]
         :param settings: Inference settings
         :type settings: dict
         :param dataset_id: ID of the dataset containing the images
         :type dataset_id: int
-        :param image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
-        :type image_ids: List[int]
+        :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
+        :type gt_image_ids: List[int]
         :param meta: ProjectMeta object
         :type meta: Optional[ProjectMeta]
         :return: List of Annotation objects containing filtered predictions
@@ -3535,17 +3535,19 @@ class Inference:
             if meta is None:
                 ds = api.dataset.get_info_by_id(dataset_id)
                 meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
-            gt_anns = api.annotation.download_json_batch(dataset_id, image_ids)
+            gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
             gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
-            for i in range(0, len(anns)):
-                before = len(anns[i].labels)
+            for i in range(0, len(pred_anns)):
+                before = len(pred_anns[i].labels)
                 with Timer() as timer:
-                    anns[i] = self._filter_duplicated_predictions_from_ann(gt_anns[i], anns[i], iou)
-                after = len(anns[i].labels)
+                    pred_anns[i] = self._filter_duplicated_predictions_from_ann(
+                        gt_anns[i], pred_anns[i], iou
+                    )
+                after = len(pred_anns[i].labels)
                 logger.debug(
                     f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
                 )
-        return anns
+        return pred_anns
 
     def _filter_duplicated_predictions_from_ann(
         self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
