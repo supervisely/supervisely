@@ -1409,6 +1409,8 @@ class Inference:
                 },
             )
             api.annotation.upload_ann(image_id, ann)
+        else:
+            ann = self._apply_nms_if_needed(api, [ann], settings, image_info.dataset_id, [image_id])[0]
 
         result = self._format_output(anns, slides_data)[0]
         if async_inference_request_uuid is not None and ann is not None:
