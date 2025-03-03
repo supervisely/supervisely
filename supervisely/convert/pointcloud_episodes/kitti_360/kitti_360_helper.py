@@ -53,15 +53,15 @@ class KITTI360Object:
             return np.array([0, 0, 0])
         return np.asarray(self.cmap(idx % self.cmap_length)[:3]) * 255.0
 
-    def assignColor(self):
-        from kitti360scripts.helpers.labels import id2label  # pylint: disable=import-error
+    # def assignColor(self):
+    #     from kitti360scripts.helpers.labels import id2label  # pylint: disable=import-error
 
-        if self.semanticId >= 0:
-            self.semanticColor = id2label[self.semanticId].color
-            if self.instanceId > 0:
-                self.instanceColor = self.getColor(self.instanceId)
-            else:
-                self.instanceColor = self.semanticColor
+    #     if self.semanticId >= 0:
+    #         self.semanticColor = id2label[self.semanticId].color
+    #         if self.instanceId > 0:
+    #             self.instanceColor = self.getColor(self.instanceId)
+    #         else:
+    #             self.instanceColor = self.semanticColor
 
 
 # Class that contains the information of a single annotated object as 3D bounding box
