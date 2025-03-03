@@ -116,7 +116,10 @@ class Inference:
     ):
 
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
-        self._args, self._is_local_deploy = self._parse_local_deploy_args()
+        # self._args, self._is_local_deploy = self._parse_local_deploy_args()
+        # ! todo: for tests
+        self._args = None
+        self._is_local_deploy = False
         if model_dir is None:
             if self._is_local_deploy is True:
                 try:
