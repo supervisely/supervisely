@@ -95,12 +95,12 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 continue
 
             # * Get related images
-            cam_name_to_rimage = defaultdict(list)
+            rimages = []
             for rimage in rimage_files:
                 path = Path(rimage)
                 if key_name in path.parts:
                     cam_name = path.parts[-3]
-                    cam_name_to_rimage[cam_name].append(rimage)
+                    rimages.append((cam_name, rimage))
 
             # * Get poses
             poses_filter = (
@@ -120,7 +120,7 @@ class KITTI360Converter(PointcloudEpisodeConverter):
             kitti_anns.append(ann)
 
             self._items.append(
-                self.Item(key_name, frame_paths, ann, poses_path, cam_name_to_rimage)
+                self.Item(key_name, frame_paths, ann, poses_path, rimages)
             )
 
         # * Get object class names for meta
@@ -194,30 +194,28 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 # * Clean up
                 silent_remove(pcd_path)
 
-                # * Upload photocontext
-                rimage_jsons = []
-                cam_names = []
-                for cam_name, rimage_paths in item._rimages.items():
-                    imgs = api.pointcloud_episode.upload_related_images(rimage_paths)
-                    for img, rimage_path in zip(imgs, rimage_paths):
-                        cam_name_w_id = cam_name + "_" + get_file_name(rimage_path)[-2:]
-                        cam_num = int(cam_name[-1])
-                        rimage_info = convert_calib_to_image_meta(
-                            get_file_name(rimage_path), static_transformations, cam_num
-                        )
-                        image_json = {
-                            ApiField.ENTITY_ID: pcd_id,
-                            ApiField.NAME: cam_name_w_id,
-                            ApiField.HASH: img,
-                            ApiField.META: rimage_info[ApiField.META],
-                        }
-                        rimage_jsons.append(image_json)
-                        cam_names.append(cam_name_w_id)
-                if rimage_jsons:
-                    api.pointcloud_episode.add_related_images(rimage_jsons, cam_names)
-
                 if log_progress:
                     progress_cb(1)
+
+            # * Upload photocontext
+            rimage_jsons = []
+            cam_names = []
+            hashes = api.pointcloud_episode.upload_related_images([rimage_path for _, rimage_path in item._rimages])
+            for (cam_name, rimage_path), img, pcd_id in zip(item._rimages, hashes, list(frame_to_pcd_ids.values())):
+                cam_num = int(cam_name[-1])
+                rimage_info = convert_calib_to_image_meta(
+                    get_file_name(rimage_path), static_transformations, cam_num
+                )
+                image_json = {
+                    ApiField.ENTITY_ID: pcd_id,
+                    ApiField.NAME: cam_name,
+                    ApiField.HASH: img,
+                    ApiField.META: rimage_info[ApiField.META],
+                }
+                rimage_jsons.append(image_json)
+                cam_names.append(cam_name)
+            if rimage_jsons:
+                api.pointcloud_episode.add_related_images(rimage_jsons, cam_names)
 
             # * Convert annotation and upload
             try:
@@ -226,7 +224,10 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 )
                 api.pointcloud_episode.annotation.append(scene_ds.id, ann, frame_to_pcd_ids)
             except Exception as e:
-                logger.error(f"Failed to upload annotation for scene: {scene_ds.name}. Error: {e}", stack_info=False)
+                logger.error(
+                    f"Failed to upload annotation for scene: {scene_ds.name}. Error: {repr(e)}",
+                    stack_info=False,
+                )
                 continue
 
             logger.info(f"Dataset ID:{scene_ds.id} has been successfully uploaded.")

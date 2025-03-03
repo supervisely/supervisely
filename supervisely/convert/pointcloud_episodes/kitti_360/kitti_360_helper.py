@@ -9,11 +9,12 @@ import os
 from abc import ABCMeta
 import numpy as np
 from matplotlib import cm
-import transforms3d
 from scipy.spatial.transform.rotation import Rotation
 
 
 MAX_N = 1000
+
+
 def local2global(semanticId, instanceId):
     globalId = semanticId * MAX_N + instanceId
     if isinstance(globalId, np.ndarray):
@@ -326,6 +327,8 @@ class StaticTransformations:
         return
 
 def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
+    import transforms3d
+
     Tdash, Rdash, Zdash, _ = transforms3d.affines.decompose44(tr_matrix)
 
     x, y, z = Tdash[0], Tdash[1], Tdash[2]
