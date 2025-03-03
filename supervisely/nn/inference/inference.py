@@ -1397,7 +1397,7 @@ class Inference:
                 self.cache.set_project_meta(output_project_id, output_project_meta)
 
             ann = self._apply_nms_if_needed(
-                api, [ann], settings, ds_info.id, [image_id], output_project_meta
+                api, anns, settings, ds_info.id, [image_id], output_project_meta
             )[0]
 
             logger.debug(
@@ -1410,7 +1410,7 @@ class Inference:
             )
             api.annotation.upload_ann(image_id, ann)
         else:
-            ann = self._apply_nms_if_needed(api, [ann], settings, image_info.dataset_id, [image_id])[0]
+            ann = self._apply_nms_if_needed(api, anns, settings, image_info.dataset_id, [image_id])[0]
 
         result = self._format_output(anns, slides_data)[0]
         if async_inference_request_uuid is not None and ann is not None:
