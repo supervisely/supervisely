@@ -140,8 +140,6 @@ class KITTI360Bbox3D(KITTI360Object):
         vertices = self.parseOpencvMatrix(child.find("vertices"))
         faces = self.parseOpencvMatrix(child.find("faces"))
 
-        size = 2 * np.max(np.abs(vertices), axis=0)
-
         vertices = np.matmul(R, vertices.transpose()).transpose() + T
         self.vertices = vertices
         self.faces = faces
@@ -149,9 +147,6 @@ class KITTI360Bbox3D(KITTI360Object):
         self.T = T
 
         self.transform = transform
-        yaw = np.arctan2(transform[1, 0], transform[0, 0])
-        center = transform[:3, 3]
-        self.bevbox = o3dml.datasets.utils.BEVBox3D(center, size, yaw, self.name, -1.0, None)
 
     def parseBbox(self, child):
         from kitti360scripts.helpers.labels import kittiId2label
@@ -331,7 +326,7 @@ class StaticTransformations:
         return
 
 def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
-    Tdash, Rdash, Zdash, Sdash = transforms3d.affines.decompose44(tr_matrix)
+    Tdash, Rdash, Zdash, _ = transforms3d.affines.decompose44(tr_matrix)
 
     x, y, z = Tdash[0], Tdash[1], Tdash[2]
     position = Vector3d(x, y, z)
@@ -339,26 +334,13 @@ def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
     rotation_angles = Rotation.from_matrix(Rdash).as_euler("xyz", degrees=False)
     r_x, r_y, r_z = rotation_angles[0], rotation_angles[1], rotation_angles[2]
 
-    rotation = Vector3d(r_x, r_y, r_z)
+    # Invert the bbox by adding π to the yaw while maintaining its degree relative to the world
+    rotation = Vector3d(r_x, r_y, r_z + np.pi)
 
     w, h, l = Zdash[0], Zdash[1], Zdash[2]
     dimension = Vector3d(w, h, l)
 
     return Cuboid3d(position, rotation, dimension)
-
-
-def convert_box_to_geom(box):
-
-    bbox = box.to_xyzwhlr()
-    dim = bbox[[3, 5, 4]]
-    pos = bbox[:3] + [0, 0, dim[1] / 2]
-    yaw = bbox[-1]
-
-    position = Vector3d(float(pos[0]), float(pos[1]), float(pos[2]))
-    rotation = Vector3d(0, 0, float(-yaw))
-    dimension = Vector3d(float(dim[0]), float(dim[2]), float(dim[1]))
-    return Cuboid3d(position, rotation, dimension)
-
 
 def convert_bin_to_pcd(src, dst):
     import open3d as o3d
@@ -380,15 +362,14 @@ def convert_bin_to_pcd(src, dst):
     o3d.io.write_point_cloud(dst, pc)
 
 
-def convert_calib_to_image_meta(image_name, static, camera_name):
-    camera_num = int(camera_name[-1])
-    intrinsic_matrix = static.get_intrinsics_matrix(camera_num)
+def convert_calib_to_image_meta(image_name, static, cam_num):
+    intrinsic_matrix = static.get_intrinsics_matrix(cam_num)
     extrinsic_matrix = static.get_extrinsic_matrix()
 
     data = {
         "name": image_name,
         "meta": {
-            "deviceId": camera_name,
+            "deviceId": cam_num,
             "sensorsData": {
                 "extrinsicMatrix": list(extrinsic_matrix.flatten().astype(float)),
                 "intrinsicMatrix": list(intrinsic_matrix.flatten().astype(float)),

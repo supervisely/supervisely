@@ -18,6 +18,7 @@ RUN pip install bagpy==0.5
 RUN pip install imagecodecs==2023.3.16
 RUN pip install lyft-dataset-sdk==0.0.8
 RUN pip install nuscenes-devkit==1.1.11
+RUN pip install kitti360scripts==1.0.0
 
 # Export
 RUN pip install lxml==4.6.3

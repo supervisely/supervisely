@@ -152,9 +152,8 @@ class KITTI360Converter(PointcloudEpisodeConverter):
 
             for idx in range(frame_cnt):
                 if obj.start_frame <= idx <= obj.end_frame:
-                    # tr_matrix = static_transformations.world_to_velo_transformation(obj, idx)
-                    # geom = convert_kitti_cuboid_to_supervisely_geometry(tr_matrix)
-                    geom = convert_box_to_geom(obj.bevbox)
+                    tr_matrix = static_transformations.world_to_velo_transformation(obj, idx)
+                    geom = convert_kitti_cuboid_to_supervisely_geometry(tr_matrix)
                     frame_idx_to_figures[idx].append(PointcloudFigure(pcd_obj, geom, idx))
         for idx, figures in frame_idx_to_figures.items():
             frame = PointcloudEpisodeFrame(idx, figures)
@@ -201,17 +200,19 @@ class KITTI360Converter(PointcloudEpisodeConverter):
                 for cam_name, rimage_paths in item._rimages.items():
                     imgs = api.pointcloud_episode.upload_related_images(rimage_paths)
                     for img, rimage_path in zip(imgs, rimage_paths):
+                        cam_name_w_id = cam_name + "_" + get_file_name(rimage_path)[-2:]
+                        cam_num = int(cam_name[-1])
                         rimage_info = convert_calib_to_image_meta(
-                            get_file_name(rimage_path), static_transformations, cam_name
+                            get_file_name(rimage_path), static_transformations, cam_num
                         )
                         image_json = {
-                                    ApiField.ENTITY_ID: pcd_id,
-                                    ApiField.NAME: cam_name,
-                                    ApiField.HASH: img,
-                                    ApiField.META: rimage_info[ApiField.META],
+                            ApiField.ENTITY_ID: pcd_id,
+                            ApiField.NAME: cam_name_w_id,
+                            ApiField.HASH: img,
+                            ApiField.META: rimage_info[ApiField.META],
                         }
                         rimage_jsons.append(image_json)
-                        cam_names.append(cam_name)
+                        cam_names.append(cam_name_w_id)
                 if rimage_jsons:
                     api.pointcloud_episode.add_related_images(rimage_jsons, cam_names)
 
