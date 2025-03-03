@@ -8,7 +8,7 @@ RUN pip install google-cloud-storage==1.35.0 google-api-python-client==2.81.0
 RUN pip install yt-dlp==2023.3.4 moviepy==1.0.3
 RUN pip install open3d==0.15.2 scikit-learn==0.24.1
 RUN pip install laspy==2.0.1 lazrs==0.3.0
-RUN pip install git+https://github.com/autonomousvision/kitti360Scripts.git transforms3d==0.4.1
+RUN pip install git+https://github.com/autonomousvision/kitti360Scripts.git transforms3d==0.4.2
 RUN pip install gdcm==1.1 pylibjpeg==1.4.0 pylibjpeg-libjpeg==1.3.1
 RUN pip install pillow-avif-plugin==1.4.3 pillow-heif==0.18.0
 RUN pip install tifffile==2023.7.10
@@ -18,8 +18,6 @@ RUN pip install bagpy==0.5
 RUN pip install imagecodecs==2023.3.16
 RUN pip install lyft-dataset-sdk==0.0.8
 RUN pip install nuscenes-devkit==1.1.11
-RUN pip install kitti360scripts==1.0.0
-RUN pip install transforms3d==0.4.2
 
 # Export
 RUN pip install lxml==4.6.3
