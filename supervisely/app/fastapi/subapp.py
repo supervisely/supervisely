@@ -27,6 +27,7 @@ from fastapi import (
 )
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
@@ -47,7 +48,7 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.io.fs import dir_exists, mkdir
-from supervisely.sly_logger import logger
+from supervisely.sly_logger import create_formatter, logger
 
 # from supervisely.app.fastapi.request import Request
 
@@ -56,7 +57,9 @@ if TYPE_CHECKING:
 
 import logging
 
-uvicorn_logger = logging.getLogger("uvicorn.access")
+SUPERVISELY_SERVER_PATH_PREFIX = sly_env.supervisely_server_path_prefix()
+if SUPERVISELY_SERVER_PATH_PREFIX and not SUPERVISELY_SERVER_PATH_PREFIX.startswith("/"):
+    SUPERVISELY_SERVER_PATH_PREFIX = f"/{SUPERVISELY_SERVER_PATH_PREFIX}"
 
 
 class ReadyzFilter(logging.Filter):
@@ -67,8 +70,24 @@ class ReadyzFilter(logging.Filter):
         return True
 
 
-# Apply the filter
-uvicorn_logger.addFilter(ReadyzFilter())
+def _init_uvicorn_logger():
+    uvicorn_logger = logging.getLogger("uvicorn.access")
+    for handler in uvicorn_logger.handlers:
+        handler.setFormatter(create_formatter())
+    uvicorn_logger.addFilter(ReadyzFilter())
+
+
+_init_uvicorn_logger()
+
+
+class PrefixRouter(APIRouter):
+    def add_api_route(self, path, *args, **kwargs):
+        allowed_paths = ["/livez", "/is_alive", "/is_running", "/readyz", "/is_ready"]
+        if path in allowed_paths:
+            super().add_api_route(path, *args, **kwargs)
+        if SUPERVISELY_SERVER_PATH_PREFIX:
+            path = SUPERVISELY_SERVER_PATH_PREFIX + path
+        super().add_api_route(path, *args, **kwargs)
 
 
 class Event:
@@ -864,6 +883,7 @@ def _init(
 class _MainServer(metaclass=Singleton):
     def __init__(self):
         self._server = FastAPI()
+        self._server.router = PrefixRouter()
 
     def get_server(self) -> FastAPI:
         return self._server
