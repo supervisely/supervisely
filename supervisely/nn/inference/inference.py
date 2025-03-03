@@ -1347,7 +1347,7 @@ class Inference:
                 source=images_np,
                 settings=settings,
             )
-            anns = self._apply_nms_if_needed(api, anns, settings, dataset_id, ids)
+            anns = self._exclude_duplicated_predictions(api, anns, settings, dataset_id, ids)
             results.extend(self._format_output(anns, slides_data))
         return results
 
@@ -1396,7 +1396,7 @@ class Inference:
                 )
                 self.cache.set_project_meta(output_project_id, output_project_meta)
 
-            ann = self._apply_nms_if_needed(
+            ann = self._exclude_duplicated_predictions(
                 api, anns, settings, ds_info.id, [image_id], output_project_meta
             )[0]
 
@@ -1410,7 +1410,9 @@ class Inference:
             )
             api.annotation.upload_ann(image_id, ann)
         else:
-            ann = self._apply_nms_if_needed(api, anns, settings, image_info.dataset_id, [image_id])[0]
+            ann = self._exclude_duplicated_predictions(
+                api, anns, settings, image_info.dataset_id, [image_id]
+            )[0]
 
         result = self._format_output(anns, slides_data)[0]
         if async_inference_request_uuid is not None and ann is not None:
@@ -1795,11 +1797,11 @@ class Inference:
                     image_info: ImageInfo = images_infos_dict[image_ids_batch[i]]
                     ds_info = dataset_infos_dict[image_info.dataset_id]
                     meta = output_project_metas_dict.get(ds_info.project_id, None)
-                    iou = settings.get("nms_iou_thresh_with_gt")
+                    iou = settings.get("existing_objects_iou_thresh")
                     if meta is None and isinstance(iou, float) and iou > 0:
                         meta = ProjectMeta.from_json(api.project.get_meta(ds_info.project_id))
                         output_project_metas_dict[ds_info.project_id] = meta
-                    ann = self._apply_nms_if_needed(
+                    ann = self._exclude_duplicated_predictions(
                         api, [ann], settings, ds_info.id, [image_info.id], meta
                     )[0]
                     batch_results.append(
@@ -2102,12 +2104,12 @@ class Inference:
                         source=images_nps,
                         settings=settings,
                     )
-                    iou = settings.get("nms_iou_thresh_with_gt")
+                    iou = settings.get("existing_objects_iou_thresh")
                     if output_project_meta is None and isinstance(iou, float) and iou > 0:
                         output_project_meta = ProjectMeta.from_json(
                             api.project.get_meta(project_info.id)
                         )
-                    anns = self._apply_nms_if_needed(
+                    anns = self._exclude_duplicated_predictions(
                         api,
                         anns,
                         settings,
@@ -2964,7 +2966,9 @@ class Inference:
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
-        parser.add_argument("mode", nargs="?", type=str, help="Mode of operation: 'deploy' or 'predict'")
+        parser.add_argument(
+            "mode", nargs="?", type=str, help="Mode of operation: 'deploy' or 'predict'"
+        )
         parser.add_argument("input", nargs="?", type=str, help="Local path to input data")
 
         # Deploy args
@@ -3488,7 +3492,7 @@ class Inference:
                 f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
             )
 
-    def _apply_nms_if_needed(
+    def _exclude_duplicated_predictions(
         self,
         api: Api,
         anns: List[Annotation],
@@ -3497,34 +3501,79 @@ class Inference:
         image_ids: List[int],
         meta: Optional[ProjectMeta] = None,
     ):
-        iou = settings.get("nms_iou_thresh_with_gt")
+        """
+        Filter out predictions that significantly overlap with ground truth (GT) objects.
+
+        This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
+        - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
+        - Gets ProjectMeta object if not provided
+        - Downloads GT annotations for the specified image IDs
+        - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
+
+        :param api: Supervisely API object
+        :type api: Api
+        :param anns: List of Annotation objects containing predictions
+        :type anns: List[Annotation]
+        :param settings: Inference settings
+        :type settings: dict
+        :param dataset_id: ID of the dataset containing the images
+        :type dataset_id: int
+        :param image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
+        :type image_ids: List[int]
+        :param meta: ProjectMeta object
+        :type meta: Optional[ProjectMeta]
+        :return: List of Annotation objects containing filtered predictions
+        :rtype: List[Annotation]
+
+        Notes:
+        ------
+        - Requires PyTorch and torchvision for IoU calculations
+        - This method is useful for identifying new objects that aren't already annotated in the ground truth
+        """
+        iou = settings.get("existing_objects_iou_thresh")
         if isinstance(iou, float) and 0 < iou <= 1:
-            with Timer() as batch_timer:
-                if meta is None:
-                    ds = api.dataset.get_info_by_id(dataset_id)
-                    meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
-                gt_anns = api.annotation.download_json_batch(dataset_id, image_ids)
-                gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
-                for i in range(0, len(anns)):
-                    before = len(anns[i].labels)
-                    with Timer() as timer:
-                        anns[i] = self.apply_nms(gt_anns[i], anns[i], iou)
-                    after = len(anns[i].labels)
-                    logger.debug(
-                        f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
-                    )
-            logger.debug(
-                f"Applied NMS with IoU={iou} for {len(anns)} images. Time: {batch_timer.get_time():.3f}ms"
-            )
+            if meta is None:
+                ds = api.dataset.get_info_by_id(dataset_id)
+                meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
+            gt_anns = api.annotation.download_json_batch(dataset_id, image_ids)
+            gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
+            for i in range(0, len(anns)):
+                before = len(anns[i].labels)
+                with Timer() as timer:
+                    anns[i] = self._filter_duplicated_predictions_from_ann(gt_anns[i], anns[i], iou)
+                after = len(anns[i].labels)
+                logger.debug(
+                    f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+                )
         return anns
 
-    def apply_nms(self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float):
+    def _filter_duplicated_predictions_from_ann(
+        self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+    ) -> Annotation:
         """
-        Apply NMS for Predictions and GT labels to skip predictions if they have IoU with GT labels more than threshold.
+        Filter out predictions that significantly overlap with ground truth annotations.
 
-        gt_ann: sly.Annotation with ground truth labels
-        pred_ann: sly.Annotation with predictions
-        iou_threshold: IoU threshold to skip predictions
+        This function compares each prediction with ground truth annotations of the same class
+        and removes predictions that have an IoU (Intersection over Union) greater than or equal
+        to the specified threshold with any ground truth annotation. This is useful for identifying
+        new objects that aren't already annotated in the ground truth.
+
+        :param gt_ann: Annotation object containing ground truth labels
+        :type gt_ann: Annotation
+        :param pred_ann: Annotation object containing prediction labels to be filtered
+        :type pred_ann: Annotation
+        :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                                ground truth box of the same class will be removed
+        :type iou_threshold: float
+        :return: A new annotation object containing only predictions that don't significantly
+                 overlap with ground truth annotations
+        :rtype: Annotation
+
+
+        Notes:
+        ------
+        - Predictions with classes not present in ground truth will be kept
+        - Requires PyTorch and torchvision for IoU calculations
         """
 
         try:
@@ -3553,8 +3602,8 @@ class Inference:
             if len(gt) == 0:
                 new_labels.extend(pred)
                 continue
-            pred_bboxes = torch.stack([_to_tensor(l.geometry) for l in pred]).float()
-            gt_bboxes = torch.stack([_to_tensor(l.geometry) for l in gt]).float()
+            pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+            gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
             iou_matrix = box_iou(pred_bboxes, gt_bboxes)
             iou_matrix = iou_matrix.cpu().numpy()
             keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
