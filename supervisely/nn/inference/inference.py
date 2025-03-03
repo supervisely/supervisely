@@ -116,10 +116,7 @@ class Inference:
     ):
 
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
-        # self._args, self._is_local_deploy = self._parse_local_deploy_args()
-        # ! todo: for tests
-        self._args = None
-        self._is_local_deploy = False
+        self._args, self._is_local_deploy = self._parse_local_deploy_args()
         if model_dir is None:
             if self._is_local_deploy is True:
                 try:
@@ -3495,7 +3492,7 @@ class Inference:
         meta: Optional[ProjectMeta] = None,
     ):
         iou = settings.get("nms_iou_thresh_with_gt")
-        if isinstance(iou, float):
+        if isinstance(iou, float) and 0 < iou <= 1:
             if meta is None:
                 ds = api.dataset.get_info_by_id(dataset_id)
                 meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
@@ -3503,10 +3500,54 @@ class Inference:
             gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
             for i in range(0, len(anns)):
                 before = len(anns[i].labels)
-                anns[i] = apply_nms(gt_anns[i], anns[i], iou)
+                with Timer() as timer:
+                    anns[i] = self.apply_nms(gt_anns[i], anns[i], iou)
                 after = len(anns[i].labels)
-                logger.debug(f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}")
+                logger.debug(f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms")
         return anns
+
+    def apply_nms(self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float):
+        """
+        Apply NMS for Predictions and GT labels to skip predictions with high IoU with GT labels.
+
+        gt_ann: sly.Annotation with ground truth labels
+        pred_ann: sly.Annotation with predictions
+        """
+
+        try:
+            import torch
+            from torchvision.ops import box_iou
+
+        except ImportError:
+            raise ImportError("Please install PyTorch and torchvision to use this feature.")
+
+        def _to_tensor(geom):
+            return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+        new_labels = []
+        pred_cls_bboxes = defaultdict(list)
+        for label in pred_ann.labels:
+            pred_cls_bboxes[label.obj_class.name].append(label)
+
+        gt_cls_bboxes = defaultdict(list)
+        for label in gt_ann.labels:
+            if label.obj_class.name not in pred_cls_bboxes:
+                continue
+            gt_cls_bboxes[label.obj_class.name].append(label)
+
+        for name, pred in pred_cls_bboxes.items():
+            gt = gt_cls_bboxes[name]
+            if len(gt) == 0:
+                new_labels.extend(pred)
+                continue
+            pred_bboxes = torch.stack([_to_tensor(l.geometry) for l in pred]).float()
+            gt_bboxes = torch.stack([_to_tensor(l.geometry) for l in gt]).float()
+            iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+            iou_matrix = iou_matrix.cpu().numpy()
+            keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+            new_labels.extend([pred[i] for i in keep_indices])
+
+        return pred_ann.clone(labels=new_labels)
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
