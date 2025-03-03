@@ -1,16 +1,17 @@
 # coding: utf-8
 
-import logging
-import types
 import datetime
+import logging
 import os
+import types
 from collections import namedtuple
 from enum import Enum
-#import simplejson
+
+# import simplejson
 from pythonjsonlogger import jsonlogger
 
-
 ###############################################################################
+
 
 class ServiceType(Enum):
     AGENT = 1
@@ -47,20 +48,23 @@ class EventType(Enum):
 
 
 # level name: level, default exc_info, description
-LogLevelSpec = namedtuple('LogLevelSpec', [
-    'int',
-    'add_exc_info',
-    'descr',
-])
+LogLevelSpec = namedtuple(
+    "LogLevelSpec",
+    [
+        "int",
+        "add_exc_info",
+        "descr",
+    ],
+)
 
 
 LOGGING_LEVELS = {
-    'FATAL': LogLevelSpec(50, True, 'Critical error'),
-    'ERROR': LogLevelSpec(40, True, 'Error'),   # may be shown to end user
-    'WARN': LogLevelSpec(30, False, 'Warning'),   # may be shown to end user
-    'INFO': LogLevelSpec(20, False, 'Info'),   # may be shown to end user
-    'DEBUG': LogLevelSpec(10, False, 'Debug'),
-    'TRACE': LogLevelSpec(5, False, 'Trace'),
+    "FATAL": LogLevelSpec(50, True, "Critical error"),
+    "ERROR": LogLevelSpec(40, True, "Error"),  # may be shown to end user
+    "WARN": LogLevelSpec(30, False, "Warning"),  # may be shown to end user
+    "INFO": LogLevelSpec(20, False, "Info"),  # may be shown to end user
+    "DEBUG": LogLevelSpec(10, False, "Debug"),
+    "TRACE": LogLevelSpec(5, False, "Trace"),
 }
 
 
@@ -69,12 +73,9 @@ def _set_logging_levels(levels, the_logger):
         logging.addLevelName(lvl, lvl_name.upper())  # two mappings
 
         def construct_logger_member(lvl_val, default_exc_info):
-            return lambda self, msg, *args, exc_info=default_exc_info, **kwargs: \
-                self.log(lvl_val,
-                         str(msg),
-                         *args,
-                         exc_info=exc_info,
-                         **kwargs)
+            return lambda self, msg, *args, exc_info=default_exc_info, **kwargs: self.log(
+                lvl_val, str(msg), *args, exc_info=exc_info, **kwargs
+            )
 
         func = construct_logger_member(lvl, def_exc_info)
         bound_method = types.MethodType(func, the_logger)
@@ -86,16 +87,16 @@ def _set_logging_levels(levels, the_logger):
 
 def _get_default_logging_fields():
     supported_keys = [
-        'asctime',
+        "asctime",
         # 'created',
         # 'filename',
         # 'funcName',
-        'levelname',
+        "levelname",
         # 'levelno',
         # 'lineno',
         # 'module',
         # 'msecs',
-        'message',
+        "message",
         # 'name',
         # 'pathname',
         # 'process',
@@ -104,10 +105,10 @@ def _get_default_logging_fields():
         # 'thread',
         # 'threadName'
     ]
-    return ' '.join(['%({0:s})'.format(k) for k in supported_keys])
+    return " ".join(["%({0:s})".format(k) for k in supported_keys])
 
 
-#def dumps_ignore_nan(obj, *args, **kwargs):
+# def dumps_ignore_nan(obj, *args, **kwargs):
 #    return  simplejson.dumps(obj, ignore_nan=True, *args, **kwargs)
 
 
@@ -115,21 +116,21 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
     additional_fields = {}
 
     def __init__(self, format_string):
-        super().__init__(format_string)#, json_serializer=dumps_ignore_nan)
+        super().__init__(format_string)  # , json_serializer=dumps_ignore_nan)
 
     def process_log_record(self, log_record):
-        log_record['timestamp'] = log_record.pop('asctime', None)
+        log_record["timestamp"] = log_record.pop("asctime", None)
 
-        levelname = log_record.pop('levelname', None)
+        levelname = log_record.pop("levelname", None)
         if levelname is not None:
-            log_record['level'] = levelname.lower()
+            log_record["level"] = levelname.lower()
 
-        e_info = log_record.pop('exc_info', None)
+        e_info = log_record.pop("exc_info", None)
         if e_info is not None:
-            if e_info == 'NoneType: None':  # python logger is not ok here
+            if e_info == "NoneType: None":  # python logger is not ok here
                 pass
             else:
-                log_record['stack'] = e_info.split('\n')
+                log_record["stack"] = e_info.split("\n")
 
         return jsonlogger.JsonFormatter.process_log_record(self, log_record)
 
@@ -142,8 +143,8 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
 
     def formatTime(self, record, datefmt=None):
         ct = datetime.datetime.fromtimestamp(record.created)
-        t = ct.strftime('%Y-%m-%dT%H:%M:%S')
-        s = '%s.%03dZ' % (t, record.msecs)
+        t = ct.strftime("%Y-%m-%dT%H:%M:%S")
+        s = "%s.%03dZ" % (t, record.msecs)
         return s
 
 
@@ -164,16 +165,20 @@ def _construct_logger(the_logger, loglevel_text):
 ###############################################################################
 
 
+def create_formatter(logger_fmt_string=None):
+    if logger_fmt_string is None:
+        logger_fmt_string = _get_default_logging_fields()
+    return CustomJsonFormatter(logger_fmt_string)
+
+
 def add_logger_handler(the_logger, log_handler):  # default format
-    logger_fmt_string = _get_default_logging_fields()
-    formatter = CustomJsonFormatter(logger_fmt_string)
+    formatter = create_formatter()
     log_handler.setFormatter(formatter)
     the_logger.addHandler(log_handler)
 
 
 def add_default_logging_into_file(the_logger, log_dir):
-    fname = 'log_{}.txt'.format(
-        datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
+    fname = "log_{}.txt".format(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S"))
     ofpath = os.path.join(log_dir, fname)
 
     log_handler_file = logging.FileHandler(filename=ofpath)
@@ -191,27 +196,26 @@ def change_formatters_default_values(the_logger, field_name, value):
 
 
 def _get_loglevel_env():
-    loglevel = os.getenv('LOG_LEVEL', None)
+    loglevel = os.getenv("LOG_LEVEL", None)
     if loglevel is None:
-        loglevel = os.getenv('LOGLEVEL', 'INFO')
+        loglevel = os.getenv("LOGLEVEL", "INFO")
     return loglevel.upper()
 
 
 def set_global_logger():
     loglevel = _get_loglevel_env()  # use the env to set loglevel
-    the_logger = logging.getLogger('logger')  # optional logger name
+    the_logger = logging.getLogger("logger")  # optional logger name
     _construct_logger(the_logger, loglevel)
     return the_logger
 
 
 def get_task_logger(task_id, loglevel=None):
     if loglevel is None:
-        loglevel = _get_loglevel_env() # use the env to set loglevel
-    logger_name = 'task_{}'.format(task_id)
+        loglevel = _get_loglevel_env()  # use the env to set loglevel
+    logger_name = "task_{}".format(task_id)
     the_logger = logging.getLogger(logger_name)  # optional logger name
     _construct_logger(the_logger, loglevel)
     return the_logger
 
 
 logger = set_global_logger()
-

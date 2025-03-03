@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import tarfile
+import hashlib
+import base64
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import aiofiles
@@ -203,15 +205,19 @@ def list_files_recursively(
             for filename in file_names:
                 yield os.path.join(dir_name, filename)
 
-    valid_extensions = valid_extensions if ignore_valid_extensions_case is False else [ext.lower() for ext in valid_extensions]
+    valid_extensions = (
+        valid_extensions
+        if ignore_valid_extensions_case is False
+        else [ext.lower() for ext in valid_extensions]
+    )
     files = []
     for file_path in file_path_generator():
         file_ext = get_file_ext(file_path)
         if ignore_valid_extensions_case:
             file_ext.lower()
-        if (
-            valid_extensions is None or file_ext in valid_extensions
-        ) and (filter_fn is None or filter_fn(file_path)):
+        if (valid_extensions is None or file_ext in valid_extensions) and (
+            filter_fn is None or filter_fn(file_path)
+        ):
             files.append(file_path)
     return files
 
@@ -880,6 +886,32 @@ def get_file_hash(path: str) -> str:
         return get_bytes_hash(file_bytes)
 
 
+def get_file_hash_chunked(path: str, chunk_size: Optional[int] = 1024 * 1024) -> str:
+    """
+    Get hash from target file by reading it in chunks.
+
+    :param path: Target file path.
+    :type path: str
+    :param chunk_size: Number of bytes to read per iteration. Default is 1 MB.
+    :type chunk_size: int, optional
+    :returns: File hash as a base64 encoded string.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+       file_hash = sly.fs.get_file_hash_chunked('/home/admin/work/projects/examples/1.jpeg')
+       print(file_hash)  # Example output: rKLYA/p/P64dzidaQ/G7itxIz3ZCVnyUhEE9fSMGxU4=
+    """
+    hash_sha256 = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            hash_sha256.update(chunk)
+    digest = hash_sha256.digest()
+    return base64.b64encode(digest).decode("utf-8")
+
+
 def tree(dir_path: str) -> str:
     """
     Get tree for target directory.
@@ -1530,3 +1562,76 @@ async def touch_async(path: str) -> None:
     async with aiofiles.open(path, "a"):
         loop = get_or_create_event_loop()
         await loop.run_in_executor(None, os.utime, path, None)
+
+
+async def list_files_recursively_async(
+    dir_path: str,
+    valid_extensions: Optional[List[str]] = None,
+    filter_fn: Optional[Callable[[str], bool]] = None,
+    ignore_valid_extensions_case: bool = False,
+) -> List[str]:
+    """
+    Recursively list files in the directory asynchronously.
+    Returns list with all file paths.
+    Can be filtered by valid extensions and filter function.
+
+    :param dir_path: Target directory path.
+    :type dir_path: str
+    :param valid_extensions: List of valid extensions. Default is None.
+    :type valid_extensions: Optional[List[str]]
+    :param filter_fn: Filter function. Default is None.
+    :type filter_fn: Optional[Callable[[str], bool]]
+    :param ignore_valid_extensions_case: Ignore case when checking valid extensions. Default is False.
+    :type ignore_valid_extensions_case: bool
+    :returns: List of file paths
+    :rtype: List[str]
+
+    :Usage example:
+    
+         .. code-block:: python
+    
+            import supervisely as sly
+    
+            dir_path = '/home/admin/work/projects/examples'
+            loop = sly.utils.get_or_create_event_loop()
+            coro = sly.fs.list_files_recursively_async(dir_path)
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(coro, loop)
+                files = future.result()
+            else:
+                files = loop.run_until_complete(coro)
+    """
+
+    def sync_file_list():
+        if valid_extensions and ignore_valid_extensions_case:
+            valid_extensions_set = set(map(str.lower, valid_extensions))
+        else:
+            valid_extensions_set = set(valid_extensions) if valid_extensions else None
+
+        files = []
+        for dir_name, _, file_names in os.walk(dir_path):
+            full_paths = [os.path.join(dir_name, filename) for filename in file_names]
+
+            if valid_extensions_set:
+                full_paths = [
+                    fp
+                    for fp in full_paths
+                    if (
+                        ext := (
+                            os.path.splitext(fp)[1].lower()
+                            if ignore_valid_extensions_case
+                            else os.path.splitext(fp)[1]
+                        )
+                    )
+                    in valid_extensions_set
+                ]
+
+            if filter_fn:
+                full_paths = [fp for fp in full_paths if filter_fn(fp)]
+
+            files.extend(full_paths)
+
+        return files
+
+    loop = get_or_create_event_loop()
+    return await loop.run_in_executor(None, sync_file_list)
