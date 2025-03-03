@@ -231,11 +231,13 @@ class PretrainedModelsSelector(Widget):
             for arch_type in self._table_data[task_type]:
                 for idx, model in enumerate(self._table_data[task_type][arch_type]):
                     model_meta = model.get("meta", {})
-                    if model_meta.get("model_name") == model_name:
-                        self.set_active_task_type(task_type)
-                        self.set_active_arch_type(arch_type)
-                        self.set_active_row(idx)
-                        return
+                    name_from_meta = model_meta.get("model_name")
+                    if name_from_meta is not None:
+                        if name_from_meta.lower() == model_name.lower():
+                            self.set_active_task_type(task_type)
+                            self.set_active_arch_type(arch_type)
+                            self.set_active_row(idx)
+                            return
 
     def get_by_model_name(self, model_name: str) -> Union[Dict, None]:
         for task_type in self._table_data:

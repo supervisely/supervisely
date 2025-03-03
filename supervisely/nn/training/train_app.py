@@ -381,6 +381,16 @@ class TrainApp:
         return [x for x in self.project_meta.obj_classes.keys() if x in selected_classes]
 
     @property
+    def classes_names(self) -> List[str]:
+        """
+        Returns the selected classes names for training.
+
+        :return: List of selected classes names.
+        :rtype: List[str]
+        """
+        return self.gui.classes_selector.get_selected_classes()
+
+    @property
     def num_classes(self) -> int:
         """
         Returns the number of selected classes for training.
@@ -791,6 +801,7 @@ class TrainApp:
         if not self.gui.input_selector.get_cache_value() or is_development():
             self._download_no_cache(dataset_infos, total_images)
             self.sly_project = Project(self.project_dir, OpenMode.READ)
+            self.sly_project.remove_classes_except(self.project_dir, self.classes_names, True)
             return
 
         try:
@@ -805,6 +816,7 @@ class TrainApp:
             self._download_no_cache(dataset_infos, total_images)
         finally:
             self.sly_project = Project(self.project_dir, OpenMode.READ)
+            self.sly_project.remove_classes_except(self.project_dir, self.classes_names, True)
             logger.info(f"Project downloaded successfully to: '{self.project_dir}'")
 
     def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:

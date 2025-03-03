@@ -19,7 +19,7 @@ from supervisely.app.widgets import (
 class TrainingProcess:
     title = "Training Process"
     description = "Manage training process"
-    lock_message = "Select hyperparametrs to unlock"
+    lock_message = "Select hyperparameters to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
         self.display_widgets = []

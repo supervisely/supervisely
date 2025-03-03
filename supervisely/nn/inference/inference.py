@@ -2935,7 +2935,9 @@ class Inference:
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
-        parser.add_argument("mode", nargs="?", type=str, help="Mode of operation: 'deploy' or 'predict'")
+        parser.add_argument(
+            "mode", nargs="?", type=str, help="Mode of operation: 'deploy' or 'predict'"
+        )
         parser.add_argument("input", nargs="?", type=str, help="Local path to input data")
 
         # Deploy args
@@ -3102,7 +3104,7 @@ class Inference:
             checkpoint = m_files.get("checkpoint", None)
             if checkpoint is None:
                 continue
-            if model == m["meta"]["model_name"]:
+            if model.lower() == m["meta"]["model_name"].lower():
                 model_info = m
                 model_source = ModelSource.PRETRAINED
                 model_files = {"checkpoint": checkpoint}
