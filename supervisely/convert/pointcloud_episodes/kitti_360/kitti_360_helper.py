@@ -54,7 +54,7 @@ class KITTI360Object:
         return np.asarray(self.cmap(idx % self.cmap_length)[:3]) * 255.0
 
     def assignColor(self):
-        from kitti360scripts.helpers.labels import id2label
+        from kitti360scripts.helpers.labels import id2label  # pylint: disable=import-error
 
         if self.semanticId >= 0:
             self.semanticColor = id2label[self.semanticId].color
@@ -109,16 +109,16 @@ class KITTI360Bbox3D(KITTI360Object):
     def __str__(self):
         return self.name
 
-    def generateMeshes(self):
-        self.meshes = []
-        if self.vertices_proj:
-            for fidx in range(self.faces.shape[0]):
-                self.meshes.append(
-                    [
-                        Point(self.vertices_proj[0][int(x)], self.vertices_proj[1][int(x)])
-                        for x in self.faces[fidx]
-                    ]
-                )
+    # def generateMeshes(self):
+    #     self.meshes = []
+    #     if self.vertices_proj:
+    #         for fidx in range(self.faces.shape[0]):
+    #             self.meshes.append(
+    #                 [
+    #                     Point(self.vertices_proj[0][int(x)], self.vertices_proj[1][int(x)])
+    #                     for x in self.faces[fidx]
+    #                 ]
+    #             )
 
     def parseOpencvMatrix(self, node):
         rows = int(node.find("rows").text)
@@ -135,7 +135,6 @@ class KITTI360Bbox3D(KITTI360Object):
         return mat
 
     def parseVertices(self, child):
-        from open3d import ml as o3dml
         transform = self.parseOpencvMatrix(child.find("transform"))
         R = transform[:3, :3]
         T = transform[:3, 3]
@@ -151,7 +150,7 @@ class KITTI360Bbox3D(KITTI360Object):
         self.transform = transform
 
     def parseBbox(self, child):
-        from kitti360scripts.helpers.labels import kittiId2label
+        from kitti360scripts.helpers.labels import kittiId2label  # pylint: disable=import-error
 
         semanticIdKITTI = int(child.find("semanticId").text)
         self.semanticId = kittiId2label[semanticIdKITTI].id
@@ -171,7 +170,7 @@ class KITTI360Bbox3D(KITTI360Object):
         self.parseVertices(child)
 
     def parseStuff(self, child):
-        from kitti360scripts.helpers.labels import name2label
+        from kitti360scripts.helpers.labels import name2label  # pylint: disable=import-error
 
         classmap = {
             "driveway": "parking",
@@ -216,14 +215,14 @@ class KITTI360Point3D(KITTI360Object):
     def __str__(self):
         return self.name
 
-    def generateMeshes(self):
-        pass
+    # def generateMeshes(self):
+    #     pass
 
 
 # Meta class for KITTI360Bbox3D
 class Annotation3D:
     def __init__(self, labelPath):
-        from kitti360scripts.helpers.labels import labels
+        from kitti360scripts.helpers.labels import labels  # pylint: disable=import-error
         import xml.etree.ElementTree as ET
 
         key_name = get_file_name(labelPath)
@@ -271,12 +270,12 @@ class Annotation3D:
 
 class StaticTransformations:
     def __init__(self, calibrations_path):
-        from kitti360scripts.devkits.commons.loadCalibration import loadCalibrationRigid, loadPerspectiveIntrinsic
+        import kitti360scripts.devkits.commons.loadCalibration as lc  # pylint: disable=import-error
 
         cam2velo_path = os.path.join(calibrations_path, "calib_cam_to_velo.txt")
-        self.cam2velo = loadCalibrationRigid(cam2velo_path)
+        self.cam2velo = lc.loadCalibrationRigid(cam2velo_path)
         perspective_path = os.path.join(calibrations_path, "perspective.txt")
-        self.intrinsic_calibrations = loadPerspectiveIntrinsic(perspective_path)
+        self.intrinsic_calibrations = lc.loadPerspectiveIntrinsic(perspective_path)
         self.cam2world = None
 
     def set_cam2world(self, cam2world_path):
@@ -330,7 +329,7 @@ class StaticTransformations:
         return
 
 def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
-    import transforms3d
+    import transforms3d  # pylint: disable=import-error
     from scipy.spatial.transform.rotation import Rotation
 
     Tdash, Rdash, Zdash, _ = transforms3d.affines.decompose44(tr_matrix)
@@ -350,7 +349,8 @@ def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
     return Cuboid3d(position, rotation, dimension)
 
 def convert_bin_to_pcd(src, dst):
-    import open3d as o3d
+    import open3d as o3d  # pylint: disable=import-error
+
     try:
         bin = np.fromfile(src, dtype=np.float32).reshape(-1, 4)
     except ValueError as e:
