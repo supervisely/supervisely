@@ -3513,7 +3513,7 @@ class Inference:
 
     def apply_nms(self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float):
         """
-        Apply NMS for Predictions and GT labels to skip predictions with high IoU with GT labels.
+        Apply NMS for Predictions and GT labels to skip predictions if they have IoU with GT labels more than threshold.
 
         gt_ann: sly.Annotation with ground truth labels
         pred_ann: sly.Annotation with predictions
@@ -3875,57 +3875,3 @@ def get_hardware_info(device: str) -> str:
     except Exception as e:
         logger.error("Error while getting hardware info", exc_info=True)
     return "Unknown"
-
-
-def apply_nms(ann1: Annotation, ann2: Annotation, iou_threshold: float):
-    """
-    Apply NMS for Predictions and GT labels to skip predictions with high IoU with GT labels.
-
-    ann1: Ground truth annotation
-    ann2: Predicted annotation
-    """
-
-    with Timer() as timer:
-        def to_tensor(geom):
-            return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
-
-        def to_bbox(geom):
-            return np.array([geom.left, geom.top, geom.right, geom.bottom])
-
-        try:
-            import torch
-            from torchvision.ops.boxes import nms
-
-            torch_is_available = True
-        except ImportError:
-            torch_is_available = False
-            raise ImportError("Please install PyTorch to use this function")
-
-        keep_classes = set([l.obj_class.name for l in ann2.labels])
-
-        cls_bboxes = defaultdict(list)
-        for l in ann1.labels:
-            if l.obj_class.name not in keep_classes:
-                continue
-            if torch_is_available:
-                cls_bboxes[l.obj_class.name].append(to_tensor(l.geometry.to_bbox()))
-            else:
-                cls_bboxes[l.obj_class.name].append(to_bbox(l.geometry.to_bbox()))
-
-        new_labels = []
-        for label in ann2.labels:
-            name = label.obj_class.name
-            if torch_is_available:
-                bboxes = torch.stack(cls_bboxes[name] + [to_tensor(label.geometry)]).float()
-                scores = torch.tensor([1.0] * len(cls_bboxes[name]) + [0.99]).float()
-                indices = nms(bboxes, scores, iou_threshold)
-            else:
-                bboxes = cls_bboxes[name] + [to_bbox(label.geometry)]
-                scores = [1.0] * len(cls_bboxes[name]) + [0.99]
-                indices = cv2.dnn.NMSBoxes(bboxes, scores, 0.01, iou_threshold)
-            if indices.flatten()[-1] == len(cls_bboxes[name]):
-                new_labels.append(label)
-    
-    logger.debug(f"NMS applied in {timer.get_time()} ms")
-
-    return ann2.clone(labels=new_labels)
