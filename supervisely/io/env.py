@@ -554,3 +554,19 @@ def semaphore_size() -> int:
         postprocess_fn=lambda x: int(x),
         raise_not_found=False,
     )
+
+
+def supervisely_server_path_prefix() -> str:
+    """Returns routes prefix from environment variable using following
+        - SUPERVISELY_SERVER_PATH_PREFIX
+
+    :return: routes prefix
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="supervisely_server_path_prefix",
+        keys=["SUPERVISELY_SERVER_PATH_PREFIX"],
+        postprocess_fn=lambda x: x,
+        default="",
+        raise_not_found=False,
+    )

@@ -65,6 +65,27 @@ class PersistentImageTTLCache(TTLCache):
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
+    
+    def pop(self, *args, **kwargs):
+        try:
+            super().pop(*args, **kwargs)
+        except Exception:
+            sly.logger.warn("Cache data corrupted. Cleaning the cache...", exc_info=True)
+
+            def _delitem(self, key):
+                try:
+                    size = self._Cache__size.pop(key)
+                except:
+                    size = 0
+                self._Cache__data.pop(key, None)
+                self._Cache__currsize -= size
+
+            shutil.rmtree(self._base_dir, ignore_errors=True)
+            for key in self.keys():
+                try:
+                    super().__delitem__(key, cache_delitem=_delitem)
+                except:
+                    pass
 
     def __delitem__(self, key: Any) -> None:
         self.__del_file(key)
