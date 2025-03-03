@@ -3,13 +3,10 @@ from supervisely.io.fs import get_file_name
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.point_3d import Vector3d
 from supervisely.geometry.point import Point
+
 from collections import defaultdict
-import xml.etree.ElementTree as ET
 import os
-from abc import ABCMeta
 import numpy as np
-from matplotlib import cm
-from scipy.spatial.transform.rotation import Rotation
 
 
 MAX_N = 1000
@@ -37,9 +34,13 @@ annotation2global = defaultdict()
 
 # Abstract base class for annotation objects
 class KITTI360Object:
+    from abc import ABCMeta
+
     __metaclass__ = ABCMeta
 
     def __init__(self):
+        from matplotlib import cm
+
         # the label
         self.label = ""
 
@@ -223,6 +224,7 @@ class KITTI360Point3D(KITTI360Object):
 class Annotation3D:
     def __init__(self, labelPath):
         from kitti360scripts.helpers.labels import labels
+        import xml.etree.ElementTree as ET
 
         key_name = get_file_name(labelPath)
         # load annotation
@@ -270,6 +272,7 @@ class Annotation3D:
 class StaticTransformations:
     def __init__(self, calibrations_path):
         from kitti360scripts.devkits.commons.loadCalibration import loadCalibrationRigid, loadPerspectiveIntrinsic
+
         cam2velo_path = os.path.join(calibrations_path, "calib_cam_to_velo.txt")
         self.cam2velo = loadCalibrationRigid(cam2velo_path)
         perspective_path = os.path.join(calibrations_path, "perspective.txt")
@@ -328,6 +331,7 @@ class StaticTransformations:
 
 def convert_kitti_cuboid_to_supervisely_geometry(tr_matrix):
     import transforms3d
+    from scipy.spatial.transform.rotation import Rotation
 
     Tdash, Rdash, Zdash, _ = transforms3d.affines.decompose44(tr_matrix)
 
