@@ -61,7 +61,7 @@ class NiiConverter(VolumeConverter):
                 skip_files.append(nrrd_path)
 
         for name, nrrd_path in nifti_dict.items():
-            if name in skip_files:
+            if nrrd_path in skip_files:
                 continue
             item = self.Item(item_path=nrrd_path)
 
