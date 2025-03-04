@@ -579,7 +579,10 @@ class TrainApp:
                     model_meta,
                     gt_project_id,
                 )
-                evaluation_report_link = abs_url(f"/model-benchmark?id={str(mb_eval_report_id)}")
+                if mb_eval_report_id is not None:
+                    evaluation_report_link = abs_url(
+                        f"/model-benchmark?id={str(mb_eval_report_id)}"
+                    )
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 

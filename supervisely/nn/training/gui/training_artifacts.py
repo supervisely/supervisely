@@ -86,6 +86,7 @@ class TrainingArtifacts:
         # PyTorch, ONNX, TensorRT demo
         self.inference_demo_widgets = []
 
+        # Demo display works only for released apps
         model_demo = self.app_options.get("demo", None)
         if model_demo is not None:
             model_demo_path = model_demo.get("path", None)
