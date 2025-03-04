@@ -64,6 +64,7 @@ class NiiConverter(VolumeConverter):
             if nrrd_path in skip_files:
                 continue
             item = self.Item(item_path=nrrd_path)
+            self._items.append(item)
 
         self._meta = ProjectMeta()
         return self.items_count > 0
