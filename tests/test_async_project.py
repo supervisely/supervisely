@@ -2,8 +2,11 @@ import asyncio
 import os
 import time
 
-import supervisely as sly
+from tqdm import tqdm
+
+from supervisely import Api, logger
 from supervisely._utils import sync_call_async
+from supervisely.io.fs import clean_dir, ensure_base_path
 from supervisely.project.download import download_fast, download_to_cache
 from supervisely.project.project import _download_project, _download_project_async
 
@@ -15,10 +18,10 @@ home_dir = os.path.expanduser("~")
 common_path = os.path.join(home_dir, "test_project_download/")
 save_path = os.path.join(common_path, "old/")
 save_path_async = os.path.join(common_path, "async/")
-sly.fs.ensure_base_path(common_path)
-api = sly.Api.from_env()
+ensure_base_path(common_path)
+api = Api.from_env()
 
-sly.fs.clean_dir(common_path)
+clean_dir(common_path)
 
 
 def main_df():
@@ -50,15 +53,15 @@ def main_dps():
 
 def compare_downloads():
     main_dps(PROJECT_ID)
-    sly.fs.clean_dir(save_path)
+    clean_dir(save_path)
     main_dpa(PROJECT_ID)
-    sly.fs.clean_dir(save_path_async)
+    clean_dir(save_path_async)
 
 
 def ann_db():
     imgs = api.image.get_list(DATSET_ID)
     img_ids = [img.id for img in imgs]
-    pbar = sly.tqdm_sly(desc="Downloading annotations", unit="B", unit_scale=True)
+    pbar = tqdm(desc="Downloading annotations", unit="B", unit_scale=True)
     coroutne = api.annotation.download_batch_async(
         DATSET_ID,
         img_ids,
@@ -82,4 +85,4 @@ if __name__ == "__main__":
         # compare_downloads()  # to compare the time taken for downloading and saving project as files (sync vs async)
         main_df()
     except KeyboardInterrupt:
-        sly.logger.info("Stopped by user")
+        logger.info("Stopped by user")
