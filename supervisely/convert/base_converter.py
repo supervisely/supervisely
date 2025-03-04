@@ -71,6 +71,7 @@ class AvailablePointcloudEpisodesConverters:
 class AvailableVolumeConverters:
     SLY = "supervisely"
     DICOM = "dicom"
+    NII = "nii"
 
 
 class BaseConverter:
