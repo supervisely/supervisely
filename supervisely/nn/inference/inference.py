@@ -3122,8 +3122,6 @@ class Inference:
             model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
             model_info["model_meta"] = self._load_json_file(model_meta_path)
             original_model_files = model_info.get("model_files")
-            if not original_model_files:
-                raise ValueError("Invalid 'experiment_info.json'. Missing 'model_files' key.")
             return model_info, original_model_files
 
         def _prepare_local_model_files(artifacts_dir, checkpoint_path, original_model_files):
@@ -3170,6 +3168,7 @@ class Inference:
             model_files = _prepare_local_model_files(
                 artifacts_dir, checkpoint_path, original_model_files
             )
+
         else:
             local_artifacts_dir = os.path.join(
                 self.model_dir, "local_deploy", os.path.basename(artifacts_dir)

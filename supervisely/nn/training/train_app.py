@@ -1798,7 +1798,6 @@ class TrainApp:
         self.gui.training_process.start_button.loading = False
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
-        # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
         self._api.task.set_output_experiment(self.task_id, experiment_info)
