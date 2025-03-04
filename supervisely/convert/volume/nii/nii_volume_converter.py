@@ -90,8 +90,7 @@ class NiiConverter(VolumeConverter):
 
         converted_dir_name = "converted"
         converted_dir = os.path.join(self._input_data, converted_dir_name)
-
-        self._obj_classes = ObjClassCollection()
+        meta_changed = False
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
@@ -115,8 +114,6 @@ class NiiConverter(VolumeConverter):
                 volume_info = api.volume.upload_nrrd_serie_path(
                     dataset_id, name=item.name, path=item.path
                 )
-                # ? for debug
-                # volume_info = api.volume.get_info_by_id(108830)
 
                 if isinstance(item.ann_data, list) and len(item.ann_data) > 0:
                     objs = []
@@ -126,10 +123,11 @@ class NiiConverter(VolumeConverter):
                         if ann_name.endswith(".nii"):
                             ann_name = get_file_name(ann_name)
                         for mask, _ in helper.get_annotation_from_nii(ann_path):
-                            obj_class = self._obj_classes.get(ann_name)
+                            obj_class = meta.get_obj_class(ann_name)
                             if obj_class is None:
                                 obj_class = ObjClass(ann_name, Mask3D)
-                                self._obj_classes = self._obj_classes.add(obj_class)
+                                meta = meta.add_obj_class(obj_class)
+                                meta_changed = True
                             obj = VolumeObject(obj_class, mask_3d=mask)
                             spatial_figures.append(obj.figure)
                             objs.append(obj)
@@ -137,8 +135,9 @@ class NiiConverter(VolumeConverter):
                         volume_info.meta, objects=objs, spatial_figures=spatial_figures
                     )
 
-                    self._meta = meta.add_obj_classes(self._obj_classes)
-                    _, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
+                    if meta_changed:
+                        self._meta = meta
+                        _, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
                     api.volume.annotation.append(volume_info.id, ann)
 
