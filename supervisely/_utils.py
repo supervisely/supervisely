@@ -471,7 +471,7 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
             return loop
 
 
-def sync_call(coro):
+def sync_call_async(coroutine):
     """
     This function is used to run asynchronous functions in synchronous context.
 
@@ -484,13 +484,13 @@ def sync_call(coro):
 
     .. code-block:: python
 
-            from supervisely.utils import sync_call
+            from supervisely.utils import sync_call_async
 
             async def async_function():
                 await asyncio.sleep(1)
                 return "Hello, World!"
             coro = async_function()
-            result = sync_call(coro)
+            result = sync_call_async(coro)
             print(result)
             # Output: Hello, World!
     """
@@ -498,10 +498,10 @@ def sync_call(coro):
     loop = get_or_create_event_loop()
 
     if loop.is_running():
-        future = asyncio.run_coroutine_threadsafe(coro, loop=loop)
+        future = asyncio.run_coroutine_threadsafe(coroutine, loop=loop)
         return future.result()
     else:
-        return loop.run_until_complete(coro)
+        return loop.run_until_complete(coroutine)
 
 
 def get_filename_from_headers(url):

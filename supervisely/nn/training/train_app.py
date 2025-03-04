@@ -39,7 +39,7 @@ from supervisely import (
     is_production,
     logger,
 )
-from supervisely._utils import abs_url, get_filename_from_headers, sync_call
+from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir
 from supervisely.app.widgets import Progress
@@ -60,7 +60,7 @@ from supervisely.nn.utils import ModelSource
 from supervisely.output import set_directory
 from supervisely.project.download import (
     copy_from_cache,
-    download_async_or_sync,
+    download_fast,
     download_to_cache,
     get_cache_size,
     is_cached,
@@ -806,7 +806,7 @@ class TrainApp:
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
             logger.debug("Downloading project data without cache")
             self.progress_bar_main.show()
-            download_async_or_sync(
+            download_fast(
                 api=self._api,
                 project_id=self.project_id,
                 dest_dir=self.project_dir,
@@ -1619,14 +1619,13 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = sync_call(
-                self._api.file.upload_directory_async(
-                    team_id=self.team_id,
-                    local_dir=local_demo_dir,
-                    remote_dir=remote_demo_dir,
-                    progress_size_cb=upload_artifacts_pbar.update,
-                )
+            remote_dir = self._api.file.upload_directory_fast(
+                team_id=self.team_id,
+                local_dir=local_demo_dir,
+                remote_dir=remote_demo_dir,
+                progress_size_cb=upload_artifacts_pbar.update,
             )
+
             self.progress_bar_main.hide()
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
@@ -1733,13 +1732,11 @@ class TrainApp:
             unit_scale=True,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
-            remote_dir = sync_call(
-                self._api.file.upload_directory_async(
-                    team_id=self.team_id,
-                    local_dir=self.output_dir,
-                    remote_dir=remote_artifacts_dir,
-                    progress_size_cb=upload_artifacts_pbar.update,
-                )
+            remote_dir = self._api.file.upload_directory_fast(
+                team_id=self.team_id,
+                local_dir=self.output_dir,
+                remote_dir=remote_artifacts_dir,
+                progress_size_cb=upload_artifacts_pbar.update,
             )
             self.progress_bar_main.hide()
 
@@ -2524,13 +2521,11 @@ class TrainApp:
             logger.debug(f"Uploading {len(export_weights)} export weights of size {size} bytes")
             logger.debug(f"Destination paths: {file_dest_paths}")
             self.progress_bar_main.show()
-            sync_call(
-                self._api.file.upload_bulk_async(
-                    team_id=self.team_id,
-                    src_paths=export_weights.values(),
-                    dst_paths=file_dest_paths,
-                    progress_cb=export_upload_main_pbar.update,
-                )
+            self._api.file.upload_bulk_fast(
+                team_id=self.team_id,
+                src_paths=export_weights.values(),
+                dst_paths=file_dest_paths,
+                progress_cb=export_upload_main_pbar.update,
             )
 
         self.progress_bar_main.hide()
