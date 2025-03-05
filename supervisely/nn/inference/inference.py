@@ -75,6 +75,7 @@ from supervisely.nn.utils import (
     ModelPrecision,
     ModelSource,
     RuntimeType,
+    _get_model_name,
 )
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
@@ -3061,7 +3062,7 @@ class Inference:
                 raise ValueError("No pretrained models found.")
 
             model = self.pretrained_models[0]
-            model_name = model.get("meta", {}).get("model_name", None)
+            model_name = _get_model_name(model)
             if model_name is None:
                 raise ValueError("No model name found in the first pretrained model.")
 
@@ -3126,7 +3127,7 @@ class Inference:
             meta = m.get("meta", None)
             if meta is None:
                 continue
-            model_name = meta.get("model_name", None)
+            model_name = _get_model_name(m)
             if model_name is None:
                 continue
             m_files = meta.get("model_files", None)
@@ -3135,7 +3136,7 @@ class Inference:
             checkpoint = m_files.get("checkpoint", None)
             if checkpoint is None:
                 continue
-            if model.lower() == m["meta"]["model_name"].lower():
+            if model.lower() == model_name.lower():
                 model_info = m
                 model_source = ModelSource.PRETRAINED
                 model_files = {"checkpoint": checkpoint}
@@ -3471,7 +3472,7 @@ class Inference:
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
-            checkpoint_name = model_info["meta"]["model_name"]
+            checkpoint_name = _get_model_name(model_info)
         else:
             checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
             checkpoint_url = os.path.join(
