@@ -52,9 +52,9 @@ def main_dps():
 
 
 def compare_downloads():
-    main_dps(PROJECT_ID)
+    main_dps()
     clean_dir(save_path)
-    main_dpa(PROJECT_ID)
+    main_dpa()
     clean_dir(save_path_async)
 
 
