@@ -1623,7 +1623,7 @@ class TrainApp:
                 team_id=self.team_id,
                 local_dir=local_demo_dir,
                 remote_dir=remote_demo_dir,
-                progress_size_cb=upload_artifacts_pbar.update,
+                progress_cb=upload_artifacts_pbar.update,
             )
 
             self.progress_bar_main.hide()
@@ -1736,7 +1736,7 @@ class TrainApp:
                 team_id=self.team_id,
                 local_dir=self.output_dir,
                 remote_dir=remote_artifacts_dir,
-                progress_size_cb=upload_artifacts_pbar.update,
+                progress_cb=upload_artifacts_pbar.update,
             )
             self.progress_bar_main.hide()
 

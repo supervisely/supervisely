@@ -2309,7 +2309,7 @@ class FileApi(ModuleApiBase):
         local_dir: str,
         remote_dir: str,
         change_name_if_conflict: Optional[bool] = True,
-        progress_size_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
         replace_if_conflict: Optional[bool] = False,
         enable_fallback: Optional[bool] = True,
     ) -> str:
@@ -2325,8 +2325,8 @@ class FileApi(ModuleApiBase):
         :type remote_dir: str
         :param change_name_if_conflict: Checks if given name already exists and adds suffix to the end of the name.
         :type change_name_if_conflict: bool, optional
-        :param progress_size_cb: Function for tracking download progress.
-        :type progress_size_cb: Progress, optional
+        :param progress_cb: Function for tracking download progress in bytes.
+        :type progress_cb: Progress, optional
         :param replace_if_conflict: If True, replace existing dir.
         :type replace_if_conflict: bool, optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
@@ -2339,7 +2339,7 @@ class FileApi(ModuleApiBase):
             local_dir=local_dir,
             remote_dir=remote_dir,
             change_name_if_conflict=change_name_if_conflict,
-            progress_size_cb=progress_size_cb,
+            progress_size_cb=progress_cb,
             replace_if_conflict=replace_if_conflict,
             enable_fallback=enable_fallback,
         )
@@ -2370,7 +2370,9 @@ class FileApi(ModuleApiBase):
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
-        :type progress_cb_type: Literal["number", "size"], optional
+                                "size" is used to track the number of transferred bytes.
+                                "number" is used to track the number of transferred files.
+        :type progress_cb_type: Literal["number", "size"], optional 
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
         :return: None
