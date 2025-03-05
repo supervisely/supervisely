@@ -13,6 +13,8 @@ import supervisely.io.json as sly_json
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.task_type import TaskType
@@ -179,6 +181,39 @@ class TrainGUI:
             else:
                 self.need_convert_shapes_for_bm = False
 
+        def validate_class_shape_for_model_task():
+            task_type = self.model_selector.get_selected_task_type()
+            classes = self.classes_selector.get_selected_classes()
+
+            required_geometries = {
+                TaskType.INSTANCE_SEGMENTATION: {Polygon, Bitmap},
+                TaskType.SEMANTIC_SEGMENTATION: {Polygon, Bitmap},
+                TaskType.POSE_ESTIMATION: {GraphNodes},
+            }
+            task_specific_texts = {
+                TaskType.INSTANCE_SEGMENTATION: "Only polygon and bitmap shapes are supported for segmentation task",
+                TaskType.SEMANTIC_SEGMENTATION: "Only polygon and bitmap shapes are supported for segmentation task",
+                TaskType.POSE_ESTIMATION: "Only keypoint (graph) shape is supported for pose estimation task",
+            }
+
+            if task_type not in required_geometries:
+                return
+
+            wrong_shape_classes = [
+                class_name
+                for class_name in classes
+                if self.project_meta.get_obj_class(class_name).geometry_type
+                not in required_geometries[task_type]
+            ]
+
+            if wrong_shape_classes:
+                specific_text = task_specific_texts[task_type]
+                message_text = f"Model task type is {task_type}. {specific_text}. Selected classes have wrong shapes for the model task: {', '.join(wrong_shape_classes)}"
+                self.model_selector.validator_text.set(
+                    text=message_text,
+                    status="warning",
+                )
+
         # ------------------------------------------------- #
 
         # Wrappers
@@ -210,7 +245,11 @@ class TrainGUI:
             callback=self.hyperparameters_selector_cb,
             validation_text=self.model_selector.validator_text,
             validation_func=self.model_selector.validate_step,
-            on_select_click=[set_experiment_name, need_convert_class_shapes],
+            on_select_click=[
+                set_experiment_name,
+                need_convert_class_shapes,
+                validate_class_shape_for_model_task,
+            ],
             collapse_card=(self.model_selector.card, self.collapsable),
         )
 

@@ -622,7 +622,7 @@ class TrainApp:
             self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
     def register_inference_class(
-        self, inference_class: Inference, inference_settings: dict = None
+        self, inference_class: Inference, inference_settings: Union[str, dict] = None
     ) -> None:
         """
         Registers an inference class for the training application to do model benchmarking.
@@ -634,7 +634,12 @@ class TrainApp:
         """
         self._is_inference_class_regirested = True
         self._inference_class = inference_class
-        self._inference_settings = inference_settings
+        self._inference_settings = None
+        if isinstance(inference_settings, str):
+            with open(inference_settings, "r") as file:
+                self._inference_settings = yaml.safe_load(file)
+        else:
+            self._inference_settings = inference_settings
 
     def get_app_state(self, experiment_info: dict = None) -> dict:
         """
