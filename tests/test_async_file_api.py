@@ -5,7 +5,7 @@ import time
 from tqdm import tqdm
 
 from supervisely import Api, logger
-from supervisely._utils import sync_call_async
+from supervisely._utils import run_coroutine
 from supervisely.io.fs import clean_dir, ensure_base_path
 
 # LOG_LEVEL = "INFO"
@@ -52,11 +52,11 @@ def main_db():
     download_coro = api.file.download_bulk_async(
         TEAM_ID, remote_paths, save_paths, progress_cb=progress
     )
-    sync_call_async(download_coro)
+    run_coroutine(download_coro)
 
 
 def maind_df():
-    sync_call_async(download_files())
+    run_coroutine(download_files())
 
 
 def main_ip():
@@ -65,7 +65,7 @@ def main_ip():
     os.environ["FOLDER"] = "/videos/"
     os.environ["TEAM_ID"] = str(TEAM_ID)
     download_coro = api.file.download_input_async(save_path, show_progress=True)
-    sync_call_async(download_coro)
+    run_coroutine(download_coro)
     end = time.time()
     print(f"Time taken for download input async: {end-start}")
 
@@ -75,7 +75,7 @@ def main_dd():
     download_coro = api.file.download_directory_async(
         TEAM_ID, remote_path, save_path, semaphore=asyncio.Semaphore(100)
     )
-    sync_call_async(download_coro)
+    run_coroutine(download_coro)
     end = time.time()
     print(f"Time taken for download dir async: {end-start}")
 
@@ -101,7 +101,7 @@ def upload():
         progress_cb=process_cb,
     )
     start = time.monotonic()
-    sync_call_async(upload_coro)
+    run_coroutine(upload_coro)
     end = time.monotonic()
     logger.info(f"Time taken for upload async: {(end-start) / 60}")
 
@@ -123,7 +123,7 @@ def upload_bulk():
         progress_cb=process_cb,
     )
     start = time.monotonic()
-    sync_call_async(upload_coro)
+    run_coroutine(upload_coro)
     end = time.monotonic()
     logger.info(f"Time taken for upload bulk async: {(end-start) / 60}")
 
@@ -153,7 +153,7 @@ def main_ud():
         progress_size_cb=process_cb_as,
     )
     start = time.monotonic()
-    sync_call_async(coro)
+    run_coroutine(coro)
     end = time.monotonic()
     logger.info(f"Time taken for upload dir async: {end-start}")
 

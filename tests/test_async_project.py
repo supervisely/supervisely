@@ -5,7 +5,7 @@ import time
 from tqdm import tqdm
 
 from supervisely import Api, logger
-from supervisely._utils import sync_call_async
+from supervisely._utils import run_coroutine
 from supervisely.io.fs import clean_dir, ensure_base_path
 from supervisely.project.download import download_fast, download_to_cache
 from supervisely.project.project import _download_project, _download_project_async
@@ -31,7 +31,7 @@ def main_df():
 def main_dpa():
     coroutine = _download_project_async(api, PROJECT_ID, save_path_async, resume_download=True)
     start = time.monotonic()
-    sync_call_async(coroutine)
+    run_coroutine(coroutine)
     finish = time.monotonic() - start
     print(f"Time taken for async method: {finish}")
     print(f"Project downloaded to {save_path_async}")
@@ -71,7 +71,7 @@ def ann_db():
         # force_metadata_for_links=False,
     )
     start = time.monotonic()
-    anns = sync_call_async(coroutne)
+    anns = run_coroutine(coroutne)
     finish = time.monotonic() - start
     print(f"Time taken to download {len(anns)} annotations: {finish}")
 

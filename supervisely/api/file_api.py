@@ -23,7 +23,7 @@ from typing_extensions import Literal
 
 import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
-from supervisely._utils import batched, rand_str, sync_call_async
+from supervisely._utils import batched, rand_str, run_coroutine
 from supervisely.api.module_api import ApiField, ModuleApiBase
 from supervisely.io.fs import (
     ensure_base_path,
@@ -2343,7 +2343,7 @@ class FileApi(ModuleApiBase):
             replace_if_conflict=replace_if_conflict,
             enable_fallback=enable_fallback,
         )
-        return sync_call_async(coroutine)
+        return run_coroutine(coroutine)
 
     def upload_bulk_fast(
         self,
@@ -2385,4 +2385,4 @@ class FileApi(ModuleApiBase):
             progress_cb_type=progress_cb_type,
             enable_fallback=enable_fallback,
         )
-        return sync_call_async(coroutine)
+        return run_coroutine(coroutine)

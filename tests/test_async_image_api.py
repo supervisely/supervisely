@@ -8,7 +8,7 @@ from tqdm import tqdm
 from tqdm.asyncio import tqdm
 
 from supervisely import Api, logger
-from supervisely._utils import sync_call_async
+from supervisely._utils import run_coroutine
 from supervisely.api.api import ApiField
 from supervisely.io.fs import clean_dir, ensure_base_path
 
@@ -50,7 +50,7 @@ async def test_download_np():
 
 
 def main_dnp():
-    results = sync_call_async(test_download_np())
+    results = run_coroutine(test_download_np())
     for idx, result in enumerate(results):
         save_image_from_np(result, str(idx), save_path)
 
@@ -71,12 +71,12 @@ async def test_download_path():
 
 
 def main_dp():
-    sync_call_async(test_download_path())
+    run_coroutine(test_download_path())
 
 
 def main_dps():
     pbar = tqdm(total=len(ids), desc="Downloading images", unit="image")
-    sync_call_async(api.image.download_paths_async(ids, paths, progress_cb=pbar))
+    run_coroutine(api.image.download_paths_async(ids, paths, progress_cb=pbar))
 
 
 def compare_main_dps():
@@ -93,7 +93,7 @@ def compare_main_dps():
 
 
 def main_bytes():
-    img_bytes = sync_call_async(api.image.download_bytes_single_async(ids[0]))
+    img_bytes = run_coroutine(api.image.download_bytes_single_async(ids[0]))
 
     with open(f"{save_path}{ids[0]}.png", "wb") as f:
         f.write(img_bytes)
@@ -101,7 +101,7 @@ def main_bytes():
 
 def main_n_bytes():
     pbar = tqdm(total=len(ids), desc="Downloading images", unit="image")
-    img_bytes_list = sync_call_async(api.image.download_bytes_many_async(ids, progress_cb=pbar))
+    img_bytes_list = run_coroutine(api.image.download_bytes_many_async(ids, progress_cb=pbar))
     for img_bytes, name in zip(img_bytes_list, names):
         with open(f"{save_path}{name}", "wb") as f:
             f.write(img_bytes)
@@ -168,7 +168,7 @@ async def image_get_list_async(
 
 
 def listing():
-    all_imgs = sync_call_async(test_listing())
+    all_imgs = run_coroutine(test_listing())
     return all_imgs
 
 
@@ -182,7 +182,7 @@ def old_listing():
 
 def nico_listing():
     start = time.monotonic()
-    all_imgs = sync_call_async(image_get_list_async(api, 51, 139))
+    all_imgs = run_coroutine(image_get_list_async(api, 51, 139))
     end = time.monotonic()
     print(f"Time taken for Nico listing: {end - start}")
     return all_imgs
