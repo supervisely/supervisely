@@ -4,9 +4,21 @@ from typing import Generator
 import nrrd
 import numpy as np
 
+from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, get_file_ext, get_file_name
 from supervisely.volume.volume import convert_3d_nifti_to_nrrd
+
+VOLUME_NAME = "anatomic"
+LABEL_NAME = "inference"
+
+
+class PlanePrefix(str, StrEnum):
+    """Prefix for plane names."""
+
+    CORONAL = "cor"
+    SAGITTAL = "sag"
+    AXIAL = "axl"
 
 
 def nifti_to_nrrd(nii_file_path: str, converted_dir: str) -> str:
