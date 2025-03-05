@@ -1,12 +1,9 @@
 import os
 from pathlib import Path
 
-import magic
-
 from supervisely import ProjectMeta, generate_free_name, logger
 from supervisely._utils import batched, is_development
 from supervisely.annotation.obj_class import ObjClass
-from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.nii import nii_volume_helper as helper
@@ -18,12 +15,45 @@ from supervisely.io.fs import (
     get_file_name_with_ext,
     list_files,
 )
-from supervisely.volume.volume import is_nifti_file
+from supervisely.task.progress import tqdm_sly
+from supervisely.volume.volume import is_nifti_file, read_nrrd_serie_volume_np
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
 
 
 class NiiConverter(VolumeConverter):
+    """
+    Convert NIfTI 3D volume file to Supervisely format.
+    The NIfTI file should be structured as follows:
+    - <volume_name>.nii
+    - <volume_name>/
+        - <cls_name_1>.nii
+        - <cls_name_2>.nii
+        - ...
+    - ...
+
+    where   <volume_name> is the name of the volume
+            If the volume has annotations, they should be in the corresponding directory
+                with the same name as the volume (without extension)
+            <cls_name> is the name of the annotation class
+                <cls_name>.nii:
+                    - represent objects of the single class
+                    - should be unique for the current volume (e.g. tumor.nii.gz, lung.nii.gz)
+                    - can contain multiple objects of the class (each object should be represented by a different value in the mask)
+
+    Example:
+    📂 .
+    ├── 📂 CTChest
+    │   ├── 🩻 lung.nii.gz
+    │   └── 🩻 tumor.nii.gz
+    ├── 🩻 CTChest.nii.gz
+    └── 🩻 Spine.nii.gz
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._supports_links = True
+        self._meta_changed = False
 
     def __str__(self) -> str:
         return AvailableVolumeConverters.NII
@@ -34,6 +64,9 @@ class NiiConverter(VolumeConverter):
         # nrrds_dict = {}
         nifti_dict = {}
         nifti_dirs = {}
+
+        planes_detected = {p: False for p in helper.PlanePrefix.values()}
+
         for root, _, files in os.walk(self._input_data):
             dir_name = os.path.basename(root)
             nifti_dirs[dir_name] = root
@@ -41,13 +74,17 @@ class NiiConverter(VolumeConverter):
                 continue
             for file in files:
                 path = os.path.join(root, file)
-                mime = magic.from_file(path, mime=True)
-                if mime == "application/gzip" or mime == "application/octet-stream":
-                    if is_nifti_file(path):  # is nifti
-                        name = get_file_name(path)
-                        if name.endswith(".nii"):
-                            name = get_file_name(name)
-                        nifti_dict[name] = path
+                if is_nifti_file(path):  # is nifti
+                    name = get_file_name(path)
+                    if name.endswith(".nii"):
+                        name = get_file_name(name)
+                    nifti_dict[name] = path
+                    for prefix in planes_detected.keys():
+                        if name.startswith(prefix):
+                            planes_detected[prefix] = True
+
+        if any(planes_detected.values()):
+            return False
 
         self._items = []
         skip_files = []
@@ -69,6 +106,39 @@ class NiiConverter(VolumeConverter):
         self._meta = ProjectMeta()
         return self.items_count > 0
 
+    def to_supervisely(
+        self,
+        item: VolumeConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
+    ) -> VolumeAnnotation:
+        """Convert to Supervisely format."""
+
+        try:
+            objs = []
+            spatial_figures = []
+            for ann_path in item.ann_data:
+                ann_name = get_file_name(ann_path)
+                if ann_name.endswith(".nii"):
+                    ann_name = get_file_name(ann_name)
+
+                ann_name = renamed_classes.get(ann_name, ann_name)
+                for mask, _ in helper.get_annotation_from_nii(ann_path):
+                    obj_class = meta.get_obj_class(ann_name)
+                    if obj_class is None:
+                        obj_class = ObjClass(ann_name, Mask3D)
+                        meta = meta.add_obj_class(obj_class)
+                        self._meta_changed = True
+                        self._meta = meta
+                    obj = VolumeObject(obj_class, mask_3d=mask)
+                    spatial_figures.append(obj.figure)
+                    objs.append(obj)
+            return VolumeAnnotation(item.volume_meta, objects=objs, spatial_figures=spatial_figures)
+        except Exception as e:
+            logger.warning(f"Failed to convert {item.path} to Supervisely format: {e}")
+            return item.create_empty_annotation()
+
     def upload_dataset(
         self,
         api: Api,
@@ -78,7 +148,7 @@ class NiiConverter(VolumeConverter):
     ):
         """Upload converted data to Supervisely"""
 
-        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+        meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_names = set([vol.name for vol in api.volume.get_list(dataset_id)])
 
@@ -91,13 +161,16 @@ class NiiConverter(VolumeConverter):
 
         converted_dir_name = "converted"
         converted_dir = os.path.join(self._input_data, converted_dir_name)
-        meta_changed = False
 
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
 
             for item in batch:
+                if self._upload_as_links:
+                    remote_path = self.remote_files_map.get(item.path)
+                    if remote_path is not None:
+                        item.custom_data = {"remote_path": remote_path}
                 # nii_path = item.path
                 item.path = helper.nifti_to_nrrd(item.path, converted_dir)
                 ext = get_file_ext(item.path)
@@ -112,35 +185,28 @@ class NiiConverter(VolumeConverter):
                 item_names.append(item.name)
                 item_paths.append(item.path)
 
-                volume_info = api.volume.upload_nrrd_serie_path(
-                    dataset_id, name=item.name, path=item.path
+                # upload volume
+                volume_np, volume_meta = read_nrrd_serie_volume_np(item.path)
+                progress_nrrd = tqdm_sly(
+                    desc=f"Uploading volume '{item.name}'",
+                    total=sum(volume_np.shape),
+                    leave=True if progress_cb is None else False,
+                    position=1,
                 )
+                if item.custom_data is not None:
+                    volume_meta.update(item.custom_data)
+                api.volume.upload_np(dataset_id, item.name, volume_np, volume_meta, progress_nrrd)
+                info = api.volume.get_info_by_name(dataset_id, item.name)
+                item.volume_meta = info.meta
 
-                if isinstance(item.ann_data, list) and len(item.ann_data) > 0:
-                    objs = []
-                    spatial_figures = []
-                    for ann_path in item.ann_data:
-                        ann_name = get_file_name(ann_path)
-                        if ann_name.endswith(".nii"):
-                            ann_name = get_file_name(ann_name)
-                        for mask, _ in helper.get_annotation_from_nii(ann_path):
-                            obj_class = meta.get_obj_class(ann_name)
-                            if obj_class is None:
-                                obj_class = ObjClass(ann_name, Mask3D)
-                                meta = meta.add_obj_class(obj_class)
-                                meta_changed = True
-                            obj = VolumeObject(obj_class, mask_3d=mask)
-                            spatial_figures.append(obj.figure)
-                            objs.append(obj)
-                    ann = VolumeAnnotation(
-                        volume_info.meta, objects=objs, spatial_figures=spatial_figures
-                    )
+                # create and upload annotation
+                if item.ann_data is not None:
+                    ann = self.to_supervisely(item, meta, renamed_classes, None)
 
-                    if meta_changed:
-                        self._meta = meta
-                        _, _, _ = self.merge_metas_with_conflicts(api, dataset_id)
+                    if self._meta_changed:
+                        meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
-                    api.volume.annotation.append(volume_info.id, ann)
+                    api.volume.annotation.append(info.id, ann)
 
             if log_progress:
                 progress_cb(len(batch))
