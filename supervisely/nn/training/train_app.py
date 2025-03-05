@@ -175,7 +175,7 @@ class TrainApp:
         self.gui: TrainGUI = TrainGUI(
             self.framework_name, self._models, self._hyperparameters, self._app_options
         )
-        # @TODO: here hide benchmark if _is_inference_class_regirested is False
+        # @TODO: raise if not _is_inference_class_regirested, and app_options.benchmark==True
 
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
@@ -1414,6 +1414,7 @@ class TrainApp:
             logs_dir = join(self.output_dir, "logs")
             for root, _, files in walk(self.log_dir):
                 for file in files:
+                    # TODO: check that logger is tensorboard.
                     if ".tfevents." in file:
                         src_log_path = join(root, file)
                         dst_log_path = join(logs_dir, file)
@@ -1563,6 +1564,7 @@ class TrainApp:
         experiment_info["best_checkpoint"] = sly_fs.get_file_name_with_ext(
             experiment_info["best_checkpoint"]
         )
+        # TODO: add config in loop for model_files, and also other model files
         model_config = experiment_info["model_files"].get("config")
         if model_config is not None:
             experiment_info["model_files"]["config"] = sly_fs.get_file_name_with_ext(model_config)

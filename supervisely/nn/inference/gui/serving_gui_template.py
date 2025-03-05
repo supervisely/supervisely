@@ -163,14 +163,6 @@ class ServingGUITemplate(ServingGUI):
             return self.experiment_selector.get_model_files()
 
     @property
-    def task_type(self) -> Optional[str]:
-        if self.model_source == ModelSource.PRETRAINED:
-            model_meta = self.model_info.get("meta", {})
-            return model_meta.get("task_type")
-        else:
-            return self.model_info.get("task_type")
-
-    @property
     def runtime(self) -> str:
         if self.runtime_select is not None:
             return self.runtime_select.get_value()
