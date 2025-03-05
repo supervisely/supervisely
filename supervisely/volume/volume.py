@@ -799,6 +799,49 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     }
     return data, header
 
+def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
+    """Convert 3D NIFTI volume to NRRD format.
+    Volume automatically reordered to RAS orientation as closest to canonical.
+
+    :param path: Path to NIFTI volume file.
+    :type path: str
+    :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
+    :rtype: Tuple[np.ndarray, dict]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nii"
+        data, header = sly.volume.convert_nifti_to_nrrd(path)
+    """
+
+    import nibabel as nib  # pylint: disable=import-error
+
+    orientation_map = {
+        ('R', 'A', 'S'): "right-anterior-superior",
+        ('L', 'P', 'S'): "left-posterior-superior",
+        ('R', 'P', 'I'): "right-posterior-inferior",
+        ('L', 'A', 'I'): "left-anterior-inferior"
+    }
+    nifti = nib.load(path)
+    reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
+    data = reordered_to_ras_nifti.get_fdata()
+    affine = reordered_to_ras_nifti.affine
+    orientation = nib.aff2axcodes(affine)
+    space_directions = affine[:3, :3].tolist()
+    space_origin = affine[:3, 3].tolist()
+    header = {
+        "space": orientation_map.get(orientation, "unknown"),
+        "space directions": space_directions,
+        "space origin": space_origin,
+        "sizes": data.shape,
+        "type": str(data.dtype),
+        "dimension": len(data.shape),
+    }
+    return data, header
+
 
 def is_nifti_file(path: str) -> bool:
     """Check if the file is a NIFTI file.
