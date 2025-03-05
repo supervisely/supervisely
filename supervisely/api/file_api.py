@@ -25,6 +25,7 @@ import supervisely.io.env as env
 import supervisely.io.fs as sly_fs
 from supervisely._utils import batched, rand_str
 from supervisely.api.module_api import ApiField, ModuleApiBase
+from supervisely.api.remote_storage_api import RemoteStorageApi
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
@@ -1420,7 +1421,8 @@ class FileApi(ModuleApiBase):
             api.file.upload_directory(9, local_path, path_to_dir)
         """
         if not remote_dir.startswith("/"):
-            remote_dir = "/" + remote_dir
+            if not RemoteStorageApi.is_bucket_url(remote_dir):
+                remote_dir = "/" + remote_dir
 
         if self.dir_exists(team_id, remote_dir):
             if change_name_if_conflict is True:
