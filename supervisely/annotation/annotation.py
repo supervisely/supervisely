@@ -404,7 +404,7 @@ class Annotation:
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
             )
 
-        custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {})
+        custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {}) or {}
         prob_labels = None
         if (
             AnnotationJsonFields.PROBABILITY_LABELS in custom_data
