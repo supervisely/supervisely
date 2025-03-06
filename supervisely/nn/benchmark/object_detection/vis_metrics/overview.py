@@ -46,6 +46,16 @@ class Overview(DetectionVisMetric):
         if custom_conf_thrs is not None:
             conf_text += f"\n- **Custom confidence threshold**: {custom_conf_thrs}"
 
+        # Get correct task type from the deployed model info
+        deploy_params = self.eval_result.inference_info.get("deploy_params", {})
+        model_info = deploy_params.get("model_info", {})
+        task_type = model_info.get("task_type")
+        if task_type is None:
+            model_meta = model_info.get("meta", {})
+            task_type = model_meta.get("task_type")
+        if task_type is not None:
+            self.eval_result.inference_info["task_type"] = task_type
+
         formats = [
             model_name.replace("_", "\_"),
             checkpoint_name.replace("_", "\_"),

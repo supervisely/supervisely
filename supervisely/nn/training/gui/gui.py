@@ -411,7 +411,6 @@ class TrainGUI:
             raise ValueError("app_state must be a dictionary")
 
         required_keys = {
-            "input": ["project_id"],
             "train_val_split": ["method"],
             "classes": list,
             "model": ["source"],

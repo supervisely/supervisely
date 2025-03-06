@@ -251,7 +251,6 @@ class PretrainedModelsSelector(Widget):
 
     def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
         filtered_models = {}
-
         for model in models:
             for key in model:
                 if isinstance(model[key], (int, float)):
