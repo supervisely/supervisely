@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.nn.artifacts.utils import FrameworkMapper
 from supervisely.nn.experiments import get_experiment_infos
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, _get_model_name
 
 
 class ModelSelector:
@@ -82,8 +82,7 @@ class ModelSelector:
     def get_model_name(self) -> str:
         if self.get_model_source() == ModelSource.PRETRAINED:
             selected_row = self.pretrained_models_table.get_selected_row()
-            model_meta = selected_row.get("meta", {})
-            model_name = model_meta.get("model_name", None)
+            model_name = _get_model_name(selected_row)
         else:
             selected_row = self.experiment_selector.get_selected_experiment_info()
             model_name = selected_row.get("model_name", None)

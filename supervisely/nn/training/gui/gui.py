@@ -513,7 +513,6 @@ class TrainGUI:
         app_state example:
 
             app_state = {
-                "input": {"project_id": 43192},
                 "train_val_split": {
                     "method": "random",
                     "split": "train",
@@ -545,7 +544,7 @@ class TrainGUI:
         app_state = self.validate_app_state(app_state)
 
         options = app_state.get("options", {})
-        input_settings = app_state["input"]
+        input_settings = app_state.get("input")
         train_val_splits_settings = app_state["train_val_split"]
         classes_settings = app_state["classes"]
         model_settings = app_state["model"]
@@ -557,7 +556,7 @@ class TrainGUI:
         self._init_model(model_settings)
         self._init_hyperparameters(hyperparameters_settings, options)
 
-    def _init_input(self, input_settings: dict, options: dict) -> None:
+    def _init_input(self, input_settings: Union[dict, None], options: dict) -> None:
         """
         Initialize the input selector with the given settings.
 
