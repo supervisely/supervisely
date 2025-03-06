@@ -210,7 +210,7 @@ class Inference:
                     self.initialize_gui()
 
             def on_serve_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 Progress("Deploying model ...", 1)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
@@ -230,7 +230,7 @@ class Inference:
                     gui.show_deployed_model_info(self)
 
             def on_change_model_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 self.shutdown_model()
                 if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
@@ -2947,16 +2947,15 @@ class Inference:
                         )
                         deploy_params["model_files"] = model_files
                         deploy_params["model_info"] = selected_model
-                        deploy_params["task_type"] = selected_model["meta"]["task_type"]
-                        if "runtime" not in deploy_params:
-                            deploy_params["runtime"] = RuntimeType.PYTORCH
-                        if "device" not in deploy_params:
-                            deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
                     else:
                         model_files = self._download_model_files(
                             deploy_params["model_source"], deploy_params["model_files"]
                         )
                         deploy_params["model_files"] = model_files
+                    if deploy_params.get("runtime", None) is None:
+                        deploy_params["runtime"] = RuntimeType.PYTORCH
+                    if deploy_params.get("device", None) is None:
+                        deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
                     self._load_model(deploy_params)
