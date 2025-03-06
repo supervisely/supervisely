@@ -24,6 +24,8 @@ from supervisely.volume_annotation.volume_object import VolumeObject
 class NiiConverter(VolumeConverter):
     """
     Convert NIfTI 3D volume file to Supervisely format.
+    Supports .nii and .nii.gz files.
+
     The NIfTI file should be structured as follows:
     - <volume_name>.nii
     - <volume_name>/
