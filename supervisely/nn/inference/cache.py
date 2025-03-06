@@ -65,7 +65,7 @@ class PersistentImageTTLCache(TTLCache):
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
-    
+
     def pop(self, *args, **kwargs):
         try:
             super().pop(*args, **kwargs)
@@ -177,7 +177,7 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class VideoFrameReader:
-    def __init__(self, video_path: str, frame_indexes: List[int]):
+    def __init__(self, video_path: str, frame_indexes: List[int] = None):
         self.video_path = video_path
         self.frame_indexes = frame_indexes
         self.cap = None
@@ -193,14 +193,21 @@ class VideoFrameReader:
 
     def read_frames(self) -> Generator:
         try:
-            for frame_index in self.frame_indexes:
-                if frame_index != self.prev_idx + 1:
-                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = self.cap.read()
-                if not ret:
-                    raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
-                yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                self.prev_idx = frame_index
+            if self.frame_indexes is None:
+                while self.cap.isOpened():
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        break
+                    yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            else:
+                for frame_index in self.frame_indexes:
+                    if frame_index != self.prev_idx + 1:
+                        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
+                    yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    self.prev_idx = frame_index
         finally:
             self.cap.release()
 
@@ -293,7 +300,7 @@ class InferenceImageCache:
             return_images,
         )
 
-    def _read_frames_from_cached_video_iter(self, video_id, frame_indexes):
+    def _read_frames_from_cached_video_iter(self, video_id, frame_indexes=None):
         video_path = self._cache.get_video_path(video_id)
         with VideoFrameReader(video_path, frame_indexes) as reader:
             for frame in reader.read_frames():

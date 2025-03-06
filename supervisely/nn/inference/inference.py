@@ -18,6 +18,7 @@ from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
+import cv2
 import numpy as np
 import requests
 import uvicorn
@@ -76,12 +77,21 @@ from supervisely.nn.utils import (
     ModelSource,
     RuntimeType,
 )
-from supervisely.project import ProjectType
+from supervisely.project import ProjectType, VideoProject
 from supervisely.project.download import download_to_cache, read_from_cached_project
+from supervisely.project.project import OpenMode
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.video_project import VideoDataset
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_tag import VideoTag
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 try:
     from typing import Literal
@@ -210,7 +220,7 @@ class Inference:
                     self.initialize_gui()
 
             def on_serve_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 Progress("Deploying model ...", 1)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
@@ -230,7 +240,7 @@ class Inference:
                     gui.show_deployed_model_info(self)
 
             def on_change_model_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 self.shutdown_model()
                 if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
@@ -1436,6 +1446,62 @@ class Inference:
         )
         sly_fs.silent_remove(image_path)
         return self._format_output(anns, slides_data)[0]
+
+    def _inference_video_path(self, path: str, batch_size: int = None):
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        logger.debug("Inferring video_path...", extra={"path": path})
+        self.cache.add_video_to_cache(path, path)
+
+        def _batched(iterable, n):
+            batch = []
+            for i in iterable:
+                batch.append(i)
+                if len(batch) == n:
+                    yield batch
+                    batch = []
+            if len(batch) > 0:
+                yield batch
+
+        video = cv2.VideoCapture(path)
+        frame_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        frames_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+        video.release()
+
+        frame_index = -1
+        video_frames = []
+        video_objects = []
+        for frames_batch in _batched(
+            self.cache._read_frames_from_cached_video_iter(path, frame_indexes=None), batch_size
+        ):
+            anns, _ = self._inference_auto(
+                source=frames_batch,
+                settings=self._get_inference_settings({}),
+            )
+            for ann in anns:
+                frame_index += 1
+                frame_figures = []
+                for label in ann.labels:
+                    label.obj_class
+                    tags = label.tags
+                    video_tags = VideoTagCollection()
+                    for tag in tags:
+                        video_tags.add(VideoTag(meta=tag.meta, value=tag.value))
+                    object = VideoObject(obj_class=label.obj_class, tags=video_tags)
+                    video_objects.append(object)
+                    figure = VideoFigure(
+                        video_object=object, geometry=label.geometry, frame_index=frame_index
+                    )
+                    frame_figures.append(figure)
+                video_frames.append(Frame(frame_index, figures=frame_figures))
+        video_ann = VideoAnnotation(
+            img_size=(frame_height, frame_width),
+            frames_count=frames_count,
+            objects=VideoObjectCollection(video_objects),
+            frames=FrameCollection(video_frames),
+        )
+        return video_ann
 
     def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
@@ -3394,6 +3460,10 @@ class Inference:
         ):
             logger.info(f"Predicting '{input_path}'")
 
+            def create_project(output_dir):
+                project_name = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+                return VideoProject(f"{output_dir}/{project_name}", mode=OpenMode.CREATE)
+
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
                 if pred_dir is not None:
@@ -3410,13 +3480,30 @@ class Inference:
                     image = sly_image.read(image_path)
                     ann.draw_pretty(image, output_path=os.path.join(pred_dir, image_name))
 
+            def postprocess_video(dataset: VideoDataset, video_path: str, ann: VideoAnnotation):
+                video_name = os.path.basename(video_path)
+                dataset.add_item_file(item_name=video_name, item_path=None, ann=ann)
+
             # 1. Input Directory
             if os.path.isdir(input_path):
                 pred_dir = os.path.basename(input_path)
                 images = list_files(input_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
-                anns, _ = self._inference_auto(images, settings)
-                for image_path, ann in zip(images, anns):
-                    postprocess_image(image_path, ann, pred_dir)
+                videos = list_files(input_path, valid_extensions=ALLOWED_VIDEO_EXTENSIONS)
+                if len(images) != 0 and len(videos) != 0:
+                    raise ValueError(
+                        f"Directory '{input_path}' contains both images and videos. Please provide a directory with only images or videos"
+                    )
+                if len(images) > 0:
+                    anns, _ = self._inference_auto(images, settings)
+                    for image_path, ann in zip(images, anns):
+                        postprocess_image(image_path, ann, pred_dir)
+                else:
+                    project = create_project(output_dir)
+                    project.set_meta(self.model_meta)
+                    dataset: VideoDataset = project.create_dataset(os.path.basename(input_path))
+                    for video in videos:
+                        video_ann = self._inference_video_path(video)
+                        postprocess_video(dataset, video, video_ann)
             # 2. Input File
             elif os.path.isfile(input_path):
                 if input_path.endswith(tuple(sly_image.SUPPORTED_IMG_EXTS)):
