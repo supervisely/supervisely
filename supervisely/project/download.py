@@ -281,6 +281,34 @@ def download_async_or_sync(
         )
 
 
+def download_fast(
+    api: Api,
+    project_id: int,
+    dest_dir: str,
+    dataset_ids: Optional[List[int]] = None,
+    log_progress: bool = True,
+    progress_cb: Optional[Union[tqdm, Callable]] = None,
+    semaphore: Optional[asyncio.Semaphore] = None,
+    **kwargs,
+) -> None:
+    """
+    Download project in a fast mode.
+    Items are downloaded asynchronously. If an error occurs, the method will fallback to synchronous download.
+    Automatically detects project type.
+    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+    """
+    download_async_or_sync(
+        api=api,
+        project_id=project_id,
+        dest_dir=dest_dir,
+        dataset_ids=dataset_ids,
+        log_progress=log_progress,
+        progress_cb=progress_cb,
+        semaphore=semaphore,
+        **kwargs,
+    )
+
+
 def _get_cache_dir(project_id: int, dataset_path: str = None) -> str:
     p = os.path.join(apps_cache_dir(), str(project_id))
     if dataset_path is not None:
@@ -468,7 +496,7 @@ def _download_project_to_cache(
     if len(dataset_infos) == 0:
         logger.debug("No datasets to download")
         return
-    download_async_or_sync(
+    download_fast(
         api=api,
         project_id=project_id,
         dest_dir=cached_project_dir,
