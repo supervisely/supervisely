@@ -1,7 +1,7 @@
 # coding: utf-8
 """download/upload/manipulate neural networks"""
 
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from supervisely.api.neural_network.deploy_api import DeployApi
 
@@ -21,9 +21,9 @@ class NeuralNetworkApi:
         self._api = api
         self.deploy = DeployApi(api)
 
-    # Deploy Models
     def deploy_pretrained_model(
         self,
+        agent_id: int,
         app_name: str,
         model_name: str,
         device: Optional[str] = None,
@@ -45,7 +45,8 @@ class NeuralNetworkApi:
         from supervisely.nn.inference.session import Session
 
         task_info = self.deploy.deploy_pretrained_model(
-            app_name=app_name,
+            agent_id=agent_id,
+            app=app_name,
             model_name=model_name,
             device=device,
             runtime=runtime,
@@ -55,6 +56,7 @@ class NeuralNetworkApi:
 
     def deploy_custom_model(
         self,
+        agent_id: int,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
@@ -82,6 +84,7 @@ class NeuralNetworkApi:
         from supervisely.nn.inference.session import Session
 
         task_info = self.deploy.deploy_custom_model_by_artifacts_dir(
+            agent_id=agent_id,
             artifacts_dir=artifacts_dir,
             checkpoint_name=checkpoint_name,
             device=device,
@@ -89,6 +92,59 @@ class NeuralNetworkApi:
             **kwargs,
         )
         return Session(self._api, task_info["id"])
+
+    def get_deployed_models(
+        self,
+        workspace_id: int,
+        model_name: str = None,
+        framework: str = None,
+        model_id: str = None,
+        checkpoint: str = None,
+        model: str = None,
+        task_type: str = None,
+    ) -> List[Dict]:
+        if not any([model_name, framework, model_id, checkpoint, model, task_type]):
+            raise ValueError("At least one filter parameter must be provided")
+        # 1. Define apps
+        categories = ["serve"]
+        if framework is not None:
+            categories.append(f"framework:{framework}")
+        serve_apps = self._api.app.get_list_ecosystem_modules(
+            categories=categories, categories_operation="and"
+        )
+        if not serve_apps:
+            return []
+        serve_apps_module_ids = {app["id"] for app in serve_apps}
+        # 2. Get tasks infos
+        all_tasks = self._api.task.get_list(
+            workspace_id=workspace_id,
+            filters=[
+                {"field": "status", "operator": "in", "value": [str(self._api.task.Status.STARTED)]}
+            ],
+        )
+        all_tasks = [
+            task for task in all_tasks if task["meta"]["app"]["moduleId"] in serve_apps_module_ids
+        ]
+        # get deploy infos and filter results
+        result = []
+        for task in all_tasks:
+            deploy_info = self.deploy.get_deploy_info(task["id"])
+            if model_name is not None:
+                if deploy_info["model_name"] != model_name:
+                    continue
+            if checkpoint is not None:
+                if deploy_info["checkpoint_name"] != checkpoint:
+                    continue
+            if task_type is not None:
+                if deploy_info["task_type"] != task_type:
+                    continue
+            result.append(
+                {
+                    "task_info": task,
+                    "deploy_info": deploy_info,
+                }
+            )
+        return result
 
     def get_experiment_info(self, task_id: int) -> "ExperimentInfo":
         """

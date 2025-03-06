@@ -132,6 +132,7 @@ class DeployApi:
 
     def deploy_pretrained_model(
         self,
+        agent_id: int,
         app: Union[str, int],
         model_name: str,
         device: Optional[str] = None,
@@ -159,7 +160,7 @@ class DeployApi:
             module_id = app
         else:
             module_id = self._api.app.find_module_id_by_app_name(app)
-        task_info = self._run_serve_app(module_id, **kwargs)
+        task_info = self._run_serve_app(agent_id, module_id, **kwargs)
         self.load_pretrained_model(
             task_info["id"], model_name=model_name, device=device, runtime=runtime
         )
@@ -167,6 +168,7 @@ class DeployApi:
 
     def deploy_custom_model_by_artifacts_dir(
         self,
+        agent_id: int,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
@@ -226,7 +228,7 @@ class DeployApi:
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
         )
         try:
-            task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
+            task_info = self._run_serve_app(agent_id, module_id, timeout=timeout, **kwargs)
             self._load_model_from_api(task_info["id"], deploy_params)
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
@@ -234,6 +236,7 @@ class DeployApi:
 
     def deploy_custom_model_from_experiment_info(
         self,
+        agent_id: int,
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
@@ -289,7 +292,7 @@ class DeployApi:
 
         logger.info(f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'.")
         try:
-            task_info = self._run_serve_app(module_id, timeout=timeout, **kwargs)
+            task_info = self._run_serve_app(agent_id, module_id, timeout=timeout, **kwargs)
             self.load_custom_model_from_experiment_info(
                 task_info["id"], experiment_info, checkpoint_name, device, runtime
             )
@@ -297,7 +300,9 @@ class DeployApi:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
         return task_info
 
-    def start_serve_app(self, app_name=None, module_id=None, **kwargs) -> Dict[str, Any]:
+    def start_serve_app(
+        self, agent_id: int, app_name=None, module_id=None, **kwargs
+    ) -> Dict[str, Any]:
         """
         Run a serving app. Either app_name or module_id must be provided.
 
@@ -316,13 +321,13 @@ class DeployApi:
             raise ValueError("Only one of app_name or module_id must be provided.")
         if module_id is None:
             module_id = self._api.app.find_module_id_by_app_name(app_name)
-        self._run_serve_app(module_id, **kwargs)
+        self._run_serve_app(agent_id, module_id, **kwargs)
 
-    def _run_serve_app(self, module_id, timeout: int = 100, **kwargs):
+    def _run_serve_app(self, agent_id: int, module_id, timeout: int = 100, **kwargs):
         _attempt_delay_sec = 1
         _attempts = timeout // _attempt_delay_sec
 
-        task_info = self._api.task.start(module_id=module_id, **kwargs)
+        task_info = self._api.task.start(agent_id=agent_id, module_id=module_id, **kwargs)
         ready = self._api.app.wait_until_ready_for_api_calls(
             task_info["id"], _attempts, _attempt_delay_sec
         )
@@ -365,6 +370,17 @@ class DeployApi:
         if len(modules) == 0:
             raise ValueError(f"No serving apps found for framework {framework}")
         return modules[0]
+
+    def get_deploy_info(self, task_id: int) -> Dict[str, Any]:
+        """
+        Get deploy info of a serving task.
+
+        :param task_id: Task ID of the serving App.
+        :type task_id: int
+        :return: Deploy Info
+        :rtype: Dict[str, Any]
+        """
+        return self._api.task.send_request(task_id, "get_deploy_info", data={}, raise_error=True)
 
     def _deploy_params_v1(
         self,
