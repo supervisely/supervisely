@@ -127,7 +127,6 @@ class TrainingArtifacts:
                             f"App '{app_name}' not found in Supervisely Ecosystem. Demo artifacts will not be displayed."
                         )
 
-                model_demo_gh_link = "https://github.com/supervisely-ecosystem/yolo"
                 if model_demo_gh_link is not None:
                     gh_branch = f"blob/{model_demo.get('branch', 'master')}"
                     link_to_demo = f"{model_demo_gh_link}/{gh_branch}/{model_demo_path}"
