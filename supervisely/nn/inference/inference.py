@@ -210,7 +210,7 @@ class Inference:
                     self.initialize_gui()
 
             def on_serve_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 Progress("Deploying model ...", 1)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
@@ -230,7 +230,7 @@ class Inference:
                     gui.show_deployed_model_info(self)
 
             def on_change_model_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 self.shutdown_model()
                 if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
@@ -675,7 +675,7 @@ class Inference:
             self.gui.show_deployed_model_info(self)
 
     def load_custom_checkpoint(
-        self, model_files: dict, model_meta: dict, device: str = "cuda", **kwargs
+        self, model_files: dict, model_meta: dict, device: Optional[str] = None, **kwargs
     ):
         """
         Loads local custom model checkpoint.
@@ -2929,13 +2929,38 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 if isinstance(self.gui, GUI.ServingGUITemplate):
-                    model_files = self._download_model_files(
-                        deploy_params["model_source"], deploy_params["model_files"]
-                    )
-                    deploy_params["model_files"] = model_files
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and state.get(
+                        "model_name"
+                    ):
+                        model_name = state["model_name"]
+                        selected_model = None
+                        for model in self.pretrained_models:
+                            if model["meta"]["model_name"].lower() == model_name.lower():
+                                selected_model = model
+                                break
+                        if selected_model is None:
+                            raise ValueError(
+                                f"Model {model_name} not found in models.json of serving app"
+                            )
+                        model_files = self._download_model_files(
+                            deploy_params["model_source"], selected_model["meta"]["model_files"]
+                        )
+                        deploy_params["model_files"] = model_files
+                        deploy_params["model_info"] = selected_model
+                    else:
+                        model_files = self._download_model_files(
+                            deploy_params["model_source"], deploy_params["model_files"]
+                        )
+                        deploy_params["model_files"] = model_files
+                    if deploy_params.get("runtime", None) is None:
+                        deploy_params["runtime"] = RuntimeType.PYTORCH
+                    if deploy_params.get("device", None) is None:
+                        deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
                     self._load_model(deploy_params)
+                else:
+                    raise ValueError("Unknown GUI type")
 
                 self.set_params_to_gui(deploy_params)
                 # update to set correct device

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 from supervisely.nn.artifacts.artifacts import TrainInfo
 from supervisely.nn.experiments import ExperimentInfo

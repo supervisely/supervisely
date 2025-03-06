@@ -459,28 +459,27 @@ class SessionJSON:
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-
-                while resp["status"] == "download_info":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "download_info":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
                 if resp["status"] == "download_project":
                     progress_widget = preparing_cb(message="Download project", total=resp["total"])
-                while resp["status"] == "download_project":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "download_project":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
                 if resp["status"] == "warmup":
                     progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
-                while resp["status"] == "warmup":
-                    current = resp["current"]
-                    progress_widget.update(current - prev_current)
-                    prev_current = current
-                    resp = self._get_preparing_progress()
+                    while resp["status"] == "warmup":
+                        current = resp["current"]
+                        progress_widget.update(current - prev_current)
+                        prev_current = current
+                        resp = self._get_preparing_progress()
 
         logger.info("Inference has started:", extra={"response": resp})
         resp, has_started = self._wait_for_async_inference_start()
@@ -513,6 +512,17 @@ class SessionJSON:
         self._stop_async_inference_flag = True
         logger.info("Inference will be stopped on the server")
         return resp
+
+    def stop_serving_app(self, timeout=60):
+        logger.debug("Stopping the serving app...")
+        self.api.task.stop(self._task_id)
+        logger.debug("Waiting for the serving app to stop...")
+        self.api.task.wait(
+            self._task_id,
+            target_status=sly.api.task_api.TaskApi.Status.STOPPED,
+            wait_attempts=timeout,
+            wait_attempt_timeout_sec=1,
+        )
 
     def _get_inference_progress(self) -> Dict[str, Any]:
         endpoint = "get_inference_progress"
@@ -813,7 +823,7 @@ class Session(SessionJSON):
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
-        preparing_cb = None,
+        preparing_cb=None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
