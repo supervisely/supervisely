@@ -103,6 +103,7 @@ class TrainingArtifacts:
         self.inference_demo_widgets = []
 
         # Demo display works only for released apps
+        self.need_upload_demo = False
         model_demo = self.app_options.get("demo", None)
         if model_demo is not None:
             model_demo_path = model_demo.get("path", None)
@@ -203,6 +204,7 @@ class TrainingArtifacts:
                         )
                         self.inference_demo_field.hide()
                         self.display_widgets.extend([self.inference_demo_field])
+                        self.need_upload_demo = True
         # -------------------------------- #
 
         self.container = Container(self.display_widgets)

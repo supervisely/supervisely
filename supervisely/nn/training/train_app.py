@@ -1628,6 +1628,8 @@ class TrainApp:
         )
 
     def _upload_demo_files(self, remote_dir: str) -> None:
+        if not self.gui.training_artifacts.need_upload_demo:
+            return
         demo = self._app_options.get("demo")
         if demo is None:
             return
