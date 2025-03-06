@@ -112,7 +112,10 @@ class ImportManager:
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
             return os.path.dirname(input_data)
         elif self._api.storage.exists(self._team_id, input_data):
-            if self._upload_as_links and str(self._modality) in [ProjectType.IMAGES.value, ProjectType.VIDEOS.value]:
+            if self._upload_as_links and str(self._modality) in [
+                ProjectType.IMAGES.value,
+                ProjectType.VIDEOS.value,
+            ]:
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data)
             else:
@@ -121,7 +124,10 @@ class ImportManager:
                 logger.info(f"Input data is a remote file: {input_data}. Downloading...")
                 return self._download_input_data(input_data)
         elif self._api.storage.dir_exists(self._team_id, input_data):
-            if self._upload_as_links and str(self._modality) in [ProjectType.IMAGES.value, ProjectType.VIDEOS.value]:
+            if self._upload_as_links and str(self._modality) in [
+                ProjectType.IMAGES.value,
+                ProjectType.VIDEOS.value,
+            ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
                 return self._reproduce_remote_files(input_data, is_dir=True)
             else:
@@ -164,7 +170,11 @@ class ImportManager:
         return local_path
 
     def _scan_remote_files(self, remote_path, is_dir=False):
-        """Scan remote directory"""
+        """
+        Scan remote directory. Collect local-remote paths mapping
+        Will be used to save relations between uploaded files and remote files (for volumes).
+        """
+
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
 
@@ -185,7 +195,10 @@ class ImportManager:
         return local_path
 
     def _reproduce_remote_files(self, remote_path, is_dir=False):
-        """Scan remote directory and create dummy structure locally"""
+        """
+        Scan remote directory and create dummy structure locally.
+        Will be used to detect annotation format (by dataset structure) remotely.
+        """
 
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)
