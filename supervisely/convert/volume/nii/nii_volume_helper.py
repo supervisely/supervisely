@@ -10,7 +10,7 @@ from supervisely.io.fs import ensure_base_path, get_file_ext, get_file_name
 from supervisely.volume.volume import convert_3d_nifti_to_nrrd
 
 VOLUME_NAME = "anatomic"
-LABEL_NAME = "inference"
+LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
 
 
 class PlanePrefix(str, StrEnum):

@@ -51,10 +51,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     if prefix not in helper.PlanePrefix.values():
                         continue
                     name = full_name.split("_")[1]
-                    if name not in [helper.VOLUME_NAME, helper.LABEL_NAME]:
-                        continue
                     idx = 1 if len(name.split("_")) < 3 else int(name.split("_")[2])
-                    if name == helper.LABEL_NAME:
+                    if name in helper.LABEL_NAME or name[:-1] in helper.LABEL_NAME:
                         ann_dict[idx][prefix] = path
                     else:
                         volumes_dict[idx][prefix] = path
