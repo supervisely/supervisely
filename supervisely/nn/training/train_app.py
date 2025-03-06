@@ -621,10 +621,10 @@ class TrainApp:
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
-        if not self.is_model_benchmark_enabled:
-            raise ValueError(
-                "Enable 'model_benchmark' in app_options.yaml to register an inference class."
-            )
+        # if not self.is_model_benchmark_enabled:
+        #     raise ValueError(
+        #         "Enable 'model_benchmark' in app_options.yaml to register an inference class."
+        #     )
 
         self._is_inference_class_regirested = True
         self._inference_class = inference_class
@@ -1845,7 +1845,7 @@ class TrainApp:
                 self.gui.training_artifacts.trt_instruction.show()
 
             # Show the inference demo widget if overview or any demo is available
-            if hasattr(self.gui.training_artifacts, "inference_demo_field") and any(
+            if self.gui.training_artifacts.inference_demo_field is not None and any(
                 [
                     self.gui.training_artifacts.overview_demo_exists(demo_path),
                     self.gui.training_artifacts.pytorch_demo_exists(demo_path),
@@ -1853,7 +1853,7 @@ class TrainApp:
                     self.gui.training_artifacts.trt_demo_exists(demo_path),
                 ]
             ):
-                if hasattr(self.gui.training_artifacts, "inference_demo_field"):
+                if self.gui.training_artifacts.inference_demo_field is not None:
                     self.gui.training_artifacts.inference_demo_field.show()
         # ---------------------------- #
 

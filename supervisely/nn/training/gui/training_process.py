@@ -1,16 +1,12 @@
 from typing import Any, Dict
 
-from supervisely import Api
 from supervisely.app.widgets import (
     Button,
     Card,
     Container,
-    DoneLabel,
     Empty,
     Field,
-    FolderThumbnail,
     Input,
-    ReportThumbnail,
     SelectCudaDevice,
     Text,
 )
@@ -22,11 +18,22 @@ class TrainingProcess:
     lock_message = "Select hyperparameters to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
+        # Initialize widgets to None
+        self.select_device = None
+        self.select_device_field = None
+        self.experiment_name_input = None
+        self.experiment_name_field = None
+        self.start_button = None
+        self.stop_button = None
+        self.validator_text = None
+        self.container = None
+        self.card = None
+        # -------------------------------- #
+
         self.display_widgets = []
         self.app_options = app_options
 
         # GUI Components
-        # Optional Select CUDA device
         if self.app_options.get("device_selector", False):
             self.select_device = SelectCudaDevice()
             self.select_device_field = Field(
@@ -35,7 +42,6 @@ class TrainingProcess:
                 content=self.select_device,
             )
             self.display_widgets.extend([self.select_device_field])
-        # -------------------------------- #
 
         self.experiment_name_input = Input("Enter experiment name")
         self.experiment_name_field = Field(
@@ -59,13 +65,8 @@ class TrainingProcess:
         self.validator_text.hide()
 
         self.display_widgets.extend(
-            [
-                self.experiment_name_field,
-                button_container,
-                self.validator_text,
-            ]
+            [self.experiment_name_field, button_container, self.validator_text]
         )
-        # -------------------------------- #
 
         self.container = Container(self.display_widgets)
         self.card = Card(

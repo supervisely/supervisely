@@ -5,7 +5,6 @@ import supervisely.io.env as sly_env
 import supervisely.nn.training.gui.utils as gui_utils
 from supervisely import Api, logger
 from supervisely._utils import is_production
-from supervisely.api.api import ApiField
 from supervisely.app.widgets import (
     Card,
     Container,
@@ -34,13 +33,30 @@ class TrainingArtifacts:
     lock_message = "Artifacts will be available after training is completed"
 
     def __init__(self, api: Api, app_options: Dict[str, Any]):
+        # Init widgets
+        self.artifacts_thumbnail = None
+        self.artifacts_field = None
+        self.model_benchmark_report_thumbnail = None
+        self.model_benchmark_fail_text = None
+        self.model_benchmark_widgets = None
+        self.model_benchmark_report_field = None
+        self.pytorch_instruction = None
+        self.onnx_instruction = None
+        self.trt_instruction = None
+        self.inference_demo_field = None
+        self.validator_text = None
+        self.container = None
+        self.card = None
+        # -------------------------------- #
+
         self.display_widgets = []
+        self.app_options = app_options
+
         self.success_message_text = (
             "Training completed. Training artifacts were uploaded to Team Files. "
             "You can find and open tensorboard logs in the artifacts folder via the "
             "<a href='https://ecosystem.supervisely.com/apps/tensorboard-experiments-viewer' target='_blank'>Tensorboard Experiment Viewer</a> app."
         )
-        self.app_options = app_options
 
         # GUI Components
         self.validator_text = Text("")
@@ -60,7 +76,7 @@ class TrainingArtifacts:
         self.display_widgets.extend([self.artifacts_field])
 
         # Optional Model Benchmark
-        if app_options.get("model_benchmark", False):
+        if self.app_options.get("model_benchmark", False):
             self.model_benchmark_report_thumbnail = ReportThumbnail()
             self.model_benchmark_report_thumbnail.hide()
 
@@ -111,8 +127,9 @@ class TrainingArtifacts:
                             f"App '{app_name}' not found in Supervisely Ecosystem. Demo artifacts will not be displayed."
                         )
 
+                model_demo_gh_link = "https://github.com/supervisely-ecosystem/yolo"
                 if model_demo_gh_link is not None:
-                    gh_branch = "blob/main"
+                    gh_branch = f"blob/{model_demo.get('branch', 'master')}"
                     link_to_demo = f"{model_demo_gh_link}/{gh_branch}/{model_demo_path}"
 
                     if model_demo_gh_link is not None and model_demo_path is not None:

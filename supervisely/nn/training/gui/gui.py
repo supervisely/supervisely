@@ -67,7 +67,7 @@ class TrainGUI:
         self.models = models
         self.hyperparameters = hyperparameters
         self.app_options = app_options
-        self.collapsable = app_options.get("collapsable", False)
+        self.collapsable = self.app_options.get("collapsable", False)
         self.need_convert_shapes_for_bm = False
 
         self.team_id = sly_env.team_id(raise_not_found=False)
@@ -146,7 +146,7 @@ class TrainGUI:
             self.training_process.set_experiment_name(experiment_name)
 
         def need_convert_class_shapes() -> bool:
-            if hasattr(self.hyperparameters_selector, "run_model_benchmark_checkbox"):
+            if self.hyperparameters_selector.run_model_benchmark_checkbox is not None:
                 if not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
                     self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
                     self.need_convert_shapes_for_bm = False
@@ -347,14 +347,14 @@ class TrainGUI:
         # ------------------------------------------------- #
 
         # Other Buttons
-        if app_options.get("show_logs_in_gui", False):
+        if self.app_options.get("show_logs_in_gui", False):
 
             @self.training_logs.logs_button.click
             def show_logs():
                 self.training_logs.toggle_logs()
 
         # Other handlers
-        if hasattr(self.hyperparameters_selector, "run_model_benchmark_checkbox"):
+        if self.hyperparameters_selector.run_model_benchmark_checkbox is not None:
 
             @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
             def show_mb_speedtest(is_checked: bool):
