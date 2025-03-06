@@ -471,9 +471,20 @@ def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
             return loop
 
 
-def sync_call(coro):
+def run_coroutine(coroutine):
     """
-    This function is used to run asynchronous functions in synchronous context.
+    Runs an asynchronous coroutine in a synchronous context and waits for its result.
+
+    This function checks if an event loop is already running:
+    - If a loop is running, it schedules the coroutine using `asyncio.run_coroutine_threadsafe()`
+      and waits for the result.
+    - If no loop is running, it creates one and executes the coroutine with `run_until_complete()`.
+
+    This ensures compatibility with both synchronous and asynchronous environments
+    without creating unnecessary event loops.
+
+    ⚠️ Note: This method is preferable when working with `asyncio` objects like `Semaphore`,
+    since it avoids issues with mismatched event loops.
 
     :param coro: Asynchronous function.
     :type coro: Coroutine
@@ -484,13 +495,13 @@ def sync_call(coro):
 
     .. code-block:: python
 
-            from supervisely.utils import sync_call
+            from supervisely._utils import run_coroutine
 
             async def async_function():
                 await asyncio.sleep(1)
                 return "Hello, World!"
             coro = async_function()
-            result = sync_call(coro)
+            result = run_coroutine(coro)
             print(result)
             # Output: Hello, World!
     """
@@ -498,10 +509,10 @@ def sync_call(coro):
     loop = get_or_create_event_loop()
 
     if loop.is_running():
-        future = asyncio.run_coroutine_threadsafe(coro, loop=loop)
+        future = asyncio.run_coroutine_threadsafe(coroutine, loop=loop)
         return future.result()
     else:
-        return loop.run_until_complete(coro)
+        return loop.run_until_complete(coroutine)
 
 
 def get_filename_from_headers(url):
