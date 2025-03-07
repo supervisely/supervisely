@@ -62,7 +62,8 @@
         <tr>
             <template v-for="(col, colKey) in data.{{{widget.widget_id}}}.tableData[state.{{{widget.widget_id}}}.selectedTaskType][state.{{{widget.widget_id}}}.selectedArchType][0]">
             <th v-if="colKey != 'meta'" :key="colKey">
-                <div>{{ colKey }}</div>
+                <div v-if="colKey==='model_name'">Model</div>
+                <div v-else>{{ colKey }}</div>
             </th>
         </template>
         </tr> 

@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.nn.artifacts.utils import FrameworkMapper
 from supervisely.nn.experiments import get_experiment_infos
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, _get_model_name
 
 
 class ModelSelector:
@@ -23,15 +23,26 @@ class ModelSelector:
     lock_message = "Select classes to unlock"
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
+        # Init widgets
+        self.pretrained_models_table = None
+        self.experiment_selector = None
+        self.model_source_tabs = None
+        self.validator_text = None
+        self.button = None
+        self.container = None
+        self.card = None
+        # -------------------------------- #
+
         self.display_widgets = []
+        self.app_options = app_options
+
         self.team_id = sly_env.team_id()
         self.models = models
 
         # GUI Components
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
-
         experiment_infos = get_experiment_infos(api, self.team_id, framework)
-        if app_options.get("legacy_checkpoints", False):
+        if self.app_options.get("legacy_checkpoints", False):
             try:
                 framework_cls = FrameworkMapper.get_framework_cls(framework, self.team_id)
                 legacy_experiment_infos = framework_cls.get_list_experiment_info()
@@ -61,7 +72,7 @@ class ModelSelector:
             description=self.description,
             content=self.container,
             lock_message=self.lock_message,
-            collapsable=app_options.get("collapsable", False),
+            collapsable=self.app_options.get("collapsable", False),
         )
         self.card.lock()
 
@@ -82,8 +93,7 @@ class ModelSelector:
     def get_model_name(self) -> str:
         if self.get_model_source() == ModelSource.PRETRAINED:
             selected_row = self.pretrained_models_table.get_selected_row()
-            model_meta = selected_row.get("meta", {})
-            model_name = model_meta.get("model_name", None)
+            model_name = _get_model_name(selected_row)
         else:
             selected_row = self.experiment_selector.get_selected_experiment_info()
             model_name = selected_row.get("model_name", None)

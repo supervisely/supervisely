@@ -8,7 +8,7 @@ training workflows in a Supervisely application.
 import shutil
 import subprocess
 from datetime import datetime
-from os import getcwd, listdir
+from os import getcwd, listdir, walk
 from os.path import basename, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
@@ -56,7 +56,7 @@ from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
 from supervisely.nn.training.loggers import setup_train_logger, train_logger
-from supervisely.nn.utils import ModelSource
+from supervisely.nn.utils import ModelSource, _get_model_name
 from supervisely.output import set_directory
 from supervisely.project.download import (
     copy_from_cache,
@@ -135,6 +135,7 @@ class TrainApp:
         self._hyperparameters = self._load_hyperparameters(hyperparameters)
         self._app_options = self._load_app_options(app_options)
         self._inference_class = None
+        self._is_inference_class_regirested = False
         # ----------------------------------------- #
 
         # Directories
@@ -174,6 +175,7 @@ class TrainApp:
         self.gui: TrainGUI = TrainGUI(
             self.framework_name, self._models, self._hyperparameters, self._app_options
         )
+
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
         self._train_func = None
@@ -346,6 +348,16 @@ class TrainApp:
         return self.gui.model_selector.get_model_info()
 
     @property
+    def task_type(self) -> TaskType:
+        """
+        Returns the task type of the model.
+
+        :return: Task type.
+        :rtype: TaskType
+        """
+        return self.gui.model_selector.get_selected_task_type()
+
+    @property
     def device(self) -> str:
         """
         Returns the selected device for training.
@@ -359,9 +371,9 @@ class TrainApp:
     @property
     def classes(self) -> List[str]:
         """
-        Returns the selected classes for training.
+        Returns the selected classes names for training.
 
-        :return: List of selected classes.
+        :return: List of selected classes names.
         :rtype: List[str]
         """
         selected_classes = set(self.gui.classes_selector.get_selected_classes())
@@ -556,7 +568,10 @@ class TrainApp:
                     model_meta,
                     gt_project_id,
                 )
-                evaluation_report_link = abs_url(f"/model-benchmark?id={str(mb_eval_report_id)}")
+                if mb_eval_report_id is not None:
+                    evaluation_report_link = abs_url(
+                        f"/model-benchmark?id={str(mb_eval_report_id)}"
+                    )
             except Exception as e:
                 logger.error(f"Model benchmark failed: {e}")
 
@@ -596,7 +611,7 @@ class TrainApp:
             self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
 
     def register_inference_class(
-        self, inference_class: Inference, inference_settings: dict = None
+        self, inference_class: Inference, inference_settings: Union[str, dict] = None
     ) -> None:
         """
         Registers an inference class for the training application to do model benchmarking.
@@ -606,8 +621,19 @@ class TrainApp:
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
+        # if not self.is_model_benchmark_enabled:
+        #     raise ValueError(
+        #         "Enable 'model_benchmark' in app_options.yaml to register an inference class."
+        #     )
+
+        self._is_inference_class_regirested = True
         self._inference_class = inference_class
-        self._inference_settings = inference_settings
+        self._inference_settings = None
+        if isinstance(inference_settings, str):
+            with open(inference_settings, "r") as file:
+                self._inference_settings = yaml.safe_load(file)
+        else:
+            self._inference_settings = inference_settings
 
     def get_app_state(self, experiment_info: dict = None) -> dict:
         """
@@ -616,7 +642,6 @@ class TrainApp:
         :return: Application state.
         :rtype: dict
         """
-        input_data = {"project_id": self.project_id}
         train_val_splits = self._get_train_val_splits_for_app_state()
         model = self._get_model_config_for_app_state(experiment_info)
 
@@ -629,7 +654,6 @@ class TrainApp:
         }
 
         app_state = {
-            "input": input_data,
             "train_val_split": train_val_splits,
             "classes": self.classes,
             "model": model,
@@ -778,6 +802,7 @@ class TrainApp:
         if not self.gui.input_selector.get_cache_value() or is_development():
             self._download_no_cache(dataset_infos, total_images)
             self.sly_project = Project(self.project_dir, OpenMode.READ)
+            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
             return
 
         try:
@@ -792,6 +817,7 @@ class TrainApp:
             self._download_no_cache(dataset_infos, total_images)
         finally:
             self.sly_project = Project(self.project_dir, OpenMode.READ)
+            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
             logger.info(f"Project downloaded successfully to: '{self.project_dir}'")
 
     def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
@@ -1160,9 +1186,9 @@ class TrainApp:
         experiment_info should contain the following keys:
             - model_name": str
             - task_type": str
-            - model_files": dict
             - checkpoints": list
             - best_checkpoint": str
+            - model_files": Optional[dict]
 
         Other keys are generated by the TrainApp class automatically
 
@@ -1179,7 +1205,6 @@ class TrainApp:
         required_keys = {
             "model_name": str,
             "task_type": str,
-            "model_files": dict,
             "checkpoints": (list, str),
             "best_checkpoint": str,
         }
@@ -1388,7 +1413,14 @@ class TrainApp:
         # Prepare logs
         if sly_fs.dir_exists(self.log_dir):
             logs_dir = join(self.output_dir, "logs")
-            shutil.copytree(self.log_dir, logs_dir)
+            logger_type = self._app_options.get("train_logger", None)
+            for root, _, files in walk(self.log_dir):
+                for file in files:
+                    if logger_type is None or logger_type == "tensorboard":
+                        if ".tfevents." in file:
+                            src_log_path = join(root, file)
+                            dst_log_path = join(logs_dir, file)
+                            sly_fs.copy_file(src_log_path, dst_log_path)
         return experiment_info
 
     # Generate experiment_info.json and app_state.json
@@ -1534,9 +1566,11 @@ class TrainApp:
         experiment_info["best_checkpoint"] = sly_fs.get_file_name_with_ext(
             experiment_info["best_checkpoint"]
         )
-        experiment_info["model_files"]["config"] = sly_fs.get_file_name_with_ext(
-            experiment_info["model_files"]["config"]
-        )
+
+        for file in experiment_info["model_files"]:
+            experiment_info["model_files"][file] = sly_fs.get_file_name_with_ext(
+                experiment_info["model_files"][file]
+            )
 
         local_path = join(self.output_dir, self._experiment_json_file)
         remote_path = join(remote_dir, self._experiment_json_file)
@@ -1594,6 +1628,8 @@ class TrainApp:
         )
 
     def _upload_demo_files(self, remote_dir: str) -> None:
+        if not self.gui.training_artifacts.need_upload_demo:
+            return
         demo = self._app_options.get("demo")
         if demo is None:
             return
@@ -1671,9 +1707,7 @@ class TrainApp:
         experiment_info = experiment_info or {}
 
         if self.model_source == ModelSource.PRETRAINED:
-            model_name = experiment_info.get("model_name") or self.model_info.get("meta", {}).get(
-                "model_name"
-            )
+            model_name = experiment_info.get("model_name") or _get_model_name(self.model_info)
             return {
                 "source": ModelSource.PRETRAINED,
                 "model_name": model_name,
@@ -1682,7 +1716,7 @@ class TrainApp:
             return {
                 "source": ModelSource.CUSTOM,
                 "task_id": self.task_id,
-                "checkpoint": "checkpoint.pth",
+                "checkpoint": "custom checkpoint",
             }
 
     # ----------------------------------------- #
@@ -1764,10 +1798,10 @@ class TrainApp:
         self.gui.training_process.start_button.loading = False
         self.gui.training_process.start_button.disable()
         self.gui.training_process.stop_button.disable()
-        # self.gui.training_logs.tensorboard_button.disable()
 
         # Set artifacts to GUI
-        self._api.task.set_output_experiment(self.task_id, experiment_info)
+        if is_production():
+            self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
@@ -1814,7 +1848,7 @@ class TrainApp:
                 self.gui.training_artifacts.trt_instruction.show()
 
             # Show the inference demo widget if overview or any demo is available
-            if hasattr(self.gui.training_artifacts, "inference_demo_field") and any(
+            if self.gui.training_artifacts.inference_demo_field is not None and any(
                 [
                     self.gui.training_artifacts.overview_demo_exists(demo_path),
                     self.gui.training_artifacts.pytorch_demo_exists(demo_path),
@@ -1822,7 +1856,8 @@ class TrainApp:
                     self.gui.training_artifacts.trt_demo_exists(demo_path),
                 ]
             ):
-                self.gui.training_artifacts.inference_demo_field.show()
+                if self.gui.training_artifacts.inference_demo_field is not None:
+                    self.gui.training_artifacts.inference_demo_field.show()
         # ---------------------------- #
 
         # Set status to completed and unlock
@@ -1932,6 +1967,7 @@ class TrainApp:
                 "model_name": experiment_info["model_name"],
                 "framework_name": self.framework_name,
                 "model_meta": model_meta.to_json(),
+                "task_type": task_type,
             }
 
             logger.info(f"Deploy parameters: {self._benchmark_params}")
@@ -2551,7 +2587,6 @@ class TrainApp:
         if task_type == TaskType.OBJECT_DETECTION:
             Project.to_detection_task(project.directory, inplace=True)
             pr_prefix = "[detection]: "
-        # @TODO: dont convert segmentation?
         elif (
             task_type == TaskType.INSTANCE_SEGMENTATION
             or task_type == TaskType.SEMANTIC_SEGMENTATION
