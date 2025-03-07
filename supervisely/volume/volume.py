@@ -819,6 +819,7 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     import SimpleITK as sitk
 
     nifti_image = sitk.ReadImage(path)
+    nifti_image = _sitk_image_orient_ras(nifti_image)
     data = sitk.GetArrayFromImage(nifti_image)
     data = np.transpose(data, (2, 1, 0))
 
@@ -829,15 +830,15 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     space_directions = (direction.T * spacing[:, None]).tolist()
 
     header = {
-        "dimension": 3,
-        "space": "left-posterior-superior",
-        "sizes": list(data.shape),
-        "space directions": space_directions,
-        "kinds": ["domain", "domain", "domain"],
-        "endian": "little",
-        "encoding": "raw",
-        "space origin": origin,
-    }
+            "dimension": 3,
+            "space": "right-anterior-superior",
+            "sizes": list(data.shape),
+            "space directions": space_directions,
+            "kinds": ["domain", "domain", "domain"],
+            "endian": "little",
+            "encoding": "raw",
+            "space origin": origin
+        }
     return data, header
 
 
