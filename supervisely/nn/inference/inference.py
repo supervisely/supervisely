@@ -174,9 +174,7 @@ class Inference:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
-                local_model_files = self._download_model_files(
-                    deploy_params["model_source"], deploy_params["model_files"], False
-                )
+                local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
             self._load_model_headless(**deploy_params)
 
@@ -211,14 +209,12 @@ class Inference:
                     self.initialize_gui()
 
             def on_serve_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 Progress("Deploying model ...", 1)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
                     deploy_params = self.get_params_from_gui()
-                    model_files = self._download_model_files(
-                        deploy_params["model_source"], deploy_params["model_files"]
-                    )
+                    model_files = self._download_model_files(deploy_params)
                     deploy_params["model_files"] = model_files
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
@@ -231,7 +227,7 @@ class Inference:
                     gui.show_deployed_model_info(self)
 
             def on_change_model_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 self.shutdown_model()
                 if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
@@ -568,13 +564,23 @@ class Inference:
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
-    def _download_model_files(
-        self, model_source: str, model_files: List[str], log_progress: bool = True
-    ) -> dict:
-        if model_source == ModelSource.PRETRAINED:
-            return self._download_pretrained_model(model_files, log_progress)
-        elif model_source == ModelSource.CUSTOM:
-            return self._download_custom_model(model_files, log_progress)
+    def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
+        if deploy_params["runtime"] != RuntimeType.PYTORCH:
+            export = deploy_params["model_info"].get("export", {})
+            export_model = export.get(deploy_params["runtime"], None)
+            if export_model is not None:
+                if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
+                    deploy_params["model_files"]["checkpoint"]
+                ):
+                    deploy_params["model_files"]["checkpoint"] = (
+                        deploy_params["model_info"]["artifacts_dir"] + export_model
+                    )
+                    logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
+
+        if deploy_params["model_source"] == ModelSource.PRETRAINED:
+            return self._download_pretrained_model(deploy_params["model_files"], log_progress)
+        elif deploy_params["model_source"] == ModelSource.CUSTOM:
+            return self._download_custom_model(deploy_params["model_files"], log_progress)
 
     def _download_pretrained_model(self, model_files: dict, log_progress: bool = True):
         """
@@ -2930,9 +2936,7 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 if isinstance(self.gui, GUI.ServingGUITemplate):
-                    model_files = self._download_model_files(
-                        deploy_params["model_source"], deploy_params["model_files"]
-                    )
+                    model_files = self._download_model_files(deploy_params)
                     deploy_params["model_files"] = model_files
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
@@ -3298,7 +3302,11 @@ class Inference:
             if draw:
                 raise ValueError("Draw visualization is not supported for project inference")
 
-            state = {"projectId": project_id, "dataset_ids": dataset_ids, "settings": settings}
+            state = {
+                "projectId": project_id,
+                "dataset_ids": dataset_ids,
+                "settings": settings,
+            }
             if upload:
                 source_project = api.project.get_info_by_id(project_id)
                 workspace_id = source_project.workspace_id
