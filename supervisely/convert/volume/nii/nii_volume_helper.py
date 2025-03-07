@@ -40,7 +40,12 @@ def nifti_to_nrrd(nii_file_path: str, converted_dir: str) -> str:
 def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
     """Get annotation from NIfTI 3D volume file."""
 
-    data, _ = convert_3d_nifti_to_nrrd(path)
+    import nibabel as nib  # pylint: disable=import-error
+
+    nifti = nib.load(path)
+    reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
+    data = reordered_to_ras_nifti.get_fdata()
+
     unique_classes = np.unique(data)
 
     for class_id in unique_classes:
