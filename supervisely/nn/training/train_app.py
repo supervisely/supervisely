@@ -1800,7 +1800,8 @@ class TrainApp:
         self.gui.training_process.stop_button.disable()
 
         # Set artifacts to GUI
-        self._api.task.set_output_experiment(self.task_id, experiment_info)
+        if is_production():
+            self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
