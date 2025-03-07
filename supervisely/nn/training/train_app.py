@@ -1716,7 +1716,7 @@ class TrainApp:
             return {
                 "source": ModelSource.CUSTOM,
                 "task_id": self.task_id,
-                "checkpoint": "checkpoint.pth",  # @TODO: ???
+                "checkpoint": "custom checkpoint",
             }
 
     # ----------------------------------------- #
