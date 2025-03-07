@@ -6,7 +6,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.project.project_meta import ProjectMeta
 
 
-def ann_to_detections(ann: Annotation, project_meta: ProjectMeta) -> Tuple(np.ndarray, dict):
+def ann_to_detections(ann: Annotation, project_meta: ProjectMeta) -> Tuple[np.ndarray, dict]:
     """
     Convert annotation to detections array.
     :param ann: Supervisely Annotation object
