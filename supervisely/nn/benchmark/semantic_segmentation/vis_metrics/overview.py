@@ -31,16 +31,6 @@ class Overview(SemanticSegmVisMetric):
         # Note about validation dataset
         classes_str, note_about_images, starter_app_info = self._get_overview_info()
 
-        # Get correct task type from the deployed model info
-        # deploy_params = self.eval_result.inference_info.get("deploy_params", {})
-        # model_info = deploy_params.get("model_info", {})
-        # task_type = model_info.get("task_type")
-        # if task_type is None:
-        #     model_meta = model_info.get("meta", {})
-        #     task_type = model_meta.get("task_type")
-        # if task_type is not None:
-        #     self.eval_result.inference_info["task_type"] = task_type
-
         formats = [
             model_name.replace("_", "\_"),
             checkpoint_name.replace("_", "\_"),
