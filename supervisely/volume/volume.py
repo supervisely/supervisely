@@ -836,7 +836,7 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
             "space directions": space_directions,
             "kinds": ["domain", "domain", "domain"],
             "endian": "little",
-            "encoding": "raw",
+            "encoding": "gzip",
             "space origin": origin
         }
     return data, header
