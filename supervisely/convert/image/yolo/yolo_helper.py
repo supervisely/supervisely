@@ -28,6 +28,20 @@ YOLO_DETECTION_COORDS_NUM = 4
 YOLO_SEGM_MIN_COORDS_NUM = 6
 YOLO_KEYPOINTS_MIN_COORDS_NUM = 6
 
+
+class YOLOTaskType:
+    DETECT = "detect"
+    SEGMENT = "segment"
+    POSE = "pose"
+
+
+SLY_YOLO_TASK_TYPE_MAP = {
+    TaskType.OBJECT_DETECTION: YOLOTaskType.DETECT,
+    TaskType.INSTANCE_SEGMENTATION: YOLOTaskType.SEGMENT,
+    TaskType.POSE_ESTIMATION: YOLOTaskType.POSE,
+}
+
+
 coco_classes = [
     "person",
     "bicycle",
@@ -399,22 +413,22 @@ def keypoints_to_yolo_line(
 
 def convert_label_geometry_if_needed(
     label: Label,
-    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType],
+    task_type: Literal["detect", "segment", "pose"],
     verbose: bool = False,
 ) -> List[Label]:
-    if str(task_type) in ["detection", TaskType.OBJECT_DETECTION]:
+    if task_type is YOLOTaskType.DETECT:
         available_geometry_type = Rectangle
         convertable_geometry_types = [Polygon, GraphNodes, Bitmap, Polyline, AlphaMask, AnyGeometry]
-    elif str(task_type) in ["segmentation", TaskType.INSTANCE_SEGMENTATION]:
+    elif task_type is YOLOTaskType.SEGMENT:
         available_geometry_type = Polygon
         convertable_geometry_types = [Bitmap, AlphaMask, AnyGeometry]
-    elif str(task_type) in ["pose", TaskType.POSE_ESTIMATION]:
+    elif task_type is YOLOTaskType.POSE:
         available_geometry_type = GraphNodes
         convertable_geometry_types = []
     else:
         raise ValueError(
             f"Unsupported task type: {task_type}. "
-            "Supported types: 'detection', 'segmentation', 'pose'"
+            f"Supported types: '{YOLOTaskType.DETECT}', '{YOLOTaskType.SEGMENT}', '{YOLOTaskType.POSE}'"
         )
 
     if label.obj_class.geometry_type == available_geometry_type:
@@ -439,7 +453,7 @@ def label_to_yolo_lines(
     img_height: int,
     img_width: int,
     class_names: List[str],
-    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType],
+    task_type: Literal["detect", "segment", "pose"],
 ) -> List[str]:
     """
     Convert the Supervisely Label to a line in the YOLO format.
@@ -450,21 +464,21 @@ def label_to_yolo_lines(
 
     lines = []
     for label in labels:
-        if str(task_type) in ["detection", TaskType.OBJECT_DETECTION]:
+        if task_type is YOLOTaskType.DETECT:
             yolo_line = rectangle_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
-        elif str(task_type) in ["segmentation", TaskType.INSTANCE_SEGMENTATION]:
+        elif task_type is YOLOTaskType.SEGMENT:
             yolo_line = polygon_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
-        elif str(task_type) in ["pose", TaskType.POSE_ESTIMATION]:
+        elif task_type is YOLOTaskType.POSE:
             nodes_field = label.obj_class.geometry_type.items_json_field
             max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
             yolo_line = keypoints_to_yolo_line(
@@ -475,7 +489,10 @@ def label_to_yolo_lines(
                 max_kpts_count=max_kpts_count,
             )
         else:
-            raise ValueError(f"Unsupported task type: {task_type}")
+            raise ValueError(
+                f"Unsupported task type: {task_type}. "
+                f"Supported types: '{YOLOTaskType.DETECT}', '{YOLOTaskType.SEGMENT}', '{YOLOTaskType.POSE}'"
+            )
 
         if yolo_line is not None:
             lines.append(yolo_line)
@@ -486,12 +503,11 @@ def label_to_yolo_lines(
 def sly_ann_to_yolo(
     ann: Annotation,
     class_names: List[str],
-    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType] = "detection",
+    task_type: Literal["detect", "segment", "pose"] = "detect",
 ) -> List[str]:
     """
     Convert the Supervisely annotation to the YOLO format.
     """
-
     h, w = ann.img_size
     yolo_lines = []
     for label in ann.labels:
@@ -510,12 +526,12 @@ def sly_ds_to_yolo(
     dataset: Dataset,
     meta: ProjectMeta,
     dest_dir: Optional[str] = None,
-    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType] = "detection",
+    task_type: Literal["detect", "segment", "pose"] = "detect",
     log_progress: bool = False,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     is_val: Optional[bool] = None,
 ) -> str:
-
+    task_type = validate_task_type(task_type)
     if progress_cb is not None:
         log_progress = False
 
@@ -571,7 +587,7 @@ def sly_ds_to_yolo(
     # * save data config file if it does not exist
     config_path = dest_dir / "data_config.yaml"
     if not config_path.exists():
-        with_keypoint = str(task_type) in ["pose", TaskType.POSE_ESTIMATION]
+        with_keypoint = task_type is YOLOTaskType.POSE
         save_yolo_config(meta, dest_dir, with_keypoint=with_keypoint)
 
     return str(dest_dir)
@@ -609,7 +625,7 @@ def save_yolo_config(meta: ProjectMeta, dest_dir: str, with_keypoint: bool = Fal
 def sly_project_to_yolo(
     project: Union[Project, str],
     dest_dir: Optional[str] = None,
-    task_type: Union[Literal["detection", "segmentation", "pose"], TaskType] = "detection",
+    task_type: Literal["detect", "segment", "pose"] = "detect",
     log_progress: bool = False,
     progress_cb: Optional[Callable] = None,
     val_datasets: Optional[List[str]] = None,
@@ -647,6 +663,7 @@ def sly_project_to_yolo(
         # Convert Project to YOLO format
         sly.Project(project_directory).to_yolo(log_progress=True)
     """
+    task_type = validate_task_type(task_type)
     if isinstance(project, str):
         project = Project(project, mode=OpenMode.READ)
 
@@ -664,7 +681,7 @@ def sly_project_to_yolo(
             desc="Converting Supervisely project to YOLO format", total=project.total_items
         ).update
 
-    with_keypoint = str(task_type) in ["pose", TaskType.POSE_ESTIMATION]
+    with_keypoint = task_type is YOLOTaskType.POSE
     save_yolo_config(project.meta, dest_dir, with_keypoint=with_keypoint)
 
     for dataset in project.datasets:
@@ -691,14 +708,7 @@ def sly_project_to_yolo(
 def to_yolo(
     input_data: Union[Project, Dataset, str],
     dest_dir: Optional[str] = None,
-    task_type: Union[
-        Literal[
-            "detection",
-            "segmentation",
-            "pose",
-        ],
-        TaskType,
-    ] = "detection",
+    task_type: Literal["detect", "segment", "pose"] = "detect",
     meta: Optional[ProjectMeta] = None,
     log_progress: bool = True,
     progress_cb: Optional[Callable] = None,
@@ -787,3 +797,16 @@ def to_yolo(
         )
     else:
         raise ValueError("Unsupported input type. Only Project or Dataset are supported.")
+
+
+def validate_task_type(task_type: Literal["detect", "segment", "pose"]) -> str:
+    if task_type not in [YOLOTaskType.DETECT, YOLOTaskType.SEGMENT, YOLOTaskType.POSE]:
+        task_type = SLY_YOLO_TASK_TYPE_MAP.get(task_type)
+        if task_type is None:
+            raise ValueError(
+                f"Unsupported task type: {task_type}. "
+                f"Supported types: '{YOLOTaskType.DETECT}', '{SLY_YOLO_TASK_TYPE_MAP[TaskType.OBJECT_DETECTION]}', "
+                f"'{YOLOTaskType.SEGMENT}', '{SLY_YOLO_TASK_TYPE_MAP[TaskType.INSTANCE_SEGMENTATION]}', "
+                f"'{YOLOTaskType.POSE}', '{SLY_YOLO_TASK_TYPE_MAP[TaskType.POSE_ESTIMATION]}'"
+            )
+    return task_type

@@ -3825,7 +3825,7 @@ class Project:
     def to_yolo(
         self,
         dest_dir: Optional[str] = None,
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
         val_datasets: Optional[List[str]] = None,
