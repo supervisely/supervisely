@@ -416,13 +416,13 @@ def convert_label_geometry_if_needed(
     task_type: Literal["detect", "segment", "pose"],
     verbose: bool = False,
 ) -> List[Label]:
-    if task_type is YOLOTaskType.DETECT:
+    if task_type == YOLOTaskType.DETECT:
         available_geometry_type = Rectangle
         convertable_geometry_types = [Polygon, GraphNodes, Bitmap, Polyline, AlphaMask, AnyGeometry]
-    elif task_type is YOLOTaskType.SEGMENT:
+    elif task_type == YOLOTaskType.SEGMENT:
         available_geometry_type = Polygon
         convertable_geometry_types = [Bitmap, AlphaMask, AnyGeometry]
-    elif task_type is YOLOTaskType.POSE:
+    elif task_type == YOLOTaskType.POSE:
         available_geometry_type = GraphNodes
         convertable_geometry_types = []
     else:
@@ -464,21 +464,21 @@ def label_to_yolo_lines(
 
     lines = []
     for label in labels:
-        if task_type is YOLOTaskType.DETECT:
+        if task_type == YOLOTaskType.DETECT:
             yolo_line = rectangle_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
-        elif task_type is YOLOTaskType.SEGMENT:
+        elif task_type == YOLOTaskType.SEGMENT:
             yolo_line = polygon_to_yolo_line(
                 class_idx=class_idx,
                 geometry=label.geometry,
                 img_height=img_height,
                 img_width=img_width,
             )
-        elif task_type is YOLOTaskType.POSE:
+        elif task_type == YOLOTaskType.POSE:
             nodes_field = label.obj_class.geometry_type.items_json_field
             max_kpts_count = len(label.obj_class.geometry_config[nodes_field])
             yolo_line = keypoints_to_yolo_line(
