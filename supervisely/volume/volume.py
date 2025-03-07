@@ -816,29 +816,27 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         path = "/home/admin/work/volumes/vol_01.nii"
         data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
+    import SimpleITK as sitk
 
-    import nibabel as nib  # pylint: disable=import-error
+    nifti_image = sitk.ReadImage(path)
+    data = sitk.GetArrayFromImage(nifti_image)
+    data = np.transpose(data, (2, 1, 0))
 
-    orientation_map = {
-        ('R', 'A', 'S'): "right-anterior-superior",
-        ('L', 'P', 'S'): "left-posterior-superior",
-        ('R', 'P', 'I'): "right-posterior-inferior",
-        ('L', 'A', 'I'): "left-anterior-inferior"
-    }
-    nifti = nib.load(path)
-    reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
-    data = reordered_to_ras_nifti.get_fdata()
-    affine = reordered_to_ras_nifti.affine
-    orientation = nib.aff2axcodes(affine)
-    space_directions = affine[:3, :3].tolist()
-    space_origin = affine[:3, 3].tolist()
+    direction = np.array(nifti_image.GetDirection()).reshape(3, 3)
+    spacing = np.array(nifti_image.GetSpacing())
+    origin = np.array(nifti_image.GetOrigin())
+
+    space_directions = (direction.T * spacing[:, None]).tolist()
+
     header = {
-        "space": orientation_map.get(orientation, "unknown"),
+        "dimension": 3,
+        "space": "left-posterior-superior",
+        "sizes": list(data.shape),
         "space directions": space_directions,
-        "space origin": space_origin,
-        "sizes": data.shape,
-        "type": str(data.dtype),
-        "dimension": len(data.shape),
+        "kinds": ["domain", "domain", "domain"],
+        "endian": "little",
+        "encoding": "raw",
+        "space origin": origin,
     }
     return data, header
 
