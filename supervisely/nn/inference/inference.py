@@ -3650,11 +3650,13 @@ class Inference:
                         video_path = video_results["item_path"]
                         anns = [r["annotation"] for r in video_results["results"]]
                         dataset_path = video_results["dataset_path"]
-                        dataset = output_datasets.setdefault(
-                            dataset_path, output_project.create_dataset(dataset_path)
-                        )
+                        if not dataset_path in output_datasets:
+                            output_datasets[dataset_path] = output_project.create_dataset(
+                                dataset_path
+                            )
+                        dataset = output_datasets[dataset_path]
                         postprocess_video_for_project(dataset, video_name, video_path, anns)
-                    logger.info("Inference results saved to: '{output_dir}'")
+                    logger.info(f"Inference results saved to: '{output_dir}'")
                 elif isinstance(project, Project):
                     output_project: Project = create_project(
                         output_dir, project_type=ProjectType.IMAGES
@@ -3667,11 +3669,13 @@ class Inference:
                         ann = image_results["annotation"]
                         dataset_path = image_results["dataset_path"]
                         dataset_path = Path(root_dataset.path) / Path(dataset_path)
-                        dataset = output_datasets.setdefault(
-                            dataset_path, output_project.create_dataset(dataset_path)
-                        )
+                        if not dataset_path in output_datasets:
+                            output_datasets[dataset_path] = output_project.create_dataset(
+                                dataset_path
+                            )
+                        dataset = output_datasets[dataset_path]
                         postprocess_image_for_project(dataset, image_name, image_path, ann)
-                    logger.info("Inference results saved to: '{output_dir}'")
+                    logger.info(f"Inference results saved to: '{output_dir}'")
                 else:
                     images = list_files(input_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
                     videos = list_files(input_path, valid_extensions=ALLOWED_VIDEO_EXTENSIONS)
@@ -3687,7 +3691,7 @@ class Inference:
                         for video in videos:
                             anns = [i["annotation"] for i in self._inference_video_path(video)]
                             postprocess_video(video, anns)
-                    logger.info("Inference results saved to: '{output_dir}'")
+                    logger.info(f"Inference results saved to: '{output_dir}'")
             # 2. Input File
             elif os.path.isfile(input_path):
                 if input_path.endswith(tuple(sly_image.SUPPORTED_IMG_EXTS)):
