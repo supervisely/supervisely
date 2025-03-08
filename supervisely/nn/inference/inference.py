@@ -1476,7 +1476,7 @@ class Inference:
         inference_settings = self._get_inference_settings(inference_settings)
         logger.debug("Inferring video_path...", extra={"path": path})
         video_name = Path(path).name
-        self.cache.add_video_to_cache(video_name, path)
+        self.cache.add_video_to_cache(video_name, path, delete_original_file=False)
 
         result = []
         for frames_batch in batched_iter(
@@ -3549,6 +3549,7 @@ class Inference:
 
                 video_objects = []
                 video_frames = []
+                frame_index = -1
                 for ann in anns:
                     if not isinstance(ann, Annotation):
                         ann = Annotation.from_json(ann, self.model_meta)
