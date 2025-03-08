@@ -3563,7 +3563,7 @@ class Inference:
                 )
 
             def create_project(output_dir, project_type=ProjectType.IMAGES):
-                project_name = f"output_{time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())}"
+                project_name = f'output_{time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())}'
                 project_cls = Project if project_type == ProjectType.IMAGES else VideoProject
                 return project_cls(f"{output_dir}/{project_name}", mode=OpenMode.CREATE)
 
