@@ -3578,7 +3578,9 @@ class Inference:
             def create_project(output_dir, project_type=ProjectType.IMAGES):
                 project_name = f'output_{time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())}'
                 project_cls = Project if project_type == ProjectType.IMAGES else VideoProject
-                return project_cls(f"{output_dir}/{project_name}", mode=OpenMode.CREATE)
+                project = project_cls(f"{output_dir}/{project_name}", mode=OpenMode.CREATE)
+                project.set_meta(self.model_meta)
+                return project
 
             def postprocess_image(image_path: str, ann: Annotation):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
