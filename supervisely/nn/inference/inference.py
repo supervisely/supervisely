@@ -3656,7 +3656,7 @@ class Inference:
                             )
                         dataset = output_datasets[dataset_path]
                         postprocess_video_for_project(dataset, video_name, video_path, anns)
-                    logger.info(f"Inference results saved to: '{output_dir}'")
+                    logger.info(f"Inference results saved to: '{Path(output_dir) / project.name}'")
                 elif isinstance(project, Project):
                     output_project: Project = create_project(
                         output_dir, project_type=ProjectType.IMAGES
@@ -3675,7 +3675,7 @@ class Inference:
                             )
                         dataset = output_datasets[dataset_path]
                         postprocess_image_for_project(dataset, image_name, image_path, ann)
-                    logger.info(f"Inference results saved to: '{output_dir}'")
+                    logger.info(f"Inference results saved to: '{Path(output_dir) / project.name}'")
                 else:
                     images = list_files(input_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
                     videos = list_files(input_path, valid_extensions=ALLOWED_VIDEO_EXTENSIONS)
