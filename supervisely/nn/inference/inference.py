@@ -1489,7 +1489,7 @@ class Inference:
         return result
 
     def _inference_image_project_generator(
-        self, project: Project, inference_settings: dict = None
+        self, project: Project, inference_settings: dict = None, batch_size: int = None
     ) -> Generator[dict, None, None]:
         if inference_settings is None:
             inference_settings = {}
@@ -1522,7 +1522,7 @@ class Inference:
                     }
 
     def _inference_video_project_generator(
-        self, project: VideoProject, inference_settings: dict = None
+        self, project: VideoProject, inference_settings: dict = None, batch_size: int = None
     ) -> Generator[dict, None, None]:
         if inference_settings is None:
             inference_settings = {}
@@ -1547,13 +1547,23 @@ class Inference:
                     ),
                 }
 
-    def _inference_image_project(self, project: Project, inference_settings: dict = None):
-        return list(self._inference_image_project_generator(project, inference_settings))
+    def _inference_image_project(
+        self, project: Project, inference_settings: dict = None, batch_size: int = None
+    ):
+        return list(
+            self._inference_image_project_generator(project, inference_settings, batch_size)
+        )
 
-    def _inference_video_project(self, project: VideoProject, inference_settings: dict = None):
-        return list(self._inference_video_project_generator(project, inference_settings))
+    def _inference_video_project(
+        self, project: VideoProject, inference_settings: dict = None, batch_size: int = None
+    ):
+        return list(
+            self._inference_video_project_generator(project, inference_settings, batch_size)
+        )
 
-    def _inference_project_dir(self, dir: str) -> List[dict]:
+    def _inference_project_dir(
+        self, dir: str, inference_settings: dict = None, batch_size: int = None
+    ) -> List[dict]:
         logger.debug("Inferring project_dir...", extra={"dir": dir})
         try:
             project = Project(directory=dir, mode=OpenMode.READ)
