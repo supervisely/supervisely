@@ -3636,11 +3636,6 @@ class Inference:
                     except Exception:
                         project = None
 
-                if project is not None and not dir_empty(output_dir):
-                    raise ValueError(
-                        f"Output directory '{output_dir}' is not empty. Please provide an empty directory"
-                    )
-
                 if isinstance(project, VideoProject):
                     output_project: VideoProject = create_project(
                         output_dir, project_type=ProjectType.VIDEOS
