@@ -1475,11 +1475,13 @@ class Inference:
             inference_settings = {}
         inference_settings = self._get_inference_settings(inference_settings)
         logger.debug("Inferring video_path...", extra={"path": path})
-        self.cache.add_video_to_cache(path, path)
+        video_name = Path(path).name
+        self.cache.add_video_to_cache(video_name, path)
 
         result = []
         for frames_batch in batched_iter(
-            self.cache._read_frames_from_cached_video_iter(path, frame_indexes=None), batch_size
+            self.cache._read_frames_from_cached_video_iter(video_name, frame_indexes=None),
+            batch_size,
         ):
             anns, _ = self._inference_auto(
                 source=frames_batch,
