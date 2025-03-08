@@ -65,7 +65,7 @@ class PersistentImageTTLCache(TTLCache):
     def __init__(self, maxsize: int, ttl: int, filepath: Path):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
-    
+
     def pop(self, *args, **kwargs):
         try:
             super().pop(*args, **kwargs)
@@ -157,7 +157,8 @@ class PersistentImageTTLCache(TTLCache):
         return sly.image.read(str(self[key]))
 
     def save_video(self, video_id: int, src_video_path: str) -> None:
-        video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
+        ext = Path(src_video_path).suffix
+        video_path = self._base_dir / f"video_{video_id}{ext}"
         self[video_id] = video_path
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
@@ -707,7 +708,9 @@ class InferenceImageCache:
         return f"frame_{video_id}_{frame_index}"
 
     def _video_name(self, video_id: int, video_name: str) -> str:
-        return f"video_{video_id}.{video_name.split('.')[-1]}"
+        ext = Path(video_name).suffix
+        name = f"video_{video_id}{ext}"
+        return name
 
     def _project_meta_name(self, project_id: int) -> str:
         return f"project_meta_{project_id}"
