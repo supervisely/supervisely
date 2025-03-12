@@ -82,7 +82,6 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
-SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK = "SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"
 
 class ApiContext:
     """
@@ -372,7 +371,7 @@ class Api:
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self._skip_https_redirect_check = os.getenv(SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK, "False").lower() in ("true", "1", "yes", "y", "t")
+        self._skip_https_redirect_check = sly_env.supervisely_skip_https_user_helper_check()
         self._require_https_redirect_check = False if self._skip_https_redirect_check else not self.server_address.startswith("https://")
 
         if check_instance_version:

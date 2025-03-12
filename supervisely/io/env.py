@@ -570,3 +570,18 @@ def supervisely_server_path_prefix() -> str:
         default="",
         raise_not_found=False,
     )
+
+def supervisely_skip_https_user_helper_check() -> bool:
+    """Returns decision to skip `_check_https_redirect` for API from environment variable using following
+        - SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"
+
+    :return: decision to skip `_check_https_redirect` for API
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="supervisely_skip_https_user_helper_check",
+        keys=["SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"],
+        postprocess_fn=flag_from_env,
+        default=False,
+        raise_not_found=False,
+    )
