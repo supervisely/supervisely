@@ -15,9 +15,20 @@ from dataclasses import asdict
 from functools import partial, wraps
 from pathlib import Path
 from queue import Queue
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 from urllib.request import urlopen
 
+import cv2
 import numpy as np
 import requests
 import uvicorn
@@ -66,7 +77,7 @@ from supervisely.decorators.inference import (
 )
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
-from supervisely.io.fs import list_files
+from supervisely.io.fs import ensure_base_path, list_files_recursively
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.prediction_dto import Prediction
 from supervisely.nn.utils import (
@@ -77,12 +88,22 @@ from supervisely.nn.utils import (
     RuntimeType,
     _get_model_name,
 )
-from supervisely.project import ProjectType
+from supervisely.project import Project, ProjectType, VideoProject
 from supervisely.project.download import download_to_cache, read_from_cached_project
+from supervisely.project.project import Dataset, OpenMode
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.video_project import VideoDataset
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
+from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.frame_collection import FrameCollection
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.video_annotation.video_object import VideoObject
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+from supervisely.video_annotation.video_tag import VideoTag
+from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 
 try:
     from typing import Literal
@@ -1306,6 +1327,11 @@ class Inference:
             fill_rectangles=False,
         )
 
+    def _format_output_single(self, ann: Annotation, slides_data: dict = None) -> dict:
+        if not slides_data:
+            slides_data = {}
+        return {"annotation": ann.to_json(), "data": slides_data}
+
     def _format_output(
         self,
         anns: List[Annotation],
@@ -1314,7 +1340,7 @@ class Inference:
         if not slides_data:
             slides_data = [{} for _ in range(len(anns))]
         assert len(anns) == len(slides_data)
-        return [{"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)]
+        return [self._format_output_single(ann, data) for ann, data in zip(anns, slides_data)]
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
@@ -1443,6 +1469,131 @@ class Inference:
         )
         sly_fs.silent_remove(image_path)
         return self._format_output(anns, slides_data)[0]
+
+    def _inference_video_path(
+        self, path: str, inference_settings: Dict = None, batch_size: int = None
+    ) -> List[Dict]:
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        if self.max_batch_size is not None and batch_size > self.max_batch_size:
+            raise ValueError(
+                f"Batch size should be less than or equal to {self.max_batch_size} for this model."
+            )
+        if inference_settings is None:
+            inference_settings = {}
+        inference_settings = self._get_inference_settings(inference_settings)
+        logger.debug("Inferring video_path...", extra={"path": path})
+        video_name = Path(path).name
+        self.cache.add_video_to_cache(video_name, path, delete_original_file=False)
+
+        result = []
+        for frames_batch in batched_iter(
+            self.cache._read_frames_from_cached_video_iter(video_name, frame_indexes=None),
+            batch_size,
+        ):
+            anns, _ = self._inference_auto(
+                source=frames_batch,
+                settings=inference_settings,
+            )
+            result.extend(self._format_output(anns))
+        return result
+
+    def _inference_image_project_generator(
+        self, project: Project, inference_settings: dict = None, batch_size: int = None
+    ) -> Generator[dict, None, None]:
+        if inference_settings is None:
+            inference_settings = {}
+        settings = self._get_inference_settings(inference_settings)
+        logger.debug("Inferring project...", extra={"project": project.name})
+        logger.debug("Inference settings:", extra=settings)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        if self.max_batch_size is not None and batch_size > self.max_batch_size:
+            raise ValueError(
+                f"Batch size should be less than or equal to {self.max_batch_size} for this model."
+            )
+        for dataset in project.datasets:
+            dataset: Dataset
+            for batch in batched_iter(dataset.items(), batch_size):
+                # batch = batch_size x (img_name, img_path, ann_path)
+                img_names, img_paths, _ = zip(*batch)
+                anns, slides_data = self._inference_auto(
+                    source=img_paths,
+                    settings=settings,
+                )
+                for ann, single_slides_data, img_name, img_path in zip(
+                    anns, slides_data, img_names, img_paths
+                ):
+                    yield {
+                        "dataset_path": dataset.path,
+                        "item_name": img_name,
+                        "item_path": img_path,
+                        **self._format_output_single(ann, single_slides_data),  # annotation, data
+                    }
+
+    def _inference_video_project_generator(
+        self,
+        project: VideoProject,
+        inference_settings: dict = None,
+        batch_size: int = None,
+    ) -> Generator[dict, None, None]:
+        if inference_settings is None:
+            inference_settings = {}
+        settings = self._get_inference_settings(inference_settings)
+        logger.debug("Inferring project...", extra={"project": project.name})
+        logger.debug("Inference settings:", extra=settings)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        if self.max_batch_size is not None and batch_size > self.max_batch_size:
+            raise ValueError(
+                f"Batch size should be less than or equal to {self.max_batch_size} for this model."
+            )
+        for dataset in project.datasets:
+            dataset: Dataset
+            for video_name, video_path, _ in dataset.items():
+                yield {
+                    "dataset_path": dataset.path,
+                    "item_path": video_path,
+                    "item_name": video_name,
+                    "results": self._inference_video_path(
+                        video_path, inference_settings, batch_size
+                    ),
+                }
+
+    def _inference_image_project(
+        self, project: Project, inference_settings: dict = None, batch_size: int = None
+    ):
+        return list(
+            self._inference_image_project_generator(project, inference_settings, batch_size)
+        )
+
+    def _inference_video_project(
+        self,
+        project: VideoProject,
+        inference_settings: dict = None,
+        batch_size: int = None,
+    ):
+        return list(
+            self._inference_video_project_generator(project, inference_settings, batch_size)
+        )
+
+    def _inference_project_dir(
+        self, dir: str, inference_settings: dict = None, batch_size: int = None
+    ) -> List[dict]:
+        logger.debug("Inferring project_dir...", extra={"dir": dir})
+        try:
+            project = Project(directory=dir, mode=OpenMode.READ)
+        except Exception:
+            project = None
+        if project is None:
+            try:
+                project = VideoProject(directory=dir, mode=OpenMode.READ)
+            except Exception:
+                raise ValueError(f"Can't open project or video project by path: {dir}")
+        if isinstance(project, Project):
+            return self._inference_image_project(project)
+        else:
+            return self._inference_video_project(project)
 
     def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         from supervisely.nn.inference.video_inference import InferenceVideoInterface
@@ -3402,44 +3553,381 @@ class Inference:
         ):
             logger.info(f"Predicting '{input_path}'")
 
-            def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
-                image_name = sly_fs.get_file_name_with_ext(image_path)
-                if pred_dir is not None:
-                    pred_dir = os.path.join(output_dir, pred_dir)
-                    pred_ann_path = os.path.join(pred_dir, f"{image_name}.json")
-                else:
-                    pred_dir = output_dir
-                    pred_ann_path = os.path.join(pred_dir, f"{image_name}.json")
+            def is_image(path: str):
+                if path.lower().endswith(
+                    tuple(ext.lower() for ext in sly_image.SUPPORTED_IMG_EXTS)
+                ):
+                    return True
+                return False
 
-                if not os.path.exists(pred_dir):
-                    sly_fs.mkdir(pred_dir)
+            def is_video(path: str):
+                if path.lower().endswith(tuple(ext.lower() for ext in ALLOWED_VIDEO_EXTENSIONS)):
+                    return True
+                return False
+
+            def create_dataset_structure(base_path: str, dataset_map: Dict, modality: str) -> None:
+                """Create a directory structure based on dataset_map with modality-specific subdirs."""
+                modality_dir = "img" if modality == ProjectType.IMAGES.value else "video"
+                for ds_name, ds_content in dataset_map.items():
+                    ds_path = os.path.join(base_path, ds_name)
+                    os.makedirs(os.path.join(ds_path, modality_dir), exist_ok=True)
+                    os.makedirs(os.path.join(ds_path, "ann"), exist_ok=True)
+                    if ds_content.get("datasets"):
+                        nested_path = os.path.join(ds_path, "datasets")
+                        os.makedirs(nested_path, exist_ok=True)
+                        create_dataset_structure(nested_path, ds_content["datasets"], modality)
+
+            def build_dataset_map_for_project(
+                project_path: str, modality: str
+            ) -> Tuple[Dict, Dict]:
+                """Build input and output dataset maps for a project directory."""
+                if modality not in (ProjectType.IMAGES.value, ProjectType.VIDEOS.value):
+                    raise ValueError(f"Unsupported project modality: {modality}")
+                modality_dir = "img" if modality == ProjectType.IMAGES.value else "video"
+                project_name = f"{os.path.basename(project_path)}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}"
+
+                def build_dataset_map(
+                    directory_path: str, current_in_path: str, current_out_path: str
+                ) -> Tuple[Dict, Dict]:
+                    """Recursively build dataset maps."""
+                    in_ds_map = {"datasets": {}, "items": []}
+                    out_ds_map = {"datasets": {}, "items": []}
+                    try:
+                        entries = os.listdir(directory_path)
+                    except OSError as e:
+                        logger.warning(f"Failed to list directory {directory_path}: {e}")
+                        return in_ds_map, out_ds_map
+                    for entry in entries:
+                        full_path = os.path.join(directory_path, entry)
+                        if os.path.isdir(full_path):
+                            in_sub, out_sub = build_dataset_map(
+                                full_path,
+                                f"{current_in_path}/{entry}",
+                                f"{current_out_path}/datasets/{entry}",
+                            )
+                            in_ds_map["datasets"][entry] = in_sub
+                            out_ds_map["datasets"][entry] = out_sub
+                        elif os.path.isfile(full_path):
+                            in_ds_map["items"].append(f"{current_in_path}/{entry}")
+                            out_ds_map["items"].append(f"{current_out_path}/{modality_dir}/{entry}")
+                    return in_ds_map, out_ds_map
+
+                in_ds_map, out_ds_map = {}, {}
+                
+                # Process root files
+                root_files = [f for f in os.listdir(project_path) if os.path.isfile(os.path.join(project_path, f))]
+                if modality == ProjectType.IMAGES.value:
+                    root_items = [f for f in root_files if is_image(f)]
+                elif modality == ProjectType.VIDEOS.value:
+                    root_items = [f for f in root_files if is_video(f)]
+                else:
+                    root_items = []
+
+                subdirs = [d for d in os.listdir(project_path) if os.path.isdir(os.path.join(project_path, d))]
+                if root_items:
+                    base_name = 'root_files'
+                    unique_name = base_name
+                    counter = 1
+                    # Ensure the dataset name is unique by incrementing if necessary
+                    while unique_name in subdirs:
+                        unique_name = f"{base_name}{counter}"
+                        counter += 1
+                    in_ds_map[unique_name] = {"datasets": {}, "items": [os.path.join(project_path, item) for item in root_items]}
+                    out_ds_map[unique_name] = {"datasets": {}, "items": [os.path.join(output_dir, project_name, unique_name, modality_dir, item) for item in root_items]}
+                try:
+                    entries = os.listdir(project_path)
+                except OSError as e:
+                    logger.warning(f"Failed to list project directory {project_path}: {e}")
+                    return in_ds_map, out_ds_map
+                for entry in entries:
+                    full_path = os.path.join(project_path, entry)
+                    if os.path.isdir(full_path):
+                        in_path = os.path.join(project_path, entry)
+                        out_path = os.path.join(output_dir, project_name, entry)
+                        in_res, out_res = build_dataset_map(in_path, in_path, out_path)
+                        in_ds_map[entry] = in_res
+                        out_ds_map[entry] = out_res
+                return in_ds_map, out_ds_map
+
+            def process_items_with_dataset_maps(
+                in_ds_map: Dict, out_ds_map: Dict, settings: str, modality: str
+            ) -> None:
+                """Process items from in_ds_map and save to out_ds_map."""
+
+                def collect_item_pairs(in_map: Dict, out_map: Dict) -> List[Tuple[str, str]]:
+                    """Recursively collect input-output path pairs."""
+                    item_pairs = []
+                    for ds_name in in_map:
+                        if ds_name not in out_map:
+                            raise ValueError(f"Dataset '{ds_name}' not found in output map")
+                        in_items = in_map[ds_name].get("items", [])
+                        out_items = out_map[ds_name].get("items", [])
+                        if len(in_items) != len(out_items):
+                            raise ValueError(
+                                f"Mismatch in item counts for dataset '{ds_name}': {len(in_items)} vs {len(out_items)}"
+                            )
+                        item_pairs.extend(zip(in_items, out_items))
+                        sub_pairs = collect_item_pairs(
+                            in_map[ds_name].get("datasets", {}),
+                            out_map[ds_name].get("datasets", {}),
+                        )
+                        item_pairs.extend(sub_pairs)
+                    return item_pairs
+
+                item_pairs = collect_item_pairs(in_ds_map, out_ds_map)
+                if not item_pairs:
+                    logger.info("No items found in datasets")
+                    return
+
+                if modality == ProjectType.IMAGES.value:
+                    input_images = [in_path for in_path, _ in item_pairs]
+                    try:
+                        anns, _ = self._inference_auto(input_images, settings)
+                        for (in_path, out_path), ann in zip(item_pairs, anns):
+                            postprocess_image(in_path, ann, out_path)
+                    except Exception as e:
+                        logger.error(f"Image inference failed: {e}")
+                else:
+                    for in_path, out_path in item_pairs:
+                        try:
+                            anns = [i["annotation"] for i in self._inference_video_path(in_path)]
+                            postprocess_video(in_path, anns, out_path)
+                        except Exception as e:
+                            logger.error(f"Video inference failed for '{in_path}': {e}")
+
+            def create_video_ann(
+                video_path: str, anns: Union[List[Dict], List[Annotation]]
+            ) -> VideoAnnotation:
+                """Create a VideoAnnotation from a list of annotations."""
+                video = cv2.VideoCapture(video_path)
+                if not video.isOpened():
+                    raise RuntimeError(f"Failed to open video: {video_path}")
+                frame_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+                frame_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                frames_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+                video.release()
+
+                video_objects, video_frames = [], []
+                for frame_idx, ann in enumerate(anns):
+                    if not isinstance(ann, Annotation):
+                        ann = Annotation.from_json(ann, self.model_meta)
+                    frame_figures = []
+                    for label in ann.labels:
+                        tags = VideoTagCollection(
+                            [VideoTag(meta=tag.meta, value=tag.value) for tag in label.tags]
+                        )
+                        obj = VideoObject(obj_class=label.obj_class, tags=tags)
+                        video_objects.append(obj)
+                        frame_figures.append(
+                            VideoFigure(
+                                video_object=obj,
+                                geometry=label.geometry,
+                                frame_index=frame_idx,
+                            )
+                        )
+                    video_frames.append(Frame(frame_idx, figures=frame_figures))
+                return VideoAnnotation(
+                    img_size=(frame_height, frame_width),
+                    frames_count=frames_count,
+                    objects=VideoObjectCollection(video_objects),
+                    frames=FrameCollection(video_frames),
+                )
+
+            def create_project(output_dir, project_name, project_type=ProjectType.IMAGES):
+                project_name = (
+                    f'{project_name}_{time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())}'
+                )
+                project_cls = Project if project_type == ProjectType.IMAGES else VideoProject
+                project = project_cls(f"{output_dir}/{project_name}", mode=OpenMode.CREATE)
+                project.set_meta(self.model_meta)
+                return project
+
+            def create_project_files(output_project_path, modality):
+                output_project_meta_path = os.path.join(output_project_path, "meta.json")
+                ensure_base_path(output_project_meta_path)
+                sly_json.dump_json_file(self.model_meta.to_json(), output_project_meta_path)
+                if modality == ProjectType.VIDEOS.value:
+                    output_key_id_map_path = os.path.join(output_project_path, "key_id_map.json")
+                    key_id_map = KeyIdMap()
+                    key_id_map.dump_json(output_key_id_map_path)
+
+            def postprocess_image(
+                image_path: str, ann: Annotation, output_image_path: str = None, copy_item: bool = False
+            ) -> None:
+                """Save image prediction results."""
+                image_name = sly_fs.get_file_name_with_ext(image_path)
+                pred_ann_path = (
+                    os.path.join(output_dir, f"{image_name}.json")
+                    if not output_image_path
+                    else os.path.join(
+                        os.path.dirname(os.path.dirname(output_image_path)),
+                        "ann",
+                        f"{image_name}.json",
+                    )
+                )
+                if output_image_path and copy_item:
+                    sly_fs.copy_file(image_path, output_image_path)
+                ensure_base_path(pred_ann_path)
                 sly_json.dump_json_file(ann.to_json(), pred_ann_path)
                 if draw:
+                    preview_path = (
+                        os.path.join(output_dir, "previews", image_name)
+                        if not output_image_path
+                        else os.path.join(
+                            os.path.dirname(os.path.dirname(output_image_path)),
+                            "preview",
+                            image_name,
+                        )
+                    )
+                    ensure_base_path(preview_path)
                     image = sly_image.read(image_path)
-                    ann.draw_pretty(image, output_path=os.path.join(pred_dir, image_name))
+                    ann.draw_pretty(image, output_path=preview_path)
 
-            # 1. Input Directory
+            def postprocess_video(
+                video_path: str, anns: List, output_video_path: str = None, copy_item: bool = False
+            ) -> None:
+                """Save video prediction results."""
+                video_ann = create_video_ann(video_path, anns)
+                video_name = sly_fs.get_file_name_with_ext(video_path)
+                pred_ann_path = (
+                    os.path.join(output_dir, f"{video_name}.json")
+                    if not output_video_path
+                    else os.path.join(
+                        os.path.dirname(os.path.dirname(output_video_path)),
+                        "ann",
+                        f"{video_name}.json",
+                    )
+                )
+                if output_video_path and copy_item:
+                    sly_fs.copy_file(video_path, output_video_path)
+                ensure_base_path(pred_ann_path)
+                sly_json.dump_json_file(video_ann.to_json(), pred_ann_path)
+
+            def postprocess_image_for_project(
+                dataset: Dataset,
+                image_name: str,
+                image_path: str,
+                ann: Union[Annotation, Dict],
+                copy_item: bool = False
+            ) -> None:
+                """Add image prediction to a Supervisely project."""
+                dataset.add_item_file(item_name=image_name, item_path=None, ann=ann)
+                if draw:
+                    preview_path = os.path.join(output_dir, "previews", image_name)
+                    ensure_base_path(preview_path)
+                    image = sly_image.read(image_path)
+                    ann.draw_pretty(image, output_path=preview_path)
+                if copy_item:
+                    sly_fs.copy_file(image_path, os.path.join(dataset.directory, "img", image_name))
+
+            def postprocess_video_for_project(
+                dataset: VideoDataset,
+                video_name: str,
+                video_path: str,
+                anns: Union[List[Dict], List[Annotation]],
+                copy_item: bool = False
+            ) -> None:
+                """Add video prediction to a Supervisely project."""
+                video_ann = create_video_ann(video_path, anns)
+                dataset.add_item_file(item_name=video_name, item_path=None, ann=video_ann)
+                if copy_item:
+                    sly_fs.copy_file(video_path, os.path.join(dataset.directory, "video", video_name))
+
             if os.path.isdir(input_path):
-                pred_dir = os.path.basename(input_path)
-                images = list_files(input_path, valid_extensions=sly_image.SUPPORTED_IMG_EXTS)
-                anns, _ = self._inference_auto(images, settings)
-                for image_path, ann in zip(images, anns):
-                    postprocess_image(image_path, ann, pred_dir)
-            # 2. Input File
-            elif os.path.isfile(input_path):
-                if input_path.endswith(tuple(sly_image.SUPPORTED_IMG_EXTS)):
-                    image_np = sly_image.read(input_path)
-                    anns, _ = self._inference_auto([image_np], settings)
-                    ann = anns[0]
-                    postprocess_image(input_path, ann)
-                elif input_path.endswith(tuple(ALLOWED_VIDEO_EXTENSIONS)):
-                    raise NotImplementedError("Video inference is not implemented yet")
+                # Check if directory is project
+                project = None
+                for proj_cls, modality, proj_type in [
+                    (Project, ProjectType.IMAGES.value, ProjectType.IMAGES),
+                    (VideoProject, ProjectType.VIDEOS.value, ProjectType.VIDEOS),
+                ]:
+                    try:
+                        project = proj_cls(input_path, mode=OpenMode.READ)
+                        logger.info(
+                            f"Input directory is a Supervisely {modality} project. The output will be a {modality} project."
+                        )
+                        break
+                    except Exception as e:
+                        logger.debug(f"Failed to load as {modality} project: {e}")
+                        project = None
+                # 1. Process Project
+                if isinstance(project, (VideoProject, Project)):
+                    output_project = create_project(
+                        output_dir, project.name, project_type=proj_type
+                    )
+                    output_datasets = {}
+                    generator = (
+                        self._inference_video_project_generator
+                        if isinstance(project, VideoProject)
+                        else self._inference_image_project_generator
+                    )
+                    postprocess_fn = (
+                        postprocess_video_for_project
+                        if isinstance(project, VideoProject)
+                        else postprocess_image_for_project
+                    )
+                    for results in generator(project, settings):
+                        item_name, item_path, dataset_path = (
+                            results["item_name"],
+                            results["item_path"],
+                            results["dataset_path"],
+                        )
+                        ann = (
+                            [r["annotation"] for r in results["results"]]
+                            if isinstance(project, VideoProject)
+                            else results["annotation"]
+                        )
+                        dataset_key = dataset_path
+                        if dataset_key not in output_datasets:
+                            output_datasets[dataset_key] = output_project.create_dataset(
+                                dataset_path
+                            )
+                        postprocess_fn(output_datasets[dataset_key], item_name, item_path, ann)
+                    logger.info(
+                        f"Inference results saved to: '{os.path.join(output_dir, output_project.name)}'"
+                    )
+                else:  # 2. Process dir
+                    images = list_files_recursively(str(input_path), sly_image.SUPPORTED_IMG_EXTS, None, True)
+                    videos = list_files_recursively(str(input_path), ALLOWED_VIDEO_EXTENSIONS, None, True)
+                    if images and videos:
+                        raise ValueError(
+                            f"Directory '{input_path}' contains both images and videos."
+                        )
+                    if not images and not videos:
+                        logger.info("No videos or images found")
+                        return
+
+                    modality = ProjectType.IMAGES.value if images else ProjectType.VIDEOS.value
+                    project_name = f"{os.path.basename(input_path)}_{time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())}"
+                    in_ds_map, out_ds_map = build_dataset_map_for_project(str(input_path), modality)
+                    output_project_path = os.path.join(output_dir, project_name)
+                    create_dataset_structure(output_project_path, in_ds_map, modality)
+                    create_project_files(output_project_path, modality)
+                    process_items_with_dataset_maps(in_ds_map, out_ds_map, settings, modality)
+                    logger.info(f"Inference results saved to: '{output_project_path}'")
+
+            elif os.path.isfile(input_path):  # 3. Process single file
+                input_path_str = str(input_path)
+                if is_image(input_path_str):
+                    try:
+                        image_np = sly_image.read(input_path_str)
+                        anns, _ = self._inference_auto([image_np], settings)
+                        postprocess_image(input_path_str, anns[0])
+                        logger.info(f"Inference results saved to: '{output_dir}'")
+                    except Exception as e:
+                        logger.error(f"Failed to process image '{input_path_str}': {e}")
+                elif is_video(input_path_str):
+                    try:
+                        anns = [i["annotation"] for i in self._inference_video_path(input_path_str)]
+                        postprocess_video(input_path_str, anns)
+                        logger.info(f"Inference results saved to: '{output_dir}'")
+                    except Exception as e:
+                        logger.error(f"Failed to process video '{input_path_str}': {e}")
                 else:
                     raise ValueError(
-                        f"Unsupported input format: '{input_path}'. Expect image or directory with images"
+                        f"Unsupported input format: '{input_path}'. Expected image or directory."
                     )
             else:
-                raise ValueError(f"Please provide a valid input path: '{input_path}'")
+                raise ValueError(f"Invalid input path: '{input_path}'")
 
         if self._args.project_id is not None:
             predict_project_id_by_args(
@@ -3688,6 +4176,17 @@ def _create_notify_after_complete_decorator(
         return wrapper
 
     return decorator
+
+
+def batched_iter(iterable: Iterable, n: int):
+    batch = []
+    for i in iterable:
+        batch.append(i)
+        if len(batch) == n:
+            yield batch
+            batch = []
+    if len(batch) > 0:
+        yield batch
 
 
 LOAD_ON_DEVICE_DECORATOR = _create_notify_after_complete_decorator(
