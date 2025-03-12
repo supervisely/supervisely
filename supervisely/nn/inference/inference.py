@@ -3613,6 +3613,27 @@ class Inference:
                     return in_ds_map, out_ds_map
 
                 in_ds_map, out_ds_map = {}, {}
+                
+                # Process root files
+                root_files = [f for f in os.listdir(project_path) if os.path.isfile(os.path.join(project_path, f))]
+                if modality == ProjectType.IMAGES.value:
+                    root_items = [f for f in root_files if is_image(f)]
+                elif modality == ProjectType.VIDEOS.value:
+                    root_items = [f for f in root_files if is_video(f)]
+                else:
+                    root_items = []
+
+                subdirs = [d for d in os.listdir(project_path) if os.path.isdir(os.path.join(project_path, d))]
+                if root_items:
+                    base_name = 'root_files'
+                    unique_name = base_name
+                    counter = 1
+                    # Ensure the dataset name is unique by incrementing if necessary
+                    while unique_name in subdirs:
+                        unique_name = f"{base_name}{counter}"
+                        counter += 1
+                    in_ds_map[unique_name] = {"datasets": {}, "items": [os.path.join(project_path, item) for item in root_items]}
+                    out_ds_map[unique_name] = {"datasets": {}, "items": [os.path.join(output_dir, project_name, unique_name, modality_dir, item) for item in root_items]}
                 try:
                     entries = os.listdir(project_path)
                 except OSError as e:
@@ -3731,7 +3752,7 @@ class Inference:
                     key_id_map.dump_json(output_key_id_map_path)
 
             def postprocess_image(
-                image_path: str, ann: Annotation, output_image_path: str = None
+                image_path: str, ann: Annotation, output_image_path: str = None, copy_item: bool = False
             ) -> None:
                 """Save image prediction results."""
                 image_name = sly_fs.get_file_name_with_ext(image_path)
@@ -3744,7 +3765,7 @@ class Inference:
                         f"{image_name}.json",
                     )
                 )
-                if output_image_path:
+                if output_image_path and copy_item:
                     sly_fs.copy_file(image_path, output_image_path)
                 ensure_base_path(pred_ann_path)
                 sly_json.dump_json_file(ann.to_json(), pred_ann_path)
@@ -3763,7 +3784,7 @@ class Inference:
                     ann.draw_pretty(image, output_path=preview_path)
 
             def postprocess_video(
-                video_path: str, anns: List, output_video_path: str = None
+                video_path: str, anns: List, output_video_path: str = None, copy_item: bool = False
             ) -> None:
                 """Save video prediction results."""
                 video_ann = create_video_ann(video_path, anns)
@@ -3777,7 +3798,7 @@ class Inference:
                         f"{video_name}.json",
                     )
                 )
-                if output_video_path:
+                if output_video_path and copy_item:
                     sly_fs.copy_file(video_path, output_video_path)
                 ensure_base_path(pred_ann_path)
                 sly_json.dump_json_file(video_ann.to_json(), pred_ann_path)
@@ -3787,6 +3808,7 @@ class Inference:
                 image_name: str,
                 image_path: str,
                 ann: Union[Annotation, Dict],
+                copy_item: bool = False
             ) -> None:
                 """Add image prediction to a Supervisely project."""
                 dataset.add_item_file(item_name=image_name, item_path=None, ann=ann)
@@ -3795,16 +3817,21 @@ class Inference:
                     ensure_base_path(preview_path)
                     image = sly_image.read(image_path)
                     ann.draw_pretty(image, output_path=preview_path)
+                if copy_item:
+                    sly_fs.copy_file(image_path, os.path.join(dataset.directory, "img", image_name))
 
             def postprocess_video_for_project(
                 dataset: VideoDataset,
                 video_name: str,
                 video_path: str,
                 anns: Union[List[Dict], List[Annotation]],
+                copy_item: bool = False
             ) -> None:
                 """Add video prediction to a Supervisely project."""
                 video_ann = create_video_ann(video_path, anns)
                 dataset.add_item_file(item_name=video_name, item_path=None, ann=video_ann)
+                if copy_item:
+                    sly_fs.copy_file(video_path, os.path.join(dataset.directory, "video", video_name))
 
             if os.path.isdir(input_path):
                 # Check if directory is project
@@ -3859,8 +3886,8 @@ class Inference:
                         f"Inference results saved to: '{os.path.join(output_dir, output_project.name)}'"
                     )
                 else:  # 2. Process dir
-                    images = list_files_recursively(str(input_path), sly_image.SUPPORTED_IMG_EXTS)
-                    videos = list_files_recursively(str(input_path), ALLOWED_VIDEO_EXTENSIONS)
+                    images = list_files_recursively(str(input_path), sly_image.SUPPORTED_IMG_EXTS, None, True)
+                    videos = list_files_recursively(str(input_path), ALLOWED_VIDEO_EXTENSIONS, None, True)
                     if images and videos:
                         raise ValueError(
                             f"Directory '{input_path}' contains both images and videos."
