@@ -176,6 +176,7 @@ class SelectCudaDevice(Widget):
 
         :return: None
         """
+        self._disabled = True
         self._select.disable()
         self._refresh_button.disable()
 
@@ -186,5 +187,6 @@ class SelectCudaDevice(Widget):
 
         :return: None
         """
+        self._disabled = False
         self._select.enable()
         self._refresh_button.enable()
