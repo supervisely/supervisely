@@ -372,7 +372,7 @@ class Api:
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self._skip_https_redirect_check = os.getenv(SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK, False)
+        self._skip_https_redirect_check = os.getenv(SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK, "False").lower() in ("true", "1", "yes", "y", "t")
         self._require_https_redirect_check = False if self._skip_https_redirect_check else not self.server_address.startswith("https://")
 
         if check_instance_version:
