@@ -308,7 +308,7 @@ class Mask3D(Geometry):
         except KeyError as e:
             header_keys = ["'space'", "'space directions'", "'space origin'"]
             if str(e) in header_keys:
-                logger.warning(
+                logger.debug(
                     f"The Mask3D geometry created from the file '{file_path}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
                 )
         return geometry
