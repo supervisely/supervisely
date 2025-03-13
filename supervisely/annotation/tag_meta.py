@@ -549,7 +549,7 @@ class TagMeta(KeyObject, JsonSerializable):
             print(meta_coat_color.possible_values)
             # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
         """
-        if self.value_type is TagValueType.ONEOF_STRING:
+        if self.value_type == TagValueType.ONEOF_STRING:
             if value in self._possible_values:
                 raise ValueError("Value {} already exists for tag {}".format(value, self.name))
             else:
