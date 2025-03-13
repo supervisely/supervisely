@@ -196,7 +196,9 @@ class PretrainedModelsSelector(Widget):
                 raise ValueError("key 'meta' not found in model configuration")
             model_files = meta.get("model_files")
             if model_files is None:
-                raise ValueError("key 'model_files' not found in key 'meta' in model configuration")
+                raise ValueError(
+                    "key 'model_files' not found in key 'meta' in model configuration"
+                )
             model_params = {
                 "model_source": ModelSource.PRETRAINED,
                 "model_info": model_info,
@@ -249,7 +251,9 @@ class PretrainedModelsSelector(Widget):
                         if name_from_info.lower() == model_name.lower():
                             return model
 
-    def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
+    def _filter_and_sort_models(
+        self, models: List[Dict], sort_models: bool = True
+    ) -> Dict:
         filtered_models = {}
         for model in models:
             for key in model:
@@ -257,7 +261,9 @@ class PretrainedModelsSelector(Widget):
                     model[key] = str(model[key])
 
             arch_type = model.get("meta", {}).get("arch_type", "other")
-            task_type = model.get("meta", {}).get("task_type", model.get("task_type", "other"))
+            task_type = model.get("meta", {}).get(
+                "task_type", model.get("task_type", "other")
+            )
 
             if task_type not in filtered_models:
                 filtered_models[task_type] = {}
@@ -311,12 +317,18 @@ class PretrainedModelsSelector(Widget):
         StateJson()[self.widget_id]["selectedRow"] = 0
         StateJson()[self.widget_id]["taskTypes"] = self._task_types
         StateJson()[self.widget_id]["archTypes"] = self._arch_types
-        StateJson()[self.widget_id]["selectedTaskType"] = self.__default_selected_task_type
-        StateJson()[self.widget_id]["selectedArchType"] = self.__default_selected_arch_type
+        StateJson()[self.widget_id][
+            "selectedTaskType"
+        ] = self.__default_selected_task_type
+        StateJson()[self.widget_id][
+            "selectedArchType"
+        ] = self.__default_selected_arch_type
         StateJson().send_changes()
 
     def arch_type_changed(self, func):
-        route_path = self.get_route_path(PretrainedModelsSelector.Routes.ARCH_TYPE_CHANGED)
+        route_path = self.get_route_path(
+            PretrainedModelsSelector.Routes.ARCH_TYPE_CHANGED
+        )
         server = self._sly_app.get_server()
         self._arch_changes_handled = True
 
@@ -328,7 +340,9 @@ class PretrainedModelsSelector(Widget):
         return _arch_type_changed
 
     def task_type_changed(self, func):
-        route_path = self.get_route_path(PretrainedModelsSelector.Routes.TASK_TYPE_CHANGED)
+        route_path = self.get_route_path(
+            PretrainedModelsSelector.Routes.TASK_TYPE_CHANGED
+        )
         server = self._sly_app.get_server()
         self._task_changes_handled = True
 

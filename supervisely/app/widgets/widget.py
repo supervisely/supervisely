@@ -4,6 +4,7 @@ import os
 import re
 import time
 import uuid
+import threading
 from pathlib import Path
 from typing import List, Union
 
@@ -284,7 +285,7 @@ class DynamicWidget(Widget):
             os.environ["_SUPERVISELY_OFFLINE_FILES_UPLOADED"] = "False"
             self._sly_app.get_server().cached_template = None
             client = Application().test_client
-            _ = run_sync(client.get("/"))
+            threading.Thread(target=run_sync, args=(client.get("/"),)).start()
 
         return wrapper
 
