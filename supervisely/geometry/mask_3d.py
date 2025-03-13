@@ -568,6 +568,7 @@ class Mask3D(Geometry):
 
         if origin:
             x, y = origin
+            # pylint: disable=possibly-used-before-assignment
             new_mask = np.zeros(new_shape, dtype=mask_2d.dtype)
             new_mask[x : x + mask_2d.shape[0], y : y + mask_2d.shape[1]] = mask_2d
 
