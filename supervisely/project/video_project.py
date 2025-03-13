@@ -1211,6 +1211,7 @@ class VideoProject(Project):
         .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1219,13 +1220,9 @@ class VideoProject(Project):
             save_directory = "/home/admin/work/supervisely/source/video_project"
             project_id = 8888
 
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
+            
         """
         await download_video_project_async(
             api=api,
