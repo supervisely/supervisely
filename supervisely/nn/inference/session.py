@@ -1,7 +1,11 @@
+import base64
 import json
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
+import cv2
+import numpy as np
+import PIL.Image
 import requests
 
 try:
@@ -181,6 +185,27 @@ class SessionJSON:
                 raise ValueError(
                     f"Key '{key}' is not acceptable. Acceptable keys are: {acceptable_keys}"
                 )
+
+    def inference_image_np(self, image_np: Union[np.ndarray, PIL.Image.Image]) -> Dict[str, Any]:
+        """Image must be RGB np.ndarray or PIL.Image.Image"""
+
+        def encode_image(image_np: np.ndarray) -> str:
+            ret, encoded_img = cv2.imencode(".png", image_np)
+            if not ret:
+                raise ValueError("Image encoding failed")
+            img_bytes = encoded_img.tobytes()
+            base64_bytes = base64.b64encode(img_bytes)
+            return base64_bytes.decode("utf-8")
+
+        if isinstance(image_np, PIL.Image.Image):
+            image_np = np.array(image_np)
+
+        endpoint = "inference_image_np"
+        url = f"{self._base_url}/{endpoint}"
+        json_body = self._get_default_json_body()
+        json_body["state"]["image_np"] = encode_image(image_np)
+        resp = self._post(url, json=json_body)
+        return resp.json()
 
     def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
@@ -813,7 +838,7 @@ class Session(SessionJSON):
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
-        preparing_cb = None,
+        preparing_cb=None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
