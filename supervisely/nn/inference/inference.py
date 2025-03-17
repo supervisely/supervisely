@@ -90,12 +90,13 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 
+
 @dataclass
 class AutoRestartInfo:
-    custom_model = False 
+    custom_model = False
     device: str = None
     custom_name: Optional[str] = None
-    custom_path: Optional[str] = None 
+    custom_path: Optional[str] = None
     pretrained_name: Optional[str] = None
     pretrained_path: Optional[str] = None
 
@@ -108,8 +109,15 @@ class AutoRestartInfo:
         PRETRAINED_NAME = "pretrainedName"
         PRETRAINED_PATH = "pretrainedPath"
 
-       
-    def __pre_init__(self, custom_model: bool, device: str, custom_name: Optional[str], custom_path: Optional[str], pretrained_name: Optional[str], pretrained_path: Optional[str]):
+    def __pre_init__(
+        self,
+        custom_model: bool,
+        device: str,
+        custom_name: Optional[str],
+        custom_path: Optional[str],
+        pretrained_name: Optional[str],
+        pretrained_path: Optional[str],
+    ):
         self.custom_model = custom_model
         self.device = device
         if custom_model and (custom_name is None or custom_path is None):
@@ -119,36 +127,50 @@ class AutoRestartInfo:
         if not custom_model and (pretrained_name is None or pretrained_path is None):
             raise ValueError("Pretrained model name and path must be provided.")
         elif custom_model and (pretrained_name is not None or pretrained_path is not None):
-            raise ValueError("You are using custom model, but provided pretrained model name and path for auto restart.")
+            raise ValueError(
+                "You are using custom model, but provided pretrained model name and path for auto restart."
+            )
         self.pretrained_name = pretrained_name
         self.pretrained_path = pretrained_path
 
-
     def generate_fields(self) -> List[dict]:
-        return [{
-            ApiField.FIELD: self.Fields.AUTO_RESTART_INFO,
-            ApiField.PAYLOAD: {
-                self.Fields.IS_CUSTOM_MODEL: self.custom_model,
-                self.Fields.DEVICE: self.device,
-                self.Fields.CUSTOM_NAME: self.custom_name,
-                self.Fields.CUSTOM_PATH: self.custom_path,
-                self.Fields.PRETRAINED_NAME: self.pretrained_name,
-                self.Fields.PRETRAINED_PATH: self.pretrained_path
+        return [
+            {
+                ApiField.FIELD: self.Fields.AUTO_RESTART_INFO,
+                ApiField.PAYLOAD: {
+                    self.Fields.IS_CUSTOM_MODEL: self.custom_model,
+                    self.Fields.DEVICE: self.device,
+                    self.Fields.CUSTOM_NAME: self.custom_name,
+                    self.Fields.CUSTOM_PATH: self.custom_path,
+                    self.Fields.PRETRAINED_NAME: self.pretrained_name,
+                    self.Fields.PRETRAINED_PATH: self.pretrained_path,
+                },
             }
-        }]
-    
+        ]
+
     @classmethod
     def from_response(cls, data: dict):
         if data.get(cls.Fields.AUTO_RESTART_INFO) is None:
             return None
         return cls(
-            custom_model = data[AutoRestartInfo.Fields.IS_CUSTOM_MODEL],
-            device = data[AutoRestartInfo.Fields.DEVICE],
-            custom_name = data[AutoRestartInfo.Fields.CUSTOM_NAME],
-            custom_path = data[AutoRestartInfo.Fields.CUSTOM_PATH],
-            pretrained_name = data[AutoRestartInfo.Fields.PRETRAINED_NAME],
-            pretrained_path = data[AutoRestartInfo.Fields.PRETRAINED_PATH]
+            custom_model=data[AutoRestartInfo.Fields.IS_CUSTOM_MODEL],
+            device=data[AutoRestartInfo.Fields.DEVICE],
+            custom_name=data[AutoRestartInfo.Fields.CUSTOM_NAME],
+            custom_path=data[AutoRestartInfo.Fields.CUSTOM_PATH],
+            pretrained_name=data[AutoRestartInfo.Fields.PRETRAINED_NAME],
+            pretrained_path=data[AutoRestartInfo.Fields.PRETRAINED_PATH],
         )
+
+    def is_changed(self, other: "AutoRestartInfo") -> bool:
+        return (
+            self.custom_model != other.custom_model
+            or self.device != other.device
+            or self.custom_name != other.custom_name
+            or self.custom_path != other.custom_path
+            or self.pretrained_name != other.pretrained_name
+            or self.pretrained_path != other.pretrained_path
+        )
+
 
 class Inference:
     FRAMEWORK_NAME: str = None
@@ -2516,11 +2538,13 @@ class Inference:
 
         if self._task_id is not None:
             logger.debug("Checking autorestart info...")
-            response = self._api.task.get_field(self._task_id, AutoRestartInfo.Fields.AUTO_RESTART_INFO)
+            response = self._api.task.get_field(
+                self._task_id, AutoRestartInfo.Fields.AUTO_RESTART_INFO
+            )
             self.autorestart = AutoRestartInfo.from_response(response)
             if self.autorestart is not None:
                 logger.debug("Autorestart info:", extra=asdict(self.autorestart))
-                #TODO adjust params for deployment
+                # TODO adjust params for deployment
             else:
                 logger.debug("Autorestart info is not set.")
 
@@ -2559,8 +2583,12 @@ class Inference:
             autostart_func()
 
         if self.autorestart is None:
-            self.autorestart = AutoRestartInfo() #TODO fullfill with values
+            logger.debug("Autorestart info is not set. Creating new one.")
+            self.autorestart = AutoRestartInfo()  # TODO fullfill with values
             self._api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+        elif self.autorestart.is_changed():
+            logger.debug("Autorestart info is changed.")
+            # TODO handle changes
 
         self.cache.add_cache_endpoint(server)
         self.cache.add_cache_files_endpoint(server)
