@@ -11,7 +11,7 @@ import time
 import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from pathlib import Path
 from queue import Queue
@@ -46,7 +46,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import StateJson, get_data_dir
@@ -90,6 +90,65 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 
+@dataclass
+class AutoRestartInfo:
+    custom_model = False 
+    device: str = None
+    custom_name: Optional[str] = None
+    custom_path: Optional[str] = None 
+    pretrained_name: Optional[str] = None
+    pretrained_path: Optional[str] = None
+
+    class Fields:
+        AUTO_RESTART_INFO = "autoRestartInfo"
+        IS_CUSTOM_MODEL = "isCustomModel"
+        DEVICE = "device"
+        CUSTOM_NAME = "customName"
+        CUSTOM_PATH = "customPath"
+        PRETRAINED_NAME = "pretrainedName"
+        PRETRAINED_PATH = "pretrainedPath"
+
+       
+    def __pre_init__(self, custom_model: bool, device: str, custom_name: Optional[str], custom_path: Optional[str], pretrained_name: Optional[str], pretrained_path: Optional[str]):
+        self.custom_model = custom_model
+        self.device = device
+        if custom_model and (custom_name is None or custom_path is None):
+            raise ValueError("Custom model name and path must be provided.")
+        self.custom_name = custom_name
+        self.custom_path = custom_path
+        if not custom_model and (pretrained_name is None or pretrained_path is None):
+            raise ValueError("Pretrained model name and path must be provided.")
+        elif custom_model and (pretrained_name is not None or pretrained_path is not None):
+            raise ValueError("You are using custom model, but provided pretrained model name and path for auto restart.")
+        self.pretrained_name = pretrained_name
+        self.pretrained_path = pretrained_path
+
+
+    def generate_fields(self) -> List[dict]:
+        return [{
+            ApiField.FIELD: self.Fields.AUTO_RESTART_INFO,
+            ApiField.PAYLOAD: {
+                self.Fields.IS_CUSTOM_MODEL: self.custom_model,
+                self.Fields.DEVICE: self.device,
+                self.Fields.CUSTOM_NAME: self.custom_name,
+                self.Fields.CUSTOM_PATH: self.custom_path,
+                self.Fields.PRETRAINED_NAME: self.pretrained_name,
+                self.Fields.PRETRAINED_PATH: self.pretrained_path
+            }
+        }]
+    
+    @classmethod
+    def from_response(cls, data: dict):
+        if data.get(cls.Fields.AUTO_RESTART_INFO) is None:
+            return None
+        return cls(
+            custom_model = data[AutoRestartInfo.Fields.IS_CUSTOM_MODEL],
+            device = data[AutoRestartInfo.Fields.DEVICE],
+            custom_name = data[AutoRestartInfo.Fields.CUSTOM_NAME],
+            custom_path = data[AutoRestartInfo.Fields.CUSTOM_PATH],
+            pretrained_name = data[AutoRestartInfo.Fields.PRETRAINED_NAME],
+            pretrained_path = data[AutoRestartInfo.Fields.PRETRAINED_PATH]
+        )
 
 class Inference:
     FRAMEWORK_NAME: str = None
@@ -254,6 +313,7 @@ class Inference:
             base_folder=sly_env.smart_cache_container_dir(),
             log_progress=True,
         )
+        self.autorestart = None
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -2454,6 +2514,16 @@ class Inference:
                 self._inference_by_local_deploy_args()
                 exit(0)
 
+        if self._task_id is not None:
+            logger.debug("Checking autorestart info...")
+            response = self._api.task.get_field(self._task_id, AutoRestartInfo.Fields.AUTO_RESTART_INFO)
+            self.autorestart = AutoRestartInfo.from_response(response)
+            if self.autorestart is not None:
+                logger.debug("Autorestart info:", extra=asdict(self.autorestart))
+                #TODO adjust params for deployment
+            else:
+                logger.debug("Autorestart info is not set.")
+
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
@@ -2487,6 +2557,10 @@ class Inference:
             Progress("Model deployed", 1).iter_done_report()
         else:
             autostart_func()
+
+        if self.autorestart is None:
+            self.autorestart = AutoRestartInfo() #TODO fullfill with values
+            self._api.task.set_fields(self._task_id, self.autorestart.generate_fields())
 
         self.cache.add_cache_endpoint(server)
         self.cache.add_cache_files_endpoint(server)

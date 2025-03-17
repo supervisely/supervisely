@@ -786,7 +786,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post("tasks.data.get", data)
         return resp.json()["result"]
 
-    def get_field(self, task_id: int, field: Dict):
+    def get_field(self, task_id: int, field: str):
         """get_field"""
         result = self.get_fields(task_id, [field])
         return result[field]
