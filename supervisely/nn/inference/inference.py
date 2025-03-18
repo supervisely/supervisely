@@ -399,12 +399,8 @@ class Inference:
             restore_default_button=False,
             auto_format=True,
         )
-        if self.autorestart:
-            title = "Model was deployed during auto restart with the following settings"
-        else:
-            title = "Model was deployed from API request with the following settings"
         self._api_request_model_layout = Card(
-            title=title,
+            title="Model was deployed from API request with the following settings",
             content=self._api_request_model_info,
         )
         self._api_request_model_layout.hide()
@@ -2467,6 +2463,10 @@ class Inference:
 
     def _deploy_on_autorestart(self):
         try:
+            self._api_request_model_layout._title = (
+                "Model was deployed during auto restart with the following settings"
+            )
+            self._api_request_model_layout.update_data()
             deploy_params = self.autorestart.deploy_params
             if isinstance(self.gui, GUI.ServingGUITemplate):
                 model_files = self._download_model_files(deploy_params)
