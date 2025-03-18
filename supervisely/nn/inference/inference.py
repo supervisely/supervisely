@@ -710,12 +710,19 @@ class Inference:
         self._deploy_params = deploy_params
         try:
             if self.autorestart is None:
-                logger.debug("Autorestart info is not set. Creating new one.")
                 self.autorestart = AutoRestartInfo(self._deploy_params)
                 self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                logger.debug(
+                    "Created new autorestart info.",
+                    extra=self.autorestart.deploy_params,
+                )
             elif self.autorestart.is_changed(self._deploy_params):
-                logger.debug("Autorestart info is changed. Updating.")
                 self.autorestart.deploy_params.update(self._deploy_params)
+                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                logger.debug(
+                    "Autorestart info is changed. Parameters have been updated.",
+                    extra=self.autorestart.deploy_params,
+                )
         except Exception as e:
             logger.warning(f"Failed to update autorestart info: {repr(e)}")
         if self.gui is not None:
@@ -2529,13 +2536,12 @@ class Inference:
 
         try:
             if self._task_id is not None:
-                logger.debug("Checking autorestart info...")
                 response = self.api.task.get_fields(
                     self._task_id, [AutoRestartInfo.Fields.AUTO_RESTART_INFO]
                 )
                 self.autorestart = AutoRestartInfo.from_response(response)
                 if self.autorestart is not None:
-                    logger.debug("Autorestart info:", extra=self.autorestart.deploy_params)
+                    logger.debug("Autorestart info is set.", extra=self.autorestart.deploy_params)
                     self._deploy_on_autorestart()
                 else:
                     logger.debug("Autorestart info is not set.")
