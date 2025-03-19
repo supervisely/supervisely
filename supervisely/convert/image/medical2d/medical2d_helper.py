@@ -169,8 +169,11 @@ def convert_dcm_to_nrrd(
     mkdir(curr_convert_dir)
 
     dcm = pydicom.read_file(image_path)
-    if dcm.file_meta.TransferSyntaxUID.is_compressed:
-        dcm.decompress()
+    try:
+        if dcm.file_meta.TransferSyntaxUID.is_compressed:
+            dcm.decompress()
+    except AttributeError:
+        logger.warn("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
     dcm = convert_to_monochrome2(image_path, dcm)
 
     dcm_meta = get_dcm_meta(dcm)
