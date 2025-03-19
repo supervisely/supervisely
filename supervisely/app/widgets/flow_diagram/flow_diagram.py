@@ -7,6 +7,38 @@ from supervisely.app.widgets_context import JinjaWidgets
 class FlowsView(Widget):
     """
     A widget for displaying a flow diagram with nodes and connections.
+
+    :param nodes: List of nodes to be displayed in the flow diagram.
+    :param connections: List of connections between nodes.
+    :param height: Height of the widget. Default is "500px".
+    :param width: Width of the widget. Default is "100%".
+
+      :Usage:
+    .. code-block:: python
+    import supervisely_lib as sly
+    import supervisely.app.widgets as w
+
+    node_1 = w.FlowsView.Node(
+        x=50, y=50, content=w.Card(content=w.Text("This flow processes images using AI."))
+    )
+
+    node_2 = w.FlowsView.Node(
+        x=200, y=200, content=w.Card("Node 2", content=w.Text("This flow processes images using AI."))
+    )
+
+    btn = w.Button("Start", button_size="mini")
+    node_3 = w.FlowsView.Node(x=20, y=500, content=btn)
+
+
+    nodes = [node_1, node_2, node_3]
+    connections = {
+        node_1.widget_id: [node_2.widget_id, node_3.widget_id],
+        node_2.widget_id: [node_3.widget_id],
+    }
+    flow_diagram = w.FlowsView(nodes=nodes, connections=connections)
+
+    layout = w.Container([flow_diagram])
+    app = sly.Application(layout=layout)
     """
 
     class Node(Widget):
