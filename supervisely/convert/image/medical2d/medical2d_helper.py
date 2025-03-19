@@ -136,7 +136,7 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     return list_of_images, frame_axis
 
 def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
-    if getattr(dcm.file_meta, "PhotometricInterpretation", None) == "YBR_FULL_422":
+    if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
         # * Convert dicom to monochrome
         if len(dcm.pixel_array.shape) == 4 and dcm.pixel_array.shape[-1] == 3:
             monochrome = dcm.pixel_array[..., 0].astype(np.uint8)
