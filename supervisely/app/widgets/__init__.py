@@ -150,6 +150,5 @@ from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThum
 from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
 from supervisely.app.widgets.bokeh.bokeh import Bokeh
 from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
-from supervisely.app.widgets.flow_diagram.flow_diagram import FlowDiagram
-from supervisely.app.widgets.flow_node.flow_node import FlowNode
+from supervisely.app.widgets.flow_diagram.flow_diagram import FlowsView
 

@@ -1,18 +1,48 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 from supervisely.app.widgets import Widget
-from supervisely.app.widgets.flow_node.flow_node import FlowNode
 from supervisely.app.widgets_context import JinjaWidgets
 
 
-class FlowDiagram(Widget):
+class FlowsView(Widget):
     """
     A widget for displaying a flow diagram with nodes and connections.
     """
 
+    class Node(Widget):
+        def __init__(
+            self,
+            x: int = 0,
+            y: int = 0,
+            content: Widget = None,
+            widget_id: str = None,
+        ):
+            self.position = {"x": x, "y": y}
+            self.x = x
+            self.y = y
+            self.content = content
+            super().__init__(widget_id=widget_id, file_path=__file__)
+
+        def to_json(self):
+            return {
+                "id": self.widget_id,
+                "position": self.position,
+                "content_html": self.content.to_html() if self.content else "",
+            }
+
+        @property
+        def key(self) -> str:
+            return f"node-{self.widget_id}"
+
+        def get_json_state(self):
+            return self.content.get_json_state() if self.content else {}
+
+        def get_json_data(self):
+            return self.content.get_json_data() if self.content else {}
+
     def __init__(
         self,
-        nodes: List[FlowNode] = None,
+        nodes: List[Node] = None,
         connections: List[Dict[str, List[str]]] = None,
         height: Union[str, int] = "500px",
         width: Union[str, int] = "100%",
