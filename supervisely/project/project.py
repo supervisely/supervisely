@@ -372,7 +372,7 @@ class Dataset(KeyObject):
 
     def key(self):
         # TODO: add docstring
-        return self.name
+        return self.path
 
     @property
     def directory(self) -> str:
@@ -1308,7 +1308,7 @@ class Dataset(KeyObject):
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
-            img_bytes = sly.image.write_bytes(img_np, "jpeg")            
+            img_bytes = sly.image.write_bytes(img_np, "jpeg")
             coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
             run_coroutine(coroutine)
 
@@ -1691,7 +1691,7 @@ class Dataset(KeyObject):
                 "objects":[],
                 "customBigData":{}
             }
-            
+
             coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
             run_coroutine(coroutine)
         """
@@ -1723,7 +1723,7 @@ class Dataset(KeyObject):
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            
+
             coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
             run_coroutine(coroutine)
         """
@@ -3731,7 +3731,7 @@ class Project:
 
                 project_id = 8888
                 save_directory = "/path/to/save/projects"
-                
+
                 coroutine = sly.Project.download_async(api, project_id, save_directory)
                 run_coroutine(coroutine)
         """
