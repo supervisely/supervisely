@@ -1222,7 +1222,7 @@ class VideoProject(Project):
 
             coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
             run_coroutine(coroutine)
-            
+
         """
         await download_video_project_async(
             api=api,
@@ -1603,15 +1603,24 @@ async def download_video_project_async(
     if progress_cb is not None:
         log_progress = False
 
+    all_datasets = api.dataset.get_list(project_id, recursive=True)
     datasets = []
     if dataset_ids is not None:
         for ds_id in dataset_ids:
             datasets.append(api.dataset.get_info_by_id(ds_id))
     else:
-        datasets = api.dataset.get_list(project_id, recursive=True)
+        datasets = all_datasets
+
+    def full_dataset_path(dataset, all_datasets):
+        if dataset.parent_id is None:
+            return dataset.name
+        parent_dataset = next(ds for ds in all_datasets if ds.id == dataset.parent_id)
+        return os.path.join(full_dataset_path(parent_dataset, all_datasets), dataset.name)
 
     for dataset in datasets:
-        dataset_fs = project_fs.create_dataset(dataset.name)
+        dataset_fs = project_fs.create_dataset(
+            dataset.name, full_dataset_path(dataset, all_datasets)
+        )
         videos = api.video.get_list(dataset.id)
 
         if log_progress is True:
