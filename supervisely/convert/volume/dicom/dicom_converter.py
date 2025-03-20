@@ -6,7 +6,6 @@ from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.convert.volume.dicom import dicom_helper as h
 from supervisely.volume.volume import inspect_dicom_series, get_extension, read_dicom_serie_volume
-import time
 
 class DICOMConverter(VolumeConverter):
     class Item(VolumeConverter.Item):
@@ -62,11 +61,8 @@ class DICOMConverter(VolumeConverter):
                 )
                 continue
 
-            t = time.time()
             for dicom_path in dicom_paths:
                 h.convert_to_monochrome2(dicom_path)
-            elapsed = time.time() - t
-            logger.info(f"Monochrome conversion took {elapsed:.3f} seconds")
             _, meta = read_dicom_serie_volume(dicom_paths, anonymize=True)
             item = self.Item(serie_id=dicom_id, item_paths=dicom_paths, volume_meta=meta)
             self._items.append(item)
