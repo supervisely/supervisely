@@ -41,9 +41,22 @@ def dcm_to_nrrd(id: str, paths: List[str]) -> str:
 def convert_to_monochrome2(dcm_path: str):
     import pydicom
 
-    dcm = pydicom.dcmread(dcm_path)
-    if dcm.file_meta.TransferSyntaxUID.is_compressed:
-        dcm.decompress()
+    is_modified = False
+
+    try:
+        dcm = pydicom.dcmread(dcm_path)
+    except Exception as e:
+        logger.warn("Failed to read DICOM file: " + str(e))
+        return
+
+    try:
+        if dcm.file_meta.TransferSyntaxUID.is_compressed:
+            dcm.decompress()
+            is_modified = True
+    except Exception as e:
+        logger.warn("Failed to decompress DICOM file: " + str(e))
+        return
+
     if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
         # * Convert dicom to monochrome
         if len(dcm.pixel_array.shape) == 4 and dcm.pixel_array.shape[-1] == 3:
@@ -63,4 +76,10 @@ def convert_to_monochrome2(dcm_path: str):
             logger.error(f"Error occurred while converting dicom to monochrome: {ae}")
 
         logger.info("Rewriting DICOM file with MONOCHROME2 photometric interpretation.")
-        dcm.save_as(dcm_path)
+        is_modified = True
+
+    try:
+        if is_modified:
+            dcm.save_as(dcm_path)
+    except Exception as e:
+        logger.warn("Failed to save DICOM file: " + str(e))
