@@ -10,6 +10,8 @@ import re
 import shutil
 import subprocess
 import tarfile
+from json import dumps
+from pathlib import Path
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import aiofiles
@@ -1571,12 +1573,12 @@ async def list_files_recursively_async(
     :rtype: List[str]
 
     :Usage example:
-    
+
          .. code-block:: python
-    
+
             import supervisely as sly
             from supervisely._utils import run_coroutine
-                
+
             dir_path = '/home/admin/work/projects/examples'
 
             coroutine = sly.fs.list_files_recursively_async(dir_path)
@@ -1616,3 +1618,175 @@ async def list_files_recursively_async(
 
     loop = get_or_create_event_loop()
     return await loop.run_in_executor(None, sync_file_list)
+
+
+def get_file_offsets(
+    archive_path: str,
+    team_file_id: Optional[int] = None,
+    filter_func: Optional[Callable] = None,
+    format: Literal["dicts", "lists"] = "dicts",
+) -> Union[
+    List[Dict],
+    Tuple[List[str], List[Dict], Optional[int]],
+]:
+    """
+    Extracts offset information for files from TAR archives.
+
+    In results, `teamFileId` is always None because it is not possible to determine it on this step.
+    You can set the `teamFileId` later when uploading the file to Supervisely.
+
+    :param archive_path: Path to the archive
+    :type archive_path: str
+    :param team_file_id: ID of file in Team Files. Default is None.
+                    If default, then in results `teamFileId` will be None because it is not possible to determine it on this step.
+                    You can set the `teamFileId` later when uploading the file to Supervisely.
+    :type team_file_id: Optional[int]
+    :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
+    :type filter_func: Callable, optional
+
+    :raises ValueError: If the archive type is not supported or contains compressed files
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        archive_path = '/home/admin/work/projects/examples.zip'
+        file_info = sly.fs.get_file_offsets(archive_path)
+        print(file_info)
+
+        # Output:
+        # [
+        #     {
+        #         "title": "image1.jpg",
+        #         "teamFileId": None,
+        #         "sourceBlob": {
+        #             "offsetStart": 0,
+        #             "offsetEnd": 123456
+        #         }
+        #     },
+        #     {
+        #         "title": "image2.jpg",
+        #         "teamFileId": None,
+        #         "sourceBlob": {
+        #             "offsetStart": 123456,
+        #             "offsetEnd": 234567
+        #         }
+        #     }
+        # ]
+    """
+    from supervisely.api.api import ApiField
+
+    ext = Path(archive_path).suffix.lower()
+
+    if ext == ".tar":
+        result = _process_tar(
+            tar_path=archive_path,
+            team_file_id=team_file_id,
+            filter_func=filter_func,
+        )
+        if format == "dicts":
+            return result
+        else:
+            names = [file_info[ApiField.TITLE] for file_info in result]
+            offsets = [file_info[ApiField.SOURCE_BLOB] for file_info in result]
+            return names, offsets, team_file_id
+    else:
+        raise ValueError(f"Unsupported archive type: {ext}. Only .zip and .tar are supported")
+
+
+def _process_tar(
+    tar_path: str,
+    team_file_id: Optional[int] = None,
+    filter_func: Optional[Callable] = None,
+) -> List[Dict]:
+    """Processes a TAR archive and returns offset information for image files."""
+
+    from supervisely.api.api import ApiField
+
+    result = []
+
+    with tarfile.open(tar_path, "r") as tar:
+        # TAR archives consist of 512-byte blocks
+        block_size = 512
+        offset = 0
+
+        for member in tar.getmembers():
+            skip = not member.isfile()
+            if skip:
+                # Skip directories
+                offset += block_size
+                continue
+
+            if filter_func and not filter_func(member.name):
+                logger.info(f"File '{member.name}' is skipped by filter function")
+                skip = True
+
+            if not skip:
+                # Calculate offsets
+                # Data start offset = current offset + header size (512 bytes)
+                offset_start = offset + block_size
+                offset_end = offset_start + member.size
+
+                file_info = {
+                    ApiField.TITLE: os.path.basename(member.name),
+                    ApiField.TEAM_FILE_ID: team_file_id,
+                    ApiField.SOURCE_BLOB: {
+                        ApiField.OFFSET_START: offset_start,
+                        ApiField.OFFSET_END: offset_end,
+                    },
+                }
+                result.append(file_info)
+
+            # Calculate the offset of the next file
+            # File size is rounded up to a multiple of block_size
+            file_blocks = (member.size + block_size - 1) // block_size
+            # Total size = header (1 block) + file data (file_blocks blocks)
+            offset += block_size + (file_blocks * block_size)
+
+    return result
+
+
+def save_file_offsets_json(
+    archive_path: str,
+    output_dir: str,
+    team_file_id: Optional[int] = None,
+    filter_func: Optional[Callable] = None,
+) -> None:
+    """
+    Processes an archive and creates a JSON file with offset information.
+
+    :param archive_path: Path to the archive
+    :type archive_path: str
+    :param output_dir: Path to the output directory
+    :type output_dir: str
+    :param team_file_id: ID of file in Team Files. Default is None.
+                    If default, then in results `teamFileId` will be None because it is not possible to determine it on this step.
+                    You can set the `teamFileId` later when uploading the file to Supervisely.
+    :type team_file_id: Optional[int]
+    :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
+    :type filter_func: Callable, optional
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            archive_path = '/path/to/examples.tar'
+            output_dir = '/path/to/output'
+            sly.fs.save_file_offsets_json(archive_path, output_dir)
+    """
+    from supervisely.api.image_api import OFFSETS_JSON_SUFFIX
+    
+    offsets_list = get_file_offsets(
+        archive_path=archive_path,
+        team_file_id=team_file_id,
+        filter_func=filter_func,
+    )
+    json_data = dumps(offsets_list, indent=4, ensure_ascii=False)
+    archive_name = Path(archive_path).stem
+    output_path = os.path.join(output_dir, archive_name + OFFSETS_JSON_SUFFIX)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(json_data)

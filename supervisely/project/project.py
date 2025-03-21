@@ -4353,7 +4353,7 @@ def download_project(
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
-    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output. By default, it is True.
     :type log_progress: bool, optional

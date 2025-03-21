@@ -8,6 +8,7 @@ import asyncio
 import copy
 import io
 import json
+import os
 import re
 import urllib.parse
 from collections import defaultdict
@@ -79,7 +80,7 @@ from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 API_DEFAULT_PER_PAGE = 500
-
+OFFSETS_JSON_SUFFIX = "_file_offsets.json"
 
 class ImageInfo(NamedTuple):
     """
@@ -1967,6 +1968,155 @@ class ImageApi(RemoveableBulkModuleApi):
                 result[pos] = info
         return result
 
+    def upload_by_offsets(
+        self,
+        dataset_id: int,
+        team_file_id: int,
+        names: Optional[List[str]] = None,
+        offsets: Optional[List[dict]] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        metas: Optional[List[Dict]] = None,
+        batch_size: Optional[int] = 50,
+        skip_validation: Optional[bool] = False,
+        conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
+        validate_meta: Optional[bool] = False,
+        use_strict_validation: Optional[bool] = False,
+        use_caching_for_validation: Optional[bool] = False,
+    ) -> List[ImageInfo]:
+        """
+        Upload images from given hashes to Dataset.
+
+        If you include `metas` during the upload, you can add a custom sort parameter for images.
+        To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
+        Refer to the example section for more details.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param team_file_id: ID of the binary file in the team storage.
+        :type team_file_id: int
+        :param names: Images names with extension. 
+                      
+                      REQUIRED if there is no file containing offsets in the team storage at the same level as the binary file.
+                      Offset file must be named as the binary file with the `OFFSETS_JSON_SUFFIX` and must be represented in JSON format.
+                      Example: `binary_file_name_file_offsets.json`
+        :type names: List[str], optional
+        :param offsets: List of dictionaries with file offsets that define the range of bytes representing the image in the binary.
+                        Example: `[{ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100}, {ApiField.OFFSET_START: 100, ApiField.OFFSET_END: 200}]`.
+                        
+                        REQUIRED if there is no file containing offsets in the team storage at the same level as the binary file.
+                        Offset file must be named as the binary file with the `OFFSETS_JSON_SUFFIX` and must be represented in JSON format.
+                        Example: `binary_file_name_file_offsets.json`
+        :type offsets: List[dict], optional      
+        :param progress_cb: Function for tracking the progress of uploading.
+        :type progress_cb: tqdm or callable, optional
+        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
+        :type metas: List[dict], optional
+        :param batch_size: Number of images to upload in one batch.
+        :type batch_size: int, optional
+        :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
+        :type skip_validation: bool, optional
+        :param conflict_resolution: The strategy to resolve upload conflicts. 'Replace' option will replace the existing images in the dataset with the new images. The images that are being deleted are logged. 'Skip' option will ignore the upload of new images that would result in a conflict. An original image's ImageInfo list will be returned instead. 'Rename' option will rename the new images to prevent any conflict.
+        :type conflict_resolution: Optional[Literal["rename", "skip", "replace"]]
+        :param validate_meta: If True, validates provided meta with saved JSON schema.
+        :type validate_meta: bool, optional
+        :param use_strict_validation: If True, uses strict validation.
+        :type use_strict_validation: bool, optional
+        :param use_caching_for_validation: If True, uses caching for validation.
+        :type use_caching_for_validation: bool, optional
+        :return: List with information about Images. See :class:`info_sequence<info_sequence>`
+        :rtype: :class:`List[ImageInfo]`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            server_address = 'https://app.supervisely.com'
+            api_token = 'Your Supervisely API Token'
+            api = sly.Api(server_address, api_token)
+
+            dataset_id = 452984
+            names = ['lemon_1.jpg', 'lemon_1.jpg']
+            offsets = [
+                {ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100},
+                {ApiField.OFFSET_START: 100, ApiField.OFFSET_END: 200}
+            ]
+            team_file_id = 123456
+            new_imgs_info = api.image.upload_by_offsets(dataset_id, names, offsets, team_file_id, metas)
+
+            # Output example:
+            #   ImageInfo(id=136281,
+            #             name='lemon_1.jpg',
+            #             link=None,
+            #             hash=None,
+            #             mime=None,
+            #             ext=None,
+            #             size=100,
+            #             width=None,
+            #             height=None,
+            #             labels_count=0,
+            #             dataset_id=452984,
+            #             created_at='2025-03-21T18:30:08.551Z',
+            #             updated_at='2025-03-21T18:30:08.551Z',
+            #             meta={},
+            #             path_original='/h5un6l2.../eyJ0eXBlIjoic291cmNlX2Jsb2I...',
+            #             full_storage_url='http://storage:port/h5un6l2...,
+            #             tags=[],
+            #             created_by_id=user),
+            #   ImageInfo(...)
+        """
+
+        items = []
+        if names is None or offsets is None:
+            names, offsets = self._load_team_file_offsets(team_file_id)
+            if len(names) != len(offsets):
+                raise ValueError(
+                    f"The number of images in the offset file does not match the number of offsets: {len(names)} != {len(offsets)}"
+                )
+            
+        for offset in offsets:
+            if not isinstance(offset, dict):
+                raise ValueError("Offset should be a dictionary")
+            if ApiField.OFFSET_START not in offset or ApiField.OFFSET_END not in offset:
+                raise ValueError(
+                    f"Offset should contain '{ApiField.OFFSET_START}' and '{ApiField.OFFSET_END}' keys"
+                )
+
+            items.append({ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: offset})
+
+        return self._upload_bulk_add(
+            lambda image_data, item: {**image_data, **item},
+            dataset_id,
+            names,
+            items,
+            progress_cb,
+            metas=metas,
+            batch_size=batch_size,
+            skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
+            validate_meta=validate_meta,
+            use_strict_validation=use_strict_validation,
+            use_caching_for_validation=use_caching_for_validation,
+        )
+
+    def _load_team_file_offsets(self, team_file_id: int) -> Tuple[List[str], List[dict]]:
+        """ 
+        Load offsets from the team file with images.
+
+        :param team_file_id: ID of the binary file in the team storage.
+        :type team_file_id: int
+        :return: Tuple with names and offsets of images.
+        :rtype: Tuple[List[str], List[dict]]
+        """
+        file_info = self._api.file.get_info_by_id(team_file_id)
+        if file_info is None:
+            raise ValueError(f"Binary file ID: {team_file_id} with images not found")
+        offset_file_path = os.path.join(Path(file_info.path).parent, Path(file_info.path).stem + OFFSETS_JSON_SUFFIX)        
+        images = self._api.file.get_json_file_content(file_info.team_id, offset_file_path)
+        names = [image[ApiField.TITLE] for image in images]
+        offsets = [image[ApiField.SOURCE_BLOB] for image in images]
+        return names, offsets
+
     def _upload_bulk_add(
         self,
         func_item_to_kv,
@@ -2036,8 +2186,17 @@ class ImageApi(RemoveableBulkModuleApi):
         def _pack_for_request(names: List[str], items: List[Any], metas: List[Dict]) -> List[Any]:
             images = []
             for name, item, meta in zip(names, items, metas):
-                item_tuple = func_item_to_kv(item)
-                image_data = {ApiField.TITLE: name, item_tuple[0]: item_tuple[1]}
+                image_data = {ApiField.TITLE: name}
+                # Check if the item is a data format for upload by offset
+                if (
+                    isinstance(item, dict)
+                    and ApiField.TEAM_FILE_ID in item
+                    and ApiField.SOURCE_BLOB in item
+                ):
+                    image_data = func_item_to_kv(image_data, item)
+                else:
+                    item_tuple = func_item_to_kv(item)
+                    image_data[item_tuple[0]] = item_tuple[1]
                 if hasattr(self, "sort_by") and self.sort_by is not None:
                     meta = self._add_custom_sort(meta, name)
                 if len(meta) != 0 and type(meta) == dict:
