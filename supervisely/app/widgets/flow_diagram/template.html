@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/flow_diagram/style.css" />
 <div>
-    <div :style="{height: data.{{{widget.widget_id}}}.height, width: data.{{{widget.widget_id}}}.width}"
+    <div :style="{height: data.{{{widget.widget_id}}}.height, width: data.{{{widget.widget_id}}}.width, position: 'relative'}"
         class="sly-flow-diagram">
         <div class="sly-flow-nodes" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;">
             {% for node in widget._nodes %}
