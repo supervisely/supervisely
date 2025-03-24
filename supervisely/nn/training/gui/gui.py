@@ -22,6 +22,7 @@ from supervisely.nn.training.gui.classes_selector import ClassesSelector
 from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
 from supervisely.nn.training.gui.input_selector import InputSelector
 from supervisely.nn.training.gui.model_selector import ModelSelector
+from supervisely.nn.training.gui.tags_selector import TagsSelector
 from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
 from supervisely.nn.training.gui.training_artifacts import TrainingArtifacts
 from supervisely.nn.training.gui.training_logs import TrainingLogs
@@ -83,42 +84,55 @@ class TrainGUI:
             self.team_id = self.project_info.team_id
             environ["TEAM_ID"] = str(self.team_id)
 
+        # ------------------------------------------------- #
+        self.steps = []
+
         # 1. Project selection + Train/val split
         self.input_selector = InputSelector(self.project_info, self.app_options)
+        self.steps.append(self.input_selector.card)
+
         # 2. Select train val splits
         self.train_val_splits_selector = TrainValSplitsSelector(
             self._api, self.project_id, self.app_options
         )
-        # 3. Select classes
-        self.classes_selector = ClassesSelector(self.project_id, [], self.app_options)
+        self.steps.append(self.train_val_splits_selector.card)
+
+        # 3. Select definitions
+        self.classes_selector = None
+        if self.app_options.get("show_classes_selector", True):
+            self.classes_selector = ClassesSelector(self.project_id, [], self.app_options)
+            self.steps.append(self.classes_selector.card)
+
+        self.tags_selector = None
+        if self.app_options.get("show_tags_selector", False):
+            self.tags_selector = TagsSelector(self.project_id, [], self.app_options)
+            self.steps.append(self.tags_selector.card)
+
         # 4. Model selection
         self.model_selector = ModelSelector(
             self._api, self.framework_name, self.models, self.app_options
         )
+        self.steps.append(self.model_selector.card)
+
         # 5. Training parameters (yaml), scheduler preview
         self.hyperparameters_selector = HyperparametersSelector(
             self.hyperparameters, self.app_options
         )
+        self.steps.append(self.hyperparameters_selector.card)
+
         # 6. Start Train
         self.training_process = TrainingProcess(self.app_options)
+        self.steps.append(self.training_process.card)
 
         # 7. Training logs
         self.training_logs = TrainingLogs(self.app_options)
+        self.steps.append(self.training_logs.card)
 
         # 8. Training Artifacts
         self.training_artifacts = TrainingArtifacts(self._api, self.app_options)
+        self.steps.append(self.training_artifacts.card)
 
         # Stepper layout
-        self.steps = [
-            self.input_selector.card,
-            self.train_val_splits_selector.card,
-            self.classes_selector.card,
-            self.model_selector.card,
-            self.hyperparameters_selector.card,
-            self.training_process.card,
-            self.training_logs.card,
-            self.training_artifacts.card,
-        ]
         self.stepper = Stepper(
             widgets=self.steps,
         )
@@ -253,15 +267,35 @@ class TrainGUI:
             collapse_card=(self.model_selector.card, self.collapsable),
         )
 
-        self.classes_selector_cb = wrap_button_click(
-            button=self.classes_selector.button,
-            cards_to_unlock=[self.model_selector.card],
-            widgets_to_disable=self.classes_selector.widgets_to_disable,
-            callback=self.model_selector_cb,
-            validation_text=self.classes_selector.validator_text,
-            validation_func=self.classes_selector.validate_step,
-            collapse_card=(self.classes_selector.card, self.collapsable),
-        )
+        if self.tags_selector is None:
+            self.classes_selector_cb = wrap_button_click(
+                button=self.classes_selector.button,
+                cards_to_unlock=[self.model_selector.card],
+                widgets_to_disable=self.classes_selector.widgets_to_disable,
+                callback=self.model_selector_cb,
+                validation_text=self.classes_selector.validator_text,
+                validation_func=self.classes_selector.validate_step,
+                collapse_card=(self.classes_selector.card, self.collapsable),
+            )
+        else:
+            self.tags_selector_cb = wrap_button_click(
+                button=self.tags_selector.button,
+                cards_to_unlock=[self.model_selector.card],
+                widgets_to_disable=self.tags_selector.widgets_to_disable,
+                callback=self.model_selector_cb,
+                validation_text=self.tags_selector.validator_text,
+                validation_func=self.tags_selector.validate_step,
+                collapse_card=(self.tags_selector.card, self.collapsable),
+            )
+            self.classes_selector_cb = wrap_button_click(
+                button=self.classes_selector.button,
+                cards_to_unlock=[self.tags_selector.card],
+                widgets_to_disable=self.classes_selector.widgets_to_disable,
+                callback=self.tags_selector_cb,
+                validation_text=self.classes_selector.validator_text,
+                validation_func=self.classes_selector.validate_step,
+                collapse_card=(self.classes_selector.card, self.collapsable),
+            )
 
         self.train_val_splits_selector_cb = wrap_button_click(
             button=self.train_val_splits_selector.button,
