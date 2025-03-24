@@ -802,6 +802,8 @@ class FastTable(Widget):
         failed_column_idxs = []
         failed_column_idx = 0
         for column, value in zip(self._source_data.columns, row):
+            if len(self._source_data[column].values) == 0:
+                continue
             col_type = type(self._source_data[column].values[0])
             if col_type == str and not isinstance(value, str):
                 failed_column_idxs.append(
