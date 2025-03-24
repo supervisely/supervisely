@@ -1546,7 +1546,7 @@ class FileApi(ModuleApiBase):
                 sly_fs.remove_dir(temp_path)
             return content
         else:
-            raise FileNotFoundError(f"File not found: {remote_path}")
+            raise FileNotFoundError(f"File not found in Team Files at path: {remote_path}")
 
     async def _download_async(
         self,

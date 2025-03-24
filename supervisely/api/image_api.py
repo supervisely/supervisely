@@ -52,8 +52,10 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
+from supervisely.api.file_api import FileInfo
 from supervisely.api.module_api import (
     ApiField,
     RemoveableBulkModuleApi,
@@ -1973,14 +1975,14 @@ class ImageApi(RemoveableBulkModuleApi):
         :param names: Images names with extension.
 
                       REQUIRED if there is no file containing offsets in the team storage at the same level as the binary file.
-                      Offset file must be named as the binary file with the `OFFSETS_JSON_SUFFIX` and must be represented in JSON format.
+                      Offset file must be named as the binary file with the `_file_offsets.json` suffix and must be represented in JSON format.
                       Example: `binary_file_name_file_offsets.json`
         :type names: List[str], optional
         :param offsets: List of dictionaries with file offsets that define the range of bytes representing the image in the binary.
-                        Example: `[{ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100}, {ApiField.OFFSET_START: 100, ApiField.OFFSET_END: 200}]`.
+                        Example: `[{"offsetStart": 0, "offsetEnd": 100}, {"offsetStart": 101, "offsetEnd": 200}]`.
 
                         REQUIRED if there is no file containing offsets in the team storage at the same level as the binary file.
-                        Offset file must be named as the binary file with the `OFFSETS_JSON_SUFFIX` and must be represented in JSON format.
+                        Offset file must be named as the binary file with the `_file_offsets.json` suffix and must be represented in JSON format.
                         Example: `binary_file_name_file_offsets.json`
         :type offsets: List[dict], optional
         :param progress_cb: Function for tracking the progress of uploading.
@@ -2006,6 +2008,8 @@ class ImageApi(RemoveableBulkModuleApi):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely.api.module_api import ApiField
+            
 
             server_address = 'https://app.supervisely.com'
             api_token = 'Your Supervisely API Token'
@@ -2015,7 +2019,7 @@ class ImageApi(RemoveableBulkModuleApi):
             names = ['lemon_1.jpg', 'lemon_1.jpg']
             offsets = [
                 {ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100},
-                {ApiField.OFFSET_START: 100, ApiField.OFFSET_END: 200}
+                {ApiField.OFFSET_START: 101, ApiField.OFFSET_END: 200}
             ]
             team_file_id = 123456
             new_imgs_info = api.image.upload_by_offsets(dataset_id, names, offsets, team_file_id, metas)
@@ -4750,7 +4754,7 @@ class ImageApi(RemoveableBulkModuleApi):
         meta_copy[ApiField.CUSTOM_SORT] = custom_sort
         return meta_copy
 
-    def download_images_archive(
+    def download_source_archive (
         self,
         download_id: str,
         project_id: int,
@@ -4820,3 +4824,59 @@ class ImageApi(RemoveableBulkModuleApi):
             if log_progress:
                 progress_cb.update(len(content))
             return content
+
+    def upload_team_files_archive(
+        self,
+        dataset: Union[DatasetInfo, int],
+        archive: Union[FileInfo, str],
+        names: Optional[List[str]] = None,
+        metas: Optional[List[Dict[str, Any]]] = None,
+        change_name_if_conflict: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[ImageInfo]:
+        """
+        Uploads images from source archive in Team Files to dataset.
+
+        IMPORTANT: File with image offsets should be in the same directory as the source archive.
+        This file should be named as the source archive but with the suffix `_file_offsets.json`.
+        It must be a JSON file with image offsets that define the range of bytes representing the image in the binary.
+        Example: `binary_file_name_file_offsets.json` with the content `[{"offsetStart": 0, "offsetEnd": 100}, {"offsetStart": 101, "offsetEnd": 200}]`.
+        To prepare the offsets file, use the `supervisely.fs.save_file_offsets_json` function.
+
+        :param dataset: Dataset in Supervisely. Can be DatasetInfo object or dataset ID.
+                        It is recommended to use DatasetInfo object to avoid additional API requests.
+        :type dataset: Union[DatasetInfo, int]
+        :param archive: Source archive in Team Files. Can be FileInfo object or path to archive.
+                        It is recommended to use FileInfo object to avoid additional API requests.
+        :type archive: Union[FileInfo, str]
+        :param names: List of names for images. If None, names will be taken from archive.
+        :type names: Optional[List[str], optional
+        :param metas: List of metas for images.
+        :type metas: Optional[List[Dict[str, Any]], optional
+        :param change_name_if_conflict: If True adds suffix to the end of Image name when Dataset already contains an Image with identical name, If False and images with the identical names already exist in Dataset skips them.
+        :type change_name_if_conflict: bool, optional
+        :param progress_cb: Function for tracking upload progress. Tracks the count of processed items.
+        :type progress_cb: Optional[Union[tqdm, Callable]]
+        :return: List of uploaded images infos.
+        :rtype: List[ImageInfo]
+        """
+        if isinstance(dataset, int):
+            dataset_id = dataset
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+        else:
+            dataset_id = dataset.id
+            dataset_info = dataset
+
+        if isinstance(archive, str):
+            team_file_info = self._api.file.get_info_by_path(dataset_info.team_id, archive)
+        else:
+            team_file_info = archive
+        
+        return self.upload_by_offsets(
+            dataset_id=dataset_id,
+            team_file_id=team_file_info.id,
+            names=names,
+            progress_cb=progress_cb,
+            metas=metas,
+            conflict_resolution="rename" if change_name_if_conflict else "skip",
+        )
