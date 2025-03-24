@@ -47,12 +47,14 @@ class FlowsView(Widget):
             x: int = 0,
             y: int = 0,
             content: Widget = None,
+            buttons: List[Widget] = None,
             widget_id: str = None,
         ):
             self.position = {"x": x, "y": y}
             self.x = x
             self.y = y
             self.content = content
+            self.buttons = buttons or []
             super().__init__(widget_id=widget_id, file_path=__file__)
 
         def to_json(self):
@@ -64,7 +66,7 @@ class FlowsView(Widget):
 
         @property
         def key(self) -> str:
-            return f"node-{self.widget_id}"
+            return f"node-{self.content.widget_id}"
 
         def get_json_state(self):
             return self.content.get_json_state() if self.content else {}

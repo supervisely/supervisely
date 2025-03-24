@@ -4,9 +4,15 @@
         class="sly-flow-diagram">
         <div class="sly-flow-nodes" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;">
             {% for node in widget._nodes %}
-            <div id="{{{node.key}}}" class="sly-flow-node"
-                style="position: absolute; left: {{{node.x}}}px; top: {{{node.y}}}px">
-                {{{node.content}}}
+            <div style="position: absolute; left: {{{node.x}}}px; top: {{{node.y}}}px; background-color: #fff">
+                <div id="{{{node.key}}}" class="sly-flow-node">
+                    {{{node.content}}}
+                </div>
+                {% for button in node.buttons %}
+                <div class="sly-flow-node-button">
+                    {{{button}}}
+                </div>
+                {% endfor %}
             </div>
             {% endfor %}
         </div>

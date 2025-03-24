@@ -23,8 +23,8 @@ Vue.component("sly-flow-diagram", {
         //     endPoint: {type: "circles    ", size: 5, position: "both},
         //   }
         line = new LeaderLine(
-          document.getElementById(`node-${sourceId}`),
-          document.getElementById(`node-${targetData[0]}`),
+          document.getElementById(sourceId),
+          document.getElementById(targetData[0]),
           { ...targetData[1] }
         );
         middleLabel = targetData[1].middleLabel;

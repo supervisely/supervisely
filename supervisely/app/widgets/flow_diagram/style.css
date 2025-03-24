@@ -8,5 +8,13 @@
   border-radius: 5px;
   min-width: 150px;
   display: flex;
-  flex-direction: column;
+  background-color: #fff;
+}
+
+.sly-flow-node-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  padding: 3px;
+  justify-content: flex-end;
 }
