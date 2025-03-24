@@ -224,6 +224,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         disable_submit: Optional[bool] = None,
         toolbox_settings: Optional[Dict] = None,
         hide_figure_author: Optional[bool] = False,
+        allow_review_own_annotations: Optional[bool] = False,
     ) -> List[LabelingQueueInfo]:
         """
         Creates Labeling Queue and assigns given Users to it.
@@ -386,6 +387,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
 
+        queue_meta = None
+        if allow_review_own_annotations is True:
+            queue_meta = {"reviewOwnAnnotationsAvailable": True}
+
         data = {
             ApiField.NAME: name,
             ApiField.USER_IDS: user_ids,
@@ -393,6 +398,9 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.REVIEWER_IDS: reviewer_ids,
             ApiField.META: meta,
         }
+
+        if queue_meta is not None:
+            data[ApiField.QUEUE_META] = queue_meta
 
         if readme is not None:
             data[ApiField.README] = str(readme)

@@ -641,6 +641,8 @@ class ApiField:
     """"""
     ANNOTATED_COUNT = "annotatedCount"
     """"""
+    QUEUE_META = "queueMeta"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
