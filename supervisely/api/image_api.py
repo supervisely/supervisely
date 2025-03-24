@@ -82,6 +82,7 @@ SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 API_DEFAULT_PER_PAGE = 500
 OFFSETS_JSON_SUFFIX = "_file_offsets.json"
 
+
 class ImageInfo(NamedTuple):
     """
     Object with image parameters from Supervisely.
@@ -178,6 +179,18 @@ class ImageInfo(NamedTuple):
     #: :class:`str`: Id of a user who created the image.
     created_by: str
 
+    #: :class:`int`: Id of the Team Files archive related to the image.
+    related_data_id: int
+
+    #: :class:`str`: Id of the Team Files archive used for archive download.
+    download_id: str
+
+    #: :class:`int`: Bytes offset in the Team Files archive that points to the start of the image data.
+    offset_start: int
+
+    #: :class:`int`: Bytes offset in the Team Files archive that points to the end of the image data.
+    offset_end: int
+
     @property
     def preview_url(self):
         """
@@ -248,6 +261,10 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.FULL_STORAGE_URL,
             ApiField.TAGS,
             ApiField.CREATED_BY_ID[0][0],
+            ApiField.RELATED_DATA_ID,
+            ApiField.DOWNLOAD_ID,
+            ApiField.OFFSET_START,
+            ApiField.OFFSET_END,
         ]
 
     @staticmethod
@@ -1867,7 +1884,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type batch_size: int, optional
         :param force_metadata_for_links: Calculate metadata for links. If False, metadata will be empty.
         :type force_metadata_for_links: bool, optional
-        :param infos: List of ImageInfo objects. If None, will be requested from server.
+        :param infos: Deprecated parameter.
         :type infos: List[ImageInfo], optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
         :type skip_validation: bool, optional
@@ -1914,59 +1931,18 @@ class ImageApi(RemoveableBulkModuleApi):
         if metas is None:
             metas = [{}] * len(names)
 
-        if infos is None:
-            infos = self.get_info_by_id_batch(
-                ids, force_metadata_for_links=force_metadata_for_links
-            )
-
-        # prev implementation
-        # hashes = [info.hash for info in infos]
-        # return self.upload_hashes(dataset_id, names, hashes, progress_cb, metas=metas)
-
-        links, links_names, links_order, links_metas = [], [], [], []
-        hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
-        for idx, (name, info, meta) in enumerate(zip(names, infos, metas)):
-            if info.link is not None:
-                links.append(info.link)
-                links_names.append(name)
-                links_order.append(idx)
-                links_metas.append(meta)
-            else:
-                hashes.append(info.hash)
-                hashes_names.append(name)
-                hashes_order.append(idx)
-                hashes_metas.append(meta)
-
-        result = [None] * len(names)
-        if len(links) > 0:
-            res_infos_links = self.upload_links(
-                dataset_id,
-                links_names,
-                links,
-                progress_cb,
-                metas=links_metas,
-                batch_size=batch_size,
-                force_metadata_for_links=force_metadata_for_links,
-                skip_validation=skip_validation,
-                conflict_resolution=conflict_resolution,
-            )
-            for info, pos in zip(res_infos_links, links_order):
-                result[pos] = info
-
-        if len(hashes) > 0:
-            res_infos_hashes = self.upload_hashes(
-                dataset_id,
-                hashes_names,
-                hashes,
-                progress_cb,
-                metas=hashes_metas,
-                batch_size=batch_size,
-                skip_validation=skip_validation,
-                conflict_resolution=conflict_resolution,
-            )
-            for info, pos in zip(res_infos_hashes, hashes_order):
-                result[pos] = info
-        return result
+        return self._upload_bulk_add(
+            lambda item: (ApiField.IMAGE_ID, item),
+            dataset_id,
+            names,
+            ids,
+            progress_cb,
+            metas=metas,
+            batch_size=batch_size,
+            force_metadata_for_links=force_metadata_for_links,
+            skip_validation=skip_validation,
+            conflict_resolution=conflict_resolution,
+        )
 
     def upload_by_offsets(
         self,
@@ -1994,19 +1970,19 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param team_file_id: ID of the binary file in the team storage.
         :type team_file_id: int
-        :param names: Images names with extension. 
-                      
+        :param names: Images names with extension.
+
                       REQUIRED if there is no file containing offsets in the team storage at the same level as the binary file.
                       Offset file must be named as the binary file with the `OFFSETS_JSON_SUFFIX` and must be represented in JSON format.
                       Example: `binary_file_name_file_offsets.json`
         :type names: List[str], optional
         :param offsets: List of dictionaries with file offsets that define the range of bytes representing the image in the binary.
                         Example: `[{ApiField.OFFSET_START: 0, ApiField.OFFSET_END: 100}, {ApiField.OFFSET_START: 100, ApiField.OFFSET_END: 200}]`.
-                        
+
                         REQUIRED if there is no file containing offsets in the team storage at the same level as the binary file.
                         Offset file must be named as the binary file with the `OFFSETS_JSON_SUFFIX` and must be represented in JSON format.
                         Example: `binary_file_name_file_offsets.json`
-        :type offsets: List[dict], optional      
+        :type offsets: List[dict], optional
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
@@ -2073,7 +2049,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise ValueError(
                     f"The number of images in the offset file does not match the number of offsets: {len(names)} != {len(offsets)}"
                 )
-            
+
         for offset in offsets:
             if not isinstance(offset, dict):
                 raise ValueError("Offset should be a dictionary")
@@ -2100,7 +2076,7 @@ class ImageApi(RemoveableBulkModuleApi):
         )
 
     def _load_team_file_offsets(self, team_file_id: int) -> Tuple[List[str], List[dict]]:
-        """ 
+        """
         Load offsets from the team file with images.
 
         :param team_file_id: ID of the binary file in the team storage.
@@ -2111,7 +2087,9 @@ class ImageApi(RemoveableBulkModuleApi):
         file_info = self._api.file.get_info_by_id(team_file_id)
         if file_info is None:
             raise ValueError(f"Binary file ID: {team_file_id} with images not found")
-        offset_file_path = os.path.join(Path(file_info.path).parent, Path(file_info.path).stem + OFFSETS_JSON_SUFFIX)        
+        offset_file_path = os.path.join(
+            Path(file_info.path).parent, Path(file_info.path).stem + OFFSETS_JSON_SUFFIX
+        )
         images = self._api.file.get_json_file_content(file_info.team_id, offset_file_path)
         names = [image[ApiField.TITLE] for image in images]
         offsets = [image[ApiField.SOURCE_BLOB] for image in images]
@@ -4771,3 +4749,74 @@ class ImageApi(RemoveableBulkModuleApi):
         meta_copy = copy.deepcopy(meta)
         meta_copy[ApiField.CUSTOM_SORT] = custom_sort
         return meta_copy
+
+    def download_images_archive(
+        self,
+        download_id: str,
+        project_id: int,
+        path: str = None,
+        log_progress: bool = True,
+        chunk_size: int = 1024 * 1024,
+    ) -> Optional[bytes]:
+        """
+        Downloads a source archive from Team Files by download ID of any Image that belongs to the archive in Supervisely.
+
+        :param download_id: Download ID of any Image that belongs to the archive in Team Files.
+        :type download_id: str
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param path: Path to save the archive. If None, returns archive content as bytes.
+        :type path: str, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param chunk_size: Size of chunk for streaming. Default is 1 MB.
+        :type chunk_size: int, optional
+        :return: Archive content if path is None, otherwise None.
+        :rtype: bytes or None
+
+        :Usage example:
+
+         .. code-block:: python
+
+
+            api = sly.Api.from_env()
+
+
+            image_id = 6789
+            image_info = api.image.get_info_by_id(image_id)
+            project_id = api.dataset.get_info_by_id(image_info.dataset_id).project_id
+
+            # Download and save to file
+            api.image.download_source_archive(image_info.download_id, project_id, "/path/to/save/archive.tar")
+
+            # Get archive as bytes
+            archive_bytes = api.image.download_source_archive(image_info.download_id, project_id)
+        """
+        response = self._api.post(
+            "images.data.download",
+            {ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
+            stream=True,
+        )
+
+        if log_progress:
+            total_size = int(response.headers.get("Content-Length", 0))
+            progress_cb = tqdm(
+                total=total_size,
+                unit="B",
+                unit_scale=True,
+                desc="Downloading images archive",
+                leave=True,
+            )
+        if path is not None:
+            ensure_base_path(path)
+            with open(path, "wb") as fd:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    fd.write(chunk)
+                    if log_progress:
+                        progress_cb.update(len(chunk))
+            return None
+        else:
+            content = response.content
+            if log_progress:
+                progress_cb.update(len(content))
+            return content
