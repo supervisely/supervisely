@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
@@ -48,6 +48,9 @@ class FlowsView(Widget):
             y: int = 0,
             content: Widget = None,
             buttons: List[Widget] = None,
+            width: Optional[Union[str, int]] = None,
+            height: Optional[Union[str, int]] = None,
+            show_border: bool = False,
             widget_id: str = None,
         ):
             self.position = {"x": x, "y": y}
@@ -55,6 +58,15 @@ class FlowsView(Widget):
             self.y = y
             self.content = content
             self.buttons = buttons or []
+            if width is not None:
+                width = f"{width}px" if isinstance(width, int) else width
+                width = f"width: {width};"
+            self.width = width
+            if height is not None:
+                height = f"{height}px" if isinstance(height, int) else height
+                height = f"height: {height};"
+            self.height = height
+            self.show_border = show_border
             super().__init__(widget_id=widget_id, file_path=__file__)
 
         def to_json(self):

@@ -2,17 +2,19 @@
 <div>
     <div :style="{height: data.{{{widget.widget_id}}}.height, width: data.{{{widget.widget_id}}}.width, position: 'relative'}"
         class="sly-flow-diagram">
-        <div class="sly-flow-nodes" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;">
+        <div class="sly-flow-nodes">
             {% for node in widget._nodes %}
-            <div style="position: absolute; left: {{{node.x}}}px; top: {{{node.y}}}px; background-color: #fff">
-                <div id="{{{node.key}}}" class="sly-flow-node">
-                    {{{node.content}}}
-                </div>
-                {% for button in node.buttons %}
+            <div id="{{{node.key}}}" {% if node.show_border %} class="sly-flow-node sly-flow-node-border" {% else %}
+                class="sly-flow-node" {% endif %} style="left: {{{node.x}}}px; top: {{{node.y}}}px; {{{
+        node.width}}} {{{node.height}}}">
+                <div class="sly-flow-node-content">{{{node.content}}}</div>
+                {% if node.buttons %}
                 <div class="sly-flow-node-button">
+                    {% for button in node.buttons %}
                     {{{button}}}
+                    {% endfor %}
                 </div>
-                {% endfor %}
+                {% endif %}
             </div>
             {% endfor %}
         </div>

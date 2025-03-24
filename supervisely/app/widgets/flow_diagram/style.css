@@ -1,20 +1,38 @@
 .sly-flow-diagram {
-  border-radius: 5px;
-  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  border: 1px solid #ddd;
   overflow: hidden;
 }
 
-.sly-flow-node {
-  border-radius: 5px;
-  min-width: 150px;
+.sly-flow-nodes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.sly-flow-node-content {
+  /* border-radius: 5px; */
+  /* min-width: 150px; */
   display: flex;
-  background-color: #fff;
+  /* background-color: #fff; */
+}
+
+.sly-flow-node {
+  position: absolute;
+  background-color: white;
+  border-radius: 10px;
+  border: 1px solid #ddd;
 }
 
 .sly-flow-node-button {
   display: flex;
-  justify-content: space-between;
-  align-items: end;
+  align-items: center;
   padding: 3px;
   justify-content: flex-end;
+}
+
+.sly-flow-node-border {
+  border-radius: 10px;
+  border: 1px solid #ddd;
 }

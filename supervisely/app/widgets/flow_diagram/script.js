@@ -32,17 +32,17 @@ Vue.component("sly-flow-diagram", {
         fontColor = targetData[1].fontColor;
         fontFamily = targetData[1].fontFamily;
         if (targetData[1].labelType === "path") {
-            line.middleLabel = LeaderLine.pathLabel(middleLabel, {
+          line.middleLabel = LeaderLine.pathLabel(middleLabel, {
             color: fontColor,
             fontSize: fontSize,
             fontFamily: fontFamily,
-            });
+          });
         } else {
-            line.middleLabel = LeaderLine.captionLabel(middleLabel, {
-              color: fontColor,
-              fontSize: fontSize,
-              fontFamily: fontFamily,
-            });
+          line.middleLabel = LeaderLine.captionLabel(middleLabel, {
+            color: fontColor,
+            fontSize: fontSize,
+            fontFamily: fontFamily,
+          });
         }
 
         console.log(
