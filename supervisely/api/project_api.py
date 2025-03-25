@@ -2175,9 +2175,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         items_count = upload_count()
         items_count = {int(k): v for k, v in items_count.items()}
         total_items = sum(items_count.values()) if len(items_count) > 0 else 0
-
+        app = task_info.get("meta", {}).get("app")
+        app_name = app.get("name") if app else None
+        app_version = app.get("version") if app else None
         data = {
             "task_id": task_id,
+            "app": { "name": app_name, "version": app_version},
             "slug": slug,
             "status": task_info.get(ApiField.STATUS),
             "user_id": task_info.get(ApiField.USER_ID),
