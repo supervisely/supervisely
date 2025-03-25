@@ -112,6 +112,10 @@ class ImageInfo(NamedTuple):
             full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             tags=[],
             created_by='admin'
+            related_data_id=None,
+            download_id=None,
+            offset_start=None,
+            offset_end=None,
         )
     """
 
@@ -182,16 +186,19 @@ class ImageInfo(NamedTuple):
     created_by: str
 
     #: :class:`int`: Id of the Team Files archive related to the image.
-    related_data_id: int
+    related_data_id: Optional[int] = None
 
     #: :class:`str`: Id of the Team Files archive used for archive download.
-    download_id: str
+    download_id: Optional[str] = None
 
     #: :class:`int`: Bytes offset in the Team Files archive that points to the start of the image data.
-    offset_start: int
+    offset_start: Optional[int] = None
 
     #: :class:`int`: Bytes offset in the Team Files archive that points to the end of the image data.
-    offset_end: int
+    offset_end: Optional[int] = None
+
+    # DO NOT DELETE THIS COMMENT
+    #! New fields must be added with default values to keep backward compatibility.
 
     @property
     def preview_url(self):
