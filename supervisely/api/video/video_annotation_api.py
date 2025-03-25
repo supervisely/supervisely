@@ -93,6 +93,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         ann: VideoAnnotation,
         key_id_map: Optional[KeyIdMap] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        validate_tag_bounds: bool = False,
     ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
@@ -123,6 +124,10 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         """
 
         info = self._api.video.get_info_by_id(video_id)
+        if validate_tag_bounds and len(ann.tags.items()) > 0:
+            for tag in ann.tags.items():
+                tag._validate_frame_range_bounds(info.frames_count)
+
         self._append(
             self._api.video.tag,
             self._api.video.object,

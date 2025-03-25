@@ -177,6 +177,13 @@ class VideoTag(Tag):
         ):
             raise ValueError("frame_range has to be a tuple or a list with 2 int values.")
         return list(frame_range)
+    
+    def _validate_frame_range_bounds(self, frames_count: int) -> None:
+        if self.frame_range is not None:
+            if self.frame_range[0] < 0 or self.frame_range[1] >= frames_count:
+                raise ValueError(
+                    f"Frame range {self.frame_range} is out of bounds for video with {frames_count} frames."
+                )
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
