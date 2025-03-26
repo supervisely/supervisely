@@ -54,6 +54,7 @@ class TrainGUI:
         models: list,
         hyperparameters: dict,
         app_options: dict = None,
+        project_id: int = None,
     ):
         self._api = Api.from_env()
         if is_production():
@@ -72,7 +73,7 @@ class TrainGUI:
 
         self.team_id = sly_env.team_id(raise_not_found=False)
         self.workspace_id = sly_env.workspace_id(raise_not_found=False)
-        self.project_id = sly_env.project_id()
+        self.project_id = project_id or sly_env.project_id()
         self.project_info = self._api.project.get_info_by_id(self.project_id)
         self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
 
