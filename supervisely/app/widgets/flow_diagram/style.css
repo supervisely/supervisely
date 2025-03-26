@@ -1,7 +1,16 @@
 .sly-flow-diagram {
-  border-radius: 10px;
-  border: 1px solid #ddd;
+  /* border-radius: 10px; */
+  /* border: 1px solid #ddd; */
   overflow: hidden;
+}
+
+.dotted-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 0
+  );
+  background-size: 25px 25px;
 }
 
 .sly-flow-nodes {
@@ -20,9 +29,9 @@
 
 .sly-flow-node {
   position: absolute;
-  background-color: white;
+  /* background-color: white;
   border-radius: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #ddd; */
 }
 
 .sly-flow-node-button {

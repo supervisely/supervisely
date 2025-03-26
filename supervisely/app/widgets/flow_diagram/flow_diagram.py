@@ -93,6 +93,7 @@ class FlowsView(Widget):
         height: Union[str, int] = "500px",
         width: Union[str, int] = "100%",
         arrow_type: Literal["arrow-line", "leader-line"] = "leader-line",
+        show_grid: bool = False,
         widget_id: str = None,
     ):
         self._nodes = nodes or []
@@ -111,6 +112,7 @@ class FlowsView(Widget):
                         self._connections[k].append([v[0], options])
         self._height = height
         self._width = width
+        self._show_grid = show_grid
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -138,7 +140,7 @@ class FlowsView(Widget):
         if self._arrow_type == "arrow-line":
             options = {
                 "thickness": 2,
-                "color": "#6199d2",
+                "color": "#dddddd",
                 "endPlugSize": 1,
                 "style": "dot",  # solid, dot, dash, dot-dash
                 # endPoint: {type: "circles    ", size: 5, position: "both},
@@ -150,19 +152,19 @@ class FlowsView(Widget):
             }
         else:
             options = {
-                "color": "#6199d2",
+                "color": "#dddddd",
                 "size": 2,
                 "path": "straight",  #  straight, grid, arc, magnet, fluid
                 "startPlug": "disc",  #  disc, square, arrow1-3, behind, hand
                 "startPlugSize": 1,
-                "endPlug": "arrow3",  #  disc, square, arrow1-5, behind
-                "endPlugSize": 1,
+                "endPlug": "arrow2",  #  disc, square, arrow1-5, behind
+                "endPlugSize": 2,
                 "middleLabel": "",  # or startLabel, endLabel
                 "fontFamily": "JetBrains Mono",
                 "fontSize": 12,
                 "labelType": "default",
                 "startSocket": "bottom",  #  top, right, bottom, left, auto
                 "endSocket": "top",  #  top, right, bottom, left, auto
-                "dash": True,  #  or {"animation": False, "len": 4, "gap": 8}
+                "dash": False,  #  or {"animation": False, "len": 4, "gap": 8}
             }
         return options.copy()
