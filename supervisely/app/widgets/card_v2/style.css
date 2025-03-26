@@ -1,0 +1,187 @@
+.sly-card2 {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.12);
+  /* font-family: "JetBrains Mono", sans-serif; */
+  font-size: 12px;
+  margin: 4px;
+  overflow: hidden;
+}
+
+.sly-card2.no-padding .sly-card2-content {
+  padding: 0;
+}
+
+/* Header styles */
+.sly-card2-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.sly-card2-header-content {
+  flex: 1;
+  margin-right: 12px;
+}
+
+.sly-card2-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  line-height: 1.4;
+}
+
+.sly-card2-description {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 2px;
+}
+
+.sly-card2-header-slot {
+  margin-left: auto;
+  /* margin-right: 5px; */
+}
+
+.sly-card2-header-actions {
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.sly-card2-header-actions:hover {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+/* Divider */
+.sly-card2-divider {
+  height: 1px;
+  background-color: #f0f0f0;
+  margin: 0;
+}
+
+/* Content */
+.sly-card2-content {
+  padding: 8px 12px;
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
+/* Lock message */
+.sly-card2-lock-message {
+  padding: 12px 12px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+  font-style: italic;
+}
+
+/* Utility classes for highlighting */
+.highlight {
+  background-color: rgba(24, 144, 255, 0.1);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.text-bold {
+  font-weight: 500;
+}
+
+/* List item styles */
+.list-item {
+  display: flex;
+  margin-bottom: 6px;
+}
+
+.list-item-bullet {
+  margin-right: 8px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.list-item-content {
+  flex: 1;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background-color: #f0f0f0;
+  margin: 8px 0;
+}
+
+/* Properties section styling - check that these styles are included */
+/* .sly-card2-properties {
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+} */
+.sly-card2-properties {
+  padding: 8px 12px;
+}
+
+.sly-card2-properties-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  color: rgba(0, 0, 0, 0.65);
+  font-size: 12px;
+}
+
+.sly-card2-property {
+  display: inline-flex;
+  align-items: center;
+  margin: 2px 0;
+}
+
+.sly-card2-property-name {
+  /* font-weight: 500; */
+  margin-right: 8px;
+  padding: 2px 0;
+  color: rgba(0, 0, 0, 0.45);
+  /* min-width: 80px; */
+}
+
+.sly-card2-property-value {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.sly-card2-properties-separator {
+  margin: 0 8px;
+  color: #d9d9d9;
+}
+
+.sly-card2-properties-vertical {
+  display: flex;
+  flex-direction: column;
+}
+
+.sly-card2-property-item {
+  display: flex;
+  margin: 3px 0;
+  font-weight: 500;
+  line-height: 1.3;
+  align-items: center;
+}
+
+.sly-card2-property-value-tag {
+  /* background-color: #f3f4f6; */
+  background-color: #f3ecfb;
+  color: #765eb9;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 2px 6px;
+  margin-left: 8px;
+  margin-right: 6px;
+}
+
+.collapsed-content {
+  height: 0;
+  overflow: hidden;
+}
+
+/* Add this new style for the icon container */
+.sly-card2-header-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+}
