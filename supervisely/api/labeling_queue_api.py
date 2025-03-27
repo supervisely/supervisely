@@ -36,19 +36,6 @@ class LabelingQueueInfo(NamedTuple):
     meta: dict
 
 
-# not recommended:
-# pendingCount: int - 'labeling-queues.stats.entities' + status NULL
-# acceptedCount: int - 'labeling-queues.stats.entities' + status ACCEPTED
-
-# pendingCount: int - OK  (entities_count - annotated_count) - need to add!
-# annotatingCount: int - 'labeling-queues.stats.entities' + status NONE
-# acceptedCount: int - OK
-
-# finishedCount: int - OK
-# reviewingCount: int - 'labeling-queues.stats.entities' + status DONE
-# rejectedCount: int ????
-
-
 class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     """
     API for working with Labeling Queues. :class:`LabelingQueueApi<LabelingQueueApi>` object is immutable.
