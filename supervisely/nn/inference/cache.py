@@ -66,6 +66,27 @@ class PersistentImageTTLCache(TTLCache):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
+    def pop(self, *args, **kwargs):
+        try:
+            super().pop(*args, **kwargs)
+        except Exception:
+            sly.logger.warn("Cache data corrupted. Cleaning the cache...", exc_info=True)
+
+            def _delitem(self, key):
+                try:
+                    size = self._Cache__size.pop(key)
+                except:
+                    size = 0
+                self._Cache__data.pop(key, None)
+                self._Cache__currsize -= size
+
+            shutil.rmtree(self._base_dir, ignore_errors=True)
+            for key in self.keys():
+                try:
+                    super().__delitem__(key, cache_delitem=_delitem)
+                except:
+                    pass
+
     def __delitem__(self, key: Any) -> None:
         self.__del_file(key)
         return super().__delitem__(key)
@@ -136,7 +157,8 @@ class PersistentImageTTLCache(TTLCache):
         return sly.image.read(str(self[key]))
 
     def save_video(self, video_id: int, src_video_path: str) -> None:
-        video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
+        ext = Path(src_video_path).suffix
+        video_path = self._base_dir / f"video_{video_id}{ext}"
         self[video_id] = video_path
         if src_video_path != str(video_path):
             shutil.move(src_video_path, str(video_path))
@@ -686,7 +708,9 @@ class InferenceImageCache:
         return f"frame_{video_id}_{frame_index}"
 
     def _video_name(self, video_id: int, video_name: str) -> str:
-        return f"video_{video_id}.{video_name.split('.')[-1]}"
+        ext = Path(video_name).suffix
+        name = f"video_{video_id}{ext}"
+        return name
 
     def _project_meta_name(self, project_id: int) -> str:
         return f"project_meta_{project_id}"

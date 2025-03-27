@@ -404,7 +404,7 @@ class Annotation:
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
             )
 
-        custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {})
+        custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {}) or {}
         prob_labels = None
         if (
             AnnotationJsonFields.PROBABILITY_LABELS in custom_data
@@ -3088,7 +3088,7 @@ class Annotation:
     def to_yolo(
         self,
         class_names: List[str],
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
     ) -> List[str]:
         """
         Convert Supervisely annotation to YOLO annotation format.

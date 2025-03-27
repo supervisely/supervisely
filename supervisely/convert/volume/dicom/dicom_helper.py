@@ -37,3 +37,49 @@ def dcm_to_nrrd(id: str, paths: List[str]) -> str:
     nrrd.write(nrrd_path, volume_np, nrrd_header)
 
     return nrrd_path, volume_meta
+
+def convert_to_monochrome2(dcm_path: str):
+    import pydicom
+
+    is_modified = False
+
+    try:
+        dcm = pydicom.dcmread(dcm_path)
+    except Exception as e:
+        logger.warn("Failed to read DICOM file: " + str(e))
+        return
+
+    try:
+        if dcm.file_meta.TransferSyntaxUID.is_compressed:
+            dcm.decompress()
+            is_modified = True
+    except Exception as e:
+        logger.warn("Failed to decompress DICOM file: " + str(e))
+        return
+
+    if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
+        # * Convert dicom to monochrome
+        if len(dcm.pixel_array.shape) == 4 and dcm.pixel_array.shape[-1] == 3:
+            monochrome = dcm.pixel_array[..., 0].astype(np.uint8)
+        else:
+            logger.warn("Unexpected shape for YBR_FULL_422 data: " + str(dcm.pixel_array.shape))
+
+        try:
+            dcm.SamplesPerPixel = 1
+            dcm.PhotometricInterpretation = "MONOCHROME2"
+            dcm.PlanarConfiguration = 0
+            if len(monochrome.shape) == 3:
+                dcm.NumberOfFrames = str(monochrome.shape[0])
+                dcm.Rows, dcm.Columns = monochrome.shape[1:3]
+            dcm.PixelData = monochrome.tobytes()
+        except AttributeError as ae:
+            logger.error(f"Error occurred while converting dicom to monochrome: {ae}")
+
+        logger.info("Rewriting DICOM file with MONOCHROME2 photometric interpretation.")
+        is_modified = True
+
+    try:
+        if is_modified:
+            dcm.save_as(dcm_path)
+    except Exception as e:
+        logger.warn("Failed to save DICOM file: " + str(e))

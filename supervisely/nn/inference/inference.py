@@ -11,7 +11,7 @@ import time
 import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from pathlib import Path
 from queue import Queue
@@ -46,7 +46,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import StateJson, get_data_dir
@@ -75,6 +75,7 @@ from supervisely.nn.utils import (
     ModelPrecision,
     ModelSource,
     RuntimeType,
+    _get_model_name,
 )
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
@@ -88,6 +89,33 @@ try:
 except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
+
+
+@dataclass
+class AutoRestartInfo:
+    deploy_params: dict
+
+    class Fields:
+        AUTO_RESTART_INFO = "autoRestartInfo"
+        DEPLOY_PARAMS = "deployParams"
+
+    def generate_fields(self) -> List[dict]:
+        return [
+            {
+                ApiField.FIELD: self.Fields.AUTO_RESTART_INFO,
+                ApiField.PAYLOAD: {self.Fields.DEPLOY_PARAMS: self.deploy_params},
+            }
+        ]
+
+    @classmethod
+    def from_response(cls, data: dict):
+        autorestart_info = data.get(cls.Fields.AUTO_RESTART_INFO, None)
+        if autorestart_info is None:
+            return None
+        return cls(deploy_params=autorestart_info.get(cls.Fields.DEPLOY_PARAMS, None))
+
+    def is_changed(self, deploy_params: dict) -> bool:
+        return self.deploy_params != deploy_params
 
 
 class Inference:
@@ -126,6 +154,7 @@ class Inference:
                 model_dir = os.path.join(get_data_dir(), "models")
         sly_fs.mkdir(model_dir)
 
+        self.autorestart = None
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
@@ -173,9 +202,7 @@ class Inference:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
-                local_model_files = self._download_model_files(
-                    deploy_params["model_source"], deploy_params["model_files"], False
-                )
+                local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
             self._load_model_headless(**deploy_params)
 
@@ -210,14 +237,12 @@ class Inference:
                     self.initialize_gui()
 
             def on_serve_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 Progress("Deploying model ...", 1)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
                     deploy_params = self.get_params_from_gui()
-                    model_files = self._download_model_files(
-                        deploy_params["model_source"], deploy_params["model_files"]
-                    )
+                    model_files = self._download_model_files(deploy_params)
                     deploy_params["model_files"] = model_files
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
@@ -230,7 +255,7 @@ class Inference:
                     gui.show_deployed_model_info(self)
 
             def on_change_model_callback(
-                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate]
+                gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
             ):
                 self.shutdown_model()
                 if isinstance(self.gui, (GUI.ServingGUI, GUI.ServingGUITemplate)):
@@ -330,6 +355,9 @@ class Inference:
                 self._user_layout_card.unlock()
 
     def set_params_to_gui(self, deploy_params: dict) -> None:
+        """
+        Set params for load_model method to GUI.
+        """
         if isinstance(self.gui, GUI.ServingGUI):
             self._user_layout_card.hide()
             self._api_request_model_info.set_text(json.dumps(deploy_params), "json")
@@ -567,13 +595,23 @@ class Inference:
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
-    def _download_model_files(
-        self, model_source: str, model_files: List[str], log_progress: bool = True
-    ) -> dict:
-        if model_source == ModelSource.PRETRAINED:
-            return self._download_pretrained_model(model_files, log_progress)
-        elif model_source == ModelSource.CUSTOM:
-            return self._download_custom_model(model_files, log_progress)
+    def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
+        if deploy_params["runtime"] != RuntimeType.PYTORCH:
+            export = deploy_params["model_info"].get("export", {})
+            export_model = export.get(deploy_params["runtime"], None)
+            if export_model is not None:
+                if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
+                    deploy_params["model_files"]["checkpoint"]
+                ):
+                    deploy_params["model_files"]["checkpoint"] = (
+                        deploy_params["model_info"]["artifacts_dir"] + export_model
+                    )
+                    logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
+
+        if deploy_params["model_source"] == ModelSource.PRETRAINED:
+            return self._download_pretrained_model(deploy_params["model_files"], log_progress)
+        elif deploy_params["model_source"] == ModelSource.CUSTOM:
+            return self._download_custom_model(deploy_params["model_files"], log_progress)
 
     def _download_pretrained_model(self, model_files: dict, log_progress: bool = True):
         """
@@ -670,6 +708,23 @@ class Inference:
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
+        try:
+            if self.autorestart is None:
+                self.autorestart = AutoRestartInfo(self._deploy_params)
+                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                logger.debug(
+                    "Created new autorestart info.",
+                    extra=self.autorestart.deploy_params,
+                )
+            elif self.autorestart.is_changed(self._deploy_params):
+                self.autorestart.deploy_params.update(self._deploy_params)
+                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                logger.debug(
+                    "Autorestart info is changed. Parameters have been updated.",
+                    extra=self.autorestart.deploy_params,
+                )
+        except Exception as e:
+            logger.warning(f"Failed to update autorestart info: {repr(e)}")
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
@@ -1347,6 +1402,7 @@ class Inference:
                 source=images_np,
                 settings=settings,
             )
+            anns = self._exclude_duplicated_predictions(api, anns, settings, dataset_id, ids)
             results.extend(self._format_output(anns, slides_data))
         return results
 
@@ -1395,6 +1451,10 @@ class Inference:
                 )
                 self.cache.set_project_meta(output_project_id, output_project_meta)
 
+            ann = self._exclude_duplicated_predictions(
+                api, anns, settings, ds_info.id, [image_id], output_project_meta
+            )[0]
+
             logger.debug(
                 "Uploading annotation...",
                 extra={
@@ -1404,6 +1464,10 @@ class Inference:
                 },
             )
             api.annotation.upload_ann(image_id, ann)
+        else:
+            ann = self._exclude_duplicated_predictions(
+                api, anns, settings, image_info.dataset_id, [image_id]
+            )[0]
 
         result = self._format_output(anns, slides_data)[0]
         if async_inference_request_uuid is not None and ann is not None:
@@ -1786,6 +1850,15 @@ class Inference:
                 batch_results = []
                 for i, ann in enumerate(anns):
                     image_info: ImageInfo = images_infos_dict[image_ids_batch[i]]
+                    ds_info = dataset_infos_dict[image_info.dataset_id]
+                    meta = output_project_metas_dict.get(ds_info.project_id, None)
+                    iou = settings.get("existing_objects_iou_thresh")
+                    if meta is None and isinstance(iou, float) and iou > 0:
+                        meta = ProjectMeta.from_json(api.project.get_meta(ds_info.project_id))
+                        output_project_metas_dict[ds_info.project_id] = meta
+                    ann = self._exclude_duplicated_predictions(
+                        api, [ann], settings, ds_info.id, [image_info.id], meta
+                    )[0]
                     batch_results.append(
                         {
                             "annotation": ann.to_json(),
@@ -2086,6 +2159,19 @@ class Inference:
                         source=images_nps,
                         settings=settings,
                     )
+                    iou = settings.get("existing_objects_iou_thresh")
+                    if output_project_meta is None and isinstance(iou, float) and iou > 0:
+                        output_project_meta = ProjectMeta.from_json(
+                            api.project.get_meta(project_info.id)
+                        )
+                    anns = self._exclude_duplicated_predictions(
+                        api,
+                        anns,
+                        settings,
+                        dataset_info.id,
+                        [ii.id for ii in images_infos_batch],
+                        output_project_meta,
+                    )
                     batch_results = []
                     for i, ann in enumerate(anns):
                         batch_results.append(
@@ -2382,6 +2468,29 @@ class Inference:
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
+    def _deploy_on_autorestart(self):
+        try:
+            self._api_request_model_layout._title = (
+                "Model was deployed during auto restart with the following settings"
+            )
+            self._api_request_model_layout.update_data()
+            deploy_params = self.autorestart.deploy_params
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                model_files = self._download_model_files(deploy_params)
+                deploy_params["model_files"] = model_files
+                self._load_model_headless(**deploy_params)
+            elif isinstance(self.gui, GUI.ServingGUI):
+                self._load_model(deploy_params)
+
+            self.set_params_to_gui(deploy_params)
+            # update to set correct device
+            device = deploy_params.get("device", "cpu")
+            self.gui.set_deployed(device)
+            return {"result": "model was successfully deployed"}
+        except Exception as e:
+            self.gui._success_label.hide()
+            raise e
+
     def serve(self):
         if not self._use_gui and not self._is_local_deploy:
             Progress("Deploying model ...", 1)
@@ -2424,6 +2533,20 @@ class Inference:
         #     self._app = Application(layout=self.get_ui())
         else:
             self._app = Application(layout=self.get_ui())
+
+        try:
+            if self._task_id is not None:
+                response = self.api.task.get_fields(
+                    self._task_id, [AutoRestartInfo.Fields.AUTO_RESTART_INFO]
+                )
+                self.autorestart = AutoRestartInfo.from_response(response)
+                if self.autorestart is not None:
+                    logger.debug("Autorestart info is set.", extra=self.autorestart.deploy_params)
+                    self._deploy_on_autorestart()
+                else:
+                    logger.debug("Autorestart info is not set.")
+        except Exception:
+            logger.error("Autorestart failed.", exc_info=True)
 
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)
@@ -2898,9 +3021,7 @@ class Inference:
                 state = request.state.state
                 deploy_params = state["deploy_params"]
                 if isinstance(self.gui, GUI.ServingGUITemplate):
-                    model_files = self._download_model_files(
-                        deploy_params["model_source"], deploy_params["model_files"]
-                    )
+                    model_files = self._download_model_files(deploy_params)
                     deploy_params["model_files"] = model_files
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
@@ -2935,7 +3056,9 @@ class Inference:
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
-        parser.add_argument("mode", choices=["deploy", "predict"], help="Mode of operation")
+        parser.add_argument(
+            "mode", nargs="?", type=str, help="Mode of operation: 'deploy' or 'predict'"
+        )
         parser.add_argument("input", nargs="?", type=str, help="Local path to input data")
 
         # Deploy args
@@ -3018,12 +3141,17 @@ class Inference:
 
         # Parse arguments
         args, _ = parser.parse_known_args()
+        if args.mode is None:
+            return None, False
+        elif args.mode not in ["predict", "deploy"]:
+            return None, False
+
         if args.model is None:
             if len(self.pretrained_models) == 0:
                 raise ValueError("No pretrained models found.")
 
             model = self.pretrained_models[0]
-            model_name = model.get("meta", {}).get("model_name", None)
+            model_name = _get_model_name(model)
             if model_name is None:
                 raise ValueError("No model name found in the first pretrained model.")
 
@@ -3088,7 +3216,7 @@ class Inference:
             meta = m.get("meta", None)
             if meta is None:
                 continue
-            model_name = meta.get("model_name", None)
+            model_name = _get_model_name(m)
             if model_name is None:
                 continue
             m_files = meta.get("model_files", None)
@@ -3097,7 +3225,7 @@ class Inference:
             checkpoint = m_files.get("checkpoint", None)
             if checkpoint is None:
                 continue
-            if model == m["meta"]["model_name"]:
+            if model.lower() == model_name.lower():
                 model_info = m
                 model_source = ModelSource.PRETRAINED
                 model_files = {"checkpoint": checkpoint}
@@ -3115,8 +3243,6 @@ class Inference:
             model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
             model_info["model_meta"] = self._load_json_file(model_meta_path)
             original_model_files = model_info.get("model_files")
-            if not original_model_files:
-                raise ValueError("Invalid 'experiment_info.json'. Missing 'model_files' key.")
             return model_info, original_model_files
 
         def _prepare_local_model_files(artifacts_dir, checkpoint_path, original_model_files):
@@ -3163,6 +3289,7 @@ class Inference:
             model_files = _prepare_local_model_files(
                 artifacts_dir, checkpoint_path, original_model_files
             )
+
         else:
             local_artifacts_dir = os.path.join(
                 self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
@@ -3260,7 +3387,11 @@ class Inference:
             if draw:
                 raise ValueError("Draw visualization is not supported for project inference")
 
-            state = {"projectId": project_id, "dataset_ids": dataset_ids, "settings": settings}
+            state = {
+                "projectId": project_id,
+                "dataset_ids": dataset_ids,
+                "settings": settings,
+            }
             if upload:
                 source_project = api.project.get_info_by_id(project_id)
                 workspace_id = source_project.workspace_id
@@ -3434,7 +3565,7 @@ class Inference:
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
-            checkpoint_name = model_info["meta"]["model_name"]
+            checkpoint_name = _get_model_name(model_info)
         else:
             checkpoint_name = sly_fs.get_file_name_with_ext(model_files["checkpoint"])
             checkpoint_url = os.path.join(
@@ -3453,6 +3584,127 @@ class Inference:
             logger.debug(
                 f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
             )
+
+    def _exclude_duplicated_predictions(
+        self,
+        api: Api,
+        pred_anns: List[Annotation],
+        settings: dict,
+        dataset_id: int,
+        gt_image_ids: List[int],
+        meta: Optional[ProjectMeta] = None,
+    ):
+        """
+        Filter out predictions that significantly overlap with ground truth (GT) objects.
+
+        This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
+        - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
+        - Gets ProjectMeta object if not provided
+        - Downloads GT annotations for the specified image IDs
+        - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
+
+        :param api: Supervisely API object
+        :type api: Api
+        :param pred_anns: List of Annotation objects containing predictions
+        :type pred_anns: List[Annotation]
+        :param settings: Inference settings
+        :type settings: dict
+        :param dataset_id: ID of the dataset containing the images
+        :type dataset_id: int
+        :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
+        :type gt_image_ids: List[int]
+        :param meta: ProjectMeta object
+        :type meta: Optional[ProjectMeta]
+        :return: List of Annotation objects containing filtered predictions
+        :rtype: List[Annotation]
+
+        Notes:
+        ------
+        - Requires PyTorch and torchvision for IoU calculations
+        - This method is useful for identifying new objects that aren't already annotated in the ground truth
+        """
+        iou = settings.get("existing_objects_iou_thresh")
+        if isinstance(iou, float) and 0 < iou <= 1:
+            if meta is None:
+                ds = api.dataset.get_info_by_id(dataset_id)
+                meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
+            gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
+            gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
+            for i in range(0, len(pred_anns)):
+                before = len(pred_anns[i].labels)
+                with Timer() as timer:
+                    pred_anns[i] = self._filter_duplicated_predictions_from_ann(
+                        gt_anns[i], pred_anns[i], iou
+                    )
+                after = len(pred_anns[i].labels)
+                logger.debug(
+                    f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+                )
+        return pred_anns
+
+    def _filter_duplicated_predictions_from_ann(
+        self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+    ) -> Annotation:
+        """
+        Filter out predictions that significantly overlap with ground truth annotations.
+
+        This function compares each prediction with ground truth annotations of the same class
+        and removes predictions that have an IoU (Intersection over Union) greater than or equal
+        to the specified threshold with any ground truth annotation. This is useful for identifying
+        new objects that aren't already annotated in the ground truth.
+
+        :param gt_ann: Annotation object containing ground truth labels
+        :type gt_ann: Annotation
+        :param pred_ann: Annotation object containing prediction labels to be filtered
+        :type pred_ann: Annotation
+        :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                                ground truth box of the same class will be removed
+        :type iou_threshold: float
+        :return: A new annotation object containing only predictions that don't significantly
+                 overlap with ground truth annotations
+        :rtype: Annotation
+
+
+        Notes:
+        ------
+        - Predictions with classes not present in ground truth will be kept
+        - Requires PyTorch and torchvision for IoU calculations
+        """
+
+        try:
+            import torch
+            from torchvision.ops import box_iou
+
+        except ImportError:
+            raise ImportError("Please install PyTorch and torchvision to use this feature.")
+
+        def _to_tensor(geom):
+            return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+        new_labels = []
+        pred_cls_bboxes = defaultdict(list)
+        for label in pred_ann.labels:
+            pred_cls_bboxes[label.obj_class.name].append(label)
+
+        gt_cls_bboxes = defaultdict(list)
+        for label in gt_ann.labels:
+            if label.obj_class.name not in pred_cls_bboxes:
+                continue
+            gt_cls_bboxes[label.obj_class.name].append(label)
+
+        for name, pred in pred_cls_bboxes.items():
+            gt = gt_cls_bboxes[name]
+            if len(gt) == 0:
+                new_labels.extend(pred)
+                continue
+            pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+            gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
+            iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+            iou_matrix = iou_matrix.cpu().numpy()
+            keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+            new_labels.extend([pred[i] for i in keep_indices])
+
+        return pred_ann.clone(labels=new_labels)
 
 
 def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):

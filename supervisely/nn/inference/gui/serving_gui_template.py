@@ -23,7 +23,7 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 )
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
-from supervisely.nn.utils import ModelSource, RuntimeType
+from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
 
 
 class ServingGUITemplate(ServingGUI):
@@ -149,8 +149,7 @@ class ServingGUITemplate(ServingGUI):
     @property
     def model_name(self) -> Optional[str]:
         if self.model_source == ModelSource.PRETRAINED:
-            model_meta = self.model_info.get("meta", {})
-            return model_meta.get("model_name")
+            return _get_model_name(self.model_info)
         else:
             return self.model_info.get("model_name")
 

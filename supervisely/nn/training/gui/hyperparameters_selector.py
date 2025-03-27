@@ -9,7 +9,6 @@ from supervisely.app.widgets import (
     Field,
     Text,
 )
-from supervisely.nn.utils import RuntimeType
 
 
 class HyperparametersSelector:
@@ -18,6 +17,22 @@ class HyperparametersSelector:
     lock_message = "Select model to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
+        # Init widgets
+        self.editor = None
+        self.run_model_benchmark_checkbox = None
+        self.run_speedtest_checkbox = None
+        self.model_benchmark_field = None
+        self.model_benchmark_learn_more = None
+        self.model_benchmark_auto_convert_warning = None
+        self.export_onnx_checkbox = None
+        self.export_tensorrt_checkbox = None
+        self.export_field = None
+        self.validator_text = None
+        self.button = None
+        self.container = None
+        self.card = None
+        # -------------------------------- #
+
         self.display_widgets = []
         self.app_options = app_options
 
@@ -28,7 +43,7 @@ class HyperparametersSelector:
         self.display_widgets.extend([self.editor])
 
         # Optional Model Benchmark
-        if app_options.get("model_benchmark", True):
+        if self.app_options.get("model_benchmark", True):
             # Model Benchmark
             self.run_model_benchmark_checkbox = Checkbox(
                 content="Run Model Benchmark evaluation", checked=True
@@ -37,7 +52,7 @@ class HyperparametersSelector:
 
             self.model_benchmark_field = Field(
                 title="Model Evaluation Benchmark",
-                description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
+                description="Generate evaluation dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
                 content=Container([self.run_model_benchmark_checkbox, self.run_speedtest_checkbox]),
             )
             docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
@@ -60,8 +75,8 @@ class HyperparametersSelector:
         # -------------------------------- #
 
         # Optional Export Weights
-        export_onnx_supported = app_options.get("export_onnx_supported", False)
-        export_tensorrt_supported = app_options.get("export_tensorrt_supported", False)
+        export_onnx_supported = self.app_options.get("export_onnx_supported", False)
+        export_tensorrt_supported = self.app_options.get("export_tensorrt_supported", False)
 
         onnx_name = "ONNX"
         tensorrt_name = "TensorRT engine"
@@ -120,26 +135,28 @@ class HyperparametersSelector:
         return self.editor.get_value()
 
     def get_model_benchmark_checkbox_value(self) -> bool:
-        if self.app_options.get("model_benchmark", True):
+        if self.run_model_benchmark_checkbox is not None:
             return self.run_model_benchmark_checkbox.is_checked()
         return False
 
     def set_model_benchmark_checkbox_value(self, is_checked: bool) -> bool:
-        if is_checked:
-            self.run_model_benchmark_checkbox.check()
-        else:
-            self.run_model_benchmark_checkbox.uncheck()
+        if self.run_model_benchmark_checkbox is not None:
+            if is_checked:
+                self.run_model_benchmark_checkbox.check()
+            else:
+                self.run_model_benchmark_checkbox.uncheck()
 
     def get_speedtest_checkbox_value(self) -> bool:
-        if self.app_options.get("model_benchmark", True):
+        if self.run_speedtest_checkbox is not None:
             return self.run_speedtest_checkbox.is_checked()
         return False
 
     def set_speedtest_checkbox_value(self, is_checked: bool) -> bool:
-        if is_checked:
-            self.run_speedtest_checkbox.check()
-        else:
-            self.run_speedtest_checkbox.uncheck()
+        if self.run_speedtest_checkbox is not None:
+            if is_checked:
+                self.run_speedtest_checkbox.check()
+            else:
+                self.run_speedtest_checkbox.uncheck()
 
     def toggle_mb_speedtest(self, is_checked: bool) -> None:
         if is_checked:

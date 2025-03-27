@@ -1301,19 +1301,16 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
-            img_bytes = sly.image.write_bytes(img_np, "jpeg")
-            loop = sly.utils.get_or_create_event_loop()
+            img_bytes = sly.image.write_bytes(img_np, "jpeg")            
             coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
 
             print(ds.item_exists("IMG_050.jpeg"))
             # Output: True
@@ -1649,17 +1646,14 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
             new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
 
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_file_async("IMG_1812.jpeg", new_ann)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann_path) is not str:
             raise TypeError("Annotation path should be a string, not a {}".format(type(ann_path)))
@@ -1682,6 +1676,8 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -1695,14 +1691,9 @@ class Dataset(KeyObject):
                 "objects":[],
                 "customBigData":{}
             }
-
-            loop = sly.utils.get_or_create_event_loop()
+            
             coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
@@ -1725,18 +1716,16 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            loop = sly.utils.get_or_create_event_loop()
+            
             coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann) is not self.annotation_class:
             raise TypeError(
@@ -1933,9 +1922,10 @@ class Dataset(KeyObject):
         self,
         meta: ProjectMeta,
         dest_dir: Optional[str] = None,
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
+        is_val: Optional[bool] = None,
     ):
         """
         Convert Supervisely dataset to YOLO format.
@@ -1950,6 +1940,8 @@ class Dataset(KeyObject):
         :type log_progress: :class:`str`, optional
         :param progress_cb: Progress callback.
         :type progress_cb: :class:`Callable`, optional
+        :param is_val: If True, the dataset is a validation dataset.
+        :type is_val: :class:`bool`, optional
         :return: YOLO dataset in dictionary format.
         :rtype: :class:`dict`
 
@@ -1975,6 +1967,7 @@ class Dataset(KeyObject):
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            is_val=is_val,
         )
 
     def to_pascal_voc(
@@ -3730,6 +3723,7 @@ class Project:
             .. code-block:: python
 
                 import supervisely as sly
+                from supervisely._utils import run_coroutine
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -3737,14 +3731,9 @@ class Project:
 
                 project_id = 8888
                 save_directory = "/path/to/save/projects"
-
-                loop = sly.utils.get_or_create_event_loop()
-                coro = sly.Project.download_async(api, project_id, save_directory)
-                if loop.is_running():
-                    future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                    future.result()
-                else:
-                    loop.run_until_complete(coroutine)
+                
+                coroutine = sly.Project.download_async(api, project_id, save_directory)
+                run_coroutine(coroutine)
         """
         if kwargs.pop("cache", None) is not None:
             logger.warning(
@@ -3821,19 +3810,27 @@ class Project:
     def to_yolo(
         self,
         dest_dir: Optional[str] = None,
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
+        val_datasets: Optional[List[str]] = None,
     ) -> None:
         """
         Convert Supervisely project to YOLO format.
 
         :param dest_dir: Destination directory.
         :type dest_dir: :class:`str`, optional
+        :param task_type: Task type for YOLO format. Possible values: 'detection', 'segmentation', 'pose'.
+        :type task_type: :class:`str` or :class:`TaskType`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
         :type progress_cb: callable, optional
+        :param val_datasets:    List of dataset names for validation.
+                            Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
+                            If specified, datasets from the list will be marked as val, others as train.
+                            If not specified, the function will determine the validation datasets automatically.
+        :type val_datasets: :class:`list` [ :class:`str` ], optional
         :return: None
         :rtype: NoneType
 
@@ -3855,12 +3852,13 @@ class Project:
 
         from supervisely.convert import project_to_yolo
 
-        project_to_yolo(
+        return project_to_yolo(
             project=self,
             dest_dir=dest_dir,
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            val_datasets=val_datasets,
         )
 
     def to_pascal_voc(
