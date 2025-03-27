@@ -9,6 +9,8 @@
   font-size: 12px;
   margin: 4px;
   overflow: hidden;
+  min-height: 45px;
+  justify-content: center;
 }
 
 .sly-card2.no-padding .sly-card2-content {
@@ -19,12 +21,13 @@
 .sly-card2-header {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
+  padding: 4px 8px;
 }
 
 .sly-card2-header-content {
   flex: 1;
   margin-right: 12px;
+  margin-left: 8px;
 }
 
 .sly-card2-title {
@@ -184,4 +187,25 @@
   display: flex;
   align-items: center;
   margin-right: 8px;
+  height: 25px;
+  width: 25px;
+  font-size: 12px;
+}
+
+/* tooltip styles */
+.el-tooltip__popper {
+  position: absolute;
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 2000;
+  font-size: 12px;
+  line-height: 1.2;
+}
+.el-tooltip__popper[x-placement^="right"] {
+  margin-left: 16px;
+}
+.el-tooltip__popper.is-light {
+  background: #fff;
+  border: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.12);
 }

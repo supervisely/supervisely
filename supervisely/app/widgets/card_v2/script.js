@@ -67,6 +67,15 @@ Vue.component("sly-card2", {
         value: Array.isArray(value) ? value : [value],
       }));
     },
+    hasHeader() {
+      return (
+        this.title ||
+        this.description ||
+        this.hasIcon ||
+        this.hasContentTopRight ||
+        this.collapsable
+      );
+    },
   },
   watch: {
     properties: {
@@ -90,7 +99,7 @@ Vue.component("sly-card2", {
   template: `
     <div class="sly-card2" :class="{'no-padding': removePadding}">
       <!-- Header -->
-      <div class="sly-card2-header" v-if="title || description || hasIcon || hasContentTopRight || collapsable">
+      <div class="sly-card2-header" v-if="hasHeader">
         <!-- Icon slot -->
         <div v-if="hasIcon" class="sly-card2-header-icon">
           <slot name="icon"></slot>
@@ -114,9 +123,9 @@ Vue.component("sly-card2", {
         </div>
       </div>
 
-    <div :class="[collapsed ? 'collapsed-content' : '']">
+    <div :class="[collapsed ? 'collapsed-content' : '']" v-if="hasContent || hasProperties">
       <!-- Divider -->
-      <div class="sly-card2-divider"></div>
+      <div class="sly-card2-divider" v-if="hasProperties && hasHeader"></div>
 
       <template v-if="hasProperties" >
         <div class="sly-card2-properties" :class="[
@@ -154,7 +163,7 @@ Vue.component("sly-card2", {
         </template>
         
         <!-- Content -->
-        <div class="sly-card2-divider" v-if="hasContent"></div>
+        <div class="sly-card2-divider" v-if="hasContent && (hasProperties || hasHeader)"></div>
         <div class="sly-card2-content" v-if="hasContent"  
             
             :style="{ overflow: overflow }">
