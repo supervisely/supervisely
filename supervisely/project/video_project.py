@@ -1313,23 +1313,18 @@ def download_video_project(
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
-
     project_fs = VideoProject(dest_dir, OpenMode.CREATE)
-
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
-
     if progress_cb is not None:
         log_progress = False
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
-
     for parents, dataset in api.dataset.tree(project_id):
         if dataset_ids is not None and dataset.id not in dataset_ids:
             continue
 
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
-
         dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
@@ -1468,9 +1463,17 @@ def upload_video_project(
     if progress_cb is not None:
         log_progress = False
 
+    dataset_map = {}
     for dataset_fs in project_fs.datasets:
         dataset_fs: VideoDataset
-        dataset = api.dataset.create(project.id, dataset_fs.name)
+        if len(dataset_fs.parents) > 0:
+            parent = f"{os.path.sep}".join(dataset_fs.parents)
+            parent_id = dataset_map.get(parent)
+        else:
+            parent = ""
+            parent_id = None      
+        dataset = api.dataset.create(project.id, dataset_fs.short_name, parent_id=parent_id)
+        dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
         names, item_paths, ann_paths = [], [], []
         for item_name in dataset_fs:
