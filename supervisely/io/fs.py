@@ -12,7 +12,17 @@ import subprocess
 import tarfile
 from json import dumps
 from pathlib import Path
-from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import aiofiles
 import requests
@@ -20,6 +30,10 @@ from requests.structures import CaseInsensitiveDict
 from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
+
+if TYPE_CHECKING:
+    from supervisely.api.image_api import BlobImageInfo
+
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -1620,17 +1634,15 @@ async def list_files_recursively_async(
     return await loop.run_in_executor(None, sync_file_list)
 
 
-def get_file_offsets(
+def get_file_offsets_batch_generator(
     archive_path: str,
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
-    format: Literal["dicts", "lists"] = "dicts",
-) -> Union[
-    List[Dict],
-    Tuple[List[str], List[Dict], Optional[int]],
-]:
+    format: Literal["dicts", "objects"] = "dicts",
+    batch_size: int = 10000,
+) -> Generator[Union[List[Dict], Tuple[List["BlobImageInfo"], Optional[int]]], None, None]:
     """
-    Extracts offset information for files from TAR archives.
+    Extracts offset information for files from TAR archives and returns a generator that yields the information in batches.
 
     In results, `teamFileId` is always None because it is not possible to determine it on this step.
     You can set the `teamFileId` later when uploading the file to Supervisely.
@@ -1643,6 +1655,12 @@ def get_file_offsets(
     :type team_file_id: Optional[int]
     :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
     :type filter_func: Callable, optional
+    :param format: Format of the output. Default is `dicts`.
+                   `objects` - returns a list of BlobImageInfo objects.
+                   `dicts` - returns a list of dictionaries.
+    :type format: Literal["dicts", "objects"]
+    :returns: Generator yielding batches of file information in the specified format.
+    :rtype: Generator[Union[List[Dict], Tuple[List["BlobImageInfo"], Optional[int]]], None, None]
 
     :raises ValueError: If the archive type is not supported or contains compressed files
     :Usage example:
@@ -1652,8 +1670,9 @@ def get_file_offsets(
         import supervisely as sly
 
         archive_path = '/home/admin/work/projects/examples.zip'
-        file_info = sly.fs.get_file_offsets(archive_path)
-        print(file_info)
+        file_infos = sly.fs.get_file_offsets_batch_generator(archive_path)
+        for file_info in file_infos:
+            print(file_info)
 
         # Output:
         # [
@@ -1675,41 +1694,63 @@ def get_file_offsets(
         #     }
         # ]
     """
-    from supervisely.api.api import ApiField
+    from supervisely.api.image_api import BlobImageInfo
 
     ext = Path(archive_path).suffix.lower()
 
     if ext == ".tar":
-        result = _process_tar(
-            tar_path=archive_path,
-            team_file_id=team_file_id,
-            filter_func=filter_func,
-        )
         if format == "dicts":
-            return result
+            yield from _process_tar_generator(
+                tar_path=archive_path,
+                team_file_id=team_file_id,
+                filter_func=filter_func,
+                batch_size=batch_size,
+            )
         else:
-            names = [file_info[ApiField.TITLE] for file_info in result]
-            offsets = [file_info[ApiField.SOURCE_BLOB] for file_info in result]
-            return names, offsets, team_file_id
+            for batch in _process_tar_generator(
+                tar_path=archive_path,
+                team_file_id=team_file_id,
+                filter_func=filter_func,
+                batch_size=batch_size,
+            ):
+                blob_file_infos = [BlobImageInfo.from_dict(file_info) for file_info in batch]
+                yield blob_file_infos, team_file_id
     else:
         raise ValueError(f"Unsupported archive type: {ext}. Only .zip and .tar are supported")
 
 
-def _process_tar(
+def _process_tar_generator(
     tar_path: str,
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
-) -> List[Dict]:
-    """Processes a TAR archive and returns offset information for image files."""
+    batch_size: int = 10000,
+) -> Generator[List[Dict], None, None]:
+    """
+    Processes a TAR archive and yields batches of offset information for files.
 
+    :param tar_path: Path to the TAR archive
+    :type tar_path: str
+    :param team_file_id: ID of the team file, defaults to None
+    :type team_file_id: Optional[int], optional
+    :param filter_func: Function to filter files by name, defaults to None
+    :type filter_func: Optional[Callable], optional
+    :param batch_size: Number of files in each batch, defaults to 10000
+    :type batch_size: int, optional
+    :yield: Batches of dictionaries with file offset information
+    :rtype: Generator[List[Dict], None, None]
+    """
     from supervisely.api.api import ApiField
-
-    result = []
 
     with tarfile.open(tar_path, "r") as tar:
         # TAR archives consist of 512-byte blocks
         block_size = 512
         offset = 0
+
+        batch = []
+        processed_count = 0
+        total_members = len(tar.getmembers())  # for logging
+
+        logger.info(f"Processing TAR archive with {total_members} members")
 
         for member in tar.getmembers():
             skip = not member.isfile()
@@ -1719,7 +1760,7 @@ def _process_tar(
                 continue
 
             if filter_func and not filter_func(member.name):
-                logger.info(f"File '{member.name}' is skipped by filter function")
+                logger.debug(f"File '{member.name}' is skipped by filter function")
                 skip = True
 
             if not skip:
@@ -1736,7 +1777,16 @@ def _process_tar(
                         ApiField.OFFSET_END: offset_end,
                     },
                 }
-                result.append(file_info)
+                batch.append(file_info)
+
+                # Yield batch when it reaches the specified size
+                if len(batch) >= batch_size:
+                    processed_count += len(batch)
+                    logger.info(
+                        f"Yielding batch of {len(batch)} files, processed {processed_count} files so far"
+                    )
+                    yield batch
+                    batch = []
 
             # Calculate the offset of the next file
             # File size is rounded up to a multiple of block_size
@@ -1744,20 +1794,27 @@ def _process_tar(
             # Total size = header (1 block) + file data (file_blocks blocks)
             offset += block_size + (file_blocks * block_size)
 
-    return result
+        # Yield any remaining files in the last batch
+        if batch:
+            processed_count += len(batch)
+            logger.info(
+                f"Yielding final batch of {len(batch)} files, processed {processed_count} files total"
+            )
+            yield batch
 
 
-def save_file_offsets_json(
-    archive_path: str,
+def save_blob_offsets_pkl(
+    blob_file_path: str,
     output_dir: str,
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
-) -> None:
+    batch_size: int = 10000,
+) -> str:
     """
-    Processes an archive and creates a JSON file with offset information.
+    Processes blob file locally and creates a pickle file with offset information.
 
-    :param archive_path: Path to the archive
-    :type archive_path: str
+    :param blob_file_path: Path to the blob file
+    :type blob_file_path: str
     :param output_dir: Path to the output directory
     :type output_dir: str
     :param team_file_id: ID of file in Team Files. Default is None.
@@ -1766,8 +1823,9 @@ def save_file_offsets_json(
     :type team_file_id: Optional[int]
     :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
     :type filter_func: Callable, optional
-    :returns: None
-    :rtype: :class:`NoneType`
+    :param batch_size: Number of files to process in each batch, defaults to 10000
+    :type batch_size: int, optional
+
     :Usage example:
 
         .. code-block:: python
@@ -1778,15 +1836,16 @@ def save_file_offsets_json(
             output_dir = '/path/to/output'
             sly.fs.save_file_offsets_json(archive_path, output_dir)
     """
-    from supervisely.api.image_api import OFFSETS_JSON_SUFFIX
-    
-    offsets_list = get_file_offsets(
-        archive_path=archive_path,
+    from supervisely.api.image_api import OFFSETS_PKL_SUFFIX, BlobImageInfo
+
+    archive_name = Path(blob_file_path).stem
+    output_path = os.path.join(output_dir, archive_name + OFFSETS_PKL_SUFFIX)
+    offsets_batch_generator = get_file_offsets_batch_generator(
+        archive_path=blob_file_path,
         team_file_id=team_file_id,
         filter_func=filter_func,
+        format="objects",
+        batch_size=batch_size,
     )
-    json_data = dumps(offsets_list, indent=4, ensure_ascii=False)
-    archive_name = Path(archive_path).stem
-    output_path = os.path.join(output_dir, archive_name + OFFSETS_JSON_SUFFIX)
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(json_data)
+    BlobImageInfo.dump_offsets(offsets_batch_generator, output_path)
+    return output_path
