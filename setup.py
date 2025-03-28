@@ -49,7 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
-    return "v6.73.336" # ! TODO: remove after tests
+    return "v6.73.336+flow-diagram"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
