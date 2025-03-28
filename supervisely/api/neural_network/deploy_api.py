@@ -524,6 +524,8 @@ class DeployApi:
             logger.info("Checkpoint name not provided. Using the best checkpoint.")
             checkpoint = experiment_info.best_checkpoint
 
+        model_info_dict = asdict(experiment_info)
+        model_info_dict["artifacts_dir"] = artifacts_dir
         checkpoint_name = checkpoint
         deploy_params = {
             "device": device,
@@ -531,7 +533,7 @@ class DeployApi:
             "model_files": {
                 "checkpoint": f"/{artifacts_dir.strip('/')}/checkpoints/{checkpoint_name}"
             },
-            "model_info": asdict(experiment_info),
+            "model_info": model_info_dict,
             "runtime": runtime,
         }
 
