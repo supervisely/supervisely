@@ -92,7 +92,7 @@ class VideoAnnotationAPI(EntityAnnotationAPI):
         video_id: int,
         ann: VideoAnnotation,
         key_id_map: Optional[KeyIdMap] = None,
-        progress_cb: Optional[Union[tqdm, Callable]] = None
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
         Loads an VideoAnnotation to a given video ID in the API.
