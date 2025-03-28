@@ -641,7 +641,15 @@ class ApiField:
     """"""
     ANNOTATED_COUNT = "annotatedCount"
     """"""
+    IN_PROGRESS_COUNT = "inProgressCount"
+    """"""
+    PENDING_COUNT = "pendingCount"
+    """"""
     QUEUE_META = "queueMeta"
+    """"""
+    ENTITY_IDS = "entityIds"
+    """"""
+    COLLECTION_ID = "collectionId"
     """"""
 
 def _get_single_item(items):
