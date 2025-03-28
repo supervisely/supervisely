@@ -10,7 +10,6 @@ import random
 import shutil
 from collections import defaultdict, namedtuple
 from enum import Enum
-from pathlib import Path
 from typing import (
     Callable,
     Dict,
@@ -31,7 +30,6 @@ import supervisely as sly
 from supervisely._utils import (
     abs_url,
     batched,
-    generate_free_name,
     get_or_create_event_loop,
     is_development,
     snake_to_human,
@@ -39,7 +37,7 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.api.api import Api, ApiContext
+from supervisely.api.api import Api, ApiContext, ApiField
 from supervisely.api.image_api import ImageInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
@@ -68,7 +66,7 @@ from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import tqdm_sly
 
 
 class CustomUnpickler(pickle.Unpickler):
@@ -1308,7 +1306,7 @@ class Dataset(KeyObject):
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
-            img_bytes = sly.image.write_bytes(img_np, "jpeg")            
+            img_bytes = sly.image.write_bytes(img_np, "jpeg")
             coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
             run_coroutine(coroutine)
 
@@ -1691,7 +1689,7 @@ class Dataset(KeyObject):
                 "objects":[],
                 "customBigData":{}
             }
-            
+
             coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
             run_coroutine(coroutine)
         """
@@ -1723,7 +1721,7 @@ class Dataset(KeyObject):
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            
+
             coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
             run_coroutine(coroutine)
         """
@@ -2075,6 +2073,7 @@ class Project:
 
         parent_dir, name = Project._parse_path(directory)
         self._parent_dir = parent_dir
+        self._blob_dir = os.path.join(directory, "blob")
         self._api = api
         self.project_id = project_id
 
@@ -2093,6 +2092,7 @@ class Project:
             self._read()
         else:
             self._create()
+        self._blob_files = []
 
     @staticmethod
     def get_url(id: int) -> str:
@@ -2137,6 +2137,25 @@ class Project:
             # Output: '/home/admin/work/supervisely/projects'
         """
         return self._parent_dir
+
+    @property
+    def blob_dir(self) -> str:
+        """
+        Directory for project blobs.
+        Blobs are .tar files with images. Used for fast data transfer.
+
+        :return: Path to project blob directory
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.blob_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/blob'
+        """
+        return self._blob_dir
 
     @property
     def name(self) -> str:
@@ -2258,6 +2277,42 @@ class Project:
             # Output: 12
         """
         return sum(len(ds) for ds in self._datasets)
+
+    @property
+    def blob_files(self) -> List[str]:
+        """
+        List of blob files.
+
+        :return: List of blob files
+        :rtype: :class:`list`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.blob_files)
+            # Output: []
+        """
+        return self._blob_files
+
+    def add_blob_file(self, file_name: str) -> None:
+        """
+        Adds blob file to the project.
+
+        :param file_name: File name.
+        :type file_name: :class:`str`
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            project.add_blob_file("blob_file.tar")
+        """
+        self._blob_files.append(file_name)
 
     def get_classes_stats(
         self,
@@ -2383,6 +2438,24 @@ class Project:
         """
         self._meta = new_meta
         dump_json_file(self.meta.to_json(), self._get_project_meta_path(), indent=4)
+
+    def add_blob_file(self, file_name: str) -> None:
+        """
+        Adds blob file to the project.
+
+        :param file_name: File name.
+        :type file_name: :class:`str`
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            project.add_blob_file("blob_file.tar")
+        """
+        self._blob_files.append(file_name)
 
     def __iter__(self):
         return next(self)
@@ -3085,6 +3158,7 @@ class Project:
         save_images: bool = True,
         save_image_meta: bool = False,
         resume_download: bool = False,
+        **kwargs,
     ) -> None:
         """
         Download project from Supervisely to the given directory.
@@ -3151,6 +3225,7 @@ class Project:
             save_images=save_images,
             save_image_meta=save_image_meta,
             resume_download=resume_download,
+            **kwargs,
         )
 
     @staticmethod
@@ -3731,7 +3806,7 @@ class Project:
 
                 project_id = 8888
                 save_directory = "/path/to/save/projects"
-                
+
                 coroutine = sly.Project.download_async(api, project_id, save_directory)
                 run_coroutine(coroutine)
         """
@@ -4002,9 +4077,14 @@ def _download_project(
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    **kwargs,
 ):
+    download_blob_files = kwargs.pop("download_blob_files", False)
+    blob_files_to_download = {}
+
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
+
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir) and resume_download:
         dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
@@ -4085,18 +4165,52 @@ def _download_project(
                     ):
                         indexes_to_download.append(i)
 
+                # Collect images that was added to the project as offsets from archive in Team Files
+                for idx in indexes_to_download:
+                    image_info = batch[idx]
+                    if image_info.related_data_id is not None:
+                        blob_files_to_download[image_info.related_data_id] = image_info.download_id
+                    # if image_info.offset_start:
+                    #     image_offset = {
+                    #         ApiField.TITLE: image_info.name,
+                    #         ApiField.RELATED_DATA_ID: image_info.related_data_id,
+                    #         ApiField.SOURCE_BLOB: {
+                    #             ApiField.OFFSET_START: image_info.offset_start,
+                    #             ApiField.OFFSET_END: image_info.offset_end,
+                    #         },
+                    #     }
+                    # if image_offset:
+                    #     if image_info.related_data_id not in offsets_dict:
+                    #         offsets_dict[image_info.related_data_id] = [image_offset]
+                    #     else:
+                    #         offsets_dict[image_info.related_data_id].append(image_offset)
+
                 # download images in numpy format
                 batch_imgs_bytes = [None] * len(image_ids)
                 if save_images and indexes_to_download:
-                    for index, img in zip(
-                        indexes_to_download,
-                        api.image.download_bytes(
-                            dataset_id,
-                            [image_ids[i] for i in indexes_to_download],
-                            progress_cb=ds_progress,
-                        ),
-                    ):
-                        batch_imgs_bytes[index] = img
+                    image_ids_to_download = [image_ids[i] for i in indexes_to_download]
+
+                    if download_blob_files:
+                        for blob_file_id, download_id in blob_files_to_download.items():
+                            blob_file_info = api.file.get_info_by_id(blob_file_id)
+                            if blob_file_info.name not in project_fs.blob_files:
+                                api.image.download_blob_file(
+                                    download_id=download_id,
+                                    project_id=project_id,
+                                    path=project_fs.blob_dir,
+                                    log_progress=True if progress_cb is not None else False,
+                                )
+                                project_fs.add_blob_file(blob_file_info.name)
+                    else:
+                        for index, img in zip(
+                            indexes_to_download,
+                            api.image.download_bytes(
+                                dataset_id,
+                                image_ids_to_download,
+                                progress_cb=ds_progress,
+                            ),
+                        ):
+                            batch_imgs_bytes[index] = img
 
                 if ds_progress is not None:
                     ds_progress(len(batch) - len(indexes_to_download))
@@ -4343,6 +4457,7 @@ def download_project(
     save_image_meta: bool = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    **kwargs,
 ) -> None:
     """
     Download image project to the local directory.
@@ -4426,6 +4541,7 @@ def download_project(
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+            **kwargs,
         )
     else:
         _download_project_optimized(
@@ -4440,6 +4556,7 @@ def download_project(
             save_images=save_images,
             log_progress=log_progress,
             images_ids=images_ids,
+            **kwargs,
         )
 
 
@@ -4455,6 +4572,7 @@ def _download_project_optimized(
     save_images=True,
     log_progress=True,
     images_ids: List[int] = None,
+    **kwargs,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
