@@ -123,7 +123,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
         data = {ApiField.NAME: name, ApiField.PROJECT_ID: project_id}
         response = self._api.post("entities-collections.add", data)
-        return response.json()  # {"id": 1, "name": "To Annotate"}
+        return self._convert_json_info(response.json())
 
     def get_list(
         self,
@@ -196,3 +196,62 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     def _get_update_method(self):
         """ """
         return "entities-collections.editInfo"
+
+    def add_items(self, id: int, items: List[int]) -> None:
+        """
+        Add items to Entities Collection.
+
+        :param id: Entities Collection ID in Supervisely.
+        :type id: int
+        :param items: List of item IDs in Supervisely.
+        :type items: List[int]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            collection_id = 2
+            item_ids = [1, 2, 3]
+            api.entities_collection.add_items(collection_id, item_ids)
+        """
+        data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_IDS: items}
+        self._api.post("entities-collections.items.bulk.add", data)
+
+    def get_items(self, id: int, project_id: Optional[int] = None) -> List[int]:
+        """
+        Get items from Entities Collection.
+
+        :param id: Entities Collection ID in Supervisely.
+        :type id: int
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int, optional
+        :return: List of item IDs in Supervisely.
+        :rtype: List[int]
+        :raises RuntimeError: If Entities Collection with given ID not found.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            collection_id = 2
+            project_id = 4
+            item_ids = api.entities_collection.get_items(collection_id, project_id)
+            print(item_ids)
+        """
+        if project_id is None:
+            info = self.get_info_by_id(id)
+            if info is None:
+                raise RuntimeError(f"Entities Collection with id={id} not found.")
+            project_id = info.project_id
+
+        return self._api.image.get_list(project_id=project_id, entities_collection_id=id)

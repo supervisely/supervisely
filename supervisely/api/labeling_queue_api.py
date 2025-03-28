@@ -33,6 +33,8 @@ class LabelingQueueInfo(NamedTuple):
     entities_count: int
     accepted_count: int
     annotated_count: int
+    in_progress_count: int
+    pending_count: int
     meta: dict
 
 
@@ -127,6 +129,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.ENTITIES_COUNT,
             ApiField.ACCEPTED_COUNT,
             ApiField.ANNOTATED_COUNT,
+            ApiField.IN_PROGRESS_COUNT,
+            ApiField.PENDING_COUNT,
             ApiField.META,
         ]
 
@@ -192,9 +196,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     def create(
         self,
         name: str,
-        dataset_id: int,
         user_ids: List[int],
         reviewer_ids: List[int],
+        dataset_id: Optional[int] = None,
+        collection_id: Optional[int] = None,
         readme: Optional[str] = None,
         classes_to_label: Optional[List[str]] = None,
         objects_limit_per_image: Optional[int] = None,
@@ -220,6 +225,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type name: str
         :param dataset_id: Dataset ID in Supervisely.
         :type dataset_id: int
+        :param collection_id: Entities Collection ID in Supervisely.
+        :type collection_id: int, optional
         :param user_ids: User IDs in Supervisely to assign Users as labelers to Labeling Queue.
         :type user_ids: List[int]
         :param readme: Additional information about Labeling Queue.
@@ -303,6 +310,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             # >>> List[LabelingJobInfo(id=3,...)]
         """
+        if dataset_id is None and collection_id is None:
+            raise RuntimeError("Either dataset_id or collection_id must be provided")
         if classes_to_label is None:
             classes_to_label = []
         if tags_to_label is None:
@@ -337,8 +346,12 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             meta["entityIds"] = images_ids
 
         if toolbox_settings is not None:
-            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
-            project_id = dataset_info.project_id
+            if dataset_id is not None:
+                dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+                project_id = dataset_info.project_id
+            else:
+                collection_info = self._api.entities_collection.get_info_by_id(collection_id)
+                project_id = collection_info.project_id
             project_info = self._api.project.get_info_by_id(project_id)
             project_type = project_info.type
             if project_type == ProjectType.VIDEOS.value:
@@ -381,10 +394,13 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         data = {
             ApiField.NAME: name,
             ApiField.USER_IDS: user_ids,
-            ApiField.DATASET_ID: dataset_id,
             ApiField.REVIEWER_IDS: reviewer_ids,
             ApiField.META: meta,
         }
+        if dataset_id is not None:
+            data[ApiField.DATASET_ID] = dataset_id
+        if collection_id is not None:
+            data[ApiField.COLLECTION_ID] = collection_id
 
         if queue_meta is not None:
             data[ApiField.QUEUE_META] = queue_meta
@@ -615,17 +631,20 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     def get_entities_all_pages(
         self,
         id: int,
+        collection_id: Optional[int] = None,
         per_page: int = 25,
         sort: str = "name",
         sort_order: str = "asc",
         status: Optional[Union[List, Literal["none", "done", "accepted", "null"]]] = None,
         limit: int = None,
-    ):
+    ) -> Dict[str, Union[List[Dict], int]]:
         """
         Get list of all or limited quantity entities from the Supervisely server.
 
         :param id: Labeling Queue ID in Supervisely.
         :type id: int
+        :param collection_id: Collection ID in Supervisely.
+        :type collection_id: int, optional
         :param per_page: Number of entities per page.
         :type per_page: int, optional
         :param sort: Sorting field.
@@ -633,6 +652,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param sort_order: Sorting order.
         :type sort_order: str, optional
         :param status: Status of entities to filter.
+                        "null" - pending (in queue).
+                        "none" - annotating (not in queue),
+                        "done" - on review,
+                        "accepted" - accepted,
         :type status: str or List[str], optional
         :param limit: Limit the number of entities to return. If limit is None, all entities will be returned.
         :type limit: int, optional
@@ -648,6 +671,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.SORT: sort,
             ApiField.SORT_ORDER: sort_order,
         }
+        if collection_id is not None:
+            data[ApiField.FILTERS] = [
+                {"type": "entities_collection", "data": {ApiField.COLLECTION_ID}}
+            ]
         if status is not None:
             if type(status) is str:
                 status = [status]
@@ -695,6 +722,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :param status: Status of entities to filter.
+                        "null" - pending (in queue).
+                        "none" - annotating (not in queue),
+                        "done" - on review,
+                        "accepted" - accepted,
         :type status: str or List[str], optional
         :return: Count of entities in the Labeling Job with given status.
         :rtype: int
