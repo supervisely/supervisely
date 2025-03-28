@@ -12,13 +12,17 @@
   :open-delay="data.{{{widget.widget_id}}}.open_delay"
   :enterable="data.{{{widget.widget_id}}}.enterable"
   :hide-after="data.{{{widget.widget_id}}}.hide_after"
+  :trigger="data.{{{widget.widget_id}}}.trigger"
 >
+  {% if widget._slot_content %}
+    <div slot="content">{{{widget._slot_content}}}</div>
+  {% endif %}
   {% if widget._multiline == true %}
     <div slot="content">
-      {% for item in widget._text %}
+    {% for item in widget._text %}
         {{{item}}}<br/>
-      {% endfor %}        
+    {% endfor %}        
     </div>
-  {% endif %} 
+  {% endif %}
   {{{widget._content}}}
 </el-tooltip>

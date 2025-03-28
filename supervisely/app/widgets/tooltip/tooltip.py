@@ -6,7 +6,7 @@ from supervisely.app.widgets import Widget
 class Tooltip(Widget):
     def __init__(
         self,
-        text: Union[str, List[str]],
+        text: Union[str, List[str], Widget],
         content: Widget,
         color_theme: Optional[Literal["dark", "light"]] = "dark",
         placement: Optional[
@@ -37,7 +37,14 @@ class Tooltip(Widget):
         enterable: Optional[bool] = True,
         hide_after: Optional[int] = 0,
         widget_id: Optional[str] = None,
+        trigger: Optional[Literal["click", "hover", "focus"]] = "hover",
+        width: Optional[Union[str, int]] = None,
     ):
+        if isinstance(text, Widget):
+            self._slot_content = text
+            text = ""
+        else:
+            self._slot_content = None
         self._text = text
         self._content = content
         self._color_theme = color_theme
@@ -49,6 +56,8 @@ class Tooltip(Widget):
         self._enterable = enterable
         self._hide_after = hide_after
         self._multiline = True if isinstance(self._text, List) else False
+        self._trigger = trigger
+        self._width = width
 
         if open_delay >= hide_after and hide_after != 0:
             raise ValueError("The value 'open_delay' must be less than 'hide_after'")
@@ -67,6 +76,8 @@ class Tooltip(Widget):
             "enterable": self._enterable,
             "hide_after": self._hide_after,
             "multiline": self._multiline,
+            "trigger": self._trigger,
+            "width": self._width,
         }
 
     def get_json_state(self):

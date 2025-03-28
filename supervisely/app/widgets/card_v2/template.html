@@ -1,0 +1,31 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/card_v2/style.css" />
+
+<sly-card2
+  :title="data.{{{widget.widget_id}}}.title"
+  :description="data.{{{widget.widget_id}}}.description"
+  :properties.sync="data.{{{widget.widget_id}}}.properties"
+  :properties-layout="data.{{{widget.widget_id}}}.propertiesLayout"
+  :collapsable="data.{{{widget.widget_id}}}.collapsable"
+  :collapsed="state.{{{widget.widget_id}}}.collapsed"
+  :remove-padding="data.{{{widget.widget_id}}}.removePadding"
+  :overflow="data.{{{widget.widget_id}}}.overflow"
+  :lock-message="data.{{{widget.widget_id}}}.lockMessage"
+  :is-locked="state.{{{widget.widget_id}}}.locked"
+  :has-icon="data.{{{widget.widget_id}}}.hasIcon"
+  :has-content="data.{{{widget.widget_id}}}.hasContent"
+  :has-content-top-right="data.{{{widget.widget_id}}}.hasContentTopRight"
+  style="{{{widget._style}}}"
+>
+    <!-- Icon slot -->
+  <template v-slot:icon>
+    {{{widget._icon}}}
+  </template>
+
+  <!-- Content top right slot -->
+  <template v-slot:content-top-right>
+    {{{widget._content_top_right}}}
+  </template>
+
+  <!-- Main content slot -->
+  {{{widget._content}}}
+</sly-card2>
