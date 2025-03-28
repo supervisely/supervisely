@@ -14,6 +14,9 @@ import yaml
 from requests import HTTPError, Timeout
 
 import supervisely as sly
+from supervisely.api.api import ApiField
+from supervisely.api.module_api import WaitingTimeExceeded
+from supervisely.api.task_api import TaskApi
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.nn.utils import DeployInfo
@@ -23,7 +26,7 @@ from supervisely.sly_logger import logger
 class SessionJSON:
     def __init__(
         self,
-        api: sly.Api,
+        api: sly.Api = None,
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
@@ -515,14 +518,10 @@ class SessionJSON:
 
     def stop_serving_app(self, timeout=60):
         logger.debug("Stopping the serving app...")
-        self.api.task.stop(self._task_id)
-        logger.debug("Waiting for the serving app to stop...")
-        self.api.task.wait(
-            self._task_id,
-            target_status=sly.api.task_api.TaskApi.Status.STOPPED,
-            wait_attempts=timeout,
-            wait_attempt_timeout_sec=1,
-        )
+        endpoint = "shutdown"
+        url = f"{self._base_url}/{endpoint}"
+        self._post(url, json={ApiField.ID: id})
+        logger.info("The serving app will be stopped")
 
     def _get_inference_progress(self) -> Dict[str, Any]:
         endpoint = "get_inference_progress"
@@ -594,7 +593,8 @@ class SessionJSON:
             self._async_inference_uuid = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
-        retries = min(self.api.retry_count, retries)
+        if self.api is not None:
+            retries = min(self.api.retry_count, retries)
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
         for retry_idx in range(retries):
@@ -653,11 +653,13 @@ class SessionJSON:
         return state
 
     def _get_default_json_body(self) -> Dict[str, Any]:
-        return {
+        body = {
             "state": {"settings": self.inference_settings},
             "context": {},
-            "api_token": self.api.token,
         }
+        if self.api is not None:
+            body["api_token"] = (self.api.token,)
+        return body
 
     def _get_default_json_body_for_async_inference(self) -> Dict[str, Any]:
         json_body = self._get_default_json_body()
@@ -707,7 +709,7 @@ class AsyncInferenceIterator:
 class Session(SessionJSON):
     def __init__(
         self,
-        api: sly.Api,
+        api: sly.Api = None,
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
@@ -748,7 +750,9 @@ class Session(SessionJSON):
         super().__init__(api, task_id, session_url, inference_settings)
 
     def is_model_deployed(self):
-        is_deployed = self.api.task.send_request(self._task_id, "is_deployed", {})
+        endpoint = "is_deployed"
+        url = f"{self._base_url}/{endpoint}"
+        is_deployed = self._post(url, json={}).json()
         return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
