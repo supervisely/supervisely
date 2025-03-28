@@ -528,9 +528,7 @@ class DeployApi:
         deploy_params = {
             "device": device,
             "model_source": ModelSource.CUSTOM,
-            "model_files": {
-                "checkpoint": f"{experiment_info.artifacts_dir}checkpoints/{checkpoint_name}"
-            },
+            "model_files": {"checkpoint": f"{artifacts_dir}checkpoints/{checkpoint_name}"},
             "model_info": asdict(experiment_info),
             "runtime": runtime,
         }
