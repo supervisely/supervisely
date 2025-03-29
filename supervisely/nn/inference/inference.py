@@ -1340,7 +1340,7 @@ class Inference:
         if async_inference_request_uuid is not None:
             inference_request = self._inference_requests[async_inference_request_uuid]
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = len(files)
+            sly_progress.total = 1
 
         settings = self._get_inference_settings(state)
         batch_size = state.get("batch_size", None)
@@ -1348,23 +1348,21 @@ class Inference:
             batch_size = self.get_batch_size()
         result = []
 
-        logger.info(f"batch[0] type: {type(files[0])}")
-        img_bytes = [file.file.read() for file in files]
-        logger.info(f"bytes[0] type: {type(img_bytes[0])}")
-        logger.info(f"bytes[0] len: {len(img_bytes[0])}")
-        logger.info(f"bytes[0] first 10: {img_bytes[0][:10]}")
-        images = [sly_image.read_bytes(b) for b in img_bytes]
-        anns, slides_data = self._inference_auto(
-            images,
-            settings=settings,
-        )
-        data = self._format_output(anns, slides_data)
+        images = [sly_image.read_bytes(file.file.read()) for file in files]
+        for batch in batched(images):
+            anns, slides_data = self._inference_auto(
+                batch,
+                settings=settings,
+            )
+            data = self._format_output(anns, slides_data)
+            # if sly_progress is not None:
+            #     sly_progress.iters_done(len(batch))
+            if async_inference_request_uuid is not None:
+                inference_request["pending_results"].extend(data)
+            else:
+                result.extend(data)
         if sly_progress is not None:
-            sly_progress.iters_done(len(files))
-        if async_inference_request_uuid is not None:
-            inference_request["pending_results"].extend(data)
-        else:
-            result.extend(data)
+            sly_progress.iter_done()
         return result
 
     def _inference_batch_ids(self, api: Api, state: dict):
