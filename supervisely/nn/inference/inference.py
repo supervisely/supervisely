@@ -1322,7 +1322,17 @@ class Inference:
         results = self._format_output(anns, slides_data)
         return results[0]
 
-    def _inference_batch(
+    def _inference_batch(self, state: dict, files: List[UploadFile]):
+        logger.debug("Inferring batch...", extra={"state": state})
+        settings = self._get_inference_settings(state)
+        images = [sly_image.read_bytes(file.file.read()) for file in files]
+        anns, slides_data = self._inference_auto(
+            images,
+            settings=settings,
+        )
+        return self._format_output(anns, slides_data)
+
+    def _inference_batch_async(
         self, state: dict, files: List[UploadFile], async_inference_request_uuid: str = None
     ):
         logger.debug("Inferring batch...", extra={"state": state})
@@ -2671,7 +2681,7 @@ class Inference:
                 future = self._executor.submit(
                     self._handle_error_in_async,
                     inference_request_uuid,
-                    self._inference_batch,
+                    self._inference_batch_async,
                     state,
                     files,
                     inference_request_uuid,
