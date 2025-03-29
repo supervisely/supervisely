@@ -289,7 +289,7 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["batch_size"] = batch_size
-        uploads = files + [("settings", (None, json_body, "text/plain"))]
+        uploads = files + [("settings", (None, json.dumps(json_body), "text/plain"))]
         resp = self._post(url, files=uploads).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
