@@ -41,7 +41,7 @@ class InferenceSession:
     ):
         self._iterator = None
         assert (
-            sum([x is not None for x in [images, video, dataset, project]]) != 1
+            sum([x is not None for x in [images, video, dataset, project]]) == 1
         ), "Exactly one of `images`, `video`, `project`, or `dataset` must be provided."
         if images is not None:
             source = images
