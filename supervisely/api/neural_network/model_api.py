@@ -1,12 +1,14 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 from supervisely._utils import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.annotation_api import AnnotationInfo
-from supervisely.api.api import Api
 from supervisely.nn.inference.session import Session
 from supervisely.video_annotation.video_annotation import VideoAnnotation
+
+if TYPE_CHECKING:
+    from supervisely.api.api import Api
 
 
 @dataclass
@@ -110,7 +112,7 @@ class InferenceSession:
 
 class ModelApi:
     def __init__(
-        self, api: Api = None, deploy_id: int = None, url: str = None, params: dict = None
+        self, api: "Api" = None, deploy_id: int = None, url: str = None, params: dict = None
     ):
         assert not (
             deploy_id is None and url is None
