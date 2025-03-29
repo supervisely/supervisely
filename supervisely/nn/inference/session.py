@@ -839,7 +839,7 @@ class Session(SessionJSON):
     def inference_image_paths_async(
         self, image_paths, batch_size: int = None
     ) -> List[sly.Annotation]:
-        frame_iterator = super().inference_image_ids_async(
+        frame_iterator = super().inference_image_paths_async(
             image_paths,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
