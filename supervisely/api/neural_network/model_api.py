@@ -39,6 +39,10 @@ class InferenceSession:
         project: Union[str, int] = None,
         params: dict = None,
     ):
+        logger.info(
+            "images: %s, video: %s, dataset: %s, project: %s", images, video, dataset, project
+        )
+        logger.info(f"sum: {sum([x is not None for x in [images, video, dataset, project]])}")
         self._iterator = None
         assert (
             sum([x is not None for x in [images, video, dataset, project]]) != 1
@@ -141,6 +145,9 @@ class ModelApi:
         project: Union[str, int] = None,
         params: Dict = None,
     ) -> InferenceSession:
+        logger.info(
+            "images: %s, video: %s, dataset: %s, project: %s", images, video, dataset, project
+        )
         return InferenceSession(
             self.url,
             images=images,
@@ -158,7 +165,9 @@ class ModelApi:
         project: Union[str, int] = None,
         params: Dict = None,
     ) -> Union[PredictionDTO, List[PredictionDTO], InferenceSession]:
-
+        logger.info(
+            "images: %s, video: %s, dataset: %s, project: %s", images, video, dataset, project
+        )
         session = self.predict_detached(images, video, dataset, project, params)
         result = list(session)
         source = next(x for x in [images, video, dataset, project] if x is not None)
