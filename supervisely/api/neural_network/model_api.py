@@ -39,6 +39,7 @@ class InferenceSession:
         project: Union[str, int] = None,
         params: dict = None,
     ):
+        self._session = None
         self._iterator = None
         assert (
             sum([x is not None for x in [images, video, dataset, project]]) == 1
@@ -65,8 +66,6 @@ class InferenceSession:
         self.dataset = dataset
         self.project = project
         self.params = params
-
-        self._session = None
 
     @property
     def session(self):
