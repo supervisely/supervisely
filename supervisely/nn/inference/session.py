@@ -842,7 +842,7 @@ class Session(SessionJSON):
         frame_iterator = super().inference_image_paths_async(
             image_paths,
             batch_size=batch_size,
-            process_fn=self._convert_to_sly_ann_info,
+            process_fn=self._convert_to_sly_annotation,
         )
         return frame_iterator
 
