@@ -1326,6 +1326,7 @@ class Inference:
         self, state: dict, files: List[UploadFile], async_inference_request_uuid: str = None
     ):
         logger.debug("Inferring batch...", extra={"state": state})
+        sly_progress = None
         if async_inference_request_uuid is not None:
             inference_request = self._inference_requests[async_inference_request_uuid]
             sly_progress: Progress = inference_request["progress"]
