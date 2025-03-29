@@ -1337,7 +1337,12 @@ class Inference:
             batch_size = self.get_batch_size()
         result = []
         for batch in batched(files, batch_size):
-            images = [sly_image.read_bytes(file.file.read()) for file in batch]
+            logger.info(f"batch[0] type: {type(batch[0])}")
+            img_bytes = [file.file.read() for file in batch]
+            logger.info(f"bytes[0] type: {type(img_bytes[0])}")
+            logger.info(f"bytes[0] len: {len(img_bytes[0])}")
+            logger.info(f"bytes[0] first 10: {img_bytes[0][:10]}")
+            images = [sly_image.read_bytes(b) for b in img_bytes]
             anns, slides_data = self._inference_auto(
                 images,
                 settings=settings,
