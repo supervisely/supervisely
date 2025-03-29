@@ -8,7 +8,6 @@ from supervisely.sly_logger import logger
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
-    from supervisely.nn.utils import ModelSource, RuntimeType
 
 
 class DeployApi:

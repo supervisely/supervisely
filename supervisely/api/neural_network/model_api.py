@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 from supervisely._utils import logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.api.annotation_api import AnnotationInfo
-from supervisely.nn.inference.session import Session
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 if TYPE_CHECKING:
@@ -71,6 +70,8 @@ class InferenceSession:
 
     @property
     def session(self):
+        from supervisely.nn.inference.session import Session
+
         if self._session is None:
             self._session = Session(session_url=self._base_url, inference_settings=self.params)
         return self._session
