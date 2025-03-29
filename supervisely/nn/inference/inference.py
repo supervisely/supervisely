@@ -1348,7 +1348,8 @@ class Inference:
             settings=settings,
         )
         data = self._format_output(anns, slides_data)
-        sly_progress.iters_done(len(files))
+        if sly_progress is not None:
+            sly_progress.iters_done(len(files))
         if async_inference_request_uuid is not None:
             inference_request["pending_results"].extend(data)
         else:
