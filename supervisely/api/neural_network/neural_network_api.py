@@ -4,6 +4,7 @@
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from supervisely.api.neural_network.deploy_api import DeployApi
+from supervisely.api.neural_network.model_api import ModelApi
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -166,11 +167,11 @@ class NeuralNetworkApi:
         except KeyError:
             raise ValueError("Task output does not contain experiment data")
 
-    def inference_session(
+    def connect(
         self,
         session_id: int,
         inference_settings: Union[dict, str] = None,
-    ) -> "Session":
+    ) -> ModelApi:
         """
         Attach to a running Serving App session to run the inference via API.
 
@@ -181,6 +182,4 @@ class NeuralNetworkApi:
         :return: a :class:`Session` object
         :rtype: Session
         """
-        from supervisely.nn.inference.session import Session
-
-        return Session(self._api, session_id, inference_settings=inference_settings)
+        return ModelApi(self._api, session_id, params=inference_settings)
