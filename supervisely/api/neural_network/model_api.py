@@ -14,13 +14,13 @@ if TYPE_CHECKING:
 class PredictionDTO:
     source: Union[str, int]
     annotation: Union[Annotation, VideoAnnotation]
-    image_id: Optional[int]
-    image_path: Optional[str]
-    video_id: Optional[int]
-    video_path: Optional[str]
-    dataset_id: Optional[int]
-    project_id: Optional[int]
-    project_path: Optional[str]
+    image_id: Optional[int] = None
+    image_path: Optional[str] = None
+    video_id: Optional[int] = None
+    video_path: Optional[str] = None
+    dataset_id: Optional[int] = None
+    project_id: Optional[int] = None
+    project_path: Optional[str] = None
 
 
 class InferenceSession:
