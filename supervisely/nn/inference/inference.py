@@ -2665,7 +2665,9 @@ class Inference:
                 if type(state) != dict:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return "Settings is not json object"
-                batch_size = len(files)
+                batch_size = state.get("batch_size", None)
+                if batch_size is None:
+                    batch_size = self.get_batch_size()
                 if self.max_batch_size is not None and batch_size > self.max_batch_size:
                     response.status_code = status.HTTP_400_BAD_REQUEST
                     return {
