@@ -268,6 +268,39 @@ class SessionJSON:
             f.close()
         return resp.json()
 
+    def inference_image_paths_async(
+        self,
+        image_paths: List[str],
+        batch_size: int = None,
+        process_fn=None,
+    ) -> Iterator:
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "inference_batch_async"
+        url = f"{self._base_url}/{endpoint}"
+        files = [("files", open(f, "rb")) for f in image_paths]
+        json_body = self._get_default_json_body()
+        state = json_body["state"]
+        state["batch_size"] = batch_size
+        uploads = files + [("settings", (None, json_body, "text/plain"))]
+        resp = self._post(url, files=uploads).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(
+            resp["progress"]["total"], self, process_fn=process_fn
+        )
+        return frame_iterator
+
     def inference_video_id(
         self,
         video_id: int,
@@ -802,6 +835,16 @@ class Session(SessionJSON):
         pred_list_raw = super().inference_image_paths(image_paths)
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
+
+    def inference_image_paths_async(
+        self, image_paths, batch_size: int = None
+    ) -> List[sly.Annotation]:
+        frame_iterator = super().inference_image_ids_async(
+            image_paths,
+            batch_size=batch_size,
+            process_fn=self._convert_to_sly_ann_info,
+        )
+        return frame_iterator
 
     def inference_video_id(
         self,

@@ -1322,15 +1322,33 @@ class Inference:
         results = self._format_output(anns, slides_data)
         return results[0]
 
-    def _inference_batch(self, state: dict, files: List[UploadFile]):
+    def _inference_batch(
+        self, state: dict, files: List[UploadFile], async_inference_request_uuid: str = None
+    ):
         logger.debug("Inferring batch...", extra={"state": state})
+        if async_inference_request_uuid is not None:
+            inference_request = self._inference_requests[async_inference_request_uuid]
+            sly_progress: Progress = inference_request["progress"]
+            sly_progress.total = len(files)
+
         settings = self._get_inference_settings(state)
-        images = [sly_image.read_bytes(file.file.read()) for file in files]
-        anns, slides_data = self._inference_auto(
-            images,
-            settings=settings,
-        )
-        return self._format_output(anns, slides_data)
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        result = []
+        for batch in batched(files, batch_size):
+            images = [sly_image.read_bytes(file.file.read()) for file in batch]
+            anns, slides_data = self._inference_auto(
+                images,
+                settings=settings,
+            )
+            data = self._format_output(anns, slides_data)
+            sly_progress.iters_done(len(batch))
+            if async_inference_request_uuid is not None:
+                inference_request["pending_results"].extend(data)
+            else:
+                result.extend(data)
+        return result
 
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
@@ -2615,6 +2633,54 @@ class Inference:
                         "success": False,
                     }
                 return self._inference_batch(state, files)
+            except (json.decoder.JSONDecodeError, TypeError) as e:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f"Cannot decode settings: {e}"
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
+
+        @server.post("/inference_batch_async")
+        def inference_batch_async(
+            response: Response, files: List[UploadFile], settings: str = Form("{}")
+        ):
+            try:
+                state = json.loads(settings)
+                logger.debug(f"'inference_batch_async' request in json format:{state}")
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return "Settings is not json object"
+                batch_size = len(files)
+                if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return {
+                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                        "success": False,
+                    }
+                inference_request_uuid = uuid.uuid5(
+                    namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+                ).hex
+                self._on_inference_start(inference_request_uuid)
+                future = self._executor.submit(
+                    self._handle_error_in_async,
+                    inference_request_uuid,
+                    self._inference_batch,
+                    state,
+                    files,
+                    inference_request_uuid,
+                )
+                end_callback = partial(
+                    self._on_inference_end, inference_request_uuid=inference_request_uuid
+                )
+                future.add_done_callback(end_callback)
+                logger.debug(
+                    "Inference has scheduled from 'inference_batch_async' endpoint",
+                    extra={"inference_request_uuid": inference_request_uuid},
+                )
+                return {
+                    "message": "Inference has started.",
+                    "inference_request_uuid": inference_request_uuid,
+                }
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"Cannot decode settings: {e}"
