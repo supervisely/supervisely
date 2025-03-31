@@ -166,14 +166,14 @@ class BlobImageInfo:
 
     @staticmethod
     def load_from_pickle_generator(
-        file_path: str, batch_size: int = 5000
+        file_path: str, batch_size: int = OFFSETS_PKL_BATCH_SIZE
     ) -> Generator[List["BlobImageInfo"], None, None]:
         """
         Load BlobImageInfo objects from a pickle file in batches.
 
         :param file_path: Path to the pickle file containing BlobImageInfo objects.
         :type file_path: str
-        :param batch_size: Size of each batch.
+        :param batch_size: Size of each batch. Default is 10000.
         :type batch_size: int
         :return: Generator yielding batches of BlobImageInfo objects.
         :rtype: Generator[List[BlobImageInfo], None, None]
@@ -201,9 +201,17 @@ class BlobImageInfo:
         """
 
         try:
-            with open(file_path, "ab") as f:
-                for batch, _ in offsets:
-                    pickle.dump(batch, f)
+            if isinstance(offsets, Generator):
+                with open(file_path, "ab") as f:
+                    for batch, _ in offsets:
+                        pickle.dump(batch, f)
+            elif isinstance(offsets, list):
+                with open(file_path, "ab") as f:
+                    pickle.dump(offsets, f)
+            else:
+                raise NotImplementedError(
+                    f"Invalid type of 'offsets' parameter for 'dump_offsets' method: {type(offsets)}"
+                )
         except Exception as e:
             logger.error(f"Failed to dump BlobImageInfo objects to {file_path}: {str(e)}")
 
@@ -2209,8 +2217,9 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         dataset_id: int,
         team_file_id: int,
+        offsets_file_path: Optional[str] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
-        metas: Optional[List[Dict]] = None,
+        metas: Optional[Dict] = None,
         batch_size: Optional[int] = 50,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
@@ -2231,8 +2240,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type team_file_id: int
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
-        :param metas: Custom additional image infos that contain images technical and/or user-generated data as list of separate dicts.
-        :type metas: List[dict], optional
+        :param metas: Custom additional image infos as dict where:
+                     `keys` - image names,
+                     `values` - image technical and/or user-generated data dicts
+        :type metas: Dict, optional
         :param batch_size: Number of images to upload in one batch.
         :type batch_size: int, optional
         :param skip_validation: Skips validation for images, can result in invalid images being uploaded.
@@ -2266,14 +2277,15 @@ class ImageApi(RemoveableBulkModuleApi):
             for img_infos_batch in new_imgs_info_generator:
                 img_infos.extend(img_infos_batch)
         """
-
-        offsets_file_path = self.get_blob_offsets_file(team_file_id)
+        if offsets_file_path is None:
+            offsets_file_path = self.get_blob_offsets_file(team_file_id)
         blob_image_infos_generator = BlobImageInfo.load_from_pickle_generator(
             offsets_file_path, OFFSETS_PKL_BATCH_SIZE
         )
 
         for batch in blob_image_infos_generator:
             names = [item.name for item in batch]
+            metas = [metas[name] for name in names] if metas is not None else [{}] * len(names)
             items = [
                 {ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: item.offsets_dict}
                 for item in batch

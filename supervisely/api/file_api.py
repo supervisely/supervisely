@@ -813,7 +813,7 @@ class FileApi(ModuleApiBase):
         :type src: List[str]
         :param dst: Destination paths for Files to Team Files.
         :type dst: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
