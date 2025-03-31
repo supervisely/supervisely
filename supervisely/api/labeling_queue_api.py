@@ -217,7 +217,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         toolbox_settings: Optional[Dict] = None,
         hide_figure_author: Optional[bool] = False,
         allow_review_own_annotations: Optional[bool] = False,
-    ) -> List[LabelingQueueInfo]:
+    ) -> int:
         """
         Creates Labeling Queue and assigns given Users to it.
 
@@ -261,8 +261,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type disable_submit: bool, optional
         :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
         :type toolbox_settings: Dict, optional
-        :return: List of information about new Labeling Queue. See :class:`info_sequence<info_sequence>`
-        :rtype: :class:`List[LabelingQueueInfo]`
+        :return: Labeling Queue ID in Supervisely.
+        :rtype: int
         :Usage example:
 
          .. code-block:: python
@@ -275,7 +275,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             user_name = 'alex'
             dataset_id = 602
-            new_labeling_queue = api.labeling_queue.create(
+            new_labeling_queue_id = api.labeling_queue.create(
                 user_name,
                 dataset_id,
                 user_ids=[111, 222],
@@ -284,9 +284,9 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 objects_limit_per_image=5,
                 tags_limit_per_image=3
             )
-            print(new_labeling_queue)
+            print(new_labeling_queue_id)
 
-            # >>> List[LabelingJobInfo(id=2,...)]
+            # >>> 2
 
             # Create video labeling job with toolbox settings
 
@@ -295,7 +295,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             video_id = 24897
             toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
 
-            new_labeling_queue = api.labeling_queue.create(
+            new_labeling_queue_id = api.labeling_queue.create(
                 name="Labeling Job name",
                 dataset_id=dataset_id,
                 user_ids=[user_id],
@@ -306,9 +306,9 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 images_ids=[video_id],
                 toolbox_settings=toolbox_settings,
             )
-            print(new_labeling_queue)
+            print(new_labeling_queue_id)
 
-            # >>> List[LabelingJobInfo(id=3,...)]
+            # >>> 3
         """
         if dataset_id is None and collection_id is None:
             raise RuntimeError("Either dataset_id or collection_id must be provided")
@@ -418,7 +418,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             data[ApiField.REVIEWER_ID] = reviewer_id
 
         response = self._api.post("labeling-queues.add", data)
-        return response.json()  # {"success": true}
+        return response.json()["id"]  # {"success": true}
 
     def get_list(
         self,
@@ -637,6 +637,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         sort_order: str = "asc",
         status: Optional[Union[List, Literal["none", "done", "accepted", "null"]]] = None,
         limit: int = None,
+        filter_by: List[Dict] = None,
     ) -> Dict[str, Union[List[Dict], int]]:
         """
         Get list of all or limited quantity entities from the Supervisely server.
@@ -659,6 +660,12 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type status: str or List[str], optional
         :param limit: Limit the number of entities to return. If limit is None, all entities will be returned.
         :type limit: int, optional
+        :param filter_by: Filter for entities.
+                       e.g. [{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]
+                        - field - field name to filter by ("id", "name", "reviewedAt")
+                        - operator - operator to use for filtering ("=", ">", "<", ">=", "<=")
+                        - value - value to filter by
+        :type filter_by: List[Dict], optional
         :param return_first_response: Specify if return first response
         :type return_first_response: bool, optional
         """
@@ -673,8 +680,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         }
         if collection_id is not None:
             data[ApiField.FILTERS] = [
-                {"type": "entities_collection", "data": {ApiField.COLLECTION_ID}}
+                {"type": "entities_collection", "data": {ApiField.COLLECTION_ID: collection_id}}
             ]
+        if filter_by is not None:
+            data[ApiField.FILTER] = filter_by
         if status is not None:
             if type(status) is str:
                 status = [status]
@@ -716,6 +725,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         self,
         id: int,
         status: Optional[Union[List, Literal["none", "done", "accepted", "null"]]] = None,
+        filter_by: List[Dict] = None,
     ) -> int:
         """
         Get count of entities in the given Labeling Queue with given status.
@@ -727,6 +737,12 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                         "done" - on review,
                         "accepted" - accepted,
         :type status: str or List[str], optional
+        :param filter_by: Filter for entities.
+                       e.g. [{"field": "name", "operator": "in", "value": ["image_01", "image_02"]}]
+                        - field - field name to filter by ("id", "name", "reviewedAt")
+                        - operator - operator to use for filtering ("=", ">", "<", ">=", "<=")
+                        - value - value to filter by
+        :type filter_by: List[Dict], optional
         :return: Count of entities in the Labeling Job with given status.
         :rtype: int
         :Usage example:
@@ -743,4 +759,6 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             print(entities_count)
             # Output: 3
         """
-        return self.get_entities_all_pages(id, status=status, limit=1).get("total", 0)
+        return self.get_entities_all_pages(id, status=status, limit=1, filter_by=filter_by).get(
+            "total", 0
+        )
