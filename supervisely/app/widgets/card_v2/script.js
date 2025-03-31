@@ -57,15 +57,7 @@ Vue.component("sly-card2", {
   },
   computed: {
     hasProperties() {
-      return this.properties && Object.keys(this.properties).length > 0;
-    },
-    propertiesArray() {
-      // properties - object with key-value pairs (value is an array of arrays [value, type], where type is one of the following: 'text', 'tag')
-      // Convert properties object to array for easier rendering
-      return Object.entries(this.properties).map(([key, value]) => ({
-        key,
-        value: Array.isArray(value) ? value : [value],
-      }));
+      return this.properties && this.properties.length > 0;
     },
     hasHeader() {
       return (
@@ -75,20 +67,6 @@ Vue.component("sly-card2", {
         this.hasContentTopRight ||
         this.collapsable
       );
-    },
-  },
-  watch: {
-    properties: {
-      handler(newValue) {
-        this.propertiesArray = Object.entries(newValue).map(([key, value]) => ({
-          key,
-          value: Array.isArray(value) ? value : [value],
-        }));
-      },
-      immediate: true,
-    },
-    mounted() {
-      this.$emit("update:properties", this.propertiesArray);
     },
   },
   methods: {
@@ -133,13 +111,11 @@ Vue.component("sly-card2", {
         ]">
           <!-- For vertical layout -->
           <template v-if="propertiesLayout === 'vertical'">
-            <div class="sly-card2-property-item" v-for="prop in propertiesArray" :key="prop.key">
-              <span class="sly-card2-property-name">{{ prop.key }}:</span>
-              <!-- Display each value in the array -->
+            <div class="sly-card2-property-item" v-for="(prop, index) in properties" :key="prop.key">
+              <span class="sly-card2-property-name" :key="'name-'+index">{{ prop.key }}:</span>
               <div class="sly-card2-property-value">
-                <template v-for="(item, index) in prop.value">
-                  <span :class="[item[1] === 'tag' ? 'sly-card2-property-value-item sly-card2-property-value-tag' : 'sly-card2-property-value-item']" :key="index">{{ item[0] }}</span>
-                </template>
+                <span :key="'value-'+index"> {{ prop.value }}</span>
+                <span v-if="prop.extra" :key="'extra-'+index" class="sly-card2-property-value-tag">{{ prop.extra }}</span>
               </div>
 
             </div>
@@ -148,14 +124,13 @@ Vue.component("sly-card2", {
           <!-- For horizontal layout -->
           <template v-else>
             <div class="sly-card2-properties-content">
-              <template v-for="(prop, index) in propertiesArray">
+              <template v-for="(prop, index) in properties">
                 <!-- Separator -->
                 <span v-if="index > 0" class="sly-card2-properties-separator" :key="'sep-'+index">•</span>
                 <!-- Display each value in the array -->
-                <template v-for="(item, index) in prop.value">
-                  <span :class="[item[1] === 'tag' ? 'sly-card2-property-value-item sly-card2-property-value-tag' : 'sly-card2-property-value-item']" :key="index">{{ item[0] }}</span>
-                </template>
-              
+                <span :key="'name-'+index" >{{ prop.value }}</span>
+                <span :key="'value-'+index" >{{ prop.value }}</span>
+                <span :key="'extra-'+index" v-if="prop.extra" :class=" sly-card2-property-value-tag">{{ prop.extra }}</span>
               </template>
             </div>
           </template>

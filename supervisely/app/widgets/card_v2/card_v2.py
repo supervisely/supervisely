@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional
 
 from supervisely.app import DataJson
@@ -12,7 +13,7 @@ class CardV2(Card):
         self,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        properties: Optional[Dict[str, List[Any]]] = None,
+        properties: Optional[Dict[str, Any]] = None,
         properties_layout: Literal["horizontal", "vertical"] = "vertical",
         collapsable: Optional[bool] = False,
         content: Optional[Widget] = None,
@@ -50,10 +51,15 @@ class CardV2(Card):
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self) -> Dict[str, Any]:
+        if self._properties is not None:
+            for prop in self._properties:
+                for key in ["key", "value", "extra"]:
+                    if key not in prop:
+                        prop[key] = None
+
         data = super().get_json_data()
-        if self._properties:
-            data["properties"] = self._properties
-            data["propertiesLayout"] = self._properties_layout
+        data["properties"] = self._properties
+        data["propertiesLayout"] = self._properties_layout
         data["removePadding"] = self._remove_padding
         data["lockMessage"] = self._locked["message"]
         data["locked"] = self._locked["disabled"]
@@ -66,9 +72,6 @@ class CardV2(Card):
         return data
 
     def update_properties(self, properties: Dict[str, List[Any]]):
-        if not isinstance(self._properties, dict):
-            self._properties = properties
-        else:
-            self._properties.update(properties)
+        self._properties = deepcopy(properties)
         DataJson()[self.widget_id]["properties"] = self._properties
         DataJson().send_changes()
