@@ -2502,24 +2502,6 @@ class Project:
         self._meta = new_meta
         dump_json_file(self.meta.to_json(), self._get_project_meta_path(), indent=4)
 
-    def add_blob_file(self, file_name: str) -> None:
-        """
-        Adds blob file to the project.
-
-        :param file_name: File name.
-        :type file_name: :class:`str`
-        :return: None
-        :rtype: NoneType
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
-            project.add_blob_file("blob_file.tar")
-        """
-        self._blob_files.append(file_name)
-
     def __iter__(self):
         return next(self)
 
