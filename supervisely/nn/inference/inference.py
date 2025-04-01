@@ -1514,9 +1514,7 @@ class Inference:
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
-            range(
-                start_frame_index, start_frame_index + direction * n_frames * step, direction * step
-            ),
+            range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
         ):
             if (
