@@ -2716,6 +2716,7 @@ class Inference:
                 inference_request_uuid = uuid.uuid5(
                     namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
                 ).hex
+                logger.info("Saving video to cache")
                 video_name = files[0].filename
                 self.cache.add_video_to_cache(video_name, files[0].file)
                 self._on_inference_start(inference_request_uuid)
