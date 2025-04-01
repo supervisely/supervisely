@@ -1477,7 +1477,7 @@ class Inference:
         step = settings.get("step", 1)
         direction = settings.get("direction", "forward")
         tracking = settings.get("tracker", None)
-        inference_settings = self._get_inference_settings(settings)
+        inference_settings = self._get_inference_settings({"settings": settings})
         logger.debug(f"Inference settings:", extra=inference_settings)
 
         if async_inference_request_uuid is not None:
