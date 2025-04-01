@@ -38,6 +38,8 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
 JUNK_FILES = [".DS_Store", "__MACOSX", "._.DS_Store", "Thumbs.db", "desktop.ini"]
+OFFSETS_PKL_SUFFIX = "_offsets.pkl"  # suffix for pickle file with image offsets
+OFFSETS_PKL_BATCH_SIZE = 10000  # 10k images per batch when loading from pickle
 
 
 def get_file_name(path: str) -> str:
@@ -1638,7 +1640,7 @@ def get_file_offsets_batch_generator(
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
     format: Literal["dicts", "objects"] = "dicts",
-    batch_size: int = 10000,
+    batch_size: int = OFFSETS_PKL_BATCH_SIZE,
 ) -> Generator[Union[List[Dict], List["BlobImageInfo"]], None, None]:
     """
     Extracts offset information for files from TAR archives and returns a generator that yields the information in batches.
@@ -1659,7 +1661,7 @@ def get_file_offsets_batch_generator(
                    `dicts` - returns a list of dictionaries.
     :type format: Literal["dicts", "objects"]
     :returns: Generator yielding batches of file information in the specified format.
-    :rtype: Generator[Union[List[Dict], List["BlobImageInfo"]]], None, None]
+    :rtype: Generator[Union[List[Dict], List[BlobImageInfo]]], None, None]
 
     :raises ValueError: If the archive type is not supported or contains compressed files
     :Usage example:
@@ -1668,10 +1670,10 @@ def get_file_offsets_batch_generator(
 
         import supervisely as sly
 
-        archive_path = '/home/admin/work/projects/examples.zip'
+        archive_path = '/home/admin/work/projects/examples.tar'
         file_infos = sly.fs.get_file_offsets_batch_generator(archive_path)
-        for file_info in file_infos:
-            print(file_info)
+        for batch in file_infos:
+            print(batch)
 
         # Output:
         # [
@@ -1722,7 +1724,7 @@ def _process_tar_generator(
     tar_path: str,
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
-    batch_size: int = 10000,
+    batch_size: int = OFFSETS_PKL_BATCH_SIZE,
 ) -> Generator[List[Dict], None, None]:
     """
     Processes a TAR archive and yields batches of offset information for files.
@@ -1731,7 +1733,7 @@ def _process_tar_generator(
     :type tar_path: str
     :param team_file_id: ID of the team file, defaults to None
     :type team_file_id: Optional[int], optional
-    :param filter_func: Function to filter files by name, defaults to None
+    :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
     :type filter_func: Optional[Callable], optional
     :param batch_size: Number of files in each batch, defaults to 10000
     :type batch_size: int, optional
@@ -1781,7 +1783,7 @@ def _process_tar_generator(
                 # Yield batch when it reaches the specified size
                 if len(batch) >= batch_size:
                     processed_count += len(batch)
-                    logger.info(
+                    logger.debug(
                         f"Yielding batch of {len(batch)} files, processed {processed_count} files so far"
                     )
                     yield batch
@@ -1796,7 +1798,7 @@ def _process_tar_generator(
         # Yield any remaining files in the last batch
         if batch:
             processed_count += len(batch)
-            logger.info(
+            logger.debug(
                 f"Yielding final batch of {len(batch)} files, processed {processed_count} files total"
             )
             yield batch
@@ -1807,7 +1809,7 @@ def save_blob_offsets_pkl(
     output_dir: str,
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
-    batch_size: int = 10000,
+    batch_size: int = OFFSETS_PKL_BATCH_SIZE,
 ) -> str:
     """
     Processes blob file locally and creates a pickle file with offset information.
@@ -1817,8 +1819,8 @@ def save_blob_offsets_pkl(
     :param output_dir: Path to the output directory
     :type output_dir: str
     :param team_file_id: ID of file in Team Files. Default is None.
-                    If default, then in results `teamFileId` will be None because it is not possible to determine it on this step.
-                    You can set the `teamFileId` later when uploading the file to Supervisely.
+                    `team_file_id` may be None if it's not possible to obtain the ID at this moment.
+                    You can set the `team_file_id` later when uploading the file to Supervisely.
     :type team_file_id: Optional[int]
     :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
     :type filter_func: Callable, optional
@@ -1833,9 +1835,9 @@ def save_blob_offsets_pkl(
 
             archive_path = '/path/to/examples.tar'
             output_dir = '/path/to/output'
-            sly.fs.save_file_offsets_json(archive_path, output_dir)
+            sly.fs.save_blob_offsets_pkl(archive_path, output_dir)
     """
-    from supervisely.api.image_api import OFFSETS_PKL_SUFFIX, BlobImageInfo
+    from supervisely.api.image_api import BlobImageInfo
 
     archive_name = Path(blob_file_path).stem
     output_path = os.path.join(output_dir, archive_name + OFFSETS_PKL_SUFFIX)

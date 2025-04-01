@@ -66,6 +66,8 @@ from supervisely.api.module_api import (
 )
 from supervisely.imaging import image as sly_image
 from supervisely.io.fs import (
+    OFFSETS_PKL_BATCH_SIZE,
+    OFFSETS_PKL_SUFFIX,
     clean_dir,
     ensure_base_path,
     get_file_ext,
@@ -85,8 +87,6 @@ from supervisely.sly_logger import logger
 
 SUPPORTED_CONFLICT_RESOLUTIONS = ["skip", "rename", "replace"]
 API_DEFAULT_PER_PAGE = 500
-OFFSETS_PKL_SUFFIX = "_offsets.pkl"  # suffix for pickle file with image offsets
-OFFSETS_PKL_BATCH_SIZE = 10000  # 10k images per batch when loading from pickle
 
 
 @dataclass
@@ -1112,7 +1112,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_bytes = api.image.download_bytes(dataset_id, [770918])
             print(img_bytes)
-            # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\...]
+            # Output: [b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\ ...']
         """
         if len(ids) == 0:
             return []
