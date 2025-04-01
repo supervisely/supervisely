@@ -163,8 +163,6 @@ class PersistentImageTTLCache(TTLCache):
             ext = source.suffix
         elif isinstance(source, str):
             ext = Path(source).suffix
-        elif isinstance(key, str):
-            ext = Path(key).suffix
         video_path = self._base_dir / f"video_{key}{ext}"
         self[key] = video_path
 
