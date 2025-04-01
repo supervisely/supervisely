@@ -919,6 +919,9 @@ class Session(SessionJSON):
     def inference_video_path_async(self, video_path, batch_size=None, direction=None, step=None):
         frame_iterator = super().inference_video_path_async(
             video_path,
+            batch_size=batch_size,
+            direction=direction,
+            step=step,
             process_fn=self._convert_to_sly_annotation,
         )
         return frame_iterator

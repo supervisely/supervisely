@@ -2716,9 +2716,10 @@ class Inference:
                 inference_request_uuid = uuid.uuid5(
                     namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
                 ).hex
-                logger.info("Saving video to cache")
                 video_name = files[0].filename
+                logger.info(f"Saving video {video_name} to cache")
                 self.cache.add_video_to_cache(video_name, files[0].file)
+                logger.info("Video saved to cache")
                 self._on_inference_start(inference_request_uuid)
                 future = self._executor.submit(
                     self._handle_error_in_async,
