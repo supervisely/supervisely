@@ -4277,7 +4277,9 @@ def _download_project(
                                     offsets_file_path = os.path.join(
                                         dataset_fs.directory, offsets_file_name
                                     )
-                                    BlobImageInfo.dump_offsets(blob_image_infos, offsets_file_path)
+                                    BlobImageInfo.dump_to_pickle(
+                                        blob_image_infos, offsets_file_path
+                                    )
 
                                     logger.info(
                                         f"Saved {len(blob_image_infos)} image offsets for {blob_file_name} to {offsets_file_path}"
@@ -4516,9 +4518,8 @@ def upload_project(
                     uploaded_img_infos[i] = img_info
                 for blob_offsets in ds_fs.blob_offsets:
                     for blob_file_info in blob_file_infos:
-                        if (
-                            Path(blob_file_info.name).stem
-                            == Path(blob_offsets).name.strip(OFFSETS_PKL_SUFFIX)
+                        if Path(blob_file_info.name).stem == Path(blob_offsets).name.strip(
+                            OFFSETS_PKL_SUFFIX
                         ):
                             blob_file = blob_file_info
                             break

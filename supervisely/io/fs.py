@@ -1848,5 +1848,5 @@ def save_blob_offsets_pkl(
         format="objects",
         batch_size=batch_size,
     )
-    BlobImageInfo.dump_offsets(offsets_batch_generator, output_path)
+    BlobImageInfo.dump_to_pickle(offsets_batch_generator, output_path)
     return output_path
