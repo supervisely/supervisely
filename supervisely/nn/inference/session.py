@@ -411,7 +411,7 @@ class SessionJSON:
             except Exception as exc:
                 logger.error(f"An error has occurred while stopping the previous inference. {exc}")
 
-        endpoint = "inference_batch_async"
+        endpoint = "inference_video_async"
         url = f"{self._base_url}/{endpoint}"
         files = [("files", open(video_path, "rb"))]
         settings = {"settings": self.inference_settings}
