@@ -3250,6 +3250,9 @@ class Project:
         :type save_images: :class:`bool`, optional
         :param save_image_meta: Download images metadata in JSON format or not.
         :type save_image_meta: :class:`bool`, optional
+        :param download_blob_files: Default is False. It will download images in classic way.
+                                If True, it will download blob files, if they are present in the project, to optimize download process.
+        :type download_blob_files: bool, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -4616,6 +4619,9 @@ def download_project(
     :type images_ids: list(int), optional
     :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
     :type resume_download: bool, optional
+    :param download_blob_files: Default is False. It will download images in classic way.
+                                If True, it will download blob files, if they are present in the project, to optimize download process.
+    :type download_blob_files: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:
