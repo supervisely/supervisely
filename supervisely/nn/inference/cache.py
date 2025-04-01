@@ -205,6 +205,9 @@ class VideoFrameReader:
     def read_frames(self) -> Generator:
         try:
             for frame_index in self.frame_indexes:
+                if 1 > frame_index - self.prev_idx < 20:
+                    while self.prev_idx < frame_index - 1:
+                        self.cap.read()
                 if frame_index != self.prev_idx + 1:
                     self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
                 ret, frame = self.cap.read()
