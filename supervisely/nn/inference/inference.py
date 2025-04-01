@@ -1467,9 +1467,96 @@ class Inference:
         sly_fs.silent_remove(image_path)
         return self._format_output(anns, slides_data)[0]
 
-    def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
-        from supervisely.nn.inference.video_inference import InferenceVideoInterface
+    def _inference_video_cached(
+        self, key: Any, settings: Dict, async_inference_request_uuid: str = None
+    ):
+        logger.debug("Inferring cached video...", extra={"key": key, "settings": settings})
+        n_frames = settings.get("framesCount", self.cache.get_video_frames_count(key))
+        video_height, video_witdth = self.cache.get_video_frame_size(key)
+        start_frame_index = settings.get("startFrameIndex", 0)
+        step = settings.get("step", 1)
+        direction = settings.get("direction", "forward")
+        tracking = settings.get("tracker", None)
+        inference_settings = self._get_inference_settings(settings)
+        logger.debug(f"Inference settings:", extra=inference_settings)
 
+        if async_inference_request_uuid is not None:
+            try:
+                inference_request = self._inference_requests[async_inference_request_uuid]
+            except Exception as ex:
+                import traceback
+
+                logger.error(traceback.format_exc())
+                raise RuntimeError(
+                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+                )
+            sly_progress: Progress = inference_request["progress"]
+            sly_progress.total = n_frames
+
+        if tracking == "bot":
+            from supervisely.nn.tracker import BoTTracker
+
+            tracker = BoTTracker(settings)
+        elif tracking == "deepsort":
+            from supervisely.nn.tracker import DeepSortTracker
+
+            tracker = DeepSortTracker(settings)
+        else:
+            if tracking is not None:
+                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+            tracker = None
+
+        results = []
+        batch_size = settings.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        tracks_data = {}
+        direction = 1 if direction == "forward" else -1
+        for batch in batched(
+            range(
+                start_frame_index, start_frame_index + direction * n_frames * step, direction * step
+            ),
+            batch_size,
+        ):
+            if (
+                async_inference_request_uuid is not None
+                and inference_request["cancel_inference"] is True
+            ):
+                logger.debug(
+                    f"Cancelling inference video...",
+                    extra={"inference_request_uuid": async_inference_request_uuid},
+                )
+                results = []
+                break
+            logger.debug(
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
+            )
+            frames = self.cache.get_frames_from_cache(key, batch)
+            anns, slides_data = self._inference_auto(
+                source=frames,
+                settings=settings,
+            )
+            if tracker is not None:
+                for frame_index, frame, ann in zip(batch, frames, anns):
+                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+            batch_results = self._format_output(anns, slides_data)
+            results.extend(batch_results)
+            if async_inference_request_uuid is not None:
+                sly_progress.iters_done(len(batch))
+                inference_request["pending_results"].extend(batch_results)
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+        video_ann_json = None
+        if tracker is not None:
+            video_ann_json = tracker.get_annotation(
+                tracks_data, (video_height, video_witdth), n_frames
+            ).to_json()
+        result = {"ann": results, "video_ann": video_ann_json}
+        if async_inference_request_uuid is not None and len(results) > 0:
+            inference_request["result"] = result.copy()
+        return result
+
+    def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         logger.debug("Inferring video_id...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
         n_frames = state.get("framesCount", video_info.frames_count)
@@ -2606,6 +2693,58 @@ class Inference:
                     "success": False,
                 }
             return self._inference_video_id(request.state.api, request.state.state)
+
+        @server.post("/inference_video_async")
+        def inference_video_async(
+            response: Response, files: List[UploadFile], settings: str = Form("{}")
+        ):
+            try:
+                state = json.loads(settings)
+                logger.debug(f"'inference_video_async' request in json format:{state}")
+                if type(state) != dict:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return "Settings is not json object"
+                batch_size = state.get("batch_size", None)
+                if batch_size is None:
+                    batch_size = self.get_batch_size()
+                if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                    response.status_code = status.HTTP_400_BAD_REQUEST
+                    return {
+                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                        "success": False,
+                    }
+                inference_request_uuid = uuid.uuid5(
+                    namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
+                ).hex
+                video_name = files[0].filename
+                self.cache.add_video_to_cache(video_name, files[0].file)
+                self._on_inference_start(inference_request_uuid)
+                future = self._executor.submit(
+                    self._handle_error_in_async,
+                    inference_request_uuid,
+                    self._inference_video_cached,
+                    video_name,
+                    state,
+                    inference_request_uuid,
+                )
+                end_callback = partial(
+                    self._on_inference_end, inference_request_uuid=inference_request_uuid
+                )
+                future.add_done_callback(end_callback)
+                logger.debug(
+                    "Inference has scheduled from 'inference_video_async' endpoint",
+                    extra={"inference_request_uuid": inference_request_uuid},
+                )
+                return {
+                    "message": "Inference has started.",
+                    "inference_request_uuid": inference_request_uuid,
+                }
+            except (json.decoder.JSONDecodeError, TypeError) as e:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f"Cannot decode settings: {e}"
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
         @server.post("/inference_image")
         def inference_image(

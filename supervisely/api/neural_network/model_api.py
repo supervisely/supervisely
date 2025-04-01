@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
@@ -23,6 +24,17 @@ class PredictionDTO:
     project_path: Optional[str] = None
 
 
+def get_valid_kwargs(kwargs, func, exclude=None):
+    signature = inspect.signature(func)
+    valid_kwargs = {}
+    for key, value in kwargs.items():
+        if exclude is not None and key in exclude:
+            continue
+        if key in signature.parameters:
+            valid_kwargs[key] = value
+    return valid_kwargs
+
+
 class InferenceSession:
 
     class _Iterator:
@@ -38,6 +50,7 @@ class InferenceSession:
         dataset: int = None,
         project: Union[str, int] = None,
         params: dict = None,
+        **kwargs: dict,
     ):
         assert (
             sum([x is not None for x in [images, video, dataset, project]]) == 1
@@ -58,14 +71,38 @@ class InferenceSession:
                 images = [images]
             if isinstance(images[0], int):
                 # image_ids
+                kwargs = get_valid_kwargs(
+                    kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
+                )
                 self._iterator = self._Iterator(
-                    source, self.session.inference_image_ids_async(images)
+                    source,
+                    self.session.inference_image_ids_async(images, **kwargs),
                 )
             else:
-                self._iterator = self._Iterator(
-                    source, self.session.inference_image_paths_async(images)
+                kwargs = get_valid_kwargs(
+                    kwargs, self.session.inference_image_paths_async, exclude=["image_paths"]
                 )
-        else:  # video, dataset, or project
+                self._iterator = self._Iterator(
+                    source, self.session.inference_image_paths_async(images, **kwargs)
+                )
+        elif video is not None:
+            if isinstance(video, int):
+                kwargs = get_valid_kwargs(
+                    kwargs, self.session.inference_video_id_async, exclude=["video_id", "source"]
+                )
+                self._iterator = self._Iterator(
+                    video, self.session.inference_video_id_async(video, **kwargs)
+                )
+            else:
+                kwargs = get_valid_kwargs(
+                    kwargs,
+                    self.session.inference_video_path_async,
+                    exclude=["video_path", "source"],
+                )
+                self._iterator = self._Iterator(
+                    video, self.session.inference_video_path_async(video, **kwargs)
+                )
+        else:  # dataset or project
             raise NotImplementedError()
 
     @property
@@ -140,6 +177,7 @@ class ModelApi:
         dataset: int = None,
         project: Union[str, int] = None,
         params: Dict = None,
+        **kwargs,
     ) -> InferenceSession:
         return InferenceSession(
             self.url,
@@ -148,6 +186,7 @@ class ModelApi:
             dataset=dataset,
             project=project,
             params=params,
+            **kwargs,
         )
 
     def predict(
@@ -157,9 +196,10 @@ class ModelApi:
         dataset: int = None,
         project: Union[str, int] = None,
         params: Dict = None,
+        **kwargs,
     ) -> Union[PredictionDTO, List[PredictionDTO], InferenceSession]:
 
-        session = self.predict_detached(images, video, dataset, project, params)
+        session = self.predict_detached(images, video, dataset, project, params, **kwargs)
         result = list(session)
         source = next(x for x in [images, video, dataset, project] if x is not None)
         if isinstance(source, list):
