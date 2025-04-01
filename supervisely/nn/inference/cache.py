@@ -195,7 +195,7 @@ class VideoFrameReader:
         self.prev_idx = -1
 
     def __enter__(self):
-        self.cap = cv2.VideoCapture(str(self.video_path), cv2.CAP_GSTREAMER)
+        self.cap = cv2.VideoCapture(str(self.video_path))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
