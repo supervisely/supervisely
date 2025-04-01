@@ -10,7 +10,6 @@ import re
 import shutil
 import subprocess
 import tarfile
-from json import dumps
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
@@ -1640,18 +1639,18 @@ def get_file_offsets_batch_generator(
     filter_func: Optional[Callable] = None,
     format: Literal["dicts", "objects"] = "dicts",
     batch_size: int = 10000,
-) -> Generator[Union[List[Dict], Tuple[List["BlobImageInfo"], Optional[int]]], None, None]:
+) -> Generator[Union[List[Dict], List["BlobImageInfo"]], None, None]:
     """
     Extracts offset information for files from TAR archives and returns a generator that yields the information in batches.
 
-    In results, `teamFileId` is always None because it is not possible to determine it on this step.
-    You can set the `teamFileId` later when uploading the file to Supervisely.
+    `team_file_id` may be None if it's not possible to obtain the ID at this moment.
+    You can set the `team_file_id` later when uploading the file to Supervisely.
 
-    :param archive_path: Path to the archive
+    :param archive_path: Local path to the archive
     :type archive_path: str
     :param team_file_id: ID of file in Team Files. Default is None.
-                    If default, then in results `teamFileId` will be None because it is not possible to determine it on this step.
-                    You can set the `teamFileId` later when uploading the file to Supervisely.
+                    `team_file_id` may be None if it's not possible to obtain the ID at this moment.
+                    You can set the `team_file_id` later when uploading the file to Supervisely.
     :type team_file_id: Optional[int]
     :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
     :type filter_func: Callable, optional
@@ -1660,7 +1659,7 @@ def get_file_offsets_batch_generator(
                    `dicts` - returns a list of dictionaries.
     :type format: Literal["dicts", "objects"]
     :returns: Generator yielding batches of file information in the specified format.
-    :rtype: Generator[Union[List[Dict], Tuple[List["BlobImageInfo"], Optional[int]]], None, None]
+    :rtype: Generator[Union[List[Dict], List["BlobImageInfo"]]], None, None]
 
     :raises ValueError: If the archive type is not supported or contains compressed files
     :Usage example:
@@ -1714,7 +1713,7 @@ def get_file_offsets_batch_generator(
                 batch_size=batch_size,
             ):
                 blob_file_infos = [BlobImageInfo.from_dict(file_info) for file_info in batch]
-                yield blob_file_infos, team_file_id
+                yield blob_file_infos
     else:
         raise ValueError(f"Unsupported archive type: {ext}. Only .zip and .tar are supported")
 

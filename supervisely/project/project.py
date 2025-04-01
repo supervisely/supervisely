@@ -2409,7 +2409,10 @@ class Project:
     def _read(self):
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
-        self.blob_files = [Path(file).name for file in list_files(self.blob_dir)]
+        if dir_exists(self.blob_dir):
+            self.blob_files = [Path(file).name for file in list_files(self.blob_dir)]
+        else:
+            self.blob_files = []
 
         ignore_dirs = self.dataset_class.ignorable_dirs()  # dir names that can not be datasets
 
@@ -4140,7 +4143,6 @@ def _download_project(
     **kwargs,
 ):
     download_blob_files = kwargs.pop("download_blob_files", False)
-    blob_files_to_download = {}
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4169,6 +4171,7 @@ def _download_project(
 
     existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
+        blob_files_to_download = {}
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
         dataset_id = dataset.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
@@ -4238,18 +4241,19 @@ def _download_project(
                 batch_imgs_bytes = [None] * len(image_ids)
                 if save_images and indexes_to_download:
 
-                    # For a lot of small files. Downloads blob files to optimize download process.
-                    if download_blob_files:
+                    # For a lot of small files that stored in blob file. Downloads blob files to optimize download process.
+                    if download_blob_files and len(indexes_with_offsets) > 0:
                         offsets_by_blob_files = {}
                         bytes_indexes_to_download = indexes_to_download.copy()
                         for blob_file_id, download_id in blob_files_to_download.items():
-                            # blob_file_info = api.file.get_info_by_id(blob_file_id)
                             if blob_file_id not in project_fs.blob_files:
                                 api.image.download_blob_file(
                                     download_id=download_id,
                                     project_id=project_id,
                                     path=os.path.join(project_fs.blob_dir, f"{blob_file_id}.tar"),
-                                    log_progress=True if progress_cb is not None else False,
+                                    log_progress=(
+                                        True if log_progress or progress_cb is not None else False
+                                    ),
                                 )
                                 project_fs.add_blob_file(blob_file_id)
 
@@ -4510,15 +4514,18 @@ def upload_project(
                 )
                 for i, img_info in zip(valid_indices, uploaded_img_infos_paths):
                     uploaded_img_infos[i] = img_info
-                for blob_file_info in blob_file_infos:
-                    for blob_offsets in ds_fs.blob_offsets:
-                        if blob_offsets.endswith(Path(blob_file_info.name).stem + OFFSETS_PKL_SUFFIX):
-                            offset_file_path = blob_offsets
+                for blob_offsets in ds_fs.blob_offsets:
+                    for blob_file_info in blob_file_infos:
+                        if (
+                            Path(blob_file_info.name).stem
+                            == Path(blob_offsets).name.strip(OFFSETS_PKL_SUFFIX)
+                        ):
+                            blob_file = blob_file_info
                             break
                     uploaded_img_infos_offsets = api.image.upload_by_offsets_generator(
                         dataset.id,
-                        team_file_id=blob_file_info.id,
-                        offsets_file_path=offset_file_path,
+                        team_file_id=blob_file.id,
+                        offsets_file_path=blob_offsets,
                         progress_cb=ds_progress,
                         metas={names[i]: metas[i] for i in offset_indices},
                     )

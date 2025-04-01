@@ -179,12 +179,53 @@ class BlobImageInfo:
         :rtype: Generator[List[BlobImageInfo], None, None]
         """
         try:
-            with open(file_path, "rb") as f:
-                data = pickle.load(f)
+            current_batch = []
 
-            total_items = len(data)
-            for i in range(0, total_items, batch_size):
-                yield data[i : min(i + batch_size, total_items)]
+            with open(file_path, "rb") as f:
+                while True:
+                    try:
+                        # Load one pickle object at a time
+                        data = pickle.load(f)
+
+                        if isinstance(data, list):
+                            # More efficient way to process lists
+                            remaining_items = data
+                            while remaining_items:
+                                # Calculate how many more items we need to fill the current batch
+                                items_needed = batch_size - len(current_batch)
+
+                                if items_needed > 0:
+                                    # Take only what we need from the remaining items
+                                    current_batch.extend(remaining_items[:items_needed])
+                                    remaining_items = remaining_items[items_needed:]
+                                else:
+                                    # current_batch is already full or overflowing, don't add more items
+                                    # and proceed directly to yielding the batch
+                                    pass
+
+                                # If we have a full batch, yield it
+                                if len(current_batch) >= batch_size:
+                                    yield current_batch
+                                    current_batch = []
+                        else:
+                            # Handle single item
+                            current_batch.append(data)
+
+                            if len(current_batch) >= batch_size:
+                                yield current_batch
+                                current_batch = []
+
+                    except EOFError:
+                        # End of file reached
+                        break
+                    except Exception as e:
+                        logger.error(f"Error reading pickle data: {str(e)}")
+                        break
+
+            # Yield any remaining items in the final batch
+            if current_batch:
+                yield current_batch
+
         except Exception as e:
             logger.error(f"Failed to load BlobImageInfo objects from {file_path}: {str(e)}")
             yield []
@@ -203,7 +244,7 @@ class BlobImageInfo:
         try:
             if isinstance(offsets, Generator):
                 with open(file_path, "ab") as f:
-                    for batch, _ in offsets:
+                    for batch in offsets:
                         pickle.dump(batch, f)
             elif isinstance(offsets, list):
                 with open(file_path, "ab") as f:
