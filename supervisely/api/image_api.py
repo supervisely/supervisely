@@ -109,6 +109,7 @@ class BlobImageInfo:
     offset_start: int
     offset_end: int
 
+    @staticmethod
     def from_image_info(image_info: ImageInfo) -> BlobImageInfo:
         return BlobImageInfo(
             name=image_info.name,
@@ -137,6 +138,7 @@ class BlobImageInfo:
             },
         }
 
+    @staticmethod
     def from_dict(offset_dict: Dict, return_team_file_id: bool = False) -> BlobImageInfo:
         """
         Create BlobImageInfo object from dictionary that is returned by Supervisely API.
@@ -5157,7 +5159,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         image_infos_generator, _ = self.upload_by_offsets_generator(
             dataset_id=dataset_id,
-            team_file_info=team_file_info,
+            team_file_id=team_file_info.id,
             progress_cb=progress_cb,
             metas=metas,
             conflict_resolution="rename" if change_name_if_conflict else "skip",
