@@ -4501,12 +4501,19 @@ def upload_project(
                 for i, img_info in zip(valid_indices, uploaded_img_infos_paths):
                     uploaded_img_infos[i] = img_info
                 for blob_offsets in ds_fs.blob_offsets:
+                    blob_file = None
                     for blob_file_info in blob_file_infos:
                         if Path(blob_file_info.name).stem == Path(blob_offsets).name.strip(
                             OFFSETS_PKL_SUFFIX
                         ):
                             blob_file = blob_file_info
                             break
+
+                    if blob_file is None:
+                        raise ValueError(
+                            f"Cannot find blob file for offsets: {blob_offsets}. "
+                            f"Check the Team File directory '{TF_BLOB_DIR}', corresponding blob file should be uploaded."
+                        )
                     uploaded_img_infos_offsets = api.image.upload_by_offsets_generator(
                         dataset.id,
                         team_file_id=blob_file.id,
