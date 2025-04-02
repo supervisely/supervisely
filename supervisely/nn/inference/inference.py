@@ -1492,7 +1492,7 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = (n_frames + step) // step
+            sly_progress.total = n_frames // step
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
