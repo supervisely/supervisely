@@ -39,7 +39,12 @@ from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.api.api import Api, ApiContext, ApiField
-from supervisely.api.image_api import OFFSETS_PKL_SUFFIX, BlobImageInfo, ImageInfo
+from supervisely.api.image_api import (
+    OFFSETS_PKL_BATCH_SIZE,
+    OFFSETS_PKL_SUFFIX,
+    BlobImageInfo,
+    ImageInfo,
+)
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
@@ -5079,6 +5084,8 @@ async def _download_project_async(
     switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
+    # control whether to download blob files
+    download_blob_files = kwargs.pop("download_blob_files", False)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
@@ -5128,11 +5135,19 @@ async def _download_project_async(
         small_images = []
         large_images = []
         dataset_images = []
+        blob_files_to_download = {}
+        blob_images = []
+
         async for image_batch in all_images:
             for image in image_batch:
                 if images_ids is None or image.id in images_ids:
                     dataset_images.append(image)
-                    if image.size < switch_size:
+                    # Check for images with blob offsets
+                    
+                    if download_blob_files and image.related_data_id is not None:
+                        blob_files_to_download[image.related_data_id] = image.download_id
+                        blob_images.append(image)
+                    elif image.size < switch_size:
                         small_images.append(image)
                     else:
                         large_images.append(image)
@@ -5141,7 +5156,7 @@ async def _download_project_async(
         if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Downloading images from {!r}".format(dataset.name),
-                total=len(small_images) + len(large_images),
+                total=len(small_images) + len(large_images) + len(blob_images),
                 leave=False,
             )
 
@@ -5177,14 +5192,67 @@ async def _download_project_async(
                 )
                 return created_tasks
 
+            # Download blob files if required
+            if download_blob_files and len(blob_files_to_download) > 0:
+                blob_paths = []
+                download_ids = []
+                # Process each blob file
+                for blob_file_id, download_id in blob_files_to_download.items():
+                    if blob_file_id not in project_fs.blob_files:
+                        # Download the blob file
+                        blob_paths.append(os.path.join(project_fs.blob_dir, f"{blob_file_id}.tar"))
+                        download_ids.append(download_id)
+                await api.image.download_blob_files_async(
+                    download_ids=download_ids,
+                    project_id=project_id,
+                    paths=blob_paths,
+                    semaphore=semaphore,
+                    log_progress=(True if log_progress or progress_cb is not None else False),
+                )
+                for blob_file_id, download_id in blob_files_to_download.items():
+                    project_fs.add_blob_file(blob_file_id)
+
+                    # Process blob image offsets
+                    offsets_file_name = f"{blob_file_id}{OFFSETS_PKL_SUFFIX}"
+                    offsets_file_path = os.path.join(dataset_fs.directory, offsets_file_name)
+
+                    total_offsets_count = 0  # for logging
+                    current_batch = []
+                    for img in blob_images:
+                        if img.related_data_id == blob_file_id:
+                            blob_image_info = BlobImageInfo(
+                                name=img.name,
+                                offset_start=img.offset_start,
+                                offset_end=img.offset_end,
+                            )
+                            current_batch.append(blob_image_info)
+                        if len(current_batch) >= OFFSETS_PKL_BATCH_SIZE:
+                            BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
+                            total_offsets_count += len(current_batch)
+                            if ds_progress is not None:
+                                ds_progress(len(current_batch))
+                            current_batch = []
+                    if len(current_batch) > 0:
+                        BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
+                        total_offsets_count += len(current_batch)
+                        if ds_progress is not None:
+                            ds_progress(len(current_batch))
+                    if total_offsets_count > 0:
+                        logger.debug(
+                            f"Saved {total_offsets_count} image offsets for {blob_file_id} to {offsets_file_path} in {(total_offsets_count + OFFSETS_PKL_BATCH_SIZE - 1) // OFFSETS_PKL_BATCH_SIZE} batches"
+                        )
+
             tasks = []
+            # Check which images need to be downloaded
             small_images = await check_items(small_images)
             large_images = await check_items(large_images)
 
+            # If only one small image, treat it as a large image for efficiency
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
-            for images_batch in batched(small_images, batch_size=batch_size):
 
+            # Create batch download tasks
+            for images_batch in batched(small_images, batch_size=batch_size):
                 task = _download_project_items_batch_async(
                     api=api,
                     dataset_id=dataset_id,
@@ -5199,6 +5267,8 @@ async def _download_project_async(
                     progress_cb=ds_progress,
                 )
                 tasks.append(task)
+
+            # Create individual download tasks for large images
             for image in large_images:
                 task = _download_project_item_async(
                     api=api,

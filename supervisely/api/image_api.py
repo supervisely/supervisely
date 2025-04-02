@@ -235,13 +235,15 @@ class BlobImageInfo:
             yield []
 
     @staticmethod
-    def dump_to_pickle(offsets: Generator[List[BlobImageInfo]], file_path: str):
+    def dump_to_pickle(
+        offsets: Union[Generator[List[BlobImageInfo]], List[BlobImageInfo]], file_path: str
+    ):
         """
         Dump BlobImageInfo objects to a pickle file in batches.
         To read the data back, use the `load_from_pickle_generator` method.
 
-        :param offsets: Generator yielding batches of BlobImageInfo objects.
-        :type offsets: Generator[List[BlobImageInfo]]
+        :param offsets: Generator yielding batches of BlobImageInfo objects or a list of BlobImageInfo objects.
+        :type offsets: Generator[List[BlobImageInfo]] or List[BlobImageInfo]
         :param file_path: Path to the pickle file.
         :type file_path: str
         """
@@ -5045,9 +5047,9 @@ class ImageApi(RemoveableBulkModuleApi):
         self,
         download_id: str,
         project_id: int,
-        path: str = None,
+        path: Optional[str] = None,
         log_progress: bool = True,
-        chunk_size: int = 1024 * 1024,
+        chunk_size: Optional[int] = None,
     ) -> Optional[bytes]:
         """
         Downloads blob file from Team Files by download ID of any Image that belongs to this file.
@@ -5060,7 +5062,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type path: str, optional
         :param progress_cb: Function for tracking download progress.
         :type progress_cb: tqdm or callable, optional
-        :param chunk_size: Size of chunk for streaming. Default is 1 MB.
+        :param chunk_size: Size of chunk for streaming. Default is 8 MB.
         :type chunk_size: int, optional
         :return: Blob file content if path is None, otherwise None.
         :rtype: bytes or None
@@ -5083,6 +5085,9 @@ class ImageApi(RemoveableBulkModuleApi):
             # Get archive as bytes
             archive_bytes = api.image.download_blob_file(image_info.download_id, project_id)
         """
+        if chunk_size is None:
+            chunk_size = 8 * 1024 * 1024
+
         response = self._api.post(
             "images.data.download",
             {ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
@@ -5169,3 +5174,107 @@ class ImageApi(RemoveableBulkModuleApi):
         else:
             for _ in image_infos_generator:
                 pass
+
+    async def download_blob_file_async(
+        self,
+        download_id: str,
+        project_id: int,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ):
+        """
+        Downloads blob file from Supervisely storage by download ID asynchronously.
+
+        :param download_id: Download ID of any Image that belongs to the blob file in Supervisely storage.
+        :type download_id: str
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param path: Path to save the blob file.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param log_progress: If True, shows progress bar.
+        :type log_progress: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        """
+        api_method_name = "images.data.download"
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async with semaphore:
+            ensure_base_path(path)
+
+            if log_progress:
+                response = self._api.get(
+                    api_method_name,
+                    {ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
+                    stream=True,
+                )
+                total_size = int(response.headers.get("Content-Length", 0))
+                response.close()
+                name = os.path.basename(path)
+                if progress_cb is None:
+                    progress_cb = tqdm(
+                        total=total_size,
+                        unit="B",
+                        unit_scale=True,
+                        desc=f"Downloading images blob file {name}",
+                        leave=True,
+                    )
+
+            async with aiofiles.open(path, "wb") as fd:
+                async for chunk, _ in self._api.stream_async(
+                    method=api_method_name,
+                    method_type="POST",
+                    data={ApiField.PROJECT_ID: project_id, ApiField.DOWNLOAD_ID: download_id},
+                    chunk_size=8 * 1024 * 1024,
+                ):
+                    if log_progress:
+                        progress_cb.update(len(chunk))
+                    await fd.write(chunk)
+
+    async def download_blob_files_async(
+        self,
+        download_ids: str,
+        project_id: int,
+        paths: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        log_progress: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None, 
+    ):
+        """ 
+        Downloads multiple blob files from Supervisely storage by download IDs asynchronously. 
+
+        :param download_ids: List of download IDs of any Image that belongs to the blob files in Supervisely storage.
+        :type download_ids: List[str]
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
+        :param paths: List of paths to save the blob files.
+        :type paths: List[str]
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param log_progress: If True, shows progress bar.
+        :type log_progress: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        """
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        tasks = []
+        for download_id, path in zip(download_ids, paths):
+            task = self.download_blob_file_async(
+                download_id=download_id,
+                project_id=project_id,
+                path=path,
+                semaphore=semaphore,
+                log_progress=log_progress,
+                progress_cb=progress_cb,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)

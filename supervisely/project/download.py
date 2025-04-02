@@ -1,12 +1,11 @@
 import asyncio
 import os
-import shutil
 from typing import Callable, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
 from supervisely import get_project_class
-from supervisely._utils import get_or_create_event_loop, rand_str
+from supervisely._utils import run_coroutine
 from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
@@ -20,7 +19,7 @@ from supervisely.io.fs import (
     get_directory_size,
     remove_dir,
 )
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.json import load_json_file
 from supervisely.project import Project
 from supervisely.project.project import Dataset, OpenMode, ProjectType
 from supervisely.sly_logger import logger
@@ -205,12 +204,7 @@ def download_async(
             progress_cb=progress_cb,
             **kwargs,
         )
-        loop = get_or_create_event_loop()
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-            future.result()
-        else:
-            loop.run_until_complete(download_coro)
+        run_coroutine(download_coro)
     else:
         raise NotImplementedError(f"Method download_async is not implemented for {project_class}")
 
@@ -254,12 +248,7 @@ def download_async_or_sync(
                 progress_cb=progress_cb,
                 **kwargs,
             )
-            loop = get_or_create_event_loop()
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-                future.result()
-            else:
-                loop.run_until_complete(download_coro)
+            run_coroutine(download_coro)
         except Exception as e:
             if kwargs.get("resume_download", False) is False:
                 remove_dir(dest_dir)
