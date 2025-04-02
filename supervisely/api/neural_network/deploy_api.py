@@ -1,5 +1,6 @@
+import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as env
 from supervisely.io.fs import get_file_name_with_ext
@@ -541,3 +542,10 @@ class DeployApi:
             deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
             logger.debug(f"Config file added: {experiment_info.artifacts_dir}{config}")
         return module_id, serve_app_name, deploy_params
+
+    def wait(self, model_id, target: Literal["started", "deployed"] = "started", timeout=5 * 60):
+        t = time.monotonic()
+        method = "is_alive" if target == "started" else "is_ready"
+        while time.monotonic() - t < timeout:
+            self._api.task.send_request(model_id, "is_ready", {})
+            time.sleep(1)
