@@ -829,7 +829,8 @@ class Inference:
         classes = None
         try:
             classes = self.get_classes()
-            num_classes = len(classes)
+            if classes is not None:
+                num_classes = len(classes)
         except NotImplementedError:
             logger.warn(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
