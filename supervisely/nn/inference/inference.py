@@ -1492,7 +1492,7 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = n_frames
+            sly_progress.total = (n_frames + step) // step
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
@@ -1615,7 +1615,7 @@ class Inference:
             tracker = DeepSortTracker(state)
         else:
             if tracking is not None:
-                logger.warn(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
             tracker = None
 
         results = []
