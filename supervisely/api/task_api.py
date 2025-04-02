@@ -786,7 +786,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         resp = self._api.post("tasks.data.get", data)
         return resp.json()["result"]
 
-    def get_field(self, task_id: int, field: Dict):
+    def get_field(self, task_id: int, field: str):
         """get_field"""
         result = self.get_fields(task_id, [field])
         return result[field]
@@ -818,14 +818,21 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         pass
 
     def set_output_project(
-        self, task_id: int, project_id: int, project_name: Optional[str] = None
+        self,
+        task_id: int,
+        project_id: int,
+        project_name: Optional[str] = None,
+        project_preview: Optional[str] = None,
     ) -> Dict:
         """set_output_project"""
         if project_name is None:
             project = self._api.project.get_info_by_id(project_id, raise_error=True)
             project_name = project.name
+            project_preview = project.image_preview_url
 
         output = {ApiField.PROJECT: {ApiField.ID: project_id, ApiField.TITLE: project_name}}
+        if project_preview is not None:
+            output[ApiField.PROJECT][ApiField.PREVIEW] = project_preview
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
@@ -1214,7 +1221,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 },
             }
         """
-        output = {ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}}}
+        output = {
+            ApiField.EXPERIMENT: {ApiField.DATA: {**experiment_info}},
+        }
         resp = self._api.post(
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
@@ -1281,7 +1290,6 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
 
     def deploy_custom_model(
         self,
-        team_id: int,
         workspace_id: int,
         artifacts_dir: str,
         checkpoint_name: str = None,

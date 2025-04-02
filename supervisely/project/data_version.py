@@ -30,6 +30,7 @@ class VersionInfo(NamedTuple):
     updated_at: str
     project_updated_at: str
     team_id: int
+    name: str
 
 
 class DataVersion(ModuleApiBase):
@@ -67,6 +68,7 @@ class DataVersion(ModuleApiBase):
             ApiField.UPDATED_AT,
             ApiField.PROJECT_UPDATED_AT,
             ApiField.TEAM_ID,
+            ApiField.NAME,
         ]
 
     @staticmethod

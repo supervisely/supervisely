@@ -799,6 +799,47 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     }
     return data, header
 
+def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
+    """Convert 3D NIFTI volume to NRRD format.
+    Volume automatically reordered to RAS orientation as closest to canonical.
+
+    :param path: Path to NIFTI volume file.
+    :type path: str
+    :return: Volume data in NumPy array format and dictionary with metadata (NRRD header).
+    :rtype: Tuple[np.ndarray, dict]
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        path = "/home/admin/work/volumes/vol_01.nii"
+        data, header = sly.volume.convert_nifti_to_nrrd(path)
+    """
+    import SimpleITK as sitk
+
+    nifti_image = sitk.ReadImage(path)
+    nifti_image = _sitk_image_orient_ras(nifti_image)
+    data = sitk.GetArrayFromImage(nifti_image)
+    data = np.transpose(data, (2, 1, 0))
+
+    direction = np.array(nifti_image.GetDirection()).reshape(3, 3)
+    spacing = np.array(nifti_image.GetSpacing())
+    origin = np.array(nifti_image.GetOrigin())
+
+    space_directions = (direction.T * spacing[:, None]).tolist()
+
+    header = {
+            "dimension": 3,
+            "space": "right-anterior-superior",
+            "sizes": list(data.shape),
+            "space directions": space_directions,
+            "endian": "little",
+            "encoding": "gzip",
+            "space origin": origin
+        }
+    return data, header
+
 
 def is_nifti_file(path: str) -> bool:
     """Check if the file is a NIFTI file.

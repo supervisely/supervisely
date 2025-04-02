@@ -5,3 +5,6 @@ iou_threshold: 0.5
 # Confidence threshold.
 # Set 'auto' to calculate the optimal confidence threshold.
 confidence_threshold: auto
+
+# Maximum number of detections per image.
+max_detections: 100

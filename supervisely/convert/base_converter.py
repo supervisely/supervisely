@@ -65,11 +65,13 @@ class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
     BAG = "rosbag"
     LYFT = "lyft"
+    KITTI360 = "kitti360"
 
 
 class AvailableVolumeConverters:
     SLY = "supervisely"
     DICOM = "dicom"
+    NII = "nii"
 
 
 class BaseConverter:

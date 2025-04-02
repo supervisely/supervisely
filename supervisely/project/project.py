@@ -71,6 +71,71 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress, tqdm_sly
 
 
+class CustomUnpickler(pickle.Unpickler):
+    """
+    Custom Unpickler for loading pickled objects of the same class with differing definitions.
+    Handles cases where a class object is reconstructed using a newer definition with additional fields
+    or an outdated definition missing some fields.
+    Supports loading namedtuple objects with missing or extra fields.
+    """
+
+    def __init__(self, file, **kwargs):
+        super().__init__(file, **kwargs)
+        self.warned_classes = set()  # To prevent multiple warnings for the same class
+        self.sdk_update_notified = False
+
+    def find_class(self, module, name):
+        prefix = "Pickled"
+        cls = super().find_class(module, name)
+        if hasattr(cls, "_fields") and "Info" in cls.__name__:
+            orig_new = cls.__new__
+
+            def new(cls, *args, **kwargs):
+                orig_class_name = cls.__name__[len(prefix) :]
+                # Case when new definition of class has more fields than the old one
+                if len(args) < len(cls._fields):
+                    default_values = cls._field_defaults
+                    # Set missed attrs to None
+                    num_missing = len(cls._fields) - len(args)
+                    args = list(args) + [None] * num_missing
+                    # Replace only the added None values with default values where applicable
+                    args[-num_missing:] = [
+                        (
+                            default_values.get(field, arg)
+                            if arg is None and field in default_values
+                            else arg
+                        )
+                        for field, arg in zip(cls._fields[-num_missing:], args[-num_missing:])
+                    ]
+                    if orig_class_name not in self.warned_classes:
+                        new_fields = cls._fields[len(cls._fields) - num_missing :]
+                        logger.warning(
+                            f"New fields {new_fields} for the '{orig_class_name}' class objects are set to their default values or None due to an updated definition of this class."
+                        )
+                        self.warned_classes.add(orig_class_name)
+                # Case when the object of new class definition creating within old class definition
+                elif len(args) > len(cls._fields):
+                    end_index = len(args)
+                    args = args[: len(cls._fields)]
+                    if orig_class_name not in self.warned_classes:
+                        logger.warning(
+                            f"Extra fields idx {list(range(len(cls._fields), end_index))} are ignored for '{orig_class_name}' class objects due to an outdated class definition"
+                        )
+                        self.warned_classes.add(orig_class_name)
+                        if not self.sdk_update_notified:
+                            logger.warning(
+                                "It is recommended to update the SDK version to restore the project version correctly."
+                            )
+                            self.sdk_update_notified = True
+                return orig_new(cls, *args, **kwargs)
+
+            # Create a new subclass dynamically to prevent redefining the current class
+            NewCls = type(f"{prefix}{cls.__name__}", (cls,), {"__new__": new})
+            return NewCls
+
+        return cls
+
+
 # @TODO: rename img_path to item_path (maybe convert namedtuple to class and create fields and props)
 class ItemPaths(NamedTuple):
     #: :class:`str`: Full image file path of item
@@ -1236,19 +1301,16 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
-            img_bytes = sly.image.write_bytes(img_np, "jpeg")
-            loop = sly.utils.get_or_create_event_loop()
+            img_bytes = sly.image.write_bytes(img_np, "jpeg")            
             coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
 
             print(ds.item_exists("IMG_050.jpeg"))
             # Output: True
@@ -1584,17 +1646,14 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
             new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
 
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_file_async("IMG_1812.jpeg", new_ann)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann_path) is not str:
             raise TypeError("Annotation path should be a string, not a {}".format(type(ann_path)))
@@ -1617,6 +1676,8 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -1630,14 +1691,9 @@ class Dataset(KeyObject):
                 "objects":[],
                 "customBigData":{}
             }
-
-            loop = sly.utils.get_or_create_event_loop()
+            
             coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
@@ -1660,18 +1716,16 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            loop = sly.utils.get_or_create_event_loop()
+            
             coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann) is not self.annotation_class:
             raise TypeError(
@@ -1868,9 +1922,10 @@ class Dataset(KeyObject):
         self,
         meta: ProjectMeta,
         dest_dir: Optional[str] = None,
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = False,
         progress_cb: Optional[Callable] = None,
+        is_val: Optional[bool] = None,
     ):
         """
         Convert Supervisely dataset to YOLO format.
@@ -1885,6 +1940,8 @@ class Dataset(KeyObject):
         :type log_progress: :class:`str`, optional
         :param progress_cb: Progress callback.
         :type progress_cb: :class:`Callable`, optional
+        :param is_val: If True, the dataset is a validation dataset.
+        :type is_val: :class:`bool`, optional
         :return: YOLO dataset in dictionary format.
         :rtype: :class:`dict`
 
@@ -1910,6 +1967,7 @@ class Dataset(KeyObject):
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            is_val=is_val,
         )
 
     def to_pascal_voc(
@@ -3289,10 +3347,10 @@ class Project:
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
         with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
-            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = pickle.load(
-                f
+            unpickler = CustomUnpickler(f)
+            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
+                unpickler.load()
             )
-
         if project_name is None:
             project_name = project_info.name
         new_project_info = api.project.create(
@@ -3354,7 +3412,8 @@ class Project:
             )
             workspace_info = api.workspace.get_info_by_id(workspace_id)
             existing_links = api.image.check_existing_links(
-                list(set([inf.link for inf in image_infos if inf.link])), team_id=workspace_info.team_id
+                list(set([inf.link for inf in image_infos if inf.link])),
+                team_id=workspace_info.team_id,
             )
         image_infos = sorted(image_infos, key=lambda info: info.link is not None)
 
@@ -3664,6 +3723,7 @@ class Project:
             .. code-block:: python
 
                 import supervisely as sly
+                from supervisely._utils import run_coroutine
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -3671,14 +3731,9 @@ class Project:
 
                 project_id = 8888
                 save_directory = "/path/to/save/projects"
-
-                loop = sly.utils.get_or_create_event_loop()
-                coro = sly.Project.download_async(api, project_id, save_directory)
-                if loop.is_running():
-                    future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                    future.result()
-                else:
-                    loop.run_until_complete(coroutine)
+                
+                coroutine = sly.Project.download_async(api, project_id, save_directory)
+                run_coroutine(coroutine)
         """
         if kwargs.pop("cache", None) is not None:
             logger.warning(
@@ -3755,19 +3810,27 @@ class Project:
     def to_yolo(
         self,
         dest_dir: Optional[str] = None,
-        task_type: Literal["detection", "segmentation", "pose"] = "detection",
+        task_type: Literal["detect", "segment", "pose"] = "detect",
         log_progress: bool = True,
         progress_cb: Optional[Callable] = None,
+        val_datasets: Optional[List[str]] = None,
     ) -> None:
         """
         Convert Supervisely project to YOLO format.
 
         :param dest_dir: Destination directory.
         :type dest_dir: :class:`str`, optional
+        :param task_type: Task type for YOLO format. Possible values: 'detection', 'segmentation', 'pose'.
+        :type task_type: :class:`str` or :class:`TaskType`, optional
         :param log_progress: Show uploading progress bar.
         :type log_progress: :class:`bool`
         :param progress_cb: Function for tracking conversion progress (for all items in the project).
         :type progress_cb: callable, optional
+        :param val_datasets:    List of dataset names for validation.
+                            Full dataset names are required (e.g., 'ds0/nested_ds1/ds3').
+                            If specified, datasets from the list will be marked as val, others as train.
+                            If not specified, the function will determine the validation datasets automatically.
+        :type val_datasets: :class:`list` [ :class:`str` ], optional
         :return: None
         :rtype: NoneType
 
@@ -3789,12 +3852,13 @@ class Project:
 
         from supervisely.convert import project_to_yolo
 
-        project_to_yolo(
+        return project_to_yolo(
             project=self,
             dest_dir=dest_dir,
             task_type=task_type,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            val_datasets=val_datasets,
         )
 
     def to_pascal_voc(

@@ -26,6 +26,7 @@ from fastapi import (
 )
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRouter
 from fastapi.staticfiles import StaticFiles
 
 import supervisely.io.env as sly_env
@@ -46,12 +47,46 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.io.fs import dir_exists, mkdir
-from supervisely.sly_logger import logger
+from supervisely.sly_logger import create_formatter, logger
 
 # from supervisely.app.fastapi.request import Request
 
 if TYPE_CHECKING:
     from supervisely.app.widgets import Widget
+
+import logging
+
+SUPERVISELY_SERVER_PATH_PREFIX = sly_env.supervisely_server_path_prefix()
+if SUPERVISELY_SERVER_PATH_PREFIX and not SUPERVISELY_SERVER_PATH_PREFIX.startswith("/"):
+    SUPERVISELY_SERVER_PATH_PREFIX = f"/{SUPERVISELY_SERVER_PATH_PREFIX}"
+
+
+class ReadyzFilter(logging.Filter):
+    def filter(self, record):
+        if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
+            record.levelno = logging.DEBUG  # Change log level to DEBUG
+            record.levelname = "DEBUG"
+        return True
+
+
+def _init_uvicorn_logger():
+    uvicorn_logger = logging.getLogger("uvicorn.access")
+    for handler in uvicorn_logger.handlers:
+        handler.setFormatter(create_formatter())
+    uvicorn_logger.addFilter(ReadyzFilter())
+
+
+_init_uvicorn_logger()
+
+
+class PrefixRouter(APIRouter):
+    def add_api_route(self, path, *args, **kwargs):
+        allowed_paths = ["/livez", "/is_alive", "/is_running", "/readyz", "/is_ready"]
+        if path in allowed_paths:
+            super().add_api_route(path, *args, **kwargs)
+        if SUPERVISELY_SERVER_PATH_PREFIX:
+            path = SUPERVISELY_SERVER_PATH_PREFIX + path
+        super().add_api_route(path, *args, **kwargs)
 
 
 class Event:
@@ -795,6 +830,25 @@ def _init(
             response = await process_server_error(request, exc, need_to_handle_error)
         return response
 
+    def verify_localhost(request: Request):
+        client_host = request.client.host
+        if client_host not in ["127.0.0.1", "::1"]:
+            raise HTTPException(status_code=404, detail="Not Found")
+
+    @app.post("/debug", dependencies=[Depends(verify_localhost)])
+    def start_debug():
+        import debugpy
+
+        debug_host = os.getenv("DEBUG_HOST", "127.0.0.1")
+        debug_port = int(os.getenv("DEBUG_PORT", "5678"))
+        debugpy.listen((debug_host, debug_port))
+        return {
+            "status": "success",
+            "message": f"Debug server is listening on {debug_host}:{debug_port}",
+            "host": debug_host,
+            "port": debug_port,
+        }
+
     if headless is False:
         app.cached_template = None
         app.is_caching_template = False
@@ -834,6 +888,7 @@ def _init(
 class _MainServer(metaclass=Singleton):
     def __init__(self):
         self._server = FastAPI()
+        self._server.router = PrefixRouter()
 
     def get_server(self) -> FastAPI:
         return self._server
