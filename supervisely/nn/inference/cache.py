@@ -188,22 +188,51 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class VideoFrameReader:
-    def __init__(self, video_path: str, frame_indexes: List[int]):
+    def __init__(self, video_path: str, frame_indexes: List[int] = None):
         self.video_path = video_path
         self.frame_indexes = frame_indexes
+        self.vr = None
         self.cap = None
         self.prev_idx = -1
 
+    def _ensure_initialized(self):
+        if self.vr is None and self.cap is None:
+            try:
+                import decord
+
+                self.vr = decord.VideoReader(str(self.video_path))
+            except ImportError:
+                self.cap = cv2.VideoCapture(str(self.video_path))
+
+    def close(self):
+        if self.vr is not None:
+            self.vr = None
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+        self.prev_idx = -1
+
     def __enter__(self):
-        self.cap = cv2.VideoCapture(str(self.video_path))
+        self._ensure_initialized()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.cap is not None:
-            self.cap.release()
+        self.close()
+
+    def __del__(self):
+        self.close()
 
     def read_frames(self) -> Generator:
-        try:
+        if self.vr is not None:
+            if self.frame_indexes is None:
+                self.frame_indexes = range(len(self.vr))
+            for frame_index in self.frame_indexes:
+                frame = self.vr[frame_index]
+                yield frame.asnumpy()
+        else:
+            if self.frame_indexes is None:
+                frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                self.frame_indexes = range(frame_count)
             for frame_index in self.frame_indexes:
                 if 1 > frame_index - self.prev_idx < 20:
                     while self.prev_idx < frame_index - 1:
@@ -215,8 +244,25 @@ class VideoFrameReader:
                     raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
                 yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.prev_idx = frame_index
-        finally:
-            self.cap.release()
+
+    def __iter__(self):
+        return self.read_frames()
+
+    def frame_size(self):
+        self._ensure_initialized()
+        if self.vr is not None:
+            return self.vr[0].shape[:2]
+        else:
+            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            return height, width
+
+    def frames_count(self):
+        self._ensure_initialized()
+        if self.vr is not None:
+            return len(self.vr)
+        else:
+            return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 
 class InferenceImageCache:
@@ -337,12 +383,7 @@ class InferenceImageCache:
         if not isinstance(self._cache, PersistentImageTTLCache):
             raise ValueError("Video frames count can be obtained only for persistent cache")
         video_path = self._cache.get_video_path(key)
-        cap = cv2.VideoCapture(str(video_path))
-        try:
-            frames_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        finally:
-            cap.release()
-        return frames_count
+        return VideoFrameReader(video_path).frames_count()
 
     def get_video_frame_size(self, key):
         """
@@ -351,13 +392,7 @@ class InferenceImageCache:
         if not isinstance(self._cache, PersistentImageTTLCache):
             raise ValueError("Video frame size can be obtained only for persistent cache")
         video_path = self._cache.get_video_path(key)
-        cap = cv2.VideoCapture(str(video_path))
-        try:
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        finally:
-            cap.release()
-        return height, width
+        return VideoFrameReader(video_path).frame_size()
 
     def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
         if isinstance(self._cache, PersistentImageTTLCache) and video_id in self._cache:
@@ -467,24 +502,12 @@ class InferenceImageCache:
                 with tempfile.NamedTemporaryFile(delete=False) as f:
                     shutil.copyfileobj(source, f)
                     tmp_source = f.name
-            cap = cv2.VideoCapture(str(source))
+                    source = tmp_source
             try:
-                frame_index = 0
-                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                while cap.isOpened():
-                    while self._frame_name(video_id, frame_index) in self._cache:
-                        frame_index += 1
-                    if frame_index >= total_frames:
-                        break
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                    ret, frame = cap.read()
-                    if not ret:
-                        break
-                    frame = np.array(frame)
-                    self.add_frame_to_cache(frame, video_id, frame_index)
-                    frame_index = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+                with VideoFrameReader(source) as reader:
+                    for frame_index, frame in enumerate(reader):
+                        self.add_frame_to_cache(frame, video_id, frame_index)
             finally:
-                cap.release()
                 if tmp_source is not None:
                     silent_remove(tmp_source)
 
