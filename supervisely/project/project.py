@@ -2124,8 +2124,7 @@ class Project:
             self._name = name
         self._datasets = Project.DatasetDict()  # ds_name -> dataset object
         self._meta = None
-        self._blob_files = None
-
+        self._blob_files = []
         if project_id is not None:
             self._read_api()
         elif mode is OpenMode.READ:
