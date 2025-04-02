@@ -764,6 +764,7 @@ class AsyncInferenceIterator:
             raise ex
 
         pred = self.results_queue.pop(0)
+        logger.info("returning prediction", extra={"pending_results": len(self.results_queue)})
         if self.process_fn is not None:
             return self.process_fn(pred)
         else:
