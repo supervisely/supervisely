@@ -393,7 +393,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             queue_meta["reviewOwnAnnotationsAvailable"] = True
         
         if skip_complete_job_on_empty is True:
-            queue_meta["skipCompleteJobOnEmpty"] = True
+            queue_meta["skipCompleteAnnotationJobOnEmpty"] = True
 
         data = {
             ApiField.NAME: name,
