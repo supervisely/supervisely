@@ -626,7 +626,6 @@ class SessionJSON:
         timeout_exceeded = False
         t0 = time.time()
         while not has_results and not timeout_exceeded:
-            logger.info("requesting new pending results...")
             resp = self._pop_pending_results()
             pending_results = resp["pending_results"]
             has_results = bool(pending_results)
