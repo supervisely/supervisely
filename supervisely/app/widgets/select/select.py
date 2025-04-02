@@ -93,6 +93,7 @@ class Select(ConditionalWidget):
         widget_id: str = None,
         items_links: List[str] = None,
         width_percent: Optional[int] = None,
+        width_px: Optional[int] = None,
     ) -> Select:
         if items is None and groups is None:
             raise ValueError("One of the arguments has to be defined: items or groups")
@@ -113,6 +114,7 @@ class Select(ConditionalWidget):
             self._width_percent = min(max(width_percent, 1), 100)
         else:
             self._width_percent = None
+        self._width_px = width_px
 
         if items_links is not None:
             if items is None:
@@ -140,6 +142,7 @@ class Select(ConditionalWidget):
             "groups": None,
             "with_link": self._with_link,
             "width_percent": self._width_percent,
+            "width_px": self._width_px,
         }
         if self._items is not None:
             res["items"] = [item.to_json() for item in self._items]
