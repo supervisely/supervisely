@@ -1717,7 +1717,7 @@ def get_file_offsets_batch_generator(
                 blob_file_infos = [BlobImageInfo.from_dict(file_info) for file_info in batch]
                 yield blob_file_infos
     else:
-        raise ValueError(f"Unsupported archive type: {ext}. Only .zip and .tar are supported")
+        raise ValueError(f"Unsupported archive type: {ext}. Only .tar are supported")
 
 
 def _process_tar_generator(
