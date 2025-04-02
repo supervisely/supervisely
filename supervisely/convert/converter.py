@@ -57,12 +57,12 @@ class ImportManager:
         self._labeling_interface = labeling_interface
         self._upload_as_links = upload_as_links
         self._remote_files_map = {}
+        self._modality = project_type
 
         self._input_data = self._prepare_input_data(input_data)
         self._unpack_archives(self._input_data)
         remove_junk_from_dir(self._input_data)
 
-        self._modality = project_type
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
             self._converter.team_id = self._team_id
@@ -112,17 +112,27 @@ class ImportManager:
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
             return os.path.dirname(input_data)
         elif self._api.storage.exists(self._team_id, input_data):
-            if self._upload_as_links:
+            if self._upload_as_links and str(self._modality) in [
+                ProjectType.IMAGES.value,
+                ProjectType.VIDEOS.value,
+            ]:
                 logger.info(f"Input data is a remote file: {input_data}. Scanning...")
-                return self._scan_remote_files(input_data)
+                return self._reproduce_remote_files(input_data)
             else:
+                if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
+                    self._scan_remote_files(input_data)
                 logger.info(f"Input data is a remote file: {input_data}. Downloading...")
                 return self._download_input_data(input_data)
         elif self._api.storage.dir_exists(self._team_id, input_data):
-            if self._upload_as_links:
+            if self._upload_as_links and str(self._modality) in [
+                ProjectType.IMAGES.value,
+                ProjectType.VIDEOS.value,
+            ]:
                 logger.info(f"Input data is a remote directory: {input_data}. Scanning...")
-                return self._scan_remote_files(input_data, is_dir=True)
+                return self._reproduce_remote_files(input_data, is_dir=True)
             else:
+                if self._upload_as_links and str(self._modality) == ProjectType.VOLUMES.value:
+                    self._scan_remote_files(input_data, is_dir=True)
                 logger.info(f"Input data is a remote directory: {input_data}. Downloading...")
                 return self._download_input_data(input_data, is_dir=True)
         else:
@@ -160,7 +170,35 @@ class ImportManager:
         return local_path
 
     def _scan_remote_files(self, remote_path, is_dir=False):
-        """Scan remote directory and create dummy structure locally"""
+        """
+        Scan remote directory. Collect local-remote paths mapping
+        Will be used to save relations between uploaded files and remote files (for volumes).
+        """
+
+        dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
+        dir_name = os.path.basename(dir_path)
+
+        local_path = os.path.join(get_data_dir(), dir_name)
+
+        if is_dir:
+            files = self._api.storage.list(self._team_id, remote_path, include_folders=False)
+        else:
+            files = [self._api.storage.get_info_by_path(self._team_id, remote_path)]
+
+        unique_directories = set()
+        for file in files:
+            new_path = file.path.replace(dir_path, local_path)
+            self._remote_files_map[new_path] = file.path
+            unique_directories.add(str(Path(file.path).parent))
+
+        logger.info(f"Scanned remote directories:\n   - " + "\n   - ".join(unique_directories))
+        return local_path
+
+    def _reproduce_remote_files(self, remote_path, is_dir=False):
+        """
+        Scan remote directory and create dummy structure locally.
+        Will be used to detect annotation format (by dataset structure) remotely.
+        """
 
         dir_path = remote_path.rstrip("/") if is_dir else os.path.dirname(remote_path)
         dir_name = os.path.basename(dir_path)

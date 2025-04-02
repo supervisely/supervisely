@@ -4,7 +4,6 @@ from supervisely.app.widgets import (
     Card,
     Checkbox,
     Container,
-    Field,
     ProjectThumbnail,
     Text,
 )
@@ -17,7 +16,19 @@ class InputSelector:
     lock_message = None
 
     def __init__(self, project_info: ProjectInfo, app_options: dict = {}):
+        # Init widgets
+        self.project_thumbnail = None
+        self.use_cache_text = None
+        self.use_cache_checkbox = None
+        self.validator_text = None
+        self.button = None
+        self.container = None
+        self.card = None
+        # -------------------------------- #
+
         self.display_widgets = []
+        self.app_options = app_options
+
         self.project_id = project_info.id
         self.project_info = project_info
 
@@ -49,7 +60,7 @@ class InputSelector:
             title=self.title,
             description=self.description,
             content=self.container,
-            collapsable=app_options.get("collapsable", False),
+            collapsable=self.app_options.get("collapsable", False),
         )
 
     @property
