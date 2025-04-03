@@ -233,6 +233,8 @@ class ImportManager:
             archives = []
             path = new_paths_to_scan.pop()
             for root, _, files in os.walk(path):
+                logger.info(f"Scanning directory: {root}")
+                logger.info(f"Scanning directory: {os.path.dirname(root)}")
                 if os.path.dirname(root) == Project.blob_dir_name:
                     logger.info(f"Skip unpacking archive in blob dir: {root}")
                     continue
