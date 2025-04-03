@@ -3882,6 +3882,7 @@ class Project:
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+            **kwargs,
         )
 
     def to_coco(
@@ -5085,7 +5086,7 @@ async def _download_project_async(
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
     # control whether to download blob files
-    download_blob_files = kwargs.pop("download_blob_files", False)
+    download_blob_files = kwargs.get("download_blob_files", False)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
@@ -5143,7 +5144,7 @@ async def _download_project_async(
                 if images_ids is None or image.id in images_ids:
                     dataset_images.append(image)
                     # Check for images with blob offsets
-                    
+
                     if download_blob_files and image.related_data_id is not None:
                         blob_files_to_download[image.related_data_id] = image.download_id
                         blob_images.append(image)
@@ -5229,18 +5230,33 @@ async def _download_project_async(
                         if len(current_batch) >= OFFSETS_PKL_BATCH_SIZE:
                             BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
                             total_offsets_count += len(current_batch)
-                            if ds_progress is not None:
-                                ds_progress(len(current_batch))
                             current_batch = []
                     if len(current_batch) > 0:
                         BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
                         total_offsets_count += len(current_batch)
-                        if ds_progress is not None:
-                            ds_progress(len(current_batch))
                     if total_offsets_count > 0:
                         logger.debug(
                             f"Saved {total_offsets_count} image offsets for {blob_file_id} to {offsets_file_path} in {(total_offsets_count + OFFSETS_PKL_BATCH_SIZE - 1) // OFFSETS_PKL_BATCH_SIZE} batches"
                         )
+                    offset_tasks = []
+                    # Download annotations for images with offsets
+                    for offsets_batch in batched(blob_images, batch_size=batch_size):
+                        offset_task = _download_project_items_batch_async(
+                            api=api,
+                            dataset_id=dataset_id,
+                            img_infos=offsets_batch,
+                            meta=meta,
+                            dataset_fs=dataset_fs,
+                            id_to_tagmeta=id_to_tagmeta,
+                            semaphore=semaphore,
+                            save_images=False,
+                            save_image_info=save_image_info,
+                            only_image_tags=only_image_tags,
+                            progress_cb=ds_progress,
+                        )
+                        offset_tasks.append(offset_task)
+                    created_tasks = await run_tasks_with_delay(offset_tasks, 0.05)
+                    await asyncio.gather(*created_tasks)
 
             tasks = []
             # Check which images need to be downloaded
