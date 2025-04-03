@@ -4387,15 +4387,20 @@ def upload_project(
     project_name: Optional[str] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    project_id: Optional[int] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
-    if project_name is None:
-        project_name = project_fs.name
 
-    if api.project.exists(workspace_id, project_name):
-        project_name = api.project.get_free_name(workspace_id, project_name)
+    if not project_id:
+        if project_name is None:
+            project_name = project_fs.name
 
-    project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
+        if api.project.exists(workspace_id, project_name):
+            project_name = api.project.get_free_name(workspace_id, project_name)
+
+        project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
+    else:
+        project = api.project.get_info_by_id(project_id)
     updated_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
@@ -5049,7 +5054,7 @@ def _dataset_structure_md(
     entity_icon = entity_icons[project_info.type]
 
     result_md = f"🗂️ {project_info.name}<br>"
-    
+
     # if project_info
 
     for parents, dataset_info in api.dataset.tree(project_info.id):

@@ -2210,7 +2210,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 {ApiField.OFFSET_START: 101, ApiField.OFFSET_END: 200}
             ]
             team_file_id = 123456
-            new_imgs_info = api.image.upload_by_offsets(dataset_id, names, offsets, team_file_id, metas)
+            new_imgs_info = api.image.upload_by_offsets(dataset_id, team_file_id, names, offsets,  metas)
 
             # Output example:
             #   ImageInfo(id=136281,
@@ -5169,7 +5169,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         :return: Generator of ImageInfo objects if return_image_infos_generator is True, otherwise None.
         :rtype: Union[Generator[ImageInfo, None], None]
-        
+
 
         """
         if isinstance(dataset, int):

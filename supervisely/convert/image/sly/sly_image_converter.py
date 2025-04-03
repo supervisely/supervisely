@@ -296,6 +296,7 @@ class SLYImageConverter(ImageConverter):
                 api=api,
                 workspace_id=dataset_info.workspace_id,
                 log_progress=log_progress,
+                project_id=dataset_info.project_id,
             )
         else:
             super().upload_dataset(api, dataset_id, batch_size, log_progress)
