@@ -954,7 +954,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def update_custom_data(self, id: int, data: Dict, silent: bool = False) -> Dict:
         """
-        Updates custom data of the Project by ID
+        Updates custom data of the Project by ID by adding new key-value pairs to the existing custom data.
 
         :param id: Project ID in Supervisely.
         :type id: int

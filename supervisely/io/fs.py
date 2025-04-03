@@ -1639,7 +1639,7 @@ def get_file_offsets_batch_generator(
     archive_path: str,
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
-    format: Literal["dicts", "objects"] = "dicts",
+    output_format: Literal["dicts", "objects"] = "dicts",
     batch_size: int = OFFSETS_PKL_BATCH_SIZE,
 ) -> Generator[Union[List[Dict], List["BlobImageInfo"]], None, None]:
     """
@@ -1656,10 +1656,10 @@ def get_file_offsets_batch_generator(
     :type team_file_id: Optional[int]
     :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
     :type filter_func: Callable, optional
-    :param format: Format of the output. Default is `dicts`.
+    :param output_format: Format of the output. Default is `dicts`.
                    `objects` - returns a list of BlobImageInfo objects.
                    `dicts` - returns a list of dictionaries.
-    :type format: Literal["dicts", "objects"]
+    :type output_format: Literal["dicts", "objects"]
     :returns: Generator yielding batches of file information in the specified format.
     :rtype: Generator[Union[List[Dict], List[BlobImageInfo]]], None, None]
 
@@ -1700,7 +1700,7 @@ def get_file_offsets_batch_generator(
     ext = Path(archive_path).suffix.lower()
 
     if ext == ".tar":
-        if format == "dicts":
+        if output_format == "dicts":
             yield from _process_tar_generator(
                 tar_path=archive_path,
                 team_file_id=team_file_id,
@@ -1845,7 +1845,7 @@ def save_blob_offsets_pkl(
         archive_path=blob_file_path,
         team_file_id=team_file_id,
         filter_func=filter_func,
-        format="objects",
+        output_format="objects",
         batch_size=batch_size,
     )
     BlobImageInfo.dump_to_pickle(offsets_batch_generator, output_path)

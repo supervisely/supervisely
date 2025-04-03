@@ -4227,7 +4227,7 @@ def _download_project(
                         blob_files_to_download[image_info.related_data_id] = image_info.download_id
                         indexes_with_offsets.append(idx)
 
-                # download images in numpy format
+                # Download images in numpy format
                 batch_imgs_bytes = [None] * len(image_ids)
                 if save_images and indexes_to_download:
 
@@ -4247,9 +4247,17 @@ def _download_project(
                                 )
                                 project_fs.add_blob_file(blob_file_id)
 
-                            if blob_file_id not in offsets_by_blob_files:
-                                offsets_by_blob_files[blob_file_id] = []
-                            # get offsets from image infos
+                            # Process blob image offsets
+                            offsets_file_name = f"{blob_file_id}{OFFSETS_PKL_SUFFIX}"
+                            offsets_file_path = os.path.join(
+                                dataset_fs.directory, offsets_file_name
+                            )
+
+                            # Initialize counter for total image offsets for this blob file
+                            total_offsets_count = 0
+                            current_batch = []
+
+                            # Get offsets from image infos
                             for idx in indexes_with_offsets:
                                 image_info = batch[idx]
                                 if image_info.related_data_id == blob_file_id:
@@ -4258,24 +4266,27 @@ def _download_project(
                                         offset_start=image_info.offset_start,
                                         offset_end=image_info.offset_end,
                                     )
-                                    offsets_by_blob_files[blob_file_id].append(blob_image_info)
+                                    current_batch.append(blob_image_info)
                                     bytes_indexes_to_download.remove(idx)
-                            for blob_file_name, blob_image_infos in offsets_by_blob_files.items():
-                                if blob_image_infos:
-                                    offsets_file_name = f"{blob_file_name}{OFFSETS_PKL_SUFFIX}"
 
-                                    offsets_file_path = os.path.join(
-                                        dataset_fs.directory, offsets_file_name
-                                    )
-                                    BlobImageInfo.dump_to_pickle(
-                                        blob_image_infos, offsets_file_path
-                                    )
+                                    # When batch size is reached, dump to file
+                                    if len(current_batch) >= OFFSETS_PKL_BATCH_SIZE:
+                                        BlobImageInfo.dump_to_pickle(
+                                            current_batch, offsets_file_path
+                                        )
+                                        total_offsets_count += len(current_batch)
+                                        current_batch = []
+                            # Dump any remaining items in the last batch
+                            if len(current_batch) > 0:
+                                BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
+                                total_offsets_count += len(current_batch)
 
-                                    logger.info(
-                                        f"Saved {len(blob_image_infos)} image offsets for {blob_file_name} to {offsets_file_path}"
-                                    )
-                                    ds_progress(len(blob_image_infos))
-                            # download other files with download_bytes
+                            if total_offsets_count > 0:
+                                logger.info(
+                                    f"Saved {total_offsets_count} image offsets for {blob_file_id} to {offsets_file_path} in {(total_offsets_count + OFFSETS_PKL_BATCH_SIZE - 1) // OFFSETS_PKL_BATCH_SIZE} batches"
+                                )
+                                ds_progress(total_offsets_count)
+
                             image_ids_to_download = [
                                 image_ids[i] for i in bytes_indexes_to_download
                             ]
@@ -4288,7 +4299,7 @@ def _download_project(
                                 ),
                             ):
                                 batch_imgs_bytes[index] = img
-                    # If  you want to download images in classic way
+                    # If you want to download images in classic way
                     else:
                         image_ids_to_download = [image_ids[i] for i in indexes_to_download]
                         for index, img in zip(
@@ -4521,7 +4532,7 @@ def upload_project(
                             f"Check the Team File directory '{TF_BLOB_DIR}', corresponding blob file should be uploaded."
                         )
                     uploaded_img_infos_offsets = api.image.upload_by_offsets_generator(
-                        dataset.id,
+                        dataset=dataset,
                         team_file_id=blob_file.id,
                         offsets_file_path=blob_offsets,
                         progress_cb=ds_progress,
@@ -5204,8 +5215,8 @@ async def _download_project_async(
                         blob_paths.append(os.path.join(project_fs.blob_dir, f"{blob_file_id}.tar"))
                         download_ids.append(download_id)
                 await api.image.download_blob_files_async(
-                    download_ids=download_ids,
                     project_id=project_id,
+                    download_ids=download_ids,
                     paths=blob_paths,
                     semaphore=semaphore,
                     log_progress=(True if log_progress or progress_cb is not None else False),

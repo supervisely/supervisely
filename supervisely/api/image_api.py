@@ -80,6 +80,7 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import (
+    _BLOB_TAG_NAME,
     _MULTISPECTRAL_TAG_NAME,
     _MULTIVIEW_TAG_NAME,
 )
@@ -2134,7 +2135,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def upload_by_offsets(
         self,
-        dataset_id: int,
+        dataset: Union[DatasetInfo, int],
         team_file_id: int,
         names: List[str] = None,
         offsets: List[dict] = None,
@@ -2154,8 +2155,8 @@ class ImageApi(RemoveableBulkModuleApi):
         If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
 
-        :param dataset_id: Dataset ID in Supervisely.
-        :type dataset_id: int
+        :param dataset: Dataset ID or DatasetInfo object in Supervisely.
+        :type dataset: Union[DatasetInfo,int]
         :param team_file_id: ID of the binary file in the team storage.
         :type team_file_id: int
         :param names: Images names with extension.
@@ -2232,6 +2233,9 @@ class ImageApi(RemoveableBulkModuleApi):
             #   ImageInfo(...)
         """
 
+        if isinstance(dataset, int):
+            dataset = self._api.dataset.get_info_by_id(dataset)
+
         items = []
         if len(names) != len(offsets):
             raise ValueError(
@@ -2247,9 +2251,11 @@ class ImageApi(RemoveableBulkModuleApi):
 
             items.append({ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: offset})
 
+        self._api.project.update_custom_data(dataset.project_id, {_BLOB_TAG_NAME: True})
+
         return self._upload_bulk_add(
             func_item_to_kv=lambda image_data, item: {**image_data, **item},
-            dataset_id=dataset_id,
+            dataset_id=dataset.id,
             names=names,
             items=items,
             progress_cb=progress_cb,
@@ -2264,7 +2270,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def upload_by_offsets_generator(
         self,
-        dataset_id: int,
+        dataset: Union[DatasetInfo, int],
         team_file_id: int,
         offsets_file_path: Optional[str] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
@@ -2286,10 +2292,12 @@ class ImageApi(RemoveableBulkModuleApi):
         If you include `metas` during the upload, you can add a custom sort parameter for images.
         To achieve this, use the context manager :func:`api.image.add_custom_sort` with the desired key name from the meta dictionary to be used for sorting.
 
-        :param dataset_id: Dataset ID in Supervisely.
-        :type dataset_id: int
+        :param dataset: Dataset ID or DatasetInfo object in Supervisely.
+        :type dataset: Union[DatasetInfo,int]
         :param team_file_id: ID of the binary file in the team storage.
         :type team_file_id: int
+        :param offsets_file_path: Path to the file with blob images offsets.
+        :type offsets_file_path: str, optional
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional
         :param metas: Custom additional image infos as dict where:
@@ -2329,6 +2337,10 @@ class ImageApi(RemoveableBulkModuleApi):
             for img_infos_batch in new_imgs_info_generator:
                 img_infos.extend(img_infos_batch)
         """
+
+        if isinstance(dataset, int):
+            dataset = self._api.dataset.get_info_by_id(dataset)
+
         if offsets_file_path is None:
             offsets_file_path = self.get_blob_offsets_file(team_file_id)
         blob_image_infos_generator = BlobImageInfo.load_from_pickle_generator(
@@ -2344,7 +2356,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ]
             yield self._upload_bulk_add(
                 func_item_to_kv=lambda image_data, item: {**image_data, **item},
-                dataset_id=dataset_id,
+                dataset_id=dataset.id,
                 names=names,
                 items=items,
                 progress_cb=progress_cb,
@@ -2356,6 +2368,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 use_strict_validation=use_strict_validation,
                 use_caching_for_validation=use_caching_for_validation,
             )
+        self._api.project.update_custom_data(dataset.project_id, {_BLOB_TAG_NAME: True})
 
     def get_blob_offsets_file(
         self,
@@ -5163,7 +5176,7 @@ class ImageApi(RemoveableBulkModuleApi):
             team_file_info = blob_file
 
         image_infos_generator, _ = self.upload_by_offsets_generator(
-            dataset_id=dataset_id,
+            dataset=dataset_info,
             team_file_id=team_file_info.id,
             progress_cb=progress_cb,
             metas=metas,
@@ -5177,8 +5190,8 @@ class ImageApi(RemoveableBulkModuleApi):
 
     async def download_blob_file_async(
         self,
-        download_id: str,
         project_id: int,
+        download_id: str,
         path: str,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
@@ -5187,10 +5200,10 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Downloads blob file from Supervisely storage by download ID asynchronously.
 
-        :param download_id: Download ID of any Image that belongs to the blob file in Supervisely storage.
-        :type download_id: str
         :param project_id: Project ID in Supervisely.
         :type project_id: int
+        :param download_id: Download ID of any Image that belongs to the blob file in Supervisely storage.
+        :type download_id: str
         :param path: Path to save the blob file.
         :type path: str
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
@@ -5239,20 +5252,20 @@ class ImageApi(RemoveableBulkModuleApi):
 
     async def download_blob_files_async(
         self,
-        download_ids: str,
         project_id: int,
+        download_ids: str,
         paths: str,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
-        progress_cb: Optional[Union[tqdm, Callable]] = None, 
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
     ):
-        """ 
-        Downloads multiple blob files from Supervisely storage by download IDs asynchronously. 
+        """
+        Downloads multiple blob files from Supervisely storage by download IDs asynchronously.
 
-        :param download_ids: List of download IDs of any Image that belongs to the blob files in Supervisely storage.
-        :type download_ids: List[str]
         :param project_id: Project ID in Supervisely.
         :type project_id: int
+        :param download_ids: List of download IDs of any Image that belongs to the blob files in Supervisely storage.
+        :type download_ids: List[str]
         :param paths: List of paths to save the blob files.
         :type paths: List[str]
         :param semaphore: Semaphore for limiting the number of simultaneous downloads.
@@ -5269,8 +5282,8 @@ class ImageApi(RemoveableBulkModuleApi):
         tasks = []
         for download_id, path in zip(download_ids, paths):
             task = self.download_blob_file_async(
-                download_id=download_id,
                 project_id=project_id,
+                download_id=download_id,
                 path=path,
                 semaphore=semaphore,
                 log_progress=log_progress,
