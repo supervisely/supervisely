@@ -2078,6 +2078,7 @@ class Project:
     """
 
     dataset_class = Dataset
+    blob_dir_name = "blob"
 
     class DatasetDict(KeyIndexedCollection):
         """
@@ -2117,7 +2118,7 @@ class Project:
 
         parent_dir, name = Project._parse_path(directory)
         self._parent_dir = parent_dir
-        self._blob_dir = os.path.join(directory, "blob")
+        self._blob_dir = os.path.join(directory, self.blob_dir_name)
         self._api = api
         self.project_id = project_id
 
@@ -5039,12 +5040,17 @@ def _dataset_structure_md(
     entity_icons = {
         "images": " 🏞️ ",
         "videos": " 🎥 ",
+        "blob_files": " 📦 ",
+        "pkl_files": " 📄 ",
+        "annotations": " 📝 ",
     }
     dataset_icon = " 📂 "
     list_function = list_functions[project_info.type]
     entity_icon = entity_icons[project_info.type]
 
     result_md = f"🗂️ {project_info.name}<br>"
+    
+    # if project_info
 
     for parents, dataset_info in api.dataset.tree(project_info.id):
         # The dataset path is needed to create a clickable link in the README.
