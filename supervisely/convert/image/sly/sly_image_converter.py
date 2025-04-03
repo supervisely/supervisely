@@ -20,6 +20,7 @@ from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.io.fs import dirs_filter, file_exists, get_file_ext
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
+from supervisely.project.project import upload_project as upload_project_fs
 from supervisely.project.project_settings import LabelingInterface
 
 DATASET_ITEMS = "items"
@@ -32,9 +33,18 @@ class SLYImageConverter(ImageConverter):
         super().__init__(*args, **kwargs)
         self._project_structure = None
         self._supports_links = True
+        self._blob_project = False
 
     def __str__(self):
         return AvailableImageConverters.SLY
+
+    @property
+    def blob_project(self) -> bool:
+        return self._blob_project
+
+    @blob_project.setter
+    def blob_project(self, value: bool):
+        self._blob_project = value
 
     @property
     def ann_ext(self) -> str:
@@ -174,6 +184,11 @@ class SLYImageConverter(ImageConverter):
             meta = None
             for project_dir in project_dirs:
                 project_fs = Project(project_dir, mode=OpenMode.READ)
+                if len(project_fs.blob_files) > 0:
+                    self.blob_project = True
+                    logger.info("Found blob files in the project, skipping")
+                    continue
+
                 if meta is None:
                     meta = project_fs.meta
                 else:
@@ -206,6 +221,8 @@ class SLYImageConverter(ImageConverter):
                 self._meta = meta
                 if ds_cnt > 1:  # multiple datasets
                     self._project_structure = project
+                return True
+            elif self.blob_project:
                 return True
             else:
                 return False
@@ -272,6 +289,14 @@ class SLYImageConverter(ImageConverter):
 
         if self._project_structure:
             self.upload_project(api, dataset_id, batch_size, log_progress)
+        elif self.blob_project:
+            dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+            upload_project_fs(
+                dir=self._input_data,
+                api=api,
+                workspace_id=dataset_info.workspace_id,
+                log_progress=log_progress,
+            )
         else:
             super().upload_dataset(api, dataset_id, batch_size, log_progress)
 
@@ -289,6 +314,7 @@ class SLYImageConverter(ImageConverter):
             progress, progress_cb = None, None
 
         logger.info("Uploading project structure")
+
         def _upload_project(
             project_structure: Dict,
             project_id: int,
@@ -306,7 +332,9 @@ class SLYImageConverter(ImageConverter):
 
                 items = value.get(DATASET_ITEMS, [])
                 nested_datasets = value.get(NESTED_DATASETS, {})
-                logger.info(f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}")
+                logger.info(
+                    f"Dataset: {ds_name}, items: {len(items)}, nested datasets: {len(nested_datasets)}"
+                )
                 if items:
                     super(SLYImageConverter, self).upload_dataset(
                         api, dataset_id, batch_size, entities=items, progress_cb=progress_cb

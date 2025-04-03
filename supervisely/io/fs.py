@@ -1814,7 +1814,7 @@ def save_blob_offsets_pkl(
     """
     Processes blob file locally and creates a pickle file with offset information.
 
-    :param blob_file_path: Path to the blob file
+    :param blob_file_path: Path to the local blob file
     :type blob_file_path: str
     :param output_dir: Path to the output directory
     :type output_dir: str
@@ -1826,6 +1826,8 @@ def save_blob_offsets_pkl(
     :type filter_func: Callable, optional
     :param batch_size: Number of files to process in each batch, defaults to 10000
     :type batch_size: int, optional
+    :returns: Path to the output pickle file
+    :rtype: str
 
     :Usage example:
 

@@ -5167,6 +5167,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :param return_image_infos_generator: If True, returns generator of ImageInfo objects. Otherwise, returns None.
         :type return_image_infos_generator: bool, optional
 
+        :return: Generator of ImageInfo objects if return_image_infos_generator is True, otherwise None.
+        :rtype: Union[Generator[ImageInfo, None], None]
+        
+
         """
         if isinstance(dataset, int):
             dataset_id = dataset
