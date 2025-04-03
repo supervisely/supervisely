@@ -598,15 +598,16 @@ class Inference:
     def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
         if deploy_params["runtime"] != RuntimeType.PYTORCH:
             export = deploy_params["model_info"].get("export", {})
-            export_model = export.get(deploy_params["runtime"], None)
-            if export_model is not None:
-                if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
-                    deploy_params["model_files"]["checkpoint"]
-                ):
-                    deploy_params["model_files"]["checkpoint"] = (
-                        deploy_params["model_info"]["artifacts_dir"] + export_model
-                    )
-                    logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
+            if export is not None:
+                export_model = export.get(deploy_params["runtime"], None)
+                if export_model is not None:
+                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
+                        deploy_params["model_files"]["checkpoint"]
+                    ):
+                        deploy_params["model_files"]["checkpoint"] = (
+                            deploy_params["model_info"]["artifacts_dir"] + export_model
+                        )
+                        logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
 
         if deploy_params["model_source"] == ModelSource.PRETRAINED:
             return self._download_pretrained_model(deploy_params["model_files"], log_progress)
