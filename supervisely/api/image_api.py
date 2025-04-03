@@ -2251,7 +2251,9 @@ class ImageApi(RemoveableBulkModuleApi):
 
             items.append({ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: offset})
 
-        self._api.project.update_custom_data(dataset.project_id, {_BLOB_TAG_NAME: True})
+        custom_data = self._api.project.get_custom_data(dataset.project_id)
+        custom_data[_BLOB_TAG_NAME] = True
+        self._api.project.update_custom_data(dataset.project_id, custom_data)
 
         return self._upload_bulk_add(
             func_item_to_kv=lambda image_data, item: {**image_data, **item},
@@ -2368,7 +2370,9 @@ class ImageApi(RemoveableBulkModuleApi):
                 use_strict_validation=use_strict_validation,
                 use_caching_for_validation=use_caching_for_validation,
             )
-        self._api.project.update_custom_data(dataset.project_id, {_BLOB_TAG_NAME: True})
+        custom_data = self._api.project.get_custom_data(dataset.project_id)
+        custom_data[_BLOB_TAG_NAME] = True
+        self._api.project.update_custom_data(dataset.project_id, custom_data)
 
     def get_blob_offsets_file(
         self,
