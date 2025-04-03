@@ -368,7 +368,8 @@ class ImageInfo(NamedTuple):
     #: :class:`int`: ID of the blob file in Supervisely storage related to the image.
     related_data_id: Optional[int] = None
 
-    #: :class:`str`: Unique ID of image that is used for downloading blob file from Supervisely storage.
+    #: :class:`str`: Unique ID of the image that links it to the corresponding blob file in Supervisely storage 
+    #: uses for downloading source blob file.
     download_id: Optional[str] = None
 
     #: :class:`int`: Bytes offset of the blob file that points to the start of the image data.
@@ -5062,19 +5063,19 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def download_blob_file(
         self,
-        download_id: str,
         project_id: int,
+        download_id: str,
         path: Optional[str] = None,
         log_progress: bool = True,
         chunk_size: Optional[int] = None,
     ) -> Optional[bytes]:
         """
-        Downloads blob file from Team Files by download ID of any Image that belongs to this file.
+        Downloads blob file from Supervisely storage by download ID of any Image that belongs to this file.
 
-        :param download_id: Download ID of any Image that belongs to the blob file in Team Files.
-        :type download_id: str
         :param project_id: Project ID in Supervisely.
         :type project_id: int
+        :param download_id: Download ID of any Image that belongs to the blob file in Supervisely storage.
+        :type download_id: str
         :param path: Path to save the blob file. If None, returns blob file content as bytes.
         :type path: str, optional
         :param progress_cb: Function for tracking download progress.
@@ -5097,10 +5098,10 @@ class ImageApi(RemoveableBulkModuleApi):
             project_id = api.dataset.get_info_by_id(image_info.dataset_id).project_id
 
             # Download and save to file
-            api.image.download_blob_file(image_info.download_id, project_id, "/path/to/save/archive.tar")
+            api.image.download_blob_file(project_id, image_info.download_id, "/path/to/save/archive.tar")
 
             # Get archive as bytes
-            archive_bytes = api.image.download_blob_file(image_info.download_id, project_id)
+            archive_bytes = api.image.download_blob_file(project_id, image_info.download_id)
         """
         if chunk_size is None:
             chunk_size = 8 * 1024 * 1024
@@ -5257,8 +5258,8 @@ class ImageApi(RemoveableBulkModuleApi):
     async def download_blob_files_async(
         self,
         project_id: int,
-        download_ids: str,
-        paths: str,
+        download_ids: List[str],
+        paths: List[str],
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,

@@ -4238,8 +4238,8 @@ def _download_project(
                         for blob_file_id, download_id in blob_files_to_download.items():
                             if blob_file_id not in project_fs.blob_files:
                                 api.image.download_blob_file(
-                                    download_id=download_id,
                                     project_id=project_id,
+                                    download_id=download_id,
                                     path=os.path.join(project_fs.blob_dir, f"{blob_file_id}.tar"),
                                     log_progress=(
                                         True if log_progress or progress_cb is not None else False
