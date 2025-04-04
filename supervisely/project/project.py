@@ -4375,7 +4375,11 @@ def _download_project(
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
     try:
-        create_readme(dest_dir, project_id, api)
+        if download_blob_files:
+            project_info = api.project.get_info_by_id(project_id)
+            create_blob_readme(project_fs=project_fs, project_info=project_info)
+        else:
+            create_readme(dest_dir, project_id, api)
     except Exception as e:
         logger.info(f"There was an error while creating README: {e}")
 
@@ -5032,7 +5036,7 @@ def _dataset_blob_structure_md(
     # Add project-level blob files
     if os.path.exists(project_fs.blob_dir) and project_fs.blob_files:
         result_md += "┣" + folder_icon + f"{Project.blob_dir_name}<br>"
-        blob_files = project_fs.blob_files
+        blob_files = [entry.name for entry in os.scandir(project_fs.blob_dir) if entry.is_file()]
 
         for idx, blob_file in enumerate(blob_files):
             if idx == entity_limit and len(blob_files) > entity_limit:
@@ -5542,7 +5546,11 @@ async def _download_project_async(
                 dataset_fs.delete_item(item_name)
 
     try:
-        create_readme(dest_dir, project_id, api)
+        if download_blob_files:
+            project_info = api.project.get_info_by_id(project_id)
+            create_blob_readme(project_fs=project_fs, project_info=project_info)
+        else:
+            create_readme(dest_dir, project_id, api)
     except Exception as e:
         logger.info(f"There was an error while creating README: {e}")
 
