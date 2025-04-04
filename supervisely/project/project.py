@@ -5119,8 +5119,8 @@ def _dataset_blob_structure_md(
         # Add ann directory
         if os.path.exists(dataset.ann_dir):
             has_more_content = bool(children)
-            symbol = "┣" if has_more_content else "┗"
-            result_md += content_prefix + symbol + folder_icon + "ann<br>"
+            symbol = "┣"
+            result_md += content_prefix + "┣" + folder_icon + "ann<br>"
 
             anns = [entry.name for entry in os.scandir(dataset.ann_dir) if entry.is_file()]
             anns = sorted(anns)
@@ -5144,6 +5144,8 @@ def _dataset_blob_structure_md(
             if len(anns) > entity_limit:
                 result_md += ann_prefix + "┗ ... " + str(len(anns) - entity_limit) + " more<br>"
 
+            if not has_more_content:
+                result_md += content_prefix + "...<br>"
         # Recursively render child datasets
         for idx, child_dir in enumerate(children):
             render_tree(child_dir, content_prefix)

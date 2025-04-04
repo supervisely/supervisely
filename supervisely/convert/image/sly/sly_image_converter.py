@@ -298,8 +298,7 @@ class SLYImageConverter(ImageConverter):
                 log_progress=log_progress,
                 project_id=dataset_info.project_id,
             )
-            if not dataset_info.parent_id:
-                api.dataset.remove(dataset_id)
+            api.dataset.remove(dataset_id)
         else:
             super().upload_dataset(api, dataset_id, batch_size, log_progress)
 
