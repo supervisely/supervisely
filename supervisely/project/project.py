@@ -45,6 +45,7 @@ from supervisely.api.image_api import (
     BlobImageInfo,
     ImageInfo,
 )
+from supervisely.api.project_api import ProjectInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
@@ -4234,7 +4235,6 @@ def _download_project(
 
                     # For a lot of small files that stored in blob file. Downloads blob files to optimize download process.
                     if download_blob_files and len(indexes_with_offsets) > 0:
-                        offsets_by_blob_files = {}
                         bytes_indexes_to_download = indexes_to_download.copy()
                         for blob_file_id, download_id in blob_files_to_download.items():
                             if blob_file_id not in project_fs.blob_files:
@@ -4990,6 +4990,207 @@ def create_readme(
 
     template = template.replace(
         "{{dataset_structure_info}}", _dataset_structure_md(project_info, api)
+    )
+
+    with open(readme_path, "w") as f:
+        f.write(template)
+    return readme_path
+
+
+def _dataset_blob_structure_md(
+    project_fs: Project,
+    project_info: sly.ProjectInfo,
+    entity_limit: Optional[int] = 2,
+) -> str:
+    """Creates a markdown string with the dataset structure of the project.
+    Supports only images and videos projects.
+
+    :project_fs: Project file system.
+    :type project_fs: :class:`Project<supervisely.project.project.Project>`
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :param entity_limit: The maximum number of entities to display in the README.
+    :type entity_limit: int, optional
+    :return: Markdown string with the dataset structure of the project.
+    :rtype: str
+    """
+    supported_project_types = [sly.ProjectType.IMAGES.value]
+    if project_info.type not in supported_project_types:
+        return ""
+
+    entity_icons = {
+        "images": " 🏞️ ",
+        "blob_files": " 📦 ",
+        "pkl_files": " 📄 ",
+        "annotations": " 📝 ",
+    }
+    dataset_icon = " 📂 "
+    folder_icon = " 📁 "
+
+    result_md = f"🗂️ {project_info.name}<br>"
+
+    # Add project-level blob files
+    if os.path.exists(project_fs.blob_dir) and project_fs.blob_files:
+        result_md += "┣" + folder_icon + f"{Project.blob_dir_name}<br>"
+        blob_files = project_fs.blob_files
+
+        for idx, blob_file in enumerate(blob_files):
+            if idx == entity_limit and len(blob_files) > entity_limit:
+                result_md += "┃ ┗ ... " + str(len(blob_files) - entity_limit) + " more<br>"
+                break
+            symbol = "┗" if idx == len(blob_files) - 1 or idx == entity_limit - 1 else "┣"
+            result_md += "┃ " + symbol + entity_icons["blob_files"] + blob_file + "<br>"
+
+    # Build a dataset hierarchy tree
+    dataset_tree = {}
+    root_datasets = []
+
+    # First pass: create nodes for all datasets
+    for dataset in project_fs.datasets:
+        dataset_tree[dataset.directory] = {
+            "dataset": dataset,
+            "children": [],
+            "parent_dir": os.path.dirname(dataset.directory) if dataset.parents else None,
+        }
+
+    # Second pass: build parent-child relationships
+    for dir_path, node in dataset_tree.items():
+        parent_dir = node["parent_dir"]
+        if parent_dir in dataset_tree:
+            dataset_tree[parent_dir]["children"].append(dir_path)
+        else:
+            root_datasets.append(dir_path)
+
+    # Function to recursively render the dataset tree
+    def render_tree(dir_path, prefix=""):
+        nonlocal result_md
+        node = dataset_tree[dir_path]
+        dataset = node["dataset"]
+        children = node["children"]
+
+        # Create dataset display with proper path
+        dataset_path = Dataset._get_dataset_path(dataset.name, dataset.parents)
+        result_md += prefix + "┣" + dataset_icon + f"[{dataset.name}]({dataset_path})<br>"
+
+        # Set indentation for dataset content
+        content_prefix = prefix + "┃ "
+
+        # Add pkl files at the dataset level
+        offset_files = [
+            entry.name
+            for entry in os.scandir(dataset.directory)
+            if entry.is_file() and entry.name.endswith(".pkl")
+        ]
+
+        if offset_files:
+            for idx, pkl_file in enumerate(offset_files):
+                last_file = idx == len(offset_files) - 1
+                has_more_content = (
+                    os.path.exists(dataset.img_dir) or os.path.exists(dataset.ann_dir) or children
+                )
+                symbol = "┗" if last_file and not has_more_content else "┣"
+                result_md += content_prefix + symbol + entity_icons["pkl_files"] + pkl_file + "<br>"
+
+        # Add img directory
+        if os.path.exists(dataset.img_dir):
+            has_ann_dir = os.path.exists(dataset.ann_dir)
+            has_more_content = has_ann_dir or children
+            symbol = "┣" if has_more_content else "┗"
+            result_md += content_prefix + symbol + folder_icon + "img<br>"
+
+            # Add image files
+            entities = [entry.name for entry in os.scandir(dataset.img_dir) if entry.is_file()]
+            entities = sorted(entities)
+            selected_entities = entities[: min(len(entities), entity_limit)]
+
+            img_prefix = content_prefix + "┃ "
+            for idx, entity in enumerate(selected_entities):
+                last_img = idx == len(selected_entities) - 1
+                symbol = "┗" if last_img and len(entities) <= entity_limit else "┣"
+                result_md += img_prefix + symbol + entity_icons["images"] + entity + "<br>"
+
+            if len(entities) > entity_limit:
+                result_md += img_prefix + "┗ ... " + str(len(entities) - entity_limit) + " more<br>"
+
+        # Add ann directory
+        if os.path.exists(dataset.ann_dir):
+            has_more_content = bool(children)
+            symbol = "┣" if has_more_content else "┗"
+            result_md += content_prefix + symbol + folder_icon + "ann<br>"
+
+            anns = [entry.name for entry in os.scandir(dataset.ann_dir) if entry.is_file()]
+            anns = sorted(anns)
+
+            # Try to match annotations with displayed images
+            possible_anns = [f"{entity}.json" for entity in selected_entities]
+            matched_anns = [pa for pa in possible_anns if pa in anns]
+
+            # Add additional annotations if we haven't reached the limit
+            if len(matched_anns) < min(entity_limit, len(anns)):
+                for ann in anns:
+                    if ann not in matched_anns and len(matched_anns) < entity_limit:
+                        matched_anns.append(ann)
+
+            ann_prefix = content_prefix + "┃ "
+            for idx, ann in enumerate(matched_anns):
+                last_ann = idx == len(matched_anns) - 1
+                symbol = "┗" if last_ann and len(anns) <= entity_limit else "┣"
+                result_md += ann_prefix + symbol + entity_icons["annotations"] + ann + "<br>"
+
+            if len(anns) > entity_limit:
+                result_md += ann_prefix + "┗ ... " + str(len(anns) - entity_limit) + " more<br>"
+
+        # Recursively render child datasets
+        for idx, child_dir in enumerate(children):
+            render_tree(child_dir, content_prefix)
+
+    # Start rendering from root datasets
+    for root_dir in sorted(root_datasets):
+        render_tree(root_dir)
+
+    return result_md
+
+
+def create_blob_readme(
+    project_fs: Project,
+    project_info: ProjectInfo,
+) -> str:
+    """Creates a README.md file using the template, adds general information
+    about the project and creates a dataset structure section.
+
+    :param project_fs: Project file system.
+    :type project_fs: :class:`Project<supervisely.project.project.Project>`
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :return: Path to the created README.md file.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+
+        project_id = 123
+        project_dir = "/path/to/project"
+
+        readme_path = sly.create_readme(project_dir, project_id, api)
+
+        print(f"README.md file was created at {readme_path}")
+    """
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(current_path, "readme_template.md")
+    with open(template_path, "r") as file:
+        template = file.read()
+
+    readme_path = os.path.join(project_fs.directory, "README.md")
+
+    template = template.replace("{{general_info}}", _project_info_md(project_info))
+
+    template = template.replace(
+        "{{dataset_structure_info}}", _dataset_blob_structure_md(project_fs, project_info)
     )
 
     with open(readme_path, "w") as f:
