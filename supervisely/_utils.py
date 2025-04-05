@@ -500,7 +500,7 @@ def run_coroutine(coroutine):
             async def async_function():
                 await asyncio.sleep(1)
                 return "Hello, World!"
-                
+
             coroutine = async_function()
             result = run_coroutine(coroutine)
             print(result)
@@ -531,3 +531,35 @@ def get_filename_from_headers(url):
     except Exception as e:
         print(f"Error retrieving file name from headers: {e}")
         return None
+
+
+def removesuffix(string, suffix):
+    """
+    Returns the string without the specified suffix if the string ends with that suffix.
+    Otherwise returns the original string.
+    Uses for Python versions < 3.9.
+
+    :param string: The original string.
+    :type string: str
+    :param suffix: The suffix to remove.
+    :type suffix: str
+    :return: The string without the suffix or the original string.
+    :rtype: str
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely._utils import removesuffix
+
+        original_string = "example.txt"
+        suffix_to_remove = ".txt"
+
+        result = removesuffix(original_string, suffix_to_remove)
+        print(result)
+
+        # Output: example
+
+    """
+    if string.endswith(suffix):
+        return string[: -len(suffix)]
+    return string

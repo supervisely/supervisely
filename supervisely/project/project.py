@@ -33,6 +33,7 @@ from supervisely._utils import (
     batched,
     get_or_create_event_loop,
     is_development,
+    removesuffix,
     snake_to_human,
 )
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
@@ -4530,8 +4531,8 @@ def upload_project(
                 for blob_offsets in ds_fs.blob_offsets:
                     blob_file = None
                     for blob_file_info in blob_file_infos:
-                        if Path(blob_file_info.name).stem == Path(blob_offsets).name.strip(
-                            OFFSETS_PKL_SUFFIX
+                        if Path(blob_file_info.name).stem == removesuffix(
+                            Path(blob_offsets).name, OFFSETS_PKL_SUFFIX
                         ):
                             blob_file = blob_file_info
                             break

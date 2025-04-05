@@ -159,7 +159,7 @@ class BlobImageInfo:
         )
         if return_team_file_id:
             blob_info.add_team_file_id(offset_dict[ApiField.TEAM_FILE_ID])
-        return
+        return blob_info
 
     @property
     def offsets_dict(self) -> Dict:
@@ -2352,7 +2352,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         for batch in blob_image_infos_generator:
             names = [item.name for item in batch]
-            metas = [metas[name] for name in names] if metas is not None else [{}] * len(names)
+            metas_batch = [metas[name] for name in names] if metas is not None else [{}] * len(names)
             items = [
                 {ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: item.offsets_dict}
                 for item in batch
@@ -2363,7 +2363,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 names=names,
                 items=items,
                 progress_cb=progress_cb,
-                metas=metas,
+                metas=metas_batch,
                 batch_size=batch_size,
                 skip_validation=skip_validation,
                 conflict_resolution=conflict_resolution,
