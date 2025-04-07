@@ -1743,39 +1743,27 @@ def _process_tar_generator(
     from supervisely.api.api import ApiField
 
     with tarfile.open(tar_path, "r") as tar:
-        # TAR archives consist of 512-byte blocks
-        block_size = 512
-        offset = 0
-
         batch = []
         processed_count = 0
-        total_members = len(tar.getmembers())  # for logging
+        members = tar.getmembers()
+        total_members_count = len(members)  # for logging
 
-        logger.info(f"Processing TAR archive with {total_members} members")
+        logger.info(f"Processing TAR archive with {total_members_count} members")
 
-        for member in tar.getmembers():
+        for member in members:
             skip = not member.isfile()
-            if skip:
-                # Skip directories
-                offset += block_size
-                continue
 
             if filter_func and not filter_func(member.name):
                 logger.debug(f"File '{member.name}' is skipped by filter function")
                 skip = True
 
             if not skip:
-                # Calculate offsets
-                # Data start offset = current offset + header size (512 bytes)
-                offset_start = offset + block_size
-                offset_end = offset_start + member.size
-
                 file_info = {
                     ApiField.TITLE: os.path.basename(member.name),
                     ApiField.TEAM_FILE_ID: team_file_id,
                     ApiField.SOURCE_BLOB: {
-                        ApiField.OFFSET_START: offset_start,
-                        ApiField.OFFSET_END: offset_end,
+                        ApiField.OFFSET_START: member.offset_data,
+                        ApiField.OFFSET_END: member.offset_data + member.size,
                     },
                 }
                 batch.append(file_info)
@@ -1788,12 +1776,6 @@ def _process_tar_generator(
                     )
                     yield batch
                     batch = []
-
-            # Calculate the offset of the next file
-            # File size is rounded up to a multiple of block_size
-            file_blocks = (member.size + block_size - 1) // block_size
-            # Total size = header (1 block) + file data (file_blocks blocks)
-            offset += block_size + (file_blocks * block_size)
 
         # Yield any remaining files in the last batch
         if batch:
