@@ -68,6 +68,7 @@ class Button(Widget):
         style: Optional[str] = None,
         call_on_click: Optional[str] = None,
         visible_by_vue_field: Optional[str] = "",
+        icon_color: Optional[str] = None,
     ):
         self._widget_routes = {}
 
@@ -80,7 +81,10 @@ class Button(Widget):
         if icon is None:
             self._icon = ""
         else:
-            self._icon = f'<i class="{icon}" style="margin-right: {icon_gap}px"></i>'
+            icon_style = f"margin-right: {icon_gap}px"
+            if icon_color is not None:
+                icon_style += f"; color: {icon_color}"
+            self._icon = f'<i class="{icon}" style="{icon_style}"></i>'
 
         self._loading = False
         self._disabled = False
