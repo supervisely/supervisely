@@ -4284,7 +4284,7 @@ def _download_project(
                                 total_offsets_count += len(current_batch)
 
                             if total_offsets_count > 0:
-                                logger.info(
+                                logger.debug(
                                     f"Saved {total_offsets_count} image offsets for {blob_file_id} to {offsets_file_path} in {(total_offsets_count + OFFSETS_PKL_BATCH_SIZE - 1) // OFFSETS_PKL_BATCH_SIZE} batches"
                                 )
                                 ds_progress(total_offsets_count)

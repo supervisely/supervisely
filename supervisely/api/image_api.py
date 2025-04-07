@@ -2278,7 +2278,7 @@ class ImageApi(RemoveableBulkModuleApi):
         offsets_file_path: Optional[str] = None,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         metas: Optional[Dict] = None,
-        batch_size: Optional[int] = 50,
+        batch_size: Optional[int] = 10000,
         skip_validation: Optional[bool] = False,
         conflict_resolution: Optional[Literal["rename", "skip", "replace"]] = None,
         validate_meta: Optional[bool] = False,
