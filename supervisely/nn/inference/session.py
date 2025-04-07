@@ -1,7 +1,9 @@
 import json
+import os
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
+import numpy as np
 import requests
 
 try:
@@ -18,6 +20,7 @@ from supervisely.api.api import ApiField
 from supervisely.api.module_api import WaitingTimeExceeded
 from supervisely.api.task_api import TaskApi
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
+from supervisely.imaging.image import write_bytes
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.nn.utils import DeployInfo
 from supervisely.sly_logger import logger
@@ -195,6 +198,32 @@ class SessionJSON:
         resp = self._post(url, json=json_body)
         return resp.json()
 
+    def inference_images_bytes_async(
+        self, images: List[bytes], batch_size: int = None
+    ) -> "AsyncInferenceIterator":
+        if self._async_inference_uuid:
+            logger.info(
+                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
+            )
+            try:
+                self.stop_async_inference()
+                self._on_async_inference_end()
+            except Exception as exc:
+                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
+        endpoint = "inference_batch_async"
+        url = f"{self._base_url}/{endpoint}"
+        files = [
+            ("files", (f"image_{i}.png", image, "image/png")) for i, image in enumerate(images)
+        ]
+        settings_json = json.dumps({"settings": self.inference_settings, "batch_size": batch_size})
+        uploads = files + [("settings", (None, json.dumps(settings_json), "text/plain"))]
+        resp = self._post(url, files=uploads).json()
+        self._async_inference_uuid = resp["inference_request_uuid"]
+        self._stop_async_inference_flag = False
+
+    def inference_images_np_async(self, images: List[np.ndarray]) -> "AsyncInferenceIterator":
+        return self.inference_images_bytes_async([write_bytes(image, ".png") for image in images])
+
     def inference_image_ids(self, image_ids: List[int]) -> List[Dict[str, Any]]:
         endpoint = "inference_batch_ids"
         url = f"{self._base_url}/{endpoint}"
@@ -352,6 +381,7 @@ class SessionJSON:
             self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
         state["tracker"] = tracker
+        json_body["context"]["apiToken"] = os.getenv("API_TOKEN")
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -848,6 +878,11 @@ class Session(SessionJSON):
         pred_list_raw = super().inference_image_ids(image_ids)
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
+
+    def inference_images_np_async(self, images: List[np.ndarray]) -> AsyncInferenceIterator:
+        pred_json = super().inference_images_np_async(images)
+        pred_ann = self._convert_to_sly_annotation(pred_json)
+        return pred_ann
 
     def inference_image_ids_async(
         self,

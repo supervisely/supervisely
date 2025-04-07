@@ -2708,12 +2708,18 @@ class Inference:
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
             logger.debug(f"'inference_image_id' request in json format:{request.state.state}")
-            return self._inference_image_id(request.state.api, request.state.state)
+            api = request.state.api
+            if api is None:
+                api = self.api
+            return self._inference_image_id(api, request.state.state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
             logger.debug(f"'inference_image_url' request in json format:{request.state.state}")
-            return self._inference_image_url(request.state.api, request.state.state)
+            api = request.state.api
+            if api is None:
+                api = self.api
+            return self._inference_image_url(api, request.state.state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(response: Response, request: Request):
@@ -2726,7 +2732,10 @@ class Inference:
                     "success": False,
                 }
             logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
-            return self._inference_batch_ids(request.state.api, request.state.state)
+            api = request.state.api
+            if api is None:
+                api = self.api
+            return self._inference_batch_ids(api, request.state.state)
 
         @server.post("/inference_batch_ids_async")
         def inference_batch_ids_async(response: Response, request: Request):
@@ -2744,6 +2753,9 @@ class Inference:
                     "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
+            api = request.state.api
+            if api is None:
+                api = self.api
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
@@ -2752,7 +2764,7 @@ class Inference:
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._inference_images_ids,
-                request.state.api,
+                api,
                 request.state.state,
                 images_ids,
                 inference_request_uuid,
@@ -2783,7 +2795,10 @@ class Inference:
                     "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
-            return self._inference_video_id(request.state.api, request.state.state)
+            api = request.state.api
+            if api is None:
+                api = self.api
+            return self._inference_video_id(api, request.state.state)
 
         @server.post("/inference_video_async")
         def inference_video_async(
@@ -2941,12 +2956,15 @@ class Inference:
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
+            api = request.state.api
+            if api is None:
+                api = self.api
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._inference_image_id,
-                request.state.api,
+                api,
                 request.state.state,
                 inference_request_uuid,
             )
@@ -2979,12 +2997,15 @@ class Inference:
             inference_request_uuid = uuid.uuid5(
                 namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
             ).hex
+            api = request.state.api
+            if api is None:
+                api = self.api
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._inference_video_id,
-                request.state.api,
+                api,
                 request.state.state,
                 inference_request_uuid,
             )
@@ -3006,8 +3027,11 @@ class Inference:
             logger.debug(
                 f"'inference_project_id_async' request in json format:{request.state.state}"
             )
+            api = request.state.api
+            if api is None:
+                api = self.api
             project_id = request.state.state["projectId"]
-            project_info = request.state.api.project.get_info_by_id(project_id)
+            project_info = api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
                 raise ValueError("Only images projects are supported.")
             # check batch size
@@ -3028,7 +3052,7 @@ class Inference:
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._inference_project_id,
-                request.state.api,
+                api,
                 request.state.state,
                 project_info,
                 inference_request_uuid,
@@ -3045,8 +3069,11 @@ class Inference:
         @server.post("/run_speedtest")
         def run_speedtest(response: Response, request: Request):
             logger.debug(f"'run_speedtest' request in json format:{request.state.state}")
+            api = request.state.api
+            if api is None:
+                api = self.api
             project_id = request.state.state["projectId"]
-            project_info = request.state.api.project.get_info_by_id(project_id)
+            project_info = api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 response.body = {"message": "Only images projects are supported."}
@@ -3073,7 +3100,7 @@ class Inference:
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._run_speedtest,
-                request.state.api,
+                api,
                 request.state.state,
                 inference_request_uuid,
             )
