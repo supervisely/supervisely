@@ -11,7 +11,7 @@ import time
 import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from pathlib import Path
 from queue import Queue
@@ -57,7 +57,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import StateJson, get_data_dir
@@ -112,6 +112,33 @@ except ImportError:
     from typing_extensions import Literal
 
 
+@dataclass
+class AutoRestartInfo:
+    deploy_params: dict
+
+    class Fields:
+        AUTO_RESTART_INFO = "autoRestartInfo"
+        DEPLOY_PARAMS = "deployParams"
+
+    def generate_fields(self) -> List[dict]:
+        return [
+            {
+                ApiField.FIELD: self.Fields.AUTO_RESTART_INFO,
+                ApiField.PAYLOAD: {self.Fields.DEPLOY_PARAMS: self.deploy_params},
+            }
+        ]
+
+    @classmethod
+    def from_response(cls, data: dict):
+        autorestart_info = data.get(cls.Fields.AUTO_RESTART_INFO, None)
+        if autorestart_info is None:
+            return None
+        return cls(deploy_params=autorestart_info.get(cls.Fields.DEPLOY_PARAMS, None))
+
+    def is_changed(self, deploy_params: dict) -> bool:
+        return self.deploy_params != deploy_params
+
+
 class Inference:
     FRAMEWORK_NAME: str = None
     """Name of framework to register models in Supervisely"""
@@ -148,6 +175,7 @@ class Inference:
                 model_dir = os.path.join(get_data_dir(), "models")
         sly_fs.mkdir(model_dir)
 
+        self.autorestart = None
         self.device: str = None
         self.runtime: str = None
         self.model_precision: str = None
@@ -348,6 +376,9 @@ class Inference:
                 self._user_layout_card.unlock()
 
     def set_params_to_gui(self, deploy_params: dict) -> None:
+        """
+        Set params for load_model method to GUI.
+        """
         if isinstance(self.gui, GUI.ServingGUI):
             self._user_layout_card.hide()
             self._api_request_model_info.set_text(json.dumps(deploy_params), "json")
@@ -588,15 +619,16 @@ class Inference:
     def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
         if deploy_params["runtime"] != RuntimeType.PYTORCH:
             export = deploy_params["model_info"].get("export", {})
-            export_model = export.get(deploy_params["runtime"], None)
-            if export_model is not None:
-                if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
-                    deploy_params["model_files"]["checkpoint"]
-                ):
-                    deploy_params["model_files"]["checkpoint"] = (
-                        deploy_params["model_info"]["artifacts_dir"] + export_model
-                    )
-                    logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
+            if export is not None:
+                export_model = export.get(deploy_params["runtime"], None)
+                if export_model is not None:
+                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
+                        deploy_params["model_files"]["checkpoint"]
+                    ):
+                        deploy_params["model_files"]["checkpoint"] = (
+                            deploy_params["model_info"]["artifacts_dir"] + export_model
+                        )
+                        logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
 
         if deploy_params["model_source"] == ModelSource.PRETRAINED:
             return self._download_pretrained_model(deploy_params["model_files"], log_progress)
@@ -698,6 +730,23 @@ class Inference:
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
+        try:
+            if self.autorestart is None:
+                self.autorestart = AutoRestartInfo(self._deploy_params)
+                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                logger.debug(
+                    "Created new autorestart info.",
+                    extra=self.autorestart.deploy_params,
+                )
+            elif self.autorestart.is_changed(self._deploy_params):
+                self.autorestart.deploy_params.update(self._deploy_params)
+                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                logger.debug(
+                    "Autorestart info is changed. Parameters have been updated.",
+                    extra=self.autorestart.deploy_params,
+                )
+        except Exception as e:
+            logger.warning(f"Failed to update autorestart info: {repr(e)}")
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
@@ -2571,6 +2620,29 @@ class Inference:
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
+    def _deploy_on_autorestart(self):
+        try:
+            self._api_request_model_layout._title = (
+                "Model was deployed during auto restart with the following settings"
+            )
+            self._api_request_model_layout.update_data()
+            deploy_params = self.autorestart.deploy_params
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                model_files = self._download_model_files(deploy_params)
+                deploy_params["model_files"] = model_files
+                self._load_model_headless(**deploy_params)
+            elif isinstance(self.gui, GUI.ServingGUI):
+                self._load_model(deploy_params)
+
+            self.set_params_to_gui(deploy_params)
+            # update to set correct device
+            device = deploy_params.get("device", "cpu")
+            self.gui.set_deployed(device)
+            return {"result": "model was successfully deployed"}
+        except Exception as e:
+            self.gui._success_label.hide()
+            raise e
+
     def serve(self):
         if not self._use_gui and not self._is_local_deploy:
             Progress("Deploying model ...", 1)
@@ -2613,6 +2685,20 @@ class Inference:
         #     self._app = Application(layout=self.get_ui())
         else:
             self._app = Application(layout=self.get_ui())
+
+        try:
+            if self._task_id is not None:
+                response = self.api.task.get_fields(
+                    self._task_id, [AutoRestartInfo.Fields.AUTO_RESTART_INFO]
+                )
+                self.autorestart = AutoRestartInfo.from_response(response)
+                if self.autorestart is not None:
+                    logger.debug("Autorestart info is set.", extra=self.autorestart.deploy_params)
+                    self._deploy_on_autorestart()
+                else:
+                    logger.debug("Autorestart info is not set.")
+        except Exception:
+            logger.error("Autorestart failed.", exc_info=True)
 
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)

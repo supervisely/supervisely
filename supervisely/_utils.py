@@ -500,8 +500,9 @@ def run_coroutine(coroutine):
             async def async_function():
                 await asyncio.sleep(1)
                 return "Hello, World!"
-            coro = async_function()
-            result = run_coroutine(coro)
+                
+            coroutine = async_function()
+            result = run_coroutine(coroutine)
             print(result)
             # Output: Hello, World!
     """

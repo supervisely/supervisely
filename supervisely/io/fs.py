@@ -1,15 +1,15 @@
 # coding: utf-8
 
 # docs
+import base64
 import errno
+import hashlib
 import mimetypes
 import os
 import re
 import shutil
 import subprocess
 import tarfile
-import hashlib
-import base64
 from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
 
 import aiofiles
@@ -1417,14 +1417,10 @@ async def copy_file_async(
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+        coroutine = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+        run_coroutine(coroutine)
     """
     ensure_base_path(dst)
     async with aiofiles.open(dst, "wb") as out_f:
@@ -1453,14 +1449,10 @@ async def get_file_hash_async(path: str) -> str:
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            hash = future.result()
-        else:
-            hash = loop.run_until_complete(coro)
+        coroutine = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
+        hash = run_coroutine(coroutine)
     """
     async with aiofiles.open(path, "rb") as file:
         file_bytes = await file.read()
@@ -1493,17 +1485,13 @@ async def unpack_archive_async(
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
         archive_path = '/home/admin/work/examples.tar'
         target_dir = '/home/admin/work/projects'
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.unpack_archive_async(archive_path, target_dir)
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+        coroutine = sly.fs.unpack_archive_async(archive_path, target_dir)
+        run_coroutine(coroutine)
     """
     if is_split:
         chunk = chunk_size_mb * 1024 * 1024
@@ -1549,14 +1537,10 @@ async def touch_async(path: str) -> None:
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+        coroutine = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
+        run_coroutine(coroutine)
     """
     ensure_base_path(path)
     async with aiofiles.open(path, "a"):
@@ -1591,15 +1575,12 @@ async def list_files_recursively_async(
          .. code-block:: python
     
             import supervisely as sly
-    
+            from supervisely._utils import run_coroutine
+                
             dir_path = '/home/admin/work/projects/examples'
-            loop = sly.utils.get_or_create_event_loop()
-            coro = sly.fs.list_files_recursively_async(dir_path)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coro, loop)
-                files = future.result()
-            else:
-                files = loop.run_until_complete(coro)
+
+            coroutine = sly.fs.list_files_recursively_async(dir_path)
+            files = run_coroutine(coroutine)
     """
 
     def sync_file_list():

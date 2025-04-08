@@ -719,7 +719,9 @@ class InferenceImageCache:
         return f"frame_{video_id}_{frame_index}"
 
     def _video_name(self, video_id: int, video_name: str) -> str:
-        return f"video_{video_id}.{video_name.split('.')[-1]}"
+        ext = Path(video_name).suffix
+        name = f"video_{video_id}{ext}"
+        return name
 
     def _project_meta_name(self, project_id: int) -> str:
         return f"project_meta_{project_id}"
