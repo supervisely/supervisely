@@ -3517,8 +3517,8 @@ class Inference:
                 )
 
     def _inference_by_local_deploy_args(self):
-        # Отложенный импорт для избежания циклической зависимости
         from supervisely.nn.inference.local_predictor import LocalPredictor
+
         predictor = LocalPredictor(self)
         predictor.predict_by_args()
 
