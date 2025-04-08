@@ -1448,7 +1448,20 @@ class Inference:
                 settings=settings,
             )
             anns = self._exclude_duplicated_predictions(api, anns, settings, dataset_id, ids)
-            results.extend(self._format_output(anns, slides_data))
+            results.extend(
+                self._format_output(
+                    anns,
+                    slides_data,
+                    kwargs_list=[
+                        {
+                            "image_id": image_info.id,
+                            "name": image_info.name,
+                            "dataset_id": image_info.dataset_id,
+                        }
+                        for image_info in infos
+                    ],
+                )
+            )
         return results
 
     def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
@@ -1514,7 +1527,13 @@ class Inference:
                 api, anns, settings, image_info.dataset_id, [image_id]
             )[0]
 
-        result = self._format_output(anns, slides_data)[0]
+        result = self._format_output(
+            anns,
+            slides_data,
+            image_id=image_id,
+            name=image_info.name,
+            dataset_id=image_info.dataset_id,
+        )[0]
         if async_inference_request_uuid is not None and ann is not None:
             inference_request["result"] = result
         return result
@@ -1535,7 +1554,7 @@ class Inference:
             settings=settings,
         )
         sly_fs.silent_remove(image_path)
-        return self._format_output(anns, slides_data)[0]
+        return self._format_output(anns, slides_data, url=image_url)[0]
 
     def _inference_video_cached(
         self, key: Any, settings: Dict, async_inference_request_uuid: str = None
@@ -1608,7 +1627,9 @@ class Inference:
             if tracker is not None:
                 for frame_index, frame, ann in zip(batch, frames, anns):
                     tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
-            batch_results = self._format_output(anns, slides_data)
+            batch_results = self._format_output(
+                anns, slides_data, kwargs_list=[{"frame_index": frame} for frame in batch]
+            )
             results.extend(batch_results)
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(batch))
@@ -1719,7 +1740,15 @@ class Inference:
             if tracker is not None:
                 for frame_index, frame, ann in zip(batch, frames, anns):
                     tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
-            batch_results = self._format_output(anns, slides_data)
+            batch_results = self._format_output(
+                anns,
+                slides_data,
+                kwargs_list=[{"frame_index": frame} for frame in batch],
+                name=video_info.name,
+                video_id=video_info.id,
+                dataset_id=video_info.dataset_id,
+                project_id=video_info.project_id,
+            )
             results.extend(batch_results)
             if async_inference_request_uuid is not None:
                 sly_progress.iters_done(len(batch))
@@ -2311,6 +2340,7 @@ class Inference:
                                 image_id=images_infos_batch[i].id,
                                 name=images_infos_batch[i].name,
                                 dataset_id=dataset_info.id,
+                                project_id=dataset_info.project_id,
                             )
                         )
                     results.extend(batch_results)
