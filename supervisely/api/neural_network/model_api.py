@@ -22,14 +22,19 @@ from supervisely.api.task_api import TaskApi
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging._video import ALLOWED_VIDEO_EXTENSIONS
+from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.imaging.image import read as read_image
 from supervisely.imaging.image import read_bytes as read_image_bytes
 from supervisely.imaging.image import write as write_image
 from supervisely.io.fs import (
     clean_dir,
     dir_empty,
+    dir_exists,
     ensure_base_path,
+    file_exists,
     get_file_ext,
+    list_files,
     mkdir,
 )
 from supervisely.project.project_meta import ProjectMeta
@@ -341,8 +346,60 @@ class InferenceSession:
                 self.input, self.session.inference_images_np_async(input, **kwargs)
             )
         elif isinstance(input[0], (str, PathLike)):
-            # input is path to a file or directory
-            pass
+            if len(input) > 1:
+                # if the input is a list of paths, assume they are images
+                for x in input:
+                    if not isinstance(x, (str, PathLike)):
+                        raise ValueError("Input must be a list of strings or PathLike objects.")
+                kwargs = get_valid_kwargs(
+                    kwargs, self.session.inference_image_paths_async, exclude=["image_paths"]
+                )
+                self._iterator = self._Iterator(
+                    self.input,
+                    self.session.inference_image_paths_async(input, **kwargs),
+                )
+            else:
+                if dir_exists(input[0]):
+                    # if the input is a directory, assume it contains images
+                    kwargs = get_valid_kwargs(
+                        kwargs, self.session.inference_image_paths_async, exclude=["image_paths"]
+                    )
+                    image_paths = list_files(input[0])
+                    if len(image_paths) == 0:
+                        raise ValueError("Directory is empty.")
+                    self._iterator = self._Iterator(
+                        self.input,
+                        self.session.inference_image_paths_async(image_paths, **kwargs),
+                    )
+                elif file_exists(input[0]):
+                    ext = get_file_ext(input[0])
+                    if ext == "":
+                        raise ValueError("File has no extension.")
+                    if ext in SUPPORTED_IMG_EXTS:
+                        kwargs = get_valid_kwargs(
+                            kwargs,
+                            self.session.inference_image_paths_async,
+                            exclude=["image_paths"],
+                        )
+                        self._iterator = self._Iterator(
+                            self.input,
+                            self.session.inference_image_paths_async([input[0]], **kwargs),
+                        )
+                    elif ext in ALLOWED_VIDEO_EXTENSIONS:
+                        kwargs = get_valid_kwargs(
+                            kwargs, self.session.inference_video_path_async, exclude=["video_path"]
+                        )
+                        self._iterator = self._Iterator(
+                            self.input,
+                            self.session.inference_video_path_async(input[0], **kwargs),
+                        )
+                    else:
+                        raise ValueError(
+                            f"Unsupported file extension: {ext}. Supported extensions are: {SUPPORTED_IMG_EXTS + ALLOWED_VIDEO_EXTENSIONS}"
+                        )
+                else:
+                    raise ValueError(f"File or directory does not exist: {input[0]}")
+
         elif isinstance(input[0], ImageInfo):
             kwargs = get_valid_kwargs(
                 kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
