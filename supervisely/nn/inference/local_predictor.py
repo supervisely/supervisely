@@ -1,7 +1,8 @@
+from __future__ import annotations
 import os
 import time
 import cv2
-from typing import Dict, List, Tuple, Union, Optional, TypeVar, TYPE_CHECKING, Any
+from typing import Dict, List, Tuple, Union, Optional, TypeVar, Any
 
 from supervisely.api.api import Api
 from supervisely.annotation.annotation import Annotation
@@ -26,10 +27,6 @@ from supervisely.project.video_project import VideoProject, VideoDataset
 from supervisely import logger
 import numpy as np
 
-if TYPE_CHECKING:
-    from supervisely.nn.inference.inference import Inference
-
-InferenceType = TypeVar('InferenceType', bound='Inference')
 
 class LocalPredictor:
     """Class for performing local predictions using Supervisely models.
@@ -43,7 +40,7 @@ class LocalPredictor:
     - Local Supervisely project
     """
     
-    def __init__(self, inference_instance: 'InferenceType'):
+    def __init__(self, inference_instance: 'Inference'):
         """
         Initialize LocalPredictor.
         
