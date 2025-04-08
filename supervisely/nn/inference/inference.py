@@ -709,23 +709,24 @@ class Inference:
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
-        try:
-            if self.autorestart is None:
-                self.autorestart = AutoRestartInfo(self._deploy_params)
-                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
-                logger.debug(
-                    "Created new autorestart info.",
-                    extra=self.autorestart.deploy_params,
-                )
-            elif self.autorestart.is_changed(self._deploy_params):
-                self.autorestart.deploy_params.update(self._deploy_params)
-                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
-                logger.debug(
-                    "Autorestart info is changed. Parameters have been updated.",
-                    extra=self.autorestart.deploy_params,
-                )
-        except Exception as e:
-            logger.warning(f"Failed to update autorestart info: {repr(e)}")
+        if self._task_id is not None and is_production():
+            try:
+                if self.autorestart is None:
+                    self.autorestart = AutoRestartInfo(self._deploy_params)
+                    self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                    logger.debug(
+                        "Created new autorestart info.",
+                        extra=self.autorestart.deploy_params,
+                    )
+                elif self.autorestart.is_changed(self._deploy_params):
+                    self.autorestart.deploy_params.update(self._deploy_params)
+                    self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                    logger.debug(
+                        "Autorestart info is changed. Parameters have been updated.",
+                        extra=self.autorestart.deploy_params,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to update autorestart info: {repr(e)}")
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
@@ -2535,8 +2536,8 @@ class Inference:
         else:
             self._app = Application(layout=self.get_ui())
 
-        try:
-            if self._task_id is not None:
+        if self._task_id is not None and is_production():
+            try:
                 response = self.api.task.get_fields(
                     self._task_id, [AutoRestartInfo.Fields.AUTO_RESTART_INFO]
                 )
@@ -2546,8 +2547,8 @@ class Inference:
                     self._deploy_on_autorestart()
                 else:
                     logger.debug("Autorestart info is not set.")
-        except Exception:
-            logger.error("Autorestart failed.", exc_info=True)
+            except Exception:
+                logger.error("Autorestart failed.", exc_info=True)
 
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)
