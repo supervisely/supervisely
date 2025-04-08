@@ -24,9 +24,9 @@ from supervisely.imaging import image as sly_image
 from supervisely.video import video as sly_video
 from supervisely.project.project import Project, ProjectType, Dataset, OpenMode
 from supervisely.project.video_project import VideoProject, VideoDataset
+from supervisely.nn.inference.inference import Inference
 from supervisely import logger
 import numpy as np
-
 
 class LocalPredictor:
     """Class for performing local predictions using Supervisely models.
@@ -40,7 +40,7 @@ class LocalPredictor:
     - Local Supervisely project
     """
     
-    def __init__(self, inference_instance: 'Inference'):
+    def __init__(self, inference_instance: Inference):
         """
         Initialize LocalPredictor.
         
