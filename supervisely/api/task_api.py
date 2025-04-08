@@ -10,6 +10,7 @@ from pathlib import Path
 # docs
 from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
+import requests
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
@@ -1019,3 +1020,35 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             "tasks.output.set", {ApiField.TASK_ID: task_id, ApiField.OUTPUT: output}
         )
         return resp.json()
+
+    def is_running(self, task_id: int) -> bool:
+        """
+        Check if the task is running.
+
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :return: True if the task is running, False otherwise.
+        :rtype: bool
+        """
+        try:
+            self.send_request(task_id, "is_running", {}, retries=0, raise_error=True)
+        except requests.exceptions.HTTPError as e:
+            return False
+        return True
+
+    def is_ready(self, task_id: int) -> bool:
+        """
+        Check if the task is ready.
+
+        :param task_id: Task ID in Supervisely.
+        :type task_id: int
+        :return: True if the task is ready, False otherwise.
+        :rtype: bool
+        """
+        try:
+            return (
+                self.send_request(task_id, "is_ready", {}, retries=0, raise_error=True)["status"]
+                == "ready"
+            )
+        except requests.exceptions.HTTPError as e:
+            return False

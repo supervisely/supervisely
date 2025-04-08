@@ -3,16 +3,18 @@ from os import PathLike
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
+import requests
 
-from supervisely._utils import logger
+from supervisely._utils import get_valid_kwargs, logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagValueType
-from supervisely.api.annotation_api import AnnotationInfo
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
+from supervisely.api.task_api import TaskApi
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
@@ -22,35 +24,36 @@ if TYPE_CHECKING:
     from supervisely.api.api import Api
 
 
-def get_valid_kwargs(kwargs, func, exclude=None):
-    signature = inspect.signature(func)
-    valid_kwargs = {}
-    for key, value in kwargs.items():
-        if exclude is not None and key in exclude:
-            continue
-        if key in signature.parameters:
-            valid_kwargs[key] = value
-    return valid_kwargs
-
-
 class PredictionDTO:
 
     def __init__(
         self,
-        source: Union[str, int],
         annotation_json: Dict,
+        source: Union[str, int] = None,
         model_meta: Optional[Union[ProjectMeta, Dict]] = None,
+        name: Optional[str] = None,
+        path: Optional[str] = None,
+        url: Optional[str] = None,
+        project_id: Optional[int] = None,
+        dataset_id: Optional[int] = None,
         image_id: Optional[int] = None,
-        image_name: Optional[str] = None,
+        video_id: Optional[int] = None,
+        frame_index: Optional[int] = None,
     ):
         self.source = source
         self.annotation_json = annotation_json
-
         self.model_meta = model_meta
         if isinstance(self.model_meta, dict):
             self.model_meta = ProjectMeta.from_json(self.model_meta)
+
+        self.name = name
+        self.path = path
+        self.url = url
+        self.project_id = project_id
+        self.dataset_id = dataset_id
         self.image_id = image_id
-        self.image_name = image_name
+        self.video_id = video_id
+        self.frame_index = frame_index
 
         self._annotation = None
         self._boxes = None
@@ -125,8 +128,51 @@ class PredictionDTO:
     @property
     def annotation(self) -> Annotation:
         if self._annotation is None:
+            if self.model_meta is None:
+                raise ValueError("Model meta is not provided. Cannot create annotation.")
             self._annotation = Annotation.from_json(self.annotation_json, self.model_meta)
         return self._annotation
+
+    @property
+    def class_idxs(self) -> np.ndarray:
+        if self.model_meta is None:
+            raise ValueError("Model meta is not provided. Cannot create class indexes.")
+        cls_name_to_idx = {
+            obj_class.name: i for i, obj_class in enumerate(self.model_meta.obj_classes)
+        }
+        return np.array([cls_name_to_idx[class_name] for class_name in self.classes])
+
+    @classmethod
+    def from_json(cls, json_data: Dict, source=None, model_meta: Optional[ProjectMeta] = None):
+        kwargs = get_valid_kwargs(
+            json_data,
+            PredictionDTO.__init__,
+            exclude=["self", "annotation", "source", "model_meta"],
+        )
+        if "annotation" in json_data:
+            annotation_json = json_data["annotation"]
+        else:
+            annotation_json = json_data
+        return cls(
+            annotation_json=annotation_json,
+            source=source,
+            model_meta=model_meta,
+            **kwargs,
+        )
+
+    def to_json(self):
+        return {
+            "source": self.source,
+            "annotation": self._annotation,
+            "name": self.name,
+            "path": self.path,
+            "url": self.url,
+            "project_id": self.project_id,
+            "dataset_id": self.dataset_id,
+            "image_id": self.image_id,
+            "video_id": self.video_id,
+            "frame_index": self.frame_index,
+        }
 
 
 class InferenceSession:
@@ -171,7 +217,6 @@ class InferenceSession:
         self.params = params
         self.api = api
 
-        source = input
         if not isinstance(input, list):
             input = [input]
         if len(input) == 0:
@@ -182,7 +227,7 @@ class InferenceSession:
                 kwargs, self.session.inference_images_np_async, exclude=["images"]
             )
             self._iterator = self._Iterator(
-                source, self.session.inference_images_np_async(input, **kwargs)
+                self.input, self.session.inference_images_np_async(input, **kwargs)
             )
         elif isinstance(input[0], (str, PathLike)):
             # input is path to a file or directory
@@ -192,7 +237,7 @@ class InferenceSession:
                 kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
             )
             self._iterator = self._Iterator(
-                source,
+                self.input,
                 self.session.inference_image_ids_async([image.id for image in input], **kwargs),
             )
         elif isinstance(input[0], VideoInfo):
@@ -202,7 +247,7 @@ class InferenceSession:
                 kwargs, self.session.inference_video_id_async, exclude=["video_id"]
             )
             self._iterator = self._Iterator(
-                source,
+                self.input,
                 self.session.inference_video_id_async(input[0].id, **kwargs),
             )
         elif isinstance(input[0], ProjectInfo):
@@ -212,7 +257,7 @@ class InferenceSession:
                 kwargs, self.session.inference_project_id_async, exclude=["project_id"]
             )
             self._iterator = self._Iterator(
-                source,
+                self.input,
                 self.session.inference_project_id_async(input[0].id, **kwargs),
             )
         elif isinstance(input[0], DatasetInfo):
@@ -226,7 +271,7 @@ class InferenceSession:
             dataset_ids = [input[0].id]
             project_id = input[0].project_id
             self._iterator = self._Iterator(
-                source,
+                self.input,
                 self.session.inference_project_id_async(project_id, dataset_ids, **kwargs),
             )
         elif image_id is not None:
@@ -301,20 +346,8 @@ class InferenceSession:
 
     def __next__(self):
         prediction_json = self._iterator.inner.__next__()
-        kwargs = get_valid_kwargs(
-            prediction_json,
-            PredictionDTO.__init__,
-            exclude=["self", "source", "annotation_json", "annotation", "model_meta"],
-        )
-        if "annotation" in prediction_json:
-            annotation_json = prediction_json["annotation"]
-        else:
-            annotation_json = prediction_json
-        prediction = PredictionDTO(
-            source=self.input,
-            annotation_json=annotation_json,
-            model_meta=self.session.get_model_meta(),
-            **kwargs,
+        prediction = PredictionDTO.from_json(
+            prediction_json, source=self.input, model_meta=self.session.get_model_meta()
         )
         return prediction
 
@@ -407,14 +440,35 @@ class ModelApi:
             return result
         return result[0]
 
+    def _post(self, method: str, data: dict, raise_for_status: bool = True):
+        url = f"{self.url.rstrip("/")}/{method.lstrip("/")}"
+        response = requests.post(url, json=data)
+        if raise_for_status:
+            response.raise_for_status()
+        return response.json()
+
+    def _get(self, method: str, params: dict = None, raise_for_status: bool = True):
+        url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
+        response = requests.get(url, params=params)
+        if raise_for_status:
+            response.raise_for_status()
+        return response.json()
+
     def shutdown(self):
-        pass
+        if self.deploy_id is not None:
+            return self.api.task.stop(self.deploy_id)
+        response = self._post("tasks.stop", {ApiField.ID: id})
+        return TaskApi.Status(response[ApiField.STATUS])
 
     def get_info(self):
-        pass
+        if self.deploy_id is not None:
+            return self.api.nn._deploy_api.get_deploy_info(self.deploy_id)
+        return self._post("get_deploy_info", {})
 
     def healthcheck(self):
-        pass
+        if self.deploy_id is not None:
+            return self.api.task.is_ready(self.deploy_id)
+        return self._post("is_ready", {})["status"] == "ready"
 
     def monitor(self):
-        pass
+        raise NotImplementedError

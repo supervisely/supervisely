@@ -4,6 +4,7 @@ import asyncio
 import base64
 import copy
 import hashlib
+import inspect
 import json
 import os
 import random
@@ -500,7 +501,7 @@ def run_coroutine(coroutine):
             async def async_function():
                 await asyncio.sleep(1)
                 return "Hello, World!"
-                
+
             coroutine = async_function()
             result = run_coroutine(coroutine)
             print(result)
@@ -531,3 +532,14 @@ def get_filename_from_headers(url):
     except Exception as e:
         print(f"Error retrieving file name from headers: {e}")
         return None
+
+
+def get_valid_kwargs(kwargs, func, exclude=None):
+    signature = inspect.signature(func)
+    valid_kwargs = {}
+    for key, value in kwargs.items():
+        if exclude is not None and key in exclude:
+            continue
+        if key in signature.parameters:
+            valid_kwargs[key] = value
+    return valid_kwargs

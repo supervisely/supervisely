@@ -9,7 +9,6 @@ from supervisely.api.neural_network.model_api import ModelApi
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
-    from supervisely.nn.inference.session import Session
 
 
 class NeuralNetworkApi:
@@ -20,19 +19,20 @@ class NeuralNetworkApi:
 
     def __init__(self, api: "Api"):
         self._api = api
-        self.deploy = DeployApi(api)
+        self._deploy_api = DeployApi(api)
 
-    def deploy_pretrained_model(
+    def deploy(
         self,
-        agent_id: int,
-        app_name: str,
-        model_name: str,
-        device: Optional[str] = None,
+        checkpoint: str = None,
+        pretrained: str = None,
+        app_name: str = None,
+        device: str = None,
         runtime: Optional[str] = "PyTorch",
+        team_id: int = None,
         **kwargs,
-    ) -> "Session":
+    ) -> ModelApi:
         """
-        Deploy pretrained model by model name.
+        Deploy model by checkpoint path or model_name.
 
         :param app_name: App name in Supervisely (e.g., "Serve RT-DETRv2").
         :type app_name: str
@@ -43,56 +43,34 @@ class NeuralNetworkApi:
         :param runtime: Runtime string, default is "PyTorch".
         :type runtime: Optional[str]
         """
-        from supervisely.nn.inference.session import Session
+        assert (
+            checkpoint is not None or pretrained is not None
+        ), "Either checkpoint or pretrained model name must be provided."
+        assert (
+            checkpoint is None or pretrained is None
+        ), "Only one of checkpoint or pretrained model name can be provided."
+        assert (
+            pretrained is None or app_name is not None
+        ), "App name must be provided for pretrained models."
 
-        task_info = self.deploy.deploy_pretrained_model(
-            agent_id=agent_id,
-            app=app_name,
-            model_name=model_name,
-            device=device,
-            runtime=runtime,
-            **kwargs,
-        )
-        return Session(self._api, task_info["id"])
-
-    def deploy_custom_model(
-        self,
-        agent_id: int,
-        artifacts_dir: str,
-        checkpoint_name: Optional[str] = None,
-        device: Optional[str] = None,
-        team_id: int = None,
-        **kwargs,
-    ) -> "Session":
-        """
-        Deploy custom model based on the directory path in Team Files where the artifacts are stored.
-
-        :param artifacts_dir: Path to the artifacts directory in Team Files.
-        :type artifacts_dir: str
-        :param checkpoint_name: Checkpoint name (with file extension) to deploy, e.g. "best.pt".
-            If not provided, checkpoint will be chosen automatically, trying to pick the "best" checkpoint if available.
-        :type checkpoint_name: Optional[str]
-        :param device: Device string. If not provided, will be chosen automatically.
-        :type device: Optional[str]
-        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
-        :type team_id: int
-        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
-        :type kwargs: Dict[str, Any]
-        :raises ValueError: if validations fail.
-        :return: a :class:`Session` object
-        :rtype: Session
-        """
-        from supervisely.nn.inference.session import Session
-
-        task_info = self.deploy.deploy_custom_model_by_artifacts_dir(
-            agent_id=agent_id,
-            artifacts_dir=artifacts_dir,
-            checkpoint_name=checkpoint_name,
-            device=device,
-            team_id=team_id,
-            **kwargs,
-        )
-        return Session(self._api, task_info["id"])
+        if checkpoint is not None:
+            task_info = self._deploy_api.deploy_custom_model_by_checkpoint(
+                checkpoint=checkpoint,
+                device=device,
+                runtime=runtime,
+                team_id=team_id,
+                **kwargs,
+            )
+        else:
+            task_info = self._deploy_api.deploy_pretrained_model(
+                app_name=app_name,
+                model_name=pretrained,
+                device=device,
+                runtime=runtime,
+                team_id=team_id,
+                **kwargs,
+            )
+        return ModelApi(self._api, deploy_id=task_info["id"])
 
     def get_deployed_models(
         self,
@@ -129,7 +107,7 @@ class NeuralNetworkApi:
         # get deploy infos and filter results
         result = []
         for task in all_tasks:
-            deploy_info = self.deploy.get_deploy_info(task["id"])
+            deploy_info = self._deploy_api.get_deploy_info(task["id"])
             if model_name is not None:
                 if deploy_info["model_name"] != model_name:
                     continue

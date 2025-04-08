@@ -130,9 +130,27 @@ class DeployApi:
         }
         self._load_model_from_api(session_id, deploy_params)
 
+    def _find_agent(self, team_id: int = None, gpu=True):
+        """
+        Find an agent in Supervisely.
+
+        :param gpu: If True, find an agent with GPU.
+        :type gpu: bool
+        :return: Agent ID
+        :rtype: int
+        """
+        if team_id is None:
+            team_id = env.team_id()
+        agents = self._api.agent.get_list(team_id)
+        if len(agents) == 0:
+            raise ValueError("No available agents found.")
+        for agent in agents:
+            if gpu and agent.capabilities["types"]["inference"]["enabled"]:
+                return agent.id
+        raise ValueError("No available agents found.")
+
     def deploy_pretrained_model(
         self,
-        agent_id: int,
         app: Union[str, int],
         model_name: str,
         device: Optional[str] = None,
@@ -160,15 +178,86 @@ class DeployApi:
             module_id = app
         else:
             module_id = self._api.app.find_module_id_by_app_name(app)
+        agent_id = kwargs.get("agent_id", None)
+        if agent_id is None:
+            agent_id = self._find_agent()
         task_info = self._run_serve_app(agent_id, module_id, **kwargs)
         self.load_pretrained_model(
             task_info["id"], model_name=model_name, device=device, runtime=runtime
         )
         return task_info
 
+    def _find_team_by_path(self, path: str, team_id: int = None):
+        if team_id is not None:
+            if self._api.file.exists(team_id, path) or self._api.file.dir_exists(
+                team_id, path, recursive=False
+            ):
+                return team_id
+            else:
+                raise ValueError(f"Checkpoint '{path}' not found in team provided team")
+        team_id = env.team_id(raise_not_found=False)
+        if team_id is not None:
+            if self._api.file.exists(team_id, path) or self._api.file.dir_exists(
+                team_id, path, recursive=False
+            ):
+                return team_id
+        teams = self._api.team.get_list()
+        team_id = None
+        for team in teams:
+            if self._api.file.exists(team.id, path):
+                if team_id is not None:
+                    raise ValueError("Multiple teams have the same checkpoint")
+                team_id = team.id
+        if team_id is None:
+            raise ValueError("Checkpoint not found")
+        return team_id
+
+    def deploy_custom_model_by_checkpoint(
+        self,
+        checkpoint: str,
+        device: Optional[str] = None,
+        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        team_id: int = None,
+        timeout: int = 100,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """
+        Deploy a custom model based on the checkpoint path.
+
+        :param checkpoint: Path to the checkpoint in Team Files.
+        :type checkpoint: str
+        :param device: Device string. If not provided, will be chosen automatically.
+        :type device: Optional[str]
+        :param runtime: Runtime string, default is "PyTorch".
+        :type runtime: Optional[str]
+        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
+        :type team_id: Optional[int]
+        :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
+        :type timeout: Optional[int]
+        :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
+        :type kwargs: Dict[str, Any]
+        :return: Task Info
+        :rtype: Dict[str, Any]
+        :raises ValueError: if validations fail.
+        """
+        try:
+            artifacts_dir, checkpoint_name = checkpoint.split("/checkpoints/")
+        except:
+            raise ValueError(
+                "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
+            )
+        return self.deploy_custom_model_by_artifacts_dir(
+            artifacts_dir=artifacts_dir,
+            checkpoint_name=checkpoint_name,
+            team_id=team_id,
+            device=device,
+            runtime=runtime,
+            timeout=timeout,
+            **kwargs,
+        )
+
     def deploy_custom_model_by_artifacts_dir(
         self,
-        agent_id: int,
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
@@ -205,10 +294,13 @@ class DeployApi:
             raise ValueError("artifacts_dir must be a non-empty string.")
 
         if team_id is None:
-            team_id = env.team_id()
+            team_id = self._find_team_by_path(artifacts_dir, team_id=team_id)
         logger.debug(
             f"Starting custom model deployment. Team: {team_id}, Artifacts Dir: '{artifacts_dir}'"
         )
+        agent_id = kwargs.get("agent_id", None)
+        if agent_id is None:
+            agent_id = self._find_agent()
 
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):

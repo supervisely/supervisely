@@ -37,6 +37,7 @@ from supervisely._utils import (
     add_callback,
     get_filename_from_headers,
     get_or_create_event_loop,
+    get_valid_kwargs,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -49,6 +50,7 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.neural_network.model_api import PredictionDTO
 from supervisely.app.content import StateJson, get_data_dir
 from supervisely.app.exceptions import DialogWindowError
 from supervisely.app.fastapi.subapp import (
@@ -1359,11 +1361,23 @@ class Inference:
         self,
         anns: List[Annotation],
         slides_data: List[dict] = None,
+        kwargs_list: List = None,
+        **kwargs,
     ) -> List[dict]:
         if not slides_data:
             slides_data = [{} for _ in range(len(anns))]
         assert len(anns) == len(slides_data)
-        return [{"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)]
+        if kwargs_list is None:
+            kwargs_list = [{} for _ in range(len(anns))]
+        assert len(anns) == len(kwargs_list)
+        output = []
+        for ann, data, kw in zip(anns, slides_data, kwargs_list):
+            this_kwargs = {**kwargs, **kw}
+            this_kwargs = get_valid_kwargs(
+                this_kwargs, PredictionDTO.__init__, exclude=["self", "annotation"]
+            )
+            output.append({**PredictionDTO(ann, **this_kwargs).to_json(), "data": data})
+        return output
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
@@ -1975,14 +1989,14 @@ class Inference:
                     ann = self._exclude_duplicated_predictions(
                         api, [ann], settings, ds_info.id, [image_info.id], meta
                     )[0]
-                    batch_results.append(
-                        {
-                            "annotation": ann.to_json(),
-                            "data": slides_data[i],
-                            "image_id": image_info.id,
-                            "image_name": image_info.name,
-                            "dataset_id": image_info.dataset_id,
-                        }
+                    batch_results.extend(
+                        self._format_output(
+                            [ann],
+                            [None],
+                            image_id=image_info.id,
+                            name=image_info.name,
+                            dataset_id=image_info.dataset_id,
+                        )
                     )
                 results.extend(batch_results)
                 upload_queue.put(batch_results)
@@ -2290,14 +2304,14 @@ class Inference:
                     )
                     batch_results = []
                     for i, ann in enumerate(anns):
-                        batch_results.append(
-                            {
-                                "annotation": ann.to_json(),
-                                "data": slides_data[i],
-                                "image_id": images_infos_batch[i].id,
-                                "image_name": images_infos_batch[i].name,
-                                "dataset_id": dataset_info.id,
-                            }
+                        batch_results.extend(
+                            self._format_output(
+                                [ann],
+                                slides_data[i],
+                                image_id=images_infos_batch[i].id,
+                                name=images_infos_batch[i].name,
+                                dataset_id=dataset_info.id,
+                            )
                         )
                     results.extend(batch_results)
                     upload_queue.put(batch_results)
