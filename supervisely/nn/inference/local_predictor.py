@@ -1,15 +1,13 @@
 import os
 import time
 import cv2
-from typing import Dict, List, Tuple, Union, Optional, TypeVar, TYPE_CHECKING
+from typing import Dict, List, Tuple, Union, Optional, TypeVar, TYPE_CHECKING, Any
 
-import yaml
 from supervisely.api.api import Api
 from supervisely.annotation.annotation import Annotation
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag_collection import VideoTagCollection
 from supervisely.video_annotation.video_tag import VideoTag
-from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
@@ -25,8 +23,6 @@ from supervisely.imaging import image as sly_image
 from supervisely.video import video as sly_video
 from supervisely.project.project import Project, ProjectType, Dataset, OpenMode
 from supervisely.project.video_project import VideoProject, VideoDataset
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.app.widgets import Progress
 from supervisely import logger
 import numpy as np
 
@@ -35,19 +31,16 @@ if TYPE_CHECKING:
 
 InferenceType = TypeVar('InferenceType', bound='Inference')
 
-ALLOWED_VIDEO_EXTENSIONS = sly_video.ALLOWED_VIDEO_EXTENSIONS
-
-
 class LocalPredictor:
     """Class for performing local predictions using Supervisely models.
     
     This class handles various types of input data for prediction:
-    - Project IDs in the Supervisely platform
-    - Dataset IDs in the Supervisely platform
-    - Image IDs in the Supervisely platform
+    - Project ID in the Supervisely platform
+    - Dataset ID in the Supervisely platform
+    - Image ID in the Supervisely platform
     - Local image and video files
     - Local directories with images and videos
-    - Local Supervisely projects
+    - Local Supervisely project
     """
     
     def __init__(self, inference_instance: 'InferenceType'):
@@ -419,7 +412,7 @@ class LocalPredictor:
         :raises ValueError: If directory contains both images and videos
         """
         images = list_files_recursively(str(input_path), sly_image.SUPPORTED_IMG_EXTS, None, True)
-        videos = list_files_recursively(str(input_path), ALLOWED_VIDEO_EXTENSIONS, None, True)
+        videos = list_files_recursively(str(input_path), sly_video.ALLOWED_VIDEO_EXTENSIONS, None, True)
         
         if images and videos:
             raise ValueError(f"Directory '{input_path}' contains both images and videos.")
@@ -755,7 +748,7 @@ class LocalPredictor:
         :return: True if file is a video, False otherwise
         :rtype: bool
         """
-        return path.lower().endswith(tuple(ext.lower() for ext in ALLOWED_VIDEO_EXTENSIONS))
+        return path.lower().endswith(tuple(ext.lower() for ext in sly_video.ALLOWED_VIDEO_EXTENSIONS))
 
     def _build_dataset_map_for_project(
         self, project_path: str, modality: str, output_dir: str
