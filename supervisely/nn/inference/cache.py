@@ -18,6 +18,7 @@ from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 import supervisely as sly
 from supervisely._utils import batched
 from supervisely.io.fs import silent_remove
+from supervisely.video.video import VideoFrameReader
 
 
 class PersistentImageLRUCache(LRUCache):
@@ -185,84 +186,6 @@ class PersistentImageTTLCache(TTLCache):
 
     def copy_to(self, name, path):
         shutil.copyfile(str(self[name]), path)
-
-
-class VideoFrameReader:
-    def __init__(self, video_path: str, frame_indexes: List[int] = None):
-        self.video_path = video_path
-        self.frame_indexes = frame_indexes
-        self.vr = None
-        self.cap = None
-        self.prev_idx = -1
-
-    def _ensure_initialized(self):
-        if self.vr is None and self.cap is None:
-            try:
-                import decord
-
-                self.vr = decord.VideoReader(str(self.video_path))
-            except ImportError:
-                self.cap = cv2.VideoCapture(str(self.video_path))
-
-    def close(self):
-        if self.vr is not None:
-            self.vr = None
-        if self.cap is not None:
-            self.cap.release()
-            self.cap = None
-        self.prev_idx = -1
-
-    def __enter__(self):
-        self._ensure_initialized()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    def __del__(self):
-        self.close()
-
-    def read_frames(self) -> Generator:
-        if self.vr is not None:
-            if self.frame_indexes is None:
-                self.frame_indexes = range(len(self.vr))
-            for frame_index in self.frame_indexes:
-                frame = self.vr[frame_index]
-                yield frame.asnumpy()
-        else:
-            if self.frame_indexes is None:
-                frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                self.frame_indexes = range(frame_count)
-            for frame_index in self.frame_indexes:
-                if 1 > frame_index - self.prev_idx < 20:
-                    while self.prev_idx < frame_index - 1:
-                        self.cap.read()
-                if frame_index != self.prev_idx + 1:
-                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = self.cap.read()
-                if not ret:
-                    raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
-                yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                self.prev_idx = frame_index
-
-    def __iter__(self):
-        return self.read_frames()
-
-    def frame_size(self):
-        self._ensure_initialized()
-        if self.vr is not None:
-            return self.vr[0].shape[:2]
-        else:
-            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            return height, width
-
-    def frames_count(self):
-        self._ensure_initialized()
-        if self.vr is not None:
-            return len(self.vr)
-        else:
-            return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 
 class InferenceImageCache:

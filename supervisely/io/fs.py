@@ -1571,12 +1571,12 @@ async def list_files_recursively_async(
     :rtype: List[str]
 
     :Usage example:
-    
+
          .. code-block:: python
-    
+
             import supervisely as sly
             from supervisely._utils import run_coroutine
-                
+
             dir_path = '/home/admin/work/projects/examples'
 
             coroutine = sly.fs.list_files_recursively_async(dir_path)

@@ -1,11 +1,15 @@
+import atexit
 import inspect
+import os
+import tempfile
 from os import PathLike
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
 
-from supervisely._utils import get_valid_kwargs, logger
+from supervisely._utils import get_valid_kwargs, logger, rand_str
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
@@ -18,13 +22,26 @@ from supervisely.api.task_api import TaskApi
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging.image import read as read_image
+from supervisely.imaging.image import read_bytes as read_image_bytes
+from supervisely.imaging.image import write as write_image
+from supervisely.io.fs import (
+    clean_dir,
+    dir_empty,
+    ensure_base_path,
+    get_file_ext,
+    mkdir,
+)
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.video.video import VideoFrameReader
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
 
 
 class PredictionDTO:
+    _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
+    __cleanup_registered = False
 
     def __init__(
         self,
@@ -61,7 +78,12 @@ class PredictionDTO:
         self._classes = None
         self._scores = None
 
-    def _init_gemetries(self):
+        mkdir(self._temp_dir)
+        if not PredictionDTO.__cleanup_registered:
+            atexit.register(self._clear_temp_files)
+            PredictionDTO.__cleanup_registered = True
+
+    def _init_geometries(self):
 
         def _get_confidence(label: Label):
             for tag_name in ["confidence", "conf", "score"]:
@@ -104,25 +126,25 @@ class PredictionDTO:
     @property
     def boxes(self):
         if self._boxes is None:
-            self._init_gemetries()
+            self._init_geometries()
         return self._boxes
 
     @property
     def masks(self):
         if self._masks is None:
-            self._init_gemetries()
+            self._init_geometries()
         return self._masks
 
     @property
     def classes(self):
         if self._classes is None:
-            self._init_gemetries()
+            self._init_geometries()
         return self._classes
 
     @property
     def scores(self):
         if self._scores is None:
-            self._init_gemetries()
+            self._init_geometries()
         return self._scores
 
     @property
@@ -163,7 +185,7 @@ class PredictionDTO:
     def to_json(self):
         return {
             "source": self.source,
-            "annotation": self._annotation,
+            "annotation": self.annotation_json,
             "name": self.name,
             "path": self.path,
             "url": self.url,
@@ -174,13 +196,102 @@ class PredictionDTO:
             "frame_index": self.frame_index,
         }
 
+    def _clear_temp_files(self):
+        if not dir_empty(self._temp_dir):
+            clean_dir(self._temp_dir)
+
+    def load_image(self, api: Optional["Api"] = None) -> np.ndarray:
+        if self.frame_index is None:
+            if self.path is not None:
+                return read_image(self.path)
+            if self.url is not None:
+                ext = get_file_ext(self.url)
+                if ext == "":
+                    ext = ".jpg"
+                r = requests.get(self.url, stream=True, timeout=60)
+                r.raise_for_status()
+                return read_image_bytes(r.content)
+            if self.image_id is not None:
+                try:
+                    from supervisely.api.api import Api
+
+                    if api is None:
+                        api = Api()
+                    return api.image.download_np(self.image_id)
+                except Exception as e:
+                    raise RuntimeError("Failed to load image by ID") from e
+            raise ValueError("Cannot load image. No path, URL, image ID, or frame_index provided.")
+        if self.video_id is not None:
+            if self.frame_index is None:
+                raise ValueError("Frame index is not provided for video.")
+            try:
+                from supervisely.api.api import Api
+
+                if api is None:
+                    api = Api()
+                return api.video.frame.download_np(self.video_id, self.frame_index)
+            except Exception as e:
+                raise RuntimeError("Failed to load frame by video ID") from e
+        if self.path is not None:
+            return next(VideoFrameReader(self.path, frame_indexes=[self.frame_index]))
+        if self.url is not None:
+            video_name = Path(self.url).name
+            video_path = Path(self._temp_dir) / video_name
+            mkdir(self._temp_dir)
+            if not video_path.exists():
+                with requests.get(self.url, stream=True, timeout=10 * 60) as r:
+                    r.raise_for_status()
+                    with open(video_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+            return next(VideoFrameReader(video_path, frame_indexes=[self.frame_index]))
+        raise ValueError("Cannot load frame. No path, URL or video ID provided.")
+
+    def visualize(
+        self,
+        save_path: Optional[str] = None,
+        color: Optional[Tuple[int, int, int]] = None,
+        thickness: Optional[int] = 1,
+        draw_tags: Optional[bool] = False,
+        fill_rectangles: Optional[bool] = True,
+        draw_class_names: Optional[bool] = False,
+        api: Optional["Api"] = None,
+    ) -> np.ndarray:
+        img = self.load_image(api)
+        self.annotation.draw(img, color, thickness, draw_tags, fill_rectangles, draw_class_names)
+        if save_path is None:
+            return img
+        if Path(save_path).suffix == "":
+            # is a directory
+            if self.name is not None:
+                name = self.name
+                if self.frame_index is not None:
+                    name = f"{name}_{self.frame_index}"
+            elif self.image_id is not None:
+                name = str(self.image_id)
+            elif self.video_id is not None:
+                name = str(self.video_id)
+            elif self.path is not None:
+                name = Path(self.path).name
+                if self.frame_index is not None:
+                    name = f"{name}_{self.frame_index}"
+            else:
+                name = f"{rand_str(6)}"
+            name = f"vis_{name}.png"
+            save_path = os.path.join(save_path, name)
+        ensure_base_path(save_path)
+        write_image(save_path, img)
+        logger.info("Visualization for prediction saved to %s", save_path)
+        return img
+
 
 class InferenceSession:
 
     class _Iterator:
-        def __init__(self, source: Any, iterator: Iterator):
+        def __init__(self, source: Any, iterator: Iterator, **kwargs):
             self.source = source
             self.inner = iterator
+            self.kwargs = kwargs
 
         def __len__(self):
             return len(self.inner)
@@ -347,7 +458,9 @@ class InferenceSession:
     def __next__(self):
         prediction_json = self._iterator.inner.__next__()
         prediction = PredictionDTO.from_json(
-            prediction_json, source=self.input, model_meta=self.session.get_model_meta()
+            {**self._iterator.kwargs, **prediction_json},
+            source=self.input,
+            model_meta=self.session.get_model_meta(),
         )
         return prediction
 
