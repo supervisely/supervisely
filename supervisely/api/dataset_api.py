@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     Generator,
@@ -20,7 +21,13 @@ from typing import (
 
 from tqdm import tqdm
 
-from supervisely._utils import abs_url, compress_image_url, is_development
+from supervisely._utils import (
+    abs_url,
+    compress_image_url,
+    is_development,
+    run_coroutine,
+)
+from supervisely.annotation.annotation import Annotation
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -28,7 +35,11 @@ from supervisely.api.module_api import (
     UpdateableModule,
     _get_single_item,
 )
+from supervisely.io.json import load_json_file
 from supervisely.project.project_type import ProjectType
+
+if TYPE_CHECKING:
+    from supervisely.project.project import ProjectMeta
 
 
 class DatasetInfo(NamedTuple):
@@ -1100,11 +1111,71 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         dataset: Union[int, DatasetInfo],
         items: Tuple[str],
         anns: List[str],
+        project_meta: Optional[ProjectMeta] = None,
         project_type: ProjectType = None,
         log_progess: bool = True,
-    ) -> DatasetInfo:
-        """ """
+    ):
+        """
+        Quick import of images and annotations to the dataset.
+        Used only for extended Supervisely format.
+
+        IMPORTANT: Number of annotations must be equal to the number of images in offset file.
+                   Image names in the offset file and annotation files must match.
+
+        :param dataset: Dataset ID or DatasetInfo object.
+        :type dataset: Union[int, DatasetInfo]
+        :param items: Tuple of blob local path and offsets local path.
+        :type items: Tuple[str]
+        :param anns: List of annotation paths.
+        :type anns: List[str]
+        :param project_meta: ProjectMeta object.
+        :type project_meta: Optional[ProjectMeta], optional
+        :param project_type: Project type.
+        :type project_type: ProjectType, optional
+        :param log_progess: If True, show progress bar.
+        :type log_progess: bool, optional
+
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.project.project_meta import ProjectMeta
+            from supervisely.project.project_type import ProjectType
+
+            api = sly.Api.from_env()
+
+            dataset_id = 123
+            workspace_id = 456
+            blob_path = "/path/to/blob"
+            offsets_path = "/path/to/offsets"
+            project_meta_path = "/path/to/project_meta.json"
+            anns = ["/path/to/ann1.json", "/path/to/ann2.json", ...]
+
+            # Create a new project, dataset and update its meta
+            project = api.project.create(
+                workspace_id,
+                "Quick Import",
+                type=sly.ProjectType.IMAGES,
+                change_name_if_conflict=True,
+            )
+            dataset = api.dataset.create(project.id, "ds1")
+            project_meta_json = sly.json.load_json_file(project_meta_path)
+            meta = api.project.update_meta(project.id, meta=project_meta_json)
+
+            dataset_info = api.dataset.quick_import(
+                dataset=dataset.id,
+                items=(blob_path, offsets_path),
+                anns=anns,
+                project_meta=ProjectMeta(),
+                project_type=ProjectType.IMAGES,
+                log_progess=True
+            )
+
+        """
         from supervisely.api.api import Api
+        from supervisely.project.project import TF_BLOB_DIR, ProjectMeta
 
         self._api: Api
 
@@ -1112,6 +1183,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             dataset = self.get_info_by_id(dataset)
 
         project_info = self._api.project.get_info_by_id(dataset.project_id)
+
+        if project_meta is None:
+            meta_dict = self._api.project.get_meta(dataset.project_id)
+            project_meta = ProjectMeta.from_json(meta_dict)
 
         if project_type is None:
             project_type = project_info.type
@@ -1121,9 +1196,16 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 f"Quick import is not implemented for project type {project_type}"
             )
 
+        # Set optimization context
+        self._api.optimization_context = {
+            "project_id": dataset.project_id,
+            "dataset_id": dataset.id,
+            "project_meta": project_meta,
+        }
+
         blob_path, offsets_path = items
-        dst_blob_path = os.path.join("blob-files", os.path.basename(blob_path))
-        dst_offset_path = os.path.join("blob-files", os.path.basename(offsets_path))
+        dst_blob_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(blob_path))
+        dst_offset_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(offsets_path))
         if log_progess:
             sizeb = os.path.getsize(blob_path) + os.path.getsize(offsets_path)
             b_progress_cb = tqdm(
@@ -1135,18 +1217,14 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         else:
             b_progress_cb = None
 
-        blob_file_id = self._api.file.upload(
+        self._api.file.upload_bulk_fast(
             team_id=project_info.team_id,
-            src=blob_path,
-            dst=dst_blob_path,
+            src_paths=[blob_path, offsets_path],
+            dst_paths=[dst_blob_path, dst_offset_path],
             progress_cb=b_progress_cb.update,
         )
-        self._api.file.upload(
-            team_id=project_info.team_id,
-            src=offsets_path,
-            dst=dst_offset_path,
-            progress_cb=b_progress_cb.update,
-        )
+
+        blob_file_id = self._api.file.get_info_by_path(project_info.team_id, dst_blob_path).id
 
         if log_progess:
             of_progress_cb = tqdm(desc=f"Uploading images by offsets", total=len(anns)).update
@@ -1156,7 +1234,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         image_info_generator = self._api.image.upload_by_offsets_generator(
             dataset=dataset,
             team_file_id=blob_file_id,
-            offsets_path=dst_offset_path,
             progress_cb=of_progress_cb,
         )
 
@@ -1166,4 +1243,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             img_ids = [img_info.id for img_info in image_info_batch]
             img_names = [img_info.name for img_info in image_info_batch]
             img_anns = [ann_map[img_name] for img_name in img_names]
-            self._api.annotation.upload_anns_async(img_ids, img_anns, log_progress=log_progess)
+            ann_objects = []
+            for ann in img_anns:
+                ann_json = load_json_file(ann)
+                ann_objects.append(Annotation.from_json(ann_json, project_meta))
+            coroutine = self._api.annotation.upload_anns_async(
+                img_ids, ann_objects, log_progress=log_progess
+            )
+            run_coroutine(coroutine)

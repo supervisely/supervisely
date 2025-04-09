@@ -2299,7 +2299,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type dataset: Union[DatasetInfo,int]
         :param team_file_id: ID of the binary file in the team storage.
         :type team_file_id: int
-        :param offsets_file_path: Path to the file with blob images offsets.
+        :param offsets_file_path: Local path to the file with blob images offsets.
         :type offsets_file_path: str, optional
         :param progress_cb: Function for tracking the progress of uploading.
         :type progress_cb: tqdm or callable, optional

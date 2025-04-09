@@ -1748,7 +1748,7 @@ def _process_tar_generator(
         members = tar.getmembers()
         total_members_count = len(members)  # for logging
 
-        logger.info(f"Processing TAR archive with {total_members_count} members")
+        logger.debug(f"Processing TAR archive with {total_members_count} members")
 
         for member in members:
             skip = not member.isfile()
