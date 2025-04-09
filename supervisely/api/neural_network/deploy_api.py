@@ -1,19 +1,20 @@
-from __future__ import annotations
-
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as env
-from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext
-from supervisely.nn.experiments import ExperimentInfo
-from supervisely.nn.utils import ModelSource, RuntimeType
 from supervisely.sly_logger import logger
+
+if TYPE_CHECKING:
+    from supervisely.api.api import Api
+    from supervisely.nn.experiments import ExperimentInfo
 
 
 def get_runtime(runtime: str):
+    from supervisely.nn.utils import RuntimeType
+
     if runtime is None:
         return None
     aliases = {
@@ -22,10 +23,12 @@ def get_runtime(runtime: str):
         str(RuntimeType.TENSORRT): RuntimeType.TENSORRT,
         "pytorch": RuntimeType.PYTORCH,
         "torch": RuntimeType.PYTORCH,
+        "pt": RuntimeType.PYTORCH,
         "onnxruntime": RuntimeType.ONNXRUNTIME,
         "onnx": RuntimeType.ONNXRUNTIME,
         "tensorrt": RuntimeType.TENSORRT,
         "trt": RuntimeType.TENSORRT,
+        "engine": RuntimeType.TENSORRT,
     }
     if runtime in aliases:
         return aliases[runtime]
@@ -48,18 +51,7 @@ class DeployApi:
         session_id: int,
         model_name: str,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
     ):
         """
         Load a pretrained model in running serving App.
@@ -88,18 +80,7 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
     ):
         """
         Load a custom model in running serving App.
@@ -118,6 +99,8 @@ class DeployApi:
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
+        from supervisely.nn.utils import ModelSource
+
         runtime = get_runtime(runtime)
 
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
@@ -141,18 +124,7 @@ class DeployApi:
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
     ):
         """
         Load a custom model in running serving App based on the training session.
@@ -214,18 +186,7 @@ class DeployApi:
         framework: Union[str, int],
         model_name: str,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -302,18 +263,7 @@ class DeployApi:
         self,
         checkpoint: str,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
         team_id: int = None,
         timeout: int = 100,
         **kwargs,
@@ -358,18 +308,7 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
         team_id: int = None,
         timeout: int = 100,
         **kwargs,
@@ -441,18 +380,7 @@ class DeployApi:
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
         timeout: int = 100,
         **kwargs,
     ) -> Dict[str, Any]:

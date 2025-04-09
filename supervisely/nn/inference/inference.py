@@ -3409,6 +3409,14 @@ class Inference:
                 self.gui._success_label.hide()
                 raise e
 
+        @server.post("/list_pretrained_models")
+        @self._check_serve_before_call
+        def _list_pretrained_models():
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                return {"models": self._gui.pretrained_models_table._models}
+            else:
+                return {"models": "This app doesn't support this feature."}
+
         @server.post("/is_deployed")
         def _is_deployed(response: Response, request: Request):
             return {

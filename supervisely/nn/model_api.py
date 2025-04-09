@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 import atexit
 import os
 import tempfile
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
 import requests
@@ -16,7 +14,6 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagValueType
-from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
@@ -44,6 +41,9 @@ from supervisely.io.fs import (
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
+
+if TYPE_CHECKING:
+    from supervisely.api.api import Api
 
 
 class Prediction:
@@ -257,7 +257,7 @@ class Prediction:
     def visualize(
         self,
         save_path: Optional[str] = None,
-        color: Optional[List[int, int, int]] = None,
+        color: Optional[List[int]] = None,
         thickness: Optional[int] = None,
         opacity: Optional[float] = 0.5,
         draw_tags: Optional[bool] = False,
@@ -682,7 +682,7 @@ class ModelApi:
         return result[0]
 
     def _post(self, method: str, data: dict, raise_for_status: bool = True):
-        url = f"{self.url.rstrip("/")}/{method.lstrip("/")}"
+        url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
         response = requests.post(url, json=data)
         if raise_for_status:
             response.raise_for_status()
@@ -734,7 +734,7 @@ class ModelApi:
     def monitor(self):
         raise NotImplementedError
 
-    def load_model(
+    def load(
         self,
         model: str,
         device: str = None,

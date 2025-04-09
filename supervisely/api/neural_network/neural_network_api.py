@@ -1,17 +1,17 @@
 # coding: utf-8
 """download/upload/manipulate neural networks"""
 
-from __future__ import annotations
-
-from typing import Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from typing_extensions import Literal
 
-from supervisely.api.api import Api
 from supervisely.api.neural_network.deploy_api import DeployApi
-from supervisely.nn.experiments import ExperimentInfo
-from supervisely.nn.model_api import ModelApi
 from supervisely.sly_logger import logger
+
+if TYPE_CHECKING:
+    from supervisely.api.api import Api
+    from supervisely.nn.experiments import ExperimentInfo
+    from supervisely.nn.model_api import ModelApi
 
 
 class NeuralNetworkApi:
@@ -27,24 +27,11 @@ class NeuralNetworkApi:
     def deploy(
         self,
         model: str,
-        checkpoint: str = None,
-        pretrained: str = None,
         device: str = None,
-        runtime: Optional[
-            Literal[
-                "PyTorch",
-                "ONNXRuntime",
-                "TensorRT",
-                "pytorch",
-                "torch",
-                "onnxruntime",
-                "onnx",
-                "trt",
-            ]
-        ] = None,
+        runtime: str = None,
         team_id: int = None,
         **kwargs,
-    ) -> ModelApi:
+    ) -> "ModelApi":
         """
         Deploy model by checkpoint path or model_name.
 
@@ -55,8 +42,7 @@ class NeuralNetworkApi:
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
-        checkpoint = None
-        pretrained = None
+        from supervisely.nn.model_api import ModelApi
 
         if model.startswith("/"):
             checkpoint = model
@@ -172,7 +158,7 @@ class NeuralNetworkApi:
         self,
         session_id: int,
         inference_settings: Union[dict, str] = None,
-    ) -> ModelApi:
+    ) -> "ModelApi":
         """
         Attach to a running Serving App session to run the inference via API.
 
@@ -183,4 +169,6 @@ class NeuralNetworkApi:
         :return: a :class:`Session` object
         :rtype: Session
         """
+        from supervisely.nn.model_api import ModelApi
+
         return ModelApi(self._api, session_id)
