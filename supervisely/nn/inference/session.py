@@ -316,7 +316,7 @@ class SessionJSON:
         endpoint = "inference_batch_async"
         url = f"{self._base_url}/{endpoint}"
         files = [("files", open(f, "rb")) for f in image_paths]
-        settings_json = json.dumps({"settings": self.inference_settings, "batch_size": batch_size})
+        settings_json = {"settings": self.inference_settings, "batch_size": batch_size}
         uploads = files + [("settings", (None, json.dumps(settings_json), "text/plain"))]
         resp = self._post(url, files=uploads).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
