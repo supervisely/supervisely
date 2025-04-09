@@ -1,14 +1,17 @@
 # coding: utf-8
 """download/upload/manipulate neural networks"""
 
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from __future__ import annotations
 
+from typing import Dict, List, Optional, Union
+
+from typing_extensions import Literal
+
+from supervisely.api.api import Api
 from supervisely.api.neural_network.deploy_api import DeployApi
-from supervisely.api.neural_network.model_api import ModelApi
-
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
-    from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.model_api import ModelApi
+from supervisely.sly_logger import logger
 
 
 class NeuralNetworkApi:
@@ -23,37 +26,53 @@ class NeuralNetworkApi:
 
     def deploy(
         self,
+        model: str,
         checkpoint: str = None,
         pretrained: str = None,
-        app_name: str = None,
         device: str = None,
-        runtime: Optional[str] = "PyTorch",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
         team_id: int = None,
         **kwargs,
     ) -> ModelApi:
         """
         Deploy model by checkpoint path or model_name.
 
-        :param app_name: App name in Supervisely (e.g., "Serve RT-DETRv2").
-        :type app_name: str
-        :param model_name: Model name to deploy (e.g., "RT-DETRv2-M").
-        :type model_name: str
-        :param device: Device string (default is "cuda").
-        :type device: str
-        :param runtime: Runtime string, default is "PyTorch".
+        :param model: Either path to the model checkpoint in team files or model name in format framework/model_name (e.g., "RT-DETRv2/RT-DETRv2-M").
+        :type model: str
+        :param device: Device string
+        :type device: Optional[str]
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
-        assert (
-            checkpoint is not None or pretrained is not None
-        ), "Either checkpoint or pretrained model name must be provided."
-        assert (
-            checkpoint is None or pretrained is None
-        ), "Only one of checkpoint or pretrained model name can be provided."
-        assert (
-            pretrained is None or app_name is not None
-        ), "App name must be provided for pretrained models."
+        checkpoint = None
+        pretrained = None
+
+        if model.startswith("/"):
+            checkpoint = model
+        else:
+            found_team_id = self._deploy_api._find_team_by_path(
+                f"/{model}", team_id=team_id, raise_not_found=False
+            )
+            if found_team_id is not None:
+                checkpoint = f"/{model}"
+                team_id = found_team_id
+                logger.debug(f"Found checkpoint in team {team_id}")
+            else:
+                pretrained = model
 
         if checkpoint is not None:
+            logger.debug(f"Deploying model by checkpoint: {checkpoint}")
             task_info = self._deploy_api.deploy_custom_model_by_checkpoint(
                 checkpoint=checkpoint,
                 device=device,
@@ -62,9 +81,13 @@ class NeuralNetworkApi:
                 **kwargs,
             )
         else:
+            framework, model_name = pretrained.split("/", 1)
+            logger.debug(
+                f"Deploying pretrained model: {model}. Framework: {framework}, Model name: {model_name}"
+            )
             task_info = self._deploy_api.deploy_pretrained_model(
-                app_name=app_name,
-                model_name=pretrained,
+                framework=framework,
+                model_name=model_name,
                 device=device,
                 runtime=runtime,
                 team_id=team_id,

@@ -1,14 +1,40 @@
+from __future__ import annotations
+
 import time
+from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as env
+from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext
+from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.utils import ModelSource, RuntimeType
 from supervisely.sly_logger import logger
 
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
-    from supervisely.nn.experiments import ExperimentInfo
+
+def get_runtime(runtime: str):
+    if runtime is None:
+        return None
+    aliases = {
+        str(RuntimeType.PYTORCH): RuntimeType.PYTORCH,
+        str(RuntimeType.ONNXRUNTIME): RuntimeType.ONNXRUNTIME,
+        str(RuntimeType.TENSORRT): RuntimeType.TENSORRT,
+        "pytorch": RuntimeType.PYTORCH,
+        "torch": RuntimeType.PYTORCH,
+        "onnxruntime": RuntimeType.ONNXRUNTIME,
+        "onnx": RuntimeType.ONNXRUNTIME,
+        "tensorrt": RuntimeType.TENSORRT,
+        "trt": RuntimeType.TENSORRT,
+    }
+    if runtime in aliases:
+        return aliases[runtime]
+    runtime = aliases.get(runtime.lower(), None)
+    if runtime is None:
+        raise ValueError(
+            f"Runtime '{runtime}' is not supported. Supported runtimes are: {', '.join(aliases.keys())}"
+        )
+    return runtime
 
 
 class DeployApi:
@@ -22,7 +48,18 @@ class DeployApi:
         session_id: int,
         model_name: str,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
     ):
         """
         Load a pretrained model in running serving App.
@@ -33,11 +70,11 @@ class DeployApi:
         :type model_name: str
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
-        :param runtime: Runtime string, default is "PyTorch".
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
-        from supervisely.nn.utils import ModelSource
 
+        runtime = get_runtime(runtime)
         deploy_params = {}
         deploy_params["model_source"] = ModelSource.PRETRAINED
         deploy_params["device"] = device
@@ -51,7 +88,18 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
     ):
         """
         Load a custom model in running serving App.
@@ -67,10 +115,10 @@ class DeployApi:
         :type checkpoint_name: Optional[str]
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
-        :param runtime: Runtime string, default is "PyTorch".
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
-        from supervisely.nn.utils import ModelSource
+        runtime = get_runtime(runtime)
 
         # Train V1 logic (if artifacts_dir does not start with '/experiments')
         if not artifacts_dir.startswith("/experiments"):
@@ -93,7 +141,18 @@ class DeployApi:
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
     ):
         """
         Load a custom model in running serving App based on the training session.
@@ -107,11 +166,12 @@ class DeployApi:
         :type checkpoint_name: Optional[str]
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
-        :param runtime: Runtime string, default is "PyTorch".
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
         from supervisely.nn.utils import ModelSource
 
+        runtime = get_runtime(runtime)
         if checkpoint_name is None:
             checkpoint_name = experiment_info.best_checkpoint
         deploy_params = {
@@ -151,10 +211,21 @@ class DeployApi:
 
     def deploy_pretrained_model(
         self,
-        app: Union[str, int],
+        framework: Union[str, int],
         model_name: str,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -166,7 +237,7 @@ class DeployApi:
         :type model_name: str
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
-        :param runtime: Runtime string, default is "PyTorch".
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
@@ -174,10 +245,20 @@ class DeployApi:
         :rtype: Dict[str, Any]
         :raises ValueError: if no serving apps found for the app name or multiple serving apps found for the app name.
         """
-        if isinstance(app, int):
-            module_id = app
-        else:
-            module_id = self._api.app.find_module_id_by_app_name(app)
+        runtime = get_runtime(runtime)
+        app = kwargs.get("app", None)
+        if app is None:
+            app = kwargs.get("app_name", None)
+        module_id = kwargs.get("module_id", None)
+        if module_id is None:
+            if app is not None:
+                if isinstance(app, int):
+                    module_id = app
+                else:
+                    module_id = self._api.app.find_module_id_by_app_name(app)
+            else:
+                module_id = self.find_serving_app_by_framework(framework).id
+
         agent_id = kwargs.get("agent_id", None)
         if agent_id is None:
             agent_id = self._find_agent()
@@ -187,14 +268,16 @@ class DeployApi:
         )
         return task_info
 
-    def _find_team_by_path(self, path: str, team_id: int = None):
+    def _find_team_by_path(self, path: str, team_id: int = None, raise_not_found=True):
         if team_id is not None:
             if self._api.file.exists(team_id, path) or self._api.file.dir_exists(
                 team_id, path, recursive=False
             ):
                 return team_id
-            else:
+            elif raise_not_found:
                 raise ValueError(f"Checkpoint '{path}' not found in team provided team")
+            else:
+                return None
         team_id = env.team_id(raise_not_found=False)
         if team_id is not None:
             if self._api.file.exists(team_id, path) or self._api.file.dir_exists(
@@ -209,14 +292,28 @@ class DeployApi:
                     raise ValueError("Multiple teams have the same checkpoint")
                 team_id = team.id
         if team_id is None:
-            raise ValueError("Checkpoint not found")
+            if raise_not_found:
+                raise ValueError("Checkpoint not found")
+            else:
+                return None
         return team_id
 
     def deploy_custom_model_by_checkpoint(
         self,
         checkpoint: str,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
         team_id: int = None,
         timeout: int = 100,
         **kwargs,
@@ -228,7 +325,7 @@ class DeployApi:
         :type checkpoint: str
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
-        :param runtime: Runtime string, default is "PyTorch".
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
         :type team_id: Optional[int]
@@ -261,7 +358,18 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
         team_id: int = None,
         timeout: int = 100,
         **kwargs,
@@ -276,7 +384,7 @@ class DeployApi:
         :type checkpoint_name: Optional[str]
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
-        :param runtime: Runtime string, default is "PyTorch".
+        :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
         :type team_id: Optional[int]
@@ -293,6 +401,7 @@ class DeployApi:
         if not isinstance(artifacts_dir, str) or not artifacts_dir.strip():
             raise ValueError("artifacts_dir must be a non-empty string.")
 
+        runtime = get_runtime(runtime)
         if team_id is None:
             team_id = self._find_team_by_path(artifacts_dir, team_id=team_id)
         logger.debug(
@@ -332,7 +441,18 @@ class DeployApi:
         experiment_info: "ExperimentInfo",
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
-        runtime: Optional[str] = "RuntimeType.PYTORCH",
+        runtime: Optional[
+            Literal[
+                "PyTorch",
+                "ONNXRuntime",
+                "TensorRT",
+                "pytorch",
+                "torch",
+                "onnxruntime",
+                "onnx",
+                "trt",
+            ]
+        ] = None,
         timeout: int = 100,
         **kwargs,
     ) -> Dict[str, Any]:
@@ -356,6 +476,7 @@ class DeployApi:
         """
         task_id = experiment_info.task_id
         train_task_info = self._api.task.get_info_by_id(task_id)
+        runtime = get_runtime(runtime)
 
         logger.debug(f"Starting model deployment from experiment info. Task ID: '{task_id}'")
         train_module_id = train_task_info["meta"]["app"]["moduleId"]
@@ -437,6 +558,14 @@ class DeployApi:
             raise_error=True,
         )
 
+    def find_serving_app_by_framework(self, framework: str):
+        modules = self._api.app.get_list_ecosystem_modules(
+            categories=["serve", framework], categories_operation="and"
+        )
+        if len(modules) == 0:
+            return None
+        return modules[0]
+
     def get_serving_app_by_train_app(self, app_name: Optional[str] = None, module_id: int = None):
         if app_name is None and module_id is None:
             raise ValueError("Either app_name or module_id must be provided.")
@@ -456,12 +585,10 @@ class DeployApi:
             )
 
         logger.debug(f"Detected framework: {framework}")
-        modules = self._api.app.get_list_ecosystem_modules(
-            categories=["serve", framework], categories_operation="and"
-        )
-        if len(modules) == 0:
+        module = self.find_serving_app_by_framework(framework)
+        if module is None:
             raise ValueError(f"No serving apps found for framework {framework}")
-        return modules[0]
+        return module
 
     def get_deploy_info(self, task_id: int) -> Dict[str, Any]:
         """
@@ -526,6 +653,8 @@ class DeployApi:
                 f"{framework.framework_name} framework is not supported for deployment"
             )
 
+        runtime = get_runtime(runtime)
+
         logger.debug(f"Detected framework: '{framework.framework_name}'")
 
         module_id = None
@@ -576,8 +705,6 @@ class DeployApi:
         runtime: str,
         with_module: bool = True,
     ):
-        from dataclasses import asdict
-
         from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
         from supervisely.nn.utils import ModelSource
 
@@ -587,6 +714,7 @@ class DeployApi:
                 f"Failed to retrieve experiment info for artifacts_dir: '{artifacts_dir}'"
             )
 
+        runtime = get_runtime(runtime)
         experiment_task_id = experiment_info.task_id
         experiment_task_info = self._api.task.get_info_by_id(experiment_task_id)
         if experiment_task_info is None:

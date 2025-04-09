@@ -317,6 +317,15 @@ class InferenceImageCache:
         video_path = self._cache.get_video_path(key)
         return VideoFrameReader(video_path).frame_size()
 
+    def get_video_fps(self, key):
+        """
+        Returns fps of the video
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video fps can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).fps()
+
     def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
         if isinstance(self._cache, PersistentImageTTLCache) and video_id in self._cache:
             return self._read_frames_from_cached_video(video_id, frame_indexes)

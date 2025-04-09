@@ -558,18 +558,20 @@ class VideoFrameReader:
     def __del__(self):
         self.close()
 
-    def read_frames(self) -> Generator:
+    def read_frames(self, frame_indexes: List[int] = None) -> Generator:
+        if frame_indexes is None:
+            frame_indexes = self.frame_indexes
         if self.vr is not None:
-            if self.frame_indexes is None:
-                self.frame_indexes = range(len(self.vr))
-            for frame_index in self.frame_indexes:
+            if frame_indexes is None:
+                frame_indexes = range(len(self.vr))
+            for frame_index in frame_indexes:
                 frame = self.vr[frame_index]
                 yield frame.asnumpy()
         else:
-            if self.frame_indexes is None:
+            if frame_indexes is None:
                 frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                self.frame_indexes = range(frame_count)
-            for frame_index in self.frame_indexes:
+                frame_indexes = range(frame_count)
+            for frame_index in frame_indexes:
                 if 1 > frame_index - self.prev_idx < 20:
                     while self.prev_idx < frame_index - 1:
                         self.cap.read()
@@ -599,3 +601,10 @@ class VideoFrameReader:
             return len(self.vr)
         else:
             return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    def fps(self):
+        self._ensure_initialized()
+        if self.vr is not None:
+            return self.vr.get_avg_fps()
+        else:
+            return int(self.cap.get(cv2.CAP_PROP_FPS))

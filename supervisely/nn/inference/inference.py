@@ -4,8 +4,9 @@ import inspect
 import json
 import os
 import re
+import shutil
 import subprocess
-import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -22,8 +23,7 @@ import numpy as np
 import requests
 import uvicorn
 import yaml
-from fastapi import Form, HTTPException, Request, Response, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi import Form, Request, Response, UploadFile, status
 from requests.structures import CaseInsensitiveDict
 
 import supervisely.app.development as sly_app_development
@@ -32,7 +32,7 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
+from supervisely import DatasetInfo, ProjectInfo, batched
 from supervisely._utils import (
     add_callback,
     get_filename_from_headers,
@@ -50,9 +50,7 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
-from supervisely.api.neural_network.model_api import PredictionDTO
-from supervisely.app.content import StateJson, get_data_dir
-from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.content import get_data_dir
 from supervisely.app.fastapi.subapp import (
     Application,
     call_on_autostart,
@@ -70,7 +68,8 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
 from supervisely.nn.inference.cache import InferenceImageCache
-from supervisely.nn.prediction_dto import Prediction
+from supervisely.nn.model_api import Prediction
+from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
     DeployInfo,
@@ -84,7 +83,7 @@ from supervisely.project.download import download_to_cache, read_from_cached_pro
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
-from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
+from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
 
 try:
     from typing import Literal
@@ -1003,13 +1002,13 @@ class Inference:
             self._model_meta = self._model_meta.add_tag_meta(tag_meta)
         return tag_meta
 
-    def _create_label(self, dto: Prediction) -> Label:
+    def _create_label(self, dto: PredictionDTO) -> Label:
         raise NotImplementedError("Have to be implemented in child class")
 
     def _predictions_to_annotation(
         self,
         image_path: Union[str, np.ndarray],
-        predictions: List[Prediction],
+        predictions: List[PredictionDTO],
         classes_whitelist: Optional[List[str]] = None,
     ) -> Annotation:
         labels = []
@@ -1241,17 +1240,17 @@ class Inference:
         return anns, benchmark
 
     # pylint: disable=method-hidden
-    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionDTO]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionDTO]:
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
     def predict_batch(
         self, images_np: List[np.ndarray], settings: Dict[str, Any]
-    ) -> List[List[Prediction]]:
+    ) -> List[List[PredictionDTO]]:
         """Predict batch of images. `images_np` is a list of numpy arrays in RGB format
 
         If this method is not overridden in a subclass, the following fallback logic works:
@@ -1268,7 +1267,7 @@ class Inference:
 
     def predict_batch_raw(
         self, images_np: List[np.ndarray], settings: Dict[str, Any]
-    ) -> List[List[Prediction]]:
+    ) -> List[List[PredictionDTO]]:
         """Predict batch of images. `source` is a list of numpy arrays in RGB format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
@@ -1276,7 +1275,7 @@ class Inference:
 
     def predict_benchmark(
         self, images_np: List[np.ndarray], settings: dict
-    ) -> Tuple[List[List[Prediction]], dict]:
+    ) -> Tuple[List[List[PredictionDTO]], dict]:
         """
         Inference a batch of images with speedtest benchmarking.
 
@@ -1342,7 +1341,7 @@ class Inference:
 
     def visualize(
         self,
-        predictions: List[Prediction],
+        predictions: List[PredictionDTO],
         image_path: str,
         vis_path: str,
         thickness: Optional[int] = None,
@@ -1374,9 +1373,9 @@ class Inference:
         for ann, data, kw in zip(anns, slides_data, kwargs_list):
             this_kwargs = {**kwargs, **kw}
             this_kwargs = get_valid_kwargs(
-                this_kwargs, PredictionDTO.__init__, exclude=["self", "annotation"]
+                this_kwargs, Prediction.__init__, exclude=["self", "annotation"]
             )
-            output.append({**PredictionDTO(ann, **this_kwargs).to_json(), "data": data})
+            output.append({**Prediction(ann, **this_kwargs).to_json(), "data": data})
         return output
 
     def _inference_image(self, state: dict, file: UploadFile):
@@ -1557,15 +1556,41 @@ class Inference:
         return self._format_output(anns, slides_data, url=image_url)[0]
 
     def _inference_video_cached(
-        self, key: Any, settings: Dict, async_inference_request_uuid: str = None
+        self,
+        key: Any,
+        settings: Dict,
+        async_inference_request_uuid: str = None,
+        frame_size: tuple = None,
+        video_frames_count: int = None,
+        fps: int = None,
     ):
         logger.debug("Inferring cached video...", extra={"key": key, "settings": settings})
-        n_frames = settings.get("framesCount", self.cache.get_video_frames_count(key))
-        video_height, video_witdth = self.cache.get_video_frame_size(key)
         start_frame_index = settings.get("startFrameIndex", 0)
-        step = settings.get("step", 1)
+        step = settings.get("stride", 1)
+        end_frame_index = settings.get("endFrameIndex", None)
+        duration = settings.get("duration", None)
+        frames_count = settings.get("framesCount", None)
+
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index
+        elif duration is not None:
+            if fps is None:
+                fps = self.cache.get_video_fps(key)
+            n_frames = int(duration * fps)
+        else:
+            if video_frames_count is None:
+                video_frames_count = self.cache.get_video_frames_count(key)
+            n_frames = video_frames_count
+
+        if frame_size is not None:
+            video_height, video_witdth = frame_size
+        else:
+            video_height, video_witdth = self.cache.get_video_frame_size(key)
         direction = settings.get("direction", "forward")
         tracking = settings.get("tracker", None)
+
         inference_settings = self._get_inference_settings({"settings": settings})
         logger.debug(f"Inference settings:", extra=inference_settings)
 
@@ -1581,7 +1606,7 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = n_frames // step
+            sly_progress.total = (n_frames + step - 1) // step
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
@@ -1648,9 +1673,22 @@ class Inference:
     def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
         logger.debug("Inferring video_id...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
-        n_frames = state.get("framesCount", video_info.frames_count)
         start_frame_index = state.get("startFrameIndex", 0)
+        step = state.get("stride", 1)
+        end_frame_index = state.get("endFrameIndex", None)
+        duration = state.get("duration", None)
+        frames_count = state.get("framesCount", None)
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index
+        elif duration is not None:
+            fps = video_info.frames_count / video_info.duration
+            n_frames = int(duration * fps)
+        else:
+            n_frames = video_info.frames_count
         direction = state.get("direction", "forward")
+        tracking = state.get("tracker", None)
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -1660,7 +1698,8 @@ class Inference:
                 n_frames=n_frames,
             ),
         )
-        tracking = state.get("tracker", None)
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
 
         preparing_progress = {"current": 0, "total": 1}
         if async_inference_request_uuid is not None:
@@ -1675,10 +1714,9 @@ class Inference:
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
-
             sly_progress.total = n_frames
-            inference_request["preparing_progress"]["total"] = n_frames
             preparing_progress = inference_request["preparing_progress"]
+            preparing_progress["total"] = n_frames
 
         # progress
         preparing_progress["status"] = "download_video"
@@ -1691,10 +1729,7 @@ class Inference:
         self.cache.download_video(api, video_info.id, return_images=False, progress_cb=_progress_cb)
         preparing_progress["status"] = "inference"
 
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-
-        logger.debug(f"Total frames to infer: {n_frames}")
+        logger.debug(f"Total frames to infer: {(n_frames+step-1) // step}")
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
@@ -1716,7 +1751,7 @@ class Inference:
         tracks_data = {}
         direction = 1 if direction == "forward" else -1
         for batch in batched(
-            range(start_frame_index, start_frame_index + direction * n_frames, direction),
+            range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
         ):
             if (
@@ -1751,7 +1786,7 @@ class Inference:
             )
             results.extend(batch_results)
             if async_inference_request_uuid is not None:
-                sly_progress.iters_done(len(batch))
+                sly_progress.iters_done(len(batch) * step)
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
@@ -2867,8 +2902,24 @@ class Inference:
                     namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
                 ).hex
                 video_name = files[0].filename
+                video_source = files[0].file
+
+                frame_size = None
+                frames_count = None
+                fps = None
+                if not self.cache.is_persistent:
+                    video_file = tempfile.NamedTemporaryFile(mode="wb", suffix=".mp4", delete=False)
+                    shutil.copyfileobj(files[0].file, video_file)
+                    video_file.close()
+                    video_path = video_file.name
+                    video_source = video_path
+                    reader = VideoFrameReader(video_path)
+                    frame_size = reader.frame_size()
+                    frames_count = reader.frames_count()
+                    fps = reader.fps()
+
                 logger.info(f"Saving video {video_name} to cache")
-                self.cache.add_video_to_cache(video_name, files[0].file)
+                self.cache.add_video_to_cache(video_name, video_source)
                 logger.info("Video saved to cache")
                 self._on_inference_start(inference_request_uuid)
                 future = self._executor.submit(
@@ -2878,6 +2929,9 @@ class Inference:
                     video_name,
                     state,
                     inference_request_uuid,
+                    frame_size,
+                    frames_count,
+                    fps,
                 )
                 end_callback = partial(
                     self._on_inference_end, inference_request_uuid=inference_request_uuid

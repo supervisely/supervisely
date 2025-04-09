@@ -1,19 +1,22 @@
+from __future__ import annotations
+
 import atexit
-import inspect
 import os
 import tempfile
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
 import requests
 
+import supervisely.io.env as env
 from supervisely._utils import get_valid_kwargs, logger, rand_str
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagValueType
+from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
@@ -35,16 +38,15 @@ from supervisely.io.fs import (
     file_exists,
     get_file_ext,
     list_files,
+    list_files_recursively,
     mkdir,
 )
+from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
 
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
 
-
-class PredictionDTO:
+class Prediction:
     _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
     __cleanup_registered = False
 
@@ -84,9 +86,9 @@ class PredictionDTO:
         self._scores = None
 
         mkdir(self._temp_dir)
-        if not PredictionDTO.__cleanup_registered:
+        if not Prediction.__cleanup_registered:
             atexit.register(self._clear_temp_files)
-            PredictionDTO.__cleanup_registered = True
+            Prediction.__cleanup_registered = True
 
     def _init_geometries(self):
 
@@ -173,7 +175,7 @@ class PredictionDTO:
     def from_json(cls, json_data: Dict, source=None, model_meta: Optional[ProjectMeta] = None):
         kwargs = get_valid_kwargs(
             json_data,
-            PredictionDTO.__init__,
+            Prediction.__init__,
             exclude=["self", "annotation", "source", "model_meta"],
         )
         if "annotation" in json_data:
@@ -255,15 +257,23 @@ class PredictionDTO:
     def visualize(
         self,
         save_path: Optional[str] = None,
-        color: Optional[Tuple[int, int, int]] = None,
-        thickness: Optional[int] = 1,
+        color: Optional[List[int, int, int]] = None,
+        thickness: Optional[int] = None,
+        opacity: Optional[float] = 0.5,
         draw_tags: Optional[bool] = False,
         fill_rectangles: Optional[bool] = True,
-        draw_class_names: Optional[bool] = False,
         api: Optional["Api"] = None,
     ) -> np.ndarray:
         img = self.load_image(api)
-        self.annotation.draw(img, color, thickness, draw_tags, fill_rectangles, draw_class_names)
+        self.annotation.draw_pretty(
+            bitmap=img,
+            color=color,
+            thickness=thickness,
+            opacity=opacity,
+            draw_tags=draw_tags,
+            output_path=None,
+            fill_rectangles=fill_rectangles,
+        )
         if save_path is None:
             return img
         if Path(save_path).suffix == "":
@@ -290,7 +300,7 @@ class PredictionDTO:
         return img
 
 
-class InferenceSession:
+class PredictionSession:
 
     class _Iterator:
         def __init__(self, source: Any, iterator: Iterator, **kwargs):
@@ -307,31 +317,47 @@ class InferenceSession:
         input: Union[
             np.ndarray, str, PathLike, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo, list
         ] = None,
-        image_id: int = None,
         image_ids: List[int] = None,
         video_id: int = None,
         dataset_id: int = None,
         project_id: int = None,
-        params: dict = None,
         api: "Api" = None,
         **kwargs: dict,
     ):
+        extra_input_args = ["image_id"]
         assert (
             sum(
                 [
                     x is not None
-                    for x in [input, image_id, image_ids, video_id, dataset_id, project_id]
+                    for x in [
+                        input,
+                        image_ids,
+                        video_id,
+                        dataset_id,
+                        project_id,
+                        *[kwargs.get(extra_input, None) for extra_input in extra_input_args],
+                    ]
                 ]
             )
             == 1
-        ), "Exactly one of input, image_id, image_ids, video_id, dataset_id, or project_id must be provided."
+        ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
 
         self._session = None
         self._iterator = None
         self._base_url = url
         self.input = input
-        self.params = params
         self.api = api
+        self.kwargs = kwargs
+
+        # extra input args
+        image_id = kwargs.get("image_id", None)
+        if image_ids is not None:
+            if isinstance(image_ids, int):
+                image_id = image_ids
+                image_ids = None
+            elif len(image_ids) == 1:
+                image_id = image_ids[0]
+                image_ids = None
 
         if not isinstance(input, list):
             input = [input]
@@ -360,11 +386,30 @@ class InferenceSession:
                 )
             else:
                 if dir_exists(input[0]):
-                    # if the input is a directory, assume it contains images
+                    try:
+                        project = Project(str(input[0]), mode=OpenMode.READ)
+                    except Exception:
+                        project = None
+                    image_paths = []
+                    if project is not None:
+                        for dataset in project.datasets:
+                            dataset: Dataset
+                            for _, image_path, _ in dataset.items():
+                                image_paths.append(image_path)
+                    else:
+                        # if the input is a directory, assume it contains images
+                        recursive = kwargs.get("recursive", False)
+                        if recursive:
+                            image_paths = list_files_recursively(
+                                input[0], valid_extensions=SUPPORTED_IMG_EXTS
+                            )
+                        else:
+                            image_paths = list_files(input[0], valid_extensions=SUPPORTED_IMG_EXTS)
                     kwargs = get_valid_kwargs(
-                        kwargs, self.session.inference_image_paths_async, exclude=["image_paths"]
+                        kwargs,
+                        self.session.inference_image_paths_async,
+                        exclude=["image_paths"],
                     )
-                    image_paths = list_files(input[0])
                     if len(image_paths) == 0:
                         raise ValueError("Directory is empty.")
                     self._iterator = self._Iterator(
@@ -490,7 +535,7 @@ class InferenceSession:
 
         if self._session is None:
             self._session = SessionJSON(
-                api=self.api, session_url=self._base_url, inference_settings=self.params
+                api=self.api, session_url=self._base_url, inference_settings=self.kwargs
             )
         return self._session
 
@@ -514,7 +559,7 @@ class InferenceSession:
 
     def __next__(self):
         prediction_json = self._iterator.inner.__next__()
-        prediction = PredictionDTO.from_json(
+        prediction = Prediction.from_json(
             {**self._iterator.kwargs, **prediction_json},
             source=self.input,
             model_meta=self.session.get_model_meta(),
@@ -527,11 +572,18 @@ class InferenceSession:
     def __len__(self):
         return len(self._iterator)
 
+    def is_done(self):
+        return not self.session._get_inference_progress()["is_inferring"]
+
+    def status(self):
+        return self.session._get_inference_progress()
+
+    def progress(self):
+        return self.session._get_inference_progress()["progress"]
+
 
 class ModelApi:
-    def __init__(
-        self, api: "Api" = None, deploy_id: int = None, url: str = None, params: dict = None
-    ):
+    def __init__(self, api: "Api" = None, deploy_id: int = None, url: str = None):
         assert not (
             deploy_id is None and url is None
         ), "Either `deploy_id` or `url` must be passed."
@@ -544,7 +596,6 @@ class ModelApi:
         self.api = api
         self.deploy_id = deploy_id
         self.url = url
-        self.params = params
 
         if self.deploy_id is not None:
             task_info = self.api.task.get_info_by_id(self.deploy_id)
@@ -555,36 +606,47 @@ class ModelApi:
         input: Union[
             np.ndarray, str, PathLike, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo, list
         ] = None,
-        image_id: int = None,
-        image_ids: List[int] = None,
+        image_ids: int = None,
         video_id: int = None,
         dataset_id: int = None,
         project_id: int = None,
-        params: Dict = None,
+        batch_size: int = None,
+        conf: float = None,
+        classes: List[str] = None,
         **kwargs,
-    ) -> InferenceSession:
+    ) -> PredictionSession:
+        extra_input_args = ["image_id"]
+
         if (
             sum(
                 [
                     x is not None
-                    for x in [input, image_id, image_ids, video_id, dataset_id, project_id]
+                    for x in [
+                        input,
+                        image_ids,
+                        video_id,
+                        dataset_id,
+                        project_id,
+                        *[kwargs.get(extra_input, None) for extra_input in extra_input_args],
+                    ]
                 ]
             )
             != 1
         ):
             raise ValueError(
-                "Exactly one of input, image_id, image_ids, video_id, dataset_id, or project_id must be provided."
+                "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
             )
-        return InferenceSession(
+        return PredictionSession(
             self.url,
             input=input,
-            image_id=image_id,
             image_ids=image_ids,
             video_id=video_id,
             dataset_id=dataset_id,
             project_id=project_id,
-            params=params,
             api=self.api,
+            batch_size=batch_size,
+            conf=conf,
+            classes=classes,
             **kwargs,
         )
 
@@ -593,17 +655,26 @@ class ModelApi:
         input: Union[
             np.ndarray, str, PathLike, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo, list
         ] = None,
-        image_id: int = None,
         image_ids: List[int] = None,
         video_id: int = None,
         dataset_id: int = None,
         project_id: int = None,
-        params: Dict = None,
+        batch_size: int = None,
+        conf: float = None,
+        classes: List[str] = None,
         **kwargs,
-    ) -> Union[PredictionDTO, List[PredictionDTO], InferenceSession]:
+    ) -> Union[Prediction, List[Prediction], PredictionSession]:
 
         session = self.predict_detached(
-            input, image_id, image_ids, video_id, dataset_id, project_id, params, **kwargs
+            input,
+            image_ids,
+            video_id,
+            dataset_id,
+            project_id,
+            batch_size,
+            conf,
+            classes,
+            **kwargs,
         )
         result = list(session)
         if isinstance(input, list):
@@ -635,6 +706,26 @@ class ModelApi:
             return self.api.nn._deploy_api.get_deploy_info(self.deploy_id)
         return self._post("get_deploy_info", {})
 
+    def get_default_settings(self):
+        if self.deploy_id is not None:
+            return self.api.task.send_request(self.deploy_id, "get_custom_inference_settings", {})[
+                "settings"
+            ]
+        else:
+            return self._post("get_custom_inference_settings", {})["settings"]
+
+    def get_model_meta(self):
+        if self.deploy_id is not None:
+            return ProjectMeta.from_json(
+                self.api.task.send_request("get_output_classes_and_tags", {})
+            )
+        else:
+            return ProjectMeta.from_json(self._post("get_output_classes_and_tags", {}))
+
+    def get_classes(self):
+        model_meta = self.get_model_meta()
+        return [obj_class.name for obj_class in model_meta.obj_classes]
+
     def healthcheck(self):
         if self.deploy_id is not None:
             return self.api.task.is_ready(self.deploy_id)
@@ -642,3 +733,33 @@ class ModelApi:
 
     def monitor(self):
         raise NotImplementedError
+
+    def load_model(
+        self,
+        model: str,
+        device: str = None,
+        runtime: str = None,
+        team_id: int = None,
+    ):  # remote or local
+        if model.startswith("/"):
+            if team_id is None:
+                team_id = env.team_id()
+            try:
+                artifacts_dir, checkpoint_name = model.split("/checkpoints/")
+            except:
+                raise ValueError(
+                    "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
+                )
+            self.api.nn._deploy_api.load_custom_model(
+                team_id,
+                self.deploy_id,
+                team_id,
+                artifacts_dir,
+                checkpoint_name,
+                device=device,
+                runtime=runtime,
+            )
+        else:
+            self.api.nn._deploy_api.load_pretrained_model(
+                self.deploy_id, model, device=device, runtime=runtime
+            )
