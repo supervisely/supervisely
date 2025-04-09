@@ -1109,7 +1109,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     def quick_import(
         self,
         dataset: Union[int, DatasetInfo],
-        items: Tuple[str],
+        blob_path: str,
+        offsets_path: str,
         anns: List[str],
         project_meta: Optional[ProjectMeta] = None,
         project_type: ProjectType = None,
@@ -1124,8 +1125,10 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         :param dataset: Dataset ID or DatasetInfo object.
         :type dataset: Union[int, DatasetInfo]
-        :param items: Tuple of blob local path and offsets local path.
-        :type items: Tuple[str]
+        :param blob_path: Local path to the blob file.
+        :type blob_path: str
+        :param offsets_path: Local path to the offsets file.
+        :type offsets_path: str
         :param anns: List of annotation paths.
         :type anns: List[str]
         :param project_meta: ProjectMeta object.
@@ -1166,7 +1169,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             dataset_info = api.dataset.quick_import(
                 dataset=dataset.id,
-                items=(blob_path, offsets_path),
+                blob_path=blob_path
+                offsets_path=offsets_path,
                 anns=anns,
                 project_meta=ProjectMeta(),
                 project_type=ProjectType.IMAGES,
@@ -1174,7 +1178,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             )
 
         """
-        from supervisely.api.api import Api
+        from supervisely.api.api import Api, ApiContext
         from supervisely.project.project import TF_BLOB_DIR, ProjectMeta
 
         self._api: Api
@@ -1197,57 +1201,56 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             )
 
         # Set optimization context
-        self._api.optimization_context = {
-            "project_id": dataset.project_id,
-            "dataset_id": dataset.id,
-            "project_meta": project_meta,
-        }
+        with ApiContext(
+            api=self._api,
+            project_id=dataset.project_id,
+            dataset_id=dataset.id,
+            project_meta=project_meta,
+        ):
+            dst_blob_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(blob_path))
+            dst_offset_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(offsets_path))
+            if log_progess:
+                sizeb = os.path.getsize(blob_path) + os.path.getsize(offsets_path)
+                b_progress_cb = tqdm(
+                    total=sizeb,
+                    unit="B",
+                    unit_scale=True,
+                    desc=f"Uploading blob to file storage",
+                )
+            else:
+                b_progress_cb = None
 
-        blob_path, offsets_path = items
-        dst_blob_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(blob_path))
-        dst_offset_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(offsets_path))
-        if log_progess:
-            sizeb = os.path.getsize(blob_path) + os.path.getsize(offsets_path)
-            b_progress_cb = tqdm(
-                total=sizeb,
-                unit="B",
-                unit_scale=True,
-                desc=f"Uploading blob to file storage",
+            self._api.file.upload_bulk_fast(
+                team_id=project_info.team_id,
+                src_paths=[blob_path, offsets_path],
+                dst_paths=[dst_blob_path, dst_offset_path],
+                progress_cb=b_progress_cb.update,
             )
-        else:
-            b_progress_cb = None
 
-        self._api.file.upload_bulk_fast(
-            team_id=project_info.team_id,
-            src_paths=[blob_path, offsets_path],
-            dst_paths=[dst_blob_path, dst_offset_path],
-            progress_cb=b_progress_cb.update,
-        )
+            blob_file_id = self._api.file.get_info_by_path(project_info.team_id, dst_blob_path).id
 
-        blob_file_id = self._api.file.get_info_by_path(project_info.team_id, dst_blob_path).id
+            if log_progess:
+                of_progress_cb = tqdm(desc=f"Uploading images by offsets", total=len(anns)).update
+            else:
+                of_progress_cb = None
 
-        if log_progess:
-            of_progress_cb = tqdm(desc=f"Uploading images by offsets", total=len(anns)).update
-        else:
-            of_progress_cb = None
-
-        image_info_generator = self._api.image.upload_by_offsets_generator(
-            dataset=dataset,
-            team_file_id=blob_file_id,
-            progress_cb=of_progress_cb,
-        )
-
-        ann_map = {Path(ann).stem: ann for ann in anns}
-
-        for image_info_batch in image_info_generator:
-            img_ids = [img_info.id for img_info in image_info_batch]
-            img_names = [img_info.name for img_info in image_info_batch]
-            img_anns = [ann_map[img_name] for img_name in img_names]
-            ann_objects = []
-            for ann in img_anns:
-                ann_json = load_json_file(ann)
-                ann_objects.append(Annotation.from_json(ann_json, project_meta))
-            coroutine = self._api.annotation.upload_anns_async(
-                img_ids, ann_objects, log_progress=log_progess
+            image_info_generator = self._api.image.upload_by_offsets_generator(
+                dataset=dataset,
+                team_file_id=blob_file_id,
+                progress_cb=of_progress_cb,
             )
-            run_coroutine(coroutine)
+
+            ann_map = {Path(ann).stem: ann for ann in anns}
+
+            for image_info_batch in image_info_generator:
+                img_ids = [img_info.id for img_info in image_info_batch]
+                img_names = [img_info.name for img_info in image_info_batch]
+                img_anns = [ann_map[img_name] for img_name in img_names]
+                ann_objects = []
+                for ann in img_anns:
+                    ann_json = load_json_file(ann)
+                    ann_objects.append(Annotation.from_json(ann_json, project_meta))
+                coroutine = self._api.annotation.upload_anns_async(
+                    img_ids, ann_objects, log_progress=log_progess
+                )
+                run_coroutine(coroutine)
