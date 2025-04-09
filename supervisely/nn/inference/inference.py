@@ -3379,16 +3379,13 @@ class Inference:
                             raise ValueError(
                                 f"Model {model_name} not found in models.json of serving app"
                             )
-                        model_files = self._download_model_files(
-                            deploy_params, selected_model["meta"]["model_files"]
-                        )
-                        deploy_params["model_files"] = model_files
+                        deploy_params["model_files"] = selected_model["meta"]["model_files"]
                         deploy_params["model_info"] = selected_model
+                        model_files = self._download_model_files(deploy_params)
                     else:
-                        model_files = self._download_model_files(
-                            deploy_params, deploy_params["model_files"]
-                        )
-                        deploy_params["model_files"] = model_files
+                        model_files = self._download_model_files(deploy_params)
+
+                    deploy_params["model_files"] = model_files
                     if deploy_params.get("runtime", None) is None:
                         deploy_params["runtime"] = RuntimeType.PYTORCH
                     if deploy_params.get("device", None) is None:

@@ -726,6 +726,10 @@ class ModelApi:
         model_meta = self.get_model_meta()
         return [obj_class.name for obj_class in model_meta.obj_classes]
 
+    def get_list_available_models(self):
+        """Return list of available pretrained models"""
+        pass
+
     def healthcheck(self):
         if self.deploy_id is not None:
             return self.api.task.is_ready(self.deploy_id)
