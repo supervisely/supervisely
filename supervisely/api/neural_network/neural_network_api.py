@@ -183,4 +183,4 @@ class NeuralNetworkApi:
         :return: a :class:`Session` object
         :rtype: Session
         """
-        return ModelApi(self._api, session_id, params=inference_settings)
+        return ModelApi(self._api, session_id)
