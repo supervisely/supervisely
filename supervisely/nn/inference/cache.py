@@ -156,12 +156,15 @@ class PersistentImageTTLCache(TTLCache):
     def get_image(self, key: Any):
         return sly.image.read(str(self[key]))
 
-    def save_video(self, video_id: int, src_video_path: str) -> None:
+    def save_video(self, video_id: int, src_video_path: str, delete_original_file) -> None:
         ext = Path(src_video_path).suffix
         video_path = self._base_dir / f"video_{video_id}{ext}"
         self[video_id] = video_path
         if src_video_path != str(video_path):
-            shutil.move(src_video_path, str(video_path))
+            if delete_original_file:
+                shutil.move(src_video_path, str(video_path))
+            else:
+                shutil.copy(src_video_path, str(video_path))
         sly.logger.debug(f"Video #{video_id} saved to {video_path}", extra={"video_id": video_id})
 
     def get_video_path(self, video_id: int) -> Path:
@@ -178,7 +181,7 @@ class PersistentImageTTLCache(TTLCache):
 
 
 class VideoFrameReader:
-    def __init__(self, video_path: str, frame_indexes: List[int]):
+    def __init__(self, video_path: str, frame_indexes: List[int] = None):
         self.video_path = video_path
         self.frame_indexes = frame_indexes
         self.cap = None
@@ -194,14 +197,21 @@ class VideoFrameReader:
 
     def read_frames(self) -> Generator:
         try:
-            for frame_index in self.frame_indexes:
-                if frame_index != self.prev_idx + 1:
-                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = self.cap.read()
-                if not ret:
-                    raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
-                yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                self.prev_idx = frame_index
+            if self.frame_indexes is None:
+                while self.cap.isOpened():
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        break
+                    yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            else:
+                for frame_index in self.frame_indexes:
+                    if frame_index != self.prev_idx + 1:
+                        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
+                    yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    self.prev_idx = frame_index
         finally:
             self.cap.release()
 
@@ -294,7 +304,7 @@ class InferenceImageCache:
             return_images,
         )
 
-    def _read_frames_from_cached_video_iter(self, video_id, frame_indexes):
+    def _read_frames_from_cached_video_iter(self, video_id, frame_indexes=None):
         video_path = self._cache.get_video_path(video_id)
         with VideoFrameReader(video_path, frame_indexes) as reader:
             for frame in reader.read_frames():
@@ -405,13 +415,15 @@ class InferenceImageCache:
             return_images,
         )
 
-    def add_video_to_cache(self, video_id: int, video_path: Path) -> None:
+    def add_video_to_cache(
+        self, video_id: int, video_path: Path, delete_original_file: bool = False
+    ) -> None:
         """
         Adds video to cache.
         """
         if isinstance(self._cache, PersistentImageTTLCache):
             with self._lock:
-                self._cache.save_video(video_id, str(video_path))
+                self._cache.save_video(video_id, str(video_path), delete_original_file)
                 self._load_queue.delete(video_id)
             sly.logger.debug(f"Video #{video_id} added to cache", extra={"video_id": video_id})
         else:
@@ -483,7 +495,7 @@ class InferenceImageCache:
                     f"_{sly.rand_str(6)}_" + video_info.name
                 )
                 api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
-                self.add_video_to_cache(video_id, temp_video_path)
+                self.add_video_to_cache(video_id, temp_video_path, delete_original_file=True)
                 download_time = time.monotonic() - download_time
                 api.logger.debug(
                     f"Video #{video_id} downloaded to cache in {download_time:.2f} sec",
@@ -573,7 +585,7 @@ class InferenceImageCache:
                 shutil.copyfileobj(files[0].file, f)
             self._wait_if_in_queue(video_id, sly.logger)
             self._load_queue.set(video_id, video_id)
-            self.add_video_to_cache(video_id, str(temp_video_path))
+            self.add_video_to_cache(video_id, str(temp_video_path), delete_original_file=True)
 
     def run_cache_task_manually(
         self,
