@@ -3259,6 +3259,7 @@ class Inference:
                 inference_request_uuid, inference_request
             )
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+            print("Inference_request:\n", inference_request)
             return inference_request
 
         @server.post(f"/get_inference_result")
