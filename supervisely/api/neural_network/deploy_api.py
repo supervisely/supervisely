@@ -65,6 +65,7 @@ class DeployApi:
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
         """
+        from supervisely.nn.utils import ModelSource
 
         runtime = get_runtime(runtime)
         deploy_params = {}
@@ -187,6 +188,8 @@ class DeployApi:
         model_name: str,
         device: Optional[str] = None,
         runtime: str = None,
+        app: Union[str, int] = None,
+        agent_id: Optional[int] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -207,22 +210,18 @@ class DeployApi:
         :raises ValueError: if no serving apps found for the app name or multiple serving apps found for the app name.
         """
         runtime = get_runtime(runtime)
-        app = kwargs.get("app", None)
-        if app is None:
-            app = kwargs.get("app_name", None)
-        module_id = kwargs.get("module_id", None)
-        if module_id is None:
-            if app is not None:
-                if isinstance(app, int):
-                    module_id = app
-                else:
-                    module_id = self._api.app.find_module_id_by_app_name(app)
-            else:
-                module_id = self.find_serving_app_by_framework(framework).id
 
-        agent_id = kwargs.get("agent_id", None)
+        module_id = None
+        if isinstance(app, int):
+            module_id = app
+        elif isinstance(app, str):
+            module_id = self._api.app.find_module_id_by_app_name(app)
+        else:
+            module_id = self.find_serving_app_by_framework(framework)["id"]
+
         if agent_id is None:
             agent_id = self._find_agent()
+
         task_info = self._run_serve_app(agent_id, module_id, **kwargs)
         self.load_pretrained_model(
             task_info["id"], model_name=model_name, device=device, runtime=runtime
@@ -266,6 +265,7 @@ class DeployApi:
         runtime: str = None,
         team_id: int = None,
         timeout: int = 100,
+        workspace_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -281,6 +281,8 @@ class DeployApi:
         :type team_id: Optional[int]
         :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
         :type timeout: Optional[int]
+        :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
+        :type workspace_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
@@ -300,6 +302,7 @@ class DeployApi:
             device=device,
             runtime=runtime,
             timeout=timeout,
+            workspace_id=workspace_id,
             **kwargs,
         )
 
@@ -311,6 +314,7 @@ class DeployApi:
         runtime: str = None,
         team_id: int = None,
         timeout: int = 100,
+        workspace_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -368,7 +372,9 @@ class DeployApi:
             f"{serve_app_name} app deployment started. Checkpoint: '{checkpoint_name}'. Deploy params: '{deploy_params}'"
         )
         try:
-            task_info = self._run_serve_app(agent_id, module_id, timeout=timeout, **kwargs)
+            task_info = self._run_serve_app(
+                agent_id, module_id, timeout=timeout, workspace_id=workspace_id, **kwargs
+            )
             self._load_model_from_api(task_info["id"], deploy_params)
         except Exception as e:
             raise RuntimeError(f"Failed to run '{serve_app_name}': {e}") from e
@@ -464,11 +470,18 @@ class DeployApi:
             module_id = self._api.app.find_module_id_by_app_name(app_name)
         self._run_serve_app(agent_id, module_id, **kwargs)
 
-    def _run_serve_app(self, agent_id: int, module_id, timeout: int = 100, **kwargs):
+    def _run_serve_app(
+        self, agent_id: int, module_id, timeout: int = 100, workspace_id: int = None, **kwargs
+    ):
         _attempt_delay_sec = 1
         _attempts = timeout // _attempt_delay_sec
 
-        task_info = self._api.task.start(agent_id=agent_id, module_id=module_id, **kwargs)
+        # @TODO: Run app in team?
+        if workspace_id is None:
+            workspace_id = env.workspace_id()
+        task_info = self._api.task.start(
+            agent_id=agent_id, module_id=module_id, workspace_id=workspace_id, **kwargs
+        )
         ready = self._api.app.wait_until_ready_for_api_calls(
             task_info["id"], _attempts, _attempt_delay_sec
         )
@@ -488,7 +501,7 @@ class DeployApi:
 
     def find_serving_app_by_framework(self, framework: str):
         modules = self._api.app.get_list_ecosystem_modules(
-            categories=["serve", framework], categories_operation="and"
+            categories=["serve", f"framework:{framework}"], categories_operation="and"
         )
         if len(modules) == 0:
             return None

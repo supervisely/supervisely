@@ -30,6 +30,7 @@ class NeuralNetworkApi:
         device: str = None,
         runtime: str = None,
         team_id: int = None,
+        workspace_id: int = None,
         **kwargs,
     ) -> "ModelApi":
         """
@@ -41,9 +42,25 @@ class NeuralNetworkApi:
         :type device: Optional[str]
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
+        :param team_id: Team ID, if not present will be defined automatically.
+        :type team_id: Optional[int]
+        :param workspace_id: Workspace ID, if not present will be defined automatically.
+        :type workspace_id: Optional[int]
+        :param kwargs: Additional parameters for deployment.
+        :return: A :class:`ModelApi` object for the deployed model.
+        :rtype: ModelApi
+        :Usage example:
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api.from_env()
+                model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
         from supervisely.nn.model_api import ModelApi
 
+        checkpoint = None
+        pretrained = None
         if model.startswith("/"):
             checkpoint = model
         else:
@@ -64,19 +81,20 @@ class NeuralNetworkApi:
                 device=device,
                 runtime=runtime,
                 team_id=team_id,
+                workspace_id=workspace_id,
                 **kwargs,
             )
         else:
             framework, model_name = pretrained.split("/", 1)
             logger.debug(
-                f"Deploying pretrained model: {model}. Framework: {framework}, Model name: {model_name}"
+                f"Deploying pretrained model. Framework: {framework}, Model name: {model_name}"
             )
             task_info = self._deploy_api.deploy_pretrained_model(
                 framework=framework,
                 model_name=model_name,
                 device=device,
                 runtime=runtime,
-                team_id=team_id,
+                workspace_id=workspace_id,
                 **kwargs,
             )
         return ModelApi(self._api, deploy_id=task_info["id"])
