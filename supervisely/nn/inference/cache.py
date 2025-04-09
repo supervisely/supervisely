@@ -157,7 +157,8 @@ class PersistentImageTTLCache(TTLCache):
         return sly.image.read(str(self[key]))
 
     def save_video(self, video_id: int, src_video_path: str, delete_original_file) -> None:
-        video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
+        ext = Path(src_video_path).suffix
+        video_path = self._base_dir / f"video_{video_id}{ext}"
         self[video_id] = video_path
         if src_video_path != str(video_path):
             if delete_original_file:
