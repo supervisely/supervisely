@@ -4423,16 +4423,19 @@ def upload_project(
             total_blob_size += os.path.getsize(os.path.join(project_fs.blob_dir, blob_file))
         src_paths.append(os.path.join(project_fs.blob_dir, blob_file))
         dst_paths.append(os.path.join(f"/{TF_BLOB_DIR}", blob_file))
-    if log_progress:
+    if log_progress and len(src_paths) > 0:
         upload_blob_progress = tqdm_sly(
             desc="Uploading blob files", total=total_blob_size, unit="B", unit_scale=True
         )
-    blob_file_infos = api.file.upload_bulk(
-        team_id=project.team_id,
-        src_paths=src_paths,
-        dst_paths=dst_paths,
-        progress_cb=upload_blob_progress,
-    )
+    if len(src_paths) > 0:
+        blob_file_infos = api.file.upload_bulk(
+            team_id=project.team_id,
+            src_paths=src_paths,
+            dst_paths=dst_paths,
+            progress_cb=upload_blob_progress,
+        )
+    else:
+        blob_file_infos = []
 
     for ds_fs in project_fs.datasets:
         if len(ds_fs.parents) > 0:
