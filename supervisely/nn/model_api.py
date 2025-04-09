@@ -581,6 +581,9 @@ class PredictionSession:
     def progress(self):
         return self.session._get_inference_progress()["progress"]
 
+    def stop(self):
+        self.session.stop_async_inference()
+
 
 class ModelApi:
     def __init__(self, api: "Api" = None, deploy_id: int = None, url: str = None):
