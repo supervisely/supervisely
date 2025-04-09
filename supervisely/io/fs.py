@@ -1792,6 +1792,7 @@ def save_blob_offsets_pkl(
     team_file_id: Optional[int] = None,
     filter_func: Optional[Callable] = None,
     batch_size: int = OFFSETS_PKL_BATCH_SIZE,
+    replace: bool = False,
 ) -> str:
     """
     Processes blob file locally and creates a pickle file with offset information.
@@ -1808,6 +1809,10 @@ def save_blob_offsets_pkl(
     :type filter_func: Callable, optional
     :param batch_size: Number of files to process in each batch, defaults to 10000
     :type batch_size: int, optional
+    :param replace: If True, overwrite the existing file if it exists.
+                    If False, skip processing if the file already exists and return its path.
+                    Default is False.
+    :type replace: bool
     :returns: Path to the output pickle file
     :rtype: str
 
@@ -1825,6 +1830,16 @@ def save_blob_offsets_pkl(
 
     archive_name = Path(blob_file_path).stem
     output_path = os.path.join(output_dir, archive_name + OFFSETS_PKL_SUFFIX)
+
+    if file_exists(output_path):
+        logger.debug(f"Offsets file already exists: {output_path}")
+        if replace:
+            logger.debug(f"Replacing existing offsets file: {output_path}")
+            silent_remove(output_path)
+        else:
+            logger.debug(f"Skipping processing, using existing offsets file: {output_path}")
+            return output_path
+
     offsets_batch_generator = get_file_offsets_batch_generator(
         archive_path=blob_file_path,
         team_file_id=team_file_id,
@@ -1832,5 +1847,6 @@ def save_blob_offsets_pkl(
         output_format="objects",
         batch_size=batch_size,
     )
+
     BlobImageInfo.dump_to_pickle(offsets_batch_generator, output_path)
     return output_path

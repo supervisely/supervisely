@@ -700,3 +700,87 @@ class FigureApi(RemoveableBulkModuleApi):
             raise RuntimeError("Not all geometries were downloaded")
         ordered_results = [geometries[i] for i in ids]
         return ordered_results
+
+    async def upload_geometries_batch_async(
+        self,
+        figure_ids: List[int],
+        geometries: List[dict],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> None:
+        """
+        Upload figure geometries with given figure IDs to storage asynchronously.
+
+        :param figure_ids: List of figure IDs in Supervisely.
+        :type figure_ids: List[int]
+        :param geometries: List of figure geometries in Supervisely JSON format.
+        :type geometries: List[dict]
+        :param semaphore: Semaphore to limit the number of concurrent uploads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :param progress_cb: Progress bar to show the upload progress. Shows the number of geometries uploaded.
+        :type progress_cb: Union[tqdm, Callable], optional
+        :return: None
+        :rtype: None
+
+        :Usage example:
+
+            .. code-block:: python
+
+                import asyncio
+                import supervisely as sly
+
+                os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                api = sly.Api.from_env()
+
+                figure_ids = [642155547, 642155548, 642155549]
+                geometries = [{...}, {...}, {...}]  # Your geometry data
+
+                upload_coroutine = api.figure.upload_geometries_batch_async(
+                        figure_ids,
+                        geometries,
+                        semaphore=asyncio.Semaphore(10),
+                    )
+                sly.run_coroutine(upload_coroutine)
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        encoded_geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
+
+        batch_size = 100
+        tasks = []
+
+        for batch_ids, batch_geometries in zip(
+            batched(figure_ids, batch_size),
+            batched(encoded_geometries, batch_size),
+        ):
+            fields = []
+            for figure_id, geometry in zip(batch_ids, batch_geometries):
+                fields.append((ApiField.FIGURE_ID, str(figure_id)))
+                fields.append(
+                    (
+                        ApiField.GEOMETRY,
+                        (str(figure_id), geometry, "application/octet-stream"),
+                    )
+                )
+
+            async def upload_batch(fields, progress_cb, num):
+                async with semaphore:
+                    encoder = MultipartEncoder(fields=fields)
+                    headers = {"Content-Type": encoder.content_type}
+                    async for _, _ in self._api.stream_async(
+                        "figures.bulk.upload.geometry",
+                        "POST",
+                        data=encoder,
+                        content=encoder.to_string(),
+                        headers=headers,
+                    ):
+                        pass
+                if progress_cb is not None:
+                    progress_cb.update(num)
+
+            tasks.append(upload_batch(fields, progress_cb, len(batch_ids)))
+
+        if tasks:
+            await asyncio.gather(*tasks)

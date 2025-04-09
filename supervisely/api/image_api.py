@@ -5184,7 +5184,7 @@ class ImageApi(RemoveableBulkModuleApi):
         else:
             team_file_info = blob_file
 
-        image_infos_generator, _ = self.upload_by_offsets_generator(
+        image_infos_generator = self.upload_by_offsets_generator(
             dataset=dataset_info,
             team_file_id=team_file_info.id,
             progress_cb=progress_cb,

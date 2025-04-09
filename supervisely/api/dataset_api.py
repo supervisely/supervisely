@@ -4,6 +4,8 @@
 # docs
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import (
     Any,
     Dict,
@@ -15,6 +17,8 @@ from typing import (
     Tuple,
     Union,
 )
+
+from tqdm import tqdm
 
 from supervisely._utils import abs_url, compress_image_url, is_development
 from supervisely.api.module_api import (
@@ -1090,3 +1094,76 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :rtype: bool
         """
         return self.get_info_by_name(project_id, name, parent_id=parent_id) is not None
+
+    def quick_import(
+        self,
+        dataset: Union[int, DatasetInfo],
+        items: Tuple[str],
+        anns: List[str],
+        project_type: ProjectType = None,
+        log_progess: bool = True,
+    ) -> DatasetInfo:
+        """ """
+        from supervisely.api.api import Api
+
+        self._api: Api
+
+        if isinstance(dataset, int):
+            dataset = self.get_info_by_id(dataset)
+
+        project_info = self._api.project.get_info_by_id(dataset.project_id)
+
+        if project_type is None:
+            project_type = project_info.type
+
+        if project_type != ProjectType.IMAGES:
+            raise NotImplementedError(
+                f"Quick import is not implemented for project type {project_type}"
+            )
+
+        blob_path, offsets_path = items
+        dst_blob_path = os.path.join("blob-files", os.path.basename(blob_path))
+        dst_offset_path = os.path.join("blob-files", os.path.basename(offsets_path))
+        if log_progess:
+            sizeb = os.path.getsize(blob_path) + os.path.getsize(offsets_path)
+            b_progress_cb = tqdm(
+                total=sizeb,
+                unit="B",
+                unit_scale=True,
+                desc=f"Uploading blob to file storage",
+            )
+        else:
+            b_progress_cb = None
+
+        blob_file_id = self._api.file.upload(
+            team_id=project_info.team_id,
+            src=blob_path,
+            dst=dst_blob_path,
+            progress_cb=b_progress_cb.update,
+        )
+        self._api.file.upload(
+            team_id=project_info.team_id,
+            src=offsets_path,
+            dst=dst_offset_path,
+            progress_cb=b_progress_cb.update,
+        )
+
+        if log_progess:
+            of_progress_cb = tqdm(desc=f"Uploading images by offsets", total=len(anns)).update
+        else:
+            of_progress_cb = None
+
+        image_info_generator = self._api.image.upload_by_offsets_generator(
+            dataset=dataset,
+            team_file_id=blob_file_id,
+            offsets_path=dst_offset_path,
+            progress_cb=of_progress_cb,
+        )
+
+        ann_map = {Path(ann).stem: ann for ann in anns}
+
+        for image_info_batch in image_info_generator:
+            img_ids = [img_info.id for img_info in image_info_batch]
+            img_names = [img_info.name for img_info in image_info_batch]
+            img_anns = [ann_map[img_name] for img_name in img_names]
+            self._api.annotation.upload_anns_async(img_ids, img_anns, log_progress=log_progess)
