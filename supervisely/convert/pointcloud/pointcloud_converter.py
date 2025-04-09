@@ -1,6 +1,7 @@
 import imghdr
 import os
 from typing import List, Optional, Set, Tuple
+import numpy as np
 
 import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import (
@@ -13,7 +14,7 @@ from supervisely import (
 )
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, list_files_recursively
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -140,11 +141,60 @@ class PointcloudConverter(BaseConverter):
                 progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
 
+    def _convert_bin_to_pcd(self, bin_file, save_filepath):
+        import open3d as o3d  # pylint: disable=import-error
+
+        b = np.fromfile(bin_file, dtype=np.float32).reshape(-1, 5)
+        points = b[:, 0:3]
+        intensity = b[:, 3]
+        ring_index = b[:, 4]
+        intensity_fake_rgb = np.zeros((intensity.shape[0], 3))
+        intensity_fake_rgb[:, 0] = (
+            intensity  # red The intensity measures the reflectivity of the objects
+        )
+        intensity_fake_rgb[:, 1] = (
+            ring_index  # green ring index is the index of the laser ranging from 0 to 31
+        )
+
+        pc = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(points))
+        pc.colors = o3d.utility.Vector3dVector(intensity_fake_rgb)
+        o3d.io.write_point_cloud(save_filepath, pc)
+
+    def validate_bin_pointcloud(self, bin_file: str) -> bool:
+        try:
+            data = np.fromfile(bin_file, dtype=np.float32)
+            
+            # Check if the file size is divisible by 5 (x,y,z,intensity,ring_index)
+            if len(data) % 5 != 0:
+                return False
+                
+            points = data.reshape(-1, 5)
+            if len(points) == 0:
+                return False
+                
+            if not (
+                np.all(points[:, 3] >= 0) and  # intensity
+                np.all(points[:, 3] <= 1) and  # intensity
+                np.all(points[:, 4] >= 0) and  # ring_index
+                np.all(points[:, 4] == points[:, 4].astype(int))  # ring_index should be integer
+            ):
+                return False
+                
+            return True
+            
+        except Exception:
+            return False
+
     def _collect_items_if_format_not_detected(self) -> Tuple[List[Item], bool, Set[str]]:
         only_modality_items = True
         unsupported_exts = set()
         pcd_list, rimg_dict, rimg_ann_dict = [], {}, {}
         used_img_ext = set()
+        
+        bin_files = list_files_recursively(self._input_data, [".bin"], None, True)
+        for bin_file in bin_files:
+            if self.validate_bin_pointcloud(bin_file):
+                self._convert_bin_to_pcd(bin_file, bin_file.replace(".bin", ".pcd"))
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
