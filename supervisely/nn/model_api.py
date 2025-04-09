@@ -65,6 +65,8 @@ class Prediction:
         frame_index: Optional[int] = None,
     ):
         self.source = source
+        if isinstance(annotation_json, Annotation):
+            annotation_json = annotation_json.to_json()
         self.annotation_json = annotation_json
         self.model_meta = model_meta
         if isinstance(self.model_meta, dict):
@@ -580,9 +582,6 @@ class PredictionSession:
 
     def progress(self):
         return self.session._get_inference_progress()["progress"]
-
-    def stop(self):
-        self.session.stop_async_inference()
 
 
 class ModelApi:
