@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 from supervisely.nn.artifacts.artifacts import TrainInfo
 from supervisely.nn.experiments import ExperimentInfo
@@ -55,3 +54,12 @@ class DeployInfo:
     model_precision: str
     hardware: str
     deploy_params: dict
+
+
+def _get_model_name(model_info: dict):
+    name = model_info.get("model_name")
+    if not name:
+        name = model_info.get("meta", {}).get("model_name")
+    if not name:
+        raise ValueError("Model name not found not in model_info nor in meta.")
+    return name

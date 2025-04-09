@@ -6,11 +6,15 @@ training workflows in Supervisely.
 """
 
 from os import environ
+from typing import Union
 
 import supervisely.io.env as sly_env
+import supervisely.io.json as sly_json
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
 from supervisely.app.widgets import Stepper, Widget
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.task_type import TaskType
@@ -63,7 +67,7 @@ class TrainGUI:
         self.models = models
         self.hyperparameters = hyperparameters
         self.app_options = app_options
-        self.collapsable = app_options.get("collapsable", False)
+        self.collapsable = self.app_options.get("collapsable", False)
         self.need_convert_shapes_for_bm = False
 
         self.team_id = sly_env.team_id(raise_not_found=False)
@@ -142,33 +146,73 @@ class TrainGUI:
             self.training_process.set_experiment_name(experiment_name)
 
         def need_convert_class_shapes() -> bool:
-            if not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
-                self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
-                self.need_convert_shapes_for_bm = False
-            else:
-                task_type = self.model_selector.get_selected_task_type()
-
-                def _need_convert(shape):
-                    if task_type == TaskType.OBJECT_DETECTION:
-                        return shape != Rectangle.geometry_name()
-                    elif task_type in [
-                        TaskType.INSTANCE_SEGMENTATION,
-                        TaskType.SEMANTIC_SEGMENTATION,
-                    ]:
-                        return shape == Polygon.geometry_name()
-                    return
-
-                data = self.classes_selector.classes_table._table_data
-                selected_classes = set(self.classes_selector.classes_table.get_selected_classes())
-                empty = set(r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0)
-                need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
-
-                if need_convert.intersection(selected_classes - empty):
-                    self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
-                    self.need_convert_shapes_for_bm = True
-                else:
+            if self.hyperparameters_selector.run_model_benchmark_checkbox is not None:
+                if not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
                     self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
                     self.need_convert_shapes_for_bm = False
+                else:
+                    task_type = self.model_selector.get_selected_task_type()
+
+                    def _need_convert(shape):
+                        if task_type == TaskType.OBJECT_DETECTION:
+                            return shape != Rectangle.geometry_name()
+                        elif task_type in [
+                            TaskType.INSTANCE_SEGMENTATION,
+                            TaskType.SEMANTIC_SEGMENTATION,
+                        ]:
+                            return shape == Polygon.geometry_name()
+                        return
+
+                    data = self.classes_selector.classes_table._table_data
+                    selected_classes = set(
+                        self.classes_selector.classes_table.get_selected_classes()
+                    )
+                    empty = set(
+                        r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0
+                    )
+                    need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
+
+                    if need_convert.intersection(selected_classes - empty):
+                        self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
+                        self.need_convert_shapes_for_bm = True
+                    else:
+                        self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
+                        self.need_convert_shapes_for_bm = False
+            else:
+                self.need_convert_shapes_for_bm = False
+
+        def validate_class_shape_for_model_task():
+            task_type = self.model_selector.get_selected_task_type()
+            classes = self.classes_selector.get_selected_classes()
+
+            required_geometries = {
+                TaskType.INSTANCE_SEGMENTATION: {Polygon, Bitmap},
+                TaskType.SEMANTIC_SEGMENTATION: {Polygon, Bitmap},
+                TaskType.POSE_ESTIMATION: {GraphNodes},
+            }
+            task_specific_texts = {
+                TaskType.INSTANCE_SEGMENTATION: "Only polygon and bitmap shapes are supported for segmentation task",
+                TaskType.SEMANTIC_SEGMENTATION: "Only polygon and bitmap shapes are supported for segmentation task",
+                TaskType.POSE_ESTIMATION: "Only keypoint (graph) shape is supported for pose estimation task",
+            }
+
+            if task_type not in required_geometries:
+                return
+
+            wrong_shape_classes = [
+                class_name
+                for class_name in classes
+                if self.project_meta.get_obj_class(class_name).geometry_type
+                not in required_geometries[task_type]
+            ]
+
+            if wrong_shape_classes:
+                specific_text = task_specific_texts[task_type]
+                message_text = f"Model task type is {task_type}. {specific_text}. Selected classes have wrong shapes for the model task: {', '.join(wrong_shape_classes)}"
+                self.model_selector.validator_text.set(
+                    text=message_text,
+                    status="warning",
+                )
 
         # ------------------------------------------------- #
 
@@ -201,7 +245,11 @@ class TrainGUI:
             callback=self.hyperparameters_selector_cb,
             validation_text=self.model_selector.validator_text,
             validation_func=self.model_selector.validate_step,
-            on_select_click=[set_experiment_name, need_convert_class_shapes],
+            on_select_click=[
+                set_experiment_name,
+                need_convert_class_shapes,
+                validate_class_shape_for_model_task,
+            ],
             collapse_card=(self.model_selector.card, self.collapsable),
         )
 
@@ -299,17 +347,19 @@ class TrainGUI:
         # ------------------------------------------------- #
 
         # Other Buttons
-        if app_options.get("show_logs_in_gui", False):
+        if self.app_options.get("show_logs_in_gui", False):
 
             @self.training_logs.logs_button.click
             def show_logs():
                 self.training_logs.toggle_logs()
 
         # Other handlers
-        @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
-        def show_mb_speedtest(is_checked: bool):
-            self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
-            need_convert_class_shapes()
+        if self.hyperparameters_selector.run_model_benchmark_checkbox is not None:
+
+            @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
+            def show_mb_speedtest(is_checked: bool):
+                self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
+                need_convert_class_shapes()
 
         # ------------------------------------------------- #
 
@@ -361,7 +411,6 @@ class TrainGUI:
             raise ValueError("app_state must be a dictionary")
 
         required_keys = {
-            "input": ["project_id"],
             "train_val_split": ["method"],
             "classes": list,
             "model": ["source"],
@@ -453,7 +502,7 @@ class TrainGUI:
                 raise ValueError("percent must be an integer in range 1 to 99")
         return app_state
 
-    def load_from_app_state(self, app_state: dict) -> None:
+    def load_from_app_state(self, app_state: Union[str, dict]) -> None:
         """
         Load the GUI state from app state dictionary.
 
@@ -463,7 +512,6 @@ class TrainGUI:
         app_state example:
 
             app_state = {
-                "input": {"project_id": 43192},
                 "train_val_split": {
                     "method": "random",
                     "split": "train",
@@ -489,10 +537,13 @@ class TrainGUI:
                 }
             }
         """
+        if isinstance(app_state, str):
+            app_state = sly_json.load_json_file(app_state)
+
         app_state = self.validate_app_state(app_state)
 
         options = app_state.get("options", {})
-        input_settings = app_state["input"]
+        input_settings = app_state.get("input")
         train_val_splits_settings = app_state["train_val_split"]
         classes_settings = app_state["classes"]
         model_settings = app_state["model"]
@@ -504,7 +555,7 @@ class TrainGUI:
         self._init_model(model_settings)
         self._init_hyperparameters(hyperparameters_settings, options)
 
-    def _init_input(self, input_settings: dict, options: dict) -> None:
+    def _init_input(self, input_settings: Union[dict, None], options: dict) -> None:
         """
         Initialize the input selector with the given settings.
 
@@ -604,6 +655,8 @@ class TrainGUI:
             )
             self.hyperparameters_selector.set_speedtest_checkbox_value(
                 model_benchmark_settings["speed_test"]
+                if model_benchmark_settings["enable"]
+                else False
             )
         export_weights_settings = options.get("export", None)
         if export_weights_settings is not None:

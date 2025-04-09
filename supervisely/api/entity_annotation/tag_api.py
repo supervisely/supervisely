@@ -7,7 +7,6 @@ from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.task.progress import tqdm_sly
 
 
 class TagApi(ModuleApi):

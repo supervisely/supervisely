@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "6.73.338+deploy.api"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -127,6 +128,8 @@ INSTALL_REQUIRES = [
     "zstd",
     "aiofiles",
     "httpx[http2]==0.27.2",
+    "debugpy",
+    "decord",
 ]
 
 ALT_INSTALL_REQUIRES = {

@@ -250,15 +250,12 @@ async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] 
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
         data = {1: 'example'}
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+
+        coroutine = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
+        run_coroutine(coroutine)
     """
     async with aiofiles.open(filename, "w") as fout:
         await fout.write(json.dumps(data, indent=indent))

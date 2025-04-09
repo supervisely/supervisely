@@ -621,7 +621,12 @@ class ApiField:
     """"""
     EXPERIMENT = "experiment"
     """"""
-
+    IS_FINISHED = "isFinished"
+    """"""
+    NON_FINAL_VALUE = "nonFinalValue"
+    """"""
+    HOTKEY = "hotkey"
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""

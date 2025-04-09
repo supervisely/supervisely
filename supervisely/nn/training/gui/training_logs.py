@@ -21,9 +21,21 @@ class TrainingLogs:
     lock_message = "Start training to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
+        # Init widgets
+        self.tensorboard_button = None
+        self.tensorboard_offline_button = None
+        self.logs_button = None
+        self.task_logs = None
+        self.progress_bar_main = None
+        self.progress_bar_secondary = None
+        self.validator_text = None
+        self.container = None
+        self.card = None
+        # -------------------------------- #
+
         self.display_widgets = []
-        api = Api.from_env()
         self.app_options = app_options
+        api = Api.from_env()
 
         # GUI Components
         self.validator_text = Text("")
@@ -42,6 +54,7 @@ class TrainingLogs:
             self.tensorboard_link = f"{api.server_address}{sly_url_prefix}/tensorboard/"
         else:
             self.tensorboard_link = "http://localhost:8000/tensorboard"
+
         self.tensorboard_button = Button(
             "Open Tensorboard",
             button_type="info",
@@ -54,7 +67,6 @@ class TrainingLogs:
         self.display_widgets.extend([self.validator_text, self.tensorboard_button])
 
         # Offline session Tensorboard button
-        self.tensorboard_offline_button = None
         if is_production():
             workspace_id = sly_env.workspace_id()
             app_name = "Tensorboard Experiments Viewer"
@@ -79,7 +91,7 @@ class TrainingLogs:
                 )
 
         # Optional Show logs button
-        if app_options.get("show_logs_in_gui", False):
+        if self.app_options.get("show_logs_in_gui", False):
             self.logs_button = Button(
                 text="Show logs",
                 plain=True,
