@@ -159,7 +159,7 @@ class SessionJSON:
         return self._default_inference_settings
 
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
-        self._validate_new_inference_settings(inference_settings)
+        # self._validate_new_inference_settings(inference_settings)
         self.inference_settings.update(inference_settings)
         return self.inference_settings
 
@@ -177,7 +177,7 @@ class SessionJSON:
             raise ValueError(
                 "The `inference_settings` parameter must be either a dict or a path to a YAML file."
             )
-        self._validate_new_inference_settings(new_settings)
+        # self._validate_new_inference_settings(new_settings)
         self.inference_settings = new_settings
 
     def _validate_new_inference_settings(self, new_settings: dict) -> None:

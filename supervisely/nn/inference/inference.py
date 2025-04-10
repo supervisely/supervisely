@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import asyncio
 import inspect
@@ -11,7 +13,7 @@ import threading
 import time
 import uuid
 from collections import OrderedDict, defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from pathlib import Path
@@ -68,6 +70,7 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
 from supervisely.nn.inference.cache import InferenceImageCache
+from supervisely.nn.inference.inference_request import InferenceRequest
 from supervisely.nn.model_api import Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
@@ -117,6 +120,44 @@ class AutoRestartInfo:
 
     def is_changed(self, deploy_params: dict) -> bool:
         return self.deploy_params != deploy_params
+
+
+class GlobalProgress:
+    def __init__(self):
+        self.progress = Progress(message="Ready", total_cnt=1)
+        self._lock = threading.Lock()
+
+    def set_message(self, message: str):
+        with self._lock:
+            self.progress.message = message
+            self.progress.report_if_needed()
+
+    def increase_total(self, n=1):
+        with self._lock:
+            self.progress.total += n
+            if self.progress.message != "Inference in progress...":
+                self.progress.message = "Inference in progress..."
+                self.progress.report_if_needed()
+
+    def set_ready(self):
+        with self._lock:
+            self.progress.message = "Ready"
+            self.progress.current = 0
+            self.progress.total = 1
+            self.progress.report_progress()
+
+    def done(self, n=1):
+        with self._lock:
+            self.progress.iters_done_report(n)
+        if self.progress.current >= self.progress.total:
+            self.set_ready()
+
+    def inference_finished(self, current: int, total: int):
+        with self._lock:
+            if self.progress.message == "Ready":
+                return
+            self.progress.current = max(0, self.progress.current - current)
+            self.progress.total = max(1, self.progress.total - total)
 
 
 class Inference:
@@ -269,7 +310,7 @@ class Inference:
             self.gui.on_serve_callbacks.append(on_serve_callback)
             self._initialize_app_layout()
 
-        self._inference_requests = {}
+        self._inference_requests: Dict[str, InferenceRequest] = {}
         max_workers = 1 if not multithread_inference else None
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
@@ -283,6 +324,29 @@ class Inference:
             base_folder=sly_env.smart_cache_container_dir(),
             log_progress=True,
         )
+
+        self.global_progress = GlobalProgress()
+
+    def generate_uuid(self) -> str:
+        """
+        Generates a unique UUID for the inference request.
+        """
+        return uuid.uuid5(namespace=uuid.NAMESPACE_URL, name=f"{time.time()}-{rand_str(10)}").hex
+
+    def get_inference_request(self, inference_request_uuid: str):
+        if inference_request_uuid is None:
+            return None
+        try:
+            return self._inference_requests[inference_request_uuid]
+        except Exception as ex:
+            raise RuntimeError(
+                f"inference_request_uuid {inference_request_uuid} was given, "
+                f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
+            ) from ex
+
+    def del_inference_request(self, inference_request_uuid: str):
+        if inference_request_uuid in self._inference_requests:
+            del self._inference_requests[inference_request_uuid]
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -1056,15 +1120,14 @@ class Inference:
         else:
             return yaml.safe_load(self._custom_inference_settings)
 
-    def _handle_error_in_async(self, uuid, func, *args, **kwargs):
+    def _handle_error_in_async(self, inference_request_uuid: str, func, *args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            inf_request = self._inference_requests.get(uuid, None)
-            if inf_request is not None:
-                inf_request["exception"] = str(e)
+            inference_request = self._inference_requests.get(inference_request_uuid, None)
+            if inference_request is not None:
+                inference_request.exception = e
             logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
-            raise e
 
     def _inference_auto(
         self,
@@ -1113,7 +1176,7 @@ class Inference:
             source = [source]
 
         if settings is None:
-            settings = self._get_inference_settings({})
+            settings = self._get_inference_settings_from_state({})
 
         if isinstance(source[0], int):
             ann_jsons = self._inference_batch_ids(
@@ -1317,21 +1380,24 @@ class Inference:
         )
         return is_predict_batch_overridden or is_predict_benchmark_overridden
 
-    # pylint: enable=method-hidden
-    def _get_inference_settings(self, state: dict):
-        settings = state.get("settings", {})
+    def _get_inference_settings(self, settings: Dict = None):
         if settings is None:
             settings = {}
-        if "rectangle" in state.keys():
-            settings["rectangle"] = state["rectangle"]
         settings["sliding_window_mode"] = self.sliding_window_mode
-
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
                 logger.debug(
                     f"Field {key} not found in inference settings. Use default value {value}"
                 )
                 settings[key] = value
+        return settings
+
+    # pylint: enable=method-hidden
+    def _get_inference_settings_from_state(self, state: dict):
+        settings = state.get("settings", {})
+        if "rectangle" in state.keys():
+            settings["rectangle"] = state["rectangle"]
+        settings = self._get_inference_settings(settings)
         return settings
 
     @property
@@ -1379,9 +1445,9 @@ class Inference:
 
     def _inference_image(self, state: dict, file: UploadFile):
         logger.debug("Inferring image...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        image_np = sly_image.read_bytes(file.file.read())
+        settings = self._get_inference_settings_from_state(state)
         logger.debug("Inference settings:", extra=settings)
+        image_np = sly_image.read_bytes(file.file.read())
         logger.debug("Image info:", extra={"w": image_np.shape[1], "h": image_np.shape[0]})
         anns, slides_data = self._inference_auto(
             [image_np],
@@ -1392,25 +1458,34 @@ class Inference:
 
     def _inference_batch(self, state: dict, files: List[UploadFile]):
         logger.debug("Inferring batch...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        images = [sly_image.read_bytes(file.file.read()) for file in files]
-        anns, slides_data = self._inference_auto(
-            images,
-            settings=settings,
-        )
-        return self._format_output(anns, slides_data)
+        settings = self._get_inference_settings_from_state(state)
+        logger.debug("Inference settings:", extra={"inference_settings": settings})
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        progress = Progress("Inferring images...", total_cnt=len(files))
+        results = []
+        for batch in batched(files, batch_size=batch_size):
+            images = [sly_image.read_bytes(file.file.read()) for file in files]
+            anns, slides_data = self._inference_auto(
+                images,
+                settings=settings,
+            )
+            results.extend(self._format_output(anns, slides_data))
+            progress.iters_done_report(len(batch))
+        return results
 
     def _inference_batch_async(
-        self, state: dict, files: List[bytes], async_inference_request_uuid: str = None
+        self, state: dict, files: List[bytes], inference_request_uuid: str = None
     ):
         logger.debug("Inferring batch...", extra={"state": state})
         sly_progress = None
-        if async_inference_request_uuid is not None:
-            inference_request = self._inference_requests[async_inference_request_uuid]
+        if inference_request_uuid is not None:
+            inference_request = self._inference_requests[inference_request_uuid]
             sly_progress: Progress = inference_request["progress"]
             sly_progress.total = len(files)
 
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
         batch_size = state.get("batch_size", None)
         if batch_size is None:
             batch_size = self.get_batch_size()
@@ -1424,7 +1499,7 @@ class Inference:
             data = self._format_output(anns, slides_data)
             if sly_progress is not None:
                 sly_progress.iters_done(len(batch))
-            if async_inference_request_uuid is not None:
+            if inference_request_uuid is not None:
                 inference_request["pending_results"].extend(data)
             else:
                 result.extend(data)
@@ -1432,7 +1507,7 @@ class Inference:
 
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
         ids = state["batch_ids"]
         infos = api.image.get_info_by_id_batch(ids)
         datasets = defaultdict(list)
@@ -1462,108 +1537,150 @@ class Inference:
             )
         return results
 
-    def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
+    def _inference_image_id(self, api: Api, state: dict, inference_request_uuid: str = None):
         logger.debug("Inferring image_id...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        upload = state.get("upload", False)
+        settings = self._get_inference_settings_from_state(state)
+        logger.debug("Inference settings:", extra={"inference_settings": settings})
+        inference_request = self.get_inference_request(inference_request_uuid)
+
         image_id = state["image_id"]
-        image_info = api.image.get_info_by_id(image_id)
-        image_np = api.image.download_np(image_id)
-        logger.debug("Inference settings:", extra=settings)
-        logger.debug(
-            "Image info:",
-            extra={"id": image_id, "w": image_info.width, "h": image_info.height},
-        )
+        # Global progress
+        self.global_progress.increase_total(1)
+        if inference_request is not None:
+            inference_request.global_progress_total = 1
+        try:
+            if inference_request is not None:
+                inference_request.stage = InferenceRequest.Stage.PREPARING
 
-        inference_request = {}
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-
-        anns, slides_data = self._inference_auto(
-            [image_np],
-            settings=settings,
-        )
-        ann = anns[0]
-
-        if upload:
-            ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
-            output_project_id = ds_info.project_id
-            output_project_meta = self.cache.get_project_meta(api, output_project_id)
-            logger.debug("Merging project meta...")
-
-            output_project_meta, ann, meta_changed = update_meta_and_ann(output_project_meta, ann)
-            if meta_changed:
-                output_project_meta = api.project.update_meta(
-                    output_project_id, output_project_meta
-                )
-                self.cache.set_project_meta(output_project_id, output_project_meta)
-
-            ann = self._exclude_duplicated_predictions(
-                api, anns, settings, ds_info.id, [image_id], output_project_meta
-            )[0]
-
+            image_info = api.image.get_info_by_id(image_id)
+            image_np = api.image.download_np(image_id)
             logger.debug(
-                "Uploading annotation...",
-                extra={
-                    "image_id": image_id,
-                    "dataset_id": ds_info.id,
-                    "project_id": output_project_id,
-                },
+                "Image info:",
+                extra={"id": image_id, "w": image_info.width, "h": image_info.height},
             )
-            api.annotation.upload_ann(image_id, ann)
-        else:
-            ann = self._exclude_duplicated_predictions(
-                api, anns, settings, image_info.dataset_id, [image_id]
+
+            if inference_request is not None:
+                inference_request.progress.iter_done_report()
+                inference_request.stage = InferenceRequest.Stage.INFERENCE
+                inference_request.progress.total = 1
+
+            upload = state.get("upload", False)
+            anns, slides_data = self._inference_auto(
+                [image_np],
+                settings=settings,
+            )
+            ann = anns[0]
+
+            if upload:
+                ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
+                output_project_id = ds_info.project_id
+                output_project_meta = self.cache.get_project_meta(api, output_project_id)
+                logger.debug("Merging project meta...")
+
+                output_project_meta, ann, meta_changed = update_meta_and_ann(
+                    output_project_meta, ann
+                )
+                if meta_changed:
+                    output_project_meta = api.project.update_meta(
+                        output_project_id, output_project_meta
+                    )
+                    self.cache.set_project_meta(output_project_id, output_project_meta)
+
+                ann = self._exclude_duplicated_predictions(
+                    api, anns, settings, ds_info.id, [image_id], output_project_meta
+                )[0]
+
+                logger.debug(
+                    "Uploading annotation...",
+                    extra={
+                        "image_id": image_id,
+                        "dataset_id": ds_info.id,
+                        "project_id": output_project_id,
+                    },
+                )
+                api.annotation.upload_ann(image_id, ann)
+            else:
+                ann = self._exclude_duplicated_predictions(
+                    api, anns, settings, image_info.dataset_id, [image_id]
+                )[0]
+
+            result = self._format_output(
+                anns,
+                slides_data,
+                image_id=image_id,
+                name=image_info.name,
+                dataset_id=image_info.dataset_id,
             )[0]
+            if inference_request is not None:
+                if ann is not None:
+                    inference_request.final_result = result
+                inference_request.progress.iter_done_report()
+                inference_request.global_progress_current = 1
+            return result
+        finally:
+            if inference_request is None:
+                self.global_progress.done()
+                self.global_progress.inference_finished(1, 1)
 
-        result = self._format_output(
-            anns,
-            slides_data,
-            image_id=image_id,
-            name=image_info.name,
-            dataset_id=image_info.dataset_id,
-        )[0]
-        if async_inference_request_uuid is not None and ann is not None:
-            inference_request["result"] = result
-        return result
-
-    def _inference_image_url(self, api: Api, state: dict):
+    def _inference_image_url(self, state: dict, inference_request_uuid: str = None):
         logger.debug("Inferring image_url...", extra={"state": state})
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
+        logger.debug("Inference settings:", extra={"inference_settings": settings})
+        inference_request = self.get_inference_request(inference_request_uuid)
+
         image_url = state["image_url"]
-        ext = sly_fs.get_file_ext(image_url)
-        if ext == "":
-            ext = ".jpg"
-        image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
-        sly_fs.download(image_url, image_path)
-        logger.debug("Inference settings:", extra=settings)
-        logger.debug(f"Downloaded path: {image_path}")
-        anns, slides_data = self._inference_auto(
-            [image_path],
-            settings=settings,
-        )
-        sly_fs.silent_remove(image_path)
-        return self._format_output(anns, slides_data, url=image_url)[0]
+        # Global progress
+        self.global_progress.increase_total(1)
+        if inference_request_uuid is not None:
+            inference_request.global_progress_total = 1
+        try:
+            if inference_request is not None:
+                inference_request.stage = InferenceRequest.Stage.PREPARING
+
+            ext = sly_fs.get_file_ext(image_url)
+            if ext == "":
+                ext = ".jpg"
+            with requests.get(image_url, stream=True) as response:
+                response.raise_for_status()
+                response.raw.decode_content = True
+                self.cache.add_image_to_cache(image_url, response.raw, ext=ext)
+            image_path = self.cache.get_image_path(image_url)
+
+            if inference_request is not None:
+                inference_request.progress.iter_done_report()
+                inference_request.stage = InferenceRequest.Stage.INFERENCE
+                inference_request.progress.total = 1
+
+            anns, slides_data = self._inference_auto(
+                [image_path],
+                settings=settings,
+            )
+            if inference_request is not None:
+                inference_request.progress.iter_done_report()
+                inference_request.global_progress_current = 1
+            return self._format_output(anns, slides_data, url=image_url)[0]
+        finally:
+            if inference_request is None:
+                self.global_progress.done()
+                self.global_progress.inference_finished(1, 1)
 
     def _inference_video_cached(
         self,
         key: Any,
         settings: Dict,
-        async_inference_request_uuid: str = None,
+        inference_request_uuid: str = None,
         frame_size: tuple = None,
         video_frames_count: int = None,
         fps: int = None,
     ):
         logger.debug("Inferring cached video...", extra={"key": key, "settings": settings})
+        inference_settings = self._get_inference_settings_from_state({"settings": settings})
+        logger.debug(f"Inference settings:", extra=inference_settings)
+
+        inference_request = self.get_inference_request(inference_request_uuid)
+        if inference_request is not None:
+            inference_request.stage = InferenceRequest.Stage.PREPARING
+
         start_frame_index = settings.get("startFrameIndex", 0)
         step = settings.get("stride", 1)
         end_frame_index = settings.get("endFrameIndex", None)
@@ -1587,25 +1704,12 @@ class Inference:
             video_height, video_witdth = frame_size
         else:
             video_height, video_witdth = self.cache.get_video_frame_size(key)
-        direction = settings.get("direction", "forward")
         tracking = settings.get("tracker", None)
-
-        inference_settings = self._get_inference_settings({"settings": settings})
-        logger.debug(f"Inference settings:", extra=inference_settings)
-
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = (n_frames + step - 1) // step
+        batch_size = settings.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        direction = settings.get("direction", "forward")
+        direction = 1 if direction == "forward" else -1
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
@@ -1620,56 +1724,67 @@ class Inference:
                 logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
             tracker = None
 
-        results = []
-        batch_size = settings.get("batch_size", None)
-        if batch_size is None:
-            batch_size = self.get_batch_size()
-        tracks_data = {}
-        direction = 1 if direction == "forward" else -1
-        for batch in batched(
-            range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
-            batch_size,
-        ):
-            if (
-                async_inference_request_uuid is not None
-                and inference_request["cancel_inference"] is True
+        progress_total = (n_frames + step - 1) // step
+        progress_current = 0
+        if inference_request is not None:
+            inference_request.stage = InferenceRequest.Stage.INFERENCE
+            inference_request.progress.total = progress_total
+            inference_request.global_progress_total = progress_total
+        self.global_progress.increase_total(progress_total)
+        try:
+            results = []
+            tracks_data = {}
+            for batch in batched(
+                range(
+                    start_frame_index, start_frame_index + direction * n_frames, direction * step
+                ),
+                batch_size,
             ):
+                if inference_request is not None and inference_request.is_stopped():
+                    logger.debug(
+                        f"Cancelling inference video...",
+                        extra={"inference_request_uuid": inference_request_uuid},
+                    )
+                    results = []
+                    break
                 logger.debug(
-                    f"Cancelling inference video...",
-                    extra={"inference_request_uuid": async_inference_request_uuid},
+                    f"Inferring frames {batch[0]}-{batch[-1]}:",
                 )
-                results = []
-                break
-            logger.debug(
-                f"Inferring frames {batch[0]}-{batch[-1]}:",
-            )
-            frames = self.cache.get_frames_from_cache(key, batch)
-            anns, slides_data = self._inference_auto(
-                source=frames,
-                settings=settings,
-            )
+                frames = self.cache.get_frames_from_cache(key, batch)
+                anns, slides_data = self._inference_auto(
+                    source=frames,
+                    settings=settings,
+                )
+                if tracker is not None:
+                    for frame_index, frame, ann in zip(batch, frames, anns):
+                        tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+                batch_results = self._format_output(
+                    anns, slides_data, kwargs_list=[{"frame_index": frame} for frame in batch]
+                )
+                results.extend(batch_results)
+                if inference_request is not None:
+                    inference_request.add_results(batch_results)
+                    inference_request.progress.iter_done_report(len(batch))
+                    inference_request.global_progress_current += len(batch)
+                else:
+                    self.global_progress.done(len(batch))
+                    progress_current += len(batch)
+                logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+            video_ann_json = None
             if tracker is not None:
-                for frame_index, frame, ann in zip(batch, frames, anns):
-                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
-            batch_results = self._format_output(
-                anns, slides_data, kwargs_list=[{"frame_index": frame} for frame in batch]
-            )
-            results.extend(batch_results)
-            if async_inference_request_uuid is not None:
-                sly_progress.iters_done(len(batch))
-                inference_request["pending_results"].extend(batch_results)
-            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
-        video_ann_json = None
-        if tracker is not None:
-            video_ann_json = tracker.get_annotation(
-                tracks_data, (video_height, video_witdth), n_frames
-            ).to_json()
-        result = {"ann": results, "video_ann": video_ann_json}
-        if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = result.copy()
-        return result
+                video_ann_json = tracker.get_annotation(
+                    tracks_data, (video_height, video_witdth), n_frames
+                ).to_json()
+            result = {"ann": results, "video_ann": video_ann_json}
+            if inference_request is not None:
+                if len(results) > 0:
+                    inference_request.final_result = result.copy()
+            return result
+        finally:
+            if inference_request is None:
+                self.global_progress.inference_finished(progress_current, progress_total)
 
-    def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
+    def _inference_video_id(self, api: Api, state: dict, inference_request_uuid: str = None):
         logger.debug("Inferring video_id...", extra={"state": state})
         video_info = api.video.get_info_by_id(state["videoId"])
         start_frame_index = state.get("startFrameIndex", 0)
@@ -1697,19 +1812,19 @@ class Inference:
                 n_frames=n_frames,
             ),
         )
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
         logger.debug(f"Inference settings:", extra=settings)
 
         preparing_progress = {"current": 0, "total": 1}
-        if async_inference_request_uuid is not None:
+        if inference_request_uuid is not None:
             try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
+                inference_request = self._inference_requests[inference_request_uuid]
             except Exception as ex:
                 import traceback
 
                 logger.error(traceback.format_exc())
                 raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"inference_request_uuid {inference_request_uuid} was given, "
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
@@ -1753,13 +1868,10 @@ class Inference:
             range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
         ):
-            if (
-                async_inference_request_uuid is not None
-                and inference_request["cancel_inference"] is True
-            ):
+            if inference_request_uuid is not None and inference_request["cancel_inference"] is True:
                 logger.debug(
                     f"Cancelling inference video...",
-                    extra={"inference_request_uuid": async_inference_request_uuid},
+                    extra={"inference_request_uuid": inference_request_uuid},
                 )
                 results = []
                 break
@@ -1784,7 +1896,7 @@ class Inference:
                 project_id=video_info.project_id,
             )
             results.extend(batch_results)
-            if async_inference_request_uuid is not None:
+            if inference_request_uuid is not None:
                 sly_progress.iters_done(len(batch) * step)
                 inference_request["pending_results"].extend(batch_results)
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
@@ -1794,7 +1906,7 @@ class Inference:
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
             ).to_json()
         result = {"ann": results, "video_ann": video_ann_json}
-        if async_inference_request_uuid is not None and len(results) > 0:
+        if inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = result.copy()
         return result
 
@@ -1803,7 +1915,7 @@ class Inference:
         api: Api,
         state: dict,
         images_ids: List[int],
-        async_inference_request_uuid: str = None,
+        inference_request_uuid: str = None,
     ):
         """Inference images by ids.
         If "output_project_id" in state, upload images and annotations to the output project.
@@ -1822,15 +1934,15 @@ class Inference:
             for ds_id in set([im_info.dataset_id for im_info in images_infos])
         }
 
-        if async_inference_request_uuid is not None:
+        if inference_request_uuid is not None:
             try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
+                inference_request = self._inference_requests[inference_request_uuid]
             except Exception as ex:
                 import traceback
 
                 logger.error(traceback.format_exc())
                 raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"inference_request_uuid {inference_request_uuid} was given, "
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
@@ -1871,7 +1983,7 @@ class Inference:
                     output_project_meta = api.project.update_meta(project_id, output_project_meta)
                 ann = update_classes(api, ann, output_project_meta, project_id)
                 api.annotation.append_labels(image_id, ann.labels)
-                if async_inference_request_uuid is not None:
+                if inference_request_uuid is not None:
                     sly_progress.iters_done(1)
                     inference_request["pending_results"].append(
                         {
@@ -1884,7 +1996,7 @@ class Inference:
                     )
 
         def _add_results_to_request(results: List[Dict]):
-            if async_inference_request_uuid is None:
+            if inference_request_uuid is None:
                 return
             inference_request["pending_results"].extend(results)
             sly_progress.iters_done(len(results))
@@ -1959,7 +2071,7 @@ class Inference:
                     img_ids=[info.id for info in batch_image_infos],
                     anns=batch_anns,
                 )
-                if async_inference_request_uuid is not None:
+                if inference_request_uuid is not None:
                     sly_progress.iters_done(len(batch_results))
                     inference_request["pending_results"].extend(
                         [{**result, "annotation": None, "data": None} for result in batch_results]
@@ -1998,7 +2110,7 @@ class Inference:
                             upload_f(joined_batch)
                         continue
                     if stop_event.is_set():
-                        self._on_inference_end(None, async_inference_request_uuid)
+                        self._on_inference_end(None, inference_request_uuid)
                         return
                     time.sleep(1)
             except Exception as e:
@@ -2014,7 +2126,7 @@ class Inference:
         )
         upload_thread.start()
 
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
         logger.debug(f"Inference settings:", extra=settings)
 
         results = []
@@ -2024,12 +2136,12 @@ class Inference:
                 if stop:
                     break
                 if (
-                    async_inference_request_uuid is not None
+                    inference_request_uuid is not None
                     and inference_request["cancel_inference"] is True
                 ):
                     logger.debug(
                         f"Cancelling inference project...",
-                        extra={"inference_request_uuid": async_inference_request_uuid},
+                        extra={"inference_request_uuid": inference_request_uuid},
                     )
                     results = []
                     stop = True
@@ -2067,7 +2179,7 @@ class Inference:
             stop_upload_event.set()
             upload_thread.join()
             raise
-        if async_inference_request_uuid is not None and len(results) > 0:
+        if inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         stop_upload_event.set()
         upload_thread.join()
@@ -2078,7 +2190,7 @@ class Inference:
         api: Api,
         state: dict,
         project_info: ProjectInfo = None,
-        async_inference_request_uuid: str = None,
+        inference_request_uuid: str = None,
     ):
         """Inference project images.
         If "output_project_id" in state, upload images and annotations to the output project.
@@ -2104,15 +2216,15 @@ class Inference:
         preparing_progress["current"] = 0
         preparing_progress["total"] = len(datasets_infos)
         progress_cb = None
-        if async_inference_request_uuid is not None:
+        if inference_request_uuid is not None:
             try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
+                inference_request = self._inference_requests[inference_request_uuid]
             except Exception as ex:
                 import traceback
 
                 logger.error(traceback.format_exc())
                 raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"inference_request_uuid {inference_request_uuid} was given, "
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
@@ -2186,7 +2298,7 @@ class Inference:
                     )
                 ann = update_classes(api, ann, output_project_meta, output_project_id)
                 api.annotation.append_labels(image_id, ann.labels)
-                if async_inference_request_uuid is not None:
+                if inference_request_uuid is not None:
                     sly_progress.iters_done(1)
                     inference_request["pending_results"].append(
                         {
@@ -2258,14 +2370,14 @@ class Inference:
                     img_ids=[info.id for info in batch_image_infos],
                     anns=batch_anns,
                 )
-                if async_inference_request_uuid is not None:
+                if inference_request_uuid is not None:
                     sly_progress.iters_done(len(batch_results))
                     inference_request["pending_results"].extend(
                         [{**result, "annotation": None, "data": None} for result in batch_results]
                     )
 
         def _add_results_to_request(results: List[Dict]):
-            if async_inference_request_uuid is None:
+            if inference_request_uuid is None:
                 return
             inference_request["pending_results"].extend(results)
             sly_progress.iters_done(len(results))
@@ -2286,7 +2398,7 @@ class Inference:
                             upload_f(joined_batch)
                         continue
                     if stop_event.is_set():
-                        self._on_inference_end(None, async_inference_request_uuid)
+                        self._on_inference_end(None, inference_request_uuid)
                         return
                     time.sleep(1)
             except Exception as e:
@@ -2309,7 +2421,7 @@ class Inference:
         )
         upload_thread.start()
 
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
         logger.debug(f"Inference settings:", extra=settings)
         results = []
         data_to_return = {}
@@ -2322,12 +2434,12 @@ class Inference:
                     images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
                     if (
-                        async_inference_request_uuid is not None
+                        inference_request_uuid is not None
                         and inference_request["cancel_inference"] is True
                     ):
                         logger.debug(
                             f"Cancelling inference project...",
-                            extra={"inference_request_uuid": async_inference_request_uuid},
+                            extra={"inference_request_uuid": inference_request_uuid},
                         )
                         results = []
                         stop = True
@@ -2383,7 +2495,7 @@ class Inference:
             stop_upload_event.set()
             upload_thread.join()
             raise
-        if async_inference_request_uuid is not None and len(results) > 0:
+        if inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = {"ann": results}
         stop_upload_event.set()
         upload_thread.join()
@@ -2393,7 +2505,7 @@ class Inference:
         self,
         api: Api,
         state: dict,
-        async_inference_request_uuid: str = None,
+        inference_request_uuid: str = None,
     ):
         """Run speedtest on project images."""
         logger.debug("Running speedtest...", extra={"state": state})
@@ -2416,15 +2528,15 @@ class Inference:
 
         # progress
         preparing_progress = {"current": 0, "total": 1}
-        if async_inference_request_uuid is not None:
+        if inference_request_uuid is not None:
             try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
+                inference_request = self._inference_requests[inference_request_uuid]
             except Exception as ex:
                 import traceback
 
                 logger.error(traceback.format_exc())
                 raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
+                    f"inference_request_uuid {inference_request_uuid} was given, "
                     f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
                 )
             sly_progress: Progress = inference_request["progress"]
@@ -2476,7 +2588,7 @@ class Inference:
             threading.Thread(target=_download_images, daemon=True).start()
 
         def _add_results_to_request(results: List[Dict]):
-            if async_inference_request_uuid is None:
+            if inference_request_uuid is None:
                 return
             inference_request["pending_results"].append(results)
             sly_progress.iters_done(1)
@@ -2492,7 +2604,7 @@ class Inference:
                             upload_f(batch)
                         continue
                     if stop_event.is_set():
-                        self._on_inference_end(None, async_inference_request_uuid)
+                        self._on_inference_end(None, inference_request_uuid)
                         return
                     time.sleep(1)
             except Exception as e:
@@ -2509,7 +2621,7 @@ class Inference:
             daemon=True,
         ).start()
 
-        settings = self._get_inference_settings(state)
+        settings = self._get_inference_settings_from_state(state)
         logger.debug(f"Inference settings:", extra=settings)
         results = []
         stop = False
@@ -2533,12 +2645,12 @@ class Inference:
                 if stop:
                     break
                 if (
-                    async_inference_request_uuid is not None
+                    inference_request_uuid is not None
                     and inference_request["cancel_inference"] is True
                 ):
                     logger.debug(
                         f"Cancelling inference project...",
-                        extra={"inference_request_uuid": async_inference_request_uuid},
+                        extra={"inference_request_uuid": inference_request_uuid},
                     )
                     results = []
                     stop = True
@@ -2598,28 +2710,29 @@ class Inference:
         except Exception:
             stop_upload_event.set()
             raise
-        if async_inference_request_uuid is not None and len(results) > 0:
+        if inference_request_uuid is not None and len(results) > 0:
             inference_request["result"] = results
         stop_upload_event.set()
         return results
 
-    def _on_inference_start(self, inference_request_uuid):
-        inference_request = {
-            "progress": Progress("Inferring model...", total_cnt=1),
-            "is_inferring": True,
-            "cancel_inference": False,
-            "result": None,
-            "pending_results": [],
-            "preparing_progress": {"current": 0, "total": 1},
-            "exception": None,
-        }
-        self._inference_requests[inference_request_uuid] = inference_request
+    def _on_inference_start(self, inference_request: InferenceRequest = None):
+        if inference_request is not None:
+            if inference_request.uuid in self._inference_requests:
+                raise RuntimeError(
+                    f"Inference request with uuid {inference_request.uuid} already exists."
+                )
+            self._inference_requests[inference_request.uuid] = inference_request
 
-    def _on_inference_end(self, future, inference_request_uuid):
+    def _on_inference_end(self, future, inference_request_uuid: str):
         logger.debug("callback: on_inference_end()")
         inference_request = self._inference_requests.get(inference_request_uuid)
         if inference_request is not None:
-            inference_request["is_inferring"] = False
+            inference_request.on_inference_end()
+
+            self.global_progress.inference_finished(
+                current=inference_request.global_progress_current,
+                total=inference_request.global_progress_total,
+            )
 
     def _check_serve_before_call(self, func):
         @wraps(func)
@@ -2643,15 +2756,17 @@ class Inference:
     def is_model_deployed(self):
         return self._model_served
 
-    def schedule_task(self, func, *args, **kwargs):
+    def schedule_task(self, func, *args, **kwargs) -> Future:
         inference_request_uuid = kwargs.get("inference_request_uuid", None)
         if inference_request_uuid is None:
-            self._executor.submit(func, *args, **kwargs)
+            future = self._executor.submit(func, *args, **kwargs)
         else:
-            self._on_inference_start(inference_request_uuid)
+            inference_request = InferenceRequest(inference_request_uuid)
+            self._on_inference_start(inference_request)
+            func = partial(
+                self._handle_error_in_async, inference_request_uuid=inference_request_uuid
+            )(func)
             future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
                 func,
                 *args,
                 **kwargs,
@@ -2661,6 +2776,7 @@ class Inference:
             )
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
+        return future
 
     def _deploy_on_autorestart(self):
         try:
@@ -2779,25 +2895,25 @@ class Inference:
         def get_custom_inference_settings():
             return {"settings": self.custom_inference_settings}
 
+        @server.post("/get_model_meta")
         @server.post("/get_output_classes_and_tags")
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            logger.debug(f"'inference_image_id' request in json format:{request.state.state}")
+            state = request.state.state
+            logger.debug("Received a request to '/inference_image_id'", extra={"state": state})
             api = request.state.api
             if api is None:
                 api = self.api
-            return self._inference_image_id(api, request.state.state)
+            return self._inference_image_id(api, state)
 
         @server.post("/inference_image_url")
         def inference_image_url(request: Request):
-            logger.debug(f"'inference_image_url' request in json format:{request.state.state}")
-            api = request.state.api
-            if api is None:
-                api = self.api
-            return self._inference_image_url(api, request.state.state)
+            state = request.state.state
+            logger.debug(f"Received a request to 'inference_image_url'", extra={"state": state})
+            return self._inference_image_url(state)
 
         @server.post("/inference_batch_ids")
         def inference_batch_ids(response: Response, request: Request):
@@ -2834,9 +2950,7 @@ class Inference:
             api = request.state.api
             if api is None:
                 api = self.api
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
+            inference_request_uuid = self.generate_uuid()
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
                 self._handle_error_in_async,
@@ -3049,26 +3163,21 @@ class Inference:
 
         @server.post("/inference_image_id_async")
         def inference_image_id_async(request: Request):
-            logger.debug(f"'inference_image_id_async' request in json format:{request.state.state}")
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
+            logger.debug(
+                "Received a request to 'inference_image_id_async'",
+                extra={"state": request.state.state},
+            )
+            inference_request_uuid = self.generate_uuid()
             api = request.state.api
             if api is None:
                 api = self.api
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
+
+            self.schedule_task(
                 self._inference_image_id,
                 api,
                 request.state.state,
-                inference_request_uuid,
+                inference_request_uuid=inference_request_uuid,
             )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
             logger.debug(
                 "Inference has scheduled from 'inference_image_id_async' endpoint",
                 extra={"inference_request_uuid": inference_request_uuid},
@@ -3091,9 +3200,7 @@ class Inference:
                     "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
+            inference_request_uuid = self.generate_uuid()
             api = request.state.api
             if api is None:
                 api = self.api
@@ -3141,9 +3248,7 @@ class Inference:
                     "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
+            inference_request_uuid = self.generate_uuid()
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
                 self._handle_error_in_async,
@@ -3189,9 +3294,7 @@ class Inference:
                     "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                     "success": False,
                 }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
+            inference_request_uuid = self.generate_uuid()
             self._on_inference_start(inference_request_uuid)
             future = self._executor.submit(
                 self._handle_error_in_async,

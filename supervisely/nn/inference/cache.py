@@ -141,16 +141,20 @@ class PersistentImageTTLCache(TTLCache):
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
 
-    def save_image(self, key, image: np.ndarray) -> None:
+    def save_image(self, key, image: Union[np.ndarray, BinaryIO], ext=".png") -> None:
         if not self._base_dir.exists():
             self._base_dir.mkdir()
 
-        filepath = self._base_dir / f"{str(key)}.png"
+        filepath = self._base_dir / f"{str(key)}{ext}"
         self[key] = filepath
 
         if filepath.exists():
             sly.logger.debug(f"Rewrite image {str(filepath)}")
-        sly.image.write(str(filepath), image)
+        if isinstance(image, np.ndarray):
+            sly.image.write(str(filepath), image)
+        else:
+            with open(filepath, "wb") as f:
+                shutil.copyfileobj(image, f)
 
     def get_image_path(self, key: Any) -> Path:
         return self[key]
@@ -414,7 +418,7 @@ class InferenceImageCache:
             return_images,
         )
 
-    def add_video_to_cache_by_io(self, video_id: int, video_io) -> None:
+    def add_video_to_cache_by_io(self, video_id: int, video_io: BinaryIO) -> None:
         if isinstance(self._cache, PersistentImageTTLCache):
             with self._lock:
                 self._cache.save_video(video_id, source=video_io)
@@ -442,6 +446,18 @@ class InferenceImageCache:
             finally:
                 if tmp_source is not None:
                     silent_remove(tmp_source)
+
+    def add_image_to_cache(self, key: str, image: Union[np.ndarray, BinaryIO], ext=".png") -> None:
+        """
+        Adds image to cache.
+        """
+        with self._lock:
+            self._cache.save_image(key, image, ext)
+            self._load_queue.delete(key)
+        sly.logger.debug(f"Image {key} added to cache", extra={"image_id": key})
+
+    def get_image_path(self, key) -> str:
+        return str(self._cache.get_image_path(key))
 
     def download_video(self, api: sly.Api, video_id: int, **kwargs) -> None:
         """

@@ -559,6 +559,7 @@ class VideoFrameReader:
         self.close()
 
     def read_frames(self, frame_indexes: List[int] = None) -> Generator:
+        self._ensure_initialized()
         if frame_indexes is None:
             frame_indexes = self.frame_indexes
         if self.vr is not None:
@@ -585,6 +586,15 @@ class VideoFrameReader:
 
     def __iter__(self):
         return self.read_frames()
+
+    def __next__(self):
+        if not hasattr(self, "_frame_generator"):
+            self._frame_generator = self.read_frames()
+        try:
+            return next(self._frame_generator)
+        except StopIteration:
+            self._frame_generator = None
+            raise
 
     def frame_size(self):
         self._ensure_initialized()

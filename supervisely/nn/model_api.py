@@ -87,6 +87,9 @@ class Prediction:
         self._classes = None
         self._scores = None
 
+        if self.path is None and isinstance(self.source, str):
+            self.path = self.source
+
         mkdir(self._temp_dir)
         if not Prediction.__cleanup_registered:
             atexit.register(self._clear_temp_files)
