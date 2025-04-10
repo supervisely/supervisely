@@ -129,15 +129,14 @@ class GlobalProgress:
 
     def set_message(self, message: str):
         with self._lock:
-            self.progress.message = message
-            self.progress.report_if_needed()
+            if self.progress.message != message:
+                self.progress.message = message
+                self.progress.report_progress()
 
     def increase_total(self, n=1):
         with self._lock:
             self.progress.total += n
-            if self.progress.message != "Inference in progress...":
-                self.progress.message = "Inference in progress..."
-                self.progress.report_if_needed()
+            self.set_message("Inference in progress...")
 
     def set_ready(self):
         with self._lock:
