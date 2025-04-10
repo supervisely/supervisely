@@ -500,7 +500,10 @@ class ImageApi(RemoveableBulkModuleApi):
             data[ApiField.FILTERS].append(
                 {
                     "type": "entities_collection",
-                    "data": {ApiField.COLLECTION_ID: entities_collection_id},
+                    "data": {
+                        ApiField.COLLECTION_ID: entities_collection_id,
+                        ApiField.INCLUDE: True,
+                    },
                 }
             )
         if fields is not None:
