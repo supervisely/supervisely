@@ -87,13 +87,13 @@ class InferenceRequest:
         elif self._stage == InferenceRequest.Stage.POSTPROCESS:
             progress_msg = "Postprocessing data..."
         elif self._stage == InferenceRequest.Stage.FINISHED:
-            progress_msg = "Inference finished."
+            progress_msg = "Inference finished"
             refresh_progress = False
         elif self._stage == InferenceRequest.Stage.CANCELLED:
-            progress_msg = "Inference cancelled."
+            progress_msg = "Inference cancelled"
             refresh_progress = False
         elif self._stage == InferenceRequest.Stage.ERROR:
-            progress_msg = "Error."
+            progress_msg = "Error: " + str(self._exception)
             refresh_progress = False
         else:
             progress_msg = str(self._stage)
