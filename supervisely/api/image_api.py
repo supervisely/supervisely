@@ -2693,7 +2693,7 @@ class ImageApi(RemoveableBulkModuleApi):
         if len(ids) == 0:
             return
 
-        existing_images = self.get_list(dst_dataset_id)
+        existing_images = self.get_list(dst_dataset_id, force_metadata_for_links=False)
         existing_names = {image.name for image in existing_images}
 
         ids_info = self.get_info_by_id_batch(ids, force_metadata_for_links=False)
@@ -2719,7 +2719,8 @@ class ImageApi(RemoveableBulkModuleApi):
                     "names intersection"
                 )
 
-        new_images = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb)
+        img_metas = [info.meta or {} for info in ids_info]
+        new_images = self.upload_ids(dst_dataset_id, new_names, ids, progress_cb, metas=img_metas)
         new_ids = [new_image.id for new_image in new_images]
 
         if with_annotations:
@@ -2804,12 +2805,14 @@ class ImageApi(RemoveableBulkModuleApi):
                 raise RuntimeError("len(dst_names) != len(src_image_infos)")
             new_names = dst_names
 
+        img_metas = [info.meta or {} for info in src_image_infos]
         src_ids = [info.id for info in src_image_infos]
         new_images = self.upload_ids(
             dst_dataset_id,
             new_names,
             src_ids,
             progress_cb,
+            metas=img_metas,
             batch_size=batch_size,
             force_metadata_for_links=False,
             infos=src_image_infos,
