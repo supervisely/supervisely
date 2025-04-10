@@ -237,6 +237,8 @@ class DeployApi:
             raise ValueError(f"Workspace with ID {workspace_id} not found")
         team_id = workspace_info.team_id
 
+        # @TODO: Fix debug logs
+        # Skip HTTPS redirect check on API init: False. ENV: False. Checked servers: set()
         frameworks_v1 = {
             RITM(team_id).framework_name: RITM(team_id).serve_slug,
             RTDETR(team_id).framework_name: RTDETR(team_id).serve_slug,

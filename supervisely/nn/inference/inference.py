@@ -676,6 +676,42 @@ class Inference:
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
+    def _build_deploy_params_from_api(self, deploy_params: dict) -> dict:
+        model_name = deploy_params["model_name"]
+        selected_model = None
+        for model in self.pretrained_models:
+            if model["meta"]["model_name"].lower() == model_name.lower():
+                    selected_model = model
+                    break
+            if selected_model is None:
+                raise ValueError(
+                    f"Model {model_name} not found in models.json of serving app"
+                )
+            deploy_params["model_files"] = selected_model["meta"]["model_files"]
+        deploy_params["model_info"] = selected_model
+        return deploy_params
+
+    def _build_legacy_deploy_params_from_api(self, deploy_params: dict) -> dict:
+        model_name = deploy_params["model_name"]
+        selected_model = None
+        if hasattr(self, "pretrained_models_table"):
+            selected_model = self.pretrained_models_table.get_by_model_name(model_name)
+        if selected_model is None:
+            # @TODO: Improve error message
+            raise ValueError("This app doesn't support new deploy api")
+        
+        self.pretrained_models_table.set_by_model_name(model_name)
+        deploy_params = self.pretrained_models_table.get_selected_model_params()
+        return deploy_params
+    
+    # @TODO: method name should be better?
+    def _set_common_deploy_params(self, deploy_params: dict) -> dict:
+        if deploy_params.get("runtime", None) is None:
+            deploy_params["runtime"] = RuntimeType.PYTORCH
+        if deploy_params.get("device", None) is None:
+            deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
+        return deploy_params
+
     def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
         if deploy_params["model_source"] == ModelSource.PRETRAINED:
             return self._download_pretrained_model(deploy_params["model_files"], log_progress)
@@ -3447,7 +3483,7 @@ class Inference:
                 )
 
             return args_details
-
+        
         @server.post("/deploy_from_api")
         def _deploy_from_api(response: Response, request: Request):
             try:
@@ -3455,35 +3491,22 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
+                model_name = state.get("model_name", None)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
-                    if deploy_params["model_source"] == ModelSource.PRETRAINED and state.get(
-                        "model_name"
-                    ):
-                        model_name = state["model_name"]
-                        selected_model = None
-                        for model in self.pretrained_models:
-                            if model["meta"]["model_name"].lower() == model_name.lower():
-                                selected_model = model
-                                break
-                        if selected_model is None:
-                            raise ValueError(
-                                f"Model {model_name} not found in models.json of serving app"
-                            )
-                        deploy_params["model_files"] = selected_model["meta"]["model_files"]
-                        deploy_params["model_info"] = selected_model
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
+                        deploy_params = self._build_deploy_params_from_api(deploy_params)
                         model_files = self._download_model_files(deploy_params)
                     else:
                         model_files = self._download_model_files(deploy_params)
 
                     deploy_params["model_files"] = model_files
-                    if deploy_params.get("runtime", None) is None:
-                        deploy_params["runtime"] = RuntimeType.PYTORCH
-                    if deploy_params.get("device", None) is None:
-                        deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
+                    deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
-                    model_name = state.get("model_name", None)
-
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
+                        deploy_params = self._build_legacy_deploy_params_from_api(deploy_params)
+                        # @TODO: Check set runtime only for YOLOv8?
+                        deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model(deploy_params)
                 else:
                     raise ValueError("Unknown GUI type")
