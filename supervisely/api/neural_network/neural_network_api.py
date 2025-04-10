@@ -7,7 +7,7 @@ from typing_extensions import Literal
 
 from supervisely.api.neural_network.deploy_api import DeployApi
 from supervisely.sly_logger import logger
-
+import supervisely.io.env as sly_env
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
@@ -29,7 +29,6 @@ class NeuralNetworkApi:
         model: str,
         device: str = None,
         runtime: str = None,
-        team_id: int = None,
         workspace_id: int = None,
         **kwargs,
     ) -> "ModelApi":
@@ -42,8 +41,6 @@ class NeuralNetworkApi:
         :type device: Optional[str]
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
-        :param team_id: Team ID, if not present will be defined automatically.
-        :type team_id: Optional[int]
         :param workspace_id: Workspace ID, if not present will be defined automatically.
         :type workspace_id: Optional[int]
         :param kwargs: Additional parameters for deployment.
@@ -61,9 +58,21 @@ class NeuralNetworkApi:
 
         checkpoint = None
         pretrained = None
+        team_id = None
+        if workspace_id is None:
+            workspace_id = sly_env.workspace_id()
+        if team_id is None:
+            workspace_info = self._api.workspace.get_info_by_id(workspace_id)
+            team_id = workspace_info.team_id
+        
         if model.startswith("/"):
             checkpoint = model
         else:
+            # USE THIS ?
+            # workspace_info = self._api.workspace.get_info_by_id(workspace_id)
+            # team_id = workspace_info.team_id
+            # ^^^^^^^^^^^^^^^
+
             found_team_id = self._deploy_api._find_team_by_path(
                 f"/{model}", team_id=team_id, raise_not_found=False
             )

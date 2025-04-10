@@ -733,7 +733,7 @@ class ModelApi:
 
     def get_list_available_models(self):
         """Return list of available pretrained models"""
-        pass
+        return self._post("list_pretrained_models", {})["models"]
 
     def healthcheck(self):
         if self.deploy_id is not None:

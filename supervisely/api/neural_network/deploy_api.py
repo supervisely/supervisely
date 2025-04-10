@@ -188,6 +188,7 @@ class DeployApi:
         model_name: str,
         device: Optional[str] = None,
         runtime: str = None,
+        workspace_id: int = None,
         app: Union[str, int] = None,
         agent_id: Optional[int] = None,
         **kwargs,
@@ -195,30 +196,75 @@ class DeployApi:
         """
         Deploy a pretrained model.
 
-        :param app: App name or App module ID in Supervisely.
-        :type app: Union[str, int]
+        :param framework: Framework name or Framework ID in Supervisely.
+        :type framework: Union[str, int]
         :param model_name: Model name to deploy.
         :type model_name: str
         :param device: Device string. If not provided, will be chosen automatically.
         :type device: Optional[str]
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
+        :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
+        :type workspace_id: Optional[int]
+        :param app: App name or App module ID in Supervisely.
+        :type app: Union[str, int]
+        :param agent_id: Agent ID. If not provided, will be found automatically.
+        :type agent_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if no serving apps found for the app name or multiple serving apps found for the app name.
         """
-        runtime = get_runtime(runtime)
+        from supervisely.nn.artifacts import (
+            RITM,
+            RTDETR,
+            Detectron2,
+            MMClassification,
+            MMDetection,
+            MMDetection3,
+            MMSegmentation,
+            UNet,
+            YOLOv5,
+            YOLOv5v2,
+            YOLOv8,
+        )
+        from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+        from supervisely.nn.utils import ModelSource
 
-        module_id = None
-        if isinstance(app, int):
-            module_id = app
-        elif isinstance(app, str):
-            module_id = self._api.app.find_module_id_by_app_name(app)
+        workspace_info = self._api.workspace.get_info_by_id(workspace_id)
+        if workspace_info is None:
+            raise ValueError(f"Workspace with ID {workspace_id} not found")
+        team_id = workspace_info.team_id
+
+        frameworks_v1 = {
+            RITM(team_id).framework_name: RITM(team_id).serve_slug,
+            RTDETR(team_id).framework_name: RTDETR(team_id).serve_slug,
+            Detectron2(team_id).framework_name: Detectron2(team_id).serve_slug,
+            MMClassification(team_id).framework_name: MMClassification(team_id).serve_slug,
+            MMDetection(team_id).framework_name: MMDetection(team_id).serve_slug,
+            MMDetection3(team_id).framework_name: MMDetection3(team_id).serve_slug,
+            MMSegmentation(team_id).framework_name: MMSegmentation(team_id).serve_slug,
+            UNet(team_id).framework_name: UNet(team_id).serve_slug,
+            YOLOv5(team_id).framework_name: YOLOv5(team_id).serve_slug,
+            YOLOv5v2(team_id).framework_name: YOLOv5v2(team_id).serve_slug,
+            YOLOv8(team_id).framework_name: YOLOv8(team_id).serve_slug,
+        }
+        if framework in frameworks_v1:
+            slug = frameworks_v1[framework]
+            module_id = self.find_serving_app_by_slug(slug)
         else:
-            module_id = self.find_serving_app_by_framework(framework)["id"]
+            module_id = None
+            if isinstance(app, int):
+                module_id = app
+            elif isinstance(app, str):
+                module_id = self._api.app.find_module_id_by_app_name(app)
+            else:
+                module_id = self.find_serving_app_by_framework(framework)["id"]
+        if module_id is None:
+            raise ValueError(f"Serving app for framework '{framework}' not found. Make sure that you used correct framework name.")
 
+        runtime = get_runtime(runtime)
         if agent_id is None:
             agent_id = self._find_agent()
 
@@ -263,8 +309,8 @@ class DeployApi:
         checkpoint: str,
         device: Optional[str] = None,
         runtime: str = None,
-        team_id: int = None,
         timeout: int = 100,
+        team_id: int = None,
         workspace_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
@@ -277,10 +323,10 @@ class DeployApi:
         :type device: Optional[str]
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
-        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
-        :type team_id: Optional[int]
         :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
         :type timeout: Optional[int]
+        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
+        :type team_id: Optional[int]
         :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
         :type workspace_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
@@ -298,10 +344,10 @@ class DeployApi:
         return self.deploy_custom_model_by_artifacts_dir(
             artifacts_dir=artifacts_dir,
             checkpoint_name=checkpoint_name,
-            team_id=team_id,
             device=device,
             runtime=runtime,
             timeout=timeout,
+            team_id=team_id,
             workspace_id=workspace_id,
             **kwargs,
         )
@@ -312,8 +358,8 @@ class DeployApi:
         checkpoint_name: Optional[str] = None,
         device: Optional[str] = None,
         runtime: str = None,
-        team_id: int = None,
         timeout: int = 100,
+        team_id: int = None,
         workspace_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
@@ -329,10 +375,12 @@ class DeployApi:
         :type device: Optional[str]
         :param runtime: Runtime string, if not present will be defined automatically.
         :type runtime: Optional[str]
-        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
-        :type team_id: Optional[int]
         :param timeout: Timeout in seconds (default is 100). The maximum time to wait for the serving app to be ready.
         :type timeout: Optional[int]
+        :param team_id: Team ID where the artifacts are stored. If not provided, will be taken from the current context.
+        :type team_id: Optional[int]
+        :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
+        :type workspace_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
@@ -506,6 +554,9 @@ class DeployApi:
         if len(modules) == 0:
             return None
         return modules[0]
+
+    def find_serving_app_by_slug(self, slug: str) -> int:
+        return self._api.app.get_ecosystem_module_id(slug)
 
     def get_serving_app_by_train_app(self, app_name: Optional[str] = None, module_id: int = None):
         if app_name is None and module_id is None:

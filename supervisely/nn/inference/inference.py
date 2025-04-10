@@ -3482,6 +3482,8 @@ class Inference:
                         deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
+                    model_name = state.get("model_name", None)
+
                     self._load_model(deploy_params)
                 else:
                     raise ValueError("Unknown GUI type")
@@ -3501,7 +3503,10 @@ class Inference:
             if isinstance(self.gui, GUI.ServingGUITemplate):
                 return {"models": self._gui.pretrained_models_table._models}
             else:
-                return {"models": "This app doesn't support this feature."}
+                if hasattr(self, "pretrained_models_table"):
+                    return {"models": self.pretrained_models_table._models}
+                else:
+                    return {"models": "This app doesn't support this feature."}
 
         @server.post("/is_deployed")
         def _is_deployed(response: Response, request: Request):
