@@ -711,8 +711,6 @@ class Inference:
         if has_runtime_param:
             if deploy_params.get("runtime", None) is None:
                 deploy_params["runtime"] = RuntimeType.PYTORCH
-        else:
-            deploy_params.pop("runtime")
         if deploy_params.get("device", None) is None:
             deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
         return deploy_params
