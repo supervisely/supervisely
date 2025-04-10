@@ -2763,10 +2763,9 @@ class Inference:
         else:
             inference_request = InferenceRequest(inference_request_uuid)
             self._on_inference_start(inference_request)
-            func = partial(
-                self._handle_error_in_async, inference_request_uuid=inference_request_uuid
-            )(func)
             future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
                 func,
                 *args,
                 **kwargs,
