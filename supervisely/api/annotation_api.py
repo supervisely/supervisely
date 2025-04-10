@@ -1751,9 +1751,9 @@ class AnnotationApi(ModuleApi):
         Optimized method for uploading annotations to images in large batches.
         This method significantly improves performance when uploading large numbers of annotations
         by processing different components in parallel batches.
-        
+
         IMPORTANT: If you pass anns as a generator, you must be sure that the generator will yield the same number of annotations
-        as the number of image IDs provided. 
+        as the number of image IDs provided.
 
         The method works by:
         1. Separating regular figures and alpha masks for specialized processing
@@ -1976,6 +1976,8 @@ class AnnotationApi(ModuleApi):
             f_pbar = tqdm(
                 desc="Uploading figures", total=len(regular_figures) + len(alpha_mask_figures)
             )
+        else:
+            f_pbar = None
 
         for figures_batch, tags_batch in zip(
             batched(regular_figures, batch_size),
