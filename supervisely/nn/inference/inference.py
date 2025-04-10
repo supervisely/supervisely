@@ -1780,8 +1780,8 @@ class Inference:
                     )
                     inference_request.global_progress_current += len(batch)
                 else:
-                    self.global_progress.done(len(batch))
                     progress_current += len(batch)
+                self.global_progress.done(len(batch))
                 logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
             video_ann_json = None
             if tracker is not None:
