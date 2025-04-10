@@ -3041,7 +3041,7 @@ class Inference:
                     settings=state,
                     inference_request_uuid=inference_request_uuid,
                     frame_size=frame_size,
-                    frames_count=frames_count,
+                    video_frames_count=frames_count,
                     fps=fps,
                 )
                 logger.debug(
