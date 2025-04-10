@@ -705,8 +705,14 @@ class Inference:
     
     # @TODO: method name should be better?
     def _set_common_deploy_params(self, deploy_params: dict) -> dict:
-        if deploy_params.get("runtime", None) is None:
-            deploy_params["runtime"] = RuntimeType.PYTORCH
+        load_model_params = inspect.signature(self.load_model).parameters
+        has_runtime_param = 'runtime' in load_model_params
+        
+        if has_runtime_param:
+            if deploy_params.get("runtime", None) is None:
+                deploy_params["runtime"] = RuntimeType.PYTORCH
+        else:
+            deploy_params.pop("runtime")
         if deploy_params.get("device", None) is None:
             deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
         return deploy_params

@@ -733,6 +733,7 @@ class ModelApi:
 
     def get_list_available_models(self):
         """Return list of available pretrained models"""
+        # Any model must be deployed first in app
         return self._post("list_pretrained_models", {})["models"]
 
     def healthcheck(self):
