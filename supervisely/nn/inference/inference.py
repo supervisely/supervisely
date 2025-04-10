@@ -1121,7 +1121,9 @@ class Inference:
             return yaml.safe_load(self._custom_inference_settings)
 
     def _handle_error_in_async(self, inference_request_uuid: str, func, *args, **kwargs):
+        logger.debug("inside _handle_error_in_async")
         try:
+            logger.debug("calling func")
             return func(*args, **kwargs)
         except Exception as e:
             inference_request = self._inference_requests.get(inference_request_uuid, None)
