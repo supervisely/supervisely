@@ -124,7 +124,7 @@ class AutoRestartInfo:
 
 class GlobalProgress:
     def __init__(self):
-        self.progress = Progress(message="Ready", total_cnt=1)
+        self.progress = Progress(message="Ready", total_cnt=1, need_info_log=True)
         self._lock = threading.Lock()
 
     def set_message(self, message: str):
