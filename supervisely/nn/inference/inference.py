@@ -1120,7 +1120,7 @@ class Inference:
         else:
             return yaml.safe_load(self._custom_inference_settings)
 
-    def _handle_error_in_async(self, inference_request_uuid: str, func, *args, **kwargs):
+    def _handle_error_in_async(self, inference_request_uuid: str, func, args, kwargs):
         logger.debug("inside _handle_error_in_async")
         try:
             logger.debug("calling func")
@@ -2769,8 +2769,8 @@ class Inference:
                 self._handle_error_in_async,
                 inference_request_uuid,
                 func,
-                *args,
-                **kwargs,
+                args,
+                kwargs,
             )
             end_callback = partial(
                 self._on_inference_end, inference_request_uuid=inference_request_uuid
