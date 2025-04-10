@@ -748,7 +748,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         encoded_geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
 
-        batch_size = 200
+        batch_size = 100
         tasks = []
 
         for batch_ids, batch_geometries in zip(
