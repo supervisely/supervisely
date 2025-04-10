@@ -8,7 +8,17 @@ import asyncio
 import json
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Union,
+)
 from uuid import uuid4
 
 from tqdm import tqdm
@@ -1732,7 +1742,7 @@ class AnnotationApi(ModuleApi):
     async def upload_anns_async(
         self,
         image_ids: List[int],
-        anns: List[Annotation],
+        anns: Union[List[Annotation], Generator],
         dataset_id: Optional[int] = None,
         log_progress: bool = True,
         semaphore: Optional[asyncio.Semaphore] = None,
@@ -1754,8 +1764,8 @@ class AnnotationApi(ModuleApi):
 
         :param image_ids: List of image IDs in Supervisely.
         :type image_ids: List[int]
-        :param anns: List of Annotation objects.
-        :type anns: List[Annotation]
+        :param anns: List of annotations to upload. Can be a generator or a list.
+        :type anns: Union[List[Annotation], Generator]
         :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
         :type dataset_id: int, optional
         :param log_progress: Whether to log progress information.
@@ -1795,10 +1805,12 @@ class AnnotationApi(ModuleApi):
         """
         if len(image_ids) == 0:
             return
-        if len(image_ids) != len(anns):
-            raise RuntimeError(
-                'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
-            )
+
+        if not isinstance(anns, Generator):
+            if len(image_ids) != len(anns):
+                raise RuntimeError(
+                    'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
+                )
 
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
@@ -2008,7 +2020,7 @@ class AnnotationApi(ModuleApi):
 
         # 5. Add tags to objects in batches
         object_tag_tasks = []
-        batch_size = 300
+        batch_size = 1000
 
         if log_progress:
             ot_pbar = tqdm(desc="Uploading tags to objects", total=len(all_object_tags))
@@ -2020,7 +2032,7 @@ class AnnotationApi(ModuleApi):
 
         # 6. Add tags to images
         image_tag_tasks = []
-        batch_size = 200
+        batch_size = 1000
         if log_progress:
             it_pbar = tqdm(desc="Uploading tags to images", total=image_tags_count)
         else:

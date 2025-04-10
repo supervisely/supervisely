@@ -1181,6 +1181,11 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         from supervisely.api.api import Api, ApiContext
         from supervisely.project.project import TF_BLOB_DIR, ProjectMeta
 
+        def _ann_objects_generator(ann_paths, project_meta):
+            for ann in ann_paths:
+                ann_json = load_json_file(ann)
+                yield Annotation.from_json(ann_json, project_meta)
+
         self._api: Api
 
         if isinstance(dataset, int):
@@ -1246,11 +1251,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 img_ids = [img_info.id for img_info in image_info_batch]
                 img_names = [img_info.name for img_info in image_info_batch]
                 img_anns = [ann_map[img_name] for img_name in img_names]
-                ann_objects = []
-                for ann in img_anns:
-                    ann_json = load_json_file(ann)
-                    ann_objects.append(Annotation.from_json(ann_json, project_meta))
+                ann_objects = _ann_objects_generator(img_anns, project_meta)
                 coroutine = self._api.annotation.upload_anns_async(
-                    img_ids, ann_objects, log_progress=log_progess
+                    image_ids=img_ids, anns=ann_objects, log_progress=log_progess
                 )
                 run_coroutine(coroutine)

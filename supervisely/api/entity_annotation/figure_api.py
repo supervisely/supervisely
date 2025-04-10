@@ -709,7 +709,7 @@ class FigureApi(RemoveableBulkModuleApi):
         progress_cb: Optional[Union[tqdm, Callable]] = None,
     ) -> None:
         """
-        Upload figure geometries with given figure IDs to storage asynchronously.
+        Upload figure geometries with given figure IDs to storage asynchronously in batches.
 
         :param figure_ids: List of figure IDs in Supervisely.
         :type figure_ids: List[int]
@@ -748,7 +748,7 @@ class FigureApi(RemoveableBulkModuleApi):
 
         encoded_geometries = [json.dumps(geometry).encode("utf-8") for geometry in geometries]
 
-        batch_size = 100
+        batch_size = 200
         tasks = []
 
         for batch_ids, batch_geometries in zip(
