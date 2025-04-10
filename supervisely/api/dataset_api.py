@@ -1114,7 +1114,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         anns: List[str],
         project_meta: Optional[ProjectMeta] = None,
         project_type: ProjectType = None,
-        log_progess: bool = True,
+        log_progress: bool = True,
     ):
         """
         Quick import of images and annotations to the dataset.
@@ -1135,8 +1135,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type project_meta: Optional[ProjectMeta], optional
         :param project_type: Project type.
         :type project_type: ProjectType, optional
-        :param log_progess: If True, show progress bar.
-        :type log_progess: bool, optional
+        :param log_progress: If True, show progress bar.
+        :type log_progress: bool, optional
 
 
         :Usage example:
@@ -1169,12 +1169,12 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             dataset_info = api.dataset.quick_import(
                 dataset=dataset.id,
-                blob_path=blob_path
+                blob_path=blob_path,
                 offsets_path=offsets_path,
                 anns=anns,
                 project_meta=ProjectMeta(),
                 project_type=ProjectType.IMAGES,
-                log_progess=True
+                log_progress=True
             )
 
         """
@@ -1214,7 +1214,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         ):
             dst_blob_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(blob_path))
             dst_offset_path = os.path.join(f"/{TF_BLOB_DIR}", os.path.basename(offsets_path))
-            if log_progess:
+            if log_progress:
                 sizeb = os.path.getsize(blob_path) + os.path.getsize(offsets_path)
                 b_progress_cb = tqdm(
                     total=sizeb,
@@ -1234,7 +1234,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
             blob_file_id = self._api.file.get_info_by_path(project_info.team_id, dst_blob_path).id
 
-            if log_progess:
+            if log_progress:
                 of_progress_cb = tqdm(desc=f"Uploading images by offsets", total=len(anns)).update
             else:
                 of_progress_cb = None
@@ -1253,6 +1253,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 img_anns = [ann_map[img_name] for img_name in img_names]
                 ann_objects = _ann_objects_generator(img_anns, project_meta)
                 coroutine = self._api.annotation.upload_anns_async(
-                    image_ids=img_ids, anns=ann_objects, log_progress=log_progess
+                    image_ids=img_ids, anns=ann_objects, log_progress=log_progress
                 )
                 run_coroutine(coroutine)
