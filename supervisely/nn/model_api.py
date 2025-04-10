@@ -43,6 +43,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
 from supervisely.io.fs import get_file_name_with_ext
 import supervisely.io.env as sly_env
+from supervisely.nn.experiments import ExperimentInfo
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -733,10 +734,17 @@ class ModelApi:
         model_meta = self.get_model_meta()
         return [obj_class.name for obj_class in model_meta.obj_classes]
 
-    def get_list_available_models(self):
-        """Return list of available pretrained models"""
-        # Any model must be deployed first in app
-        return self._post("list_pretrained_models", {})["models"]
+    def list_pretrained_models(self) -> List[str]:
+        """Return a list of pretrained model names available for deployment"""
+        return self._post("list_pretrained_models", {})
+    
+    def list_pretrained_model_infos(self) -> List[dict]:
+        """Return a list of pretrained model configs with full information about each model"""
+        return self._post("list_pretrained_model_infos", {})
+
+    def list_experiments(self) -> List[ExperimentInfo]:
+        """Return a list of training experiments in Supervisely"""
+        raise NotImplementedError
 
     def healthcheck(self):
         if self.deploy_id is not None:

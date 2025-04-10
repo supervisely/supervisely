@@ -25,7 +25,7 @@ import numpy as np
 import requests
 import uvicorn
 import yaml
-from fastapi import Form, Request, Response, UploadFile, status
+from fastapi import Form, Request, Response, UploadFile, status, HTTPException
 from requests.structures import CaseInsensitiveDict
 
 import supervisely.app.development as sly_app_development
@@ -3527,12 +3527,15 @@ class Inference:
         @self._check_serve_before_call
         def _list_pretrained_models():
             if isinstance(self.gui, GUI.ServingGUITemplate):
-                return {"models": self._gui.pretrained_models_table._models}
+                return self._gui.pretrained_models_table._models
             else:
                 if hasattr(self, "pretrained_models_table"):
-                    return {"models": self.pretrained_models_table._models}
+                    return self.pretrained_models_table._models
                 else:
-                    return {"models": "This app doesn't support this feature."}
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Pretrained models table is not available in this app.",
+                    )
 
         @server.post("/is_deployed")
         def _is_deployed(response: Response, request: Request):
