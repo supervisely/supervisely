@@ -3331,9 +3331,9 @@ class Inference:
             inference_request = self.get_inference_request(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(inference_request)
             data = {
-                "pending_results": inference_request.pop_pending_results(),
                 **inference_request.to_json(),
                 **log_extra,
+                "pending_results": inference_request.pop_pending_results(),
             }
 
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
