@@ -3508,8 +3508,8 @@ class Inference:
                 elif isinstance(self.gui, GUI.ServingGUI):
                     if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
                         deploy_params = self._build_legacy_deploy_params_from_api(model_name)
-                        # @TODO: Check set runtime only for YOLOv8?
-                        deploy_params = self._set_common_deploy_params(deploy_params)
+
+                    deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model(deploy_params)
                 else:
                     raise ValueError("Unknown GUI type")

@@ -237,7 +237,7 @@ class DeployApi:
             raise ValueError(f"Workspace with ID {workspace_id} not found")
         team_id = workspace_info.team_id
 
-        # @TODO: Fix debug logs
+        # @TODO: Fix debug logs/ Fix code
         # Skip HTTPS redirect check on API init: False. ENV: False. Checked servers: set()
         frameworks_v1 = {
             RITM(team_id).framework_name: RITM(team_id).serve_slug,
@@ -314,6 +314,7 @@ class DeployApi:
         timeout: int = 100,
         team_id: int = None,
         workspace_id: int = None,
+        agent_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -331,18 +332,62 @@ class DeployApi:
         :type team_id: Optional[int]
         :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
         :type workspace_id: Optional[int]
+        :param agent_id: Agent ID. If not provided, will be found automatically.
+        :type agent_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
         :rtype: Dict[str, Any]
         :raises ValueError: if validations fail.
         """
-        try:
-            artifacts_dir, checkpoint_name = checkpoint.split("/checkpoints/")
-        except:
-            raise ValueError(
-                "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
-            )
+        from supervisely.nn.artifacts import (
+            RITM,
+            RTDETR,
+            Detectron2,
+            MMClassification,
+            MMDetection,
+            MMDetection3,
+            MMSegmentation,
+            UNet,
+            YOLOv5,
+            YOLOv5v2,
+            YOLOv8,
+        )
+        from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+        from supervisely.nn.utils import ModelSource
+
+        path_obj = Path(checkpoint)
+        if len(path_obj.parts) < 2:
+            raise ValueError(f"Incorrect checkpoint path: '{checkpoint}'")
+        parent = path_obj.parts[1]
+        frameworks = {
+            "/detectron2": Detectron2,
+            "/mmclassification": MMClassification,
+            "/mmdetection": MMDetection,
+            "/mmdetection-3": MMDetection3,
+            "/mmsegmentation": MMSegmentation,
+            "/RITM_training": RITM,
+            "/RT-DETR": RTDETR,
+            "/unet": UNet,
+            "/yolov5_train": YOLOv5,
+            "/yolov5_2.0_train": YOLOv5v2,
+            "/yolov8_train": YOLOv8,
+        }
+        if parent == "experiments":
+            try:
+                artifacts_dir, checkpoint_name = checkpoint.split("/checkpoints/")
+            except:
+                raise ValueError(
+                    "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
+                )
+        elif f"/{parent}" in frameworks:
+            framework = frameworks[f"/{parent}"](team_id)
+            checkpoint_name = get_file_name_with_ext(checkpoint)
+            checkpoints_dir = checkpoint.replace(checkpoint_name, "")
+            if framework.weights_folder is not None:
+                artifacts_dir = checkpoints_dir.replace(framework.weights_folder, "")
+            else:
+                artifacts_dir = checkpoints_dir
         return self.deploy_custom_model_by_artifacts_dir(
             artifacts_dir=artifacts_dir,
             checkpoint_name=checkpoint_name,
@@ -351,6 +396,7 @@ class DeployApi:
             timeout=timeout,
             team_id=team_id,
             workspace_id=workspace_id,
+            agent_id=agent_id,
             **kwargs,
         )
 
@@ -363,6 +409,7 @@ class DeployApi:
         timeout: int = 100,
         team_id: int = None,
         workspace_id: int = None,
+        agent_id: int = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -383,6 +430,8 @@ class DeployApi:
         :type team_id: Optional[int]
         :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
         :type workspace_id: Optional[int]
+        :param agent_id: Agent ID. If not provided, will be found automatically.
+        :type agent_id: Optional[int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
@@ -400,7 +449,6 @@ class DeployApi:
         logger.debug(
             f"Starting custom model deployment. Team: {team_id}, Artifacts Dir: '{artifacts_dir}'"
         )
-        agent_id = kwargs.get("agent_id", None)
         if agent_id is None:
             agent_id = self._find_agent()
 
@@ -423,7 +471,7 @@ class DeployApi:
         )
         try:
             task_info = self._run_serve_app(
-                agent_id, module_id, timeout=timeout, workspace_id=workspace_id, **kwargs
+                agent_id, module_id, workspace_id=workspace_id, **kwargs
             )
             self._load_model_from_api(task_info["id"], deploy_params)
         except Exception as e:
@@ -521,7 +569,7 @@ class DeployApi:
         self._run_serve_app(agent_id, module_id, **kwargs)
 
     def _run_serve_app(
-        self, agent_id: int, module_id, timeout: int = 100, workspace_id: int = None, **kwargs
+        self, agent_id: int, module_id, workspace_id: int = None, timeout: int = 100, **kwargs
     ):
         _attempt_delay_sec = 1
         _attempts = timeout // _attempt_delay_sec
@@ -620,6 +668,11 @@ class DeployApi:
         from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
         from supervisely.nn.utils import ModelSource
 
+
+        path_obj = Path(artifacts_dir)
+        if len(path_obj.parts) < 2:
+            raise ValueError(f"Incorrect artifacts_dir: '{artifacts_dir}'")
+        parent = path_obj.parts[1]
         frameworks = {
             "/detectron2": Detectron2,
             "/mmclassification": MMClassification,
@@ -634,10 +687,7 @@ class DeployApi:
             "/yolov8_train": YOLOv8,
         }
 
-        framework_cls = next(
-            (cls for prefix, cls in frameworks.items() if artifacts_dir.startswith(prefix)),
-            None,
-        )
+        framework_cls = frameworks[f"/{parent}"]
         if not framework_cls:
             raise ValueError(f"Unsupported framework for artifacts_dir: '{artifacts_dir}'")
 
