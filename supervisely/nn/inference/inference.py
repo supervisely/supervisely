@@ -3034,10 +3034,7 @@ class Inference:
                 logger.info(f"Saving video {video_name} to cache")
                 self.cache.add_video_to_cache(video_name, video_source)
                 logger.info("Video saved to cache")
-                self._on_inference_start(inference_request_uuid)
-                future = self._executor.submit(
-                    self._handle_error_in_async,
-                    inference_request_uuid,
+                self.schedule_task(
                     self._inference_video_cached,
                     video_name,
                     state,
@@ -3046,10 +3043,6 @@ class Inference:
                     frames_count,
                     fps,
                 )
-                end_callback = partial(
-                    self._on_inference_end, inference_request_uuid=inference_request_uuid
-                )
-                future.add_done_callback(end_callback)
                 logger.debug(
                     "Inference has scheduled from 'inference_video_async' endpoint",
                     extra={"inference_request_uuid": inference_request_uuid},
