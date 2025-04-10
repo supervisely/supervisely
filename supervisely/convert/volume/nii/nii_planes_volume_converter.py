@@ -54,10 +54,11 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
     The class name will be used to create the corresponding ObjClass in Supervisely.
     """
 
-    class Item(VolumeConverter.Item):
+    class Item(VolumeConverter.BaseItem):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
+            self.volume_meta = None
 
         @property
         def is_semantic(self) -> bool:
@@ -66,6 +67,9 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         @is_semantic.setter
         def is_semantic(self, value: bool):
             self._is_semantic = value
+
+        def create_empty_annotation(self):
+            return VolumeAnnotation(self.volume_meta)
 
     def validate_format(self) -> bool:
         # create Items
@@ -167,10 +171,11 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     Upload NIfTI Annotations
     """
 
-    class Item(VolumeConverter.Item):
+    class Item(VolumeConverter.BaseItem):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
+            self.volume_meta = None
 
         @property
         def is_semantic(self) -> bool:
@@ -179,6 +184,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         @is_semantic.setter
         def is_semantic(self, value: bool):
             self._is_semantic = value
+
+        def create_empty_annotation(self):
+            return VolumeAnnotation(self.volume_meta)
 
     def __init__(self,  *args, **kwargs):
         super().__init__(*args, **kwargs)
