@@ -3036,12 +3036,12 @@ class Inference:
                 logger.info("Video saved to cache")
                 self.schedule_task(
                     self._inference_video_cached,
-                    video_name,
-                    state,
-                    inference_request_uuid,
-                    frame_size,
-                    frames_count,
-                    fps,
+                    key=video_name,
+                    settings=state,
+                    inference_request_uuid=inference_request_uuid,
+                    frame_size=frame_size,
+                    frames_count=frames_count,
+                    fps=fps,
                 )
                 logger.debug(
                     "Inference has scheduled from 'inference_video_async' endpoint",
