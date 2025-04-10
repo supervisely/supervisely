@@ -3527,6 +3527,19 @@ class Inference:
         @server.post("/list_pretrained_models")
         def _list_pretrained_models():
             if isinstance(self.gui, GUI.ServingGUITemplate):
+                return [_get_model_name(model) for model in self._gui.pretrained_models_table._models]
+            else:
+                if hasattr(self, "pretrained_models_table"):
+                    return [model.name for model in self.pretrained_models_table._models]
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Pretrained models table is not available in this app.",
+                    )
+                
+        @server.post("/list_pretrained_model_infos")
+        def _list_pretrained_model_infos():
+            if isinstance(self.gui, GUI.ServingGUITemplate):
                 return self._gui.pretrained_models_table._models
             else:
                 if hasattr(self, "pretrained_models_table"):
@@ -3535,8 +3548,7 @@ class Inference:
                     raise HTTPException(
                         status_code=400,
                         detail="Pretrained models table is not available in this app.",
-                    )
-
+                    )            
         @server.post("/is_deployed")
         def _is_deployed(response: Response, request: Request):
             return {

@@ -739,7 +739,7 @@ class ModelApi:
         return self._post("list_pretrained_models")
     
     def list_pretrained_model_infos(self) -> List[dict]:
-        """Return a list of pretrained model configs with full information about each model"""
+        """Return a list of pretrained model infos with full information about each model"""
         return self._post("list_pretrained_model_infos")
 
     def list_experiments(self) -> List[ExperimentInfo]:
@@ -759,27 +759,15 @@ class ModelApi:
         model: str,
         device: str = None,
         runtime: str = None,
-    ):  # remote or local
-        from supervisely.nn.artifacts import (
-            RITM,
-            RTDETR,
-            Detectron2,
-            MMClassification,
-            MMDetection,
-            MMDetection3,
-            MMSegmentation,
-            UNet,
-            YOLOv5,
-            YOLOv5v2,
-            YOLOv8,
-        )
-        from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
-        from supervisely.nn.utils import ModelSource
-
-        if model.startswith("/"):
+    ):
+        if os.path.exists(model):
+            if self.url is None:
+                raise ValueError("Local checkpoints work only with local sessions. Provide `url` parameter.")
+            # @TODO:Code for local deployment
+            pass
+        elif model.startswith("/"):
             team_id = sly_env.team_id()
             artifacts_dir, checkpoint_name = self.api.nn._deploy_api._get_artifacts_dir_and_checkpoint_name(model)
-
             self.api.nn._deploy_api.load_custom_model(
                 self.deploy_id,
                 team_id,
