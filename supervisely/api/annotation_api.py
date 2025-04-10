@@ -8,12 +8,22 @@ import asyncio
 import json
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Union,
+)
 from uuid import uuid4
 
 from tqdm import tqdm
 
-from supervisely._utils import batched
+from supervisely._utils import batched, run_coroutine
 from supervisely.annotation.annotation import Annotation, AnnotationJsonFields
 from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.annotation.tag import Tag
@@ -1728,3 +1738,360 @@ class AnnotationApi(ModuleApi):
         updated_anns = [ann.add_label(label) for ann, label in zip(anns, labels)]
 
         self._api.annotation.upload_anns(image_ids, updated_anns)
+
+    async def upload_anns_async(
+        self,
+        image_ids: List[int],
+        anns: Union[List[Annotation], Generator],
+        dataset_id: Optional[int] = None,
+        log_progress: bool = True,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> None:
+        """
+        Optimized method for uploading annotations to images in large batches.
+        This method significantly improves performance when uploading large numbers of annotations
+        by processing different components in parallel batches.
+
+        IMPORTANT: If you pass anns as a generator, you must be sure that the generator will yield the same number of annotations
+        as the number of image IDs provided.
+
+        The method works by:
+        1. Separating regular figures and alpha masks for specialized processing
+        2. Batching figure creation requests to reduce API overhead
+        3. Processing image-level tags, object tags, and geometries separately
+        4. Using concurrent async operations to maximize throughput
+        5. Processing alpha mask geometries with specialized upload method
+
+        This approach can be faster than traditional sequential upload methods
+        when dealing with large annotation batches.
+
+        :param image_ids: List of image IDs in Supervisely.
+        :type image_ids: List[int]
+        :param anns: List of annotations to upload. Can be a generator or a list.
+        :type anns: Union[List[Annotation], Generator]
+        :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
+        :type dataset_id: int, optional
+        :param log_progress: Whether to log progress information.
+        :type log_progress: bool, optional
+        :param semaphore: Semaphore to control concurrency level. If None, a default will be used.
+        :type semaphore: asyncio.Semaphore, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import asyncio
+            import supervisely as sly
+            from tqdm import tqdm
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            # Prepare your annotations and image IDs
+            image_ids = [121236918, 121236919]
+            anns = [annotation1, annotation2]
+
+            # Option 1: Using the synchronous wrapper
+            api.annotation.upload_anns_fast(image_ids, anns)
+
+            # Option 2: Using the async method directly
+            upload_annotations = api.annotation.upload_anns_async(
+                    image_ids,
+                    anns,
+                    semaphore=asyncio.Semaphore(10)  # Control concurrency
+                )
+
+            sly.run_coroutine(upload_annotations)
+        """
+        if len(image_ids) == 0:
+            return
+
+        if not isinstance(anns, Generator):
+            if len(image_ids) != len(anns):
+                raise RuntimeError(
+                    'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
+                )
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        def _groupby_image_tags(image_level_tags: dict, tag_meta: ProjectMeta) -> dict:
+            """
+            Group image tags by tag_id and tag_value for efficient batch processing
+            Returns: Dict[tag_id, Dict[tag_value, List[image_ids]]]
+            """
+            result = defaultdict(lambda: defaultdict(list))
+            for img_id, tags in image_level_tags.items():
+                for tag in tags:
+                    sly_id = tag_meta.get(tag.name).sly_id
+                    value = tag.value
+                    result[sly_id][value].append(img_id)
+            return result
+
+        def _prepare_tags(tags: List[Tag]) -> List[Dict[str, Any]]:
+            """
+            Prepare tags for bulk upload
+            Returns: List[Dict[str, Any]]
+            """
+            return [
+                {
+                    ApiField.TAG_ID: tag_metas.get(tag.name).sly_id,
+                    ApiField.FIGURE_ID: None,
+                    ApiField.VALUE: tag.value,
+                }
+                for tag in tags
+            ]
+
+        # Handle context and dataset_id
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_id = context.get("project_id")
+        project_meta = context.get("project_meta")
+
+        # Determine dataset_id with proper fallback logic
+        if dataset_id is None:
+            dataset_id = context_dataset_id
+            if dataset_id is None:
+                dataset_id = self._api.image.get_info_by_id(
+                    image_ids[0], force_metadata_for_links=False
+                ).dataset_id
+                context["dataset_id"] = dataset_id
+                project_id, project_meta = None, None
+        # If dataset_id was provided but differs from context (or context is None)
+        elif dataset_id != context_dataset_id or context_dataset_id is None:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
+
+        # Get project meta if needed
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
+
+        tag_metas = project_meta.tag_metas
+
+        # Prepare bulk data
+        regular_figures = []
+        regular_figures_tags = []
+        alpha_mask_figures = []
+        alpha_mask_geometries = []
+        alpha_mask_figures_tags = []
+        image_level_tags = {}  # Track image-level tags by image ID
+        image_tags_count = 0
+
+        for img_id, ann in zip(image_ids, anns):
+            # Handle image-level tags
+            if len(ann.img_tags) > 0:
+                image_tags_count += len(ann.img_tags)
+                image_level_tags[img_id] = [tag for tag in ann.img_tags]
+
+            if len(ann.labels) == 0:
+                continue
+
+            # Process each label in the annotation
+            for label in ann.labels:
+                obj_cls = project_meta.get_obj_class(label.obj_class.name)
+                if obj_cls is None:
+                    raise RuntimeError(
+                        f"Object class '{label.obj_class.name}' not found in project meta"
+                    )
+
+                figure_data = {
+                    ApiField.ENTITY_ID: img_id,
+                    LabelJsonFields.OBJ_CLASS_ID: obj_cls.sly_id,
+                }
+
+                if isinstance(label.geometry, AlphaMask):
+                    geometry = label.geometry.to_json()[BITMAP]
+                    figure_data[LabelJsonFields.GEOMETRY_TYPE] = AlphaMask.geometry_name()
+                    alpha_mask_figures.append(figure_data)
+                    alpha_mask_geometries.append(geometry)
+                    alpha_mask_figures_tags.append(_prepare_tags(label.tags))
+                else:
+                    figure_data[LabelJsonFields.GEOMETRY_TYPE] = label.geometry.name()
+                    figure_data[ApiField.GEOMETRY] = label.geometry.to_json()
+                    regular_figures.append(figure_data)
+                    regular_figures_tags.append(_prepare_tags(label.tags))
+
+        async def create_figures_batch(figures_batch, tags_batch, progress_cb):
+            """Create a batch of figures and associate their tags"""
+            async with semaphore:
+                response = await self._api.post_async(
+                    "figures.bulk.add",
+                    json={
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FIGURES: figures_batch,
+                    },
+                )
+                figure_ids = [item[ApiField.ID] for item in response.json()]
+
+                # Update tags with figure IDs
+                for figure_id, tags in zip(figure_ids, tags_batch):
+                    for tag in tags:
+                        tag[ApiField.FIGURE_ID] = figure_id
+                if progress_cb is not None:
+                    progress_cb.update(len(figures_batch))
+                return figure_ids, tags_batch
+
+        async def add_tags_to_objects(tags_batch, progress_cb):
+            """Add tags to objects in batches"""
+            if not tags_batch:
+                return
+
+            async with semaphore:
+                await self._api.post_async(
+                    "figures.tags.bulk.add",
+                    json={
+                        ApiField.PROJECT_ID: project_id,
+                        ApiField.TAGS: tags_batch,
+                    },
+                )
+                if progress_cb is not None:
+                    progress_cb.update(len(tags_batch))
+
+        async def add_tags_to_images(tag_id, tag_value, image_ids_batch, progress_cb):
+            """Add a tag to multiple images"""
+            async with semaphore:
+                await self._api.post_async(
+                    "image-tags.bulk.add-to-image",
+                    json={
+                        ApiField.TAG_ID: tag_id,
+                        ApiField.VALUE: tag_value,
+                        ApiField.IDS: image_ids_batch,
+                    },
+                )
+                if progress_cb is not None:
+                    progress_cb.update(len(image_ids_batch))
+
+        # 1. Process regular figures
+        regular_figure_tasks = []
+        batch_size = 1000
+
+        if log_progress:
+            f_pbar = tqdm(
+                desc="Uploading figures", total=len(regular_figures) + len(alpha_mask_figures)
+            )
+        else:
+            f_pbar = None
+
+        for figures_batch, tags_batch in zip(
+            batched(regular_figures, batch_size),
+            batched(regular_figures_tags, batch_size),
+        ):
+            task = create_figures_batch(figures_batch, tags_batch, f_pbar)
+            regular_figure_tasks.append(task)
+
+        # 2. Process alpha mask figures
+        alpha_mask_tasks = []
+        for figures_batch, tags_batch in zip(
+            batched(alpha_mask_figures, batch_size),
+            batched(alpha_mask_figures_tags, batch_size),
+        ):
+            task = create_figures_batch(figures_batch, tags_batch, f_pbar)
+            alpha_mask_tasks.append(task)
+
+        # Wait for all figure creation tasks to complete
+        regular_results = (
+            await asyncio.gather(*regular_figure_tasks) if regular_figure_tasks else []
+        )
+        alpha_results = await asyncio.gather(*alpha_mask_tasks) if alpha_mask_tasks else []
+
+        # 3. Upload alpha mask geometries
+        alpha_figure_ids = []
+        for figure_ids, _ in alpha_results:
+            alpha_figure_ids.extend(figure_ids)
+
+        if log_progress:
+            am_pbar = tqdm(desc="Uploading alpha mask geometries", total=len(alpha_mask_geometries))
+        else:
+            am_pbar = None
+        alpha_mask_geometry_task = self._api.image.figure.upload_geometries_batch_async(
+            alpha_figure_ids,
+            alpha_mask_geometries,
+            semaphore=semaphore,
+            progress_cb=am_pbar,
+        )
+
+        # 4. Collect all object tags
+        all_object_tags = []
+        for _, tags_batch in regular_results + alpha_results:
+            for tags in tags_batch:
+                all_object_tags.extend(tags)
+
+        # 5. Add tags to objects in batches
+        object_tag_tasks = []
+        batch_size = 1000
+
+        if log_progress:
+            ot_pbar = tqdm(desc="Uploading tags to objects", total=len(all_object_tags))
+        else:
+            ot_pbar = None
+        for tags_batch in batched(all_object_tags, batch_size):
+            task = add_tags_to_objects(tags_batch, ot_pbar)
+            object_tag_tasks.append(task)
+
+        # 6. Add tags to images
+        image_tag_tasks = []
+        batch_size = 1000
+        if log_progress:
+            it_pbar = tqdm(desc="Uploading tags to images", total=image_tags_count)
+        else:
+            it_pbar = None
+        image_tags_by_meta = _groupby_image_tags(image_level_tags, tag_metas)
+        for tag_meta_id, values_dict in image_tags_by_meta.items():
+            for tag_value, img_ids_for_tag in values_dict.items():
+                for batch in batched(img_ids_for_tag, batch_size):
+                    task = add_tags_to_images(tag_meta_id, tag_value, batch, it_pbar)
+                    image_tag_tasks.append(task)
+
+        # Execute all remaining tasks
+        await asyncio.gather(alpha_mask_geometry_task, *object_tag_tasks, *image_tag_tasks)
+
+    def upload_anns_fast(
+        self,
+        image_ids: List[int],
+        anns: List[Annotation],
+        dataset_id: Optional[int] = None,
+        log_progress: bool = True,
+    ) -> None:
+        """
+        Upload annotations to images in a dataset using optimized method.
+
+        :param image_ids: List of image IDs in Supervisely.
+        :type image_ids: List[int]
+        :param anns: List of Annotation objects.
+        :type anns: List[Annotation]
+        :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
+        :type dataset_id: int, optional
+        :param log_progress: Whether to log progress information.
+        :type log_progress: bool, optional
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+            .. code-block:: python
+
+            import supervisely as sly
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 123456
+            image_ids = [121236918, 121236919]
+            anns = [annotation1, annotation2]
+            api.annotation.upload_fast(image_ids, anns, dataset_id)
+
+        """
+        upload_coroutine = self.upload_anns_async(
+            image_ids=image_ids,
+            anns=anns,
+            dataset_id=dataset_id,
+            log_progress=log_progress,
+        )
+        run_coroutine(upload_coroutine)
