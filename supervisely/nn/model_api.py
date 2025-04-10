@@ -736,11 +736,11 @@ class ModelAPI:
 
     def list_pretrained_models(self) -> List[str]:
         """Return a list of pretrained model names available for deployment"""
-        return self._post("list_pretrained_models")
+        return self._post("list_pretrained_models", {})
     
     def list_pretrained_model_infos(self) -> List[dict]:
         """Return a list of pretrained model infos with full information about each model"""
-        return self._post("list_pretrained_model_infos")
+        return self._post("list_pretrained_model_infos", {})
 
     def list_experiments(self) -> List[ExperimentInfo]:
         """Return a list of training experiments in Supervisely"""
@@ -780,3 +780,6 @@ class ModelAPI:
             self.api.nn._deploy_api.load_pretrained_model(
                 self.task_id, model, device=device, runtime=runtime
             )
+
+        # DeployApi move to ModelApi
+        # Separate files for each class in model api

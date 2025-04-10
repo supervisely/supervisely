@@ -15,3 +15,4 @@ from supervisely.nn.prediction_dto import (
 )
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.utils import ModelSource, RuntimeType
+from supervisely.nn.model_api import ModelApi
