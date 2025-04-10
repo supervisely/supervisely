@@ -168,8 +168,14 @@ class AnnotationMatcher:
     def match_items(self):
         """Match annotation files with corresponding volumes."""
         def to_volume_name(name):
+            if name.endswith(".nii.gz"):
+               name = name.replace(".nii.gz", ".nrrd")
+            elif name.endswith(".nii"):
+                name = name.replace(".nii", ".nrrd") 
+            if "_" not in name:
+                return None
             name_parts = get_file_name(name).split("_")[:3]
-            return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}.nrrd"
+            return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
         
         item_to_volume = {}
         
@@ -179,6 +185,9 @@ class AnnotationMatcher:
                 volumes_copy = volumes.copy()
                 for ann_file in self._ann_paths[dataset_name]:
                     expected_volume_name = to_volume_name(ann_file)
+                    if expected_volume_name is None:
+                        logger.warning(f"Invalid volume name for {ann_file}. Skipping.")
+                        continue
                     if expected_volume_name in volumes_copy:
                         volume = volumes_copy[expected_volume_name]
                         item = self._item_by_path.get((dataset_name, ann_file))
