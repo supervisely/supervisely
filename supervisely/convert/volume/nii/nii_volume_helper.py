@@ -221,9 +221,10 @@ class AnnotationMatcher:
 
         # validate shape
         for item, volume in item_to_volume.items():
-            if item.shape != item.volume_meta.shape:
+            volume_shape = tuple(volume.file_meta["sizes"])
+            if item.shape != volume_shape:
                 logger.warning(
-                    f"Volume shape mismatch: {item.shape} != {item.volume_meta.shape}. Skipping item."
+                    f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item."
                 )
                 del item_to_volume[item]
 
