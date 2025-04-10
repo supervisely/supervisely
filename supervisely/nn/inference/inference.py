@@ -3364,8 +3364,8 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            inference_request = self._inference_requests[inference_request_uuid]
-            inference_request["cancel_inference"] = True
+            inference_request = self.get_inference_request(inference_request_uuid)
+            inference_request.stop()
             return {"message": "Inference will be stopped.", "success": True}
 
         @server.post(f"/clear_inference_request")
