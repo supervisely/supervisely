@@ -1,22 +1,22 @@
 import os
 
+import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely import (
     Annotation,
     Api,
-    ProjectMeta,
     Label,
+    Project,
+    ProjectMeta,
     Rectangle,
     batched,
     is_development,
     logger,
-    Project,
 )
-from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
-import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import get_file_ext, dir_exists, dir_empty
-from supervisely.io.json import load_json_file
 from supervisely.convert.image.image_helper import validate_image_bounds
+from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
+from supervisely.io.fs import dir_empty, dir_exists, get_file_ext
+from supervisely.io.json import load_json_file
 
 
 class FastSlyImageConverter(SLYImageConverter, ImageConverter):
@@ -31,12 +31,17 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         self._items = []
         meta = ProjectMeta()
         data_blob_dir = os.path.join(self._input_data, Project.blob_dir_name)
+        logger.debug(f"FastSlyImageConverter: Checking for blob format in '{data_blob_dir}'")
         if dir_exists(data_blob_dir):
             if not dir_empty(data_blob_dir):
-                logger.debug("FastSlyImageConverter: Detected blob format. Format is not supported.")
+                logger.debug(
+                    "FastSlyImageConverter: Detected blob format. Format is not supported."
+                )
                 return False
             else:
-                logger.debug(f"FastSlyImageConverter: It seems that the blob format is detected, but the directory '{data_blob_dir}' is empty. In case of error, please remove this directory.")
+                logger.debug(
+                    f"FastSlyImageConverter: It seems that the blob format is detected, but the directory '{data_blob_dir}' is empty. In case of error, please remove this directory."
+                )
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
