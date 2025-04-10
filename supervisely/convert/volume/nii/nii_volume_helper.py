@@ -85,7 +85,6 @@ def read_json_map(path: str) -> dict:
         logger.warning(f"Failed to read JSON map from {path}: {e}")
         return None
     return json_map
-        
 
 
 def nifti_to_nrrd(nii_file_path: str, converted_dir: str) -> str:
@@ -121,19 +120,19 @@ class AnnotationMatcher:
         self._items = items
         self._ds_id = dataset_id
         self._ann_paths = defaultdict(list)
-        
+
         self._item_by_filename = {}
         self._item_by_path = {}
-        
+
         for item in items:
             path = Path(item.ann_data)
             dataset_name = path.parts[-2]
             filename = path.name
-            
+
             self._ann_paths[dataset_name].append(filename)
             self._item_by_filename[filename] = item
             self._item_by_path[(dataset_name, filename)] = item
-            
+
         self._project_wide = False
         self._volumes = None
 
@@ -146,7 +145,7 @@ class AnnotationMatcher:
             self._project_wide = False
             self._volumes = {get_file_name(info.name): info for info in api.volume.get_list(self._ds_id)}
             return
-        
+
         datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
         volumes = defaultdict(lambda: {})
         for ds_name, ds_info in datasets.items():
@@ -169,16 +168,16 @@ class AnnotationMatcher:
         """Match annotation files with corresponding volumes."""
         def to_volume_name(name):
             if name.endswith(".nii.gz"):
-               name = name.replace(".nii.gz", ".nrrd")
+                name = name.replace(".nii.gz", ".nrrd")
             elif name.endswith(".nii"):
                 name = name.replace(".nii", ".nrrd") 
             if "_" not in name:
                 return None
             name_parts = get_file_name(name).split("_")[:3]
             return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
-        
+
         item_to_volume = {}
-        
+
         if self._project_wide:
             # Project-wide matching
             for dataset_name, volumes in self._volumes.items():
@@ -222,14 +221,14 @@ class AnnotationMatcher:
 
         # validate shape
         for item, volume in item_to_volume.items():
-            if item.shape != volume.shape:
+            if item.shape != item.volume_meta.shape:
                 logger.warning(
-                    f"Volume shape mismatch: {item.shape} != {volume.shape}. Skipping item."
+                    f"Volume shape mismatch: {item.shape} != {item.volume_meta.shape}. Skipping item."
                 )
                 del item_to_volume[item]
 
         return item_to_volume
-    
+
     def match_from_json(self, api: Api, json_map: dict):
         """
         Match annotation files with corresponding volumes based on a JSON map.
