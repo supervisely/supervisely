@@ -33,13 +33,16 @@ class NeuralNetworkApi:
         **kwargs,
     ) -> "ModelAPI":
         """
-        Deploy model by checkpoint path or model_name.
+        Deploy a pretrained model or a custom model checkpoint in Supervisely platform.
+        This method will start a new Serving App in Supervisely, deploy a given model, and return a `ModelAPI` object for running predictions and managing the model.
+        - To deploy a pretrained model, pass the model name in the format `framework/model_name` (e.g., "RT-DETRv2/RT-DETRv2-M").
+        - To deploy a custom model, pass the path to the model checkpoint in team files (e.g., "/experiments/1089_RT-DETRv2/checkpoints/best.pt").
 
-        :param model: Either path to the model checkpoint in team files or model name in format framework/model_name (e.g., "RT-DETRv2/RT-DETRv2-M").
+        :param model: Either a path to a model checkpoint in team files or model name in format `framework/model_name` (e.g., "RT-DETRv2/RT-DETRv2-M").
         :type model: str
-        :param device: Device string
+        :param device: Device to run the model on (e.g., "cuda:0" or "cpu"). If not specified, will automatically use GPU device if available, otherwise CPU will be used.
         :type device: Optional[str]
-        :param runtime: Runtime string, if not present will be defined automatically.
+        :param runtime: If specified, the model will be converted to the given format (e.g., "onnx", "tensorrt") and will be deployed in the corresponding accelerated runtime. This option is used for pretrained models. For custom models, the runtime will be defined automatically based on the model checkpoint.
         :type runtime: Optional[str]
         :param workspace_id: Workspace ID, if not present will be defined automatically.
         :type workspace_id: Optional[int]
@@ -51,7 +54,7 @@ class NeuralNetworkApi:
 
                 import supervisely as sly
 
-                api = sly.Api.from_env()
+                api = sly.Api()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
         from supervisely.nn.model_api import ModelAPI
@@ -183,19 +186,16 @@ class NeuralNetworkApi:
 
     def connect(
         self,
-        session_id: int,
-        inference_settings: Union[dict, str] = None,
+        task_id: int,
     ) -> "ModelAPI":
         """
-        Attach to a running Serving App session to run the inference via API.
+        Connect to a running Serving App by `task_id`. This allows you to make predictions and control the model state via API.
 
-        :param session_id: the session_id of a running Serving App session in the Supervisely platform.
-        :type session_id: int
-        :param inference_settings: a dict or a path to YAML file with settings, defaults to None
-        :type inference_settings: Union[dict, str], optional
-        :return: a :class:`Session` object
-        :rtype: Session
+        :param task_id: the task_id of a running Serving App session in the Supervisely platform.
+        :type task_id: int
+        :return: a :class:`ModelAPI` object
+        :rtype: ModelAPI
         """
         from supervisely.nn.model_api import ModelAPI
 
-        return ModelAPI(self._api, session_id)
+        return ModelAPI(self._api, task_id)
