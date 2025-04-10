@@ -241,7 +241,7 @@ class SLYImageConverter(ImageConverter):
             def _check_function(path):
                 try:
                     dataset_ds = Dataset(path, OpenMode.READ)
-                    return len(dataset_ds.get_items_names()) > 0
+                    return len(dataset_ds.get_items_names()) > 0 or len(dataset_ds.blob_offsets) > 0
                 except:
                     return False
 
