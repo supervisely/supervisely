@@ -135,7 +135,7 @@ class InferenceRequest:
 
     def progress_json(self):
         return {
-            "message": self.progress.message,
+            # "message": self.progress.message,
             "current": self.progress.current,
             "total": self.progress.total,
         }
