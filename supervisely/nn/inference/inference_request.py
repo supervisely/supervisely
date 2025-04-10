@@ -34,6 +34,7 @@ class InferenceRequest:
         self.progress = Progress(
             message="Preparing model for inference...",
             total_cnt=1,
+            need_info_log=True,
             log_extra={"inference_request_uuid": self._uuid},
         )
         self._created_at = time.monotonic()
