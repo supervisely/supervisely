@@ -135,7 +135,14 @@ class GlobalProgress:
 
     def increase_total(self, n=1):
         with self._lock:
-            self.progress.total += n
+            if (
+                self.progress.message == "Inference in progress..."
+                and self.progress.current == 0
+                and self.progress.total == 1
+            ):
+                self.progress.total = n
+            else:
+                self.progress.total += n
         self.set_message("Inference in progress...")
 
     def set_ready(self):
