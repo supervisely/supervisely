@@ -102,6 +102,7 @@ class InferenceRequest:
         self.progress.message = progress_msg
         if refresh_progress:
             self.progress.current = 0
+        self.progress.report_progress()
 
     @stage.setter
     def stage(self, stage: Union[InferenceRequest.Stage, str]):
@@ -117,6 +118,9 @@ class InferenceRequest:
     def exception(self, exception: Exception):
         self._exception = exception
         self.stage = InferenceRequest.Stage.ERROR
+
+    def is_inferring(self):
+        return self.stage == InferenceRequest.Stage.INFERENCE
 
     def stop(self):
         self.stopped = True

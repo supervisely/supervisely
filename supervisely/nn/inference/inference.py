@@ -3312,24 +3312,14 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
-
-            # Logging
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
-            )
+            inference_request = self.get_inference_request(inference_request_uuid)
+            log_extra = _get_log_extra_for_inference_request
+            data = {**inference_request.to_json(), **log_extra}
             logger.debug(
                 f"Sending inference progress with uuid:",
-                extra=log_extra,
+                extra=data,
             )
-
-            # Ger rid of `pending_results` to less response size
-            inference_request["pending_results"] = []
-            inference_request.pop("lock", None)
-            return inference_request
+            return data
 
         @server.post(f"/pop_inference_results")
         def pop_inference_results(response: Response, request: Request):
@@ -3338,23 +3328,18 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            # Copy results
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-            inference_request["pending_results"] = inference_request["pending_results"].copy()
-
-            # Clear the queue `pending_results`
-            self._inference_requests[inference_request_uuid]["pending_results"].clear()
-
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
-
-            # Logging
+            inference_request = self.get_inference_request(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(
                 inference_request_uuid, inference_request
             )
+            data = {
+                "pending_results": inference_request.pop_pending_results(),
+                **inference_request.to_json(),
+                **log_extra,
+            }
+
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-            return inference_request
+            return data
 
         @server.post(f"/get_inference_result")
         def get_inference_result(response: Response, request: Request):
@@ -3363,22 +3348,14 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
-
-            # Logging
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
-            )
+            inference_request = self.get_inference_request(inference_request_uuid)
+            log_extra = _get_log_extra_for_inference_request(inference_request)
             logger.debug(
                 f"Sending inference result with uuid:",
                 extra=log_extra,
             )
 
-            return inference_request["result"]
+            return inference_request.final_result
 
         @server.post(f"/stop_inference")
         def stop_inference(response: Response, request: Request):
@@ -4179,14 +4156,14 @@ class Inference:
         return pred_ann.clone(labels=new_labels)
 
 
-def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
+def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
     log_extra = {
-        "uuid": inference_request_uuid,
-        "progress": inference_request["progress"],
-        "is_inferring": inference_request["is_inferring"],
-        "cancel_inference": inference_request["cancel_inference"],
-        "has_result": inference_request["result"] is not None,
-        "pending_results": len(inference_request["pending_results"]),
+        "uuid": inference_request.uuid,
+        "progress": inference_request.progress_json(),
+        "is_inferring": inference_request.is_inferring(),
+        "cancel_inference": inference_request.is_stopped(),
+        "has_result": inference_request.final_result is not None,
+        "pending_results": inference_request.pending_num(),
     }
     return log_extra
 
