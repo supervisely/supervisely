@@ -51,6 +51,7 @@ class Card(Widget):
         widget_id: Optional[str] = None,
         remove_padding: Optional[bool] = False,
         overflow: Optional[Literal["auto", "unset", "scroll"]] = "auto",
+        style: Optional[str] = ""
     ):
         self._title = title
         self._description = description
@@ -63,6 +64,7 @@ class Card(Widget):
         if self._slot_content is not None:
             self._show_slot = True
         self._overflow = overflow
+        self._style = style
         self._options = {
             "collapsable": self._collapsable,
             "marginBottom": "0px",
