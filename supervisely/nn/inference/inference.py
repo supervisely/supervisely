@@ -691,8 +691,7 @@ class Inference:
         deploy_params["model_info"] = selected_model
         return deploy_params
 
-    def _build_legacy_deploy_params_from_api(self, deploy_params: dict) -> dict:
-        model_name = deploy_params["model_name"]
+    def _build_legacy_deploy_params_from_api(self, model_name: str) -> dict:
         selected_model = None
         if hasattr(self, "pretrained_models_table"):
             selected_model = self.pretrained_models_table.get_by_model_name(model_name)
@@ -3504,7 +3503,7 @@ class Inference:
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
                     if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
-                        deploy_params = self._build_legacy_deploy_params_from_api(deploy_params)
+                        deploy_params = self._build_legacy_deploy_params_from_api(model_name)
                         # @TODO: Check set runtime only for YOLOv8?
                         deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model(deploy_params)
