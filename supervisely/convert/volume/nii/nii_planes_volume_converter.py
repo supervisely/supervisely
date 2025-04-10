@@ -2,17 +2,17 @@ import os
 from collections import defaultdict
 from pathlib import Path
 
-from supervisely import ProjectMeta, logger
+from supervisely import ProjectMeta, logger, Api
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.convert.volume.nii import nii_volume_helper as helper
 from supervisely.convert.volume.nii.nii_volume_converter import NiiConverter
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.geometry.mask_3d import Mask3D
-from supervisely.io.fs import get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 from supervisely.volume.volume import is_nifti_file
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-
+from supervisely._utils import batched, is_development
 
 class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
     """Convert NIfTI 3D volume file to Supervisely format.
@@ -114,7 +114,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                 for path in paths:
                     item = self.Item(item_path=path)
                     possible_ann_paths = []
-                    for ann_path in ann_dict.get(prefix):
+                    for ann_path in ann_dict.get(prefix, {}):
                         if Path(ann_path).parent == Path(path).parent:
                             possible_ann_paths.append(ann_path)
                     item.ann_data = possible_ann_paths
@@ -160,3 +160,152 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         except Exception as e:
             logger.warning(f"Failed to convert {item.path} to Supervisely format: {e}")
             return item.create_empty_annotation()
+        
+
+class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
+    """
+    Upload NIfTI Annotations
+    """
+
+    class Item(VolumeConverter.BaseItem):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._is_semantic = False
+
+        @property
+        def is_semantic(self) -> bool:
+            return self._is_semantic
+
+        @is_semantic.setter
+        def is_semantic(self, value: bool):
+            self._is_semantic = value
+
+    def __init__(self, input_data: str, project_meta: ProjectMeta = None):
+        super().__init__(input_data, project_meta)
+        self._json_map = None
+
+    def validate_format(self) -> bool:
+        try:
+            import nibabel as nib
+        except ImportError:
+            raise ImportError(
+                "No module named nibabel. Please make sure that module is installed from pip and try again."
+            )
+        cls_color_map = None
+        json_path = next(list_files_recursively(
+            self._input_data, filter_fn=lambda x: x.endswith(".json")
+            ), None)
+        if json_path:
+            json_map = helper.read_json_map(json_path)
+        has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
+        if list_files_recursively(self._input_data, filter_fn=has_volumes):
+            return False
+        
+        is_ann = lambda x: x.split("_")[1] in helper.LABEL_NAME if "_" in x else False
+        for root, _, files in os.walk(self._input_data):
+            for file in files:
+                path = os.path.join(root, file)
+                ext = get_file_ext(path)
+                if ext == ".txt":
+                    cls_color_map = helper.read_cls_color_map(path)
+                    if cls_color_map is None:
+                        logger.warning(f"Failed to read class color map from {path}.")
+                elif ext == ".json":
+                    json_map = helper.read_json_map(path)
+                    if json_map is None:
+                        logger.warning(f"Failed to read json map from {path}.")
+                elif is_ann(file):
+                    try:
+                        nii = nib.load(path)
+                    except nib.filebasedimages.ImageFileError:
+                        continue
+                    prefix = get_file_name(path).split("_")[0]
+                    if prefix not in helper.PlanePrefix.values():
+                        continue
+                    item = self.Item(item_path=None, ann_data=path)
+                    item.set_shape(nii.shape)
+                    item.is_semantic = True # todo
+                    self._items.append(item)
+
+
+        self._meta = ProjectMeta()
+        return len(self._items) > 0
+    
+    def to_supervisely(
+        self,
+        item: VolumeConverter.Item,
+        meta: ProjectMeta = None,
+        renamed_classes: dict = None,
+        renamed_tags: dict = None,
+    ) -> VolumeAnnotation:
+        """Convert to Supervisely format."""
+        try:
+            objs = []
+            spatial_figures = []
+            ann_path = item.ann_data
+            for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
+                class_id = pixel_id if item.is_semantic else 1
+                class_name = f"Segment_{class_id}"
+                color = None
+                if item.custom_data.get("cls_color_map") is not None:
+                    class_info = item.custom_data["cls_color_map"].get(class_id)
+                    if class_info is not None:
+                        class_name, color = class_info
+                class_name = renamed_classes.get(class_name, class_name)
+                obj_class = meta.get_obj_class(class_name)
+                if obj_class is None:
+                    obj_class = ObjClass(class_name, Mask3D, color)
+                    meta = meta.add_obj_class(class_name)
+                    self._meta_changed = True
+                    self._meta = meta
+                obj = VolumeObject(obj_class, mask_3d=mask)
+                spatial_figures.append(obj.figure)
+                objs.append(obj)
+            return VolumeAnnotation(item.volume_meta, objects=objs, spatial_figures=spatial_figures)
+        except Exception as e:
+            logger.warning(f"Failed to convert {item.ann_data} to Supervisely format: {e}")
+            return item.create_empty_annotation()
+    
+        
+    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True) -> None:
+        meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
+
+        matcher = helper.AnnotationMatcher(self._items, dataset_id)
+        if self._json_map is not None:
+            try:
+                matched_dict = matcher.match_from_json(api, self._json_map)
+            except Exception as e:
+                logger.error(f"Failed to match annotations from a json map: {e}")
+                matched_dict = {}
+        else:
+            matcher.get_volumes(api)
+            matched_dict = matcher.match_items()
+            if len(matched_dict) != len(self._items):
+                extra = {
+                    "items count": len(self._items),
+                    "matched count": len(matched_dict),
+                    "unmatched count": len(self._items) - len(matched_dict),}
+                logger.warning("Not all items were matched with volumes. Some items may be skipped.", extra=extra)
+
+        if log_progress:
+            progress, progress_cb = self.get_progress(
+                len(matched_dict), "Uploading volumes annotations..."
+            )
+        else:
+            progress_cb = None
+
+
+        for item, volume in matched_dict.items():
+            item.volume_meta = volume.meta
+            ann = self.to_supervisely(item, meta, renamed_classes, None)
+            if self._meta_changed:
+                meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
+                self._meta_changed = False
+            api.volume.annotation.append(volume.id, ann)
+            progress_cb(1) if log_progress else None
+
+        if log_progress:
+            if is_development():
+                progress.close()
+            logger.info(f"Successfully uploaded {len(matched_dict)} annotations.")
+            
