@@ -676,18 +676,19 @@ class Inference:
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
-    def _build_deploy_params_from_api(self, deploy_params: dict) -> dict:
-        model_name = deploy_params["model_name"]
+    def _build_deploy_params_from_api(self, model_name: str, deploy_params: dict = None) -> dict:
+        if deploy_params is None:
+            deploy_params = {}
         selected_model = None
         for model in self.pretrained_models:
             if model["meta"]["model_name"].lower() == model_name.lower():
                     selected_model = model
                     break
-            if selected_model is None:
-                raise ValueError(
-                    f"Model {model_name} not found in models.json of serving app"
-                )
-            deploy_params["model_files"] = selected_model["meta"]["model_files"]
+        if selected_model is None:
+            raise ValueError(
+                f"Model {model_name} not found in models.json of serving app"
+            )
+        deploy_params["model_files"] = selected_model["meta"]["model_files"]
         deploy_params["model_info"] = selected_model
         return deploy_params
 
@@ -3497,7 +3498,7 @@ class Inference:
                 model_name = state.get("model_name", None)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
                     if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
-                        deploy_params = self._build_deploy_params_from_api(deploy_params)
+                        deploy_params = self._build_deploy_params_from_api(model_name, deploy_params)
                         model_files = self._download_model_files(deploy_params)
                     else:
                         model_files = self._download_model_files(deploy_params)
@@ -3524,7 +3525,6 @@ class Inference:
                 raise e
 
         @server.post("/list_pretrained_models")
-        @self._check_serve_before_call
         def _list_pretrained_models():
             if isinstance(self.gui, GUI.ServingGUITemplate):
                 return self._gui.pretrained_models_table._models

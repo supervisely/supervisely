@@ -736,11 +736,11 @@ class ModelApi:
 
     def list_pretrained_models(self) -> List[str]:
         """Return a list of pretrained model names available for deployment"""
-        return self._post("list_pretrained_models", {})
+        return self._post("list_pretrained_models")
     
     def list_pretrained_model_infos(self) -> List[dict]:
         """Return a list of pretrained model configs with full information about each model"""
-        return self._post("list_pretrained_model_infos", {})
+        return self._post("list_pretrained_model_infos")
 
     def list_experiments(self) -> List[ExperimentInfo]:
         """Return a list of training experiments in Supervisely"""
@@ -778,38 +778,7 @@ class ModelApi:
 
         if model.startswith("/"):
             team_id = sly_env.team_id()
-            path_obj = Path(model)
-            if len(path_obj.parts) < 2:
-                raise ValueError(f"Incorrect checkpoint path: '{model}'")
-            parent = path_obj.parts[1]
-            frameworks = {
-                "/detectron2": Detectron2,
-                "/mmclassification": MMClassification,
-                "/mmdetection": MMDetection,
-                "/mmdetection-3": MMDetection3,
-                "/mmsegmentation": MMSegmentation,
-                "/RITM_training": RITM,
-                "/RT-DETR": RTDETR,
-                "/unet": UNet,
-                "/yolov5_train": YOLOv5,
-                "/yolov5_2.0_train": YOLOv5v2,
-                "/yolov8_train": YOLOv8,
-            }
-            if parent == "experiments":
-                try:
-                    artifacts_dir, checkpoint_name = model.split("/checkpoints/")
-                except:
-                    raise ValueError(
-                        "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
-                    )
-            elif f"/{parent}" in frameworks:
-                framework = frameworks[f"/{parent}"](team_id)
-                checkpoint_name = get_file_name_with_ext(model)
-                checkpoints_dir = model.replace(checkpoint_name, "")
-                if framework.weights_folder is not None:
-                    artifacts_dir = checkpoints_dir.replace(framework.weights_folder, "")
-                else:
-                    artifacts_dir = checkpoints_dir
+            artifacts_dir, checkpoint_name = self.api.nn._deploy_api._get_artifacts_dir_and_checkpoint_name(model)
 
             self.api.nn._deploy_api.load_custom_model(
                 self.deploy_id,
