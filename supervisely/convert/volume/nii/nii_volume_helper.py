@@ -168,8 +168,8 @@ class AnnotationMatcher:
     def match_items(self):
         """Match annotation files with corresponding volumes."""
         def to_volume_name(name):
-            name_parts = name.split("_")[:3]
-            return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
+            name_parts = get_file_name(name).split("_")[:3]
+            return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}.nrrd"
         
         item_to_volume = {}
         
