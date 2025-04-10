@@ -325,6 +325,16 @@ class Inference:
         )
 
         self.global_progress = GlobalProgress()
+        threading.Thread(target=self.inference_request_manager, daemon=True).start()
+
+    def inference_request_manager(self):
+        while True:
+            for inference_request in self._inference_requests.values():
+                if inference_request.is_expired():
+                    inference_request_uuid = inference_request.uuid
+                    self.del_inference_request(inference_request_uuid)
+                    logger.debug(f"Deleted expired inference request {inference_request_uuid}")
+            time.sleep(30)
 
     def generate_uuid(self) -> str:
         """
