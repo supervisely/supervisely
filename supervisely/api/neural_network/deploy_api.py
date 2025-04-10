@@ -734,7 +734,7 @@ class DeployApi:
             self._api.task.send_request(model_id, "is_ready", {})
             time.sleep(1)
 
-    def _get_artifacts_dir_and_checkpoint_name(self, model: str):
+    def _get_artifacts_dir_and_checkpoint_name(self, model: str) -> Tuple[str, str]:
         if not model.startswith("/"):
             raise ValueError(f"Path must start with '/'")
         
