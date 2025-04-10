@@ -1766,7 +1766,7 @@ class Inference:
                 results.extend(batch_results)
                 if inference_request is not None:
                     inference_request.add_results(batch_results)
-                    inference_request.progress.iter_done_report(len(batch))
+                    inference_request.progress.iters_done_report(len(batch))
                     inference_request.global_progress_current += len(batch)
                 else:
                     self.global_progress.done(len(batch))
