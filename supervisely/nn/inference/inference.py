@@ -3329,9 +3329,7 @@ class Inference:
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self.get_inference_request(inference_request_uuid)
-            log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
-            )
+            log_extra = _get_log_extra_for_inference_request(inference_request)
             data = {
                 "pending_results": inference_request.pop_pending_results(),
                 **inference_request.to_json(),
