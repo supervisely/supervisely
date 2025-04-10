@@ -28,7 +28,7 @@ class InferenceRequest:
         self._lock = threading.Lock()
         self._stage = InferenceRequest.Stage.CREATED
         self._pending_results = []
-        self.final_result = None
+        self._final_result = None
         self._exception = None
         self.stopped = False
         self.progress = Progress(message="Preparing model for inference...", total_cnt=1)
@@ -57,9 +57,21 @@ class InferenceRequest:
     def stage(self):
         return self._stage
 
+    @property
+    def final_result(self):
+        with self._lock:
+            return self._final_result
+
+    @final_result.setter
+    def final_result(self, result: Dict):
+        with self._lock:
+            self._final_result = result
+            self.__updated()
+
     def add_results(self, results: List[Dict]):
         with self._lock:
             self._pending_results.extend(results)
+            self.__updated()
 
     def pop_pending_results(self, n: int = None):
         with self._lock:
@@ -71,6 +83,7 @@ class InferenceRequest:
                 n = len(self._pending_results)
             results = self._pending_results[:n]
             self._pending_results = self._pending_results[n:]
+            self.__updated()
             return results
 
     def pending_num(self):
@@ -118,12 +131,14 @@ class InferenceRequest:
     def exception(self, exception: Exception):
         self._exception = exception
         self.stage = InferenceRequest.Stage.ERROR
+        self.__updated()
 
     def is_inferring(self):
         return self.stage == InferenceRequest.Stage.INFERENCE
 
     def stop(self):
         self.stopped = True
+        self.__updated()
 
     def is_stopped(self):
         return self.stopped
