@@ -54,7 +54,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
     The class name will be used to create the corresponding ObjClass in Supervisely.
     """
 
-    class Item(VolumeConverter.BaseItem):
+    class Item(VolumeConverter.Item):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
@@ -160,14 +160,14 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         except Exception as e:
             logger.warning(f"Failed to convert {item.path} to Supervisely format: {e}")
             return item.create_empty_annotation()
-        
+
 
 class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     """
     Upload NIfTI Annotations
     """
 
-    class Item(VolumeConverter.BaseItem):
+    class Item(VolumeConverter.Item):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
@@ -200,7 +200,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
         if list_files_recursively(self._input_data, filter_fn=has_volumes):
             return False
-        
+
         is_ann = lambda x: x.split("_")[1] in helper.LABEL_NAME if "_" in x else False
         for root, _, files in os.walk(self._input_data):
             for file in files:
@@ -227,10 +227,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     item.is_semantic = True # todo
                     self._items.append(item)
 
-
         self._meta = ProjectMeta()
         return len(self._items) > 0
-    
+
     def to_supervisely(
         self,
         item: VolumeConverter.Item,
@@ -255,7 +254,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 obj_class = meta.get_obj_class(class_name)
                 if obj_class is None:
                     obj_class = ObjClass(class_name, Mask3D, color)
-                    meta = meta.add_obj_class(class_name)
+                    meta = meta.add_obj_class(obj_class)
                     self._meta_changed = True
                     self._meta = meta
                 obj = VolumeObject(obj_class, mask_3d=mask)
@@ -265,8 +264,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         except Exception as e:
             logger.warning(f"Failed to convert {item.ann_data} to Supervisely format: {e}")
             return item.create_empty_annotation()
-    
-        
+
     def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True) -> None:
         meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
@@ -298,7 +296,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         else:
             progress_cb = None
 
-
         for item, volume in matched_dict.items():
             item.volume_meta = volume.meta
             ann = self.to_supervisely(item, meta, renamed_classes, None)
@@ -312,4 +309,3 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             if is_development():
                 progress.close()
             logger.info(f"Successfully uploaded {len(matched_dict)} annotations.")
-            
