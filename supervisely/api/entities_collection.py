@@ -12,6 +12,7 @@ from supervisely.api.module_api import (
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.sly_logger import logger
 
 
 class EntitiesCollectionInfo(NamedTuple):
@@ -189,6 +190,10 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
         return self._get_info_by_id(id, "entities-collections.info")
 
+    def _get_update_method(self):
+        """ """
+        return "entities-collections.editInfo"
+
     def _remove_api_method_name(self):
         """ """
         return "entities-collections.remove"
@@ -197,7 +202,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """ """
         return "entities-collections.editInfo"
 
-    def add_items(self, id: int, items: List[int]) -> None:
+    def add_items(self, id: int, items: List[int]) -> List[Dict[str, int]]:
         """
         Add items to Entities Collection.
 
@@ -216,11 +221,22 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             api = sly.Api.from_env()
 
             collection_id = 2
-            item_ids = [1, 2, 3]
-            api.entities_collection.add_items(collection_id, item_ids)
+            item_ids = [525, 526]
+            new_items = api.entities_collection.add_items(collection_id, item_ids)
+            print(new_items)
+            # Output: [
+            #   {"id": 1, "entityId": 525, 'createdAt': '2025-04-10T08:49:41.852Z'},
+            #   {"id": 2, "entityId": 526, 'createdAt': '2025-04-10T08:49:41.852Z'}
+            ]
         """
         data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_IDS: items}
-        self._api.post("entities-collections.items.bulk.add", data)
+        response = self._api.post("entities-collections.items.bulk.add", data)
+        response = response.json()
+        if len(response["missing"]) > 0:
+            raise RuntimeError(
+                f"Failed to add items to Entities Collection. IDs: {response['missing']}. "
+            )
+        return response["items"]
 
     def get_items(self, id: int, project_id: Optional[int] = None) -> List[int]:
         """
@@ -255,3 +271,33 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             project_id = info.project_id
 
         return self._api.image.get_list(project_id=project_id, entities_collection_id=id)
+
+    def remove_items(self, id: int, items: List[int]) -> List[Dict[str, int]]:
+        """
+        Remove items from Entities Collection.
+
+        :param id: Entities Collection ID in Supervisely.
+        :type id: int
+        :param items: List of item IDs in Supervisely.
+        :type items: List[int]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            api = sly.Api.from_env()
+
+            collection_id = 2
+            item_ids = [525, 526, 527]
+            removed_items = api.entities_collection.remove_items(collection_id, item_ids)
+            # print(removed_items)
+            # Output: [{"id": 1, "entityId": 525}, {"id": 2, "entityId": 526}]
+        """
+        data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_IDS: items}
+        response = self._api.post("entities-collections.items.bulk.remove", data)
+        response = response.json()
+        if len(response["missing"]) > 0:
+            logger.warning(
+                f"Failed to remove items from Entities Collection. IDs: {response['missing']}. "
+            )
+        return response["items"]
