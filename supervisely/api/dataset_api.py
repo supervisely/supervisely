@@ -41,6 +41,8 @@ from supervisely.project.project_type import ProjectType
 if TYPE_CHECKING:
     from supervisely.project.project import ProjectMeta
 
+from supervisely import logger
+
 
 class DatasetInfo(NamedTuple):
     """Represent Supervisely Dataset information.
@@ -1118,7 +1120,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
     ):
         """
         Quick import of images and annotations to the dataset.
-        Used only for extended Supervisely format.
+        Used only for extended Supervisely format with blobs.
+        Project will be automatically marked as blob project.
 
         IMPORTANT: Number of annotations must be equal to the number of images in offset file.
                    Image names in the offset file and annotation files must match.
@@ -1179,6 +1182,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
 
         """
         from supervisely.api.api import Api, ApiContext
+        from supervisely.api.image_api import _BLOB_TAG_NAME
         from supervisely.project.project import TF_BLOB_DIR, ProjectMeta
 
         def _ann_objects_generator(ann_paths, project_meta):
@@ -1256,3 +1260,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                     image_ids=img_ids, anns=ann_objects, log_progress=log_progress
                 )
                 run_coroutine(coroutine)
+        try:
+            custom_data = self._api.project.get_custom_data(dataset.project_id)
+            custom_data[_BLOB_TAG_NAME] = True
+            self._api.project.update_custom_data(dataset.project_id, custom_data)
+        except:
+            logger.warning("Failed to set blob tag for project")
