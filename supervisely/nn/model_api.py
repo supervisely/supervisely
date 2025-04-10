@@ -590,23 +590,23 @@ class PredictionSession:
         return self.session._get_inference_progress()["progress"]
 
 
-class ModelApi:
-    def __init__(self, api: "Api" = None, deploy_id: int = None, url: str = None):
+class ModelAPI:
+    def __init__(self, api: "Api" = None, task_id: int = None, url: str = None):
         assert not (
-            deploy_id is None and url is None
-        ), "Either `deploy_id` or `url` must be passed."
+            task_id is None and url is None
+        ), "Either `task_id` or `url` must be passed."
         assert (
-            deploy_id is None or url is None
-        ), "Either `deploy_id` or `url` must be passed (not both)."
-        if deploy_id is not None:
-            assert api is not None, "API must be provided if `deploy_id` is passed."
+            task_id is None or url is None
+        ), "Either `task_id` or `url` must be passed (not both)."
+        if task_id is not None:
+            assert api is not None, "API must be provided if `task_id` is passed."
 
         self.api = api
-        self.deploy_id = deploy_id
+        self.task_id = task_id
         self.url = url
 
-        if self.deploy_id is not None:
-            task_info = self.api.task.get_info_by_id(self.deploy_id)
+        if self.task_id is not None:
+            task_info = self.api.task.get_info_by_id(self.task_id)
             self.url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
 
     def predict_detached(
@@ -704,26 +704,26 @@ class ModelApi:
         return response.json()
 
     def shutdown(self):
-        if self.deploy_id is not None:
-            return self.api.task.stop(self.deploy_id)
+        if self.task_id is not None:
+            return self.api.task.stop(self.task_id)
         response = self._post("tasks.stop", {ApiField.ID: id})
         return TaskApi.Status(response[ApiField.STATUS])
 
     def get_info(self):
-        if self.deploy_id is not None:
-            return self.api.nn._deploy_api.get_deploy_info(self.deploy_id)
+        if self.task_id is not None:
+            return self.api.nn._deploy_api.get_deploy_info(self.task_id)
         return self._post("get_deploy_info", {})
 
     def get_default_settings(self):
-        if self.deploy_id is not None:
-            return self.api.task.send_request(self.deploy_id, "get_custom_inference_settings", {})[
+        if self.task_id is not None:
+            return self.api.task.send_request(self.task_id, "get_custom_inference_settings", {})[
                 "settings"
             ]
         else:
             return self._post("get_custom_inference_settings", {})["settings"]
 
     def get_model_meta(self):
-        if self.deploy_id is not None:
+        if self.task_id is not None:
             return ProjectMeta.from_json(
                 self.api.task.send_request("get_output_classes_and_tags", {})
             )
@@ -747,8 +747,8 @@ class ModelApi:
         raise NotImplementedError
 
     def healthcheck(self):
-        if self.deploy_id is not None:
-            return self.api.task.is_ready(self.deploy_id)
+        if self.task_id is not None:
+            return self.api.task.is_ready(self.task_id)
         return self._post("is_ready", {})["status"] == "ready"
 
     def monitor(self):
@@ -769,7 +769,7 @@ class ModelApi:
             team_id = sly_env.team_id()
             artifacts_dir, checkpoint_name = self.api.nn._deploy_api._get_artifacts_dir_and_checkpoint_name(model)
             self.api.nn._deploy_api.load_custom_model(
-                self.deploy_id,
+                self.task_id,
                 team_id,
                 artifacts_dir,
                 checkpoint_name,
@@ -778,5 +778,5 @@ class ModelApi:
             )
         else:
             self.api.nn._deploy_api.load_pretrained_model(
-                self.deploy_id, model, device=device, runtime=runtime
+                self.task_id, model, device=device, runtime=runtime
             )

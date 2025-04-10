@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from typing_extensions import Literal
 
-from supervisely.api.neural_network.deploy_api import DeployApi
+from supervisely.api.nn.deploy_api import DeployApi
 from supervisely.sly_logger import logger
 import supervisely.io.env as sly_env
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
-    from supervisely.nn.model_api import ModelApi
+    from supervisely.nn.model_api import ModelAPI
 
 
 class NeuralNetworkApi:
@@ -31,7 +31,7 @@ class NeuralNetworkApi:
         runtime: str = None,
         workspace_id: int = None,
         **kwargs,
-    ) -> "ModelApi":
+    ) -> "ModelAPI":
         """
         Deploy model by checkpoint path or model_name.
 
@@ -44,8 +44,8 @@ class NeuralNetworkApi:
         :param workspace_id: Workspace ID, if not present will be defined automatically.
         :type workspace_id: Optional[int]
         :param kwargs: Additional parameters for deployment.
-        :return: A :class:`ModelApi` object for the deployed model.
-        :rtype: ModelApi
+        :return: A :class:`ModelAPI` object for the deployed model.
+        :rtype: ModelAPI
         :Usage example:
             .. code-block:: python
 
@@ -54,7 +54,7 @@ class NeuralNetworkApi:
                 api = sly.Api.from_env()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
-        from supervisely.nn.model_api import ModelApi
+        from supervisely.nn.model_api import ModelAPI
 
         checkpoint = None
         pretrained = None
@@ -106,7 +106,7 @@ class NeuralNetworkApi:
                 workspace_id=workspace_id,
                 **kwargs,
             )
-        return ModelApi(self._api, deploy_id=task_info["id"])
+        return ModelAPI(self._api, task_id=task_info["id"])
 
     def get_deployed_models(
         self,
@@ -185,7 +185,7 @@ class NeuralNetworkApi:
         self,
         session_id: int,
         inference_settings: Union[dict, str] = None,
-    ) -> "ModelApi":
+    ) -> "ModelAPI":
         """
         Attach to a running Serving App session to run the inference via API.
 
@@ -196,6 +196,6 @@ class NeuralNetworkApi:
         :return: a :class:`Session` object
         :rtype: Session
         """
-        from supervisely.nn.model_api import ModelApi
+        from supervisely.nn.model_api import ModelAPI
 
-        return ModelApi(self._api, session_id)
+        return ModelAPI(self._api, session_id)
