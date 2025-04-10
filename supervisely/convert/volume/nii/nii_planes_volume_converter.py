@@ -180,8 +180,8 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         def is_semantic(self, value: bool):
             self._is_semantic = value
 
-    def __init__(self, input_data: str, project_meta: ProjectMeta = None):
-        super().__init__(input_data, project_meta)
+    def __init__(self,  *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._json_map = None
 
     def validate_format(self) -> bool:
@@ -192,9 +192,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 "No module named nibabel. Please make sure that module is installed from pip and try again."
             )
         cls_color_map = None
-        json_path = next(list_files_recursively(
+        json_path = next(iter(list_files_recursively(
             self._input_data, filter_fn=lambda x: x.endswith(".json")
-            ), None)
+            )), None)
         if json_path:
             json_map = helper.read_json_map(json_path)
         has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
@@ -286,6 +286,10 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     "matched count": len(matched_dict),
                     "unmatched count": len(self._items) - len(matched_dict),}
                 logger.warning("Not all items were matched with volumes. Some items may be skipped.", extra=extra)
+        if len(matched_dict) == 0:
+            raise RuntimeError(
+                "No items were matched with volumes. Please check the input data and try again."
+            )
 
         if log_progress:
             progress, progress_cb = self.get_progress(
