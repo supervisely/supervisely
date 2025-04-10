@@ -79,6 +79,7 @@ class Progress:
         is_size: Optional[bool] = False,
         need_info_log: Optional[bool] = False,
         min_report_percent: Optional[int] = 1,
+        log_extra: Optional[Dict[str, str]] = None,
     ):
         self.is_size = is_size
         self.message = message
@@ -94,6 +95,7 @@ class Progress:
         self.logger = logger if ext_logger is None else ext_logger
         self.report_every = max(1, math.ceil((total_cnt or 0) / 100 * min_report_percent))
         self.need_info_log = need_info_log
+        self.log_extra = log_extra
 
         mb5 = 5 * 1024 * 1024
         if self.is_size and self.is_total_unknown:
@@ -168,6 +170,9 @@ class Progress:
         if self.is_size:
             extra["current_label"] = self.current_label
             extra["total_label"] = self.total_label
+
+        if self.log_extra:
+            extra.update(self.log_extra)
 
         self.logger.info("progress", extra=extra)
         if self.need_info_log is True:
