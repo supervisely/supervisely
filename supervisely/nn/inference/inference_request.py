@@ -119,7 +119,7 @@ class InferenceRequest:
         self.progress.message = progress_msg
         if refresh_progress:
             self.progress.current = 0
-        self.progress.report_progress()
+        self.progress.report_progress(update_task_progress=False)
 
     @stage.setter
     def stage(self, stage: Union[InferenceRequest.Stage, str]):

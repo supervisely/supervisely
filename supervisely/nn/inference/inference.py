@@ -1571,7 +1571,7 @@ class Inference:
             )
 
             if inference_request is not None:
-                inference_request.progress.iter_done_report()
+                inference_request.progress.iter_done_report(update_task_progress=False)
                 inference_request.stage = InferenceRequest.Stage.INFERENCE
                 inference_request.progress.total = 1
 
@@ -1625,7 +1625,7 @@ class Inference:
             if inference_request is not None:
                 if ann is not None:
                     inference_request.final_result = result
-                inference_request.progress.iter_done_report()
+                inference_request.progress.iter_done_report(update_task_progress=False)
                 inference_request.global_progress_current = 1
             return result
         finally:
@@ -1658,7 +1658,7 @@ class Inference:
             image_path = self.cache.get_image_path(image_url)
 
             if inference_request is not None:
-                inference_request.progress.iter_done_report()
+                inference_request.progress.iter_done_report(update_task_progress=False)
                 inference_request.stage = InferenceRequest.Stage.INFERENCE
                 inference_request.progress.total = 1
 
@@ -1667,7 +1667,7 @@ class Inference:
                 settings=settings,
             )
             if inference_request is not None:
-                inference_request.progress.iter_done_report()
+                inference_request.progress.iter_done_report(update_task_progress=False)
                 inference_request.global_progress_current = 1
             return self._format_output(anns, slides_data, url=image_url)[0]
         finally:
@@ -1775,7 +1775,9 @@ class Inference:
                 results.extend(batch_results)
                 if inference_request is not None:
                     inference_request.add_results(batch_results)
-                    inference_request.progress.iters_done_report(len(batch))
+                    inference_request.progress.iters_done_report(
+                        len(batch), update_task_progress=False
+                    )
                     inference_request.global_progress_current += len(batch)
                 else:
                     self.global_progress.done(len(batch))
