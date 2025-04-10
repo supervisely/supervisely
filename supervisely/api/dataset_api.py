@@ -1113,7 +1113,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         offsets_path: str,
         anns: List[str],
         project_meta: Optional[ProjectMeta] = None,
-        project_type: ProjectType = None,
+        project_type: Optional[ProjectType] = None,
         log_progress: bool = True,
     ):
         """
@@ -1134,7 +1134,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :param project_meta: ProjectMeta object.
         :type project_meta: Optional[ProjectMeta], optional
         :param project_type: Project type.
-        :type project_type: ProjectType, optional
+        :type project_type: Optional[ProjectType], optional
         :param log_progress: If True, show progress bar.
         :type log_progress: bool, optional
 
