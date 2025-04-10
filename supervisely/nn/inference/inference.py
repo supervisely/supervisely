@@ -3313,7 +3313,7 @@ class Inference:
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self.get_inference_request(inference_request_uuid)
-            log_extra = _get_log_extra_for_inference_request
+            log_extra = _get_log_extra_for_inference_request(inference_request)
             data = {**inference_request.to_json(), **log_extra}
             logger.debug(
                 f"Sending inference progress with uuid:",
