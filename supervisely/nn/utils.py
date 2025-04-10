@@ -58,5 +58,7 @@ def _get_model_name(model_info: dict):
     if not name:
         name = model_info.get("meta", {}).get("model_name")
     if not name:
+        name = model_info.get("Model")
+    if not name:
         raise ValueError("Model name not found not in model_info nor in meta.")
     return name
