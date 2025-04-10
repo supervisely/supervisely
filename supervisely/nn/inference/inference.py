@@ -684,11 +684,11 @@ class Inference:
             if model["meta"]["model_name"].lower() == model_name.lower():
                     selected_model = model
                     break
-            if selected_model is None:
-                raise ValueError(
-                    f"Model {model_name} not found in models.json of serving app"
-                )
-            deploy_params["model_files"] = selected_model["meta"]["model_files"]
+        if selected_model is None:
+            raise ValueError(
+                f"Model {model_name} not found in models.json of serving app"
+            )
+        deploy_params["model_files"] = selected_model["meta"]["model_files"]
         deploy_params["model_info"] = selected_model
         return deploy_params
 
