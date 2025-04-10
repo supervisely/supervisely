@@ -41,6 +41,8 @@ from supervisely.io.fs import (
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
+from supervisely.io.fs import get_file_name_with_ext
+import supervisely.io.env as sly_env
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -749,19 +751,59 @@ class ModelApi:
         model: str,
         device: str = None,
         runtime: str = None,
-        team_id: int = None,
     ):  # remote or local
+        from supervisely.nn.artifacts import (
+            RITM,
+            RTDETR,
+            Detectron2,
+            MMClassification,
+            MMDetection,
+            MMDetection3,
+            MMSegmentation,
+            UNet,
+            YOLOv5,
+            YOLOv5v2,
+            YOLOv8,
+        )
+        from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
+        from supervisely.nn.utils import ModelSource
+
         if model.startswith("/"):
-            if team_id is None:
-                team_id = env.team_id()
-            try:
-                artifacts_dir, checkpoint_name = model.split("/checkpoints/")
-            except:
-                raise ValueError(
-                    "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
-                )
+            team_id = sly_env.team_id()
+            path_obj = Path(model)
+            if len(path_obj.parts) < 2:
+                raise ValueError(f"Incorrect checkpoint path: '{model}'")
+            parent = path_obj.parts[1]
+            frameworks = {
+                "/detectron2": Detectron2,
+                "/mmclassification": MMClassification,
+                "/mmdetection": MMDetection,
+                "/mmdetection-3": MMDetection3,
+                "/mmsegmentation": MMSegmentation,
+                "/RITM_training": RITM,
+                "/RT-DETR": RTDETR,
+                "/unet": UNet,
+                "/yolov5_train": YOLOv5,
+                "/yolov5_2.0_train": YOLOv5v2,
+                "/yolov8_train": YOLOv8,
+            }
+            if parent == "experiments":
+                try:
+                    artifacts_dir, checkpoint_name = model.split("/checkpoints/")
+                except:
+                    raise ValueError(
+                        "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
+                    )
+            elif f"/{parent}" in frameworks:
+                framework = frameworks[f"/{parent}"](team_id)
+                checkpoint_name = get_file_name_with_ext(model)
+                checkpoints_dir = model.replace(checkpoint_name, "")
+                if framework.weights_folder is not None:
+                    artifacts_dir = checkpoints_dir.replace(framework.weights_folder, "")
+                else:
+                    artifacts_dir = checkpoints_dir
+
             self.api.nn._deploy_api.load_custom_model(
-                team_id,
                 self.deploy_id,
                 team_id,
                 artifacts_dir,
