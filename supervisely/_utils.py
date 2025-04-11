@@ -543,3 +543,35 @@ def get_valid_kwargs(kwargs, func, exclude=None):
         if key in signature.parameters:
             valid_kwargs[key] = value
     return valid_kwargs
+
+
+def removesuffix(string, suffix):
+    """
+    Returns the string without the specified suffix if the string ends with that suffix.
+    Otherwise returns the original string.
+    Uses for Python versions < 3.9.
+
+    :param string: The original string.
+    :type string: str
+    :param suffix: The suffix to remove.
+    :type suffix: str
+    :return: The string without the suffix or the original string.
+    :rtype: str
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely._utils import removesuffix
+
+        original_string = "example.txt"
+        suffix_to_remove = ".txt"
+
+        result = removesuffix(original_string, suffix_to_remove)
+        print(result)
+
+        # Output: example
+
+    """
+    if string.endswith(suffix):
+        return string[: -len(suffix)]
+    return string
