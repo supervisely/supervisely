@@ -204,21 +204,24 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
         if list_files_recursively(self._input_data, filter_fn=has_volumes):
             return False
+        
+        txts = list_files_recursively(self._input_data, ['.txt'], None, True)
+        cls_color_map = next(iter(txts), None)
+        if cls_color_map is not None:
+            cls_color_map = helper.read_cls_color_map(cls_color_map)
+
+        jsons = list_files_recursively(self._input_data, ['.json'], None, True)
+        json_map = next(iter(jsons), None)
+        if json_map is not None:
+            self._json_map = helper.read_json_map(json_map)
+            if self._json_map is None:
+                logger.warning(f"Failed to read json map from {json_map}.")
 
         is_ann = lambda x: x.split("_")[1] in helper.LABEL_NAME if "_" in x else False
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 path = os.path.join(root, file)
-                ext = get_file_ext(path)
-                if ext == ".txt":
-                    cls_color_map = helper.read_cls_color_map(path)
-                    if cls_color_map is None:
-                        logger.warning(f"Failed to read class color map from {path}.")
-                elif ext == ".json":
-                    self._json_map = helper.read_json_map(path)
-                    if self._json_map is None:
-                        logger.warning(f"Failed to read json map from {path}.")
-                elif is_ann(file):
+                if is_ann(file):
                     try:
                         nii = nib.load(path)
                     except nib.filebasedimages.ImageFileError:
