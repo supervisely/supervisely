@@ -1,12 +1,13 @@
 import json
 import shutil
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
 from logging import Logger
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Any, Callable, Generator, List, Optional, Tuple, Union
+from typing import Any, BinaryIO, Callable, Generator, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -15,8 +16,10 @@ from cachetools import Cache, LRUCache, TTLCache
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
+import supervisely.io.env as env
 from supervisely._utils import batched
 from supervisely.io.fs import silent_remove
+from supervisely.video.video import VideoFrameReader
 
 
 class PersistentImageLRUCache(LRUCache):
@@ -139,16 +142,20 @@ class PersistentImageTTLCache(TTLCache):
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
 
-    def save_image(self, key, image: np.ndarray) -> None:
+    def save_image(self, key, image: Union[np.ndarray, BinaryIO], ext=".png") -> None:
         if not self._base_dir.exists():
             self._base_dir.mkdir()
 
-        filepath = self._base_dir / f"{str(key)}.png"
+        filepath = self._base_dir / f"{str(key)}{ext}"
         self[key] = filepath
 
         if filepath.exists():
             sly.logger.debug(f"Rewrite image {str(filepath)}")
-        sly.image.write(str(filepath), image)
+        if isinstance(image, np.ndarray):
+            sly.image.write(str(filepath), image)
+        else:
+            with open(filepath, "wb") as f:
+                shutil.copyfileobj(image, f)
 
     def get_image_path(self, key: Any) -> Path:
         return self[key]
@@ -156,16 +163,25 @@ class PersistentImageTTLCache(TTLCache):
     def get_image(self, key: Any):
         return sly.image.read(str(self[key]))
 
-    def save_video(self, video_id: int, src_video_path: str) -> None:
-        ext = Path(src_video_path).suffix
-        video_path = self._base_dir / f"video_{video_id}{ext}"
-        self[video_id] = video_path
-        if src_video_path != str(video_path):
-            shutil.move(src_video_path, str(video_path))
-        sly.logger.debug(f"Video #{video_id} saved to {video_path}", extra={"video_id": video_id})
+    def save_video(self, key: Any, source: Union[str, Path, BinaryIO]) -> None:
+        ext = ""
+        if isinstance(source, Path):
+            ext = source.suffix
+        elif isinstance(source, str):
+            ext = Path(source).suffix
+        video_path = self._base_dir / f"video_{key}{ext}"
+        self[key] = video_path
 
-    def get_video_path(self, video_id: int) -> Path:
-        return self[video_id]
+        if isinstance(source, (str, Path)):
+            if str(source) != str(video_path):
+                shutil.move(source, str(video_path))
+        else:
+            with open(video_path, "wb") as f:
+                shutil.copyfileobj(source, f)
+        sly.logger.debug(f"Video #{key} saved to {video_path}", extra={"video_id": key})
+
+    def get_video_path(self, key: Any) -> Path:
+        return self[key]
 
     def save_project_meta(self, key, value):
         self[key] = value
@@ -175,35 +191,6 @@ class PersistentImageTTLCache(TTLCache):
 
     def copy_to(self, name, path):
         shutil.copyfile(str(self[name]), path)
-
-
-class VideoFrameReader:
-    def __init__(self, video_path: str, frame_indexes: List[int]):
-        self.video_path = video_path
-        self.frame_indexes = frame_indexes
-        self.cap = None
-        self.prev_idx = -1
-
-    def __enter__(self):
-        self.cap = cv2.VideoCapture(str(self.video_path))
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.cap is not None:
-            self.cap.release()
-
-    def read_frames(self) -> Generator:
-        try:
-            for frame_index in self.frame_indexes:
-                if frame_index != self.prev_idx + 1:
-                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = self.cap.read()
-                if not ret:
-                    raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
-                yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                self.prev_idx = frame_index
-        finally:
-            self.cap.release()
 
 
 class InferenceImageCache:
@@ -218,7 +205,7 @@ class InferenceImageCache:
         maxsize: int,
         ttl: int,
         is_persistent: bool = True,
-        base_folder: str = sly.env.smart_cache_container_dir(),
+        base_folder: str = env.smart_cache_container_dir(),
         log_progress: bool = False,
     ) -> None:
         self.is_persistent = is_persistent
@@ -227,6 +214,7 @@ class InferenceImageCache:
         self._lock = Lock()
         self._load_queue = CacheOut(ttl=10 * 60)
         self.log_progress = log_progress
+        self._download_executor = ThreadPoolExecutor(max_workers=5)
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -297,7 +285,7 @@ class InferenceImageCache:
     def _read_frames_from_cached_video_iter(self, video_id, frame_indexes):
         video_path = self._cache.get_video_path(video_id)
         with VideoFrameReader(video_path, frame_indexes) as reader:
-            for frame in reader.read_frames():
+            for frame in reader.iterate_frames():
                 yield frame
 
     def _read_frames_from_cached_video(
@@ -316,6 +304,33 @@ class InferenceImageCache:
         frame = self._cache.get(name)
         if frame is None:
             raise KeyError(f"Frame {frame_index} not found in video {video_id}")
+
+    def get_video_frames_count(self, key):
+        """
+        Returns number of frames in the video
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video frames count can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).frames_count()
+
+    def get_video_frame_size(self, key):
+        """
+        Returns height and width of the video frame. (h, w)
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video frame size can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).frame_size()
+
+    def get_video_fps(self, key):
+        """
+        Returns fps of the video
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video fps can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).fps()
 
     def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
         if isinstance(self._cache, PersistentImageTTLCache) and video_id in self._cache:
@@ -379,17 +394,19 @@ class InferenceImageCache:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
-                Thread(
-                    target=self.download_video,
-                    args=(api, video_id),
-                    kwargs={**kwargs, "return_images": False},
-                ).start()
+                self._download_executor.submit(
+                    self.download_video,
+                    api,
+                    video_id,
+                    **{**kwargs, return_images: False},
+                )
         elif redownload_video:
-            Thread(
-                target=self.download_video,
-                args=(api, video_id),
-                kwargs={**kwargs, "return_images": False},
-            ).start()
+            self._download_executor.submit(
+                self.download_video,
+                api,
+                video_id,
+                **{**kwargs, return_images: False},
+            )
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -405,32 +422,49 @@ class InferenceImageCache:
             return_images,
         )
 
-    def add_video_to_cache(self, video_id: int, video_path: Path) -> None:
+    def add_video_to_cache_by_io(self, video_id: int, video_io: BinaryIO) -> None:
+        if isinstance(self._cache, PersistentImageTTLCache):
+            with self._lock:
+                self._cache.save_video(video_id, source=video_io)
+
+    def add_video_to_cache(self, video_id: int, source: Union[str, Path, BinaryIO]) -> None:
         """
         Adds video to cache.
         """
         if isinstance(self._cache, PersistentImageTTLCache):
             with self._lock:
-                self._cache.save_video(video_id, str(video_path))
+                self._cache.save_video(video_id, source)
                 self._load_queue.delete(video_id)
             sly.logger.debug(f"Video #{video_id} added to cache", extra={"video_id": video_id})
         else:
-            cap = cv2.VideoCapture(str(video_path))
-            frame_index = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            while cap.isOpened():
-                while self._frame_name(video_id, frame_index) in self._cache:
-                    frame_index += 1
-                if frame_index >= total_frames:
-                    break
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame = np.array(frame)
-                self.add_frame_to_cache(frame, video_id, frame_index)
-                frame_index = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-            cap.release()
+            tmp_source = None
+            if not isinstance(source, (str, Path)):
+                with tempfile.NamedTemporaryFile(delete=False) as f:
+                    shutil.copyfileobj(source, f)
+                    tmp_source = f.name
+                    source = tmp_source
+            try:
+                with VideoFrameReader(source) as reader:
+                    for frame_index, frame in enumerate(reader):
+                        self.add_frame_to_cache(frame, video_id, frame_index)
+            finally:
+                if tmp_source is not None:
+                    silent_remove(tmp_source)
+
+    def add_image_to_cache(self, key: str, image: Union[np.ndarray, BinaryIO], ext=".png") -> None:
+        """
+        Adds image to cache.
+        """
+        with self._lock:
+            self._cache.save_image(key, image, ext)
+            self._load_queue.delete(key)
+        sly.logger.debug(f"Image {key} added to cache", extra={"image_id": key})
+
+    def get_image_path(self, key) -> str:
+        return str(self._cache.get_image_path(key))
+
+    def get_video_path(self, key) -> str:
+        return str(self._cache.get_video_path(key))
 
     def download_video(self, api: sly.Api, video_id: int, **kwargs) -> None:
         """
@@ -621,8 +655,7 @@ class InferenceImageCache:
             state["video_id"] = video_id
             state["frame_ranges"] = list_of_ids_ranges_or_hashes
 
-        thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
-        thread.start()
+        self._download_executor.submit(self.cache_task, api=api, state=state)
 
     def set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
@@ -803,7 +836,7 @@ class InferenceImageCache:
             frame_index_to_path = {}
             for frame_index, path in zip(this_frame_indexes[:5], this_paths[:5]):
                 frame_index_to_path[frame_index] = path
-                futures.append(executor.submit(_download_frame, frame_index))
+                futures.append(self._download_executor.submit(_download_frame, frame_index))
             for future in as_completed(futures):
                 frame_index, name = future.result()
                 path = frame_index_to_path[frame_index]
@@ -815,5 +848,4 @@ class InferenceImageCache:
 
         # optimization for frame read from video file
         frame_indexes, paths = zip(*sorted(zip(frame_indexes, paths), key=lambda x: x[0]))
-        executor = ThreadPoolExecutor(max_workers=5)
         _download_and_save(frame_indexes, paths)

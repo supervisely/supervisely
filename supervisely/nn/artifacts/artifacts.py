@@ -8,18 +8,19 @@ from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
-from typing import Any, Dict, List, Literal, NamedTuple, Union
+from typing import Any, Dict, List, Literal, NamedTuple, Union, TYPE_CHECKING
 
 import requests
 
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
-from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file
-from supervisely.nn.experiments import ExperimentInfo
 
+if TYPE_CHECKING:
+    from supervisely.api.api import Api
+    from supervisely.nn.experiments import ExperimentInfo
 
 class TrainInfo(NamedTuple):
     """
@@ -51,6 +52,7 @@ class BaseTrainArtifacts:
                 "BaseTrainArtifacts is a base class and should not be instantiated directly"
             )
 
+        from supervisely.api.api import Api
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
         self._metadata_file_name: str = "train_info.json"
@@ -422,6 +424,7 @@ class BaseTrainArtifacts:
         return train_json
 
     def _fetch_json_from_path(self, remote_path: str):
+        from supervisely.api.api import ApiField
         try:
             response = self._api.post(
                 "file-storage.download",
@@ -578,7 +581,7 @@ class BaseTrainArtifacts:
 
     def convert_train_to_experiment_info(
         self, train_info: TrainInfo
-    ) -> Union[ExperimentInfo, None]:
+    ) -> Union['ExperimentInfo', None]:
         try:
             checkpoints = []
             for chk in train_info.checkpoints:
@@ -637,7 +640,7 @@ class BaseTrainArtifacts:
 
     def get_list_experiment_info(
         self, sort: Literal["desc", "asc"] = "desc"
-    ) -> List[ExperimentInfo]:
+    ) -> List['ExperimentInfo']:
         train_infos = self.get_list(sort)
 
         # Sync version
@@ -671,7 +674,7 @@ class BaseTrainArtifacts:
         self,
         artifacts_dir: str,
         return_type: Literal["train_info", "experiment_info"] = "train_info",
-    ) -> Union[TrainInfo, ExperimentInfo, None]:
+    ) -> Union[TrainInfo, 'ExperimentInfo', None]:
         """
         Get training info by artifacts directory.
 
