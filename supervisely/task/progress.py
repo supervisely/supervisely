@@ -148,9 +148,7 @@ class Progress:
             self.total = self.current
         self._refresh_labels()
 
-    def report_progress(
-        self,
-    ) -> None:
+    def report_progress(self) -> None:
         """
         Logs a message with level INFO in logger. Message contain type of progress, subtask message, current and total number of iterations
 
@@ -160,9 +158,7 @@ class Progress:
         self.print_progress()
         self.reported_cnt += 1
 
-    def print_progress(
-        self,
-    ) -> None:
+    def print_progress(self) -> None:
         """
         Logs a message with level INFO on logger. Message contain type of progress, subtask message, currtnt and total number of iterations
         """
@@ -197,18 +193,14 @@ class Progress:
             return True
         return False
 
-    def report_if_needed(
-        self,
-    ) -> None:
+    def report_if_needed(self) -> None:
         """
         Determines whether the message should be logged depending on current number of iterations
         """
         if self.need_report():
             self.report_progress()
 
-    def iter_done_report(
-        self,
-    ) -> None:  # finish & report
+    def iter_done_report(self) -> None:  # finish & report
         """
         Increments the current iteration counter by 1 and logs a message depending on current number of iterations.
 
@@ -243,10 +235,7 @@ class Progress:
         self.iter_done()
         self.report_if_needed()
 
-    def iters_done_report(
-        self,
-        count: int,
-    ) -> None:  # finish & report
+    def iters_done_report(self, count: int) -> None:  # finish & report
         """
         Increments the current iteration counter by given count and logs a message depending on current number of iterations.
 
