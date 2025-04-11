@@ -579,7 +579,12 @@ class Dataset(KeyObject):
         Consistency checks. Every item must have an annotation, and the correspondence must be one to one.
         If not - it generate exception error.
         """
-        if not dir_exists(self.item_dir):
+        blob_offset_paths = list_files(
+            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
+        )
+        has_blob_offsets = len(blob_offset_paths) > 0
+
+        if not dir_exists(self.item_dir) and not has_blob_offsets:
             raise FileNotFoundError("Item directory not found: {!r}".format(self.item_dir))
         if not dir_exists(self.ann_dir):
             raise FileNotFoundError("Annotation directory not found: {!r}".format(self.ann_dir))
@@ -589,11 +594,6 @@ class Dataset(KeyObject):
 
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
         img_names = [os.path.basename(path) for path in img_paths]
-
-        blob_offset_paths = list_files(
-            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
-        )
-        has_blob_offsets = len(blob_offset_paths) > 0
 
         # If we have blob offset files, add the image names from those
         if has_blob_offsets:
