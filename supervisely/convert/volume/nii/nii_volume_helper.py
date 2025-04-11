@@ -176,7 +176,7 @@ class AnnotationMatcher:
             # name_parts = get_file_name(name).split("_")[:3]
             # return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
             prefix = name.split("_")[0]
-            if prefix not in PlanePrefix:
+            if prefix not in PlanePrefix.values():
                 return None
             return f"{prefix}_{VOLUME_NAME}.nrrd"
 
