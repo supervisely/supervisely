@@ -241,7 +241,7 @@ class SLYImageConverter(ImageConverter):
             def _check_function(path):
                 try:
                     dataset_ds = Dataset(path, OpenMode.READ)
-                    return len(dataset_ds.get_items_names()) > 0 or len(dataset_ds.blob_offsets) > 0
+                    return len(dataset_ds.get_items_names()) > 0
                 except:
                     return False
 
@@ -297,6 +297,11 @@ class SLYImageConverter(ImageConverter):
                     "Failed to find Supervisely project with blobs in the input data"
                 )
             project_dir = project_dirs[0]
+            if len(project_dirs) > 1:
+                logger.info(
+                    "Found multiple possible Supervisely projects with blobs in the input data. "
+                    f"Only the first one will be uploaded: {project_dir}"
+                )
             upload_project_fs(
                 dir=project_dir,
                 api=api,
