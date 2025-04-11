@@ -590,10 +590,13 @@ class Dataset(KeyObject):
             raise FileNotFoundError("Annotation directory not found: {!r}".format(self.ann_dir))
 
         raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
-
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
-        img_names = [os.path.basename(path) for path in img_paths]
+
+        if dir_exists(self.item_dir):
+            img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
+            img_names = [os.path.basename(path) for path in img_paths]
+        else:
+            img_names = []
 
         # If we have blob offset files, add the image names from those
         if has_blob_offsets:
