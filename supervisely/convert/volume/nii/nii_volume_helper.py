@@ -3,7 +3,10 @@ from typing import Generator
 
 import nrrd
 import numpy as np
+from pathlib import Path
+from collections import defaultdict, namedtuple
 
+from supervisely import Api
 from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, get_file_ext, get_file_name
@@ -69,6 +72,20 @@ def read_cls_color_map(path: str) -> dict:
         return None
     return cls_color_map
 
+def read_json_map(path: str) -> dict:
+    import json
+
+    """Read JSON map from file."""
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r") as file:
+            json_map = json.load(file)
+    except Exception as e:
+        logger.warning(f"Failed to read JSON map from {path}: {e}")
+        return None
+    return json_map
+
 
 def nifti_to_nrrd(nii_file_path: str, converted_dir: str) -> str:
     """Convert NIfTI 3D volume file to NRRD 3D volume file."""
@@ -97,3 +114,214 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
             continue
         mask = Mask3D(data == class_id)
         yield mask, class_id
+
+class AnnotationMatcher:
+    def __init__(self, items, dataset_id):
+        self._items = items
+        self._ds_id = dataset_id
+        self._ann_paths = defaultdict(list)
+
+        self._item_by_filename = {}
+        self._item_by_path = {}
+
+        for item in items:
+            path = Path(item.ann_data)
+            dataset_name = path.parts[-2]
+            filename = path.name
+
+            self._ann_paths[dataset_name].append(filename)
+            self._item_by_filename[filename] = item
+            self._item_by_path[(dataset_name, filename)] = item
+
+        self._project_wide = False
+        self._volumes = None
+
+    def get_volumes(self, api: Api):
+        if self._ds_id is None:
+            raise ValueError("Dataset ID is not set.")
+        dataset_info = api.dataset.get_info_by_id(self._ds_id)
+        project_id = dataset_info.project_id
+        if len(self._ann_paths.keys()) == 1:
+            self._project_wide = False
+            self._volumes = {get_file_name(info.name): info for info in api.volume.get_list(self._ds_id)}
+            if len(self._volumes) == 0:
+                raise RuntimeError(f"No volumes found in the dataset (id: {self._ds_id}).")
+            return
+
+        datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
+        volumes = defaultdict(lambda: {})
+        for ds_name, ds_info in datasets.items():
+            if ds_name in self._ann_paths:
+                volumes[ds_name].update(
+                    {info.name: info for info in api.volume.get_list(ds_info.id)}
+                )
+                self._project_wide = True
+
+        if len(volumes) == 0:
+            err_msg = None
+            if not self._project_wide:
+                err_msg = f"Failed to retrieve volumes from the dataset {self._ds_id}."
+            else:
+                err_msg = "Failed to retrieve volumes from the project. Perhaps the input data structure is incorrect."
+            raise RuntimeError(err_msg)
+
+        self._volumes = volumes
+
+    def match_items(self):
+        """Match annotation files with corresponding volumes."""
+        def to_volume_name(name):
+            if name.endswith(".nii.gz"):
+                name = name.replace(".nii.gz", "")
+            elif name.endswith(".nii"):
+                name = name.replace(".nii", "")
+            if "_" not in name:
+                return None
+            # name_parts = get_file_name(name).split("_")[:3]
+            # return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
+            prefix = name.split("_")[0]
+            if prefix not in PlanePrefix.values():
+                return None
+            return f"{prefix}_{VOLUME_NAME}"
+
+        def find_best_volume_match(expected_name, available_volumes):
+            """Find the best matching volume name from available volumes."""
+            # First try exact match
+            if expected_name in available_volumes:
+                return expected_name, available_volumes[expected_name]
+
+            # Try fuzzy matching - find names that start with the expected name
+            potential_matches = [
+                name for name in available_volumes.keys() if name.startswith(expected_name)
+            ]
+
+            if not potential_matches:
+                return None, None
+
+            # Sort by length to prefer the shortest/most general match
+            best_match = sorted(potential_matches, key=len)[0]
+            return best_match, available_volumes[best_match]
+
+        item_to_volume = {}
+
+        # Common matching logic for both project-wide and dataset-wide scenarios
+        def process_annotation_file(ann_file, dataset_name, volumes):
+            expected_volume_name = to_volume_name(ann_file)
+            if expected_volume_name is None:
+                logger.warning(f"Invalid name for {ann_file}. Skipping.")
+                return
+
+            matched_name, matched_volume = find_best_volume_match(expected_volume_name, volumes)
+            if not matched_volume:
+                logger.warning(
+                    f"No matching volume found for {expected_volume_name}" + " in dataset " + dataset_name if self._project_wide else "."
+                )
+                return
+
+            # Get the appropriate item based on matching mode
+            item = (
+                self._item_by_path.get((dataset_name, ann_file))
+                if self._project_wide
+                else self._item_by_filename.get(ann_file)
+            )
+            if not item:
+                logger.warning(
+                    f"Item not found for {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}."
+                )
+                return
+
+            item_to_volume[item] = matched_volume
+            if get_file_name(matched_name) != expected_volume_name:
+                logger.debug(
+                    f"Fuzzy matched {ann_file} to volume {matched_name} (expected: {expected_volume_name})"
+                )
+
+        if self._project_wide:
+            # Project-wide matching
+            for dataset_name, volumes in self._volumes.items():
+                for ann_file in self._ann_paths[dataset_name]:
+                    process_annotation_file(ann_file, dataset_name, volumes)
+        else:
+            # Dataset-wide matching
+            dataset_name = list(self._ann_paths.keys())[0]
+            for ann_file in self._ann_paths[dataset_name]:
+                process_annotation_file(ann_file, dataset_name, self._volumes)
+
+        volume_to_items = defaultdict(list)
+        for item, volume in item_to_volume.items():
+            volume_to_items[volume.id].append(item)
+        for volume_id, items in volume_to_items.items():
+            if len(items) == 1:
+                items[0].is_semantic = True
+
+        # validate shape
+        items_to_remove = []
+        for item, volume in item_to_volume.items():
+            volume_shape = tuple(volume.file_meta["sizes"])
+            if item.shape != volume_shape:
+                logger.warning(
+                    f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item."
+                )
+                items_to_remove.append(item)
+
+        for item in items_to_remove:
+            del item_to_volume[item]
+
+        return item_to_volume
+
+    def match_from_json(self, api: Api, json_map: dict):
+        """
+        Match annotation files with corresponding volumes based on a JSON map.
+
+        Example json structure:
+        {
+            "cor_inference_1.nii": 123,
+            "sag_mask_2.nii": 456
+        }
+        Where key is the annotation file name and value is the volume ID.
+
+        For project-wide matching, the key should include dataset name:
+        {
+            "dataset1/cor_inference_1.nii": 123,
+            "dataset2/sag_mask_2.nii": 456
+        }
+        """
+        item_to_volume = {}
+
+        for ann_path, volume_id in json_map.items():
+            # Check if it's a project-wide path (contains dataset name)
+            path_parts = Path(ann_path)
+            if len(path_parts.parts) > 1:
+                # Project-wide format: "dataset_name/filename.nii"
+                dataset_name = path_parts.parts[-2]
+                ann_name = path_parts.name
+                item = self._item_by_path.get((dataset_name, ann_name))
+            else:
+                # Single dataset format: "filename.nii"
+                ann_name = path_parts.name
+                item = self._item_by_filename.get(ann_name)
+
+            if item:
+                volume = api.volume.get_info_by_id(volume_id)
+                if volume:
+                    item_to_volume[item] = volume
+
+                    # Validate shape
+                    volume_shape = tuple(volume.file_meta["sizes"])
+                    if item.shape != volume_shape:
+                        logger.warning(
+                            f"Volume shape mismatch: {item.shape} != {volume_shape} for {ann_path}. Using anyway."
+                        )
+                else:
+                    logger.warning(f"Volume {volume_id} not found for {ann_path}.")
+            else:
+                logger.warning(f"Item not found for annotation file {ann_path}.")
+
+        # Set semantic flag for volumes with only one associated item
+        volume_to_items = defaultdict(list)
+        for item, volume in item_to_volume.items():
+            volume_to_items[volume.id].append(item)
+        for volume_id, items in volume_to_items.items():
+            if len(items) == 1:
+                items[0].is_semantic = True
+
+        return item_to_volume
