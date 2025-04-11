@@ -206,6 +206,7 @@ class AnnotationMatcher:
             dataset_name = list(self._ann_paths.keys())[0]
             for ann_file in self._ann_paths[dataset_name]:
                 expected_volume_name = to_volume_name(ann_file)
+                volumes = self._volumes
                 if expected_volume_name in volumes:
                     item = self._item_by_filename.get(ann_file)
                     if item:
