@@ -178,45 +178,70 @@ class AnnotationMatcher:
             prefix = name.split("_")[0]
             if prefix not in PlanePrefix.values():
                 return None
-            return f"{prefix}_{VOLUME_NAME}.nrrd"
+            return f"{prefix}_{VOLUME_NAME}"
+
+        def find_best_volume_match(expected_name, available_volumes):
+            """Find the best matching volume name from available volumes."""
+            # First try exact match
+            if expected_name in available_volumes:
+                return expected_name, available_volumes[expected_name]
+
+            # Try fuzzy matching - find names that start with the expected name
+            potential_matches = [
+                name for name in available_volumes.keys() if name.startswith(expected_name)
+            ]
+
+            if not potential_matches:
+                return None, None
+
+            # Sort by length to prefer the shortest/most general match
+            best_match = sorted(potential_matches, key=len)[0]
+            return best_match, available_volumes[best_match]
 
         item_to_volume = {}
+
+        # Common matching logic for both project-wide and dataset-wide scenarios
+        def process_annotation_file(ann_file, dataset_name, volumes):
+            expected_volume_name = to_volume_name(ann_file)
+            if expected_volume_name is None:
+                logger.warning(f"Invalid name for {ann_file}. Skipping.")
+                return
+
+            matched_name, matched_volume = find_best_volume_match(expected_volume_name, volumes)
+            if not matched_volume:
+                logger.warning(
+                    f"No matching volume found for {expected_volume_name} in dataset {dataset_name}."
+                )
+                return
+
+            # Get the appropriate item based on matching mode
+            item = (
+                self._item_by_path.get((dataset_name, ann_file))
+                if self._project_wide
+                else self._item_by_filename.get(ann_file)
+            )
+            if not item:
+                logger.warning(
+                    f"Item not found for {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}."
+                )
+                return
+
+            item_to_volume[item] = matched_volume
+            if get_file_name(matched_name) != expected_volume_name:
+                logger.info(
+                    f"Fuzzy matched {ann_file} to volume {matched_name} (expected: {expected_volume_name})"
+                )
 
         if self._project_wide:
             # Project-wide matching
             for dataset_name, volumes in self._volumes.items():
                 for ann_file in self._ann_paths[dataset_name]:
-                    expected_volume_name = to_volume_name(ann_file)
-                    if expected_volume_name is None:
-                        logger.warning(f"Invalid volume name for {ann_file}. Skipping.")
-                        continue
-                    if expected_volume_name in volumes:
-                        volume = volumes[expected_volume_name]
-                        item = self._item_by_path.get((dataset_name, ann_file))
-                        if item:
-                            item_to_volume[item] = volume
-                        else:
-                            logger.warning(f"Item not found for {ann_file} in dataset {dataset_name}.")
-                    else:
-                        logger.warning(
-                            f"Volume name {expected_volume_name} not found in dataset {dataset_name}."
-                        )
+                    process_annotation_file(ann_file, dataset_name, volumes)
         else:
             # Dataset-wide matching
             dataset_name = list(self._ann_paths.keys())[0]
             for ann_file in self._ann_paths[dataset_name]:
-                expected_volume_name = to_volume_name(ann_file)
-                volumes = self._volumes
-                if expected_volume_name in volumes:
-                    item = self._item_by_filename.get(ann_file)
-                    if item:
-                        item_to_volume[item] = volumes[expected_volume_name]
-                    else:
-                        logger.warning(f"Item not found for {ann_file} in single dataset mode.")
-                else:
-                    logger.warning(
-                        f"Volume name {expected_volume_name} not found in dataset {self._ds_id}."
-                    )
+                process_annotation_file(ann_file, dataset_name, self._volumes)
 
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
