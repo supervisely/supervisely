@@ -215,11 +215,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     if cls_color_map is None:
                         logger.warning(f"Failed to read class color map from {path}.")
                 elif ext == ".json":
-                    json_map = helper.read_json_map(path)
-                    if json_map is None:
+                    self._json_map = helper.read_json_map(path)
+                    if self._json_map is None:
                         logger.warning(f"Failed to read json map from {path}.")
-                    else:
-                        self._json_map = json_map
                 elif is_ann(file):
                     try:
                         nii = nib.load(path)
@@ -231,6 +229,8 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     item = self.Item(item_path=None, ann_data=path)
                     item.set_shape(nii.shape)
                     item.is_semantic = True # todo
+                    if cls_color_map is not None:
+                        item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
 
         self._meta = ProjectMeta()
