@@ -2117,6 +2117,31 @@ class Dataset(KeyObject):
             img_bytes = None
         return img_bytes
 
+    def get_blob_img_np(self, image_name: str) -> np.ndarray:
+        """
+        Get image as numpy array from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Numpy array of the image.
+        :rtype: :class:`numpy.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_np = dataset.get_blob_img_np(image_name)
+        """
+        img_bytes = self.get_blob_img_bytes(image_name)
+        if img_bytes is None:
+            return None
+        return sly_image.read_bytes(img_bytes)
+
 
 class Project:
     """
