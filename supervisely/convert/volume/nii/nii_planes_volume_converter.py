@@ -200,11 +200,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 "No module named nibabel. Please make sure that module is installed from pip and try again."
             )
         cls_color_map = None
-        json_path = next(iter(list_files_recursively(
-            self._input_data, filter_fn=lambda x: x.endswith(".json")
-            )), None)
-        if json_path:
-            json_map = helper.read_json_map(json_path)
+
         has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
         if list_files_recursively(self._input_data, filter_fn=has_volumes):
             return False
@@ -222,6 +218,8 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     json_map = helper.read_json_map(path)
                     if json_map is None:
                         logger.warning(f"Failed to read json map from {path}.")
+                    else:
+                        self._json_map = json_map
                 elif is_ann(file):
                     try:
                         nii = nib.load(path)
