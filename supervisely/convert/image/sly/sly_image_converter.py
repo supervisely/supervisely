@@ -291,8 +291,19 @@ class SLYImageConverter(ImageConverter):
             self.upload_project(api, dataset_id, batch_size, log_progress)
         elif self.blob_project:
             dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
+            project_dirs = [d for d in find_project_dirs(self._input_data)]
+            if len(project_dirs) == 0:
+                raise RuntimeError(
+                    "Failed to find Supervisely project with blobs in the input data"
+                )
+            project_dir = project_dirs[0]
+            if len(project_dirs) > 1:
+                logger.info(
+                    "Found multiple possible Supervisely projects with blobs in the input data. "
+                    f"Only the first one will be uploaded: {project_dir}"
+                )
             upload_project_fs(
-                dir=self._input_data,
+                dir=project_dir,
                 api=api,
                 workspace_id=dataset_info.workspace_id,
                 log_progress=log_progress,

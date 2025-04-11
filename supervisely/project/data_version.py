@@ -17,7 +17,9 @@ from supervisely.io.fs import remove_dir, silent_remove
 
 
 class VersionInfo(NamedTuple):
-    """ """
+    """
+    Object with image parameters from Supervisely that describes the version of the project.
+    """
 
     id: int
     project_id: int
@@ -34,6 +36,10 @@ class VersionInfo(NamedTuple):
 
 
 class DataVersion(ModuleApiBase):
+    """
+    Class for managing project versions.
+    This class provides methods for creating, restoring, and managing project versions.
+    """
 
     def __init__(self, api):
         """
