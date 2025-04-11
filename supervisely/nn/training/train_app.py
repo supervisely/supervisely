@@ -579,8 +579,8 @@ class TrainApp:
         export_weights = {}
         if self.gui.hyperparameters_selector.is_export_required():
             try:
-                export_weights = self._export_weights(experiment_info)
-                export_weights = self._upload_export_weights(export_weights, remote_dir)
+                export_weights, export_classes_path = self._export_weights(experiment_info)
+                export_weights = self._upload_export_weights(export_weights, export_classes_path, remote_dir)
             except Exception as e:
                 logger.error(f"Export weights failed: {e}")
 
@@ -2543,17 +2543,25 @@ class TrainApp:
                     export_weights[RuntimeType.TENSORRT] = tensorrt_path
             except Exception as e:
                 logger.error(f"Failed to export TensorRT model: {e}")
-                
-        return export_weights
+
+        if len(export_weights) > 0:
+            export_classes = {idx: cls_name for idx, cls_name in enumerate(self.classes)}
+            export_classes_path = join(self._export_dir_name, "classes.json")
+            with open(export_classes_path, "w") as f:
+                sly_json.dump_json_file(export_classes, f)
+        return export_weights, export_classes_path
 
     def _upload_export_weights(
-        self, export_weights: Dict[str, str], remote_dir: str
+        self, export_weights: Dict[str, str], export_classes_path: str, remote_dir: str
     ) -> Dict[str, str]:
         """Uploads export weights (any other specified formats) to Supervisely Team Files.
         The default export is handled by the `_upload_artifacts` method."""
         file_dest_paths = []
         size = 0
-        for path in export_weights.values():
+        files_to_upload = list(export_weights.values())
+        if export_classes_path is not None:
+            files_to_upload.append(export_classes_path)
+        for path in files_to_upload:
             file_name = sly_fs.get_file_name_with_ext(path)
             file_dest_paths.append(join(remote_dir, self._export_dir_name, file_name))
             size += sly_fs.get_file_size(path)

@@ -16,9 +16,7 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
-from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
-from supervisely.api.task_api import TaskApi
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
@@ -41,13 +39,11 @@ from supervisely.io.fs import (
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
-from supervisely.io.fs import get_file_name_with_ext
-import supervisely.io.env as sly_env
-from supervisely.nn.experiments import ExperimentInfo
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
-    
+
+
 class Prediction:
     _temp_dir = os.path.join(tempfile.gettempdir(), "prediction_files")
     __cleanup_registered = False

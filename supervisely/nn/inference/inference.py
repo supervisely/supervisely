@@ -28,6 +28,7 @@ import yaml
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from requests.structures import CaseInsensitiveDict
+from tqdm import tqdm
 
 import supervisely.app.development as sly_app_development
 import supervisely.imaging.image as sly_image
@@ -644,7 +645,10 @@ class Inference:
 
     def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
         if deploy_params["model_source"] == ModelSource.PRETRAINED:
-            return self._download_pretrained_model(deploy_params["model_files"], log_progress)
+            headless = self.gui is None
+            return self._download_pretrained_model(
+                deploy_params["model_files"], log_progress, headless
+            )
         elif deploy_params["model_source"] == ModelSource.CUSTOM:
             if deploy_params["runtime"] != RuntimeType.PYTORCH:
                 export = deploy_params["model_info"].get("export", {})
@@ -659,7 +663,9 @@ class Inference:
                         logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
             return self._download_custom_model(deploy_params["model_files"], log_progress)
 
-    def _download_pretrained_model(self, model_files: dict, log_progress: bool = True):
+    def _download_pretrained_model(
+        self, model_files: dict, log_progress: bool = True, headless: bool = False
+    ):
         """
         Downloads the pretrained model data.
         """
@@ -687,26 +693,39 @@ class Inference:
                         continue
 
                     if log_progress:
-                        with self.gui.download_progress(
-                            message=f"Downloading: '{file_name}'",
-                            total=file_size,
-                            unit="bytes",
-                            unit_scale=True,
-                        ) as download_pbar:
-                            self.gui.download_progress.show()
-                            sly_fs.download(
-                                url=file_url,
-                                save_path=file_path,
-                                progress=download_pbar.update,
-                            )
+                        if not headless:
+                            with self.gui.download_progress(
+                                message=f"Downloading: '{file_name}'",
+                                total=file_size,
+                                unit="bytes",
+                                unit_scale=True,
+                            ) as download_pbar:
+                                self.gui.download_progress.show()
+                                sly_fs.download(
+                                    url=file_url,
+                                    save_path=file_path,
+                                    progress=download_pbar.update,
+                                )
+                        else:
+                            with tqdm(
+                                total=file_size,
+                                unit="bytes",
+                                unit_scale=True,
+                            ) as download_pbar:
+                                logger.info(f"Downloading: '{file_name}'")
+                                sly_fs.download(
+                                    url=file_url, save_path=file_path, progress=download_pbar.update
+                                )
                     else:
+                        logger.info(f"Downloading: '{file_name}'")
                         sly_fs.download(url=file_url, save_path=file_path)
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
 
         if log_progress:
-            self.gui.download_progress.hide()
+            if self.gui is not None:
+                self.gui.download_progress.hide()
         return local_model_files
 
     def _download_custom_model(self, model_files: dict, log_progress: bool = True):
@@ -2728,22 +2747,24 @@ class Inference:
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)
 
-        @call_on_autostart()
-        def autostart_func():
-            gpu_count = get_gpu_count()
-            if gpu_count > 1:
-                # run autostart after 5 min
-                def delayed_autostart():
-                    logger.debug("Found more than one GPU, autostart will be delayed.")
-                    time.sleep(self._autostart_delay_time)
-                    if not self._model_served:
-                        logger.debug("Deploying the model via autostart...")
-                        self.gui.deploy_with_current_params()
+        if self.api is not None:
 
-                self._executor.submit(delayed_autostart)
-            else:
-                # run autostart immediately
-                self.gui.deploy_with_current_params()
+            @call_on_autostart()
+            def autostart_func():
+                gpu_count = get_gpu_count()
+                if gpu_count > 1:
+                    # run autostart after 5 min
+                    def delayed_autostart():
+                        logger.debug("Found more than one GPU, autostart will be delayed.")
+                        time.sleep(self._autostart_delay_time)
+                        if not self._model_served:
+                            logger.debug("Deploying the model via autostart...")
+                            self.gui.deploy_with_current_params()
+
+                    self._executor.submit(delayed_autostart)
+                else:
+                    # run autostart immediately
+                    self.gui.deploy_with_current_params()
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
@@ -3333,29 +3354,41 @@ class Inference:
                         deploy_params = self._build_deploy_params_from_api(
                             model_name, deploy_params
                         )
-                        model_files = self._download_model_files(deploy_params)
-                    else:
-                        model_files = self._download_model_files(deploy_params)
-
+                    model_files = self._download_model_files(deploy_params)
                     deploy_params["model_files"] = model_files
                     deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
                     if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
                         deploy_params = self._build_legacy_deploy_params_from_api(model_name)
-
                     deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model(deploy_params)
+                elif self.gui is None and self.api is None:
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
+                        deploy_params = self._build_deploy_params_from_api(
+                            model_name, deploy_params
+                        )
+                        model_files = self._download_model_files(deploy_params)
+                        deploy_params["model_files"] = model_files
+
+                    deploy_params = self._set_common_deploy_params(deploy_params)
+                    self._load_model_headless(**deploy_params)
+                    logger.info(
+                        f"Model has been successfully loaded on {deploy_params['device']} device"
+                    )
+                    return {"result": "model was successfully deployed"}
+
                 else:
                     raise ValueError("Unknown GUI type")
-
-                self.set_params_to_gui(deploy_params)
-                # update to set correct device
-                device = deploy_params.get("device", "cpu")
-                self.gui.set_deployed(device)
+                if self.gui is not None:
+                    self.set_params_to_gui(deploy_params)
+                    # update to set correct device
+                    device = deploy_params.get("device", "cpu")
+                    self.gui.set_deployed(device)
                 return {"result": "model was successfully deployed"}
             except Exception as e:
-                self.gui._success_label.hide()
+                if self.gui is not None:
+                    self.gui._success_label.hide()
                 raise e
 
         @server.post("/list_pretrained_models")

@@ -1,51 +1,22 @@
-import atexit
 import os
-import tempfile
 from os import PathLike
-from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Union
 
 import numpy as np
 import requests
 
-import supervisely.io.env as env
 import supervisely.io.env as sly_env
-from supervisely._utils import get_valid_kwargs, logger, rand_str
-from supervisely.annotation.annotation import Annotation
-from supervisely.annotation.label import Label
-from supervisely.annotation.tag import Tag
-from supervisely.annotation.tag_meta import TagValueType
+import supervisely.io.json as sly_json
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.task_api import TaskApi
 from supervisely.api.video.video_api import VideoInfo
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.rectangle import Rectangle
-from supervisely.imaging._video import ALLOWED_VIDEO_EXTENSIONS
-from supervisely.imaging.image import SUPPORTED_IMG_EXTS
-from supervisely.imaging.image import read as read_image
-from supervisely.imaging.image import read_bytes as read_image_bytes
-from supervisely.imaging.image import write as write_image
-from supervisely.io.fs import (
-    clean_dir,
-    dir_empty,
-    dir_exists,
-    ensure_base_path,
-    file_exists,
-    get_file_ext,
-    get_file_name_with_ext,
-    list_files,
-    list_files_recursively,
-    mkdir,
-)
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.model.prediction import Prediction, PredictionSession
 from supervisely.nn.utils import ModelSource
-from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.video.video import VideoFrameReader
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -129,12 +100,11 @@ class ModelAPI:
         device: str = None,
         runtime: str = None,
     ):
-        # @TODO:Code for local deployment
         if self.url is not None:
             if os.path.exists(model):
-                self.load_local_custom_model(model, device, runtime)
+                self._load_local_custom_model(model, device, runtime)
             else:
-                self.load_local_pretrained_model(model, device, runtime)
+                self._load_local_pretrained_model(model, device, runtime)
 
         elif model.startswith("/"):
             team_id = sly_env.team_id()
@@ -154,10 +124,11 @@ class ModelAPI:
                 self.task_id, model, device=device, runtime=runtime
             )
 
-        # DeployApi move to ModelApi
-        # Separate files for each class in model api
+    def _load_local_pretrained_model(self, model: str, device: str = None, runtime: str = None):
+        available_models = self.list_pretrained_models()
+        if model not in available_models:
+            raise ValueError(f"Model {model} not found in available models: {available_models}")
 
-    def load_local_pretrained_model(self, model: str, device: str = None, runtime: str = None):
         deploy_params = {
             "model_files": {},
             "model_source": ModelSource.PRETRAINED,
@@ -165,24 +136,40 @@ class ModelAPI:
             "device": device,
             "runtime": runtime,
         }
-        return self._post("deploy_from_api", {
-            "state": {
-                "deploy_params": deploy_params,
-                "model_name": model
-            }
-        })
+        state = {"deploy_params": deploy_params, "model_name": model}
+        return self._post("deploy_from_api", {"state": state})
 
-    def load_local_custom_model(self, model: str, device: str = None, runtime: str = None):
+    def _load_local_custom_model(self, model: str, device: str = None, runtime: str = None):
+        deploy_params = self._get_custom_model_params(model, device, runtime)
+        state = {"deploy_params": deploy_params, "model_name": model}
+        return self._post("deploy_from_api", {"state": state})
+
+    def _get_custom_model_params(self, model_name: str, device: str = None, runtime: str = None):
+        def _load_experiment_info(artifacts_dir):
+            experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
+            model_info = sly_json.load_json_file(experiment_path)
+            model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
+            model_info["model_meta"] = sly_json.load_json_file(model_meta_path)
+            original_model_files = model_info.get("model_files")
+            return model_info, original_model_files
+
+        def _prepare_local_model_files(artifacts_dir, checkpoint_path, original_model_files):
+            return {k: os.path.join(artifacts_dir, v) for k, v in original_model_files.items()} | {
+                "checkpoint": checkpoint_path
+            }
+
+        model_source = ModelSource.CUSTOM
+        artifacts_dir = os.path.dirname(os.path.dirname(model_name))
+        model_info, original_model_files = _load_experiment_info(artifacts_dir)
+        model_files = _prepare_local_model_files(artifacts_dir, model_name, original_model_files)
         deploy_params = {
-            "model_files": {},
-            "model_source": ModelSource.CUSTOM,
-            "model_info": {},
+            "model_files": model_files,
+            "model_source": model_source,
+            "model_info": model_info,
             "device": device,
             "runtime": runtime,
         }
-        return self._post("deploy_from_api", {"deploy_params": deploy_params, "model_name": model})
-    
-    
+        return deploy_params
 
     # --------------------------------- #
 
