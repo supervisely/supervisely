@@ -245,9 +245,10 @@ class AnnotationMatcher:
 
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
-            volume_to_items[volume].append(item)
-        for volume, items in volume_to_items.items():
-            item.is_semantic = len(items) == 1
+            volume_to_items[volume.id].append(item)
+        for volume_id, items in volume_to_items.items():
+            if len(items) == 1:
+                items[0].is_semantic = True
 
         # validate shape
         items_to_remove = []
