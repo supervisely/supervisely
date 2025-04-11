@@ -153,6 +153,7 @@ class AnnotationMatcher:
                 volumes[ds_name].update(
                     {info.name: info for info in api.volume.get_list(ds_info.id)}
                 )
+                self._project_wide = True
 
         if len(volumes) == 0:
             err_msg = None
@@ -161,7 +162,9 @@ class AnnotationMatcher:
             else:
                 err_msg = "Failed to retrieve volumes from the project. Perhaps the input data structure is incorrect."
             raise RuntimeError(err_msg)
-        self._project_wide = True if len(volumes) > 1 else False
+
+        if dataset_info.name not in volumes:
+            api.dataset.remove(self._ds_id)
         self._volumes = volumes
 
     def match_items(self):
@@ -275,16 +278,50 @@ class AnnotationMatcher:
             "sag_mask_2.nii": 456
         }
         Where key is the annotation file name and value is the volume ID.
+
+        For project-wide matching, the key should include dataset name:
+        {
+            "dataset1/cor_inference_1.nii": 123,
+            "dataset2/sag_mask_2.nii": 456
+        }
         """
         item_to_volume = {}
-        for ann_name, volume_id in json_map.items():
-            item = self._item_by_filename.get(ann_name)
+
+        for ann_path, volume_id in json_map.items():
+            # Check if it's a project-wide path (contains dataset name)
+            path_parts = Path(ann_path)
+            if len(path_parts.parts) > 1:
+                # Project-wide format: "dataset_name/filename.nii"
+                dataset_name = path_parts.parts[-2]
+                ann_name = path_parts.name
+                item = self._item_by_path.get((dataset_name, ann_name))
+            else:
+                # Single dataset format: "filename.nii"
+                ann_name = path_parts.name
+                item = self._item_by_filename.get(ann_name)
+
             if item:
                 volume = api.volume.get_info_by_id(volume_id)
                 if volume:
                     item_to_volume[item] = volume
+
+                    # Validate shape
+                    volume_shape = tuple(volume.file_meta["sizes"])
+                    if item.shape != volume_shape:
+                        logger.warning(
+                            f"Volume shape mismatch: {item.shape} != {volume_shape} for {ann_path}. Using anyway."
+                        )
                 else:
-                    logger.warning(f"Volume {volume_id} not found in project.")
+                    logger.warning(f"Volume {volume_id} not found for {ann_path}.")
             else:
-                logger.warning(f"Item not found for annotation file {ann_name}.")
+                logger.warning(f"Item not found for annotation file {ann_path}.")
+
+        # Set semantic flag for volumes with only one associated item
+        volume_to_items = defaultdict(list)
+        for item, volume in item_to_volume.items():
+            volume_to_items[volume.id].append(item)
+        for volume_id, items in volume_to_items.items():
+            if len(items) == 1:
+                items[0].is_semantic = True
+
         return item_to_volume

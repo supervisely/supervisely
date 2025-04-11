@@ -14,6 +14,7 @@ from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely._utils import batched, is_development
 
+
 class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
     """Convert NIfTI 3D volume file to Supervisely format.
     The NIfTI file should be structured as follows:
@@ -188,7 +189,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         def create_empty_annotation(self):
             return VolumeAnnotation(self.volume_meta)
 
-    def __init__(self,  *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._json_map = None
 
@@ -205,12 +206,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         if list_files_recursively(self._input_data, filter_fn=has_volumes):
             return False
 
-        txts = list_files_recursively(self._input_data, ['.txt'], None, True)
+        txts = list_files_recursively(self._input_data, [".txt"], None, True)
         cls_color_map = next(iter(txts), None)
         if cls_color_map is not None:
             cls_color_map = helper.read_cls_color_map(cls_color_map)
 
-        jsons = list_files_recursively(self._input_data, ['.json'], None, True)
+        jsons = list_files_recursively(self._input_data, [".json"], None, True)
         json_map = next(iter(jsons), None)
         if json_map is not None:
             self._json_map = helper.read_json_map(json_map)
@@ -277,7 +278,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             logger.warning(f"Failed to convert {item.ann_data} to Supervisely format: {e}")
             return item.create_empty_annotation()
 
-    def upload_dataset(self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True) -> None:
+    def upload_dataset(
+        self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True
+    ) -> None:
         meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
 
         matcher = helper.AnnotationMatcher(self._items, dataset_id)
@@ -294,8 +297,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 extra = {
                     "items count": len(self._items),
                     "matched count": len(matched_dict),
-                    "unmatched count": len(self._items) - len(matched_dict),}
-                logger.warning("Not all items were matched with volumes. Some items may be skipped.", extra=extra)
+                    "unmatched count": len(self._items) - len(matched_dict),
+                }
+                logger.warning(
+                    "Not all items were matched with volumes. Some items may be skipped.",
+                    extra=extra,
+                )
         if len(matched_dict) == 0:
             raise RuntimeError(
                 "No items were matched with volumes. Please check the input data and try again."
