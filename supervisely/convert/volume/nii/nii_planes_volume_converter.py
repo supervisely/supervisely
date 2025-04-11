@@ -215,8 +215,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         json_map = next(iter(jsons), None)
         if json_map is not None:
             self._json_map = helper.read_json_map(json_map)
-            if self._json_map is None:
-                logger.warning(f"Failed to read json map from {json_map}.")
 
         is_ann = lambda x: x.split("_")[1] in helper.LABEL_NAME if "_" in x else False
         for root, _, files in os.walk(self._input_data):
@@ -327,6 +325,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 self._meta_changed = False
             api.volume.annotation.append(volume.id, ann, volume_info=volume)
             progress_cb(1) if log_progress else None
+
+        res_ds_info = api.dataset.get_info_by_id(dataset_id)
+        if res_ds_info.items_count == 0:
+            logger.info("Resulting dataset is empty. Removing it.")
+            api.dataset.remove(dataset_id)
+
 
         if log_progress:
             if is_development():

@@ -165,8 +165,6 @@ class AnnotationMatcher:
                 err_msg = "Failed to retrieve volumes from the project. Perhaps the input data structure is incorrect."
             raise RuntimeError(err_msg)
 
-        if dataset_info.name not in volumes:
-            api.dataset.remove(self._ds_id)
         self._volumes = volumes
 
     def match_items(self):
@@ -233,7 +231,7 @@ class AnnotationMatcher:
 
             item_to_volume[item] = matched_volume
             if get_file_name(matched_name) != expected_volume_name:
-                logger.info(
+                logger.debug(
                     f"Fuzzy matched {ann_file} to volume {matched_name} (expected: {expected_volume_name})"
                 )
 
