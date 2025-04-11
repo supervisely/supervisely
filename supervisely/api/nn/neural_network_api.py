@@ -30,6 +30,7 @@ class NeuralNetworkApi:
         device: str = None,
         runtime: str = None,
         workspace_id: int = None,
+        agent_id: int = None,
         **kwargs,
     ) -> "ModelAPI":
         """
