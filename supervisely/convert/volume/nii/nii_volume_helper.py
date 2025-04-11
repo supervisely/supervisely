@@ -168,13 +168,17 @@ class AnnotationMatcher:
         """Match annotation files with corresponding volumes."""
         def to_volume_name(name):
             if name.endswith(".nii.gz"):
-                name = name.replace(".nii.gz", ".nrrd")
+                name = name.replace(".nii.gz", "")
             elif name.endswith(".nii"):
-                name = name.replace(".nii", ".nrrd") 
+                name = name.replace(".nii", "")
             if "_" not in name:
                 return None
-            name_parts = get_file_name(name).split("_")[:3]
-            return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
+            # name_parts = get_file_name(name).split("_")[:3]
+            # return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
+            prefix = name.split("_")[0]
+            if prefix not in PlanePrefix:
+                return None
+            return f"{prefix}_{VOLUME_NAME}.nrrd"
 
         item_to_volume = {}
 
