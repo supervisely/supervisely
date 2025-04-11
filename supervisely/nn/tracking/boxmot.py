@@ -4,7 +4,7 @@ import numpy as np
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.nn.model_api import Prediction
+from supervisely.nn.model.model_api import Prediction
 from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.frame_collection import FrameCollection

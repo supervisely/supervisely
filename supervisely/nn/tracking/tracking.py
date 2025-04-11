@@ -1,7 +1,7 @@
 from typing import Any, List, Union
 
 from supervisely.annotation.annotation import Annotation
-from supervisely.nn.model_api import Prediction
+from supervisely.nn.model.model_api import Prediction
 from supervisely.nn.tracking.boxmot import apply_boxmot
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 

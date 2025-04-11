@@ -11,7 +11,7 @@ import supervisely.io.env as sly_env
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
-    from supervisely.nn.model_api import ModelAPI
+    from supervisely.nn.model.model_api import ModelAPI
 
 
 class NeuralNetworkApi:
@@ -57,7 +57,7 @@ class NeuralNetworkApi:
                 api = sly.Api()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
-        from supervisely.nn.model_api import ModelAPI
+        from supervisely.nn.model.model_api import ModelAPI
 
         checkpoint = None
         pretrained = None
@@ -196,6 +196,6 @@ class NeuralNetworkApi:
         :return: a :class:`ModelAPI` object
         :rtype: ModelAPI
         """
-        from supervisely.nn.model_api import ModelAPI
+        from supervisely.nn.model.model_api import ModelAPI
 
         return ModelAPI(self._api, task_id)

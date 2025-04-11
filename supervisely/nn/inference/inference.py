@@ -75,7 +75,7 @@ from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
-from supervisely.nn.model_api import Prediction
+from supervisely.nn.model.model_api import Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
