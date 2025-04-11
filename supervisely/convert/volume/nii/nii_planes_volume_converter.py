@@ -255,8 +255,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             objs = []
             spatial_figures = []
             ann_path = item.ann_data
+            ann_filename = get_file_name(ann_path)
+            if ".nii" in ann_filename:
+                ann_filename = ann_filename.split(".")[0]
+            ann_idx = ann_filename.split("_")[2]
             for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
-                class_id = pixel_id if item.is_semantic else 1
+                class_id = pixel_id if item.is_semantic else ann_idx
                 class_name = f"Segment_{class_id}"
                 color = None
                 if item.custom_data.get("cls_color_map") is not None:

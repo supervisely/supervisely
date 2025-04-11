@@ -144,6 +144,8 @@ class AnnotationMatcher:
         if len(self._ann_paths.keys()) == 1:
             self._project_wide = False
             self._volumes = {get_file_name(info.name): info for info in api.volume.get_list(self._ds_id)}
+            if len(self._volumes) == 0:
+                raise RuntimeError(f"No volumes found in the dataset (id: {self._ds_id}).")
             return
 
         datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
@@ -213,7 +215,7 @@ class AnnotationMatcher:
             matched_name, matched_volume = find_best_volume_match(expected_volume_name, volumes)
             if not matched_volume:
                 logger.warning(
-                    f"No matching volume found for {expected_volume_name} in dataset {dataset_name}."
+                    f"No matching volume found for {expected_volume_name}" + " in dataset " + dataset_name if self._project_wide else "."
                 )
                 return
 
