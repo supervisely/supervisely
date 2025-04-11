@@ -236,7 +236,11 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
 
-        self._meta = ProjectMeta()
+        obj_classes = None
+        if cls_color_map is not None:
+            obj_classes = [ObjClass(name, Mask3D, color) for name, color in cls_color_map.values()]
+
+        self._meta = ProjectMeta(obj_classes=obj_classes)
         return len(self._items) > 0
 
     def to_supervisely(
@@ -311,7 +315,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             if self._meta_changed:
                 meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
                 self._meta_changed = False
-            api.volume.annotation.append(volume.id, ann)
+            api.volume.annotation.append(volume.id, ann, volume_info=volume)
             progress_cb(1) if log_progress else None
 
         if log_progress:
