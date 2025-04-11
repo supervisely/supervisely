@@ -231,7 +231,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                         continue
                     item = self.Item(item_path=None, ann_data=path)
                     item.set_shape(nii.shape)
-                    item.is_semantic = True # todo
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)

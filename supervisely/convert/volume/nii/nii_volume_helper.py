@@ -185,19 +185,16 @@ class AnnotationMatcher:
         if self._project_wide:
             # Project-wide matching
             for dataset_name, volumes in self._volumes.items():
-                volumes_copy = volumes.copy()
                 for ann_file in self._ann_paths[dataset_name]:
                     expected_volume_name = to_volume_name(ann_file)
                     if expected_volume_name is None:
                         logger.warning(f"Invalid volume name for {ann_file}. Skipping.")
                         continue
-                    if expected_volume_name in volumes_copy:
-                        volume = volumes_copy[expected_volume_name]
+                    if expected_volume_name in volumes:
+                        volume = volumes[expected_volume_name]
                         item = self._item_by_path.get((dataset_name, ann_file))
                         if item:
                             item_to_volume[item] = volume
-                            # Remove the volume from the pool after matching
-                            del volumes_copy[expected_volume_name]
                         else:
                             logger.warning(f"Item not found for {ann_file} in dataset {dataset_name}.")
                     else:
@@ -207,15 +204,12 @@ class AnnotationMatcher:
         else:
             # Dataset-wide matching
             dataset_name = list(self._ann_paths.keys())[0]
-            volumes_copy = self._volumes.copy()
             for ann_file in self._ann_paths[dataset_name]:
                 expected_volume_name = to_volume_name(ann_file)
-                if expected_volume_name in volumes_copy:
+                if expected_volume_name in volumes:
                     item = self._item_by_filename.get(ann_file)
                     if item:
-                        item_to_volume[item] = volumes_copy[expected_volume_name]
-                        # Remove the volume from the pool after matching
-                        del volumes_copy[expected_volume_name]
+                        item_to_volume[item] = volumes[expected_volume_name]
                     else:
                         logger.warning(f"Item not found for {ann_file} in single dataset mode.")
                 else:
@@ -223,6 +217,12 @@ class AnnotationMatcher:
                         f"Volume name {expected_volume_name} not found in dataset {self._ds_id}."
                     )
 
+        volume_to_items = defaultdict(list)
+        for item, volume in item_to_volume.items():
+            volume_to_items[volume].append(item)
+        for volume, items in volume_to_items.items():
+            item.is_semantic = len(items) == 1
+            
         # validate shape
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
