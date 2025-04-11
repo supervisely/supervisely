@@ -118,7 +118,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                 for path in paths:
                     item = self.Item(item_path=path)
                     possible_ann_paths = []
-                    for ann_path in ann_dict.get(prefix, {}):
+                    for ann_path in ann_dict.get(prefix, []):
                         if Path(ann_path).parent == Path(path).parent:
                             possible_ann_paths.append(ann_path)
                     item.ann_data = possible_ann_paths
@@ -194,7 +194,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
 
     def validate_format(self) -> bool:
         try:
-            import nibabel as nib
+            from nibabel import load, filebasedimages
         except ImportError:
             raise ImportError(
                 "No module named nibabel. Please make sure that module is installed from pip and try again."
@@ -204,7 +204,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
         if list_files_recursively(self._input_data, filter_fn=has_volumes):
             return False
-        
+
         txts = list_files_recursively(self._input_data, ['.txt'], None, True)
         cls_color_map = next(iter(txts), None)
         if cls_color_map is not None:
@@ -222,12 +222,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             for file in files:
                 path = os.path.join(root, file)
                 if is_ann(file):
-                    try:
-                        nii = nib.load(path)
-                    except nib.filebasedimages.ImageFileError:
-                        continue
                     prefix = get_file_name(path).split("_")[0]
                     if prefix not in helper.PlanePrefix.values():
+                        continue
+                    try:
+                        nii = load(path)
+                    except filebasedimages.ImageFileError:
                         continue
                     item = self.Item(item_path=None, ann_data=path)
                     item.set_shape(nii.shape)

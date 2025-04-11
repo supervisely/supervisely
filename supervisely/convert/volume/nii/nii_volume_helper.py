@@ -222,15 +222,19 @@ class AnnotationMatcher:
             volume_to_items[volume].append(item)
         for volume, items in volume_to_items.items():
             item.is_semantic = len(items) == 1
-            
+
         # validate shape
+        items_to_remove = []
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
             if item.shape != volume_shape:
                 logger.warning(
                     f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item."
                 )
-                del item_to_volume[item]
+                items_to_remove.append(item)
+
+        for item in items_to_remove:
+            del item_to_volume[item]
 
         return item_to_volume
 
