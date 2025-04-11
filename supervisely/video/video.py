@@ -7,6 +7,7 @@ import os
 from typing import Dict, Generator, List, Optional, Tuple
 
 import cv2
+import numpy as np
 
 from supervisely import logger as default_logger
 from supervisely._utils import abs_url, is_development, rand_str
@@ -558,7 +559,7 @@ class VideoFrameReader:
     def __del__(self):
         self.close()
 
-    def read_frames(self, frame_indexes: List[int] = None) -> Generator:
+    def iterate_frames(self, frame_indexes: List[int] = None) -> Generator[np.ndarray, None, None]:
         self._ensure_initialized()
         if frame_indexes is None:
             frame_indexes = self.frame_indexes
@@ -584,12 +585,15 @@ class VideoFrameReader:
                 yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 self.prev_idx = frame_index
 
+    def read_frames(self, frame_indexes: List[int] = None) -> List[np.ndarray]:
+        return list(self.iterate_frames(frame_indexes))
+
     def __iter__(self):
-        return self.read_frames()
+        return self.iterate_frames()
 
     def __next__(self):
         if not hasattr(self, "_frame_generator"):
-            self._frame_generator = self.read_frames()
+            self._frame_generator = self.iterate_frames()
         try:
             return next(self._frame_generator)
         except StopIteration:

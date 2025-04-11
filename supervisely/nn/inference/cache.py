@@ -16,6 +16,7 @@ from cachetools import Cache, LRUCache, TTLCache
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
+import supervisely.io.env as env
 from supervisely._utils import batched
 from supervisely.io.fs import silent_remove
 from supervisely.video.video import VideoFrameReader
@@ -204,7 +205,7 @@ class InferenceImageCache:
         maxsize: int,
         ttl: int,
         is_persistent: bool = True,
-        base_folder: str = sly.env.smart_cache_container_dir(),
+        base_folder: str = env.smart_cache_container_dir(),
         log_progress: bool = False,
     ) -> None:
         self.is_persistent = is_persistent
@@ -213,6 +214,7 @@ class InferenceImageCache:
         self._lock = Lock()
         self._load_queue = CacheOut(ttl=10 * 60)
         self.log_progress = log_progress
+        self._download_executor = ThreadPoolExecutor(max_workers=5)
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -283,7 +285,7 @@ class InferenceImageCache:
     def _read_frames_from_cached_video_iter(self, video_id, frame_indexes):
         video_path = self._cache.get_video_path(video_id)
         with VideoFrameReader(video_path, frame_indexes) as reader:
-            for frame in reader.read_frames():
+            for frame in reader.iterate_frames():
                 yield frame
 
     def _read_frames_from_cached_video(
@@ -392,17 +394,19 @@ class InferenceImageCache:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
-                Thread(
-                    target=self.download_video,
-                    args=(api, video_id),
-                    kwargs={**kwargs, "return_images": False},
-                ).start()
+                self._download_executor.submit(
+                    self.download_video,
+                    api,
+                    video_id,
+                    **{**kwargs, return_images: False},
+                )
         elif redownload_video:
-            Thread(
-                target=self.download_video,
-                args=(api, video_id),
-                kwargs={**kwargs, "return_images": False},
-            ).start()
+            self._download_executor.submit(
+                self.download_video,
+                api,
+                video_id,
+                **{**kwargs, return_images: False},
+            )
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -458,6 +462,9 @@ class InferenceImageCache:
 
     def get_image_path(self, key) -> str:
         return str(self._cache.get_image_path(key))
+
+    def get_video_path(self, key) -> str:
+        return str(self._cache.get_video_path(key))
 
     def download_video(self, api: sly.Api, video_id: int, **kwargs) -> None:
         """
@@ -648,8 +655,7 @@ class InferenceImageCache:
             state["video_id"] = video_id
             state["frame_ranges"] = list_of_ids_ranges_or_hashes
 
-        thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
-        thread.start()
+        self._download_executor.submit(self.cache_task, api=api, state=state)
 
     def set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
@@ -830,7 +836,7 @@ class InferenceImageCache:
             frame_index_to_path = {}
             for frame_index, path in zip(this_frame_indexes[:5], this_paths[:5]):
                 frame_index_to_path[frame_index] = path
-                futures.append(executor.submit(_download_frame, frame_index))
+                futures.append(self._download_executor.submit(_download_frame, frame_index))
             for future in as_completed(futures):
                 frame_index, name = future.result()
                 path = frame_index_to_path[frame_index]
@@ -842,5 +848,4 @@ class InferenceImageCache:
 
         # optimization for frame read from video file
         frame_indexes, paths = zip(*sorted(zip(frame_indexes, paths), key=lambda x: x[0]))
-        executor = ThreadPoolExecutor(max_workers=5)
         _download_and_save(frame_indexes, paths)
