@@ -8,16 +8,18 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
 import uuid
 from collections import OrderedDict, defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial, wraps
+from logging import Logger
 from pathlib import Path
-from queue import Queue
+from queue import Empty, Queue
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
@@ -98,6 +100,81 @@ try:
 except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
+
+
+class ThreadWithException(threading.Thread):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.exception = None
+
+    def run(self):
+        try:
+            super().run()
+        except Exception as e:
+            self.exception = e
+
+
+class Uploader:
+    def __init__(self, upload_f: Callable, logger: Logger):
+        self._upload_f = upload_f
+        self._logger = logger
+        self._q = Queue()
+        self._stop_event = threading.Event()
+        self._exception_event = threading.Event()
+        self._loop = ThreadWithException(
+            target=self._upload_loop,
+            daemon=True,
+        )
+        self._loop.start()
+
+    def _upload_loop(self):
+        try:
+            while not self._stop_event.is_set() or not self._q.empty():
+                items = []
+                try:
+                    timeout = 0.1 if self._stop_event.is_set() else 1.0
+                    item = self._q.get(timeout=timeout)
+                    items.append(item)
+                    while True:
+                        try:
+                            items.append(self._q.get_nowait())
+                        except Empty:
+                            break
+                    joined_items = [item for batch in items if len(batch) > 0 for item in batch]
+                    if joined_items:
+                        self._upload_f(joined_items)
+
+                    for _ in range(len(items)):
+                        self._q.task_done()
+                except Empty:
+                    pass
+        except Exception as e:
+            self._logger.error("Error in upload loop: %s", str(e), exc_info=True)
+            self._exception_event.set()
+            raise
+
+    def put(self, item):
+        self._q.put(item)
+
+    def stop(self):
+        self._stop_event.set()
+
+    def join(self):
+        self._loop.join()
+
+    def has_exception(self):
+        return self._exception_event.is_set()
+
+    def exception(self) -> Exception:
+        return self._loop.exception
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+        self.join()
+        return False
 
 
 @dataclass
@@ -278,7 +355,8 @@ class Inference:
             self._initialize_app_layout()
 
         max_workers = 1 if not multithread_inference else None
-        self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._inference_executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._upload_executor = ThreadPoolExecutor(max_workers=5)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
         self.get_info = self._check_serve_before_call(self.get_info)
@@ -291,7 +369,9 @@ class Inference:
             log_progress=True,
         )
 
-        self.inference_requests_manager = InferenceRequestsManager(executor=self._executor)
+        self.inference_requests_manager = InferenceRequestsManager(
+            executor=self._inference_executor
+        )
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -1172,10 +1252,12 @@ class Inference:
             settings = self._get_inference_settings_from_state({})
 
         if isinstance(source[0], int):
-            ann_jsons = self._inference_images_ids(
-                self.api, {"batch_ids": source, "settings": settings}
+            results = self.inference_requests_manager.run(
+                self._inference_image_ids, self.api, {"batch_ids": source, "settings": settings}
             )
-            anns = [Annotation.from_json(ann_json, self.model_meta) for ann_json in ann_jsons]
+            anns = [
+                Annotation.from_json(result["annotation"], self.model_meta) for result in results
+            ]
         else:
             anns, _ = self._inference_auto(source, settings)
         if not input_is_list:
@@ -1420,59 +1502,14 @@ class Inference:
             fill_rectangles=False,
         )
 
-    def _format_output(
-        self,
-        anns: List[Annotation],
-        slides_data: List[dict] = None,
-        kwargs_list: List = None,
-        **kwargs,
-    ) -> List[dict]:
-        if not slides_data:
-            slides_data = [{} for _ in range(len(anns))]
-        assert len(anns) == len(slides_data)
-        if kwargs_list is None:
-            kwargs_list = [{} for _ in range(len(anns))]
-        assert len(anns) == len(kwargs_list)
-        output = []
-        for ann, data, kw in zip(anns, slides_data, kwargs_list):
-            this_kwargs = {**kwargs, **kw}
-            this_kwargs = get_valid_kwargs(
-                this_kwargs, Prediction.__init__, exclude=["self", "annotation"]
-            )
-            output.append({**Prediction(ann, **this_kwargs).to_json(), "data": data})
-        return output
+    def _format_output(self, predictions: List[Prediction]):
+        return _format_output(predictions)
 
-    def _inference_image(
-        self,
-        image: np.ndarray,
-        state: dict,
-        inference_request: InferenceRequest,
-        return_result: bool = True,
-    ):
-        logger.debug("Inferring image...", extra={"state": state})
-        settings = self._get_inference_settings_from_state(state)
-        logger.debug("Inference settings:", extra=settings)
-        if not isinstance(image, np.ndarray):
-            raise ValueError(f"Unsupported image type: {type(image)}")
-        logger.debug("Image info:", extra={"w": image.shape[1], "h": image.shape[0]})
-        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, 1)
-        anns, slides_data = self._inference_auto(
-            [image],
-            settings=settings,
-        )
-        result = self._format_output(anns, slides_data)[0]
-        inference_request.done()
-        if return_result:
-            return result
-        else:
-            inference_request.add_results([result])
-
-    def _inference_images_batch(
+    def _inference_images(
         self,
         images: Iterable[np.ndarray],
         state: dict,
         inference_request: InferenceRequest,
-        return_result: bool = True,
     ):
         logger.debug("Inferring batch...", extra={"state": state})
         settings = self._get_inference_settings_from_state(state)
@@ -1480,163 +1517,23 @@ class Inference:
         batch_size = self._get_batch_size_from_state(state)
 
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(images))
-        results = []
         for batch in batched_iter(images, batch_size=batch_size):
             anns, slides_data = self._inference_auto(
                 batch,
                 settings=settings,
             )
-            batch_results = self._format_output(
-                anns, slides_data, kwargs_list=[{"image_id": i} for i in range(len(batch))]
-            )
-            if return_result:
-                results.extend(batch_results)
-            else:
-                inference_request.add_results(batch_results)
+            predictions = [Prediction(ann) for ann in anns]
+            for pred, this_slides_data in zip(predictions, slides_data):
+                pred.extra_data["slides_data"] = this_slides_data
+            batch_results = self._format_output(predictions)
+            inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
-        if return_result:
-            return results
-
-    def _inference_images_ids(
-        self, api: Api, state: dict, inference_request: InferenceRequest, return_result: bool = True
-    ):
-        logger.debug("Inferring batch_ids", extra={"state": state})
-        settings = self._get_inference_settings_from_state(state)
-        logger.debug("Inference settings:", extra={"inference_settings": settings})
-        batch_size = self._get_batch_size_from_state(state)
-        image_ids = state["batch_ids"]
-        infos = api.image.get_info_by_id_batch(image_ids)
-        datasets: Dict[int, List[ImageInfo]] = defaultdict(list)
-        for info in infos:
-            datasets[info.dataset_id].append(info)
-
-        # start download to cache in background
-        for dataset_id, ds_image_infos in datasets.items():
-            self.cache.run_cache_task_manually(
-                api, [info.id for info in ds_image_infos], dataset_id=dataset_id
-            )
-
-        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(image_ids))
-        results = []
-        cancelled = False
-        for dataset_id, ds_image_infos in datasets.items():
-            if cancelled:
-                break
-            for batch_infos in batched(ds_image_infos, batch_size):
-                if inference_request.is_stopped():
-                    logger.debug(
-                        f"Cancelling inference...",
-                        extra={"inference_request_uuid": inference_request.uuid},
-                    )
-                    cancelled = True
-                    break
-                batch_ids = [info.id for info in batch_infos]
-                images_np = self.cache.download_images(api, dataset_id, batch_ids)
-                anns, slides_data = self._inference_auto(
-                    source=images_np,
-                    settings=settings,
-                )
-                anns = self._exclude_duplicated_predictions(
-                    api, anns, settings, dataset_id, batch_ids
-                )
-                batch_results = self._format_output(
-                    anns,
-                    slides_data,
-                    kwargs_list=[
-                        {
-                            "image_id": image_info.id,
-                            "name": image_info.name,
-                            "dataset_id": image_info.dataset_id,
-                        }
-                        for image_info in batch_infos
-                    ],
-                )
-                if return_result:
-                    results.extend(batch_results)
-                else:
-                    inference_request.add_results(batch_results)
-                inference_request.done(len(batch_results))
-        if return_result:
-            return results
-
-    def _inference_image_id(
-        self, api: Api, state: dict, inference_request: InferenceRequest, return_result: bool = True
-    ):
-        logger.debug("Inferring image_id...", extra={"state": state})
-        settings = self._get_inference_settings_from_state(state)
-        logger.debug("Inference settings:", extra={"inference_settings": settings})
-
-        image_id = state["image_id"]
-        image_info = api.image.get_info_by_id(image_id)
-        image_np = self.cache.download_image(api, image_id)
-        logger.debug(
-            "Image info:",
-            extra={"id": image_id, "w": image_info.width, "h": image_info.height},
-        )
-        output_project_meta = None
-        upload = state.get("upload", False)
-        if upload:
-            ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
-            output_project_id = ds_info.project_id
-            output_project_meta = self.cache.get_project_meta(api, output_project_id)
-
-        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, 1)
-        anns, slides_data = self._inference_auto(
-            [image_np],
-            settings=settings,
-        )
-        ann = anns[0]
-
-        if upload:
-            inference_request.done()
-            inference_request.set_stage("Uploading annotation...", 0, 1)
-
-            logger.debug("Merging project meta...")
-            output_project_meta, ann, meta_changed = update_meta_and_ann(output_project_meta, ann)
-            if meta_changed:
-                output_project_meta = api.project.update_meta(
-                    output_project_id, output_project_meta
-                )
-                self.cache.set_project_meta(output_project_id, output_project_meta)
-
-            ann = self._exclude_duplicated_predictions(
-                api, anns, settings, ds_info.id, [image_id], output_project_meta
-            )[0]
-
-            logger.debug(
-                "Uploading annotation...",
-                extra={
-                    "image_id": image_id,
-                    "dataset_id": ds_info.id,
-                    "project_id": output_project_id,
-                },
-            )
-            api.annotation.upload_ann(image_id, ann)
-            inference_request.done()
-        else:
-            ann = self._exclude_duplicated_predictions(
-                api, anns, settings, image_info.dataset_id, [image_id]
-            )[0]
-            inference_request.done()
-
-        results = self._format_output(
-            anns,
-            slides_data,
-            image_id=image_id,
-            name=image_info.name,
-            dataset_id=image_info.dataset_id,
-        )
-        if return_result:
-            return results[0]
-        else:
-            inference_request.add_results(results)
 
     def _inference_video(
         self,
         path: str,
         state: Dict,
         inference_request: InferenceRequest,
-        return_result: bool = True,
     ):
         logger.debug("Inferring video...", extra={"path": path, "state": state})
         inference_settings = self._get_inference_settings_from_state(state)
@@ -1651,18 +1548,19 @@ class Inference:
         direction = state.get("direction", "forward")
         direction = 1 if direction == "forward" else -1
 
-        video_height, video_witdth = VideoFrameReader(path).frame_size()
+        frames_reader = VideoFrameReader(path)
+        video_height, video_witdth = frames_reader.frame_size()
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
             n_frames = end_frame_index - start_frame_index
         elif duration is not None:
             if fps is None:
-                fps = VideoFrameReader(path).fps()
+                fps = frames_reader.fps()
             n_frames = int(duration * fps)
         else:
             if video_frames_count is None:
-                video_frames_count = VideoFrameReader(path).frames_count()
+                video_frames_count = frames_reader.frames_count()
             n_frames = video_frames_count
 
         if tracking == "bot":
@@ -1683,40 +1581,37 @@ class Inference:
 
         results = []
         tracks_data = {}
-        with VideoFrameReader(path) as frames_reader:
-            for batch in batched(
-                range(
-                    start_frame_index, start_frame_index + direction * n_frames, direction * step
-                ),
-                batch_size,
-            ):
-                if inference_request.is_stopped():
-                    logger.debug(
-                        f"Cancelling inference...",
-                        extra={"inference_request_uuid": inference_request.uuid},
-                    )
-                    results = []
-                    break
+        for batch in batched(
+            range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
+            batch_size,
+        ):
+            if inference_request.is_stopped():
                 logger.debug(
-                    f"Inferring frames {batch[0]}-{batch[-1]}:",
+                    f"Cancelling inference...",
+                    extra={"inference_request_uuid": inference_request.uuid},
                 )
-                frames = frames_reader.read_frames(batch)
-                anns, slides_data = self._inference_auto(
-                    source=frames,
-                    settings=inference_settings,
-                )
-                batch_results = self._format_output(
-                    anns, slides_data, kwargs_list=[{"frame_index": frame} for frame in batch]
-                )
-                if tracker is not None:
-                    for frame_index, frame, ann in zip(batch, frames, anns):
-                        tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
-                if return_result:
-                    results.extend(batch_results)
-                else:
-                    inference_request.add_results(batch_results)
-                inference_request.done(len(batch_results))
-                logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+                results = []
+                break
+            logger.debug(
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
+            )
+            frames = frames_reader.read_frames(batch)
+            anns, slides_data = self._inference_auto(
+                source=frames,
+                settings=inference_settings,
+            )
+            predictions = [
+                Prediction(ann, frame_index=frame_index) for ann, frame_index in zip(anns, batch)
+            ]
+            for pred, this_slides_data in zip(predictions, slides_data):
+                pred.extra_data["slides_data"] = this_slides_data
+            batch_results = self._format_output(predictions)
+            if tracker is not None:
+                for frame_index, frame, ann in zip(batch, frames, anns):
+                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+            inference_request.add_results(batch_results)
+            inference_request.done(len(batch_results))
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
@@ -1725,17 +1620,148 @@ class Inference:
             ).to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
-        if return_result:
-            return result
+        inference_request.final_result = result.copy()
+
+    def _inference_image_ids(
+        self,
+        api: Api,
+        state: dict,
+        inference_request: InferenceRequest,
+    ):
+        """Inference images by ids.
+        If "output_project_id" in state, upload images and annotations to the output project.
+        If "output_project_id" equal to source project id, upload annotations to the source project.
+        If "output_project_id" is None, write annotations to inference request object.
+        """
+        logger.debug("Inferring batch_ids", extra={"state": state})
+        inference_settings = self._get_inference_settings_from_state(state)
+        logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
+        batch_size = self._get_batch_size_from_state(state)
+        image_ids = state.get("batch_ids", None)
+        if image_ids is None:
+            image_ids = state["images_ids"]
+        upload_mode = state.get("upload_mode", None)
+        iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
+
+        images_infos = api.image.get_info_by_id_batch(image_ids)
+        images_infos_dict = {im_info.id: im_info for im_info in images_infos}
+        inference_request.context.setdefault("image_info", {}).update(images_infos_dict)
+
+        dataset_infos_dict = {
+            ds_id: api.dataset.get_info_by_id(ds_id)
+            for ds_id in set([im_info.dataset_id for im_info in images_infos])
+        }
+        inference_request.context.setdefault("dataset_info", {}).update(dataset_infos_dict)
+
+        output_project_id = state.get("output_project_id", None)
+        output_dataset_id = None
+        meta = self.model_meta
+        inference_request.context.setdefault("project_meta", {})
+        if output_project_id is not None:
+            if upload_mode is None:
+                upload_mode = "append"
+            meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
+            inference_request.context["project_meta"][output_project_id] = meta
+        if output_project_id is None and upload_mode == "create":
+            image_info = images_infos[0]
+            dataset_info = dataset_infos_dict[image_info.dataset_id]
+            output_project_info = api.project.create(
+                dataset_info.workspace_id,
+                name=f"Predictions from task #{self.task_id}",
+                description=f"Auto created project from inference request {inference_request.uuid}",
+                change_name_if_conflict=True,
+            )
+            output_project_id = output_project_info.id
+            api.project.update_meta(output_project_id, meta)
+            inference_request.context["project_meta"][output_project_id] = meta
+            inference_request.context.setdefault("project_info", {})[
+                output_project_id
+            ] = output_project_info
+            output_dataset_info = api.dataset.create(
+                output_project_id,
+                "Predictions",
+                description=f"Auto created dataset from inference request {inference_request.uuid}",
+                change_name_if_conflict=True,
+            )
+            output_dataset_id = output_dataset_info.id
+            inference_request.context.setdefault("dataset_info", {})[
+                output_dataset_id
+            ] = output_dataset_info
+
+        # start download to cache in background
+        dataset_image_infos: Dict[int, List[ImageInfo]] = defaultdict(list)
+        for image_info in images_infos:
+            dataset_image_infos[image_info.dataset_id].append(image_info)
+        for dataset_id, ds_image_infos in dataset_image_infos.items():
+            self.cache.run_cache_task_manually(
+                api, [info.id for info in ds_image_infos], dataset_id=dataset_id
+            )
+
+        _upload_predictions = partial(
+            upload_predictions,
+            api=api,
+            upload_mode=upload_mode,
+            context=inference_request.context,
+            dst_dataset_id=output_dataset_id,
+            progress_cb=inference_request.done,
+            inference_request=inference_request,
+        )
+
+        _add_results_to_request = partial(
+            add_results_to_request, inference_request=inference_request
+        )
+
+        if upload_mode is None:
+            upload_f = _add_results_to_request
         else:
-            inference_request.final_result = result.copy()
+            upload_f = _upload_predictions
+
+        with Uploader(upload_f, logger=logger) as uploader:
+            for image_ids_batch in batched(image_ids, batch_size=batch_size):
+                if uploader.has_exception():
+                    exception = uploader.exception()
+                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                if inference_request.is_stopped():
+                    logger.debug(
+                        f"Cancelling inference project...",
+                        extra={"inference_request_uuid": inference_request.uuid},
+                    )
+                    break
+
+                images_nps = [self.cache.download_image(api, img_id) for img_id in image_ids_batch]
+                anns, slides_data = self._inference_auto(
+                    source=images_nps,
+                    settings=inference_settings,
+                )
+
+                batch_predictions = []
+                for image_id, ann, this_slides_data in zip(image_ids_batch, anns, slides_data):
+                    image_info: ImageInfo = images_infos_dict[image_id]
+                    dataset_info = dataset_infos_dict[image_info.dataset_id]
+                    prediction = Prediction(
+                        ann,
+                        model_meta=meta,
+                        name=image_info.name,
+                        image_id=image_info.id,
+                        dataset_id=image_info.dataset_id,
+                        project_id=dataset_info.project_id,
+                    )
+                    prediction.extra_data["slides_data"] = this_slides_data
+                    batch_predictions.append(prediction)
+
+                batch_predictions = postprocess_predictions(
+                    api,
+                    batch_predictions,
+                    inference_request.context,
+                    iou_merge_threshold=iou_merge_threshold,
+                )
+                uploader.put(batch_predictions)
 
     def _inference_video_id(
         self,
         api: Api,
         state: dict,
         inference_request: InferenceRequest,
-        return_result: bool = True,
     ):
         logger.debug("Inferring video_id...", extra={"state": state})
         inference_settings = self._get_inference_settings_from_state(state)
@@ -1790,7 +1816,6 @@ class Inference:
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
-        results = []
         tracks_data = {}
         for batch in batched(
             range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
@@ -1801,7 +1826,6 @@ class Inference:
                     f"Cancelling inference video...",
                     extra={"inference_request_uuid": inference_request.uuid},
                 )
-                results = []
                 break
             logger.debug(
                 f"Inferring frames {batch[0]}-{batch[-1]}:",
@@ -1811,22 +1835,23 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            batch_results = self._format_output(
-                anns,
-                slides_data,
-                kwargs_list=[{"frame_index": frame} for frame in batch],
-                name=video_info.name,
-                video_id=video_info.id,
-                dataset_id=video_info.dataset_id,
-                project_id=video_info.project_id,
-            )
+            predictions = [
+                Prediction(
+                    ann,
+                    frame_index=frame_index,
+                    video_id=video_info.id,
+                    dataset_id=video_info.dataset_id,
+                    project_id=video_info.project_id,
+                )
+                for ann, frame_index in zip(anns, batch)
+            ]
+            for pred, this_slides_data in zip(predictions, slides_data):
+                pred.extra_data["slides_data"] = this_slides_data
+            batch_results = self._format_output(predictions)
             if tracker is not None:
                 for frame_index, frame, ann in zip(batch, frames, anns):
                     tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
-            if return_result:
-                results.extend(batch_results)
-            else:
-                inference_request.add_results(batch_results)
+            inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
@@ -1836,338 +1861,73 @@ class Inference:
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
             ).to_json()
             inference_request.done()
-        result = {"ann": results, "video_ann": video_ann_json}
-        if return_result:
-            return result
-        else:
-            inference_request.final_result = result.copy()
+        inference_request.final_result = {"video_ann": video_ann_json}
 
-    def _inference_images_ids(
-        self,
-        api: Api,
-        state: dict,
-        inference_request: InferenceRequest,
-        return_result: bool = True,
-    ):
-        """Inference images by ids.
-        If "output_project_id" in state, upload images and annotations to the output project.
-        If "output_project_id" equal to source project id, upload annotations to the source project.
-        If "output_project_id" is None, write annotations to inference request object.
-        """
-        logger.debug("Inferring batch_ids", extra={"state": state})
-        inference_settings = self._get_inference_settings_from_state(state)
-        logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
-        batch_size = self._get_batch_size_from_state(state)
-        image_ids = state.get("batch_ids", None)
-        if image_ids is None:
-            image_ids = state["images_ids"]
-        output_project_id = state.get("output_project_id", None)
-
-        images_infos = api.image.get_info_by_id_batch(image_ids)
-        images_infos_dict = {im_info.id: im_info for im_info in images_infos}
-        dataset_infos_dict = {
-            ds_id: api.dataset.get_info_by_id(ds_id)
-            for ds_id in set([im_info.dataset_id for im_info in images_infos])
-        }
-        dataset_image_infos: Dict[int, List[ImageInfo]] = defaultdict(list)
-        for image_info in images_infos:
-            dataset_image_infos[image_info.dataset_id].append(image_info)
-        output_project_metas_dict = {}
-
-        # start download to cache in background
-        for dataset_id, ds_image_infos in dataset_image_infos.items():
-            self.cache.run_cache_task_manually(
-                api, [info.id for info in ds_image_infos], dataset_id=dataset_id
-            )
-
-        def _upload_results_to_source(results: List[Dict]):
-            nonlocal output_project_metas_dict
-            for result in results:
-                image_id = result["image_id"]
-                image_info: ImageInfo = images_infos_dict[image_id]
-                dataset_info: DatasetInfo = dataset_infos_dict[image_info.dataset_id]
-                project_id = dataset_info.project_id
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta = output_project_metas_dict.get(project_id, None)
-                if output_project_meta is None:
-                    output_project_meta = ProjectMeta.from_json(
-                        api.project.get_meta(output_project_id)
-                    )
-                output_project_meta, ann, meta_changed = update_meta_and_ann(
-                    output_project_meta, ann
-                )
-                output_project_metas_dict[project_id] = output_project_meta
-                if meta_changed:
-                    output_project_meta = api.project.update_meta(project_id, output_project_meta)
-                ann = update_classes(api, ann, output_project_meta, project_id)
-                api.annotation.append_labels(image_id, ann.labels)
-
-                inference_request.add_results(
-                    [{**result, "annotation": None, "data": None, "image_id": image_id}]
-                )
-                inference_request.done(1)
-
-        def _add_results_to_request(results: List[Dict]):
-            inference_request.add_results(results)
-            inference_request.done(len(results))
-
-        new_dataset_id = {}
-
-        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
-            """Copy dataset in output project if not exists and return its id"""
-            if src_dataset_id in new_dataset_id:
-                return new_dataset_id[src_dataset_id]
-            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            output_dataset_id = api.dataset.create(
-                output_project_id, dataset_info.name, change_name_if_conflict=True
-            ).id
-            new_dataset_id[src_dataset_id] = output_dataset_id
-            return output_dataset_id
-
-        def _copy_images_to_dst(
-            src_dataset_id, dst_dataset_id, image_infos, dst_names
-        ) -> List[ImageInfo]:
-            return api.image.copy_batch_optimized(
-                src_dataset_id,
-                image_infos,
-                dst_dataset_id,
-                dst_names=dst_names,
-                with_annotations=False,
-                skip_validation=True,
-            )
-
-        def _upload_results_to_other(results: List[Dict]):
-            nonlocal output_project_metas_dict
-            if len(results) == 0:
-                return
-            src_dataset_id = results[0]["dataset_id"]
-            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
-            src_image_infos = [images_infos_dict[result["image_id"]] for result in results]
-            image_names = [result["image_name"] for result in results]
-            image_infos = _copy_images_to_dst(
-                src_dataset_id, dataset_id, src_image_infos, image_names
-            )
-            image_infos.sort(key=lambda x: image_names.index(x.name))
-            api.logger.debug(
-                "Uploading results to other project...",
-                extra={
-                    "src_dataset_id": src_dataset_id,
-                    "dst_project_id": output_project_id,
-                    "dst_dataset_id": dataset_id,
-                    "items_count": len(image_infos),
-                },
-            )
-            meta_changed = False
-            anns = []
-            for result in results:
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta = output_project_metas_dict.get(output_project_id, None)
-                if output_project_meta is None:
-                    output_project_meta = ProjectMeta.from_json(
-                        api.project.get_meta(output_project_id)
-                    )
-                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
-                output_project_metas_dict[output_project_id] = output_project_meta
-                meta_changed = meta_changed or c
-                anns.append(ann)
-            if meta_changed:
-                api.project.update_meta(output_project_id, output_project_meta)
-
-            # upload in batches to update progress with each batch
-            # api.annotation.upload_anns() uploads in same batches anyways
-            for batch in batched(list(zip(anns, results, image_infos))):
-                batch_anns, batch_results, batch_image_infos = zip(*batch)
-                api.annotation.upload_anns(
-                    img_ids=[info.id for info in batch_image_infos],
-                    anns=batch_anns,
-                )
-                inference_request.add_results(
-                    [{**result, "annotation": None, "data": None} for result in batch_results]
-                )
-                inference_request.done(len(batch_results))
-
-        def upload_results_to_source_or_other(results: List[Dict]):
-            if len(results) == 0:
-                return
-            dataset_id = results[0]["dataset_id"]
-            dataset_info: DatasetInfo = dataset_infos_dict[dataset_id]
-            project_id = dataset_info.project_id
-            if project_id == output_project_id:
-                _upload_results_to_source(results)
-            else:
-                _upload_results_to_other(results)
-
-        if output_project_id is None:
-            upload_f = _add_results_to_request
-        else:
-            upload_f = upload_results_to_source_or_other
-
-        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
-            try:
-                while True:
-                    items = []
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        ds_batches = {}
-                        for batch in items:
-                            if len(batch) == 0:
-                                continue
-                            for each in batch:
-                                ds_batches.setdefault(each["dataset_id"], []).append(each)
-                        for _, joined_batch in ds_batches.items():
-                            upload_f(joined_batch)
-                        continue
-                    if stop_event.is_set():
-                        inference_request.stop()
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                raise
-
-        upload_queue = Queue()
-        stop_upload_event = threading.Event()
-        upload_thread = threading.Thread(
-            target=_upload_loop,
-            args=[upload_queue, stop_upload_event, api, upload_f],
-            daemon=True,
-        )
-        upload_thread.start()
-
-        results = []
-        stop = False
-        try:
-            for image_ids_batch in batched(image_ids, batch_size=batch_size):
-                if stop:
-                    break
-                if inference_request.is_stopped():
-                    logger.debug(
-                        f"Cancelling inference project...",
-                        extra={"inference_request_uuid": inference_request.uuid},
-                    )
-                    results = []
-                    stop = True
-                    break
-
-                images_nps = [self.cache.download_image(api, img_id) for img_id in image_ids_batch]
-                anns, slides_data = self._inference_auto(
-                    source=images_nps,
-                    settings=inference_settings,
-                )
-                batch_results = []
-                for i, ann in enumerate(anns):
-                    image_info: ImageInfo = images_infos_dict[image_ids_batch[i]]
-                    ds_info = dataset_infos_dict[image_info.dataset_id]
-                    meta = output_project_metas_dict.get(ds_info.project_id, None)
-                    iou = inference_settings.get("existing_objects_iou_thresh")
-                    if meta is None and isinstance(iou, float) and iou > 0:
-                        meta = ProjectMeta.from_json(api.project.get_meta(ds_info.project_id))
-                        output_project_metas_dict[ds_info.project_id] = meta
-                    ann = self._exclude_duplicated_predictions(
-                        api, [ann], inference_settings, ds_info.id, [image_info.id], meta
-                    )[0]
-                    batch_results.extend(
-                        self._format_output(
-                            [ann],
-                            [None],
-                            image_id=image_info.id,
-                            name=image_info.name,
-                            dataset_id=image_info.dataset_id,
-                        )
-                    )
-                if return_result:
-                    results.extend(batch_results)
-                upload_queue.put(batch_results)
-        finally:
-            stop_upload_event.set()
-            upload_thread.join()
-        if return_result:
-            return results
-
-    def _inference_project_id(
-        self,
-        api: Api,
-        state: dict,
-        project_info: ProjectInfo = None,
-        inference_request_uuid: str = None,
-    ):
+    def _inference_project_id(self, api: Api, state: dict, inference_request: InferenceRequest):
         """Inference project images.
         If "output_project_id" in state, upload images and annotations to the output project.
         If "output_project_id" equal to source project id, upload annotations to the source project.
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring project...", extra={"state": state})
-        if project_info is None:
-            project_info = api.project.get_info_by_id(state["projectId"])
-        dataset_ids = state.get("dataset_ids", None)
+        inference_settings = self._get_inference_settings_from_state(state)
+        logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
+        batch_size = self._get_batch_size_from_state(state)
+        project_id = state.get("project_id", None)
+        if project_id is None:
+            project_id = state["projectId"]
+        upload_mode = state.get("upload_mode", None)
+        iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
-        batch_size = state.get("batch_size", None)
-        if batch_size is None:
-            batch_size = self.get_batch_size()
 
+        project_info = api.project.get_info_by_id(project_id)
+        inference_request.context.setdefault("project_info", {})[project_id] = project_info
+        dataset_ids = state.get("dataset_ids", None)
+        if dataset_ids is None:
+            dataset_ids = state.get("datasetIds", None)
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
+        inference_request.set_stage("dataset_info", {}).update(
+            {ds_info.id: ds_info for ds_info in datasets_infos}
+        )
         if dataset_ids is not None:
             datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
 
-        # progress
-        preparing_progress = {"current": 0, "total": 1}
-        preparing_progress["status"] = "download_info"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
-        progress_cb = None
-        if inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"inference_request_uuid {inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
-
-            inference_request["preparing_progress"]["total"] = len(datasets_infos)
-            preparing_progress = inference_request["preparing_progress"]
-
-            if cache_project_on_model:
-                progress_cb = sly_progress.iters_done
-                preparing_progress["total"] = sly_progress.total
-                preparing_progress["status"] = "download_project"
+        preparing_progress_total = sum([ds_info.items_count for ds_info in datasets_infos])
+        inference_progress_total = preparing_progress_total
+        inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, preparing_progress_total)
 
         output_project_id = state.get("output_project_id", None)
-        output_project_meta = None
+        meta = self.model_meta
+        inference_request.context.setdefault("project_meta", {})
         if output_project_id is not None:
-            logger.debug("Merging project meta...")
-            output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
-            changed = False
-            for obj_class in self.model_meta.obj_classes:
-                if output_project_meta.obj_classes.get(obj_class.name, None) is None:
-                    output_project_meta = output_project_meta.add_obj_class(obj_class)
-                    changed = True
-            for tag_meta in self.model_meta.tag_metas:
-                if output_project_meta.tag_metas.get(tag_meta.name, None) is None:
-                    output_project_meta = output_project_meta.add_tag_meta(tag_meta)
-                    changed = True
-            if changed:
-                output_project_meta = api.project.update_meta(
-                    output_project_id, output_project_meta
-                )
+            if upload_mode is None:
+                upload_mode = "append"
+            meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
+            inference_request.context["project_meta"][output_project_id] = meta
+        if output_project_id is None and upload_mode == "create":
+            output_project_info = api.project.create(
+                project_info.workspace_id,
+                name=f"Predictions from task #{self.task_id}",
+                description=f"Auto created project from inference request {inference_request.uuid}",
+                change_name_if_conflict=True,
+            )
+            output_project_id = output_project_info.id
+            api.project.update_meta(output_project_id, meta)
+            inference_request.context["project_meta"][output_project_id] = meta
+            inference_request.context.setdefault("project_info", {})[
+                output_project_id
+            ] = output_project_info
 
         if cache_project_on_model:
-            download_to_cache(api, project_info.id, datasets_infos, progress_cb=progress_cb)
+            download_to_cache(
+                api, project_info.id, datasets_infos, progress_cb=inference_request.done
+            )
 
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
             if not cache_project_on_model:
-                preparing_progress["current"] += 1
-
-        preparing_progress["status"] = "inference"
-        preparing_progress["current"] = 0
+                inference_request.done(dataset_info.items_count)
 
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
@@ -2184,165 +1944,40 @@ class Inference:
             # start downloading in parallel
             threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
-        def _upload_results_to_source(results: List[Dict]):
-            nonlocal output_project_meta
-            for result in results:
-                image_id = result["image_id"]
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta, ann, meta_changed = update_meta_and_ann(
-                    output_project_meta, ann
-                )
-                if meta_changed:
-                    output_project_meta = api.project.update_meta(
-                        project_info.id, output_project_meta
-                    )
-                ann = update_classes(api, ann, output_project_meta, output_project_id)
-                api.annotation.append_labels(image_id, ann.labels)
-                if inference_request_uuid is not None:
-                    sly_progress.iters_done(1)
-                    inference_request["pending_results"].append(
-                        {
-                            "annotation": None,  # to less response size
-                            "data": None,  # to less response size
-                            "image_id": image_id,
-                            "image_name": result["image_name"],
-                            "dataset_id": result["dataset_id"],
-                        }
-                    )
-
-        new_dataset_id = {}
-
-        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
-            """Copy dataset in output project if not exists and return its id"""
-            if src_dataset_id in new_dataset_id:
-                return new_dataset_id[src_dataset_id]
-            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            if dataset_info.parent_id is None:
-                output_dataset_id = api.dataset.copy(
-                    output_project_id,
-                    src_dataset_id,
-                    dataset_info.name,
-                    change_name_if_conflict=True,
-                ).id
-            else:
-                parent_dataset_id = _get_or_create_new_dataset(
-                    output_project_id, dataset_info.parent_id
-                )
-                output_dataset_info = api.dataset.create(
-                    output_project_id, dataset_info.name, parent_id=parent_dataset_id
-                )
-                api.image.copy_batch_optimized(
-                    dataset_info.id,
-                    images_infos_dict[dataset_info.id],
-                    output_dataset_info.id,
-                    with_annotations=False,
-                )
-                output_dataset_id = output_dataset_info.id
-            new_dataset_id[src_dataset_id] = output_dataset_id
-            return output_dataset_id
-
-        def _upload_results_to_other(results: List[Dict]):
-            nonlocal output_project_meta
-            if len(results) == 0:
-                return
-            src_dataset_id = results[0]["dataset_id"]
-            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
-            image_names = [result["image_name"] for result in results]
-            image_infos = api.image.get_list(
-                dataset_id,
-                filters=[{"field": "name", "operator": "in", "value": image_names}],
-            )
-            meta_changed = False
-            anns = []
-            for result in results:
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
-                meta_changed = meta_changed or c
-                anns.append(ann)
-            if meta_changed:
-                api.project.update_meta(output_project_id, output_project_meta)
-
-            # upload in batches to update progress with each batch
-            # api.annotation.upload_anns() uploads in same batches anyways
-            for batch in batched(list(zip(anns, results, image_infos))):
-                batch_anns, batch_results, batch_image_infos = zip(*batch)
-                api.annotation.upload_anns(
-                    img_ids=[info.id for info in batch_image_infos],
-                    anns=batch_anns,
-                )
-                if inference_request_uuid is not None:
-                    sly_progress.iters_done(len(batch_results))
-                    inference_request["pending_results"].extend(
-                        [{**result, "annotation": None, "data": None} for result in batch_results]
-                    )
-
-        def _add_results_to_request(results: List[Dict]):
-            if inference_request_uuid is None:
-                return
-            inference_request["pending_results"].extend(results)
-            sly_progress.iters_done(len(results))
-
-        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
-            try:
-                while True:
-                    items = []
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        ds_batches = {}
-                        for batch in items:
-                            if len(batch) == 0:
-                                continue
-                            ds_batches.setdefault(batch[0].get("dataset_id"), []).extend(batch)
-                        for _, joined_batch in ds_batches.items():
-                            upload_f(joined_batch)
-                        continue
-                    if stop_event.is_set():
-                        self._on_inference_end(None, inference_request_uuid)
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                raise
-
-        if output_project_id is None:
-            upload_f = _add_results_to_request
-        elif output_project_id != project_info.id:
-            upload_f = _upload_results_to_other
-        else:
-            upload_f = _upload_results_to_source
-
-        upload_queue = Queue()
-        stop_upload_event = threading.Event()
-        upload_thread = threading.Thread(
-            target=_upload_loop,
-            args=[upload_queue, stop_upload_event, api, upload_f],
-            daemon=True,
+        _upload_predictions = partial(
+            upload_predictions,
+            api=api,
+            upload_mode=upload_mode,
+            context=inference_request.context,
+            dst_project_id=output_project_id,
+            progress_cb=inference_request.done,
+            inference_request=inference_request,
         )
-        upload_thread.start()
 
-        settings = self._get_inference_settings_from_state(state)
-        logger.debug(f"Inference settings:", extra=settings)
-        results = []
-        data_to_return = {}
-        stop = False
-        try:
+        _add_results_to_request = partial(
+            add_results_to_request, inference_request=inference_request
+        )
+
+        if upload_mode is None:
+            upload_f = _add_results_to_request
+        else:
+            upload_f = _upload_predictions
+
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
+        cancelled = False
+        with Uploader(upload_f, logger=logger) as uploader:
             for dataset_info in datasets_infos:
-                if stop:
+                if cancelled:
                     break
                 for images_infos_batch in batched(
                     images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
-                    if (
-                        inference_request_uuid is not None
-                        and inference_request["cancel_inference"] is True
-                    ):
+                    if inference_request.is_stopped():
                         logger.debug(
                             f"Cancelling inference project...",
-                            extra={"inference_request_uuid": inference_request_uuid},
+                            extra={"inference_request_uuid": inference_request.uuid},
                         )
-                        results = []
-                        stop = True
+                        cancelled = True
                         break
                     if cache_project_on_model:
                         images_paths, _ = zip(
@@ -2362,44 +1997,30 @@ class Inference:
                         )
                     anns, slides_data = self._inference_auto(
                         source=images_nps,
-                        settings=settings,
+                        settings=inference_settings,
                     )
-                    iou = settings.get("existing_objects_iou_thresh")
-                    if output_project_meta is None and isinstance(iou, float) and iou > 0:
-                        output_project_meta = ProjectMeta.from_json(
-                            api.project.get_meta(project_info.id)
+                    predictions = [
+                        Prediction(
+                            ann,
+                            image_id=image_info.id,
+                            name=image_info.name,
+                            dataset_id=dataset_info.id,
+                            project_id=dataset_info.project_id,
                         )
-                    anns = self._exclude_duplicated_predictions(
+                        for ann, image_info in zip(anns, images_infos_batch)
+                    ]
+                    for pred, this_slides_data in zip(predictions, slides_data):
+                        pred.extra_data["slides_data"] = this_slides_data
+
+                    predictions = postprocess_predictions(
                         api,
-                        anns,
-                        settings,
-                        dataset_info.id,
-                        [ii.id for ii in images_infos_batch],
-                        output_project_meta,
+                        predictions,
+                        context=inference_request.context,
+                        progress_cb=inference_request.done,
+                        iou_merge_threshold=iou_merge_threshold,
                     )
-                    batch_results = []
-                    for i, ann in enumerate(anns):
-                        batch_results.extend(
-                            self._format_output(
-                                [ann],
-                                slides_data[i],
-                                image_id=images_infos_batch[i].id,
-                                name=images_infos_batch[i].name,
-                                dataset_id=dataset_info.id,
-                                project_id=dataset_info.project_id,
-                            )
-                        )
-                    results.extend(batch_results)
-                    upload_queue.put(batch_results)
-        except Exception:
-            stop_upload_event.set()
-            upload_thread.join()
-            raise
-        if inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = {"ann": results}
-        stop_upload_event.set()
-        upload_thread.join()
-        return results
+
+                    uploader.put(predictions)
 
     def _run_speedtest(
         self,
@@ -2761,7 +2382,7 @@ class Inference:
                             logger.debug("Deploying the model via autostart...")
                             self.gui.deploy_with_current_params()
 
-                    self._executor.submit(delayed_autostart)
+                    self._inference_executor.submit(delayed_autostart)
                 else:
                     # run autostart immediately
                     self.gui.deploy_with_current_params()
@@ -2843,7 +2464,7 @@ class Inference:
             api = request.state.api
             if api is None:
                 api = self.api
-            return self._inference_images_ids(api, request.state.state)
+            return self._inference_image_ids(api, request.state.state)
 
         @server.post("/inference_batch_ids_async")
         def inference_batch_ids_async(response: Response, request: Request):
@@ -2866,10 +2487,10 @@ class Inference:
                 api = self.api
             inference_request_uuid = self.generate_uuid()
             self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
+            future = self._inference_executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
-                self._inference_images_ids,
+                self._inference_image_ids,
                 api,
                 request.state.state,
                 images_ids,
@@ -3007,7 +2628,7 @@ class Inference:
                         "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
                         "success": False,
                     }
-                return self._inference_images_batch(state, files)
+                return self._inference_images(state, files)
             except (json.decoder.JSONDecodeError, TypeError) as e:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"Cannot decode settings: {e}"
@@ -3039,7 +2660,7 @@ class Inference:
                 ).hex
                 files = [file.file.read() for file in files]
                 self._on_inference_start(inference_request_uuid)
-                future = self._executor.submit(
+                future = self._inference_executor.submit(
                     self._handle_error_in_async,
                     inference_request_uuid,
                     self._inference_batch_async,
@@ -3110,7 +2731,7 @@ class Inference:
             if api is None:
                 api = self.api
             self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
+            future = self._inference_executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._inference_video_id,
@@ -3155,7 +2776,7 @@ class Inference:
                 }
             inference_request_uuid = self.generate_uuid()
             self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
+            future = self._inference_executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._inference_project_id,
@@ -3201,7 +2822,7 @@ class Inference:
                 }
             inference_request_uuid = self.generate_uuid()
             self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
+            future = self._inference_executor.submit(
                 self._handle_error_in_async,
                 inference_request_uuid,
                 self._run_speedtest,
@@ -3974,126 +3595,127 @@ class Inference:
                 f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
             )
 
-    def _exclude_duplicated_predictions(
-        self,
-        api: Api,
-        pred_anns: List[Annotation],
-        settings: dict,
-        dataset_id: int,
-        gt_image_ids: List[int],
-        meta: Optional[ProjectMeta] = None,
-    ):
-        """
-        Filter out predictions that significantly overlap with ground truth (GT) objects.
 
-        This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
-        - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
-        - Gets ProjectMeta object if not provided
-        - Downloads GT annotations for the specified image IDs
-        - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
+def _exclude_duplicated_predictions(
+    api: Api,
+    pred_anns: List[Annotation],
+    dataset_id: int,
+    gt_image_ids: List[int],
+    iou: float = None,
+    meta: Optional[ProjectMeta] = None,
+):
+    """
+    Filter out predictions that significantly overlap with ground truth (GT) objects.
 
-        :param api: Supervisely API object
-        :type api: Api
-        :param pred_anns: List of Annotation objects containing predictions
-        :type pred_anns: List[Annotation]
-        :param settings: Inference settings
-        :type settings: dict
-        :param dataset_id: ID of the dataset containing the images
-        :type dataset_id: int
-        :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
-        :type gt_image_ids: List[int]
-        :param meta: ProjectMeta object
-        :type meta: Optional[ProjectMeta]
-        :return: List of Annotation objects containing filtered predictions
-        :rtype: List[Annotation]
+    This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
+    - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
+    - Gets ProjectMeta object if not provided
+    - Downloads GT annotations for the specified image IDs
+    - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
 
-        Notes:
-        ------
-        - Requires PyTorch and torchvision for IoU calculations
-        - This method is useful for identifying new objects that aren't already annotated in the ground truth
-        """
-        iou = settings.get("existing_objects_iou_thresh")
-        if isinstance(iou, float) and 0 < iou <= 1:
-            if meta is None:
-                ds = api.dataset.get_info_by_id(dataset_id)
-                meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
-            gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
-            gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
-            for i in range(0, len(pred_anns)):
-                before = len(pred_anns[i].labels)
-                with Timer() as timer:
-                    pred_anns[i] = self._filter_duplicated_predictions_from_ann(
-                        gt_anns[i], pred_anns[i], iou
-                    )
-                after = len(pred_anns[i].labels)
-                logger.debug(
-                    f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+    :param api: Supervisely API object
+    :type api: Api
+    :param pred_anns: List of Annotation objects containing predictions
+    :type pred_anns: List[Annotation]
+    :param dataset_id: ID of the dataset containing the images
+    :type dataset_id: int
+    :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
+    :type gt_image_ids: List[int]
+    :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                    ground truth box of the same class will be removed. None if no filtering is needed
+    :type iou: Optional[float]
+    :param meta: ProjectMeta object
+    :type meta: Optional[ProjectMeta]
+    :return: List of Annotation objects containing filtered predictions
+    :rtype: List[Annotation]
+
+    Notes:
+    ------
+    - Requires PyTorch and torchvision for IoU calculations
+    - This method is useful for identifying new objects that aren't already annotated in the ground truth
+    """
+    if isinstance(iou, float) and 0 < iou <= 1:
+        if meta is None:
+            ds = api.dataset.get_info_by_id(dataset_id)
+            meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
+        gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
+        gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
+        for i in range(0, len(pred_anns)):
+            before = len(pred_anns[i].labels)
+            with Timer() as timer:
+                pred_anns[i] = _filter_duplicated_predictions_from_ann(
+                    gt_anns[i], pred_anns[i], iou
                 )
-        return pred_anns
-
-    def _filter_duplicated_predictions_from_ann(
-        self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
-    ) -> Annotation:
-        """
-        Filter out predictions that significantly overlap with ground truth annotations.
-
-        This function compares each prediction with ground truth annotations of the same class
-        and removes predictions that have an IoU (Intersection over Union) greater than or equal
-        to the specified threshold with any ground truth annotation. This is useful for identifying
-        new objects that aren't already annotated in the ground truth.
-
-        :param gt_ann: Annotation object containing ground truth labels
-        :type gt_ann: Annotation
-        :param pred_ann: Annotation object containing prediction labels to be filtered
-        :type pred_ann: Annotation
-        :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
-                                ground truth box of the same class will be removed
-        :type iou_threshold: float
-        :return: A new annotation object containing only predictions that don't significantly
-                 overlap with ground truth annotations
-        :rtype: Annotation
+            after = len(pred_anns[i].labels)
+            logger.debug(
+                f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+            )
+    return pred_anns
 
 
-        Notes:
-        ------
-        - Predictions with classes not present in ground truth will be kept
-        - Requires PyTorch and torchvision for IoU calculations
-        """
+def _filter_duplicated_predictions_from_ann(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+) -> Annotation:
+    """
+    Filter out predictions that significantly overlap with ground truth annotations.
 
-        try:
-            import torch
-            from torchvision.ops import box_iou
+    This function compares each prediction with ground truth annotations of the same class
+    and removes predictions that have an IoU (Intersection over Union) greater than or equal
+    to the specified threshold with any ground truth annotation. This is useful for identifying
+    new objects that aren't already annotated in the ground truth.
 
-        except ImportError:
-            raise ImportError("Please install PyTorch and torchvision to use this feature.")
+    :param gt_ann: Annotation object containing ground truth labels
+    :type gt_ann: Annotation
+    :param pred_ann: Annotation object containing prediction labels to be filtered
+    :type pred_ann: Annotation
+    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                            ground truth box of the same class will be removed
+    :type iou_threshold: float
+    :return: A new annotation object containing only predictions that don't significantly
+                overlap with ground truth annotations
+    :rtype: Annotation
 
-        def _to_tensor(geom):
-            return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
 
-        new_labels = []
-        pred_cls_bboxes = defaultdict(list)
-        for label in pred_ann.labels:
-            pred_cls_bboxes[label.obj_class.name].append(label)
+    Notes:
+    ------
+    - Predictions with classes not present in ground truth will be kept
+    - Requires PyTorch and torchvision for IoU calculations
+    """
 
-        gt_cls_bboxes = defaultdict(list)
-        for label in gt_ann.labels:
-            if label.obj_class.name not in pred_cls_bboxes:
-                continue
-            gt_cls_bboxes[label.obj_class.name].append(label)
+    try:
+        import torch
+        from torchvision.ops import box_iou
 
-        for name, pred in pred_cls_bboxes.items():
-            gt = gt_cls_bboxes[name]
-            if len(gt) == 0:
-                new_labels.extend(pred)
-                continue
-            pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
-            gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
-            iou_matrix = box_iou(pred_bboxes, gt_bboxes)
-            iou_matrix = iou_matrix.cpu().numpy()
-            keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
-            new_labels.extend([pred[i] for i in keep_indices])
+    except ImportError:
+        raise ImportError("Please install PyTorch and torchvision to use this feature.")
 
-        return pred_ann.clone(labels=new_labels)
+    def _to_tensor(geom):
+        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        pred_cls_bboxes[label.obj_class.name].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        if label.obj_class.name not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[label.obj_class.name].append(label)
+
+    for name, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
+        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+        iou_matrix = iou_matrix.cpu().numpy()
+        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+        new_labels.extend([pred[i] for i in keep_indices])
+
+    return pred_ann.clone(labels=new_labels)
 
 
 def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
@@ -4437,3 +4059,222 @@ def batched_iter(iterable, batch_size):
             batch = []
     if batch:
         yield batch
+
+
+def _append_annotations(
+    api: Api,
+    dataset_id: int,
+    image_ids: List[int],
+    anns: List[Annotation],
+    project_meta: ProjectMeta,
+    original_anns: List[Annotation] = None,
+    progress_cb=None,
+):
+    if len(anns) != len(image_ids):
+        raise ValueError(
+            f"Number of annotations ({len(anns)}) does not match number of image IDs ({len(image_ids)})"
+        )
+    if original_anns is None:
+        original_anns = [
+            Annotation.from_json(ann_info.annotation, project_meta)
+            for ann_info in api.annotation.download_batch(dataset_id, image_ids)
+        ]
+    if len(original_anns) != len(anns):
+        raise ValueError(
+            f"Number of original annotations ({len(original_anns)}) does not match number of new annotations ({len(anns)})"
+        )
+    anns = [original_ann.merge(ann) for original_ann, ann in zip(original_anns, anns)]
+    api.annotation.upload_anns(image_ids, anns)
+    if progress_cb is not None:
+        progress_cb(len(anns))
+
+
+def _replace_annotations(api: Api, image_ids: List[int], anns: List[Annotation], progress_cb=None):
+    api.annotation.upload_anns(image_ids, anns)
+    if progress_cb is not None:
+        progress_cb(len(anns))
+
+
+def postprocess_predictions(
+    api: Api,
+    predictions: List[Prediction],
+    context: Dict = None,
+    progress_cb=None,
+    iou_merge_threshold: float = None,
+):
+    ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
+    for prediction in predictions:
+        ds_predictions[prediction.dataset_id].append(prediction)
+
+    if context is None:
+        context = {}
+    for dataset_id, preds in ds_predictions.items():
+        ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
+        if ds_info is None:
+            ds_info = api.dataset.get_info_by_id(dataset_id)
+            context["dataset_info"][dataset_id] = ds_info
+        project_id = ds_info.project_id
+        meta = context.setdefault("project_meta", {}).get(project_id, None)
+        if meta is None:
+            meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+            context["project_meta"][project_id] = meta
+
+        meta_changed = False
+        for pred in preds:
+            ann = pred.annotation
+            meta, ann, meta_changed_ = update_meta_and_ann(meta, ann)
+            meta_changed = meta_changed or meta_changed_
+            pred.annotation = ann
+            prediction.model_meta = meta
+
+        if meta_changed:
+            meta = api.project.update_meta(project_id, meta)
+            context["project_meta"][project_id] = meta
+
+        anns = _exclude_duplicated_predictions(
+            api,
+            [pred.annotation for pred in preds],
+            dataset_id,
+            [pred.image_id for pred in preds],
+            iou=iou_merge_threshold,
+            meta=meta,
+        )
+        for pred, ann in zip(preds, anns):
+            pred.annotation = ann
+
+        if progress_cb is not None:
+            progress_cb(len(preds))
+
+    return predictions
+
+
+def upload_predictions(
+    predictions: List[Prediction],
+    api: Api,
+    upload_mode: str,
+    context: Dict = None,
+    dst_dataset_id: int = None,
+    dst_project_id: int = None,
+    progress_cb=None,
+    inference_request: InferenceRequest = None,
+):
+    ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
+    for prediction in predictions:
+        ds_predictions[prediction.dataset_id].append(prediction)
+
+    def _new_name(image_info: ImageInfo):
+        name = Path(image_info.name)
+        stem = name.stem
+        return str(name.with_stem(stem + f"(dataset_id:{image_info.dataset_id})"))
+
+    def _get_or_create_dataset(src_dataset_id, dst_project_id):
+        if src_dataset_id is None:
+            return None
+        created_dataset_id = context.setdefault("created_dataset", {}).get(src_dataset_id, None)
+        if created_dataset_id is not None:
+            return created_dataset_id
+        src_dataset_info: DatasetInfo = context.setdefault("dataset_info", {}).get(src_dataset_id)
+        if src_dataset_info is None:
+            src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+            context["dataset_info"][src_dataset_id] = src_dataset_info
+        src_parent_id = src_dataset_info.parent_id
+        dst_parent_id = _get_or_create_dataset(src_parent_id, dst_project_id)
+        created_dataset = api.dataset.create(
+            dst_project_id,
+            src_dataset_info.name,
+            description=f"Auto created dataset from inference request {inference_request.uuid if inference_request is not None else ''}",
+            change_name_if_conflict=True,
+            parent_id=dst_parent_id,
+        )
+        context["dataset_info"][created_dataset.id] = created_dataset
+        context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
+        return created_dataset.id
+
+    created_names = []
+    if context is None:
+        context = {}
+    for dataset_id, preds in ds_predictions.items():
+        if dst_project_id is not None:
+            dst_dataset_id = _get_or_create_dataset(
+                src_dataset_id=dataset_id, dst_project_id=dst_project_id
+            )
+        if dst_dataset_id is not None:
+            context.setdefault("image_info", {})
+            missing = [
+                pred.image_id for pred in preds if pred.image_id not in context["image_info"]
+            ]
+            if missing:
+                context["image_info"].update(
+                    {
+                        image_info.id: image_info
+                        for image_info in api.image.get_info_by_id_batch(missing)
+                    }
+                )
+            image_infos: List[ImageInfo] = [context["image_info"][pred.image_id] for pred in preds]
+            dst_names = [
+                _new_name(image_info) if image_info.name in created_names else image_info.name
+                for image_info in image_infos
+            ]
+            dst_image_infos = api.image.copy_batch_optimized(
+                dataset_id,
+                image_infos,
+                dst_dataset_id,
+                dst_names=dst_names,
+                with_annotations=False,
+                save_source_date=False,
+            )
+            created_names.extend([image_info.name for image_info in dst_image_infos])
+            api.annotation.upload_anns([image_info.id for image_info in dst_image_infos])
+        else:
+            ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
+            if ds_info is None:
+                ds_info = api.dataset.get_info_by_id(dataset_id)
+                context["dataset_info"][dataset_id] = ds_info
+            project_id = ds_info.project_id
+            if upload_mode == "merge":
+                context.setdefault("annotation", {})
+                missing = []
+                for pred in preds:
+                    if pred.image_id not in context["annotation"]:
+                        missing.append(pred.image_id)
+                for image_id, ann_info in zip(
+                    missing, api.annotation.download_batch(dataset_id, missing)
+                ):
+                    context["annotation"][image_id] = Annotation.from_json(
+                        ann_info.annotation, project_id
+                    )
+                for pred in preds:
+                    pred.annotation = context["annotation"][pred.image_id].merge(pred.annotation)
+            api.annotation.upload_anns(
+                [pred.image_id for pred in preds],
+                [pred.annotation for pred in preds],
+            )
+
+        if progress_cb is not None:
+            progress_cb(len(preds))
+
+    if inference_request is not None:
+        results = _format_output(predictions)
+        for result in results:
+            result["annotation"] = None
+            result["data"] = None
+        inference_request.add_results(results)
+
+
+def add_results_to_request(predictions: List[Prediction], inference_request: InferenceRequest):
+    results = _format_output(predictions)
+    inference_request.add_results(results)
+    inference_request.done(len(results))
+
+
+def _format_output(
+    predictions: List[Prediction],
+) -> List[dict]:
+    output = [
+        {
+            **pred.to_json(),
+            "data": pred.extra_data.get("slides_data", {}),
+        }
+        for pred in predictions
+    ]
+    return output

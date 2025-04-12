@@ -184,11 +184,11 @@ class BaseTracking(Inference):
     def schedule_task(self, func, *args, **kwargs):
         inference_request_uuid = kwargs.get("inference_request_uuid", None)
         if inference_request_uuid is None:
-            self._executor.submit(func, *args, **kwargs)
+            self._inference_executor.submit(func, *args, **kwargs)
         else:
             self._on_inference_start(inference_request_uuid)
             fn = self._handle_error_in_async(inference_request_uuid)(func)
-            future = self._executor.submit(
+            future = self._inference_executor.submit(
                 fn,
                 *args,
                 **kwargs,

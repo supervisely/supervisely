@@ -78,6 +78,7 @@ class Prediction:
         self.image_id = image_id
         self.video_id = video_id
         self.frame_index = frame_index
+        self.extra_data = {}
 
         self._annotation = None
         self._boxes = None
@@ -87,11 +88,6 @@ class Prediction:
 
         if self.path is None and isinstance(self.source, str):
             self.path = self.source
-
-        mkdir(self._temp_dir)
-        if not Prediction.__cleanup_registered:
-            atexit.register(self._clear_temp_files)
-            Prediction.__cleanup_registered = True
 
     def _init_geometries(self):
 
@@ -164,6 +160,17 @@ class Prediction:
                 raise ValueError("Model meta is not provided. Cannot create annotation.")
             self._annotation = Annotation.from_json(self.annotation_json, self.model_meta)
         return self._annotation
+
+    @annotation.setter
+    def annotation(self, annotation: Union[Annotation, Dict]):
+        if isinstance(annotation, Annotation):
+            self._annotation = annotation
+            self.annotation_json = annotation.to_json()
+        elif isinstance(annotation, dict):
+            self._annotation = Annotation.from_json(annotation, self.model_meta)
+            self.annotation_json = annotation
+        else:
+            raise ValueError("Annotation must be either a dict or an Annotation object.")
 
     @property
     def class_idxs(self) -> np.ndarray:
@@ -267,6 +274,11 @@ class Prediction:
         fill_rectangles: Optional[bool] = True,
         api: Optional["Api"] = None,
     ) -> np.ndarray:
+        mkdir(self._temp_dir)
+        if not Prediction.__cleanup_registered:
+            atexit.register(self._clear_temp_files)
+            Prediction.__cleanup_registered = True
+
         img = self.load_image(api)
         self.annotation.draw_pretty(
             bitmap=img,

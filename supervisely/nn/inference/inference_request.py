@@ -39,6 +39,7 @@ class InferenceRequest:
         self._ttl = ttl
         self.manager = manager
         self.save_results = True
+        self.context = {}
         self._lock = threading.Lock()
         self._stage = InferenceRequest.Stage.PREPARING
         self._pending_results = []
@@ -335,3 +336,8 @@ class InferenceRequestsManager:
         future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request.uuid})
         return inference_request, future
+
+    def run(self, func, *args, **kwargs):
+        inference_request, future = self.schedule_task(func, *args, **kwargs)
+        future.result()
+        return inference_request.pop_pending_results()
