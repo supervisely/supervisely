@@ -168,101 +168,88 @@ class AnnotationMatcher:
         self._volumes = volumes
 
     def match_items(self):
-        """Match annotation files with corresponding volumes."""
-        def to_volume_name(name):
-            if name.endswith(".nii.gz"):
-                name = name.replace(".nii.gz", "")
-            elif name.endswith(".nii"):
-                name = name.replace(".nii", "")
-            if "_" not in name:
-                return None
-            # name_parts = get_file_name(name).split("_")[:3]
-            # return f"{name_parts[0]}_{VOLUME_NAME}_{name_parts[2]}"
-            prefix = name.split("_")[0]
-            if prefix not in PlanePrefix.values():
-                return None
-            return f"{prefix}_{VOLUME_NAME}"
+        """Match annotation files with corresponding volumes using regex-based matching."""
+        import re
 
-        def find_best_volume_match(expected_name, available_volumes):
-            """Find the best matching volume name from available volumes."""
-            # First try exact match
-            if expected_name in available_volumes:
-                return expected_name, available_volumes[expected_name]
+        def extract_prefix(ann_file):
+            import re
+            pattern = r'^(?P<prefix>cor|sag|axl).*?(?:' + "|".join(LABEL_NAME) + r').*\.nii(?:\.gz)?$'
+            m = re.match(pattern, ann_file, re.IGNORECASE)
+            if m:
+                return m.group("prefix").lower()
+            return None
 
-            # Try fuzzy matching - find names that start with the expected name
-            potential_matches = [
-                name for name in available_volumes.keys() if name.startswith(expected_name)
-            ]
+        def is_volume_match(volume_name, prefix):
+            pattern = r'^' + re.escape(prefix) + r'.*?anatomic.*\.nii(?:\.gz)?$'
+            return re.match(pattern, volume_name, re.IGNORECASE) is not None
 
-            if not potential_matches:
+        def find_best_volume_match(prefix, available_volumes):
+            candidates = {name: vol for name, vol in available_volumes.items() if is_volume_match(name, prefix)}
+            if not candidates:
                 return None, None
 
-            # Sort by length to prefer the shortest/most general match
-            best_match = sorted(potential_matches, key=len)[0]
-            return best_match, available_volumes[best_match]
+            # Prefer an exact candidate
+            exact_candidate = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_file, flags=re.IGNORECASE)
+            for name in candidates:
+                if re.fullmatch(re.escape(exact_candidate) + r'(\.nrrd)', name, re.IGNORECASE):
+                    return name, candidates[name]
+
+            # Otherwise, choose the candidate with the shortest name
+            best_match = sorted(candidates.keys(), key=len)[0]
+            return best_match, candidates[best_match]
 
         item_to_volume = {}
 
-        # Common matching logic for both project-wide and dataset-wide scenarios
         def process_annotation_file(ann_file, dataset_name, volumes):
-            expected_volume_name = to_volume_name(ann_file)
-            if expected_volume_name is None:
-                logger.warning(f"Invalid name for {ann_file}. Skipping.")
+            prefix = extract_prefix(ann_file)
+            if prefix is None:
+                logger.warning(f"Failed to extract prefix from annotation file {ann_file}. Skipping.")
                 return
 
-            matched_name, matched_volume = find_best_volume_match(expected_volume_name, volumes)
+            matched_name, matched_volume = find_best_volume_match(prefix, volumes)
             if not matched_volume:
-                logger.warning(
-                    f"No matching volume found for {expected_volume_name}" + " in dataset " + dataset_name if self._project_wide else "."
-                )
+                logger.warning(f"No matching volume found for annotation with prefix '{prefix}' in dataset {dataset_name}.")
                 return
 
-            # Get the appropriate item based on matching mode
+            # Retrieve the correct item based on matching mode.
             item = (
                 self._item_by_path.get((dataset_name, ann_file))
                 if self._project_wide
                 else self._item_by_filename.get(ann_file)
             )
             if not item:
-                logger.warning(
-                    f"Item not found for {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}."
-                )
+                logger.warning(f"Item not found for annotation file {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}.")
                 return
 
             item_to_volume[item] = matched_volume
-            if get_file_name(matched_name) != expected_volume_name:
-                logger.debug(
-                    f"Fuzzy matched {ann_file} to volume {matched_name} (expected: {expected_volume_name})"
-                )
+            if matched_name.lower() != f"{prefix}_anatomic".lower():
+                logger.debug(f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'.")
 
+        # Perform matching for project-wide or dataset-wide scenarios.
         if self._project_wide:
-            # Project-wide matching
             for dataset_name, volumes in self._volumes.items():
                 for ann_file in self._ann_paths[dataset_name]:
                     process_annotation_file(ann_file, dataset_name, volumes)
         else:
-            # Dataset-wide matching
             dataset_name = list(self._ann_paths.keys())[0]
             for ann_file in self._ann_paths[dataset_name]:
                 process_annotation_file(ann_file, dataset_name, self._volumes)
 
+        # Mark volumes having only one matching item as semantic and validate shape.
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
             volume_to_items[volume.id].append(item)
+        
         for volume_id, items in volume_to_items.items():
             if len(items) == 1:
                 items[0].is_semantic = True
 
-        # validate shape
         items_to_remove = []
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
             if item.shape != volume_shape:
-                logger.warning(
-                    f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item."
-                )
+                logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item.")
                 items_to_remove.append(item)
-
         for item in items_to_remove:
             del item_to_volume[item]
 

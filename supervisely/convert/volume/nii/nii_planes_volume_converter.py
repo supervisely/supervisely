@@ -71,6 +71,9 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
 
         def create_empty_annotation(self):
             return VolumeAnnotation(self.volume_meta)
+        
+    def __str__(self):
+        return "nii_custom"
 
     def validate_format(self) -> bool:
         # create Items
@@ -193,6 +196,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         super().__init__(*args, **kwargs)
         self._json_map = None
 
+    def __str__(self):
+        return "nii_custom_ann"
+
     def validate_format(self) -> bool:
         try:
             from nibabel import load, filebasedimages
@@ -202,7 +208,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             )
         cls_color_map = None
 
-        has_volumes = lambda x: x.split("_")[1] == helper.VOLUME_NAME if "_" in x else False
+        has_volumes = lambda x: helper.VOLUME_NAME in x
         if list_files_recursively(self._input_data, filter_fn=has_volumes):
             return False
 
@@ -216,7 +222,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         if json_map is not None:
             self._json_map = helper.read_json_map(json_map)
 
-        is_ann = lambda x: x.split("_")[1] in helper.LABEL_NAME if "_" in x else False
+        is_ann = lambda x: any(label_name in x for label_name in helper.LABEL_NAME)
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 path = os.path.join(root, file)
@@ -256,7 +262,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             ann_filename = get_file_name(ann_path)
             if ".nii" in ann_filename:
                 ann_filename = ann_filename.split(".")[0]
-            ann_idx = ann_filename.split("_")[2]
+            ann_idx = int(ann_filename.split("_")[2])
             for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
                 class_id = pixel_id if item.is_semantic else ann_idx
                 class_name = f"Segment_{class_id}"
