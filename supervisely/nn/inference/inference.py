@@ -4061,40 +4061,6 @@ def batched_iter(iterable, batch_size):
         yield batch
 
 
-def _append_annotations(
-    api: Api,
-    dataset_id: int,
-    image_ids: List[int],
-    anns: List[Annotation],
-    project_meta: ProjectMeta,
-    original_anns: List[Annotation] = None,
-    progress_cb=None,
-):
-    if len(anns) != len(image_ids):
-        raise ValueError(
-            f"Number of annotations ({len(anns)}) does not match number of image IDs ({len(image_ids)})"
-        )
-    if original_anns is None:
-        original_anns = [
-            Annotation.from_json(ann_info.annotation, project_meta)
-            for ann_info in api.annotation.download_batch(dataset_id, image_ids)
-        ]
-    if len(original_anns) != len(anns):
-        raise ValueError(
-            f"Number of original annotations ({len(original_anns)}) does not match number of new annotations ({len(anns)})"
-        )
-    anns = [original_ann.merge(ann) for original_ann, ann in zip(original_anns, anns)]
-    api.annotation.upload_anns(image_ids, anns)
-    if progress_cb is not None:
-        progress_cb(len(anns))
-
-
-def _replace_annotations(api: Api, image_ids: List[int], anns: List[Annotation], progress_cb=None):
-    api.annotation.upload_anns(image_ids, anns)
-    if progress_cb is not None:
-        progress_cb(len(anns))
-
-
 def postprocess_predictions(
     api: Api,
     predictions: List[Prediction],
