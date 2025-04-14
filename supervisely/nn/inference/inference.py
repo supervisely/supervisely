@@ -1705,11 +1705,38 @@ class Inference:
             if src_dataset_id in new_dataset_id:
                 return new_dataset_id[src_dataset_id]
             dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+
+            def _create_parent_recursively(output_project_id, src_parent_id):
+                """Create parent datasets recursively and return the ID of the top-level parent"""
+                if src_parent_id in new_dataset_id:
+                    return new_dataset_id[src_parent_id]
+                src_parent_info = dataset_infos_dict.get(src_parent_id)
+                if src_parent_info is None:
+                    src_parent_info = api.dataset.get_info_by_id(src_parent_id)
+                if src_parent_info.parent_id is not None:
+                    parent_id = _create_parent_recursively(
+                        output_project_id, src_parent_info.parent_id
+                    )
+                else:
+                    parent_id = None
+                dst_parent = api.dataset.create(
+                    output_project_id,
+                    src_parent_info.name,
+                    change_name_if_conflict=True,
+                    parent_id=parent_id,
+                )
+                new_dataset_id[src_parent_info.id] = dst_parent.id
+                return dst_parent.id
+
             parent_id = None
             if dataset_info.parent_id is not None:
-                parent_id = new_dataset_id.get(dataset_info.parent_id, None)
+                parent_id = _create_parent_recursively(output_project_id, dataset_info.parent_id)
+
             output_dataset_id = api.dataset.create(
-                output_project_id, dataset_info.name, change_name_if_conflict=True, parent_id=parent_id
+                output_project_id,
+                dataset_info.name,
+                change_name_if_conflict=True,
+                parent_id=parent_id,
             ).id
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
