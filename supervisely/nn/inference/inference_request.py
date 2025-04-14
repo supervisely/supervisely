@@ -139,8 +139,7 @@ class InferenceRequest:
     @exception.setter
     def exception(self, exc: Exception):
         self._exception = exc
-        with self._lock:
-            self.set_stage(InferenceRequest.Stage.ERROR)
+        self.set_stage(InferenceRequest.Stage.ERROR)
         self.__updated()
 
     def is_inferring(self):
