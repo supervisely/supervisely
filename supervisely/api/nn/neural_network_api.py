@@ -47,6 +47,8 @@ class NeuralNetworkApi:
         :type runtime: Optional[str]
         :param workspace_id: Workspace ID, if not present will be defined automatically.
         :type workspace_id: Optional[int]
+        :param agent_id: Agent ID, if not present will be defined automatically.
+        :type agent_id: Optional[int]
         :param kwargs: Additional parameters for deployment.
         :return: A :class:`ModelAPI` object for the deployed model.
         :rtype: ModelAPI
@@ -68,15 +70,12 @@ class NeuralNetworkApi:
         if team_id is None:
             workspace_info = self._api.workspace.get_info_by_id(workspace_id)
             team_id = workspace_info.team_id
+        if agent_id is None:
+            agent_id = self._deploy_api._find_agent(team_id)
         
         if model.startswith("/"):
             checkpoint = model
         else:
-            # USE THIS ?
-            # workspace_info = self._api.workspace.get_info_by_id(workspace_id)
-            # team_id = workspace_info.team_id
-            # ^^^^^^^^^^^^^^^
-
             found_team_id = self._deploy_api._find_team_by_path(
                 f"/{model}", team_id=team_id, raise_not_found=False
             )
@@ -95,6 +94,7 @@ class NeuralNetworkApi:
                 runtime=runtime,
                 team_id=team_id,
                 workspace_id=workspace_id,
+                agent_id=agent_id,
                 **kwargs,
             )
         else:
@@ -108,6 +108,7 @@ class NeuralNetworkApi:
                 device=device,
                 runtime=runtime,
                 workspace_id=workspace_id,
+                agent_id=agent_id,
                 **kwargs,
             )
         return ModelAPI(self._api, task_id=task_info["id"])

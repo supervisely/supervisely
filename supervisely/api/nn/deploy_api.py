@@ -163,10 +163,14 @@ class DeployApi:
         }
         self._load_model_from_api(session_id, deploy_params)
 
-    def _find_agent(self, team_id: int = None, gpu=True):
+    def _find_agent(self, team_id: int = None, public=True, gpu=True):
         """
-        Find an agent in Supervisely.
+        Find an agent in Supervisely with most available memory.
 
+        :param team_id: Team ID. If not provided, will be taken from the current context.
+        :type team_id: Optional[int]
+        :param public: If True, can find a public agent.
+        :type public: bool
         :param gpu: If True, find an agent with GPU.
         :type gpu: bool
         :return: Agent ID
@@ -174,13 +178,21 @@ class DeployApi:
         """
         if team_id is None:
             team_id = env.team_id()
-        agents = self._api.agent.get_list(team_id)
+        agents = self._api.agent.get_list_available(team_id, show_public=public, has_gpu=gpu)
         if len(agents) == 0:
             raise ValueError("No available agents found.")
+        agent_id_memory_map = {}
+        kubernetes_agents = []
         for agent in agents:
-            if gpu and agent.capabilities["types"]["inference"]["enabled"]:
-                return agent.id
-        raise ValueError("No available agents found.")
+            if agent.type == "sly_agent":
+                # No multi-gpu support, always take the first one
+                agent_id_memory_map[agent.id] = agent.gpu_info["device_memory"][0]["available"]
+            elif agent.type == "kubernetes":
+                kubernetes_agents.append(agent.id)
+        if len(agent_id_memory_map) > 0:
+            return max(agent_id_memory_map, key=agent_id_memory_map.get)
+        if len(kubernetes_agents) > 0:
+            return kubernetes_agents[0]
 
     def deploy_pretrained_model(
         self,
@@ -189,8 +201,8 @@ class DeployApi:
         device: Optional[str] = None,
         runtime: str = None,
         workspace_id: int = None,
-        app: Union[str, int] = None,
         agent_id: Optional[int] = None,
+        app: Union[str, int] = None,
         **kwargs,
     ) -> Dict[str, Any]:
         """
@@ -206,10 +218,10 @@ class DeployApi:
         :type runtime: Optional[str]
         :param workspace_id: Workspace ID where the app will be deployed. If not provided, will be taken from the current context.
         :type workspace_id: Optional[int]
-        :param app: App name or App module ID in Supervisely.
-        :type app: Union[str, int]
         :param agent_id: Agent ID. If not provided, will be found automatically.
         :type agent_id: Optional[int]
+        :param app: App name or App module ID in Supervisely.
+        :type app: Union[str, int]
         :param kwargs: Additional parameters to start the task. See Api.task.start() for more details.
         :type kwargs: Dict[str, Any]
         :return: Task Info
