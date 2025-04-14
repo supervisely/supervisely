@@ -2575,6 +2575,9 @@ class Inference:
 
                 names = []
                 for file in files:
+                    name = file.filename
+                    if name is None or name == "":
+                        name = rand_str(10)
                     ext = Path(file.filename).suffix
                     img_bytes = b""
                     while buf := file.file.read(64 * 1024 * 1024):
