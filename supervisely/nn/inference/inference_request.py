@@ -38,7 +38,6 @@ class InferenceRequest:
         self._uuid = uuid_
         self._ttl = ttl
         self.manager = manager
-        self.save_results = True
         self.context = {}
         self._lock = threading.Lock()
         self._stage = InferenceRequest.Stage.PREPARING
@@ -91,10 +90,9 @@ class InferenceRequest:
             self.__updated()
 
     def add_results(self, results: List[Dict]):
-        if self.save_results:
-            with self._lock:
-                self._pending_results.extend(results)
-                self.__updated()
+        with self._lock:
+            self._pending_results.extend(results)
+            self.__updated()
 
     def pop_pending_results(self, n: int = None):
         with self._lock:
@@ -322,6 +320,7 @@ class InferenceRequestsManager:
         inference_request = kwargs.get("inference_request", None)
         if inference_request is None:
             inference_request = self.create()
+            kwargs["inference_request"] = inference_request
         self._on_inference_start(inference_request)
         future = self._executor.submit(
             self._handle_error_in_async,

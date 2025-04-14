@@ -146,6 +146,11 @@ class PersistentImageTTLCache(TTLCache):
         if not self._base_dir.exists():
             self._base_dir.mkdir()
 
+        if ext is None or ext == "":
+            if not isinstance(image, np.ndarray):
+                image = sly.image.read_bytes(image)
+                ext = ".png"
+
         filepath = self._base_dir / f"{str(key)}{ext}"
         self[key] = filepath
 
@@ -451,14 +456,17 @@ class InferenceImageCache:
                 if tmp_source is not None:
                     silent_remove(tmp_source)
 
-    def add_image_to_cache(self, key: str, image: Union[np.ndarray, BinaryIO], ext=".png") -> None:
+    def add_image_to_cache(
+        self, key: str, image: Union[np.ndarray, BinaryIO], ext=None
+    ) -> np.ndarray:
         """
         Adds image to cache.
         """
         with self._lock:
             self._cache.save_image(key, image, ext)
             self._load_queue.delete(key)
-        sly.logger.debug(f"Image {key} added to cache", extra={"image_id": key})
+            sly.logger.debug(f"Image {key} added to cache", extra={"image_id": key})
+            return self._cache.get_image(key)
 
     def get_image_path(self, key) -> str:
         return str(self._cache.get_image_path(key))

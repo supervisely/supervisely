@@ -1202,6 +1202,15 @@ class Inference:
         else:
             return yaml.safe_load(self._custom_inference_settings)
 
+    def api_from_request(self, request) -> Api:
+        """
+        Get API from request. If not found, use self.api.
+        """
+        api = request.state.api
+        if api is None:
+            api = self.api
+        return api
+
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
@@ -1507,7 +1516,7 @@ class Inference:
 
     def _inference_images(
         self,
-        images: Iterable[np.ndarray],
+        images: Iterable[Union[np.ndarray, str]],
         state: dict,
         inference_request: InferenceRequest,
     ):
@@ -1518,6 +1527,10 @@ class Inference:
 
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(images))
         for batch in batched_iter(images, batch_size=batch_size):
+            batch = [
+                self.cache.get_image_path(image) in batch if isinstance(image, str) else image
+                for image in batch
+            ]
             anns, slides_data = self._inference_auto(
                 batch,
                 settings=settings,
@@ -1637,9 +1650,13 @@ class Inference:
         inference_settings = self._get_inference_settings_from_state(state)
         logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
         batch_size = self._get_batch_size_from_state(state)
-        image_ids = state.get("batch_ids", None)
+        image_ids = get_value_for_keys(
+            state, ["batch_ids", "image_ids", "images_ids", "imageIds", "image_id", "imageId"]
+        )
         if image_ids is None:
-            image_ids = state["images_ids"]
+            raise ValueError("Image ids are not provided")
+        if not isinstance(image_ids, list):
+            image_ids = [image_ids]
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
 
@@ -1768,6 +1785,9 @@ class Inference:
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
         video_id = state["videoId"]
+        video_id = get_value_for_keys(state, ["videoId", "video_id"])
+        if video_id is None:
+            raise ValueError("Video id is not provided")
         video_info = api.video.get_info_by_id(video_id)
         start_frame_index = state.get("startFrameIndex", 0)
         step = state.get("stride", 1)
@@ -1873,9 +1893,12 @@ class Inference:
         inference_settings = self._get_inference_settings_from_state(state)
         logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
         batch_size = self._get_batch_size_from_state(state)
-        project_id = state.get("project_id", None)
+        project_id = get_value_for_keys(state, keys=["projectId", "project_id"])
         if project_id is None:
-            project_id = state["projectId"]
+            raise ValueError("Project id is not provided")
+        project_info = api.project.get_info_by_id(project_id)
+        if project_info.type != str(ProjectType.IMAGES):
+            raise ValueError("Only images projects are supported.")
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         cache_project_on_model = state.get("cache_project_on_model", False)
@@ -2429,154 +2452,28 @@ class Inference:
         def inference_image_id(request: Request):
             state = request.state.state
             logger.debug("Received a request to '/inference_image_id'", extra={"state": state})
-            api = request.state.api
-            if api is None:
-                api = self.api
-            return self._inference_image_id(api, state)
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            return self.inference_requests_manager.run(self._inference_image_ids, api, state)[0]
 
-        @server.post("/inference_image_url")
-        def inference_image_url(request: Request):
+        @server.post("/inference_image_id_async")
+        def inference_image_id_async(request: Request):
             state = request.state.state
-            logger.debug(f"Received a request to 'inference_image_url'", extra={"state": state})
-
-            image_url = state["image_url"]
-            ext = sly_fs.get_file_ext(image_url)
-            if ext == "":
-                ext = ".jpg"
-            with requests.get(image_url, stream=True) as response:
-                response.raise_for_status()
-                response.raw.decode_content = True
-                self.cache.add_image_to_cache(image_url, response.raw, ext=ext)
-
-            return self._inference_image_url(state)
-
-        @server.post("/inference_batch_ids")
-        def inference_batch_ids(response: Response, request: Request):
-            # check batch size
-            batch_size = len(request.state.state["batch_ids"])
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
-            api = request.state.api
-            if api is None:
-                api = self.api
-            return self._inference_image_ids(api, request.state.state)
-
-        @server.post("/inference_batch_ids_async")
-        def inference_batch_ids_async(response: Response, request: Request):
             logger.debug(
-                f"'inference_batch_ids_async' request in json format:{request.state.state}"
+                "Received a request to 'inference_image_id_async'",
+                extra={"state": state},
             )
-            images_ids = request.state.state["images_ids"]
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            api = request.state.api
-            if api is None:
-                api = self.api
-            inference_request_uuid = self.generate_uuid()
-            self._on_inference_start(inference_request_uuid)
-            future = self._inference_executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
                 self._inference_image_ids,
                 api,
-                request.state.state,
-                images_ids,
-                inference_request_uuid,
-            )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
-            logger.debug(
-                "Inference has scheduled from 'inference_batch_ids_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+                state,
             )
             return {
-                "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "message": "Scheduled inference task.",
+                "inference_request_uuid": inference_request.uuid,
             }
-
-        @server.post("/inference_video_id")
-        def inference_video_id(response: Response, request: Request):
-            logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            api = request.state.api
-            if api is None:
-                api = self.api
-            return self._inference_video_id(api, request.state.state)
-
-        @server.post("/inference_video_async")
-        def inference_video_async(
-            response: Response,
-            files: List[UploadFile],
-            settings: str = Form("{}"),
-            state: str = Form("{}"),
-        ):
-            if state == "{}" or not state:
-                state = settings
-            try:
-                logger.debug(
-                    f"Received a request to 'inference_video_async'", extra={"state": state}
-                )
-                self.validate_inference_state(state)
-                state = json.loads(state)
-
-                file = files[0]
-                video_name = files[0].filename
-                video_source = files[0].file
-                file_size = file.size
-
-                inference_request = self.inference_requests_manager.create()
-                inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file_size)
-
-                video_source.read = progress_wrapper(
-                    video_source.read, inference_request.progress.iters_done_report
-                )
-
-                if self.cache.is_persistent:
-                    self.cache.add_video_to_cache(video_name, video_source)
-                    video_path = self.cache.get_video_path(video_name)
-                else:
-                    video_path = os.path.join(tempfile.gettempdir(), video_name)
-                    with open(video_path, "wb") as video_file:
-                        shutil.copyfileobj(video_source, open(video_path, "wb"), length=1024 * 1024)
-
-                inference_request, _ = self.inference_requests_manager.schedule_task(
-                    self._inference_video,
-                    path=video_path,
-                    settings=state,
-                    inference_request=inference_request,
-                )
-
-                return {
-                    "message": "Inference has started.",
-                    "inference_request_uuid": inference_request.uuid,
-                }
-            except sly_image.UnsupportedImageFormat:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
         @server.post("/inference_image")
         def inference_image(
@@ -2584,16 +2481,17 @@ class Inference:
         ):
             if state == "{}" or not state:
                 state = settings
+            logger.debug("Received a request to 'inference_image'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
             if len(files) != 1:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Only one file expected but got {len(files)}",
                 )
             try:
-                state = json.loads(settings)
                 file = files[0]
                 inference_request = self.inference_requests_manager.create()
-                inference_request.save_results = False
                 inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file.size)
 
                 img_bytes = b""
@@ -2602,36 +2500,94 @@ class Inference:
                     inference_request.done(len(buf))
 
                 image = sly_image.read_bytes(img_bytes)
-                self.inference_requests_manager.schedule_task(
-                    self._inference_image, image, state, inference_request=inference_request
+                inference_request, future = self.inference_requests_manager.schedule_task(
+                    self._inference_images, [image], state, inference_request=inference_request
                 )
+                future.result()
+                return inference_request.pop_pending_results()[0]
             except sly_image.UnsupportedImageFormat:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}",
                 )
 
+        @server.post("/inference_image_url")
+        def inference_image_url(request: Request):
+            state = request.state.state
+            logger.debug("Received a request to 'inference_image_url'", extra={"state": state})
+            self.validate_inference_state(state)
+            image_url = state["image_url"]
+            ext = sly_fs.get_file_ext(image_url)
+            if ext == "":
+                ext = ".jpg"
+            with requests.get(image_url, stream=True) as response:
+                response.raise_for_status()
+                response.raw.decode_content = True
+                image = self.cache.add_image_to_cache(image_url, response.raw, ext=ext)
+            return self.inference_requests_manager.run(self._inference_images, [image], state)[0]
+
+        @server.post("/inference_batch_ids")
+        def inference_batch_ids(request: Request):
+            state = request.state.state
+            logger.debug("Received a request to  'inference_batch_ids'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            return self.inference_requests_manager.run(self._inference_image_ids, api, state)
+
+        @server.post("/inference_batch_ids_async")
+        def inference_batch_ids_async(request: Request):
+            state = request.state.state
+            logger.debug(
+                f"Received a request to 'inference_batch_ids_async'", extra={"state": state}
+            )
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_image_ids, api, state
+            )
+            return {
+                "message": "Scheduled inference task.",
+                "inference_request_uuid": inference_request.uuid,
+            }
+
         @server.post("/inference_batch")
         def inference_batch(
-            response: Response, files: List[UploadFile], settings: str = Form("{}")
+            response: Response,
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+            state: str = Form("{}"),
         ):
+            if state == "{}" or not state:
+                state = settings
+            logger.debug("Received a request to 'inference_batch'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+            if len(files) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"At least one file is expected but got {len(files)}",
+                )
             try:
-                state = json.loads(settings)
-                if type(state) != dict:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return "Settings is not json object"
-                # check batch size
-                batch_size = len(files)
-                if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return {
-                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                        "success": False,
-                    }
-                return self._inference_images(state, files)
-            except (json.decoder.JSONDecodeError, TypeError) as e:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"Cannot decode settings: {e}"
+                inference_request = self.inference_requests_manager.create()
+                inference_request.set_stage(
+                    InferenceRequest.Stage.PREPARING, 0, sum([file.size for file in files])
+                )
+
+                names = []
+                for file in files:
+                    ext = Path(file.filename).suffix
+                    img_bytes = b""
+                    while buf := file.file.read(1024 * 1024):
+                        img_bytes += buf
+                        inference_request.done(len(buf))
+                    self.cache.add_image_to_cache(file.filename, img_bytes, ext=ext)
+                    names.append(file.filename)
+
+                inference_request, future = self.inference_requests_manager.schedule_task(
+                    self._inference_images, names, state, inference_request=inference_request
+                )
+                future.result()
+                return inference_request.pop_pending_results()
             except sly_image.UnsupportedImageFormat:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
@@ -2640,166 +2596,137 @@ class Inference:
         def inference_batch_async(
             response: Response, files: List[UploadFile], settings: str = Form("{}")
         ):
+            if state == "{}" or not state:
+                state = settings
+            logger.debug("Received a request to 'inference_batch'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+            if len(files) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"At least one file is expected but got {len(files)}",
+                )
             try:
-                state = json.loads(settings)
-                logger.debug(f"'inference_batch_async' request in json format:{state}")
-                if type(state) != dict:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return "Settings is not json object"
-                batch_size = state.get("batch_size", None)
-                if batch_size is None:
-                    batch_size = self.get_batch_size()
-                if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return {
-                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                        "success": False,
-                    }
-                inference_request_uuid = uuid.uuid5(
-                    namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-                ).hex
-                files = [file.file.read() for file in files]
-                self._on_inference_start(inference_request_uuid)
-                future = self._inference_executor.submit(
-                    self._handle_error_in_async,
-                    inference_request_uuid,
-                    self._inference_batch_async,
-                    state,
-                    files,
-                    inference_request_uuid,
+                inference_request = self.inference_requests_manager.create()
+                inference_request.set_stage(
+                    InferenceRequest.Stage.PREPARING, 0, sum([file.size for file in files])
                 )
-                end_callback = partial(
-                    self._on_inference_end, inference_request_uuid=inference_request_uuid
-                )
-                future.add_done_callback(end_callback)
-                logger.debug(
-                    "Inference has scheduled from 'inference_batch_async' endpoint",
-                    extra={"inference_request_uuid": inference_request_uuid},
+
+                names = []
+                for file in files:
+                    ext = Path(file.filename).suffix
+                    img_bytes = b""
+                    while buf := file.file.read(1024 * 1024):
+                        img_bytes += buf
+                        inference_request.done(len(buf))
+                    self.cache.add_image_to_cache(file.filename, img_bytes, ext=ext)
+                    names.append(file.filename)
+
+                inference_request, _ = self.inference_requests_manager.schedule_task(
+                    self._inference_images, names, state, inference_request=inference_request
                 )
                 return {
-                    "message": "Inference has started.",
-                    "inference_request_uuid": inference_request_uuid,
+                    "message": "Scheduled inference task.",
+                    "inference_request_uuid": inference_request.uuid,
                 }
-            except (json.decoder.JSONDecodeError, TypeError) as e:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"Cannot decode settings: {e}"
             except sly_image.UnsupportedImageFormat:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
 
-        @server.post("/inference_image_id_async")
-        def inference_image_id_async(request: Request):
-            logger.debug(
-                "Received a request to 'inference_image_id_async'",
-                extra={"state": request.state.state},
+        @server.post("/inference_video_id")
+        def inference_video_id(request: Request):
+            state = request.state.state
+            logger.debug(f"Received a request to 'inference_video_id'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, future = self.inference_requests_manager.schedule_task(
+                self._inference_video_id, api, state
             )
-            inference_request_uuid = self.generate_uuid()
-            api = request.state.api
-            if api is None:
-                api = self.api
+            future.result()
+            results = {"ann": inference_request.pop_pending_results()}
+            final_result = inference_request.final_result
+            if final_result is not None:
+                results.update(final_result)
+            return results
 
-            self.schedule_task(
-                self._inference_image_id,
-                api,
-                request.state.state,
-                inference_request_uuid=inference_request_uuid,
+        @server.post("/inference_video_async")
+        def inference_video_async(
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+            state: str = Form("{}"),
+        ):
+            if state == "{}" or not state:
+                state = settings
+            logger.debug("Received a request to 'inference_video_async'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+
+            file = files[0]
+            video_name = files[0].filename
+            video_source = files[0].file
+            file_size = file.size
+
+            inference_request = self.inference_requests_manager.create()
+            inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file_size)
+
+            video_source.read = progress_wrapper(
+                video_source.read, inference_request.progress.iters_done_report
             )
-            logger.debug(
-                "Inference has scheduled from 'inference_image_id_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+
+            if self.cache.is_persistent:
+                self.cache.add_video_to_cache(video_name, video_source)
+                video_path = self.cache.get_video_path(video_name)
+            else:
+                video_path = os.path.join(tempfile.gettempdir(), video_name)
+                with open(video_path, "wb") as video_file:
+                    shutil.copyfileobj(video_source, open(video_path, "wb"), length=1024 * 1024)
+
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_video,
+                path=video_path,
+                settings=state,
+                inference_request=inference_request,
             )
+
             return {
-                "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "message": "Scheduled inference task.",
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(response: Response, request: Request):
-            logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = self.generate_uuid()
-            api = request.state.api
-            if api is None:
-                api = self.api
-            self._on_inference_start(inference_request_uuid)
-            future = self._inference_executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._inference_video_id,
-                api,
-                request.state.state,
-                inference_request_uuid,
-            )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
-            logger.debug(
-                "Inference has scheduled from 'inference_video_id_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+            state = request.state.state
+            logger.debug("Received a request to 'inference_video_id_async'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_video_id, api, state
             )
             return {
                 "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
+            state = request.state.state
             logger.debug(
-                f"'inference_project_id_async' request in json format:{request.state.state}"
+                "Received a request to 'inference_project_id_async'", extra={"state": state}
             )
-            api = request.state.api
-            if api is None:
-                api = self.api
-            project_id = request.state.state["projectId"]
-            project_info = api.project.get_info_by_id(project_id)
-            if project_info.type != str(ProjectType.IMAGES):
-                raise ValueError("Only images projects are supported.")
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = self.generate_uuid()
-            self._on_inference_start(inference_request_uuid)
-            future = self._inference_executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._inference_project_id,
-                api,
-                request.state.state,
-                project_info,
-                inference_request_uuid,
-            )
-            logger.debug(
-                "Inference has scheduled from 'inference_project_id_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_project_id, api, state
             )
             return {
                 "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post("/run_speedtest")
         def run_speedtest(response: Response, request: Request):
             logger.debug(f"'run_speedtest' request in json format:{request.state.state}")
-            api = request.state.api
-            if api is None:
-                api = self.api
+            api = self.api_from_request(request)
             project_id = request.state.state["projectId"]
             project_info = api.project.get_info_by_id(project_id)
             if project_info.type != str(ProjectType.IMAGES):
@@ -4244,3 +4171,10 @@ def _format_output(
         for pred in predictions
     ]
     return output
+
+
+def get_value_for_keys(data: dict, keys: List):
+    for key in keys:
+        if key in data:
+            return data[key]
+    return None
