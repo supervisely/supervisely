@@ -168,7 +168,7 @@ class InferenceRequest:
         if self._exception is None:
             return None
         return {
-            "type": str(type(self._exception)),
+            "type": type(self._exception).__name__,
             "message": str(self._exception),
             "traceback": str(traceback.format_exc()),
         }

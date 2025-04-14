@@ -666,6 +666,10 @@ class SessionJSON:
         while not has_results and not timeout_exceeded:
             resp = self._pop_pending_results()
             pending_results = resp["pending_results"]
+            exception_json = resp["exception"]
+            if exception_json:
+                exception_str = f"{exception_json["type"]}: {exception_json["message"]}"
+                raise RuntimeError(f"Inference Error: {exception_str}")
             has_results = bool(pending_results)
             if resp["is_inferring"] is False:
                 break
