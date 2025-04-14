@@ -2776,13 +2776,16 @@ class Inference:
         def get_inference_progress(response: Response, request: Request):
             state = request.state.state
             logger.debug("Received a request to '/get_inference_progress'", extra={"state": state})
-            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            inference_request_uuid = state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
+            logger.debug("getting inference request")
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
+            logger.debug("inference request found")
             log_extra = _get_log_extra_for_inference_request(inference_request)
+            logger.debug("log_extra", extra={"log_extra": log_extra})
             data = {**inference_request.to_json(), **log_extra}
             logger.debug(
                 f"Sending inference progress with uuid:",
@@ -2846,7 +2849,7 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            del self._inference_requests[inference_request_uuid]
+            self.inference_requests_manager.remove[inference_request_uuid]
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
 
