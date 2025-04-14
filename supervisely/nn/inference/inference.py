@@ -2773,7 +2773,7 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self.get_inference_request(inference_request_uuid)
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(inference_request)
             data = {**inference_request.to_json(), **log_extra}
             logger.debug(
@@ -2789,7 +2789,7 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self.get_inference_request(inference_request_uuid)
+            self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(inference_request)
             data = {
                 **inference_request.to_json(),
@@ -2807,7 +2807,7 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self.get_inference_request(inference_request_uuid)
+            self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(inference_request)
             logger.debug(
                 f"Sending inference result with uuid:",
@@ -2825,7 +2825,7 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            inference_request = self.get_inference_request(inference_request_uuid)
+            self.inference_requests_manager.get(inference_request_uuid)
             inference_request.stop()
             return {"message": "Inference will be stopped.", "success": True}
 

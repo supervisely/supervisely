@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as env
+from supervisely._utils import get_valid_kwargs
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.sly_logger import logger
 
@@ -276,13 +277,15 @@ class DeployApi:
             else:
                 module_id = self.find_serving_app_by_framework(framework)["id"]
         if module_id is None:
-            raise ValueError(f"Serving app for framework '{framework}' not found. Make sure that you used correct framework name.")
+            raise ValueError(
+                f"Serving app for framework '{framework}' not found. Make sure that you used correct framework name."
+            )
 
         runtime = get_runtime(runtime)
         if agent_id is None:
             agent_id = self._find_agent()
 
-        task_info = self._run_serve_app(agent_id, module_id, **kwargs)
+        task_info = self._run_serve_app(agent_id, module_id, workspace_id=workspace_id, **kwargs)
         self.load_pretrained_model(
             task_info["id"], model_name=model_name, device=device, runtime=runtime
         )
@@ -542,6 +545,11 @@ class DeployApi:
         # @TODO: Run app in team?
         if workspace_id is None:
             workspace_id = env.workspace_id()
+        kwargs = get_valid_kwargs(
+            kwargs=kwargs,
+            func=self._api.task.start,
+            exclude=["self", "module_id", "workspace_id", "agent_id"],
+        )
         task_info = self._api.task.start(
             agent_id=agent_id, module_id=module_id, workspace_id=workspace_id, **kwargs
         )
@@ -749,7 +757,7 @@ class DeployApi:
     def _get_artifacts_dir_and_checkpoint_name(self, model: str) -> Tuple[str, str]:
         if not model.startswith("/"):
             raise ValueError(f"Path must start with '/'")
-        
+
         if model.startswith("/experiments"):
             try:
                 artifacts_dir, checkpoint_name = model.split("/checkpoints/")
@@ -758,7 +766,7 @@ class DeployApi:
                 raise ValueError(
                     "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
                 )
-        
+
         framework_cls = self._get_framework_by_path(model)
         if framework_cls is None:
             raise ValueError(f"Unknown path: '{model}'")
@@ -772,7 +780,7 @@ class DeployApi:
         else:
             artifacts_dir = checkpoints_dir
         return artifacts_dir, checkpoint_name
-    
+
     def _get_framework_by_path(self, path: str):
         from supervisely.nn.artifacts import (
             RITM,
