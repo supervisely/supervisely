@@ -2620,13 +2620,16 @@ class Inference:
 
                 names = []
                 for file in files:
-                    ext = Path(file.filename).suffix
+                    name = file.filename
+                    if name is None or name == "":
+                        name = rand_str(10)
+                    ext = Path(name).suffix
                     img_bytes = b""
                     while buf := file.file.read(64 * 1024 * 1024):
                         img_bytes += buf
                         inference_request.done(len(buf))
-                    self.cache.add_image_to_cache(file.filename, img_bytes, ext=ext)
-                    names.append(file.filename)
+                    self.cache.add_image_to_cache(name, img_bytes, ext=ext)
+                    names.append(name)
 
                 inference_request, _ = self.inference_requests_manager.schedule_task(
                     self._inference_images, names, state, inference_request=inference_request
