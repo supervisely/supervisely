@@ -37,6 +37,8 @@ class ModelAPI:
 
         if self.task_id is not None:
             task_info = self.api.task.get_info_by_id(self.task_id)
+            if task_info is None:
+                raise ValueError(f"Task with id {self.task_id} not found.")
             self.url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
 
     # region Main
