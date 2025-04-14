@@ -2478,6 +2478,7 @@ class Inference:
         ):
             if state == "{}" or not state:
                 state = settings
+            state = str(state)
             logger.debug("Received a request to 'inference_image'", extra={"state": state})
             self.validate_inference_state(state)
             state = json.loads(state)
@@ -2556,6 +2557,7 @@ class Inference:
         ):
             if state == "{}" or not state:
                 state = settings
+            state = str(state)
             logger.debug("Received a request to 'inference_batch'", extra={"state": state})
             self.validate_inference_state(state)
             state = json.loads(state)
@@ -2661,6 +2663,7 @@ class Inference:
         ):
             if state == "{}" or not state:
                 state = settings
+            state = str(state)
             logger.debug("Received a request to 'inference_video_async'", extra={"state": state})
             self.validate_inference_state(state)
             state = json.loads(state)
