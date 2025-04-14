@@ -2784,8 +2784,9 @@ class Inference:
             logger.debug("getting inference request")
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
             logger.debug("inference request found")
-            log_extra = _get_log_extra_for_inference_request(inference_request)
-            logger.debug("log_extra", extra={"log_extra": log_extra})
+            # log_extra = _get_log_extra_for_inference_request(inference_request)
+            # logger.debug("log_extra", extra={"log_extra": log_extra})
+            log_extra = {}
             data = {**inference_request.to_json(), **log_extra}
             logger.debug(
                 f"Sending inference progress with uuid:",
