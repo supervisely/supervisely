@@ -1568,13 +1568,10 @@ class Inference:
         elif end_frame_index is not None:
             n_frames = end_frame_index - start_frame_index
         elif duration is not None:
-            if fps is None:
-                fps = frames_reader.fps()
+            fps = frames_reader.fps()
             n_frames = int(duration * fps)
         else:
-            if video_frames_count is None:
-                video_frames_count = frames_reader.frames_count()
-            n_frames = video_frames_count
+            n_frames = frames_reader.frames_count()
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
