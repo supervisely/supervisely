@@ -2601,6 +2601,7 @@ class Inference:
         ):
             if state == "{}" or not state:
                 state = settings
+            state = str(state)
             logger.debug("Received a request to 'inference_batch'", extra={"state": state})
             self.validate_inference_state(state)
             state = json.loads(state)
