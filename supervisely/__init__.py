@@ -1,11 +1,12 @@
 # coding: utf-8
 # isort: skip_file
 import pkg_resources  # isort: skip
+from pkg_resources import DistributionNotFound
 import os
 
 try:
     __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
+except (TypeError, DistributionNotFound):
     __version__ = "development"
 
 from supervisely.sly_logger import (

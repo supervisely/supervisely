@@ -137,32 +137,25 @@ class AnnotationMatcher:
         self._volumes = None
 
     def get_volumes(self, api: Api):
-        if self._ds_id is None:
-            raise ValueError("Dataset ID is not set.")
         dataset_info = api.dataset.get_info_by_id(self._ds_id)
+        datasets = {dataset_info.name: dataset_info}
         project_id = dataset_info.project_id
-        if len(self._ann_paths.keys()) == 1:
+        if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
             self._project_wide = False
-            self._volumes = {get_file_name(info.name): info for info in api.volume.get_list(self._ds_id)}
-            if len(self._volumes) == 0:
-                raise RuntimeError(f"No volumes found in the dataset (id: {self._ds_id}).")
-            return
+        else:
+            datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
+            self._project_wide = True
 
-        datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
         volumes = defaultdict(lambda: {})
+        ds_filter = lambda ds_name: ds_name in self._ann_paths if self._project_wide else True
         for ds_name, ds_info in datasets.items():
-            if ds_name in self._ann_paths:
+            if ds_filter(ds_name):
                 volumes[ds_name].update(
                     {info.name: info for info in api.volume.get_list(ds_info.id)}
                 )
-                self._project_wide = True
 
         if len(volumes) == 0:
-            err_msg = None
-            if not self._project_wide:
-                err_msg = f"Failed to retrieve volumes from the dataset {self._ds_id}."
-            else:
-                err_msg = "Failed to retrieve volumes from the project. Perhaps the input data structure is incorrect."
+            err_msg = "Failed to retrieve volumes from the project. Perhaps the input data structure is incorrect."
             raise RuntimeError(err_msg)
 
         self._volumes = volumes
@@ -184,7 +177,7 @@ class AnnotationMatcher:
             return re.match(pattern, volume_name, re.IGNORECASE) is not None
 
         def find_best_volume_match(prefix, available_volumes):
-            candidates = {name: vol for name, vol in available_volumes.items() if is_volume_match(name, prefix)}
+            candidates = {name: volume for name, volume in available_volumes.items() if is_volume_match(name, prefix)}
             if not candidates:
                 return None, None
 
@@ -228,15 +221,11 @@ class AnnotationMatcher:
             if matched_name.lower() != ann_supposed_match:
                 logger.debug(f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'.")
 
-        # Perform matching for project-wide or dataset-wide scenarios.
-        if self._project_wide:
-            for dataset_name, volumes in self._volumes.items():
-                for ann_file in self._ann_paths[dataset_name]:
-                    process_annotation_file(ann_file, dataset_name, volumes)
-        else:
-            dataset_name = list(self._ann_paths.keys())[0]
-            for ann_file in self._ann_paths[dataset_name]:
-                process_annotation_file(ann_file, dataset_name, self._volumes)
+        # Perform matching
+        for dataset_name, volumes in self._volumes.items():
+            ann_files = self._ann_paths.get(dataset_name, []) if self._project_wide else list(self._ann_paths.values())[0]
+            for ann_file in ann_files:
+                process_annotation_file(ann_file, dataset_name, volumes)
 
         # Mark volumes having only one matching item as semantic and validate shape.
         volume_to_items = defaultdict(list)
@@ -251,7 +240,7 @@ class AnnotationMatcher:
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
             if item.shape != volume_shape:
-                logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item.")
+                logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}")
                 # items_to_remove.append(item)
         for item in items_to_remove:
             del item_to_volume[item]

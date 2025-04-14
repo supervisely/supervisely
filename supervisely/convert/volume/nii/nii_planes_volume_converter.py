@@ -254,14 +254,15 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         renamed_tags: dict = None,
     ) -> VolumeAnnotation:
         """Convert to Supervisely format."""
+        import re
         try:
             objs = []
             spatial_figures = []
             ann_path = item.ann_data
-            ann_filename = get_file_name(ann_path)
-            if ".nii" in ann_filename:
-                ann_filename = ann_filename.split(".")[0]
-            ann_idx = int(ann_filename.split("_")[2])
+            ann_idx = 0
+            match = re.search(r"_(\d+)(?:\.[^.]+)+$", ann_path)
+            if match:
+                ann_idx = int(match.group(1))
             for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
                 class_id = pixel_id if item.is_semantic else ann_idx
                 class_name = f"Segment_{class_id}"
