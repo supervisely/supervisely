@@ -142,7 +142,7 @@ class PersistentImageTTLCache(TTLCache):
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
 
-    def save_image(self, key, image: Union[np.ndarray, BinaryIO], ext=".png") -> None:
+    def save_image(self, key, image: Union[np.ndarray, BinaryIO, bytes], ext=".png") -> None:
         if not self._base_dir.exists():
             self._base_dir.mkdir()
 
@@ -158,6 +158,9 @@ class PersistentImageTTLCache(TTLCache):
             sly.logger.debug(f"Rewrite image {str(filepath)}")
         if isinstance(image, np.ndarray):
             sly.image.write(str(filepath), image)
+        elif isinstance(image, bytes):
+            with open(filepath, "wb") as f:
+                f.write(image)
         else:
             with open(filepath, "wb") as f:
                 shutil.copyfileobj(image, f)
@@ -457,7 +460,7 @@ class InferenceImageCache:
                     silent_remove(tmp_source)
 
     def add_image_to_cache(
-        self, key: str, image: Union[np.ndarray, BinaryIO], ext=None
+        self, key: str, image: Union[np.ndarray, BinaryIO, bytes], ext=None
     ) -> np.ndarray:
         """
         Adds image to cache.
