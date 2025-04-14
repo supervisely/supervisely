@@ -174,12 +174,32 @@ class InferenceRequest:
         }
 
     def to_json(self):
+        d = {}
+        d["uuid"] = self._uuid
+        print("uuid:", d["uuid"])
+        d["stage"] = str(self._stage)
+        print("stage", d["stage"])
+        d["progress"] = self.progress_json()
+        print("progress", d["progress"])
+        d["pending_results"] = self.pending_num()
+        print("pending_results", d["pending_results"])
+        d["final_result"] = self._final_result
+        print("final_result", d["final_result"])
+        d["exception"] = self.exception_json()
+        print("exception", d["exception"])
+        d["stopped"] = self.stopped
+        print("stopped", d["stopped"])
+        d["created_at"] = self._created_at
+        print("created_at", d["created_at"])
+        d["updated_at"] = self._updated_at
+        print("updated_at", d["updated_at"])
+        return d
         return {
             "uuid": self._uuid,
             "stage": str(self._stage),
             "progress": self.progress_json(),
             "pending_results": self.pending_num(),
-            "final_result": self.final_result,
+            "final_result": self._final_result,
             "exception": self.exception_json(),
             "stopped": self.stopped,
             "created_at": self._created_at,
