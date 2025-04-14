@@ -319,7 +319,10 @@ class SessionJSON:
                 logger.error(f"An error has occurred while stopping the previous inference. {exc}")
         endpoint = "inference_batch_async"
         url = f"{self._base_url}/{endpoint}"
-        files = [("files", open(f, "rb")) for f in image_paths]
+        files = [
+            ("files", (os.path.basename(f), open(f, "rb"), "application/octet-stream"))
+            for f in image_paths
+        ]
         settings_json = {"settings": self.inference_settings, "batch_size": batch_size}
         uploads = files + [("settings", (None, json.dumps(settings_json), "text/plain"))]
         resp = self._post(url, files=uploads).json()
