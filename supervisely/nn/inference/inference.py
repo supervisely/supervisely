@@ -2690,7 +2690,7 @@ class Inference:
             inference_request, _ = self.inference_requests_manager.schedule_task(
                 self._inference_video,
                 path=video_path,
-                settings=state,
+                state=state,
                 inference_request=inference_request,
             )
 
