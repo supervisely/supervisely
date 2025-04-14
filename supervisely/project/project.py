@@ -579,21 +579,24 @@ class Dataset(KeyObject):
         Consistency checks. Every item must have an annotation, and the correspondence must be one to one.
         If not - it generate exception error.
         """
-        if not dir_exists(self.item_dir):
+        blob_offset_paths = list_files(
+            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
+        )
+        has_blob_offsets = len(blob_offset_paths) > 0
+
+        if not dir_exists(self.item_dir) and not has_blob_offsets:
             raise FileNotFoundError("Item directory not found: {!r}".format(self.item_dir))
         if not dir_exists(self.ann_dir):
             raise FileNotFoundError("Annotation directory not found: {!r}".format(self.ann_dir))
 
         raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
-
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
-        img_names = [os.path.basename(path) for path in img_paths]
 
-        blob_offset_paths = list_files(
-            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
-        )
-        has_blob_offsets = len(blob_offset_paths) > 0
+        if dir_exists(self.item_dir):
+            img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
+            img_names = [os.path.basename(path) for path in img_paths]
+        else:
+            img_names = []
 
         # If we have blob offset files, add the image names from those
         if has_blob_offsets:
@@ -2060,6 +2063,84 @@ class Dataset(KeyObject):
             log_progress=log_progress,
             progress_cb=progress_cb,
         )
+
+    def get_blob_img_bytes(self, image_name: str) -> bytes:
+        """
+        Get image bytes from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Bytes of the image.
+        :rtype: :class:`bytes`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_bytes = dataset.get_blob_img_bytes(image_name)
+        """
+
+        if self.project_dir is None:
+            raise RuntimeError("Project directory is not set. Cannot get blob image bytes.")
+
+        blob_image_info = None
+
+        for offset in self.blob_offsets:
+            for batch in BlobImageInfo.load_from_pickle_generator(offset):
+                for file in batch:
+                    if file.name == image_name:
+                        blob_image_info = file
+                        blob_file_name = removesuffix(Path(offset).name, OFFSETS_PKL_SUFFIX)
+                        break
+        if blob_image_info is None:
+            logger.debug(
+                f"Image '{image_name}' not found in blob offsets. "
+                f"Make sure that the image is stored in the blob file."
+            )
+            return None
+
+        blob_file_path = os.path.join(self.project_dir, self.blob_dir_name, blob_file_name + ".tar")
+        if file_exists(blob_file_path):
+            with open(blob_file_path, "rb") as f:
+                f.seek(blob_image_info.offset_start)
+                img_bytes = f.read(blob_image_info.offset_end - blob_image_info.offset_start)
+        else:
+            logger.debug(
+                f"Blob file '{blob_file_path}' not found. "
+                f"Make sure that the blob file exists in the specified directory."
+            )
+            img_bytes = None
+        return img_bytes
+
+    def get_blob_img_np(self, image_name: str) -> np.ndarray:
+        """
+        Get image as numpy array from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Numpy array of the image.
+        :rtype: :class:`numpy.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_np = dataset.get_blob_img_np(image_name)
+        """
+        img_bytes = self.get_blob_img_bytes(image_name)
+        if img_bytes is None:
+            return None
+        return sly_image.read_bytes(img_bytes)
 
 
 class Project:

@@ -124,7 +124,9 @@ API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    AppApi
+    AppApi    
+    WorkflowSettings
+    WorkflowMeta
 
 .. currentmodule:: supervisely.api.dataset_api
 
@@ -172,6 +174,7 @@ API
 
     ImageApi
     ImageInfo
+    BlobImageInfo
 
 .. currentmodule:: supervisely.api.import_storage_api
 
@@ -912,6 +915,16 @@ Project
 
     VolumeProject
     VolumeDataset
+
+.. currentmodule:: supervisely.project.data_version
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VersionInfo
+    DataVersion
 
 Task
 ----
