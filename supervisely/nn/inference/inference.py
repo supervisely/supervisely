@@ -1705,8 +1705,11 @@ class Inference:
             if src_dataset_id in new_dataset_id:
                 return new_dataset_id[src_dataset_id]
             dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+            parent_id = None
+            if dataset_info.parent_id is not None:
+                parent_id = new_dataset_id.get(dataset_info.parent_id, None)
             output_dataset_id = api.dataset.create(
-                output_project_id, dataset_info.name, change_name_if_conflict=True
+                output_project_id, dataset_info.name, change_name_if_conflict=True, parent_id=parent_id
             ).id
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
