@@ -763,8 +763,8 @@ class SessionJSON:
             "state": {"settings": self.inference_settings},
             "context": {},
         }
-        if self.api is not None:
-            body["api_token"] = (self.api.token,)
+        if self.api_token is not None:
+            body["api_token"] = self.api_token
         return body
 
     def _get_default_json_body_for_async_inference(self) -> Dict[str, Any]:
