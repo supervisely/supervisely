@@ -144,8 +144,8 @@ class MetricProvider:
         }
 
     def get_classwise_error_data(self):
-        self.eval_data.drop(["mean"], inplace=True)
         bar_data = self.eval_data.copy()
+        bar_data.drop(["mean"], inplace=True)
         bar_data = bar_data[["IoU", "E_extent_oU", "E_boundary_oU", "E_segment_oU"]]
         bar_data.sort_values(by="IoU", ascending=False, inplace=True)
         labels = list(bar_data.index)
