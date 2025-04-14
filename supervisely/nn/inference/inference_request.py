@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+import traceback
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial
@@ -170,7 +171,7 @@ class InferenceRequest:
         return {
             "type": str(type(self._exception)),
             "message": str(self._exception),
-            "traceback": str(self._exception.__traceback__),
+            "traceback": str(traceback.format_exc()),
         }
 
     def to_json(self):
