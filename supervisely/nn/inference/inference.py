@@ -2850,7 +2850,7 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            self.inference_requests_manager.remove[inference_request_uuid]
+            self.inference_requests_manager.remove(inference_request_uuid)
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
 
