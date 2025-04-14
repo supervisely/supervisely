@@ -163,7 +163,7 @@ def available_after_shutdown(app: FastAPI):
             if not isinstance(template_response, _TemplateResponse):
                 return template_response
             try:
-                if sly.utils.is_production():
+                if sly.utils.is_production() and not sly.env.disable_offline_session():
                     _pending_offline_session = (app, template_response)
                     if (
                         _offline_session_uploader is None
