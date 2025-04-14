@@ -95,8 +95,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     prefix = full_name.split("_")[0]
                     if prefix not in helper.PlanePrefix.values():
                         continue
-                    name = full_name.split("_")[1]
-                    if name in helper.LABEL_NAME or name[:-1] in helper.LABEL_NAME:
+                    if any(label_name in full_name for label_name in helper.LABEL_NAME):
                         ann_dict[prefix].append(path)
                     else:
                         volumes_dict[prefix].append(path)

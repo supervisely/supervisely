@@ -173,14 +173,14 @@ class AnnotationMatcher:
 
         def extract_prefix(ann_file):
             import re
-            pattern = r'^(?P<prefix>cor|sag|axl).*?(?:' + "|".join(LABEL_NAME) + r').*\.nii(?:\.gz)?$'
+            pattern = r'^(?P<prefix>cor|sag|axl).*?(?:' + "|".join(LABEL_NAME) + r')'
             m = re.match(pattern, ann_file, re.IGNORECASE)
             if m:
                 return m.group("prefix").lower()
             return None
 
         def is_volume_match(volume_name, prefix):
-            pattern = r'^' + re.escape(prefix) + r'.*?anatomic.*\.nii(?:\.gz)?$'
+            pattern = r'^' + re.escape(prefix) + r'.*?anatomic'
             return re.match(pattern, volume_name, re.IGNORECASE) is not None
 
         def find_best_volume_match(prefix, available_volumes):
@@ -189,9 +189,10 @@ class AnnotationMatcher:
                 return None, None
 
             # Prefer an exact candidate
-            exact_candidate = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_file, flags=re.IGNORECASE)
+            ann_name_no_ext = ann_file.split(".")[0]
+            exact_candidate = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_name_no_ext, flags=re.IGNORECASE)
             for name in candidates:
-                if re.fullmatch(re.escape(exact_candidate) + r'(\.nrrd)', name, re.IGNORECASE):
+                if re.fullmatch(re.escape(exact_candidate), name, re.IGNORECASE):
                     return name, candidates[name]
 
             # Otherwise, choose the candidate with the shortest name
@@ -222,7 +223,9 @@ class AnnotationMatcher:
                 return
 
             item_to_volume[item] = matched_volume
-            if matched_name.lower() != f"{prefix}_anatomic".lower():
+            ann_file = ann_file.split(".")[0]
+            ann_supposed_match = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_file, flags=re.IGNORECASE)
+            if matched_name.lower() != ann_supposed_match:
                 logger.debug(f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'.")
 
         # Perform matching for project-wide or dataset-wide scenarios.
@@ -249,7 +252,7 @@ class AnnotationMatcher:
             volume_shape = tuple(volume.file_meta["sizes"])
             if item.shape != volume_shape:
                 logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}. Skipping item.")
-                items_to_remove.append(item)
+                # items_to_remove.append(item)
         for item in items_to_remove:
             del item_to_volume[item]
 
