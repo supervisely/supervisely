@@ -2495,7 +2495,7 @@ class Inference:
                 inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file.size)
 
                 img_bytes = b""
-                while buf := file.read(1024 * 1024):
+                while buf := file.read(64 * 1024 * 1024):
                     img_bytes += buf
                     inference_request.done(len(buf))
 
@@ -2577,7 +2577,7 @@ class Inference:
                 for file in files:
                     ext = Path(file.filename).suffix
                     img_bytes = b""
-                    while buf := file.file.read(1024 * 1024):
+                    while buf := file.file.read(64 * 1024 * 1024):
                         img_bytes += buf
                         inference_request.done(len(buf))
                     self.cache.add_image_to_cache(file.filename, img_bytes, ext=ext)
@@ -2594,7 +2594,10 @@ class Inference:
 
         @server.post("/inference_batch_async")
         def inference_batch_async(
-            response: Response, files: List[UploadFile], settings: str = Form("{}")
+            response: Response,
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+            state: str = Form("{}"),
         ):
             if state == "{}" or not state:
                 state = settings
@@ -2616,7 +2619,7 @@ class Inference:
                 for file in files:
                     ext = Path(file.filename).suffix
                     img_bytes = b""
-                    while buf := file.file.read(1024 * 1024):
+                    while buf := file.file.read(64 * 1024 * 1024):
                         img_bytes += buf
                         inference_request.done(len(buf))
                     self.cache.add_image_to_cache(file.filename, img_bytes, ext=ext)
@@ -2679,7 +2682,9 @@ class Inference:
             else:
                 video_path = os.path.join(tempfile.gettempdir(), video_name)
                 with open(video_path, "wb") as video_file:
-                    shutil.copyfileobj(video_source, open(video_path, "wb"), length=1024 * 1024)
+                    shutil.copyfileobj(
+                        video_source, open(video_path, "wb"), length=(64 * 1024 * 1024)
+                    )
 
             inference_request, _ = self.inference_requests_manager.schedule_task(
                 self._inference_video,

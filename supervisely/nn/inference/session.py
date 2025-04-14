@@ -91,6 +91,10 @@ class SessionJSON:
             self._base_url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
         else:
             self._base_url = session_url
+        if self.api is not None:
+            self.api_token = self.api.token
+        else:
+            self.api_token = sly.env.api_token()
         self.inference_settings = {}
         self._session_info = None
         self._default_inference_settings = None
@@ -692,9 +696,16 @@ class SessionJSON:
             retries = min(self.api.retry_count, retries)
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
+        if "timeout" not in kwargs:
+            kwargs["timeout"] = 60
+        if kwargs.get("headers") is None:
+            kwargs["headers"] = {}
+        if "x-api-key" not in kwargs["headers"]:
+            kwargs["headers"]["x-api-key"] = self.api_token
         for retry_idx in range(retries):
             response = None
             try:
+                logger.trace(f"POST {url}")
                 response = requests.post(*args, **kwargs)
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     sly.Api._raise_for_status(response)
