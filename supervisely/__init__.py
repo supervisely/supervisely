@@ -54,6 +54,7 @@ from supervisely.task.progress import (
 
 
 import supervisely.project as project
+import supervisely.api.constants as api_constants
 from supervisely.project import read_project, get_project_class
 from supervisely.project.download import download, download_async, download_fast
 from supervisely.project.upload import upload

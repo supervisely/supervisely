@@ -1134,3 +1134,16 @@ Volume Annotation
     :template: autosummary/custom-class-template.rst
 
       Slice
+
+Utility Functions
+-----------------
+**A collection of useful utility functions for common tasks in the Supervisely SDK**
+
+.. currentmodule:: supervisely.project.download
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-function-template.rst
+
+    download_fast
