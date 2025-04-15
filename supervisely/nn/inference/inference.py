@@ -1531,6 +1531,7 @@ class Inference:
                 self.cache.get_image_path(image) in batch if isinstance(image, str) else image
                 for image in batch
             ]
+            print(batch)
             anns, slides_data = self._inference_auto(
                 batch,
                 settings=settings,
