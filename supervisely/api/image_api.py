@@ -55,6 +55,7 @@ from supervisely._utils import (
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
+from supervisely.api.constants import DOWNLOAD_BATCH_SIZE
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
@@ -368,7 +369,7 @@ class ImageInfo(NamedTuple):
     #: :class:`int`: ID of the blob file in Supervisely storage related to the image.
     related_data_id: Optional[int] = None
 
-    #: :class:`str`: Unique ID of the image that links it to the corresponding blob file in Supervisely storage 
+    #: :class:`str`: Unique ID of the image that links it to the corresponding blob file in Supervisely storage
     #: uses for downloading source blob file.
     download_id: Optional[str] = None
 
@@ -1015,7 +1016,12 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         Get image id and it content from given dataset and list of images ids.
         """
-        for batch_ids in batched(ids):
+        if DOWNLOAD_BATCH_SIZE is not None and isinstance(DOWNLOAD_BATCH_SIZE, int):
+            batches = batched(ids, DOWNLOAD_BATCH_SIZE)
+            logger.debug(f"Batch size for func 'ImageApi._download_batch' changed to: {DOWNLOAD_BATCH_SIZE}")
+        else:
+            batches = batched(ids)
+        for batch_ids in batches:
             response = self._api.post(
                 "images.bulk.download",
                 {ApiField.DATASET_ID: dataset_id, ApiField.IMAGE_IDS: batch_ids},
@@ -2352,7 +2358,9 @@ class ImageApi(RemoveableBulkModuleApi):
 
         for batch in blob_image_infos_generator:
             names = [item.name for item in batch]
-            metas_batch = [metas[name] for name in names] if metas is not None else [{}] * len(names)
+            metas_batch = (
+                [metas[name] for name in names] if metas is not None else [{}] * len(names)
+            )
             items = [
                 {ApiField.TEAM_FILE_ID: team_file_id, ApiField.SOURCE_BLOB: item.offsets_dict}
                 for item in batch
