@@ -242,6 +242,8 @@ class GlobalProgress:
                 return
             self.progress.current = max(0, self.progress.current - current)
             self.progress.total = max(1, self.progress.total - total)
+        if self.progress.current >= self.progress.total:
+            self.set_ready()
 
 
 class InferenceRequestsManager:
