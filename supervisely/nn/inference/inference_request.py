@@ -123,6 +123,10 @@ class InferenceRequest:
             if self._stage == InferenceRequest.Stage.INFERENCE:
                 self.global_progress_total = total
                 self.global_progress_current = current
+                self.manager.global_progress.inference_started(
+                    current=self.global_progress_current,
+                    total=self.global_progress_total,
+                )
 
     def done(self, n=1):
         with self._lock:
@@ -209,18 +213,6 @@ class GlobalProgress:
                 self.progress.message = message
                 self.progress.report_progress()
 
-    def increase_total(self, n=1):
-        with self._lock:
-            if (
-                self.progress.message != "Inference in progress..."
-                and self.progress.current == 0
-                and self.progress.total == 1
-            ):
-                self.progress.total = n
-            else:
-                self.progress.total += n
-        self.set_message("Inference in progress...")
-
     def set_ready(self):
         with self._lock:
             self.progress.message = "Ready"
@@ -233,6 +225,16 @@ class GlobalProgress:
             self.progress.iters_done_report(n)
         if self.progress.current >= self.progress.total:
             self.set_ready()
+
+    def inference_started(self, current: int, total: int):
+        with self._lock:
+            if self.progress.message == "Ready":
+                self.progress.total = total
+                self.progress.current = current
+                self.set_message("Inference in progress...")
+            else:
+                self.progress.total += total
+                self.progress.current += current
 
     def inference_finished(self, current: int, total: int):
         with self._lock:
@@ -252,7 +254,7 @@ class InferenceRequestsManager:
         self._lock = threading.Lock()
         self._monitor_thread = threading.Thread(target=self.monitor, daemon=True)
         self._monitor_thread.start()
-        self._global_progress = GlobalProgress()
+        self.global_progress = GlobalProgress()
 
     def add(self, inference_request: InferenceRequest):
         with self._lock:
@@ -290,7 +292,7 @@ class InferenceRequestsManager:
 
     def done(self, n=1):
         with self._lock:
-            self._global_progress.done(n)
+            self.global_progress.done(n)
 
     def _on_inference_start(self, inference_request: InferenceRequest):
         if inference_request.uuid not in self._inference_requests:
@@ -302,7 +304,7 @@ class InferenceRequestsManager:
         if inference_request is not None:
             inference_request.on_inference_end()
 
-            self._global_progress.inference_finished(
+            self.global_progress.inference_finished(
                 current=inference_request.global_progress_current,
                 total=inference_request.global_progress_total,
             )
