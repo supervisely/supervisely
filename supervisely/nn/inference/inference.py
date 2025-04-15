@@ -1528,7 +1528,7 @@ class Inference:
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(images))
         for batch in batched_iter(images, batch_size=batch_size):
             batch = [
-                self.cache.get_image_path(image) in batch if isinstance(image, str) else image
+                self.cache.get_image_path(image) if isinstance(image, str) else image
                 for image in batch
             ]
             print(batch)
