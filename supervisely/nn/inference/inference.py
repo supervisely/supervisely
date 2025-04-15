@@ -1726,6 +1726,7 @@ class Inference:
         else:
             upload_f = _upload_predictions
 
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(image_ids))
         with Uploader(upload_f, logger=logger) as uploader:
             for image_ids_batch in batched(image_ids, batch_size=batch_size):
                 if uploader.has_exception():

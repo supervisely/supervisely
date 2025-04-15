@@ -59,7 +59,7 @@ class ModelAPI:
     def get_model_meta(self):
         if self.task_id is not None:
             return ProjectMeta.from_json(
-                self.api.task.send_request("get_output_classes_and_tags", {})
+                self.api.task.send_request(self.task_id, "get_output_classes_and_tags", {})
             )
         else:
             return ProjectMeta.from_json(self._post("get_output_classes_and_tags", {}))
@@ -252,26 +252,23 @@ class ModelAPI:
         batch_size: int = None,
         conf: float = None,
         classes: List[str] = None,
+        upload_mode: str = None,
         **kwargs,
-    ) -> Union[Prediction, List[Prediction], PredictionSession]:
+    ) -> List[Prediction]:
 
-        session = self.predict_detached(
-            input,
-            image_ids,
-            video_id,
-            dataset_id,
-            project_id,
-            batch_size,
-            conf,
-            classes,
-            **kwargs,
+        return list(
+            self.predict_detached(
+                input,
+                image_ids,
+                video_id,
+                dataset_id,
+                project_id,
+                batch_size,
+                conf,
+                classes,
+                upload_mode,
+                **kwargs,
+            )
         )
-        result = list(session)
-        if isinstance(input, list):
-            return result
-        if isinstance(input, (str, PathLike)):
-            if dir_exists(input):
-                return result
-        return result[0]
 
     # ------------------------------------ #
