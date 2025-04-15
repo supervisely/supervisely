@@ -231,10 +231,10 @@ class GlobalProgress:
             if self.progress.message == "Ready":
                 self.progress.total = total
                 self.progress.current = current
-                self.set_message("Inference in progress...")
             else:
                 self.progress.total += total
                 self.progress.current += current
+        self.set_message("Inference in progress...")
 
     def inference_finished(self, current: int, total: int):
         with self._lock:
