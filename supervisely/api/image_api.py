@@ -1018,7 +1018,9 @@ class ImageApi(RemoveableBulkModuleApi):
         """
         if DOWNLOAD_BATCH_SIZE is not None and isinstance(DOWNLOAD_BATCH_SIZE, int):
             batches = batched(ids, DOWNLOAD_BATCH_SIZE)
-            logger.debug(f"Batch size for func 'ImageApi._download_batch' changed to: {DOWNLOAD_BATCH_SIZE}")
+            logger.debug(
+                f"Batch size for func 'ImageApi._download_batch' changed to: {DOWNLOAD_BATCH_SIZE}"
+            )
         else:
             batches = batched(ids)
         for batch_ids in batches:
