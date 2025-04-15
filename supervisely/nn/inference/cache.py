@@ -147,11 +147,9 @@ class PersistentImageTTLCache(TTLCache):
             self._base_dir.mkdir()
 
         if ext is None or ext == "":
-            if not isinstance(image, np.ndarray):
-                image = sly.image.read_bytes(image)
-                ext = ".png"
+            ext = ".png"
 
-        filepath = self._base_dir / f"{str(key)}{ext}"
+        filepath = self._base_dir / Path(key).with_suffix(ext)
         self[key] = filepath
 
         if filepath.exists():
