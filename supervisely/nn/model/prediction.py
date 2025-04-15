@@ -334,7 +334,7 @@ class PredictionSession:
             prediction_json = self.inner.__next__()
             self._index += 1
             this_item_kwargs = self.items_kwargs[self._index] if self.items_kwargs else {}
-            return {**prediction_json, **self.kwargs, **this_item_kwargs}
+            return {**prediction_json, **self.kwargs, **this_item_kwargs, "source": self.source}
 
     def __init__(
         self,
@@ -464,6 +464,7 @@ class PredictionSession:
                         self._iterator = self._Iterator(
                             self.input,
                             self.session.inference_video_path_async(input[0], **kwargs),
+                            path=input[0],
                         )
                     else:
                         raise ValueError(
