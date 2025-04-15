@@ -1535,7 +1535,7 @@ class Inference:
                 batch,
                 settings=settings,
             )
-            predictions = [Prediction(ann) for ann in anns]
+            predictions = [Prediction(ann, model_meta=self.model_meta) for ann in anns]
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
@@ -1611,7 +1611,8 @@ class Inference:
                 settings=inference_settings,
             )
             predictions = [
-                Prediction(ann, frame_index=frame_index) for ann, frame_index in zip(anns, batch)
+                Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
+                for ann, frame_index in zip(anns, batch)
             ]
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
@@ -1669,13 +1670,10 @@ class Inference:
 
         output_project_id = state.get("output_project_id", None)
         output_dataset_id = None
-        meta = self.model_meta
         inference_request.context.setdefault("project_meta", {})
         if output_project_id is not None:
             if upload_mode is None:
                 upload_mode = "append"
-            meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
-            inference_request.context["project_meta"][output_project_id] = meta
         if output_project_id is None and upload_mode == "create":
             image_info = images_infos[0]
             dataset_info = dataset_infos_dict[image_info.dataset_id]
@@ -1686,8 +1684,6 @@ class Inference:
                 change_name_if_conflict=True,
             )
             output_project_id = output_project_info.id
-            api.project.update_meta(output_project_id, meta)
-            inference_request.context["project_meta"][output_project_id] = meta
             inference_request.context.setdefault("project_info", {})[
                 output_project_id
             ] = output_project_info
@@ -1754,7 +1750,7 @@ class Inference:
                     dataset_info = dataset_infos_dict[image_info.dataset_id]
                     prediction = Prediction(
                         ann,
-                        model_meta=meta,
+                        model_meta=self.model_meta,
                         name=image_info.name,
                         image_id=image_info.id,
                         dataset_id=image_info.dataset_id,
@@ -1855,6 +1851,7 @@ class Inference:
             predictions = [
                 Prediction(
                     ann,
+                    model_meta=self.model_meta,
                     frame_index=frame_index,
                     video_id=video_info.id,
                     dataset_id=video_info.dataset_id,
@@ -1917,13 +1914,10 @@ class Inference:
         inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, preparing_progress_total)
 
         output_project_id = state.get("output_project_id", None)
-        meta = self.model_meta
         inference_request.context.setdefault("project_meta", {})
         if output_project_id is not None:
             if upload_mode is None:
                 upload_mode = "append"
-            meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
-            inference_request.context["project_meta"][output_project_id] = meta
         if output_project_id is None and upload_mode == "create":
             output_project_info = api.project.create(
                 project_info.workspace_id,
@@ -1932,8 +1926,6 @@ class Inference:
                 change_name_if_conflict=True,
             )
             output_project_id = output_project_info.id
-            api.project.update_meta(output_project_id, meta)
-            inference_request.context["project_meta"][output_project_id] = meta
             inference_request.context.setdefault("project_info", {})[
                 output_project_id
             ] = output_project_info
@@ -2022,6 +2014,7 @@ class Inference:
                     predictions = [
                         Prediction(
                             ann,
+                            model_meta=self.model_meta,
                             image_id=image_info.id,
                             name=image_info.name,
                             dataset_id=dataset_info.id,
@@ -3356,7 +3349,7 @@ class Inference:
                     change_name_if_conflict=True,
                 )
                 state["output_project_id"] = output_project.id
-            results = self._inference_project_id(api=self.api, state=state)
+            results = self.inference_requests_manager.run(self._inference_project_id, api, state)
 
             dataset_infos = api.dataset.get_list(project_id)
             datasets_map = {dataset_info.id: dataset_info.name for dataset_info in dataset_infos}

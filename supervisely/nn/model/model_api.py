@@ -204,6 +204,7 @@ class ModelAPI:
         batch_size: int = None,
         conf: float = None,
         classes: List[str] = None,
+        upload_mode: str = None,
         **kwargs,
     ) -> PredictionSession:
         extra_input_args = ["image_id"]
