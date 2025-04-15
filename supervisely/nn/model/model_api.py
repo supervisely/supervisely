@@ -13,6 +13,7 @@ from supervisely.api.module_api import ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.api.task_api import TaskApi
 from supervisely.api.video.video_api import VideoInfo
+from supervisely.io.fs import dir_exists
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.model.prediction import Prediction, PredictionSession
 from supervisely.nn.utils import ModelSource
@@ -195,9 +196,7 @@ class ModelAPI:
     # region Prediction
     def predict_detached(
         self,
-        input: Union[
-            np.ndarray, str, PathLike, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo, list
-        ] = None,
+        input: Union[np.ndarray, str, PathLike, list] = None,
         image_ids: int = None,
         video_id: int = None,
         dataset_id: int = None,
@@ -244,9 +243,7 @@ class ModelAPI:
 
     def predict(
         self,
-        input: Union[
-            np.ndarray, str, PathLike, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo, list
-        ] = None,
+        input: Union[np.ndarray, str, PathLike, list] = None,
         image_ids: List[int] = None,
         video_id: int = None,
         dataset_id: int = None,
@@ -271,6 +268,9 @@ class ModelAPI:
         result = list(session)
         if isinstance(input, list):
             return result
+        if isinstance(input, (str, PathLike)):
+            if dir_exists(input):
+                return result
         return result[0]
 
     # ------------------------------------ #

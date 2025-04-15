@@ -86,8 +86,8 @@ class Prediction:
         self._classes = None
         self._scores = None
 
-        if self.path is None and isinstance(self.source, str):
-            self.path = self.source
+        if self.path is None and isinstance(self.source, (str, PathLike)):
+            self.path = str(self.source)
 
     def _init_geometries(self):
 
@@ -318,13 +318,23 @@ class Prediction:
 class PredictionSession:
 
     class _Iterator:
-        def __init__(self, source: Any, iterator: Iterator, **kwargs):
+        def __init__(
+            self, source: Any, iterator: Iterator, items_kwargs: List[Dict] = None, **kwargs
+        ):
             self.source = source
             self.inner = iterator
+            self.items_kwargs = items_kwargs
             self.kwargs = kwargs
+            self._index = -1
 
         def __len__(self):
             return len(self.inner)
+
+        def __next__(self):
+            prediction_json = self.inner.__next__()
+            self._index += 1
+            this_item_kwargs = self.items_kwargs[self._index] if self.items_kwargs else {}
+            return {**prediction_json, **self.kwargs, **this_item_kwargs}
 
     def __init__(
         self,
@@ -398,6 +408,7 @@ class PredictionSession:
                 self._iterator = self._Iterator(
                     self.input,
                     self.session.inference_image_paths_async(input, **kwargs),
+                    items_kwargs=[{"path": x} for x in input],
                 )
             else:
                 if dir_exists(input[0]):
@@ -430,6 +441,7 @@ class PredictionSession:
                     self._iterator = self._Iterator(
                         self.input,
                         self.session.inference_image_paths_async(image_paths, **kwargs),
+                        items_kwargs=[{"path": x} for x in image_paths],
                     )
                 elif file_exists(input[0]):
                     ext = get_file_ext(input[0])
@@ -459,49 +471,6 @@ class PredictionSession:
                         )
                 else:
                     raise ValueError(f"File or directory does not exist: {input[0]}")
-
-        elif isinstance(input[0], ImageInfo):
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
-            )
-            self._iterator = self._Iterator(
-                self.input,
-                self.session.inference_image_ids_async([image.id for image in input], **kwargs),
-            )
-        elif isinstance(input[0], VideoInfo):
-            if len(input) > 1:
-                raise ValueError("Inference on multiple videos is not supported.")
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_video_id_async, exclude=["video_id"]
-            )
-            self._iterator = self._Iterator(
-                self.input,
-                self.session.inference_video_id_async(input[0].id, **kwargs),
-            )
-        elif isinstance(input[0], ProjectInfo):
-            if len(input) > 1:
-                raise ValueError("Inference on multiple projects is not supported.")
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_project_id_async, exclude=["project_id"]
-            )
-            self._iterator = self._Iterator(
-                self.input,
-                self.session.inference_project_id_async(input[0].id, **kwargs),
-            )
-        elif isinstance(input[0], DatasetInfo):
-            if len(input) > 1:
-                raise ValueError("Inference on multiple datasets is not supported.")
-            kwargs = get_valid_kwargs(
-                kwargs,
-                self.session.inference_project_id_async,
-                exclude=["project_id", "dataset_ids"],
-            )
-            dataset_ids = [input[0].id]
-            project_id = input[0].project_id
-            self._iterator = self._Iterator(
-                self.input,
-                self.session.inference_project_id_async(project_id, dataset_ids, **kwargs),
-            )
         elif image_id is not None:
             kwargs = get_valid_kwargs(
                 kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
@@ -573,10 +542,10 @@ class PredictionSession:
             return False
 
     def __next__(self):
-        prediction_json = self._iterator.inner.__next__()
+        prediction_json = self._iterator.__next__()
+        prediction_json["source"] = self.input
         prediction = Prediction.from_json(
-            {**self._iterator.kwargs, **prediction_json},
-            source=self.input,
+            prediction_json,
             model_meta=self.session.get_model_meta(),
         )
         return prediction
