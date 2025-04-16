@@ -821,7 +821,7 @@ class FigureApi(RemoveableBulkModuleApi):
             api = sly.Api.from_env()
 
             dataset_id = 12345
-            download_coroutine = await api.image.figure.download_async(dataset_id)
+            download_coroutine = api.image.figure.download_async(dataset_id)
             figures = sly.run_coroutine(download_coroutine)
         """
         fields = [
