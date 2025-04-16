@@ -915,7 +915,7 @@ class FigureApi(RemoveableBulkModuleApi):
     def download_fast(
         self,
         dataset_id: int,
-        image_ids: List[int] = None,
+        image_ids: Optional[List[int]] = None,
         skip_geometry: bool = False,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
@@ -932,6 +932,10 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
+        :param semaphore: Semaphore to limit the number of concurrent downloads.
+        :type semaphore: Optional[asyncio.Semaphore], optional
+        :param log_progress: If True, log the progress of the download.
+        :type log_progress: bool, optional
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
