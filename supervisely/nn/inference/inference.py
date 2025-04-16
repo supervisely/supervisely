@@ -4007,58 +4007,50 @@ def postprocess_predictions(
     progress_cb=None,
     iou_merge_threshold: float = None,
 ):
-    try:
-        ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
-        for prediction in predictions:
-            ds_predictions[prediction.dataset_id].append(prediction)
+    ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
+    for prediction in predictions:
+        ds_predictions[prediction.dataset_id].append(prediction)
 
-        if context is None:
-            context = {}
-        for dataset_id, preds in ds_predictions.items():
-            ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
-            if ds_info is None:
-                ds_info = api.dataset.get_info_by_id(dataset_id)
-                context["dataset_info"][dataset_id] = ds_info
-            project_id = ds_info.project_id
-            meta = context.setdefault("project_meta", {}).get(project_id, None)
-            if meta is None:
-                meta = ProjectMeta.from_json(api.project.get_meta(project_id))
-                context["project_meta"][project_id] = meta
+    if context is None:
+        context = {}
+    for dataset_id, preds in ds_predictions.items():
+        ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
+        if ds_info is None:
+            ds_info = api.dataset.get_info_by_id(dataset_id)
+            context["dataset_info"][dataset_id] = ds_info
+        project_id = ds_info.project_id
+        meta = context.setdefault("project_meta", {}).get(project_id, None)
+        if meta is None:
+            meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+            context["project_meta"][project_id] = meta
 
-            meta_changed = False
-            for pred in preds:
-                ann = pred.annotation
-                meta, ann, meta_changed_ = update_meta_and_ann(meta, ann)
-                meta_changed = meta_changed or meta_changed_
-                pred.annotation = ann
-                prediction.model_meta = meta
+        meta_changed = False
+        for pred in preds:
+            ann = pred.annotation
+            meta, ann, meta_changed_ = update_meta_and_ann(meta, ann)
+            meta_changed = meta_changed or meta_changed_
+            pred.annotation = ann
+            prediction.model_meta = meta
 
-            if meta_changed:
-                meta = api.project.update_meta(project_id, meta)
-                context["project_meta"][project_id] = meta
+        if meta_changed:
+            meta = api.project.update_meta(project_id, meta)
+            context["project_meta"][project_id] = meta
 
-            anns = _exclude_duplicated_predictions(
-                api,
-                [pred.annotation for pred in preds],
-                dataset_id,
-                [pred.image_id for pred in preds],
-                iou=iou_merge_threshold,
-                meta=meta,
-            )
-            for pred, ann in zip(preds, anns):
-                pred.annotation = ann
+        anns = _exclude_duplicated_predictions(
+            api,
+            [pred.annotation for pred in preds],
+            dataset_id,
+            [pred.image_id for pred in preds],
+            iou=iou_merge_threshold,
+            meta=meta,
+        )
+        for pred, ann in zip(preds, anns):
+            pred.annotation = ann
 
-            if progress_cb is not None:
-                progress_cb(len(preds))
+        if progress_cb is not None:
+            progress_cb(len(preds))
 
-        return predictions
-    except Exception as e:
-        logger.error("Error in postprocess_predictions", exc_info=True)
-        try:
-            logger.info(f"Pred Project meta: {pred.model_meta}")
-        except:
-            pass
-        raise e
+    return predictions
 
 
 def upload_predictions(
