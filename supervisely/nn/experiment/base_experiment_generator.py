@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import shutil
 from datetime import datetime
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from jinja2 import Template
@@ -16,6 +16,12 @@ import supervisely.io.fs as sly_fs
 import supervisely.io.env as sly_env
 from supervisely.task.progress import tqdm_sly
 from supervisely import logger
+from supervisely.nn.benchmark.visualization.widgets import (
+    ContainerWidget,
+    MarkdownWidget,
+    SidebarWidget,
+)
+from supervisely.nn.benchmark.visualization.renderer import Renderer
 
 
 class BaseExperimentGenerator:
@@ -69,29 +75,151 @@ class BaseExperimentGenerator:
         """Loads report template from file or returns built-in template."""
         template_path = Path(__file__).parent / "report_template.html"
         return template_path.read_text()
-  
+    
+    def _create_widgets(self) -> None:
+        """Create widgets for the layout"""
+        # Header
+        exp_name = self.info.get("experiment_name", "Unknown Experiment")
+        self.header = MarkdownWidget(
+            name="header",
+            title="Header",
+            text=f'# {exp_name}\n\n'
+        )
+        
+        # Buttons
+        buttons_text = self._generate_buttons_text()
+        self.buttons = MarkdownWidget(
+            name="buttons",
+            title="Buttons",
+            text=buttons_text
+        )
+        
+        # Overview
+        overview_text = self._generate_overview_text()
+        self.overview = MarkdownWidget(
+            name="overview",
+            title="Overview",
+            text=overview_text
+        )
+        
+        # Basic info
+        basic_info_text = self._generate_basic_info_text()
+        self.basic_info = MarkdownWidget(
+            name="basic_info",
+            title="Basic Info",
+            text=basic_info_text
+        )
+        
+        # Checkpoints
+        checkpoints_text = self._generate_checkpoints_text()
+        self.checkpoints = MarkdownWidget(
+            name="checkpoints",
+            title="Checkpoints",
+            text=checkpoints_text
+        )
+        
+        # Metrics
+        metrics_text = self._generate_metrics_text()
+        self.metrics = MarkdownWidget(
+            name="metrics",
+            title="Metrics",
+            text=metrics_text
+        )
+        
+        # Hyperparameters
+        hyperparams_text = self._generate_hyperparameters_text()
+        self.hyperparams = MarkdownWidget(
+            name="hyperparameters",
+            title="Hyperparameters",
+            text=hyperparams_text
+        )
+        
+        # Training
+        training_text = self._generate_training_text()
+        self.training = MarkdownWidget(
+            name="training",
+            title="Training",
+            text=training_text
+        )
+        
+        # Model API
+        model_api_text = self._generate_model_api_text()
+        self.model_api = MarkdownWidget(
+            name="model_api",
+            title="Model API",
+            text=model_api_text
+        )
+        
+        # Docker
+        docker_text = self._generate_docker_text()
+        self.docker = MarkdownWidget(
+            name="docker",
+            title="Docker",
+            text=docker_text
+        )
+        
+        # Local prediction
+        local_prediction_text = self._generate_local_prediction_text()
+        self.local_prediction = MarkdownWidget(
+            name="local_prediction",
+            title="Local Prediction",
+            text=local_prediction_text
+        )
+    
+    def _create_layout(self) -> ContainerWidget:
+        """Create layout for experiment report.
+        
+        :return: Container widget with all the content
+        :rtype: BaseWidget
+        """
+        self._create_widgets()
+        
+        is_anchors_widgets = [
+            (0, self.header),
+            (0, self.buttons),
+            (0, MarkdownWidget(name="separator1", title="Separator", text="---\n")),
+            (1, self.overview),
+            (0, MarkdownWidget(name="separator2", title="Separator", text="---\n")),
+            (1, self.basic_info),
+        ]
+        
+        if self.checkpoints:
+            is_anchors_widgets.append((1, self.checkpoints))
+            
+        if self.metrics:
+            is_anchors_widgets.append((1, self.metrics))
+            
+        if self.hyperparams:
+            is_anchors_widgets.append((1, self.hyperparams))
+            
+        if self.training:
+            is_anchors_widgets.append((1, self.training))
+        
+        is_anchors_widgets.append((1, self.model_api))
+        is_anchors_widgets.append((1, self.docker))
+        is_anchors_widgets.append((1, self.local_prediction))
+        
+        anchors = []
+        for is_anchor, widget in is_anchors_widgets:
+            if is_anchor:
+                anchors.append(widget.id)
+        
+        sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
+        layout = ContainerWidget([sidebar], name="experiment_report")
+        return layout
+
     def generate_template(self) -> str:
         """Generate experiment report HTML and save it as template.vue.
 
+        :param output_dir: Directory to save the report (overrides the one set in constructor)
+        :type output_dir: str
         :return: Path to the generated template.vue file
         :rtype: str
         """
-        content = self._generate_md()
-        content_escaped = content.replace('`', r'\`').replace('"', r'\"').replace('\n', r'\n')
-        
-        # Используем двойные кавычки снаружи, одинарные внутри для лучшей совместимости
-        markdown_widget = f'<sly-markdown-widget content="{content_escaped}"></sly-markdown-widget>'
-        
-        # Убедимся, что шаблон содержит {{ content }} и заменим его на widget
-        template = self.main_template.replace("{{ content }}", markdown_widget)
-        
+        layout = self._create_layout()
+        renderer = Renderer(layout, self.output_dir, template=self.main_template)
+        renderer.save()
         template_path = os.path.join(self.output_dir, "template.vue")
-        with open(template_path, "w") as f:
-            f.write(template)
-            
-        # Выведем информацию о созданном файле для отладки
-        logger.info(f"Template.vue generated: {os.path.getsize(template_path)} bytes")
-        
         return template_path
     
     def generate_state(self):
@@ -111,7 +239,6 @@ class BaseExperimentGenerator:
 
     def generate_report(self) -> str:
         """Generate and upload report to Supervisely"""
-
         remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
         
         # template.vue
@@ -119,6 +246,11 @@ class BaseExperimentGenerator:
         remote_template_path = os.path.join(remote_dir, "template.vue")
         template_file = self.api.file.upload(team_id=self.team_id, src=template_path, dst=remote_template_path)
 
+        # data
+        remote_data_path = os.path.join(remote_dir, "data")
+        data_path = os.path.join(self.output_dir, "data")
+        self.api.file.upload_directory(self.team_id, data_path, remote_data_path, replace_if_conflict=True)
+        
         # state.json
         state_path = self.generate_state()
         remote_state_path = os.path.join(remote_dir, "state.json")
@@ -134,64 +266,9 @@ class BaseExperimentGenerator:
         """Get path to report file."""
         return self.api.server_address + "/nn/experiments/" + str(template_id)
 
-    def _generate_md(self) -> str:
-        """Generate content in markdown format.
-
-        :return: markdown content
-        :rtype: str
-        """
-        sections = []
-
-        # Header
-        sections.append(self._generate_header())
-
-        # Buttons
-        sections.append(self._generate_buttons())
-        sections.append("---\n")
-
-        # Overview
-        sections.append(self._generate_overview_section())
-        sections.append("---\n")
-
-        # Basic information
-        sections.append(self._generate_basic_info())
-
-        # Checkpoints
-        sections.append(self._generate_checkpoints_section())
-
-        # Predictions
-        sections.append(self._generate_predictions_section())
-
-        # Metrics
-        sections.append(self._generate_metrics_section())
-
-        # Hyperparameters
-        sections.append(self._generate_hyperparameters_section())
-
-        # Training chart
-        sections.append(self._generate_training_section())
-
-        # Model API section
-        sections.append(self._generate_model_api_section())
-
-        # Docker section
-        sections.append(self._generate_docker_section())
-
-        # Local prediction section
-        sections.append(self._generate_local_prediction_section())
-
-        return "\n".join(sections)
-
-    def _generate_header(self) -> str:
-        """Generate page header.
-
-        :return: Page header content
-        :rtype: str
-        """
-        exp_name = self.info.get("experiment_name", "Experiment")
-        return f'# Experiment "{exp_name}"\n\n'
-
-    def _generate_buttons(self) -> str:
+    # Вспомогательные методы для генерации текста для виджетов
+    
+    def _generate_buttons_text(self) -> str:
         """Generate buttons section.
 
         :return: Buttons section content
@@ -220,7 +297,7 @@ class BaseExperimentGenerator:
 
         return "\n".join(buttons) + "\n"
 
-    def _generate_overview_section(self) -> str:
+    def _generate_overview_text(self) -> str:
         """Generate overview section with links.
 
         :return: Overview section content
@@ -258,7 +335,7 @@ class BaseExperimentGenerator:
 
         return "\n".join(lines) + "\n"
 
-    def _generate_basic_info(self) -> str:
+    def _generate_basic_info_text(self) -> str:
         """Generate section with basic information.
 
         :return: Basic information section content
@@ -311,12 +388,6 @@ class BaseExperimentGenerator:
             lines.append(f"- **Classes**: {len(classes)}")
             lines.append(f"- **Class names**: {', '.join(classes)}")
 
-        # Tags
-        # tags = [tag.name for tag in self.model_meta.tag_metas]
-        # if tags:
-        #     lines.append(f"- **Tags**: {len(tags)}")
-        #     lines.append(f"- **Tag names**: {', '.join(tags)}")
-
         # Training date
         date_str = self.info.get("datetime")
         if date_str:
@@ -329,7 +400,7 @@ class BaseExperimentGenerator:
 
         return "\n".join(lines) + "\n\n"
 
-    def _generate_checkpoints_section(self) -> str:
+    def _generate_checkpoints_text(self) -> str:
         """Generate checkpoints section.
 
         :return: Checkpoints section content
@@ -350,32 +421,7 @@ class BaseExperimentGenerator:
 
         return "\n".join(lines) + "\n\n"
 
-    def _generate_predictions_section(self) -> str:
-        """Generate predictions section.
-
-        :return: Predictions section content
-        :rtype: str
-        """
-        # Check if there is an image with predictions in artifacts
-        predictions_path = None
-        if self.artifacts_dir:
-            for filename in ["predictions.png", "prediction.png", "examples.png", "example.png"]:
-                path = os.path.join(self.artifacts_dir, filename)
-                if os.path.exists(path):
-                    predictions_path = path
-                    break
-
-        if not predictions_path:
-            return ""
-
-        # Copy to images directory
-        dest_path = os.path.join(self.img_dir, "predictions.png")
-        if not os.path.exists(dest_path):
-            shutil.copy(predictions_path, dest_path)
-
-        return "## Predictions\n\n![predictions](img/predictions.png)\n\n"
-
-    def _generate_metrics_section(self) -> str:
+    def _generate_metrics_text(self) -> str:
         """Generate metrics section.
 
         :return: Metrics section content
@@ -431,7 +477,7 @@ class BaseExperimentGenerator:
 
         return "\n".join(lines) + "\n\n"
 
-    def _generate_hyperparameters_section(self) -> str:
+    def _generate_hyperparameters_text(self) -> str:
         """Generate hyperparameters section.
 
         :return: Hyperparameters section content
@@ -477,7 +523,7 @@ class BaseExperimentGenerator:
         else:
             return ""
 
-    def _generate_training_section(self) -> str:
+    def _generate_training_text(self) -> str:
         """Generate training chart section.
 
         :return: Training chart section content
@@ -495,14 +541,9 @@ class BaseExperimentGenerator:
         if not chart_path:
             return ""
 
-        # Copy to images directory
-        dest_path = os.path.join(self.img_dir, "chart.png")
-        if not os.path.exists(dest_path):
-            shutil.copy(chart_path, dest_path)
-
         return "## Training\n\n![chart](img/chart.png)\n\n"
 
-    def _generate_model_api_section(self) -> str:
+    def _generate_model_api_text(self) -> str:
         """Generate Model API description section.
 
         :return: Model API section content
@@ -538,7 +579,7 @@ prediction = model.predict(
 
 """
 
-    def _generate_docker_section(self) -> str:
+    def _generate_docker_text(self) -> str:
         """Generate Docker description section.
 
         :return: Docker section content
@@ -584,7 +625,7 @@ docker run \\
 
 """
 
-    def _generate_local_prediction_section(self) -> str:
+    def _generate_local_prediction_text(self) -> str:
         """Generate local prediction description section.
 
         :return: Local prediction section content
