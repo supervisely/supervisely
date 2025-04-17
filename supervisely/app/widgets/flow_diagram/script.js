@@ -44,7 +44,14 @@ Vue.component("sly-flow-diagram", {
             fontFamily: fontFamily,
           });
         }
-
+        pointAnchor = targetData[1].pointAnchor;
+        if (pointAnchor) {
+          console.log("pointAnchor", pointAnchor);
+          line.end = LeaderLine.pointAnchor(
+            document.getElementById(targetData[0]),
+            pointAnchor
+          );
+        }
         console.log(
           "Connection drawn from",
           sourceId,
