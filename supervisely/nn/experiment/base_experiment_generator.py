@@ -125,6 +125,21 @@ class BaseExperimentGenerator:
         # Buttons
         buttons = self._get_buttons()
         
+        # Generate code blocks
+        model_api_code = self._generate_model_api_code(experiment_dir)
+        docker_code = self._generate_docker_code(docker_image, experiment_dir)
+        local_prediction_code = self._generate_local_prediction_code(
+            repo_info["url"], 
+            repo_info["name"], 
+            experiment_dir, 
+            self.info["best_checkpoint"]
+        ) if self.serving_class else None
+        
+        optimized_model_code = self._generate_optimized_model_code(
+            repo_info["name"], 
+            experiment_dir
+        ) if self.info.get("export") else None
+        
         return {
             "experiment_name": exp_name,
             "model_name": model_name,
@@ -152,7 +167,91 @@ class BaseExperimentGenerator:
             "serving_class": self.serving_class.__name__ if self.serving_class else None,
             "serving_module": self.serving_class.__module__ if self.serving_class else None,
             "best_checkpoint": self.info["best_checkpoint"],
+            "model_api_code": model_api_code,
+            "docker_code": docker_code,
+            "local_prediction_code": local_prediction_code,
+            "optimized_model_code": optimized_model_code,
+            "has_onnx": self.info.get("export") and any("onnx" in k.lower() for k in self.info["export"].keys()),
+            "has_tensorrt": self.info.get("export") and any("engine" in k.lower() for k in self.info["export"].keys()),
         }
+    
+    def _generate_model_api_code(self, experiment_dir: str) -> str:
+        """Generate code for Model API section."""
+        return """import supervisely as sly
+
+api = sly.Api()
+
+# Deploy
+model = api.nn.deploy_custom_model(
+    checkpoint_id={checkpoint_path},  # file id
+)
+
+# Predict
+prediction = model.predict(
+    images="image.png"  # image | path | url
+)"""
+    
+    def _generate_docker_code(self, docker_image: str, experiment_dir: str) -> str:
+        """Generate code blocks for Docker section."""
+        docker_pull = f"docker pull {docker_image}"
+        
+        docker_run = f"""docker run \\
+  --runtime=nvidia \\
+  -v "./{experiment_dir}:/model" \\
+  -p 8000:8000 \\
+  {docker_image} \\
+  predict \\
+  "./image.jpg" \\
+  --model "/model" \\
+  --device "cuda:0\""""
+        
+        return {
+            "docker_pull": docker_pull,
+            "docker_run": docker_run
+        }
+    
+    def _generate_local_prediction_code(self, repo_url: str, repo_name: str, experiment_dir: str, best_checkpoint: str) -> str:
+        """Generate code blocks for Local Prediction section."""
+        git_clone = f"""git clone {repo_url}
+cd {repo_name}"""
+        
+        install_requirements = """pip install -r dev_requirements.txt
+pip install supervisely"""
+        
+        inference_code = f"""# Be sure you are in the root of the {repo_name} repository
+from {self.serving_class.__module__} import {self.serving_class.__name__}
+
+# Load model
+model = {self.serving_class.__name__}(
+    checkpoint="./{experiment_dir}/checkpoints/{best_checkpoint}",  # path to the checkpoint
+    device="cuda",
+)
+
+# Predict
+prediction = model(
+    "image.png",  # local paths, directory, local project, np.array, PIL.Image, URL
+    params={{"confidence_threshold": 0.5}}
+)"""
+        
+        return {
+            "git_clone": git_clone,
+            "install_requirements": install_requirements,
+            "inference_code": inference_code
+        }
+    
+    def _generate_optimized_model_code(self, repo_name: str, experiment_dir: str) -> str:
+        """Generate code block for optimized model (ONNX/TensorRT)."""
+        has_onnx = self.info.get("export") and any("onnx" in k.lower() for k in self.info["export"].keys())
+        model_type = "best.onnx" if has_onnx else "best.engine"
+        
+        return f"""# Be sure you are in the root of the {repo_name} repository
+from {self.serving_class.__module__} import {self.serving_class.__name__}
+
+model = {self.serving_class.__name__}(
+    model_dir="./{experiment_dir}",
+    checkpoint="{model_type}",
+    device="cuda",
+)"""
     
     def _get_buttons(self) -> str:
         """Returns HTML code for template buttons."""
@@ -160,32 +259,33 @@ class BaseExperimentGenerator:
         has_tensorrt = export and any("engine" in k.lower() for k in export.keys())
         has_onnx = export and any("onnx" in k.lower() for k in export.keys())
         
-        buttons = []
-        buttons.append("- 🚀 Deploy (PyTorch)")
+        html = ['<ul class="buttons-list">']
+        html.append('<li><span class="button-icon">🚀</span> Deploy (PyTorch)</li>')
         
         if has_tensorrt:
-            buttons.append("- 🚀 Deploy (TensorRT)")
+            html.append('<li><span class="button-icon">🚀</span> Deploy (TensorRT)</li>')
         elif has_onnx:
-            buttons.append("- 🚀 Deploy (ONNX)")
+            html.append('<li><span class="button-icon">🚀</span> Deploy (ONNX)</li>')
             
-        buttons.extend([
-            "- ⏩ Fine-tune",
-            "- 🔄 Re-train",
-            "- 📦 Download model",
-            "- ❌ Remove permamently",
+        html.extend([
+            '<li><span class="button-icon">⏩</span> Fine-tune</li>',
+            '<li><span class="button-icon">🔄</span> Re-train</li>',
+            '<li><span class="button-icon">📦</span> Download model</li>',
+            '<li><span class="button-icon">❌</span> Remove permamently</li>',
         ])
         
-        return "\n".join(buttons)
+        html.append('</ul>')
+        return "\n".join(html)
     
     def _generate_links(self) -> str:
         """Generate links to related resources."""
-        lines = []
+        html = ['<ul class="links-list">']
         
         # Training task link
         task_id = self.info.get("task_id")
         if task_id:
-            lines.append(
-                f"- 🎓 [Training Task]({self.api.server_address}/apps/sessions/{task_id})"
+            html.append(
+                f'<li><span class="link-icon">🎓</span> <a href="{self.api.server_address}/apps/sessions/{task_id}">Training Task</a></li>'
             )
         
         # Evaluation report link
@@ -193,21 +293,22 @@ class BaseExperimentGenerator:
         eval_link = self.info.get("evaluation_report_link")
         if eval_id:
             report_link = eval_link or f"{self.api.server_address}/model-benchmark?id={eval_id}"
-            lines.append(f"- 📊 [Evaluation Report]({report_link})")
+            html.append(f'<li><span class="link-icon">📊</span> <a href="{report_link}">Evaluation Report</a></li>')
         
         # TensorBoard logs link
         logs = self.info.get("logs", {})
         if logs and "link" in logs:
-            lines.append(f"- ⚡ [TensorBoard Logs]({self.api.server_address}/files/?path={logs['link']})")
+            html.append(f'<li><span class="link-icon">⚡</span> <a href="{self.api.server_address}/files/?path={logs["link"]}">TensorBoard Logs</a></li>')
         
         # Artifacts link in Team Files
         artifacts_dir = self.info.get("artifacts_dir")
         if artifacts_dir:
-            lines.append(
-                f"- 💾 [Open in Team Files]({self.api.server_address}/files/?path={artifacts_dir})"
+            html.append(
+                f'<li><span class="link-icon">💾</span> <a href="{self.api.server_address}/files/?path={artifacts_dir}">Open in Team Files</a></li>'
             )
         
-        return "\n".join(lines)
+        html.append('</ul>')
+        return "\n".join(html)
     
     def _generate_metrics_table(self) -> str:
         """Generate metrics table in HTML format."""

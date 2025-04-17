@@ -16,7 +16,11 @@
         .model-benchmark-body .overview-info-block { background: #f4f7fb; border-radius: 12px;
         padding: 20px; margin-bottom: 20px; }
         .model-benchmark-body .width-fit-content { width: fit-content;}
-        .model-benchmark-body .section { margin-bottom: 30px; }
+        .model-benchmark-body .section {
+        margin-bottom: 30px;
+        scroll-margin-top: 20px;
+        padding-top: 10px;
+        }
         .model-benchmark-body .buttons-container {
         display: flex;
         flex-wrap: wrap;
@@ -69,6 +73,41 @@
         .model-benchmark-body .checkpoints-table tr:hover {
         background-color: #f8f9fa;
         }
+        .model-benchmark-body .links-list,
+        .model-benchmark-body .overview-list,
+        .model-benchmark-body .buttons-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+        }
+        .model-benchmark-body .links-list li,
+        .model-benchmark-body .overview-list li,
+        .model-benchmark-body .buttons-list li {
+        margin-bottom: 8px;
+        position: relative;
+        padding-left: 8px;
+        display: flex;
+        align-items: flex-start;
+        }
+        .model-benchmark-body .links-list li:before,
+        .model-benchmark-body .overview-list li:before,
+        .model-benchmark-body .buttons-list li:before {
+        content: "•";
+        color: #1890ff;
+        display: inline-block;
+        width: 15px;
+        margin-right: 10px;
+        }
+        .model-benchmark-body .link-icon,
+        .model-benchmark-body .button-icon {
+        margin-right: 8px;
+        }
+        .model-benchmark-body .overview-list .label {
+        font-weight: 600;
+        margin-right: 8px;
+        min-width: 120px;
+        display: inline-block;
+        }
         .model-benchmark-body .code-block {
         background-color: #f5f5f5;
         border-radius: 6px;
@@ -100,9 +139,22 @@
         cursor: pointer;
         color: #2c3e50;
         transition: color 0.2s;
+        display: block;
+        text-decoration: none;
         }
         .model-benchmark-body .nav-item:hover {
         color: #1890ff;
+        }
+        .model-benchmark-body .nav-item.active {
+        color: #1890ff;
+        font-weight: 500;
+        }
+        .model-benchmark-body .report-image {
+        max-width: 100%;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin: 15px 0;
+        display: block;
         }
         @media (max-width: 768px) {
         .model-benchmark-body .sidebar-container {
@@ -113,32 +165,35 @@
         position: static;
         }
         }
+        html {
+        scroll-behavior: smooth;
+        }
     </sly-style>
 
     <!-- Header and sidebar navigation -->
     <div class="sidebar-container">
         <div class="sidebar">
             <h3>Navigation</h3>
-            <div class="nav-item" @click="scrollToElement('overview-section')">Overview</div>
+            <div class="nav-item" onclick="navigateTo('overview-section')">Overview</div>
             {% if checkpoints_table %}
-            <div class="nav-item" @click="scrollToElement('checkpoints-section')">Checkpoints</div>
+            <div class="nav-item" onclick="navigateTo('checkpoints-section')">Checkpoints</div>
             {% endif %}
             {% if has_predictions %}
-            <div class="nav-item" @click="scrollToElement('predictions-section')">Predictions</div>
+            <div class="nav-item" onclick="navigateTo('predictions-section')">Predictions</div>
             {% endif %}
             {% if metrics_table %}
-            <div class="nav-item" @click="scrollToElement('metrics-section')">Metrics</div>
+            <div class="nav-item" onclick="navigateTo('metrics-section')">Metrics</div>
             {% endif %}
             {% if hyperparameters %}
-            <div class="nav-item" @click="scrollToElement('hyperparameters-section')">Hyperparameters</div>
+            <div class="nav-item" onclick="navigateTo('hyperparameters-section')">Hyperparameters</div>
             {% endif %}
             {% if has_chart %}
-            <div class="nav-item" @click="scrollToElement('training-section')">Training</div>
+            <div class="nav-item" onclick="navigateTo('training-section')">Training</div>
             {% endif %}
-            <div class="nav-item" @click="scrollToElement('model-api-section')">Model API</div>
-            <div class="nav-item" @click="scrollToElement('docker-section')">Docker</div>
+            <div class="nav-item" onclick="navigateTo('model-api-section')">Model API</div>
+            <div class="nav-item" onclick="navigateTo('docker-section')">Docker</div>
             {% if serving_class and serving_module %}
-            <div class="nav-item" @click="scrollToElement('local-prediction-section')">Predict Locally</div>
+            <div class="nav-item" onclick="navigateTo('local-prediction-section')">Predict Locally</div>
             {% endif %}
         </div>
 
@@ -147,16 +202,7 @@
 
             <!-- Buttons -->
             <div class="section buttons-container">
-                <el-button type="primary">Deploy (PyTorch)</el-button>
-                {% if has_tensorrt %}
-                <el-button type="success">Deploy (TensorRT)</el-button>
-                {% elif has_onnx %}
-                <el-button type="success">Deploy (ONNX)</el-button>
-                {% endif %}
-                <el-button type="warning">Fine-tune</el-button>
-                <el-button type="info">Re-train</el-button>
-                <el-button>Download model</el-button>
-                <el-button type="danger">Remove</el-button>
+                {{ buttons | safe }}
             </div>
 
             <!-- Overview -->
@@ -167,45 +213,18 @@
                     {{ links | safe }}
                 </div>
 
-                <table>
-                    <tr>
-                        <td><strong>Model:</strong></td>
-                        <td>{{ model_name }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Task:</strong></td>
-                        <td>{{ task_name }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Framework:</strong></td>
-                        <td>{{ framework_name }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Project:</strong></td>
-                        <td>{% if project_link %}<a href="{{ project_link }}">{{ project_name }}</a>{% else %}{{
-                            project_name }}{% endif %}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Train size:</strong></td>
-                        <td>{{ train_size }} {{ train_type }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Validation size:</strong></td>
-                        <td>{{ validation_size }} {{ train_type }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Classes:</strong></td>
-                        <td>{{ classes_count }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Class names:</strong></td>
-                        <td>{{ class_names }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Date:</strong></td>
-                        <td>{{ date }}</td>
-                    </tr>
-                </table>
+                <ul class="overview-list">
+                    <li><span class="label">Model:</span> {{ model_name }}</li>
+                    <li><span class="label">Task:</span> {{ task_name }}</li>
+                    <li><span class="label">Framework:</span> {{ framework_name }}</li>
+                    <li><span class="label">Project:</span> {% if project_link %}<a href="{{ project_link }}">{{
+                            project_name }}</a>{% else %}{{ project_name }}{% endif %}</li>
+                    <li><span class="label">Train size:</span> {{ train_size }} {{ train_type }}</li>
+                    <li><span class="label">Validation size:</span> {{ validation_size }} {{ train_type }}</li>
+                    <li><span class="label">Classes:</span> {{ classes_count }}</li>
+                    <li><span class="label">Class names:</span> {{ class_names }}</li>
+                    <li><span class="label">Date:</span> {{ date }}</li>
+                </ul>
             </div>
 
             <!-- Checkpoints -->
@@ -240,20 +259,7 @@
                 <p>Deploy and predict in Supervisely.</p>
 
                 <div class="code-block">
-                    <pre><code>import supervisely as sly
-
-api = sly.Api()
-
-# Deploy
-model = api.nn.deploy_custom_model(
-    checkpoint_id={{ checkpoint_path }},  # file id
-)
-
-# Predict
-prediction = model.predict(
-    images="image.png"  # image | path | url
-)
-</code></pre>
+                    <pre><code>{{ model_api_code }}</code></pre>
                 </div>
 
                 <p><em>See more in <a
@@ -273,7 +279,7 @@ prediction = model.predict(
                 </ol>
 
                 <div class="code-block">
-                    <pre><code>docker pull {{ docker_image }}</code></pre>
+                    <pre><code>{{ docker_code.docker_pull }}</code></pre>
                 </div>
 
                 <ol start="3">
@@ -281,15 +287,7 @@ prediction = model.predict(
                 </ol>
 
                 <div class="code-block">
-                    <pre><code>docker run \
-  --runtime=nvidia \
-  -v "./{{ experiment_dir }}:/model" \
-  -p 8000:8000 \
-  {{ docker_image }} \
-  predict \
-  "./image.jpg" \
-  --model "/model" \
-  --device "cuda:0"</code></pre>
+                    <pre><code>{{ docker_code.docker_run }}</code></pre>
                 </div>
 
                 <p><em>See more in <a
@@ -309,8 +307,7 @@ prediction = model.predict(
                 </ol>
 
                 <div class="code-block">
-                    <pre><code>git clone {{ repository_url }}
-cd {{ repository_name }}</code></pre>
+                    <pre><code>{{ local_prediction_code.git_clone }}</code></pre>
                 </div>
 
                 <ol start="3">
@@ -318,8 +315,7 @@ cd {{ repository_name }}</code></pre>
                 </ol>
 
                 <div class="code-block">
-                    <pre><code>pip install -r dev_requirements.txt
-pip install supervisely</code></pre>
+                    <pre><code>{{ local_prediction_code.install_requirements }}</code></pre>
                 </div>
 
                 <ol start="4">
@@ -327,34 +323,14 @@ pip install supervisely</code></pre>
                 </ol>
 
                 <div class="code-block">
-                    <pre><code># Be sure you are in the root of the {{ repository_name }} repository
-from {{ serving_module }} import {{ serving_class }}
-
-# Load model
-model = {{ serving_class }}(
-    checkpoint="./{{ experiment_dir }}/checkpoints/{{ best_checkpoint }}",  # path to the checkpoint
-    device="cuda",
-)
-
-# Predict
-prediction = model(
-    "image.png",  # local paths, directory, local project, np.array, PIL.Image, URL
-    params={"confidence_threshold": 0.5}
-)</code></pre>
+                    <pre><code>{{ local_prediction_code.inference_code }}</code></pre>
                 </div>
 
                 {% if has_onnx or has_tensorrt %}
                 <h3>Using optimized models</h3>
 
                 <div class="code-block">
-                    <pre><code># Be sure you are in the root of the {{ repository_name }} repository
-from {{ serving_module }} import {{ serving_class }}
-
-model = {{ serving_class }}(
-    model_dir="./{{ experiment_dir }}",
-    checkpoint="{% if has_onnx %}best.onnx{% else %}best.engine{% endif %}",
-    device="cuda",
-)</code></pre>
+                    <pre><code>{{ optimized_model_code }}</code></pre>
                 </div>
                 {% endif %}
             </div>
@@ -362,13 +338,66 @@ model = {{ serving_class }}(
         </div>
     </div>
 
-    <!-- Navigation between sections -->
     <script>
-        function scrollToElement(elementId) {
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        let reportBaseUrl = window.location.href.split('#')[0];
+        if (!reportBaseUrl.includes('/nn/experiments/')) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            if (id) {
+                reportBaseUrl = `${window.location.origin}/nn/experiments/${id}`;
             }
         }
+
+        function navigateTo(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                history.pushState(null, '', reportBaseUrl + '#' + sectionId);
+
+                updateActiveNavItem(sectionId);
+            }
+        }
+
+        function updateActiveNavItem(sectionId) {
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.classList.remove('active');
+
+                const itemSection = item.getAttribute('onclick').match(/'([^']+)'/)[1];
+                if (itemSection === sectionId) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const hash = window.location.hash;
+            if (hash) {
+                const sectionId = hash.substring(1);
+                navigateTo(sectionId);
+            } else {
+                const firstNavItem = document.querySelector('.nav-item');
+                if (firstNavItem) {
+                    firstNavItem.classList.add('active');
+                }
+            }
+
+            window.addEventListener('scroll', function () {
+                const sections = document.querySelectorAll('.section[id]');
+
+                let currentSectionId = null;
+                sections.forEach(section => {
+                    const rect = section.getBoundingClientRect();
+                    if (rect.top <= 100 && rect.bottom >= 100) {
+                        currentSectionId = section.id;
+                    }
+                });
+
+                if (currentSectionId) {
+                    updateActiveNavItem(currentSectionId);
+                }
+            });
+        });
     </script>
 </div>
