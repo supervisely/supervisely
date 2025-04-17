@@ -49,23 +49,20 @@ class BaseExperimentGenerator:
         self.hyperparameters = hyperparameters
         self.model_meta = model_meta
 
-        self.output_dir = "./experiment_report"
-        sly_fs.mkdir(self.output_dir, True)
-
         self.artifacts_dir = self.info["artifacts_dir"]
-
         self.serving_class = serving_class
         self.app_info = self._get_app_info()
 
         self.report_name = "Experiment Report.lnk"
-        
-        # Настройка окружения Jinja
         self.jinja_env = Environment(
             loader=FileSystemLoader(Path(__file__).parent),
             autoescape=False,
             trim_blocks=True,
             lstrip_blocks=True
         )
+
+        self.output_dir = "./experiment_report"
+        sly_fs.mkdir(self.output_dir, True)
 
     def get_state(self):
         """Get state for state.json"""
@@ -181,7 +178,7 @@ class BaseExperimentGenerator:
         return "\n".join(buttons)
     
     def _generate_links(self) -> str:
-        """Генерирует ссылки на связанные ресурсы."""
+        """Generate links to related resources."""
         lines = []
         
         # Training task link
@@ -213,15 +210,14 @@ class BaseExperimentGenerator:
         return "\n".join(lines)
     
     def _generate_metrics_table(self) -> str:
-        """Генерирует таблицу метрик."""
+        """Generate metrics table in HTML format."""
         metrics = self.info.get("evaluation_metrics", {})
         if not metrics:
             return ""
         
-        lines = [
-            "| Metrics | Values |",
-            "|---------|--------|",
-        ]
+        html = ['<table class="metrics-table">']
+        html.append('<thead><tr><th>Metrics</th><th>Values</th></tr></thead>')
+        html.append('<tbody>')
         
         # Get primary metric if specified
         primary_metric = self.info.get("primary_metric")
@@ -237,7 +233,7 @@ class BaseExperimentGenerator:
             metric_value = metrics[primary_metric]
             if isinstance(metric_value, float):
                 metric_value = f"{metric_value:.4f}"
-            lines.append(f"| {primary_metric} | {metric_value} |")
+            html.append(f'<tr><td>{primary_metric}</td><td>{metric_value}</td></tr>')
         
         # Add other important metrics
         for metric_name in common_metrics:
@@ -245,36 +241,39 @@ class BaseExperimentGenerator:
                 metric_value = metrics[metric_name]
                 if isinstance(metric_value, float):
                     metric_value = f"{metric_value:.4f}"
-                lines.append(f"| {metric_name} | {metric_value} |")
+                html.append(f'<tr><td>{metric_name}</td><td>{metric_value}</td></tr>')
         
         # Add remaining metrics
         for metric_name, metric_value in metrics.items():
             if metric_name not in common_metrics and metric_name != primary_metric:
                 if isinstance(metric_value, float):
                     metric_value = f"{metric_value:.4f}"
-                lines.append(f"| {metric_name} | {metric_value} |")
+                html.append(f'<tr><td>{metric_name}</td><td>{metric_value}</td></tr>')
         
-        return "\n".join(lines)
+        html.append('</tbody>')
+        html.append('</table>')
+        return "\n".join(html)
     
     def _generate_checkpoints_table(self) -> str:
-        """Генерирует таблицу чекпоинтов."""
+        """Generate checkpoints table in HTML format."""
         checkpoints = self.info.get("checkpoints", [])
         if not checkpoints:
             return ""
         
-        lines = [
-            "| Checkpoints |",
-            "|---------|",
-        ]
+        html = ['<table class="checkpoints-table">']
+        html.append('<thead><tr><th>Checkpoints</th></tr></thead>')
+        html.append('<tbody>')
         
         for checkpoint in checkpoints:
             if isinstance(checkpoint, str):
-                lines.append(f"| {os.path.basename(checkpoint)} |")
+                html.append(f'<tr><td>{os.path.basename(checkpoint)}</td></tr>')
         
-        return "\n".join(lines)
+        html.append('</tbody>')
+        html.append('</table>')
+        return "\n".join(html)
     
     def _generate_hyperparameters_yaml(self) -> str:
-        """Генерирует YAML с гиперпараметрами."""
+        """Generate YAML with hyperparameters."""
         hyperparams_yaml = None
         
         # First try to use directly provided hyperparameters

@@ -42,6 +42,33 @@
         .model-benchmark-body table th {
         background-color: #f4f7fb;
         }
+        .model-benchmark-body .metrics-table,
+        .model-benchmark-body .checkpoints-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        border-radius: 6px;
+        overflow: hidden;
+        }
+        .model-benchmark-body .metrics-table th,
+        .model-benchmark-body .checkpoints-table th {
+        background-color: #f4f7fb;
+        font-weight: 600;
+        color: #333;
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 2px solid #e0e0e0;
+        }
+        .model-benchmark-body .metrics-table td,
+        .model-benchmark-body .checkpoints-table td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e9ecef;
+        }
+        .model-benchmark-body .metrics-table tr:hover,
+        .model-benchmark-body .checkpoints-table tr:hover {
+        background-color: #f8f9fa;
+        }
         .model-benchmark-body .code-block {
         background-color: #f5f5f5;
         border-radius: 6px;
@@ -88,7 +115,7 @@
         }
     </sly-style>
 
-    <!-- Заголовок и боковая навигация -->
+    <!-- Header and sidebar navigation -->
     <div class="sidebar-container">
         <div class="sidebar">
             <h3>Navigation</h3>
