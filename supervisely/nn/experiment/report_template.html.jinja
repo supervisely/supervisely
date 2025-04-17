@@ -1,0 +1,347 @@
+<div class="model-benchmark-body">
+
+    <sly-style>
+        .model-benchmark-body .sly-markdown-widget .markdown-body { padding: 0;
+        font-family: inherit; }
+        .model-benchmark-body .sly-markdown-widget .markdown-body h2 {
+        font-size: 18px; font-weight: 600; margin-bottom:
+        0px; border: 0; }
+        .model-benchmark-body .sly-markdown-widget .markdown-body h3 { color:
+        #949bab; font-size: 18px; margin-bottom:
+        7px; }
+        .model-benchmark-body .sly-markdown-widget .markdown-body p {
+        margin-bottom: 12px; }
+        .model-benchmark-body h1 { font-size: 20px; font-weight: bold;
+        margin-bottom: 5px; }
+        .model-benchmark-body .overview-info-block { background: #f4f7fb; border-radius: 12px;
+        padding: 20px; margin-bottom: 20px; }
+        .model-benchmark-body .width-fit-content { width: fit-content;}
+        .model-benchmark-body .section { margin-bottom: 30px; }
+        .model-benchmark-body .buttons-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body img {
+        max-width: 100%;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .model-benchmark-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body table th,
+        .model-benchmark-body table td {
+        border: 1px solid #e0e0e0;
+        padding: 8px 12px;
+        text-align: left;
+        }
+        .model-benchmark-body table th {
+        background-color: #f4f7fb;
+        }
+        .model-benchmark-body .code-block {
+        background-color: #f5f5f5;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+        }
+        .model-benchmark-body .sidebar-container {
+        display: flex;
+        gap: 20px;
+        }
+        .model-benchmark-body .sidebar {
+        position: sticky;
+        top: 20px;
+        width: 250px;
+        min-width: 250px;
+        padding: 15px;
+        background-color: #f4f7fb;
+        border-radius: 6px;
+        align-self: flex-start;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        }
+        .model-benchmark-body .main-content {
+        flex-grow: 1;
+        }
+        .model-benchmark-body .nav-item {
+        margin-bottom: 10px;
+        cursor: pointer;
+        color: #2c3e50;
+        transition: color 0.2s;
+        }
+        .model-benchmark-body .nav-item:hover {
+        color: #1890ff;
+        }
+        @media (max-width: 768px) {
+        .model-benchmark-body .sidebar-container {
+        flex-direction: column;
+        }
+        .model-benchmark-body .sidebar {
+        width: 100%;
+        position: static;
+        }
+        }
+    </sly-style>
+
+    <!-- Заголовок и боковая навигация -->
+    <div class="sidebar-container">
+        <div class="sidebar">
+            <h3>Navigation</h3>
+            <div class="nav-item" @click="scrollToElement('overview-section')">Overview</div>
+            {% if checkpoints_table %}
+            <div class="nav-item" @click="scrollToElement('checkpoints-section')">Checkpoints</div>
+            {% endif %}
+            {% if has_predictions %}
+            <div class="nav-item" @click="scrollToElement('predictions-section')">Predictions</div>
+            {% endif %}
+            {% if metrics_table %}
+            <div class="nav-item" @click="scrollToElement('metrics-section')">Metrics</div>
+            {% endif %}
+            {% if hyperparameters %}
+            <div class="nav-item" @click="scrollToElement('hyperparameters-section')">Hyperparameters</div>
+            {% endif %}
+            {% if has_chart %}
+            <div class="nav-item" @click="scrollToElement('training-section')">Training</div>
+            {% endif %}
+            <div class="nav-item" @click="scrollToElement('model-api-section')">Model API</div>
+            <div class="nav-item" @click="scrollToElement('docker-section')">Docker</div>
+            {% if serving_class and serving_module %}
+            <div class="nav-item" @click="scrollToElement('local-prediction-section')">Predict Locally</div>
+            {% endif %}
+        </div>
+
+        <div class="main-content">
+            <h1>{{ experiment_name }}</h1>
+
+            <!-- Buttons -->
+            <div class="section buttons-container">
+                <el-button type="primary">Deploy (PyTorch)</el-button>
+                {% if has_tensorrt %}
+                <el-button type="success">Deploy (TensorRT)</el-button>
+                {% elif has_onnx %}
+                <el-button type="success">Deploy (ONNX)</el-button>
+                {% endif %}
+                <el-button type="warning">Fine-tune</el-button>
+                <el-button type="info">Re-train</el-button>
+                <el-button>Download model</el-button>
+                <el-button type="danger">Remove</el-button>
+            </div>
+
+            <!-- Overview -->
+            <div id="overview-section" class="section overview-info-block">
+                <h2>Overview</h2>
+
+                <div class="links-section">
+                    {{ links | safe }}
+                </div>
+
+                <table>
+                    <tr>
+                        <td><strong>Model:</strong></td>
+                        <td>{{ model_name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Task:</strong></td>
+                        <td>{{ task_name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Framework:</strong></td>
+                        <td>{{ framework_name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Project:</strong></td>
+                        <td>{% if project_link %}<a href="{{ project_link }}">{{ project_name }}</a>{% else %}{{
+                            project_name }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Train size:</strong></td>
+                        <td>{{ train_size }} {{ train_type }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Validation size:</strong></td>
+                        <td>{{ validation_size }} {{ train_type }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Classes:</strong></td>
+                        <td>{{ classes_count }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Class names:</strong></td>
+                        <td>{{ class_names }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Date:</strong></td>
+                        <td>{{ date }}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Checkpoints -->
+            {% if checkpoints_table %}
+            <div id="checkpoints-section" class="section">
+                <h2>Checkpoints</h2>
+                {{ checkpoints_table | safe }}
+            </div>
+            {% endif %}
+
+            <!-- Metrics -->
+            {% if metrics_table %}
+            <div id="metrics-section" class="section">
+                <h2>Metrics</h2>
+                {{ metrics_table | safe }}
+            </div>
+            {% endif %}
+
+            <!-- Hyperparameters -->
+            {% if hyperparameters %}
+            <div id="hyperparameters-section" class="section">
+                <h2>Training Hyperparameters</h2>
+                <div class="code-block">
+                    <pre><code>{{ hyperparameters }}</code></pre>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Model API -->
+            <div id="model-api-section" class="section">
+                <h2>Model API</h2>
+                <p>Deploy and predict in Supervisely.</p>
+
+                <div class="code-block">
+                    <pre><code>import supervisely as sly
+
+api = sly.Api()
+
+# Deploy
+model = api.nn.deploy_custom_model(
+    checkpoint_id={{ checkpoint_path }},  # file id
+)
+
+# Predict
+prediction = model.predict(
+    images="image.png"  # image | path | url
+)
+</code></pre>
+                </div>
+
+                <p><em>See more in <a
+                            href="https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk"
+                            target="_blank">Deploy and Predict with Supervisely SDK</a> documentation.</em></p>
+            </div>
+
+            <!-- Docker -->
+            <div id="docker-section" class="section">
+                <h2>Docker</h2>
+                <p>Predict using Docker container.</p>
+
+                <ol>
+                    <li>Download checkpoint from Supervisely (<a href="{{ checkpoint_dir_url }}"
+                            target="_blank">download</a>)</li>
+                    <li>Pull the Docker image</li>
+                </ol>
+
+                <div class="code-block">
+                    <pre><code>docker pull {{ docker_image }}</code></pre>
+                </div>
+
+                <ol start="3">
+                    <li>Run the Docker container</li>
+                </ol>
+
+                <div class="code-block">
+                    <pre><code>docker run \
+  --runtime=nvidia \
+  -v "./{{ experiment_dir }}:/model" \
+  -p 8000:8000 \
+  {{ docker_image }} \
+  predict \
+  "./image.jpg" \
+  --model "/model" \
+  --device "cuda:0"</code></pre>
+                </div>
+
+                <p><em>See more in <a
+                            href="https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container"
+                            target="_blank">Deploy in Docker Container</a> documentation.</em></p>
+            </div>
+
+            <!-- Local Prediction -->
+            {% if serving_class and serving_module %}
+            <div id="local-prediction-section" class="section">
+                <h2>Predict Locally</h2>
+
+                <ol>
+                    <li>Download checkpoint from Supervisely (<a href="{{ checkpoint_dir_url }}"
+                            target="_blank">download</a>)</li>
+                    <li>Clone repository</li>
+                </ol>
+
+                <div class="code-block">
+                    <pre><code>git clone {{ repository_url }}
+cd {{ repository_name }}</code></pre>
+                </div>
+
+                <ol start="3">
+                    <li>Install requirements</li>
+                </ol>
+
+                <div class="code-block">
+                    <pre><code>pip install -r dev_requirements.txt
+pip install supervisely</code></pre>
+                </div>
+
+                <ol start="4">
+                    <li>Run inference</li>
+                </ol>
+
+                <div class="code-block">
+                    <pre><code># Be sure you are in the root of the {{ repository_name }} repository
+from {{ serving_module }} import {{ serving_class }}
+
+# Load model
+model = {{ serving_class }}(
+    checkpoint="./{{ experiment_dir }}/checkpoints/{{ best_checkpoint }}",  # path to the checkpoint
+    device="cuda",
+)
+
+# Predict
+prediction = model(
+    "image.png",  # local paths, directory, local project, np.array, PIL.Image, URL
+    params={"confidence_threshold": 0.5}
+)</code></pre>
+                </div>
+
+                {% if has_onnx or has_tensorrt %}
+                <h3>Using optimized models</h3>
+
+                <div class="code-block">
+                    <pre><code># Be sure you are in the root of the {{ repository_name }} repository
+from {{ serving_module }} import {{ serving_class }}
+
+model = {{ serving_class }}(
+    model_dir="./{{ experiment_dir }}",
+    checkpoint="{% if has_onnx %}best.onnx{% else %}best.engine{% endif %}",
+    device="cuda",
+)</code></pre>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Navigation between sections -->
+    <script>
+        function scrollToElement(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    </script>
+</div>

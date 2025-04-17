@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
-from jinja2 import Template
+from jinja2 import Template, Environment, FileSystemLoader
 
 from supervisely.api.api import Api
 from supervisely.nn.inference import Inference
@@ -14,14 +14,7 @@ from supervisely.project import ProjectMeta
 import supervisely.io.json as sly_json
 import supervisely.io.fs as sly_fs
 import supervisely.io.env as sly_env
-from supervisely.task.progress import tqdm_sly
 from supervisely import logger
-from supervisely.nn.benchmark.visualization.widgets import (
-    ContainerWidget,
-    MarkdownWidget,
-    SidebarWidget,
-)
-from supervisely.nn.benchmark.visualization.renderer import Renderer
 
 
 class BaseExperimentGenerator:
@@ -65,401 +58,187 @@ class BaseExperimentGenerator:
         self.app_info = self._get_app_info()
 
         self.report_name = "Experiment Report.lnk"
-        self.main_template = self._load_report_template()
+        
+        # Настройка окружения Jinja
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(Path(__file__).parent),
+            autoescape=False,
+            trim_blocks=True,
+            lstrip_blocks=True
+        )
 
     def get_state(self):
         """Get state for state.json"""
         return {}
     
-    def _load_report_template(self) -> str:
-        """Loads report template from file or returns built-in template."""
-        template_path = Path(__file__).parent / "report_template.html"
-        return template_path.read_text()
-    
-    def _create_widgets(self) -> None:
-        """Create widgets for the layout"""
-        # Header
-        exp_name = self.info.get("experiment_name", "Unknown Experiment")
-        self.header = MarkdownWidget(
-            name="header",
-            title="Header",
-            text=f'# {exp_name}\n\n'
-        )
-        
-        # Buttons
-        buttons_text = self._generate_buttons_text()
-        self.buttons = MarkdownWidget(
-            name="buttons",
-            title="Buttons",
-            text=buttons_text
-        )
-        
-        # Overview
-        overview_text = self._generate_overview_text()
-        self.overview = MarkdownWidget(
-            name="overview",
-            title="Overview",
-            text=overview_text
-        )
-        
-        # Basic info
-        basic_info_text = self._generate_basic_info_text()
-        self.basic_info = MarkdownWidget(
-            name="basic_info",
-            title="Basic Info",
-            text=basic_info_text
-        )
-        
-        # Checkpoints
-        checkpoints_text = self._generate_checkpoints_text()
-        self.checkpoints = MarkdownWidget(
-            name="checkpoints",
-            title="Checkpoints",
-            text=checkpoints_text
-        )
-        
-        # Metrics
-        metrics_text = self._generate_metrics_text()
-        self.metrics = MarkdownWidget(
-            name="metrics",
-            title="Metrics",
-            text=metrics_text
-        )
-        
-        # Hyperparameters
-        hyperparams_text = self._generate_hyperparameters_text()
-        self.hyperparams = MarkdownWidget(
-            name="hyperparameters",
-            title="Hyperparameters",
-            text=hyperparams_text
-        )
-        
-        # Training
-        training_text = self._generate_training_text()
-        self.training = MarkdownWidget(
-            name="training",
-            title="Training",
-            text=training_text
-        )
-        
-        # Model API
-        model_api_text = self._generate_model_api_text()
-        self.model_api = MarkdownWidget(
-            name="model_api",
-            title="Model API",
-            text=model_api_text
-        )
-        
-        # Docker
-        docker_text = self._generate_docker_text()
-        self.docker = MarkdownWidget(
-            name="docker",
-            title="Docker",
-            text=docker_text
-        )
-        
-        # Local prediction
-        local_prediction_text = self._generate_local_prediction_text()
-        self.local_prediction = MarkdownWidget(
-            name="local_prediction",
-            title="Local Prediction",
-            text=local_prediction_text
-        )
-    
-    def _create_layout(self) -> ContainerWidget:
-        """Create layout for experiment report.
-        
-        :return: Container widget with all the content
-        :rtype: BaseWidget
-        """
-        self._create_widgets()
-        
-        is_anchors_widgets = [
-            (0, self.header),
-            (0, self.buttons),
-            (0, MarkdownWidget(name="separator1", title="Separator", text="---\n")),
-            (1, self.overview),
-            (0, MarkdownWidget(name="separator2", title="Separator", text="---\n")),
-            (1, self.basic_info),
-        ]
-        
-        if self.checkpoints:
-            is_anchors_widgets.append((1, self.checkpoints))
-            
-        if self.metrics:
-            is_anchors_widgets.append((1, self.metrics))
-            
-        if self.hyperparams:
-            is_anchors_widgets.append((1, self.hyperparams))
-            
-        if self.training:
-            is_anchors_widgets.append((1, self.training))
-        
-        is_anchors_widgets.append((1, self.model_api))
-        is_anchors_widgets.append((1, self.docker))
-        is_anchors_widgets.append((1, self.local_prediction))
-        
-        anchors = []
-        for is_anchor, widget in is_anchors_widgets:
-            if is_anchor:
-                anchors.append(widget.id)
-        
-        sidebar = SidebarWidget(widgets=[i[1] for i in is_anchors_widgets], anchors=anchors)
-        layout = ContainerWidget([sidebar], name="experiment_report")
-        return layout
-
     def generate_template(self) -> str:
         """Generate experiment report HTML and save it as template.vue.
 
-        :param output_dir: Directory to save the report (overrides the one set in constructor)
-        :type output_dir: str
         :return: Path to the generated template.vue file
         :rtype: str
         """
-        layout = self._create_layout()
-        renderer = Renderer(layout, self.output_dir, template=self.main_template)
-        renderer.save()
+        context = self._prepare_template_context()
+        template = self.jinja_env.get_template("report_template.html.jinja")
+        html_content = template.render(**context)
         template_path = os.path.join(self.output_dir, "template.vue")
+        with open(template_path, "w") as f:
+            f.write(html_content)
         return template_path
     
-    def generate_state(self):
-        """Generate state for state.json"""
-        state = self.get_state()
-        state_path = os.path.join(self.output_dir, "state.json")
-        sly_json.dump_json_file(state, state_path)
-        return state_path
-    
-    def generate_report_link(self, template_id: int):
-        """Generate report link"""
-        report_path = os.path.join(self.output_dir, self.report_name)
-        with open(report_path, "w") as f:
-            f.write(self._get_report_link(template_id))
-        return report_path
-
-
-    def generate_report(self) -> str:
-        """Generate and upload report to Supervisely"""
-        remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
+    def _prepare_template_context(self) -> Dict[str, Any]:
+        """Prepare context for Jinja template.
         
-        # template.vue
-        template_path = self.generate_template()
-        remote_template_path = os.path.join(remote_dir, "template.vue")
-        template_file = self.api.file.upload(team_id=self.team_id, src=template_path, dst=remote_template_path)
-
-        # data
-        remote_data_path = os.path.join(remote_dir, "data")
-        data_path = os.path.join(self.output_dir, "data")
-        self.api.file.upload_directory(self.team_id, data_path, remote_data_path, replace_if_conflict=True)
-        
-        # state.json
-        state_path = self.generate_state()
-        remote_state_path = os.path.join(remote_dir, "state.json")
-        state_file = self.api.file.upload(team_id=self.team_id, src=state_path, dst=remote_state_path)
-        
-        # report.lnk
-        remote_report_path = os.path.join(remote_dir, self.report_name)
-        report_path = self.generate_report_link(template_file.id)
-        report_file = self.api.file.upload(team_id=self.team_id, src=report_path, dst=remote_report_path)
-        logger.info("Experiment report generated successfully")
-
-    def _get_report_link(self, template_id: int):
-        """Get path to report file."""
-        return self.api.server_address + "/nn/experiments/" + str(template_id)
-
-    # Вспомогательные методы для генерации текста для виджетов
-    
-    def _generate_buttons_text(self) -> str:
-        """Generate buttons section.
-
-        :return: Buttons section content
-        :rtype: str
+        :return: Dictionary with data for template
+        :rtype: Dict[str, Any]
         """
-        buttons = [
-            "## Buttons",
-            "- 🚀 Deploy (PyTorch)",
-        ]
-
-        # Add TensorRT button if TensorRT export exists
+        # Experiment
+        exp_name = self.info["experiment_name"]
+        model_name = self.info["model_name"]
+        task_type = self.info["task_type"]
+        framework_name = self.info["framework_name"]
+        
+        # Project
+        project_id = self.info["project_id"]
+        project_info = self.api.project.get_info_by_id(project_id)
+        project_type = project_info.type
+        project_link = f"{self.api.server_address}/projects/{project_id}/datasets"
+        
+        # Train / Val sizes
+        train_size = self.info["train_size"]
+        val_size = self.info["val_size"]
+        
+        # Classes
+        classes = [cls.name for cls in self.model_meta.obj_classes]
+        # Date
+        date = self._get_date()
+        # Links to related resources
+        links = self._generate_links()
+        # Metrics
+        metrics = self._generate_metrics_table()
+        # Checkpoints
+        checkpoints = self._generate_checkpoints_table()
+        # Hyperparameters
+        hyperparameters = self._generate_hyperparameters_yaml()
+        # Deployment information
+        experiment_dir = os.path.basename(self.info["artifacts_dir"])
+        # Docker
+        docker_image = self._get_docker_image()
+        # Repository information
+        repo_info = self._get_repository_info()
+        # Buttons
+        buttons = self._get_buttons()
+        
+        return {
+            "experiment_name": exp_name,
+            "model_name": model_name,
+            "task_name": task_type,
+            "framework_name": framework_name,
+            "project_name": project_info.name if project_info else "",
+            "project_link": project_link,
+            "train_size": train_size,
+            "train_type": project_type,
+            "validation_size": val_size,
+            "classes_count": len(classes),
+            "class_names": ", ".join(classes),
+            "date": date,
+            "links": links,
+            "metrics_table": metrics,
+            "checkpoints_table": checkpoints,
+            "hyperparameters": hyperparameters,
+            "experiment_dir": experiment_dir,
+            "docker_image": docker_image,
+            "repository_url": repo_info.get("url", ""),
+            "repository_name": repo_info.get("name", ""),
+            "checkpoint_path": "{checkpoint_id}",
+            "checkpoint_dir_url": f"{self.api.server_address}/files/?path={self.artifacts_dir}",
+            "buttons": buttons,
+            "serving_class": self.serving_class.__name__ if self.serving_class else None,
+            "serving_module": self.serving_class.__module__ if self.serving_class else None,
+            "best_checkpoint": self.info["best_checkpoint"],
+        }
+    
+    def _get_buttons(self) -> str:
+        """Returns HTML code for template buttons."""
         export = self.info.get("export", {})
-        if export and any("engine" in k.lower() for k in export.keys()):
+        has_tensorrt = export and any("engine" in k.lower() for k in export.keys())
+        has_onnx = export and any("onnx" in k.lower() for k in export.keys())
+        
+        buttons = []
+        buttons.append("- 🚀 Deploy (PyTorch)")
+        
+        if has_tensorrt:
             buttons.append("- 🚀 Deploy (TensorRT)")
-        elif export and any("onnx" in k.lower() for k in export.keys()):
+        elif has_onnx:
             buttons.append("- 🚀 Deploy (ONNX)")
-
-        buttons.extend(
-            [
-                "- ⏩ Fine-tune",
-                "- 🔄 Re-train",
-                "- 📦 Download model",
-                "- ❌ Remove permamently",
-            ]
-        )
-
-        return "\n".join(buttons) + "\n"
-
-    def _generate_overview_text(self) -> str:
-        """Generate overview section with links.
-
-        :return: Overview section content
-        :rtype: str
-        """
-        lines = ["## Overview\n"]
-
+            
+        buttons.extend([
+            "- ⏩ Fine-tune",
+            "- 🔄 Re-train",
+            "- 📦 Download model",
+            "- ❌ Remove permamently",
+        ])
+        
+        return "\n".join(buttons)
+    
+    def _generate_links(self) -> str:
+        """Генерирует ссылки на связанные ресурсы."""
+        lines = []
+        
         # Training task link
         task_id = self.info.get("task_id")
         if task_id:
             lines.append(
                 f"- 🎓 [Training Task]({self.api.server_address}/apps/sessions/{task_id})"
             )
-
+        
         # Evaluation report link
         eval_id = self.info.get("evaluation_report_id")
         eval_link = self.info.get("evaluation_report_link")
         if eval_id:
-            report_link = (
-                eval_link or f"{self.api.server_address}/model-benchmark?id={eval_id}"
-            )
+            report_link = eval_link or f"{self.api.server_address}/model-benchmark?id={eval_id}"
             lines.append(f"- 📊 [Evaluation Report]({report_link})")
-
+        
         # TensorBoard logs link
         logs = self.info.get("logs", {})
         if logs and "link" in logs:
             lines.append(f"- ⚡ [TensorBoard Logs]({self.api.server_address}/files/?path={logs['link']})")
-
+        
         # Artifacts link in Team Files
         artifacts_dir = self.info.get("artifacts_dir")
         if artifacts_dir:
             lines.append(
                 f"- 💾 [Open in Team Files]({self.api.server_address}/files/?path={artifacts_dir})"
             )
-
-        return "\n".join(lines) + "\n"
-
-    def _generate_basic_info_text(self) -> str:
-        """Generate section with basic information.
-
-        :return: Basic information section content
-        :rtype: str
-        """
-        lines = []
-
-        # Model name
-        model_name = self.info.get("model_name")
-        if model_name:
-            lines.append(f"- **Model**: {model_name}")
-
-        # Task type
-        task_type = self.info.get("task_type")
-        if task_type:
-            lines.append(f"- **Task**: {task_type}")
-
-        # Framework
-        framework = self.info.get("framework_name")
-        if framework:
-            lines.append(f"- **Framework**: {framework}")
-
-        # Project
-        project_id = self.info.get("project_id")
-        project_info = self.api.project.get_info_by_id(project_id)
-        if project_info:
-            lines.append(
-                f"- **Project**: [{project_info.name}]({self.api.server_address}/projects/{project_id}/datasets)"
-            )
-
-        # Train dataset size
-        train_size = self.info.get("train_size")
-        if train_size:
-            if project_info:
-                lines.append(f"- **Train size**: {train_size} {project_info.type}")
-            else:
-                lines.append(f"- **Train size**: {train_size}")
-
-        # Validation dataset size
-        val_size = self.info.get("val_size")
-        if val_size:
-            if project_info:
-                lines.append(f"- **Validation size**: {val_size} {project_info.type}")
-            else:
-                lines.append(f"- **Validation size**: {val_size}")
-
-        # Classes
-        classes = [cls.name for cls in self.model_meta.obj_classes]
-        if classes:
-            lines.append(f"- **Classes**: {len(classes)}")
-            lines.append(f"- **Class names**: {', '.join(classes)}")
-
-        # Training date
-        date_str = self.info.get("datetime")
-        if date_str:
-            try:
-                dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-                formatted_date = dt.strftime("%d %b %Y")
-                lines.append(f"- **Date**: {formatted_date}")
-            except ValueError:
-                lines.append(f"- **Date**: {date_str}")
-
-        return "\n".join(lines) + "\n\n"
-
-    def _generate_checkpoints_text(self) -> str:
-        """Generate checkpoints section.
-
-        :return: Checkpoints section content
-        :rtype: str
-        """
-        checkpoints = self.info.get("checkpoints", [])
-        if not checkpoints:
-            return ""
-
-        lines = [
-            "| Checkpoints |",
-            "|---------|",
-        ]
-
-        for checkpoint in checkpoints:
-            if isinstance(checkpoint, str):
-                lines.append(f"| {os.path.basename(checkpoint)} |")
-
-        return "\n".join(lines) + "\n\n"
-
-    def _generate_metrics_text(self) -> str:
-        """Generate metrics section.
-
-        :return: Metrics section content
-        :rtype: str
-        """
+        
+        return "\n".join(lines)
+    
+    def _generate_metrics_table(self) -> str:
+        """Генерирует таблицу метрик."""
         metrics = self.info.get("evaluation_metrics", {})
         if not metrics:
             return ""
-
+        
         lines = [
-            "## Metrics\n",
             "| Metrics | Values |",
             "|---------|--------|",
         ]
-
+        
         # Get primary metric if specified
         primary_metric = self.info.get("primary_metric")
-
+        
         # List of important metrics by task types
         common_metrics = [
-            "mAP",
-            "AP50",
-            "AP75",
-            "f1",
-            "precision",
-            "recall",
-            "accuracy",
-            "mean_iou",
-            "pixel_accuracy",
+            "mAP", "AP50", "AP75", "f1", "precision", "recall", 
+            "accuracy", "mean_iou", "pixel_accuracy",
         ]
-
+        
         # Add primary metric first if specified
         if primary_metric and primary_metric in metrics:
             metric_value = metrics[primary_metric]
             if isinstance(metric_value, float):
                 metric_value = f"{metric_value:.4f}"
             lines.append(f"| {primary_metric} | {metric_value} |")
-
+        
         # Add other important metrics
         for metric_name in common_metrics:
             if metric_name in metrics and metric_name != primary_metric:
@@ -467,24 +246,37 @@ class BaseExperimentGenerator:
                 if isinstance(metric_value, float):
                     metric_value = f"{metric_value:.4f}"
                 lines.append(f"| {metric_name} | {metric_value} |")
-
+        
         # Add remaining metrics
         for metric_name, metric_value in metrics.items():
             if metric_name not in common_metrics and metric_name != primary_metric:
                 if isinstance(metric_value, float):
                     metric_value = f"{metric_value:.4f}"
                 lines.append(f"| {metric_name} | {metric_value} |")
-
-        return "\n".join(lines) + "\n\n"
-
-    def _generate_hyperparameters_text(self) -> str:
-        """Generate hyperparameters section.
-
-        :return: Hyperparameters section content
-        :rtype: str
-        """
+        
+        return "\n".join(lines)
+    
+    def _generate_checkpoints_table(self) -> str:
+        """Генерирует таблицу чекпоинтов."""
+        checkpoints = self.info.get("checkpoints", [])
+        if not checkpoints:
+            return ""
+        
+        lines = [
+            "| Checkpoints |",
+            "|---------|",
+        ]
+        
+        for checkpoint in checkpoints:
+            if isinstance(checkpoint, str):
+                lines.append(f"| {os.path.basename(checkpoint)} |")
+        
+        return "\n".join(lines)
+    
+    def _generate_hyperparameters_yaml(self) -> str:
+        """Генерирует YAML с гиперпараметрами."""
         hyperparams_yaml = None
-
+        
         # First try to use directly provided hyperparameters
         if self.hyperparameters is not None:
             if isinstance(self.hyperparameters, dict):
@@ -500,13 +292,13 @@ class BaseExperimentGenerator:
                 else:
                     # Assume it's already YAML
                     hyperparams_yaml = self.hyperparameters
-
+        
         # If not found, try to load from downloaded file
         if hyperparams_yaml is None and "hyperparameters" in self.info and self.artifacts_dir:
             hyperparams_path = os.path.join(
                 self.artifacts_dir, os.path.basename(self.info["hyperparameters"])
             )
-
+            
             if os.path.exists(hyperparams_path):
                 try:
                     with open(hyperparams_path, "r") as f:
@@ -517,197 +309,75 @@ class BaseExperimentGenerator:
                             hyperparams_yaml = f.read()
                 except Exception as e:
                     print(f"Failed to read hyperparameters: {e}")
-
-        if hyperparams_yaml:
-            return f"## Training Hyperparameters\n\n```yaml\n{hyperparams_yaml}```\n\n"
-        else:
-            return ""
-
-    def _generate_training_text(self) -> str:
-        """Generate training chart section.
-
-        :return: Training chart section content
-        :rtype: str
-        """
-        # Check if there's a training chart image
-        chart_path = None
-        if self.artifacts_dir:
-            for filename in ["chart.png", "training.png", "loss.png", "metrics.png"]:
-                path = os.path.join(self.artifacts_dir, filename)
-                if os.path.exists(path):
-                    chart_path = path
-                    break
-
-        if not chart_path:
-            return ""
-
-        return "## Training\n\n![chart](img/chart.png)\n\n"
-
-    def _generate_model_api_text(self) -> str:
-        """Generate Model API description section.
-
-        :return: Model API section content
-        :rtype: str
-        """
-        # Check if model files exist
-        if not self.info.get("model_files"):
-            return ""
-
-        checkpoint_id = "{checkpoint_id}"  # Default placeholder
-
-        return f"""## Model API
-
-Deploy and predict in Supervisely.
-
-```python
-import supervisely as sly
-
-api = sly.Api()
-
-# Deploy
-model = api.nn.deploy_custom_model(
-    checkpoint_id={checkpoint_id},  # file id
-)
-
-# Predict
-prediction = model.predict(
-    images="image.png"  # image | path | url
-)
-```
-
-> See more in [Deploy and Predict with Supervisely SDK](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk) documentation.
-
-"""
-
-    def _generate_docker_text(self) -> str:
-        """Generate Docker description section.
-
-        :return: Docker section content
-        :rtype: str
-        """
+        
+        return hyperparams_yaml or ""
+    
+    def _get_docker_image(self) -> str:
+        """Returns Docker image."""
         framework_name = self.info.get("framework_name")
         if not framework_name:
-            return ""
-
-        # Create expected Docker image name
+            return "supervisely/nvidia:latest"
+        
         if self.app_info:
             docker_image = self.app_info.config.get("docker_image")
-        else:
-            docker_image = f"supervisely/{framework_name.lower()}:latest"
-        experiment_dir = os.path.basename(self.info.get("artifacts_dir", "")) or "{experiment_dir}"
-
-        return f"""## Docker
-
-Predict using Docker container.
-
-1. Download checkpoint from Supervisely ([download](xxx))
-
-2. Pull the Docker image
-
-```bash
-docker pull {docker_image}
-```
-3. Run the Docker container
-
-```bash
-docker run \\
-  --runtime=nvidia \\
-  -v "./{experiment_dir}:/model" \\
-  -p 8000:8000 \\
-  {docker_image} \\
-  predict \\
-  "./image.jpg" \\
-  --model "/model" \\
-  --device "cuda:0" \\
-```
-
-> See more in [Deploy in Docker Container](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container) documentation.
-
-"""
-
-    def _generate_local_prediction_text(self) -> str:
-        """Generate local prediction description section.
-
-        :return: Local prediction section content
-        :rtype: str
-        """
-        framework_name = self.info.get("framework_name")
-        if not framework_name:
-            return ""
-
-        if self.app_info:
+            if docker_image:
+                return docker_image
+                
+        return f"supervisely/{framework_name.lower()}:latest"
+    
+    def _get_repository_info(self) -> Dict[str, str]:
+        """Returns repository info."""
+        framework_name = self.info.get("framework_name", "")
+        
+        if self.app_info and hasattr(self.app_info, "repo"):
             repo_link = self.app_info.repo
             repo_name = repo_link.split("/")[-1]
-        else:
-            repo_link = f"https://github.com/supervisely-ecosystem/{framework_name.replace(' ', '-')}"
-            repo_name = framework_name.replace(" ", "-")
+            return {"url": repo_link, "name": repo_name}
+            
+        # Fallback
+        repo_link = f"https://github.com/supervisely-ecosystem/{framework_name.replace(' ', '-')}"
+        repo_name = framework_name.replace(" ", "-")
+        return {"url": repo_link, "name": repo_name}
+    
+    def generate_state(self):
+        """Generate state for state.json"""
+        state = self.get_state()
+        state_path = os.path.join(self.output_dir, "state.json")
+        sly_json.dump_json_file(state, state_path)
+        return state_path
+    
+    def generate_report_link(self, template_id: int):
+        """Generate report link"""
+        report_path = os.path.join(self.output_dir, self.report_name)
+        with open(report_path, "w") as f:
+            f.write(self._get_report_link(template_id))
+        return report_path
 
+    def generate_report(self) -> str:
+        """Generate and upload report to Supervisely"""
+        remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
+        
+        # template.vue
+        template_path = self.generate_template()
+        remote_template_path = os.path.join(remote_dir, "template.vue")
+        template_file = self.api.file.upload(team_id=self.team_id, src=template_path, dst=remote_template_path)
+        
+        # state.json
+        state_path = self.generate_state()
+        remote_state_path = os.path.join(remote_dir, "state.json")
+        state_file = self.api.file.upload(team_id=self.team_id, src=state_path, dst=remote_state_path)
+        
+        # report.lnk
+        remote_report_path = os.path.join(remote_dir, self.report_name)
+        report_path = self.generate_report_link(template_file.id)
+        report_file = self.api.file.upload(team_id=self.team_id, src=report_path, dst=remote_report_path)
+        logger.info("Experiment report generated successfully")
+        
+        return remote_dir
 
-        model_class = self.serving_class.__name__
-        model_class_import_path = f"from {self.serving_class.__module__} import {model_class}"
-        experiment_dir = os.path.basename(self.info.get("artifacts_dir", "")) or "{experiment_dir}"
-
-        # Check if there's export to ONNX or TensorRT
-        export = self.info.get("export", {})
-        has_onnx = export and any("onnx" in k.lower() for k in export.keys())
-        has_engine = export and any("engine" in k.lower() for k in export.keys())
-
-        onnx_section = ""
-        if has_onnx or has_engine:
-            checkpoint_name = "best.onnx" if has_onnx else "best.engine"
-            onnx_section = f"""
-
-Questions:
-- How to load {checkpoint_name}?
-
-```python
-# Be sure you are in the root of the {repo_name} repository
-{model_class_import_path}
-
-model = {model_class}(
-    model_dir="./{experiment_dir}",
-    checkpoint="{checkpoint_name}",
-    device="cuda",
-)
-```"""
-
-        return f"""## Predict Locally
-
-1. Download checkpoint from Supervisely ([download](xxx))
-
-2. Clone repository
-
-```bash
-git clone {repo_link}
-cd {repo_name}
-```
-
-3. Install requirements
-
-```bash
-pip install -r dev_requirements.txt
-pip install supervisely
-```
-
-4. Run inference
-
-```python
-# Be sure you are in the root of the {repo_name} repository
-{model_class_import_path}
-
-# Load model
-model = {model_class}(
-    checkpoint="./{experiment_dir}/checkpoints/{self.info.get('best_checkpoint', 'best.pt')}",  # path to the checkpoint
-    device="cuda",
-)
-
-# Predict
-prediction = model(
-    "image.png",  # local paths, directory, local project, np.array, PIL.Image, URL
-    params={{"confidence_threshold": 0.5}}
-)
-```{onnx_section}
-"""
+    def _get_report_link(self, template_id: int):
+        """Get path to report file."""
+        return self.api.server_address + "/nn/experiments/" + str(template_id)
 
     def _get_app_info(self):
         try:
@@ -734,3 +404,15 @@ prediction = model(
                 return sly_json.load_json_file(config_path)
         except Exception as e:
             print(f"Failed to load config.json: {e}")
+
+    def _get_date(self):
+        """Get date"""
+        date_str = self.info.get("datetime", "")
+        date = date_str
+        if date_str:
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                date = dt.strftime("%d %b %Y")
+            except ValueError:
+                pass
+        return date
