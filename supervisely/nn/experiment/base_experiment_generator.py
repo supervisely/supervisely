@@ -1,14 +1,21 @@
 import json
+from pathlib import Path
 import os
 import shutil
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
 import yaml
+from jinja2 import Template
 
-from supervisely.io.fs import mkdir
+from supervisely.api.api import Api
 from supervisely.nn.inference import Inference
 from supervisely.project import ProjectMeta
+import supervisely.io.json as sly_json
+import supervisely.io.fs as sly_fs
+import supervisely.io.env as sly_env
+from supervisely.task.progress import tqdm_sly
+from supervisely import logger
 
 
 class BaseExperimentGenerator:
@@ -20,11 +27,11 @@ class BaseExperimentGenerator:
 
     def __init__(
         self,
+        api: Api,
         experiment_info: dict,
         hyperparameters: str,
         model_meta: ProjectMeta,
         serving_class: Optional[Inference] = None,
-        output_dir: str = "./experiment_report",
     ):
         """Initialize experiment generator class.
 
@@ -36,42 +43,101 @@ class BaseExperimentGenerator:
         :type model_meta: Optional[Union[str, Dict]]
         :param serving_class: Serving class for model inference
         :type serving_class: Optional[Inference]
-        :param output_dir: Directory to save the report
-        :type output_dir: str
         """
+        self.api = api
+        self.team_id = sly_env.team_id()
         self.info = experiment_info
         self.hyperparameters = hyperparameters
         self.model_meta = model_meta
-        self.output_dir = output_dir
+
+        self.output_dir = "./experiment_report"
+        sly_fs.mkdir(self.output_dir, True)
+
         self.artifacts_dir = self.info["artifacts_dir"]
+
         self.serving_class = serving_class
+        self.app_info = self._get_app_info()
 
-        # @TODO: remove this
-        self.img_dir = os.path.join(output_dir, "img")
-        mkdir(self.img_dir, True)
+        self.report_name = "Experiment Report.lnk"
+        self.main_template = self._load_report_template()
 
-    def generate_report(self) -> str:
-        """Generate experiment report and return path to README.md.
+    def get_state(self):
+        """Get state for state.json"""
+        return {}
+    
+    def _load_report_template(self) -> str:
+        """Loads report template from file or returns built-in template."""
+        template_path = Path(__file__).parent / "report_template.html"
+        return template_path.read_text()
+  
+    def generate_template(self) -> str:
+        """Generate experiment report HTML and save it as template.vue.
 
-        :return: Path to the generated README.md file
+        :return: Path to the generated template.vue file
         :rtype: str
         """
-        mkdir(self.output_dir, True)
+        content = self._generate_md()
+        content_escaped = content.replace('`', r'\`').replace('"', r'\"').replace('\n', r'\n')
+        
+        # Используем двойные кавычки снаружи, одинарные внутри для лучшей совместимости
+        markdown_widget = f'<sly-markdown-widget content="{content_escaped}"></sly-markdown-widget>'
+        
+        # Убедимся, что шаблон содержит {{ content }} и заменим его на widget
+        template = self.main_template.replace("{{ content }}", markdown_widget)
+        
+        template_path = os.path.join(self.output_dir, "template.vue")
+        with open(template_path, "w") as f:
+            f.write(template)
+            
+        # Выведем информацию о созданном файле для отладки
+        logger.info(f"Template.vue generated: {os.path.getsize(template_path)} bytes")
+        
+        return template_path
+    
+    def generate_state(self):
+        """Generate state for state.json"""
+        state = self.get_state()
+        state_path = os.path.join(self.output_dir, "state.json")
+        sly_json.dump_json_file(state, state_path)
+        return state_path
+    
+    def generate_report_link(self, template_id: int):
+        """Generate report link"""
+        report_path = os.path.join(self.output_dir, self.report_name)
+        with open(report_path, "w") as f:
+            f.write(self._get_report_link(template_id))
+        return report_path
 
-        # Generate README.md content
-        content = self._generate_content()
-        readme_path = os.path.join(self.output_dir, "README.md")
 
-        # Write to file
-        with open(readme_path, "w", encoding="utf-8") as f:
-            f.write(content)
+    def generate_report(self) -> str:
+        """Generate and upload report to Supervisely"""
 
-        return readme_path
+        remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
+        
+        # template.vue
+        template_path = self.generate_template()
+        remote_template_path = os.path.join(remote_dir, "template.vue")
+        template_file = self.api.file.upload(team_id=self.team_id, src=template_path, dst=remote_template_path)
 
-    def _generate_content(self) -> str:
-        """Generate content for README.md file.
+        # state.json
+        state_path = self.generate_state()
+        remote_state_path = os.path.join(remote_dir, "state.json")
+        state_file = self.api.file.upload(team_id=self.team_id, src=state_path, dst=remote_state_path)
+        
+        # report.lnk
+        remote_report_path = os.path.join(remote_dir, self.report_name)
+        report_path = self.generate_report_link(template_file.id)
+        report_file = self.api.file.upload(team_id=self.team_id, src=report_path, dst=remote_report_path)
+        logger.info("Experiment report generated successfully")
 
-        :return: README.md content
+    def _get_report_link(self, template_id: int):
+        """Get path to report file."""
+        return self.api.server_address + "/nn/experiments/" + str(template_id)
+
+    def _generate_md(self) -> str:
+        """Generate content in markdown format.
+
+        :return: markdown content
         :rtype: str
         """
         sections = []
@@ -166,7 +232,7 @@ class BaseExperimentGenerator:
         task_id = self.info.get("task_id")
         if task_id:
             lines.append(
-                f"- 🎓 [Training Task](https://dev.internal.supervisely.com/apps/sessions/{task_id})"
+                f"- 🎓 [Training Task]({self.api.server_address}/apps/sessions/{task_id})"
             )
 
         # Evaluation report link
@@ -174,20 +240,20 @@ class BaseExperimentGenerator:
         eval_link = self.info.get("evaluation_report_link")
         if eval_id:
             report_link = (
-                eval_link or f"https://dev.internal.supervisely.com/model-benchmark?id={eval_id}"
+                eval_link or f"{self.api.server_address}/model-benchmark?id={eval_id}"
             )
             lines.append(f"- 📊 [Evaluation Report]({report_link})")
 
         # TensorBoard logs link
         logs = self.info.get("logs", {})
         if logs and "link" in logs:
-            lines.append(f"- ⚡ [TensorBoard Logs]({logs['link']})")
+            lines.append(f"- ⚡ [TensorBoard Logs]({self.api.server_address}/files/?path={logs['link']})")
 
         # Artifacts link in Team Files
         artifacts_dir = self.info.get("artifacts_dir")
         if artifacts_dir:
             lines.append(
-                f"- 💾 [Open in Team Files](https://dev.internal.supervisely.com/files/?path={artifacts_dir})"
+                f"- 💾 [Open in Team Files]({self.api.server_address}/files/?path={artifacts_dir})"
             )
 
         return "\n".join(lines) + "\n"
@@ -217,26 +283,39 @@ class BaseExperimentGenerator:
 
         # Project
         project_id = self.info.get("project_id")
-        if project_id:
+        project_info = self.api.project.get_info_by_id(project_id)
+        if project_info:
             lines.append(
-                f"- **Project**: [Project {project_id}](https://dev.internal.supervisely.com/projects/{project_id}/datasets)"
+                f"- **Project**: [{project_info.name}]({self.api.server_address}/projects/{project_id}/datasets)"
             )
 
         # Train dataset size
         train_size = self.info.get("train_size")
         if train_size:
-            lines.append(f"- **Train dataset size**: {train_size} images")
+            if project_info:
+                lines.append(f"- **Train size**: {train_size} {project_info.type}")
+            else:
+                lines.append(f"- **Train size**: {train_size}")
 
         # Validation dataset size
         val_size = self.info.get("val_size")
         if val_size:
-            lines.append(f"- **Validation dataset size**: {val_size} images")
+            if project_info:
+                lines.append(f"- **Validation size**: {val_size} {project_info.type}")
+            else:
+                lines.append(f"- **Validation size**: {val_size}")
 
         # Classes
         classes = [cls.name for cls in self.model_meta.obj_classes]
         if classes:
             lines.append(f"- **Classes**: {len(classes)}")
             lines.append(f"- **Class names**: {', '.join(classes)}")
+
+        # Tags
+        # tags = [tag.name for tag in self.model_meta.tag_metas]
+        # if tags:
+        #     lines.append(f"- **Tags**: {len(tags)}")
+        #     lines.append(f"- **Tag names**: {', '.join(tags)}")
 
         # Training date
         date_str = self.info.get("datetime")
@@ -470,7 +549,10 @@ prediction = model.predict(
             return ""
 
         # Create expected Docker image name
-        docker_image = f"supervisely/{framework_name.lower()}:latest"
+        if self.app_info:
+            docker_image = self.app_info.config.get("docker_image")
+        else:
+            docker_image = f"supervisely/{framework_name.lower()}:latest"
         experiment_dir = os.path.basename(self.info.get("artifacts_dir", "")) or "{experiment_dir}"
 
         return f"""## Docker
@@ -512,8 +594,14 @@ docker run \\
         if not framework_name:
             return ""
 
-        # Create expected repository and model class names
-        repo_name = framework_name.replace(" ", "-")
+        if self.app_info:
+            repo_link = self.app_info.repo
+            repo_name = repo_link.split("/")[-1]
+        else:
+            repo_link = f"https://github.com/supervisely-ecosystem/{framework_name.replace(' ', '-')}"
+            repo_name = framework_name.replace(" ", "-")
+
+
         model_class = self.serving_class.__name__
         model_class_import_path = f"from {self.serving_class.__module__} import {model_class}"
         experiment_dir = os.path.basename(self.info.get("artifacts_dir", "")) or "{experiment_dir}"
@@ -533,7 +621,6 @@ Questions:
 
 ```python
 # Be sure you are in the root of the {repo_name} repository
-from supervisely_integration.serve.{model_class.lower()} import {model_class}
 {model_class_import_path}
 
 model = {model_class}(
@@ -550,7 +637,7 @@ model = {model_class}(
 2. Clone repository
 
 ```bash
-git clone https://github.com/supervisely-ecosystem/{repo_name}
+git clone {repo_link}
 cd {repo_name}
 ```
 
@@ -565,7 +652,7 @@ pip install supervisely
 
 ```python
 # Be sure you are in the root of the {repo_name} repository
-from supervisely_integration.serve.{model_class.lower()} import {model_class}
+{model_class_import_path}
 
 # Load model
 model = {model_class}(
@@ -580,3 +667,29 @@ prediction = model(
 )
 ```{onnx_section}
 """
+
+    def _get_app_info(self):
+        try:
+            task_info = self.api.task.get_info_by_id(self.info.get("task_id"))
+            app_id = task_info["meta"]["app"]["id"]
+            app_info = self.api.app.get_info_by_id(app_id)
+            return app_info
+        except Exception as e:
+            print(f"Failed to load app config: {e}")
+            return None
+
+    def _find_app_config(self):
+        """Find app config in the project"""
+        try:
+            current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
+            root_dir = current_dir
+            while root_dir.parent != root_dir:
+                config_path = root_dir / "supervisely_integration" / "train" / "config.json"
+                if config_path.exists():
+                    break
+                root_dir = root_dir.parent
+            config_path = root_dir / "supervisely_integration" / "train" / "config.json"
+            if config_path.exists():
+                return sly_json.load_json_file(config_path)
+        except Exception as e:
+            print(f"Failed to load config.json: {e}")
