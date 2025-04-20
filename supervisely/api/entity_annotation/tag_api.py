@@ -7,7 +7,6 @@ from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.task.progress import tqdm_sly
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.task.progress import tqdm_sly
 
 
 class TagApi(ModuleApi):
@@ -82,6 +81,22 @@ class TagApi(ModuleApi):
         """
 
         return self.get_list_all_pages(
+            "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
+        )
+
+    def get_list_fast(self, project_id: int, filters=None):
+        """
+        Get list of tags for a given project ID.
+
+        :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+        :type project_id: int
+        :param filters: List of parameters to sort output tags. See: https://api.docs.supervisely.com/#tag/Advanced/paths/~1tags.list/get
+        :type filters: List[Dict[str, str]], optional
+        :return: List of the tags from the project with given id.
+        :rtype: list
+        """
+
+        return self.get_list_all_pages_fast(
             "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
         )
 

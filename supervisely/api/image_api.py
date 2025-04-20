@@ -51,6 +51,7 @@ from supervisely._utils import (
     generate_free_name,
     get_bytes_hash,
     resize_image_url,
+    run_coroutine,
 )
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag import Tag
@@ -908,6 +909,75 @@ class ImageApi(RemoveableBulkModuleApi):
                 results.extend(temp_results)
                 if progress_cb is not None and len(temp_results) > 0:
                     progress_cb(len(temp_results))
+            ids_set = ids_set - set([info.id for info in results])
+            infos_dict.update({info.id: info for info in results})
+
+        ordered_results = [infos_dict[id] for id in ids]
+        return ordered_results
+
+    async def get_info_by_ids_async(
+        self,
+        ids: List[int],
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        force_metadata_for_links=True,
+    ) -> List[ImageInfo]:
+        """
+        Get Images information by ID.
+
+        :param ids: Images IDs in Supervisely.
+        :type ids: List[int]
+        :param progress_cb: Function for tracking the progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: Objects with image information from Supervisely.
+        :rtype: :class:`List[ImageInfo]`
+        """
+
+        async def tracked_task(task_func, progress_bar, size):
+            """Wrapper for async task with progress bar for batch=50"""
+            result = await task_func
+            progress_bar.update(size)
+            return result
+
+        results = []
+        if len(ids) == 0:
+            return results
+        infos_dict = {}
+        ids_set = set(ids)
+        while any(ids_set):
+            img_id = ids_set.pop()
+            image_info = self.get_info_by_id(img_id, force_metadata_for_links=False)
+            if image_info is None:
+                raise KeyError(
+                    f"Image (id: {img_id}) is either archived, doesn't exist or you don't have enough permissions to access it"
+                )
+            dataset_id = image_info.dataset_id
+            results = []
+            tasks = []
+            for batch in batched(ids):
+                filters = [
+                    {ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "in", ApiField.VALUE: batch}
+                ]
+                task = self.get_list_all_pages_async(
+                    "images.list",
+                    {
+                        ApiField.DATASET_ID: dataset_id,
+                        ApiField.FILTER: filters,
+                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                    },
+                )
+                if progress_cb is not None:
+                    batch_items_count = len(batch)
+                    task = tracked_task(task, progress_cb, size=batch_items_count)
+                tasks.append(task)
+
+            result_lists = await asyncio.gather(*tasks)
+
+            for result in result_lists:
+                if isinstance(result, list):
+                    results.extend(result)
+                else:
+                    results.append(result)
+
             ids_set = ids_set - set([info.id for info in results])
             infos_dict.update({info.id: info for info in results})
 
