@@ -1,37 +1,59 @@
 <div class="model-benchmark-body">
 
     <sly-style>
-        .model-benchmark-body .sly-markdown-widget .markdown-body { padding: 0;
-        font-family: inherit; }
+        /* Typography */
+        .model-benchmark-body h1 {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        }
+        .model-benchmark-body .sly-markdown-widget .markdown-body {
+        padding: 0;
+        font-family: inherit;
+        }
         .model-benchmark-body .sly-markdown-widget .markdown-body h2 {
-        font-size: 18px; font-weight: 600; margin-bottom:
-        0px; border: 0; }
-        .model-benchmark-body .sly-markdown-widget .markdown-body h3 { color:
-        #949bab; font-size: 18px; margin-bottom:
-        7px; }
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 0px;
+        border: 0;
+        }
+        .model-benchmark-body .sly-markdown-widget .markdown-body h3 {
+        color: #949bab;
+        font-size: 18px;
+        margin-bottom: 7px;
+        }
         .model-benchmark-body .sly-markdown-widget .markdown-body p {
-        margin-bottom: 12px; }
-        .model-benchmark-body h1 { font-size: 20px; font-weight: bold;
-        margin-bottom: 5px; }
-        .model-benchmark-body .overview-info-block { background: #f4f7fb; border-radius: 12px;
-        padding: 20px; margin-bottom: 20px; }
-        .model-benchmark-body .width-fit-content { width: fit-content;}
+        margin-bottom: 12px;
+        }
+
+        /* Layout */
         .model-benchmark-body .section {
         margin-bottom: 30px;
         scroll-margin-top: 20px;
         padding-top: 10px;
         }
+        .model-benchmark-body .overview-info-block {
+        background: #f4f7fb;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body .width-fit-content {
+        width: fit-content;
+        }
+        .model-benchmark-body .main-content {
+        flex-grow: 1;
+        }
+
+        /* Buttons */
         .model-benchmark-body .buttons-container {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
         margin-bottom: 20px;
         }
-        .model-benchmark-body img {
-        max-width: 100%;
-        border-radius: 6px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
+
+        /* Tables */
         .model-benchmark-body table {
         width: 100%;
         border-collapse: collapse;
@@ -73,6 +95,8 @@
         .model-benchmark-body .checkpoints-table tr:hover {
         background-color: #f8f9fa;
         }
+
+        /* Lists */
         .model-benchmark-body .links-list,
         .model-benchmark-body .overview-list,
         .model-benchmark-body .buttons-list {
@@ -90,13 +114,16 @@
         align-items: flex-start;
         }
         .model-benchmark-body .links-list li:before,
-        .model-benchmark-body .overview-list li:before,
         .model-benchmark-body .buttons-list li:before {
         content: "•";
         color: #1890ff;
         display: inline-block;
         width: 15px;
         margin-right: 10px;
+        }
+        .model-benchmark-body .overview-list li:before {
+        content: "";
+        display: none;
         }
         .model-benchmark-body .link-icon,
         .model-benchmark-body .button-icon {
@@ -108,6 +135,8 @@
         min-width: 120px;
         display: inline-block;
         }
+
+        /* Code */
         .model-benchmark-body .code-block {
         background-color: #f5f5f5;
         border-radius: 6px;
@@ -115,104 +144,82 @@
         margin-bottom: 20px;
         overflow-x: auto;
         }
-        .model-benchmark-body .sidebar-container {
-        display: flex;
-        gap: 20px;
-        }
-        .model-benchmark-body .sidebar {
-        position: sticky;
-        top: 20px;
-        width: 250px;
-        min-width: 250px;
-        padding: 15px;
-        background-color: #f4f7fb;
-        border-radius: 6px;
-        align-self: flex-start;
-        max-height: calc(100vh - 40px);
-        overflow-y: auto;
-        }
-        .model-benchmark-body .main-content {
-        flex-grow: 1;
-        }
-        .model-benchmark-body .nav-item {
-        margin-bottom: 10px;
-        cursor: pointer;
-        color: #2c3e50;
-        transition: color 0.2s;
-        display: block;
-        text-decoration: none;
-        }
-        .model-benchmark-body .nav-item:hover {
-        color: #1890ff;
-        }
-        .model-benchmark-body .nav-item.active {
-        color: #1890ff;
-        font-weight: 500;
-        }
-        .model-benchmark-body .report-image {
-        max-width: 100%;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        margin: 15px 0;
-        display: block;
-        }
-        @media (max-width: 768px) {
-        .model-benchmark-body .sidebar-container {
-        flex-direction: column;
-        }
-        .model-benchmark-body .sidebar {
-        width: 100%;
-        position: static;
-        }
-        }
+
+        /* Global */
         html {
         scroll-behavior: smooth;
         }
     </sly-style>
 
-    <!-- Header and sidebar navigation -->
-    <div class="sidebar-container">
-        <div class="sidebar">
-            <h3>Navigation</h3>
-            <div class="nav-item" onclick="navigateTo('overview-section')">Overview</div>
+    <!-- Sidebar navigation -->
+    <sly-iw-sidebar
+        :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false, disableResize: true, sidebarWidth: 300 }">
+        <div slot="sidebar">
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='overview-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'overview-markdown-section' ? 'bold' : 'normal'}">
+                    Overview
+                </el-button>
+            </div>
+
             {% if checkpoints_table %}
-            <div class="nav-item" onclick="navigateTo('checkpoints-section')">Checkpoints</div>
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='checkpoints-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'checkpoints-markdown-section' ? 'bold' : 'normal'}">
+                    Checkpoints
+                </el-button>
+            </div>
             {% endif %}
-            {% if has_predictions %}
-            <div class="nav-item" onclick="navigateTo('predictions-section')">Predictions</div>
-            {% endif %}
+
             {% if metrics_table %}
-            <div class="nav-item" onclick="navigateTo('metrics-section')">Metrics</div>
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='metrics-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'metrics-markdown-section' ? 'bold' : 'normal'}">
+                    Metrics
+                </el-button>
+            </div>
             {% endif %}
+
             {% if hyperparameters %}
-            <div class="nav-item" onclick="navigateTo('hyperparameters-section')">Hyperparameters</div>
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='hyperparameters-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'hyperparameters-markdown-section' ? 'bold' : 'normal'}">
+                    Hyperparameters
+                </el-button>
+            </div>
             {% endif %}
-            {% if has_chart %}
-            <div class="nav-item" onclick="navigateTo('training-section')">Training</div>
-            {% endif %}
-            <div class="nav-item" onclick="navigateTo('model-api-section')">Model API</div>
-            <div class="nav-item" onclick="navigateTo('docker-section')">Docker</div>
+
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='model-api-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'model-api-markdown-section' ? 'bold' : 'normal'}">
+                    Model API
+                </el-button>
+            </div>
+
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='docker-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'docker-markdown-section' ? 'bold' : 'normal'}">
+                    Docker
+                </el-button>
+            </div>
+
             {% if serving_class and serving_module %}
-            <div class="nav-item" onclick="navigateTo('local-prediction-section')">Predict Locally</div>
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='local-prediction-markdown-section'"
+                    :style="{fontWeight: data.scrollIntoView === 'local-prediction-markdown-section' ? 'bold' : 'normal'}">
+                    Predict Locally
+                </el-button>
+            </div>
             {% endif %}
         </div>
 
+        <!-- Main content -->
         <div class="main-content">
             <h1>{{ experiment_name }}</h1>
 
-            <!-- Buttons -->
-            <div class="section buttons-container">
-                {{ buttons | safe }}
-            </div>
-
             <!-- Overview -->
-            <div id="overview-section" class="section overview-info-block">
-                <h2>Overview</h2>
-
-                <div class="links-section">
-                    {{ links | safe }}
-                </div>
-
+            <div id="overview-markdown-section"
+                class="iw-widget markdown-no-border overview-info-block width-fit-content section">
                 <ul class="overview-list">
                     <li><span class="label">Model:</span> {{ model_name }}</li>
                     <li><span class="label">Task:</span> {{ task_name }}</li>
@@ -227,9 +234,21 @@
                 </ul>
             </div>
 
+            <!-- Links -->
+            <h2>Links</h2>
+            <div class="links-markdown-section">
+                {{ links | safe }}
+            </div>
+
+            <!-- Buttons -->
+            <h2>Buttons</h2>
+            <div class="section buttons-container">
+                {{ buttons | safe }}
+            </div>
+
             <!-- Checkpoints -->
             {% if checkpoints_table %}
-            <div id="checkpoints-section" class="section">
+            <div id="checkpoints-markdown-section" class="section">
                 <h2>Checkpoints</h2>
                 {{ checkpoints_table | safe }}
             </div>
@@ -237,7 +256,7 @@
 
             <!-- Metrics -->
             {% if metrics_table %}
-            <div id="metrics-section" class="section">
+            <div id="metrics-markdown-section" class="section">
                 <h2>Metrics</h2>
                 {{ metrics_table | safe }}
             </div>
@@ -245,7 +264,7 @@
 
             <!-- Hyperparameters -->
             {% if hyperparameters %}
-            <div id="hyperparameters-section" class="section">
+            <div id="hyperparameters-markdown-section" class="section">
                 <h2>Training Hyperparameters</h2>
                 <div class="code-block">
                     <pre><code>{{ hyperparameters }}</code></pre>
@@ -254,7 +273,7 @@
             {% endif %}
 
             <!-- Model API -->
-            <div id="model-api-section" class="section">
+            <div id="model-api-markdown-section" class="section">
                 <h2>Model API</h2>
                 <p>Deploy and predict in Supervisely.</p>
 
@@ -268,7 +287,7 @@
             </div>
 
             <!-- Docker -->
-            <div id="docker-section" class="section">
+            <div id="docker-markdown-section" class="section">
                 <h2>Docker</h2>
                 <p>Predict using Docker container.</p>
 
@@ -297,7 +316,7 @@
 
             <!-- Local Prediction -->
             {% if serving_class and serving_module %}
-            <div id="local-prediction-section" class="section">
+            <div id="local-prediction-markdown-section" class="section">
                 <h2>Predict Locally</h2>
 
                 <ol>
@@ -336,68 +355,5 @@
             </div>
             {% endif %}
         </div>
-    </div>
-
-    <script>
-        let reportBaseUrl = window.location.href.split('#')[0];
-        if (!reportBaseUrl.includes('/nn/experiments/')) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const id = urlParams.get('id');
-            if (id) {
-                reportBaseUrl = `${window.location.origin}/nn/experiments/${id}`;
-            }
-        }
-
-        function navigateTo(sectionId) {
-            const section = document.getElementById(sectionId);
-            if (section) {
-                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                history.pushState(null, '', reportBaseUrl + '#' + sectionId);
-
-                updateActiveNavItem(sectionId);
-            }
-        }
-
-        function updateActiveNavItem(sectionId) {
-            const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
-                item.classList.remove('active');
-
-                const itemSection = item.getAttribute('onclick').match(/'([^']+)'/)[1];
-                if (itemSection === sectionId) {
-                    item.classList.add('active');
-                }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const hash = window.location.hash;
-            if (hash) {
-                const sectionId = hash.substring(1);
-                navigateTo(sectionId);
-            } else {
-                const firstNavItem = document.querySelector('.nav-item');
-                if (firstNavItem) {
-                    firstNavItem.classList.add('active');
-                }
-            }
-
-            window.addEventListener('scroll', function () {
-                const sections = document.querySelectorAll('.section[id]');
-
-                let currentSectionId = null;
-                sections.forEach(section => {
-                    const rect = section.getBoundingClientRect();
-                    if (rect.top <= 100 && rect.bottom >= 100) {
-                        currentSectionId = section.id;
-                    }
-                });
-
-                if (currentSectionId) {
-                    updateActiveNavItem(currentSectionId);
-                }
-            });
-        });
-    </script>
+    </sly-iw-sidebar>
 </div>
