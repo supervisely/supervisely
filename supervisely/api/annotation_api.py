@@ -2211,11 +2211,17 @@ class AnnotationApi(ModuleApi):
         else:
             pbar_alpha_masks = None
         if alpha_mask_ids:
-            alpha_mask_geometries = await self._api.image.figure.download_geometries_batch_async(
-                alpha_mask_ids, progress_cb=pbar_alpha_masks.update, semaphore=semaphore
+            alpha_mask_geometrie_result = (
+                await self._api.image.figure.download_geometries_batch_async(
+                    ids=alpha_mask_ids,
+                    progress_cb=pbar_alpha_masks.update,
+                    semaphore=semaphore,
+                    progress_cb_type="number",
+                )
             )
             alpha_mask_geometries = {
-                fig_id: geometry for fig_id, geometry in zip(alpha_mask_ids, alpha_mask_geometries)
+                fig_id: geometry
+                for fig_id, geometry in zip(alpha_mask_ids, alpha_mask_geometrie_result)
             }
 
         # 3. Get image tags
