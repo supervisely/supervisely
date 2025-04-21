@@ -684,7 +684,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         }
         if collection_id is not None:
             data[ApiField.FILTERS] = [
-                {"type": "entities_collection", "data": {ApiField.COLLECTION_ID: collection_id}}
+                {"type": "entities_collection", "data": {ApiField.COLLECTION_ID: collection_id, ApiField.INCLUDE: True}}
             ]
         if filter_by is not None:
             data[ApiField.FILTER] = filter_by
