@@ -1,7 +1,6 @@
 <div class="model-benchmark-body">
 
     <sly-style>
-        /* Typography */
         .model-benchmark-body h1 {
         font-size: 20px;
         font-weight: bold;
@@ -26,7 +25,6 @@
         margin-bottom: 12px;
         }
 
-        /* Layout */
         .model-benchmark-body .section {
         margin-bottom: 30px;
         scroll-margin-top: 20px;
@@ -45,7 +43,6 @@
         flex-grow: 1;
         }
 
-        /* Buttons */
         .model-benchmark-body .buttons-container {
         display: flex;
         flex-wrap: wrap;
@@ -53,7 +50,6 @@
         margin-bottom: 20px;
         }
 
-        /* Tables */
         .model-benchmark-body table {
         width: 100%;
         border-collapse: collapse;
@@ -96,7 +92,6 @@
         background-color: #f8f9fa;
         }
 
-        /* Lists */
         .model-benchmark-body .links-list,
         .model-benchmark-body .overview-list,
         .model-benchmark-body .buttons-list {
@@ -145,7 +140,28 @@
         overflow-x: auto;
         }
 
-        /* Global */
+        .model-benchmark-body details {
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body details summary {
+        padding: 12px 15px;
+        background-color: #f4f7fb;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s;
+        }
+        .model-benchmark-body details summary:hover {
+        background-color: #e6edf7;
+        }
+        .model-benchmark-body details[open] summary {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        margin-bottom: 0;
+        }
+
         html {
         scroll-behavior: smooth;
         }
@@ -266,9 +282,12 @@
             {% if hyperparameters %}
             <div id="hyperparameters-markdown-section" class="section">
                 <h2>Training Hyperparameters</h2>
-                <div class="code-block">
-                    <pre><code>{{ hyperparameters }}</code></pre>
-                </div>
+                <details>
+                    <summary>Click to expand hyperparameters</summary>
+                    <div class="code-block">
+                        <pre><code>{{ hyperparameters }}</code></pre>
+                    </div>
+                </details>
             </div>
             {% endif %}
 
