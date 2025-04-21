@@ -152,4 +152,5 @@ from supervisely.app.widgets.bokeh.bokeh import Bokeh
 from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
 from supervisely.app.widgets.flow_diagram.flow_diagram import FlowsView
 from supervisely.app.widgets.card_v2.card_v2 import CardV2
+from supervisely.app.widgets.solutions_card.solutions_card import SolutionsCard
 
