@@ -96,7 +96,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         res = super()._convert_json_info(info, skip_missing=skip_missing)
         return EntitiesCollectionInfo(**res._asdict())
 
-    def create(self, project_id: int, name: str) -> List[EntitiesCollectionInfo]:
+    def create(self, project_id: int, name: str) -> EntitiesCollectionInfo:
         """
         Creates Entities Collections.
 
@@ -104,8 +104,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type project_id: int
         :param name: Entities Collection name in Supervisely.
         :type name: str
-        :return: List of information about new Entities Collection
-        :rtype: :class:`dict`
+        :return: Information about new Entities Collection
+        :rtype: :class:`EntitiesCollectionInfo`
         :Usage example:
 
          .. code-block:: python
