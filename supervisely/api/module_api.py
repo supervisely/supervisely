@@ -627,6 +627,17 @@ class ApiField:
     """"""
     HOTKEY = "hotkey"
     """"""
+    RELATED_DATA_ID = "relatedDataId"
+    """"""
+    DOWNLOAD_ID = "downloadId"
+    """"""
+    OFFSET_START = "offsetStart"
+    """"""
+    OFFSET_END = "offsetEnd"
+    """"""
+    SOURCE_BLOB = "sourceBlob"
+    """"""
+
 
 def _get_single_item(items):
     """_get_single_item"""

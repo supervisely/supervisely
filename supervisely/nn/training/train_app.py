@@ -2524,17 +2524,26 @@ class TrainApp:
             self.gui.hyperparameters_selector.get_export_onnx_checkbox_value() is True
             and self._convert_onnx_func is not None
         ):
-            self._set_text_status("export_onnx")
-            onnx_path = self._convert_onnx_func(experiment_info)
-            export_weights[RuntimeType.ONNXRUNTIME] = onnx_path
+            try:
+                self._set_text_status("export_onnx")
+                onnx_path = self._convert_onnx_func(experiment_info)
+                if sly_fs.file_exists(onnx_path):
+                    export_weights[RuntimeType.ONNXRUNTIME] = onnx_path
+            except Exception as e:
+                logger.error(f"Failed to export ONNX model: {e}")
 
         if (
             self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value() is True
             and self._convert_tensorrt_func is not None
         ):
-            self._set_text_status("export_trt")
-            tensorrt_path = self._convert_tensorrt_func(experiment_info)
-            export_weights[RuntimeType.TENSORRT] = tensorrt_path
+            try:
+                self._set_text_status("export_trt")
+                tensorrt_path = self._convert_tensorrt_func(experiment_info)
+                if sly_fs.file_exists(tensorrt_path):
+                    export_weights[RuntimeType.TENSORRT] = tensorrt_path
+            except Exception as e:
+                logger.error(f"Failed to export TensorRT model: {e}")
+                
         return export_weights
 
     def _upload_export_weights(

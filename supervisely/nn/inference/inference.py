@@ -598,15 +598,16 @@ class Inference:
     def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
         if deploy_params["runtime"] != RuntimeType.PYTORCH:
             export = deploy_params["model_info"].get("export", {})
-            export_model = export.get(deploy_params["runtime"], None)
-            if export_model is not None:
-                if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
-                    deploy_params["model_files"]["checkpoint"]
-                ):
-                    deploy_params["model_files"]["checkpoint"] = (
-                        deploy_params["model_info"]["artifacts_dir"] + export_model
-                    )
-                    logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
+            if export is not None:
+                export_model = export.get(deploy_params["runtime"], None)
+                if export_model is not None:
+                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
+                        deploy_params["model_files"]["checkpoint"]
+                    ):
+                        deploy_params["model_files"]["checkpoint"] = (
+                            deploy_params["model_info"]["artifacts_dir"] + export_model
+                        )
+                        logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
 
         if deploy_params["model_source"] == ModelSource.PRETRAINED:
             return self._download_pretrained_model(deploy_params["model_files"], log_progress)
@@ -708,23 +709,24 @@ class Inference:
         self.load_model(**deploy_params)
         self._model_served = True
         self._deploy_params = deploy_params
-        try:
-            if self.autorestart is None:
-                self.autorestart = AutoRestartInfo(self._deploy_params)
-                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
-                logger.debug(
-                    "Created new autorestart info.",
-                    extra=self.autorestart.deploy_params,
-                )
-            elif self.autorestart.is_changed(self._deploy_params):
-                self.autorestart.deploy_params.update(self._deploy_params)
-                self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
-                logger.debug(
-                    "Autorestart info is changed. Parameters have been updated.",
-                    extra=self.autorestart.deploy_params,
-                )
-        except Exception as e:
-            logger.warning(f"Failed to update autorestart info: {repr(e)}")
+        if self._task_id is not None and is_production():
+            try:
+                if self.autorestart is None:
+                    self.autorestart = AutoRestartInfo(self._deploy_params)
+                    self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                    logger.debug(
+                        "Created new autorestart info.",
+                        extra=self.autorestart.deploy_params,
+                    )
+                elif self.autorestart.is_changed(self._deploy_params):
+                    self.autorestart.deploy_params.update(self._deploy_params)
+                    self.api.task.set_fields(self._task_id, self.autorestart.generate_fields())
+                    logger.debug(
+                        "Autorestart info is changed. Parameters have been updated.",
+                        extra=self.autorestart.deploy_params,
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to update autorestart info: {repr(e)}")
         if self.gui is not None:
             self.update_gui(self._model_served)
             self.gui.show_deployed_model_info(self)
@@ -1703,8 +1705,38 @@ class Inference:
             if src_dataset_id in new_dataset_id:
                 return new_dataset_id[src_dataset_id]
             dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+
+            def _create_parent_recursively(output_project_id, src_parent_id):
+                """Create parent datasets recursively and return the ID of the top-level parent"""
+                if src_parent_id in new_dataset_id:
+                    return new_dataset_id[src_parent_id]
+                src_parent_info = dataset_infos_dict.get(src_parent_id)
+                if src_parent_info is None:
+                    src_parent_info = api.dataset.get_info_by_id(src_parent_id)
+                if src_parent_info.parent_id is not None:
+                    parent_id = _create_parent_recursively(
+                        output_project_id, src_parent_info.parent_id
+                    )
+                else:
+                    parent_id = None
+                dst_parent = api.dataset.create(
+                    output_project_id,
+                    src_parent_info.name,
+                    change_name_if_conflict=True,
+                    parent_id=parent_id,
+                )
+                new_dataset_id[src_parent_info.id] = dst_parent.id
+                return dst_parent.id
+
+            parent_id = None
+            if dataset_info.parent_id is not None:
+                parent_id = _create_parent_recursively(output_project_id, dataset_info.parent_id)
+
             output_dataset_id = api.dataset.create(
-                output_project_id, dataset_info.name, change_name_if_conflict=True
+                output_project_id,
+                dataset_info.name,
+                change_name_if_conflict=True,
+                parent_id=parent_id,
             ).id
             new_dataset_id[src_dataset_id] = output_dataset_id
             return output_dataset_id
@@ -2534,8 +2566,8 @@ class Inference:
         else:
             self._app = Application(layout=self.get_ui())
 
-        try:
-            if self._task_id is not None:
+        if self._task_id is not None and is_production():
+            try:
                 response = self.api.task.get_fields(
                     self._task_id, [AutoRestartInfo.Fields.AUTO_RESTART_INFO]
                 )
@@ -2545,8 +2577,8 @@ class Inference:
                     self._deploy_on_autorestart()
                 else:
                     logger.debug("Autorestart info is not set.")
-        except Exception:
-            logger.error("Autorestart failed.", exc_info=True)
+            except Exception:
+                logger.error("Autorestart failed.", exc_info=True)
 
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)

@@ -29,6 +29,7 @@ from supervisely.io.fs import (
     touch,
     unpack_archive,
 )
+from supervisely.project.project import Project
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -232,6 +233,9 @@ class ImportManager:
             archives = []
             path = new_paths_to_scan.pop()
             for root, _, files in os.walk(path):
+                if Path(root).name == Project.blob_dir_name:
+                    logger.info(f"Skip unpacking archive in blob dir: {root}")
+                    continue
                 for file in files:
                     file_path = os.path.join(root, file)
                     if is_archive(file_path=file_path):
