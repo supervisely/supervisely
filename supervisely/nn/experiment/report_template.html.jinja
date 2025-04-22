@@ -178,7 +178,7 @@
                 </el-button>
             </div>
 
-            {% if checkpoints_table %}
+            {% if artifacts.checkpoints_table %}
             <div>
                 <el-button type="text" @click="data.scrollIntoView='checkpoints-markdown-section'"
                     :style="{fontWeight: data.scrollIntoView === 'checkpoints-markdown-section' ? 'bold' : 'normal'}">
@@ -187,7 +187,7 @@
             </div>
             {% endif %}
 
-            {% if metrics_table %}
+            {% if artifacts.metrics_table %}
             <div>
                 <el-button type="text" @click="data.scrollIntoView='metrics-markdown-section'"
                     :style="{fontWeight: data.scrollIntoView === 'metrics-markdown-section' ? 'bold' : 'normal'}">
@@ -196,7 +196,7 @@
             </div>
             {% endif %}
 
-            {% if hyperparameters %}
+            {% if artifacts.hyperparameters %}
             <div>
                 <el-button type="text" @click="data.scrollIntoView='hyperparameters-markdown-section'"
                     :style="{fontWeight: data.scrollIntoView === 'hyperparameters-markdown-section' ? 'bold' : 'normal'}">
@@ -219,7 +219,7 @@
                 </el-button>
             </div>
 
-            {% if serving_class and serving_module %}
+            {% if code.local_prediction.serving_class and code.local_prediction.serving_module %}
             <div>
                 <el-button type="text" @click="data.scrollIntoView='local-prediction-markdown-section'"
                     :style="{fontWeight: data.scrollIntoView === 'local-prediction-markdown-section' ? 'bold' : 'normal'}">
@@ -231,60 +231,85 @@
 
         <!-- Main content -->
         <div class="main-content">
-            <h1>{{ experiment_name }}</h1>
+            <h1>{{ experiment.name }}</h1>
 
             <!-- Overview -->
             <div id="overview-markdown-section"
                 class="iw-widget markdown-no-border overview-info-block width-fit-content section">
                 {% markdown %}
-                - **Model**: {{ model_name }}
-                - **Task**: {{ task_name }}
-                - **Framework**: {{ framework_name }}
-                - **Project**: {{ project_name }}
-                - **Train size**: {{ train_size }} {{ train_type }}
-                - **Validation size**: {{ validation_size }} {{ train_type }}
-                - **Classes**: {{ classes_count }}
-                - **Class names**: {{ class_names }}
-                - **Date**: {{ date }}
+                - **Model**: {{ experiment.model_name }}
+                - **Task**: {{ experiment.task_name }}
+                - **Framework**: {{ experiment.framework_name }}
+                - **Project**: {{ project.name }}
+                - **Train size**: {{ project.train_size }} {{ project.type }}
+                - **Validation size**: {{ project.val_size }} {{ project.type }}
+                - **Classes**: {{ project.classes_count }}
+                - **Class names**: {{ project.class_names }}
+                - **Date**: {{ experiment.date }}
                 {% endmarkdown %}
             </div>
 
             <!-- Links -->
             <h2>Links</h2>
-            <div class="links-markdown-section">
-                {{ links | safe }}
+            <div class="section">
+                <ul class="links-list">
+                    <li><span class="link-icon">🎓</span> <a href="{{ links.training_session.url }}" target="_blank">Training
+                            Task</a></li>
+                    {% if links.evaluation_report.url %}
+                    <li><span class="link-icon">📊</span> <a href="{{ links.evaluation_report.url }}"
+                            target="_blank">Evaluation Report</a></li>
+                    {% endif %}
+                    {% if links.tensorboard_logs.url %}
+                    <li><span class="link-icon">⚡</span> <a href="{{ links.tensorboard_logs.url }}"
+                            target="_blank">TensorBoard Logs</a></li>
+                    {% endif %}
+                    <li><span class="link-icon">💾</span> <a href="{{ links.team_files.url }}" target="_blank">Open in Team
+                            Files</a></li>
+                </ul>
             </div>
 
             <!-- Buttons -->
             <h2>Buttons</h2>
             <div class="section buttons-container">
-                {{ buttons | safe }}
+                <ul class="buttons-list">
+                    <li><span class="button-icon">🚀</span> Deploy (PyTorch)</li>
+                    {% if buttons.has_tensorrt %}
+                    <li><span class="button-icon">🚀</span> Deploy (TensorRT)</li>
+                    {% endif %}
+                    {% if buttons.has_onnx %}
+                    <li><span class="button-icon">🚀</span> Deploy (ONNX)</li>
+                    {% endif %}
+                    <li><span class="button-icon">⏩</span> Fine-tune</li>
+                    <li><span class="button-icon">🔄</span> Re-train</li>
+                    <li><span class="button-icon">📦</span> Download model</li>
+                    <li><span class="button-icon">❌</span> Remove permamently</li>
+                </ul>
             </div>
 
             <!-- Checkpoints -->
-            {% if checkpoints_table %}
+            {% if artifacts.checkpoints_table %}
             <div id="checkpoints-markdown-section" class="section">
                 <h2>Checkpoints</h2>
-                {{ checkpoints_table | safe }}
+                {{ artifacts.checkpoints_table | safe }}
             </div>
             {% endif %}
 
             <!-- Metrics -->
-            {% if metrics_table %}
+            {% if artifacts.metrics_table %}
             <div id="metrics-markdown-section" class="section">
                 <h2>Metrics</h2>
-                {{ metrics_table | safe }}
+                {{ artifacts.metrics_table | safe }}
             </div>
             {% endif %}
 
             <!-- Hyperparameters -->
-            {% if hyperparameters %}
+            {% if artifacts.hyperparameters %}
             <div id="hyperparameters-markdown-section" class="section">
                 <h2>Training Hyperparameters</h2>
                 <details>
                     <summary>Click to expand hyperparameters</summary>
                     <div class="code-block">
-                        <pre><code>{{ hyperparameters }}</code></pre>
+                        <pre><code>{{ artifacts.hyperparameters }}</code></pre>
                     </div>
                 </details>
             </div>
@@ -292,82 +317,126 @@
 
             <!-- Model API -->
             <div id="model-api-markdown-section" class="section">
-                <h2>Model API</h2>
-                <p>Deploy and predict in Supervisely.</p>
+                {% markdown %}
+                ## Model API
 
-                <div class="code-block">
-                    <pre><code>{{ model_api_code }}</code></pre>
-                </div>
+                Deploy and predict in Supervisely.
 
-                <p><em>See more in <a
-                            href="https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk"
-                            target="_blank">Deploy and Predict with Supervisely SDK</a> documentation.</em></p>
+                ```python
+                import supervisely as sly
+
+                api = sly.Api()
+
+                # Deploy
+                model = api.nn.deploy_custom_model(checkpoint_id={checkpoint_path}) # file id
+
+                # Predict
+                prediction = model.predict(images="image.png") # image | path | url
+                ```
+
+                See more in [Deploy and Predict with Supervisely
+                SDK](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk)
+                documentation.
+                {% endmarkdown %}
             </div>
 
             <!-- Docker -->
             <div id="docker-markdown-section" class="section">
-                <h2>Docker</h2>
-                <p>Predict using Docker container.</p>
+                {% markdown %}
+                ## Docker
 
-                <ol>
-                    <li>Download checkpoint from Supervisely (<a href="{{ checkpoint_dir_url }}"
-                            target="_blank">download</a>)</li>
-                    <li>Pull the Docker image</li>
-                </ol>
+                Predict using Docker container.
 
-                <div class="code-block">
-                    <pre><code>{{ docker_code.docker_pull }}</code></pre>
-                </div>
+                1. Download checkpoint from Supervisely - [open checkpoint directory]({{ links.checkpoint_dir_url }})
+                2. Pull the Docker image
 
-                <ol start="3">
-                    <li>Run the Docker container</li>
-                </ol>
+                    ```bash
+                    docker pull {{ code.docker.image }}
+                    ```
 
-                <div class="code-block">
-                    <pre><code>{{ docker_code.docker_run }}</code></pre>
-                </div>
+                3. Run the Docker container
 
-                <p><em>See more in <a
-                            href="https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container"
-                            target="_blank">Deploy in Docker Container</a> documentation.</em></p>
+                    ```bash
+                    docker run \\
+                        --runtime=nvidia \\
+                        -v "./{experiment_dir}:/model" \\
+                        -p 8000:8000 \\
+                        {{ code.docker.image }} \\
+                        predict \\
+                        "./image.jpg" \\
+                        --model "/model" \\
+                        --device "cuda:0\""""
+                    ```
+
+                See more in [Deploy in Docker
+                Container](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container)
+                documentation.
+                {% endmarkdown %}
             </div>
 
             <!-- Local Prediction -->
-            {% if serving_class and serving_module %}
+            {% if code.local_prediction.serving_class and code.local_prediction.serving_module %}
             <div id="local-prediction-markdown-section" class="section">
-                <h2>Predict Locally</h2>
+                {% markdown %}
+                ## Predict Locally
 
-                <ol>
-                    <li>Download checkpoint from Supervisely (<a href="{{ checkpoint_dir_url }}"
-                            target="_blank">download</a>)</li>
-                    <li>Clone repository</li>
-                </ol>
+                Predict using local inference.
 
-                <div class="code-block">
-                    <pre><code>{{ local_prediction_code.git_clone }}</code></pre>
-                </div>
+                1. Download checkpoint from Supervisely - [open checkpoint directory]({{ links.checkpoint_dir_url }})
+                2. Clone repository
 
-                <ol start="3">
-                    <li>Install requirements</li>
-                </ol>
+                    ```bash
+                    git clone {{ code.local_prediction.repo_url }}
+                    cd {{ code.local_prediction.repo_name }}
+                    ```
 
-                <div class="code-block">
-                    <pre><code>{{ local_prediction_code.install_requirements }}</code></pre>
-                </div>
+                3. Install requirements
 
-                <ol start="4">
-                    <li>Run inference</li>
-                </ol>
+                    ```bash
+                    pip install -r dev_requirements.txt
+                    pip install supervisely
+                    ```
 
-                <div class="code-block">
-                    <pre><code>{{ local_prediction_code.inference_code }}</code></pre>
-                </div>
+                4. Run inference
 
-                {% if has_onnx or has_tensorrt %}
-                <h3>Using optimized models</h3>
+                    ```python
+                    # Be sure you are in the root of the {{ code.local_prediction.repo_name }} repository
+                    from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
 
-                <div class="code-block">
-                    <pre><code>{{ optimized_model_code }}</code></pre>
+                    # Load model
+                    model = {{ code.local_prediction.serving_class }}(
+                        checkpoint="./{{ artifacts.experiment_dir }}/checkpoints/{{ artifacts.best_checkpoint }}", # path to the checkpoint
+                        device="cuda",
+                    )
+
+                    # Predict
+                    prediction = model(
+                        "image.png", # local paths, directory, local project, np.array, PIL.Image, URL
+                        params={"confidence_threshold": 0.5}
+                    )
+                    ```
+
+                See more in [Predict
+                Locally](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#predict-locally)
+                documentation.
+                {% endmarkdown %}
+
+                {% if artifacts.optimized_checkpoint %}
+                <div>
+                    {% markdown %}
+                    ### Using optimized models
+
+                    ```python
+                    # Be sure you are in the root of the {{ code.local_prediction.repo_name }} repository
+                    from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
+
+                    model = {{ code.local_prediction.serving_class }}(
+                    model_dir="./{{ artifacts.experiment_dir }}",
+                    checkpoint="{{ artifacts.optimized_checkpoint }}",
+                    device="cuda",
+                    )
+                    ```
+                    {% endmarkdown %}
                 </div>
                 {% endif %}
             </div>

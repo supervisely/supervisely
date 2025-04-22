@@ -1,1 +1,1 @@
-from supervisely.nn.experiment.base_experiment import BaseExperiment
+from supervisely.nn.experiment.experiment_generator import ExperimentGenerator
