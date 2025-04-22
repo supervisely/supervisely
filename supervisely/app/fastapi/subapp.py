@@ -1,5 +1,4 @@
 import inspect
-import json
 import os
 import signal
 import sys
@@ -852,16 +851,22 @@ def _init(
 
     if headless is False:
         app.cached_template = None
+        app.is_caching_template = False
 
         @app.get("/")
         @available_after_shutdown(app)
         def read_index(request: Request):
             if request.query_params.get("ping", False) in ("true", "True", True, 1, "1"):
                 return JSONResponse(content={"message": "App is running"}, status_code=200)
+
+            while app.is_caching_template:
+                sleep(0.1)
             if app.cached_template is None:
+                app.is_caching_template = True
                 app.cached_template = Jinja2Templates().TemplateResponse(
                     "index.html", {"request": request}
                 )
+                app.is_caching_template = False
             return app.cached_template
 
         @app.on_event("shutdown")

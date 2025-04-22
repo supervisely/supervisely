@@ -418,6 +418,7 @@ class CustomModelsSelector(Widget):
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_train_info(train_info):
+
             try:
                 model_row = CustomModelsSelector.ModelRow(
                     api=self._api,

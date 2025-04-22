@@ -243,7 +243,9 @@ from supervisely.aug import imgaug_utils
 import supervisely.volume as volume
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.volume_annotation.volume_object_collection import VolumeObjectCollection
+from supervisely.volume_annotation.volume_object_collection import (
+    VolumeObjectCollection,
+)
 from supervisely.volume_annotation.volume_tag import VolumeTag
 from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
 from supervisely.volume_annotation.volume_figure import VolumeFigure
