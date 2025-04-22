@@ -61,6 +61,8 @@ class BaseExperimentGenerator:
             autoescape=False,
             trim_blocks=True,
             lstrip_blocks=True,
+            # pip install jinja-markdown
+            extensions=["jinja_markdown.MarkdownExtension"],
         )
 
         self.output_dir = "./experiment_report"

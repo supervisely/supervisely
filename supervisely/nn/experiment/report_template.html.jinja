@@ -236,18 +236,17 @@
             <!-- Overview -->
             <div id="overview-markdown-section"
                 class="iw-widget markdown-no-border overview-info-block width-fit-content section">
-                <ul class="overview-list">
-                    <li><span class="label">Model:</span> {{ model_name }}</li>
-                    <li><span class="label">Task:</span> {{ task_name }}</li>
-                    <li><span class="label">Framework:</span> {{ framework_name }}</li>
-                    <li><span class="label">Project:</span> {% if project_link %}<a href="{{ project_link }}">{{
-                            project_name }}</a>{% else %}{{ project_name }}{% endif %}</li>
-                    <li><span class="label">Train size:</span> {{ train_size }} {{ train_type }}</li>
-                    <li><span class="label">Validation size:</span> {{ validation_size }} {{ train_type }}</li>
-                    <li><span class="label">Classes:</span> {{ classes_count }}</li>
-                    <li><span class="label">Class names:</span> {{ class_names }}</li>
-                    <li><span class="label">Date:</span> {{ date }}</li>
-                </ul>
+                {% markdown %}
+                - **Model**: {{ model_name }}
+                - **Task**: {{ task_name }}
+                - **Framework**: {{ framework_name }}
+                - **Project**: {{ project_name }}
+                - **Train size**: {{ train_size }} {{ train_type }}
+                - **Validation size**: {{ validation_size }} {{ train_type }}
+                - **Classes**: {{ classes_count }}
+                - **Class names**: {{ class_names }}
+                - **Date**: {{ date }}
+                {% endmarkdown %}
             </div>
 
             <!-- Links -->
