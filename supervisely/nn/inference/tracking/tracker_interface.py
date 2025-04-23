@@ -16,6 +16,7 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.point import Point
+from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.nn.inference.cache import InferenceImageCache
@@ -42,6 +43,7 @@ class TrackerInterface:
 
         self.track_id = context["trackId"]
         self.video_id = context["videoId"]
+        self.video_info = self.api.video.get_info_by_id(self.video_id)
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
@@ -115,6 +117,29 @@ class TrackerInterface:
                 self.clear_cache()
                 return
 
+    def _fix_point(self, point: PointLocation, h, w):
+        row, col = point.row, point.col
+        row = max(0, row)
+        row = min(row, h - 1)
+        col = max(0, col)
+        col = min(col, w - 1)
+        return PointLocation(row, col)
+
+    def _fix_geometry(self, geometry: Geometry):
+        if isinstance(geometry, Polygon):
+            h = self.video_info.frame_height
+            w = self.video_info.frame_width
+            fixed_points = [self._fix_point(point, h, w) for point in geometry.exterior]
+            return Polygon(
+                fixed_points,
+                geometry.interior,
+                geometry.sly_id,
+                geometry.class_id,
+                geometry.labeler_login,
+                geometry.updated_at,
+                geometry.created_at,
+            )
+
     def add_object_geometries_on_frames(
         self,
         geometries: List[Geometry],
@@ -135,7 +160,7 @@ class TrackerInterface:
                 {
                     ApiField.OBJECT_ID: object_id,
                     ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
-                    ApiField.GEOMETRY: geometry.to_json(),
+                    ApiField.GEOMETRY: self._fix_geometry(geometry).to_json(),
                     ApiField.META: {ApiField.FRAME: frame_index},
                     ApiField.TRACK_ID: self.track_id,
                 }
