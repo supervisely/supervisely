@@ -304,16 +304,21 @@
             </div>
             {% endif %}
 
-            <!-- Hyperparameters -->
             {% if artifacts.hyperparameters %}
             <div id="hyperparameters-markdown-section" class="section">
-                <h2>Training Hyperparameters</h2>
+                {% markdown %}
+                ## Training Hyperparameters
+                
                 <details>
                     <summary>Click to expand hyperparameters</summary>
-                    <div class="code-block">
-                        <pre><code>{{ artifacts.hyperparameters }}</code></pre>
-                    </div>
+                    ```yaml
+                    {% for hyperparameter in artifacts.hyperparameters %}
+                        {{ hyperparameter }}
+                    {% endfor %}
+                    ```
                 </details>
+
+                {% endmarkdown %}
             </div>
             {% endif %}
 

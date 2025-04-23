@@ -3,8 +3,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-from jinja2 import Environment, FileSystemLoader
-
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
@@ -13,9 +11,7 @@ from supervisely.api.api import Api
 from supervisely.nn.inference import Inference
 from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
-
-# @TODO: Partly supports unreleased apps
-
+from supervisely.template.template_renderer import TemplateRenderer
 class ExperimentGenerator:
     """
     Base class for generating experiment reports.
@@ -53,27 +49,16 @@ class ExperimentGenerator:
         self.artifacts_dir = self.info["artifacts_dir"]
         self.serving_class = serving_class
         
-        # Initialize report generation environment
         self.report_name = "Experiment Report.lnk"
+        self.report_dir = "visualization"
         self.output_dir = "./experiment_report"
+        self.template_name = "template.vue"
+
         sly_fs.mkdir(self.output_dir, True)
         
-        # Setup Jinja environment
-        self.jinja_env = Environment(
-            loader=FileSystemLoader(Path(__file__).parent),
-            autoescape=False,
-            trim_blocks=True,
-            lstrip_blocks=True,
-            extensions=["jinja_markdown.MarkdownExtension"],
-        )
-        
-        # Load app info
+        self.template_renderer = TemplateRenderer(templates_dir=Path(__file__).parent)
         self.app_info = self._get_app_info()
 
-    # -----------------
-    # Public methods
-    # -----------------
-    
     def get_state(self) -> Dict[str, Any]:
         """Get state data for state.json.
         
@@ -88,13 +73,9 @@ class ExperimentGenerator:
         :returns: Path to the generated template.vue file
         :rtype: str
         """
-        context = self._prepare_template_context()
-        template = self.jinja_env.get_template("report_template.html.jinja")
-        html_content = template.render(**context)
-        
-        template_path = os.path.join(self.output_dir, "template.vue")
-        with open(template_path, "w") as f:
-            f.write(html_content)
+        context = self.generate_context()
+        template_path = os.path.join(self.output_dir, self.template_name)
+        self.template_renderer.render_to_file("template.html.jinja", template_path, context)
         return template_path
 
     def generate_state(self) -> str:
@@ -121,46 +102,51 @@ class ExperimentGenerator:
             f.write(self._get_report_link(template_id))
         return report_path
 
-    def generate_report(self) -> str:
+    def generate_report(self, upload: bool = True) -> str:
         """Generate and upload report to Supervisely.
         
         :returns: Remote directory path where report was uploaded
         :rtype: str
         """
-        remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
-
-        # Generate and upload template.vue
         template_path = self.generate_template()
-        remote_template_path = os.path.join(remote_dir, "template.vue")
-        template_file = self.api.file.upload(
-            team_id=self.team_id, src=template_path, dst=remote_template_path
-        )
-
-        # Generate and upload state.json
         state_path = self.generate_state()
+
+        if upload:
+            template_path = self.upload_report(template_path, state_path)
+
+        logger.info("Experiment report generated successfully")
+        return template_path
+
+    def upload_report(self, template_path, state_path):
+        """Upload report to Supervisely.
+        
+        :returns: Remote directory path where report was uploaded
+        :rtype: str
+        """
+        remote_dir = os.path.join(self.info["artifacts_dir"], self.report_dir)
+        remote_template_path = os.path.join(remote_dir, self.template_name)
+        template_file = self.api.file.upload(team_id=self.team_id, src=template_path, dst=remote_template_path)
+
         remote_state_path = os.path.join(remote_dir, "state.json")
         self.api.file.upload(
             team_id=self.team_id, src=state_path, dst=remote_state_path
         )
 
-        # Generate and upload report link
         remote_report_path = os.path.join(remote_dir, self.report_name)
         report_path = self.generate_report_link(template_file.id)
         self.api.file.upload(
             team_id=self.team_id, src=report_path, dst=remote_report_path
         )
-        
-        logger.info("Experiment report generated successfully")
         return remote_dir
 
     # -----------------
     # Template context generation
     # -----------------
     
-    def _prepare_template_context(self) -> Dict[str, Any]:
-        """Prepare context for Jinja template.
+    def generate_context(self) -> Dict[str, Any]:
+        """Generate context for Jinja template.
 
-        :returns: Dictionary with structured data for template rendering
+        :returns: Dictionary with data for template rendering
         :rtype: Dict[str, Any]
         """
         exp_name = self.info["experiment_name"]
@@ -322,7 +308,8 @@ class ExperimentGenerator:
         if self.hyperparameters is not None:
             if not isinstance(self.hyperparameters, str):
                 raise ValueError("Hyperparameters must be a yaml string")
-            return self.hyperparameters
+            hyperparameters = self.hyperparameters.split("\n")
+            return hyperparameters
         return None
 
     def _generate_links(self) -> str:
@@ -386,32 +373,6 @@ class ExperimentGenerator:
         app_id = task_info["meta"]["app"]["id"]
         return self.api.app.get_info_by_id(app_id)
 
-    # @TODO: method not used (might be helpful for unreleased apps)
-    def _find_app_config(self):
-        """
-        Find app config.json in project structure.
-        
-        :returns: Config dictionary or None if not found
-        :rtype: Optional[Dict[str, Any]]
-        """
-        try:
-            current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
-            root_dir = current_dir
-            
-            while root_dir.parent != root_dir:
-                config_path = root_dir / "supervisely_integration" / "train" / "config.json"
-                if config_path.exists():
-                    break
-                root_dir = root_dir.parent
-                
-            config_path = root_dir / "supervisely_integration" / "train" / "config.json"
-            if config_path.exists():
-                return sly_json.load_json_file(config_path)
-                
-        except Exception as e:
-            logger.warning(f"Failed to load config.json: {e}")
-            return None
-
     def _get_date(self) -> str:
         """Format experiment date.
         
@@ -470,3 +431,31 @@ class ExperimentGenerator:
         repo_name = framework_name.replace(" ", "-")
         repo_link = f"https://github.com/supervisely-ecosystem/{repo_name}"
         return {"url": repo_link, "name": repo_name}
+    
+    # @TODO: method not used (might be helpful for unreleased apps)
+    def _find_app_config(self):
+        """
+        Find app config.json in project structure.
+        
+        :returns: Config dictionary or None if not found
+        :rtype: Optional[Dict[str, Any]]
+        """
+        try:
+            current_dir = Path(os.path.abspath(os.path.dirname(__file__)))
+            root_dir = current_dir
+            
+            while root_dir.parent != root_dir:
+                config_path = root_dir / "supervisely_integration" / "train" / "config.json"
+                if config_path.exists():
+                    break
+                root_dir = root_dir.parent
+                
+            config_path = root_dir / "supervisely_integration" / "train" / "config.json"
+            if config_path.exists():
+                return sly_json.load_json_file(config_path)
+                
+        except Exception as e:
+            logger.warning(f"Failed to load config.json: {e}")
+            return None
+        
+# @TODO: Partly supports unreleased apps
