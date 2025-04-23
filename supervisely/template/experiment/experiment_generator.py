@@ -170,9 +170,7 @@ class ExperimentGenerator:
         docker_image = self._get_docker_image()
         repo_info = self._get_repository_info()
         has_onnx, has_tensorrt, optimized_checkpoint = self._get_optimized_checkpoint()
-        links_html = self._generate_links()
 
-        # Build structured context dictionary
         context = {
             "experiment": {
                 "name": exp_name,
@@ -311,46 +309,6 @@ class ExperimentGenerator:
             hyperparameters = self.hyperparameters.split("\n")
             return hyperparameters
         return None
-
-    def _generate_links(self) -> str:
-        """Generate HTML links to related resources.
-        
-        :returns: HTML string with links
-        :rtype: str
-        """
-        html = ['<ul class="links-list">']
-
-        # Training task link
-        task_id = self.info.get("task_id")
-        if task_id:
-            html.append(
-                f'<li><span class="link-icon">🎓</span> <a href="{self.api.server_address}/apps/sessions/{task_id}">Training Task</a></li>'
-            )
-
-        # Evaluation report link
-        eval_id = self.info.get("evaluation_report_id")
-        eval_link = self.info.get("evaluation_report_link")
-        if eval_id:
-            report_link = eval_link or f"{self.api.server_address}/model-benchmark?id={eval_id}"
-            html.append(
-                f'<li><span class="link-icon">📊</span> <a href="{report_link}">Evaluation Report</a></li>'
-            )
-
-        # TensorBoard logs link
-        logs = self.info.get("logs", {})
-        if logs and "link" in logs:
-            html.append(
-                f'<li><span class="link-icon">⚡</span> <a href="{self.api.server_address}/files/?path={logs["link"]}">TensorBoard Logs</a></li>'
-            )
-
-        # Team files link
-        if self.artifacts_dir:
-            html.append(
-                f'<li><span class="link-icon">💾</span> <a href="{self.api.server_address}/files/?path={self.artifacts_dir}">Open in Team Files</a></li>'
-            )
-
-        html.append("</ul>")
-        return "\n".join(html)
 
     def _get_report_link(self, template_id: int) -> str:
         """Generate URL to experiment report page.
