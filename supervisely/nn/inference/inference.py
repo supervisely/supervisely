@@ -2028,10 +2028,13 @@ class Inference:
         self,
         api: Api,
         state: dict,
-        inference_request_uuid: str = None,
+        inference_request: InferenceRequest,
     ):
         """Run speedtest on project images."""
         logger.debug("Running speedtest...", extra={"state": state})
+        settings = self._get_inference_settings_from_state(state)
+        logger.debug(f"Inference settings:", extra=settings)
+
         project_id = state["projectId"]
         batch_size = state["batch_size"]
         num_iterations = state["num_iterations"]
@@ -2049,49 +2052,22 @@ class Inference:
                 if dataset_id in datasets_infos_dict
             ]
 
-        # progress
-        preparing_progress = {"current": 0, "total": 1}
-        if inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[inference_request_uuid]
-            except Exception as ex:
-                import traceback
+        preparing_progress_total = len(datasets_infos)
+        if cache_project_on_model:
+            preparing_progress_total += sum(
+                dataset_info.items_count for dataset_info in datasets_infos
+            )
+        inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, preparing_progress_total)
 
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"inference_request_uuid {inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = num_iterations
-            sly_progress.current = 0
-
-            preparing_progress = inference_request["preparing_progress"]
-
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
-        preparing_progress["status"] = "download_info"
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
-            if not cache_project_on_model:
-                preparing_progress["current"] += 1
+            inference_request.done()
 
         if cache_project_on_model:
+            download_to_cache(api, project_id, datasets_infos, progress_cb=inference_request.done)
 
-            def _progress_cb(count: int = 1):
-                preparing_progress["current"] += count
-
-            preparing_progress["current"] = 0
-            preparing_progress["total"] = sum(
-                dataset_info.items_count for dataset_info in datasets_infos
-            )
-            preparing_progress["status"] = "download_project"
-            download_to_cache(api, project_id, datasets_infos, progress_cb=_progress_cb)
-
-        preparing_progress["status"] = "warmup"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = num_warmup
+        inference_request.set_stage("warmup", 0, num_warmup)
 
         images_infos: List[ImageInfo] = [
             image_info for infos in images_infos_dict.values() for image_info in infos
@@ -2110,44 +2086,9 @@ class Inference:
             # start downloading in parallel
             threading.Thread(target=_download_images, daemon=True).start()
 
-        def _add_results_to_request(results: List[Dict]):
-            if inference_request_uuid is None:
-                return
-            inference_request["pending_results"].append(results)
-            sly_progress.iters_done(1)
-
-        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
-            try:
-                while True:
-                    items = []
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        for batch in items:
-                            upload_f(batch)
-                        continue
-                    if stop_event.is_set():
-                        self._on_inference_end(None, inference_request_uuid)
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                raise
-
-        upload_f = _add_results_to_request
-
-        upload_queue = Queue()
-        stop_upload_event = threading.Event()
-        threading.Thread(
-            target=_upload_loop,
-            args=[upload_queue, stop_upload_event, api, upload_f],
-            daemon=True,
-        ).start()
-
-        settings = self._get_inference_settings_from_state(state)
-        logger.debug(f"Inference settings:", extra=settings)
-        results = []
-        stop = False
+        def upload_f(benchmark):
+            inference_request.add_results([benchmark])
+            inference_request.done()
 
         def image_batch_generator(batch_size):
             logger.debug(
@@ -2163,23 +2104,17 @@ class Inference:
                         batch = []
 
         batch_generator = image_batch_generator(batch_size)
-        try:
+
+        with Uploader(upload_f=upload_f) as uploader:
             for i in range(num_iterations + num_warmup):
-                if stop:
-                    break
-                if (
-                    inference_request_uuid is not None
-                    and inference_request["cancel_inference"] is True
-                ):
+                if inference_request.is_stopped():
                     logger.debug(
                         f"Cancelling inference project...",
-                        extra={"inference_request_uuid": inference_request_uuid},
+                        extra={"inference_request_uuid": inference_request.uuid},
                     )
-                    results = []
-                    stop = True
                     break
                 if i == num_warmup:
-                    preparing_progress["status"] = "inference"
+                    inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, num_iterations)
 
                 images_infos_batch: List[ImageInfo] = next(batch_generator)
 
@@ -2226,17 +2161,9 @@ class Inference:
                 )
                 # Collect results if warmup is done
                 if i >= num_warmup:
-                    results.append(benchmark)
-                    upload_queue.put(benchmark)
+                    uploader.put(benchmark)
                 else:
-                    preparing_progress["current"] += 1
-        except Exception:
-            stop_upload_event.set()
-            raise
-        if inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = results
-        stop_upload_event.set()
-        return results
+                    inference_request.done()
 
     def _check_serve_before_call(self, func):
         @wraps(func)
@@ -2719,45 +2646,33 @@ class Inference:
 
         @server.post("/run_speedtest")
         def run_speedtest(response: Response, request: Request):
-            logger.debug(f"'run_speedtest' request in json format:{request.state.state}")
-            api = self.api_from_request(request)
-            project_id = request.state.state["projectId"]
-            project_info = api.project.get_info_by_id(project_id)
-            if project_info.type != str(ProjectType.IMAGES):
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                response.body = {"message": "Only images projects are supported."}
-                raise ValueError("Only images projects are supported.")
-            batch_size = request.state.state["batch_size"]
+            state = request.state.state
+            logger.debug(f"'run_speedtest' request in json format:{state}")
+
+            batch_size = state["batch_size"]
             if batch_size > 1 and not self.is_batch_inference_supported():
                 response.status_code = status.HTTP_501_NOT_IMPLEMENTED
                 return {
                     "message": "Batch inference is not implemented for this model.",
                     "success": False,
                 }
-            # check batch size
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+
+            project_id = state["projectId"]
+            project_info = api.project.get_info_by_id(project_id)
+            if project_info.type != str(ProjectType.IMAGES):
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = self.generate_uuid()
-            self._on_inference_start(inference_request_uuid)
-            future = self._inference_executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._run_speedtest,
-                api,
-                request.state.state,
-                inference_request_uuid,
-            )
-            logger.debug(
-                "Speedtest has scheduled from 'run_speedtest' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+                response.body = {"message": "Only images projects are supported."}
+                raise ValueError("Only images projects are supported.")
+
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._run_speedtest, api, state
             )
             return {
                 "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post(f"/get_inference_progress")
