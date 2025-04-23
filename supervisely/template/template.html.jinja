@@ -1,0 +1,190 @@
+<div class="model-benchmark-body">
+
+    <sly-style>
+        .model-benchmark-body h1 {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        }
+        .model-benchmark-body .sly-markdown-widget .markdown-body {
+        padding: 0;
+        font-family: inherit;
+        }
+        .model-benchmark-body .sly-markdown-widget .markdown-body h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 0px;
+        border: 0;
+        }
+        .model-benchmark-body .sly-markdown-widget .markdown-body h3 {
+        color: #949bab;
+        font-size: 18px;
+        margin-bottom: 7px;
+        }
+        .model-benchmark-body .sly-markdown-widget .markdown-body p {
+        margin-bottom: 12px;
+        }
+
+        .model-benchmark-body .section {
+        margin-bottom: 30px;
+        scroll-margin-top: 20px;
+        padding-top: 10px;
+        }
+        .model-benchmark-body .overview-info-block {
+        background: #f4f7fb;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body .width-fit-content {
+        width: fit-content;
+        }
+        .model-benchmark-body .main-content {
+        flex-grow: 1;
+        }
+
+        .model-benchmark-body .buttons-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+        }
+
+        .model-benchmark-body table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body table th,
+        .model-benchmark-body table td {
+        border: 1px solid #e0e0e0;
+        padding: 8px 12px;
+        text-align: left;
+        }
+        .model-benchmark-body table th {
+        background-color: #f4f7fb;
+        }
+        .model-benchmark-body .metrics-table,
+        .model-benchmark-body .checkpoints-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        border-radius: 6px;
+        overflow: hidden;
+        }
+        .model-benchmark-body .metrics-table th,
+        .model-benchmark-body .checkpoints-table th {
+        background-color: #f4f7fb;
+        font-weight: 600;
+        color: #333;
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 2px solid #e0e0e0;
+        }
+        .model-benchmark-body .metrics-table td,
+        .model-benchmark-body .checkpoints-table td {
+        padding: 10px 15px;
+        border-bottom: 1px solid #e9ecef;
+        }
+        .model-benchmark-body .metrics-table tr:hover,
+        .model-benchmark-body .checkpoints-table tr:hover {
+        background-color: #f8f9fa;
+        }
+
+        .model-benchmark-body .links-list,
+        .model-benchmark-body .overview-list,
+        .model-benchmark-body .buttons-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+        }
+        .model-benchmark-body .links-list li,
+        .model-benchmark-body .overview-list li,
+        .model-benchmark-body .buttons-list li {
+        margin-bottom: 8px;
+        position: relative;
+        padding-left: 8px;
+        display: flex;
+        align-items: flex-start;
+        }
+        .model-benchmark-body .links-list li:before,
+        .model-benchmark-body .buttons-list li:before {
+        content: "•";
+        color: #1890ff;
+        display: inline-block;
+        width: 15px;
+        margin-right: 10px;
+        }
+        .model-benchmark-body .overview-list li:before {
+        content: "";
+        display: none;
+        }
+        .model-benchmark-body .link-icon,
+        .model-benchmark-body .button-icon {
+        margin-right: 8px;
+        }
+        .model-benchmark-body .overview-list .label {
+        font-weight: 600;
+        margin-right: 8px;
+        min-width: 120px;
+        display: inline-block;
+        }
+
+        /* Code */
+        .model-benchmark-body .code-block {
+        background-color: #f5f5f5;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+        }
+
+        .model-benchmark-body details {
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        }
+        .model-benchmark-body details summary {
+        padding: 12px 15px;
+        background-color: #f4f7fb;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s;
+        }
+        .model-benchmark-body details summary:hover {
+        background-color: #e6edf7;
+        }
+        .model-benchmark-body details[open] summary {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        margin-bottom: 0;
+        }
+
+        html {
+        scroll-behavior: smooth;
+        }
+    </sly-style>
+
+    <!-- Sidebar navigation -->
+    <sly-iw-sidebar
+        :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false, disableResize: true, sidebarWidth: 300 }">
+        <div slot="sidebar">
+            {% for section in navigation.sections %}
+            <div>
+                <el-button type="text" @click="data.scrollIntoView='{{ section.id }}'"
+                    :style="{fontWeight: data.scrollIntoView === '{{ section.id }}' ? 'bold' : 'normal'}">
+                    {{ section.title }}
+                </el-button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Main content -->
+        <div class="main-content markdown-body">
+            {{ markdown_content }}
+        </div>
+    </sly-iw-sidebar>
+
+</div>

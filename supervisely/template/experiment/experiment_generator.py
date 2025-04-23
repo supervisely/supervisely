@@ -49,14 +49,24 @@ class ExperimentGenerator:
         self.artifacts_dir = self.info["artifacts_dir"]
         self.serving_class = serving_class
         
-        self.report_name = "Experiment Report.lnk"
-        self.report_dir = "visualization"
-        self.output_dir = "./experiment_report"
-        self.template_name = "template.vue"
-
-        sly_fs.mkdir(self.output_dir, True)
+        # Output directories and files
+        self.local_output_dir = "./experiment_report"
         
-        self.template_renderer = TemplateRenderer(templates_dir=Path(__file__).parent)
+        # Template files
+        self.md_template_name = "experiment.md.jinja"
+        self.md_template_path = f"experiment/{self.md_template_name}"
+        
+        # Output files
+        self.output_html_filename = "template.vue"
+        self.output_html_path = os.path.join(self.local_output_dir, self.output_html_filename)
+        
+        # Report files
+        self.report_link_filename = "Open Experiment.lnk"
+        self.remote_report_dir = "visualization"
+
+        sly_fs.mkdir(self.local_output_dir, True)
+        
+        self.template_renderer = TemplateRenderer(self.md_template_path)
         self.app_info = self._get_app_info()
 
     def get_state(self) -> Dict[str, Any]:
@@ -74,8 +84,8 @@ class ExperimentGenerator:
         :rtype: str
         """
         context = self.generate_context()
-        template_path = os.path.join(self.output_dir, self.template_name)
-        self.template_renderer.render_to_file("template.html.jinja", template_path, context)
+        template_path = os.path.join(self.local_output_dir, self.output_html_filename)
+        self.template_renderer.render_to_file(self.md_template_path, template_path, context)
         return template_path
 
     def generate_state(self) -> str:
@@ -85,7 +95,7 @@ class ExperimentGenerator:
         :rtype: str
         """
         state = self.get_state()
-        state_path = os.path.join(self.output_dir, "state.json")
+        state_path = os.path.join(self.local_output_dir, "state.json")
         sly_json.dump_json_file(state, state_path)
         return state_path
 
@@ -97,15 +107,17 @@ class ExperimentGenerator:
         :returns: Path to the generated report link file
         :rtype: str
         """
-        report_path = os.path.join(self.output_dir, self.report_name)
+        report_path = os.path.join(self.local_output_dir, self.report_link_filename)
         with open(report_path, "w") as f:
             f.write(self._get_report_link(template_id))
         return report_path
 
     def generate_report(self, upload: bool = True) -> str:
-        """Generate and upload report to Supervisely.
+        """Generate report files and upload report to Supervisely if upload is True.
         
-        :returns: Remote directory path where report was uploaded
+        :param upload: Whether to upload report files to Supervisely
+        :type upload: bool
+        :returns: Path to directory with report files
         :rtype: str
         """
         template_path = self.generate_template()
@@ -123,20 +135,16 @@ class ExperimentGenerator:
         :returns: Remote directory path where report was uploaded
         :rtype: str
         """
-        remote_dir = os.path.join(self.info["artifacts_dir"], self.report_dir)
-        remote_template_path = os.path.join(remote_dir, self.template_name)
+        remote_dir = os.path.join(self.info["artifacts_dir"], self.remote_report_dir)
+        remote_template_path = os.path.join(remote_dir, self.output_html_filename)
         template_file = self.api.file.upload(team_id=self.team_id, src=template_path, dst=remote_template_path)
 
         remote_state_path = os.path.join(remote_dir, "state.json")
-        self.api.file.upload(
-            team_id=self.team_id, src=state_path, dst=remote_state_path
-        )
+        self.api.file.upload(team_id=self.team_id, src=state_path, dst=remote_state_path)
 
-        remote_report_path = os.path.join(remote_dir, self.report_name)
+        remote_report_path = os.path.join(remote_dir, self.report_link_filename)
         report_path = self.generate_report_link(template_file.id)
-        self.api.file.upload(
-            team_id=self.team_id, src=report_path, dst=remote_report_path
-        )
+        self.api.file.upload(team_id=self.team_id, src=report_path, dst=remote_report_path)
         return remote_dir
 
     # -----------------
