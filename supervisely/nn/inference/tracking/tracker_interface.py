@@ -139,6 +139,7 @@ class TrackerInterface:
                 geometry.updated_at,
                 geometry.created_at,
             )
+        return geometry
 
     def add_object_geometries_on_frames(
         self,

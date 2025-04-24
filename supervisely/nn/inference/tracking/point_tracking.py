@@ -33,15 +33,6 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
 
-def _fix_point(point: PointLocation, h, w):
-    row, col = point.row, point.col
-    row = max(0, row)
-    row = min(row, h - 1)
-    col = max(0, col)
-    col = min(col, w - 1)
-    return PointLocation(row, col)
-
-
 class PointTracking(BaseTracking):
     def _deserialize_geometry(self, data: dict):
         geometry_type_str = data["type"]
@@ -545,7 +536,6 @@ class PointTracking(BaseTracking):
             )
         h, w = frames[0].shape[:2]
         points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in points]
-        points_loc = [_fix_point(point, h, w) for point in points_loc]
         return F.exteriors_to_sly_polygons(points_loc)
 
     def _predict_graph_geometries(
