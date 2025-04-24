@@ -7,13 +7,8 @@ import requests
 
 import supervisely.io.env as sly_env
 import supervisely.io.json as sly_json
-from supervisely.api.dataset_api import DatasetInfo
-from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
-from supervisely.api.project_api import ProjectInfo
 from supervisely.api.task_api import TaskApi
-from supervisely.api.video.video_api import VideoInfo
-from supervisely.io.fs import dir_exists
 from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.model.prediction import Prediction, PredictionSession
 from supervisely.nn.utils import ModelSource
@@ -85,8 +80,10 @@ class ModelAPI:
             return self.api.task.is_ready(self.task_id)
         return self._post("is_ready", {})["status"] == "ready"
 
-    def monitor(self):
-        raise NotImplementedError
+    def status(self):
+        if self.task_id is not None:
+            return self.api.task.send_request(self.task_id, "get_status", {})
+        return self._post("get_status", {})
 
     def shutdown(self):
         if self.task_id is not None:
@@ -255,7 +252,7 @@ class ModelAPI:
         upload_mode: str = None,
         **kwargs,
     ) -> List[Prediction]:
-
+        # TODO: add tqdm
         return list(
             self.predict_detached(
                 input,

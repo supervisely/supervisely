@@ -628,6 +628,10 @@ class SessionJSON:
         endpoint = "get_inference_progress"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
+    def _get_inference_status(self) -> Dict[str, Any]:
+        endpoint = "get_inference_status"
+        return self._get_from_endpoint_for_async_inference(endpoint)
+
     def _get_preparing_progress(self) -> Dict[str, Any]:
         endpoint = "get_preparing_progress"
         return self._get_from_endpoint_for_async_inference(endpoint)

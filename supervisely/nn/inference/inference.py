@@ -87,6 +87,8 @@ from supervisely.nn.utils import (
     ModelSource,
     RuntimeType,
     _get_model_name,
+    get_gpu_usage,
+    get_ram_usage,
 )
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
@@ -2909,6 +2911,36 @@ class Inference:
         @self._check_serve_before_call
         def _get_deploy_info():
             return asdict(self._get_deploy_info())
+
+        @server.post("/get_inference_status")
+        def _get_inference_status(request: Request, response: Response):
+            state = request.state.state
+            inference_request_uuid = state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
+            if inference_request is None:
+                response.status_code = status.HTTP_404_NOT_FOUND
+                return {"message": "Error: 'inference_request_uuid' is not found."}
+            return inference_request.status()
+        
+        @server.post("/get_status")
+        def _get_status(request: Request):
+            progress = self.inference_requests_manager.global_progress.to_json()
+            ram_allocated, ram_total = get_ram_usage()
+            gpu_allocated, gpu_total = get_gpu_usage()
+            return {
+                "progress": progress,
+                "gpu_memory": {
+                    "allocated": gpu_allocated,
+                    "total": gpu_total,
+                },
+                "ram_memory": {
+                    "allocated": ram_allocated,
+                    "total": ram_total,
+                },
+            }
 
         # Local deploy without predict args
         if self._is_local_deploy:

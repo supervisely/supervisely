@@ -9,6 +9,7 @@ from functools import partial
 from typing import Any, Dict, List, Tuple, Union
 
 from supervisely._utils import rand_str
+from supervisely.nn.utils import get_gpu_usage, get_ram_usage
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
@@ -202,14 +203,16 @@ class InferenceRequest:
                 self.set_stage(InferenceRequest.Stage.FINISHED)
 
     def get_usage(self):
+        ram_allocated, ram_total = get_ram_usage()
+        gpu_allocated, gpu_total = get_gpu_usage()
         return {
             "gpu_memory": {
-                "allocated": 1,
-                "total": 2,
+                "allocated": gpu_allocated,
+                "total": gpu_total,
             },
             "ram_memory": {
-                "allocated": 1,
-                "total": 2,
+                "allocated": ram_allocated,
+                "total": ram_total,
             },
         }
 
@@ -262,6 +265,13 @@ class GlobalProgress:
             self.progress.total = max(1, self.progress.total - total)
         if self.progress.current >= self.progress.total:
             self.set_ready()
+
+    def to_json(self):
+        return {
+            "message": self.progress.message,
+            "current": self.progress.current,
+            "total": self.progress.total,
+        }
 
 
 class InferenceRequestsManager:

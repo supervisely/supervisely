@@ -61,6 +61,7 @@ class Prediction:
         image_id: Optional[int] = None,
         video_id: Optional[int] = None,
         frame_index: Optional[int] = None,
+        api: Optional["Api"] = None,
     ):
         self.source = source
         if isinstance(annotation_json, Annotation):
@@ -79,6 +80,7 @@ class Prediction:
         self.video_id = video_id
         self.frame_index = frame_index
         self.extra_data = {}
+        self.api = api
 
         self._annotation = None
         self._boxes = None
@@ -217,7 +219,8 @@ class Prediction:
         if not dir_empty(self._temp_dir):
             clean_dir(self._temp_dir)
 
-    def load_image(self, api: Optional["Api"] = None) -> np.ndarray:
+    def load_image(self) -> np.ndarray:
+        api = self.api
         if self.frame_index is None:
             if self.path is not None:
                 return read_image(self.path)
@@ -272,14 +275,13 @@ class Prediction:
         opacity: Optional[float] = 0.5,
         draw_tags: Optional[bool] = False,
         fill_rectangles: Optional[bool] = True,
-        api: Optional["Api"] = None,
     ) -> np.ndarray:
         mkdir(self._temp_dir)
         if not Prediction.__cleanup_registered:
             atexit.register(self._clear_temp_files)
             Prediction.__cleanup_registered = True
 
-        img = self.load_image(api)
+        img = self.load_image()
         self.annotation.draw_pretty(
             bitmap=img,
             color=color,
@@ -561,7 +563,7 @@ class PredictionSession:
         return not self.session._get_inference_progress()["is_inferring"]
 
     def status(self):
-        return self.session._get_inference_progress()
+        return self.session._get_inference_status()
 
     def progress(self):
         return self.session._get_inference_progress()["progress"]
