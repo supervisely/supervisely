@@ -153,7 +153,7 @@ class TrackerInterface:
                 {
                     ApiField.OBJECT_ID: object_id,
                     ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
-                    ApiField.GEOMETRY: self._crop_geometry(geometry).to_json(),
+                    ApiField.GEOMETRY: geometry.to_json(),
                     ApiField.META: {ApiField.FRAME: frame_index},
                     ApiField.TRACK_ID: self.track_id,
                 }
