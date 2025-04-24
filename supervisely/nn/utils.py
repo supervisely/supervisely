@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 import psutil
-import torch.cuda.memory
 
 
 class ModelSource:
