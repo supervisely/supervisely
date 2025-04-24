@@ -2117,7 +2117,7 @@ class Inference:
 
         batch_generator = image_batch_generator(batch_size)
 
-        with Uploader(upload_f=upload_f, logger) as uploader:
+        with Uploader(upload_f=upload_f, logger=logger) as uploader:
             for i in range(num_iterations + num_warmup):
                 if inference_request.is_stopped():
                     logger.debug(
@@ -2920,7 +2920,7 @@ class Inference:
                 response.status_code = status.HTTP_404_NOT_FOUND
                 return {"message": "Error: 'inference_request_uuid' is not found."}
             return inference_request.status()
-        
+
         @server.post("/get_status")
         def _get_status(request: Request):
             progress = self.inference_requests_manager.global_progress.to_json()
