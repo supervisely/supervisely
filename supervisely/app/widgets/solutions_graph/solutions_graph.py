@@ -4,7 +4,7 @@ from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
 
 
-class FlowsView(Widget):
+class SolutionsGraph(Widget):
     """
     A widget for displaying a flow diagram with nodes and connections.
 
@@ -18,16 +18,16 @@ class FlowsView(Widget):
     import supervisely_lib as sly
     import supervisely.app.widgets as w
 
-    node_1 = w.FlowsView.Node(
+    node_1 = w.SolutionsGraph.Node(
         x=50, y=50, content=w.Card(content=w.Text("This flow processes images using AI."))
     )
 
-    node_2 = w.FlowsView.Node(
+    node_2 = w.SolutionsGraph.Node(
         x=200, y=200, content=w.Card("Node 2", content=w.Text("This flow processes images using AI."))
     )
 
     btn = w.Button("Start", button_size="mini")
-    node_3 = w.FlowsView.Node(x=20, y=500, content=btn)
+    node_3 = w.SolutionsGraph.Node(x=20, y=500, content=btn)
 
 
     nodes = [node_1, node_2, node_3]
@@ -35,7 +35,7 @@ class FlowsView(Widget):
         node_1.widget_id: [node_2.widget_id, node_3.widget_id],
         node_2.widget_id: [node_3.widget_id],
     }
-    flow_diagram = w.FlowsView(nodes=nodes, connections=connections)
+    flow_diagram = w.SolutionsGraph(nodes=nodes, connections=connections)
 
     layout = w.Container([flow_diagram])
     app = sly.Application(layout=layout)
@@ -51,6 +51,7 @@ class FlowsView(Widget):
             width: Optional[Union[str, int]] = None,
             height: Optional[Union[str, int]] = None,
             show_border: bool = False,
+            padding: int = 10,
             widget_id: str = None,
         ):
             self.position = {"x": x, "y": y}
@@ -60,13 +61,12 @@ class FlowsView(Widget):
             self.buttons = buttons or []
             if width is not None:
                 width = f"{width}px" if isinstance(width, int) else width
-                width = f"width: {width};"
             self.width = width
             if height is not None:
                 height = f"{height}px" if isinstance(height, int) else height
-                height = f"height: {height};"
             self.height = height
             self.show_border = show_border
+            self.padding = padding
             super().__init__(widget_id=widget_id, file_path=__file__)
 
         def to_json(self):
@@ -152,13 +152,16 @@ class FlowsView(Widget):
             }
         else:
             options = {
-                "color": "#dddddd",
-                "size": 2,
+                "color": "#B1B1B6",
+                # "color": "#333333",
+                # "color": "#dddddd",
+                "size": 1,
                 "path": "straight",  #  straight, grid, arc, magnet, fluid
-                "startPlug": "disc",  #  disc, square, arrow1-3, behind, hand
-                "startPlugSize": 1,
+                # "startPlug": "disc",  #  disc, square, arrow1-3, behind, hand
+                "startPlug": "behind",  #  disc, square, arrow1-3, behind, hand
+                "startPlugSize": 3,
                 "endPlug": "arrow2",  #  disc, square, arrow1-5, behind
-                "endPlugSize": 2,
+                "endPlugSize": 3,
                 "middleLabel": "",  # or startLabel, endLabel
                 "fontFamily": "JetBrains Mono",
                 "fontSize": 12,
