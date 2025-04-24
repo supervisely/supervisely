@@ -375,6 +375,8 @@ class PredictionSession:
         self._base_url = url
         self.input = input
         self.api = api
+        if log_progress:
+            kwargs["log_progress"] = log_progress
         self.kwargs = kwargs
 
         # extra input args

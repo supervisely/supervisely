@@ -719,8 +719,15 @@ class SessionJSON:
             progress.total = total
             refresh = True
         is_size = json_progress.get("is_size", False)
-        if is_size != progress.is_size:
-            progress.is_size = is_size
+        if is_size and progress.unit == "it":
+            progress.unit = "iB"
+            progress.unit_scale = True
+            progress.unit_divisor = 1024
+            refresh = True
+        if not is_size and progress.unit == "iB":
+            progress.unit = "it"
+            progress.unit_scale = False
+            progress.unit_divisor = 1
             refresh = True
         if refresh:
             progress.refresh()
@@ -997,8 +1004,10 @@ class Session(SessionJSON):
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
 
-    def inference_images_np_async(self, images: List[np.ndarray]) -> AsyncInferenceIterator:
-        pred_json = super().inference_images_np_async(images)
+    def inference_images_np_async(
+        self, images: List[np.ndarray], log_progress: bool = False
+    ) -> AsyncInferenceIterator:
+        pred_json = super().inference_images_np_async(images, log_progress=log_progress)
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
@@ -1007,12 +1016,14 @@ class Session(SessionJSON):
         image_ids: List[int],
         output_project_id: int = None,
         batch_size: int = None,
+        log_progress: bool = False,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
             output_project_id,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
+            log_progress=log_progress,
         )
         return frame_iterator
 
@@ -1022,12 +1033,13 @@ class Session(SessionJSON):
         return predictions
 
     def inference_image_paths_async(
-        self, image_paths, batch_size: int = None
+        self, image_paths, batch_size: int = None, log_progress: bool = False
     ) -> List[sly.Annotation]:
         frame_iterator = super().inference_image_paths_async(
             image_paths,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_annotation,
+            log_progress=log_progress,
         )
         return frame_iterator
 
@@ -1056,6 +1068,7 @@ class Session(SessionJSON):
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
         preparing_cb=None,
+        log_progress: bool = False,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
@@ -1066,16 +1079,20 @@ class Session(SessionJSON):
             tracker=tracker,
             batch_size=batch_size,
             preparing_cb=preparing_cb,
+            log_progress=log_progress,
         )
         return frame_iterator
 
-    def inference_video_path_async(self, video_path, batch_size=None, direction=None, step=None):
+    def inference_video_path_async(
+        self, video_path, batch_size=None, direction=None, step=None, log_progress: bool = False
+    ):
         frame_iterator = super().inference_video_path_async(
             video_path,
             batch_size=batch_size,
             direction=direction,
             step=step,
             process_fn=self._convert_to_sly_annotation,
+            log_progress=log_progress,
         )
         return frame_iterator
 
@@ -1086,6 +1103,7 @@ class Session(SessionJSON):
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
+        log_progress: bool = False,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
@@ -1094,6 +1112,7 @@ class Session(SessionJSON):
             cache_project_on_model=cache_project_on_model,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
+            log_progress=log_progress,
         )
         return frame_iterator
 
