@@ -18,6 +18,7 @@ from supervisely.api.video.video_figure_api import FigureInfo
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.point import Point
+from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
@@ -30,6 +31,15 @@ from supervisely.nn.inference.tracking.tracker_interface import (
 from supervisely.nn.prediction_dto import Prediction, PredictionPoint
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+
+
+def _fix_point(point: PointLocation, h, w):
+    row, col = point.row, point.col
+    row = max(0, row)
+    row = min(row, h - 1)
+    col = max(0, col)
+    col = min(col, w - 1)
+    return PointLocation(row, col)
 
 
 class PointTracking(BaseTracking):
@@ -533,7 +543,9 @@ class PointTracking(BaseTracking):
                 settings,
                 polygon_points,
             )
+        h, w = frames[0].shape[:2]
         points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in points]
+        points_loc = [_fix_point(point, h, w) for point in points_loc]
         return F.exteriors_to_sly_polygons(points_loc)
 
     def _predict_graph_geometries(
