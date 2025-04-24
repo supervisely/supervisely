@@ -183,7 +183,7 @@ class InferenceRequest:
             "stage": str(self._stage),
             "progress": self.progress_json(),
             "pending_results": self.pending_num(),
-            "final_result": self._final_result,
+            "final_result": self._final_result is not None,
             "exception": self.exception_json(),
             "stopped": self.stopped,
             "created_at": self._created_at,
@@ -200,6 +200,24 @@ class InferenceRequest:
                 self.set_stage(InferenceRequest.Stage.CANCELLED)
             else:
                 self.set_stage(InferenceRequest.Stage.FINISHED)
+
+    def get_usage(self):
+        return {
+            "gpu_memory": {
+                "allocated": 1,
+                "total": 2,
+            },
+            "ram_memory": {
+                "allocated": 1,
+                "total": 2,
+            },
+        }
+
+    def status(self):
+        status_data = self.to_json()
+        for key in ["pending_results", "final_result", "created_at", "updated_at"]:
+            status_data.pop(key, None)
+        status_data.update(self.get_usage())
 
 
 class GlobalProgress:

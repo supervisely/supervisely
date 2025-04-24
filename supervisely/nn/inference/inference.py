@@ -1464,6 +1464,13 @@ class Inference:
         )
         return is_predict_batch_overridden or is_predict_benchmark_overridden
 
+    def set_conf_auto(conf: float, inference_settings: dict):
+        conf_names = ["conf", "confidence", "confidence_threshold", "confidence_thresh"]
+        for name in conf_names:
+            if name in inference_settings:
+                inference_settings[name] = conf
+        return inference_settings
+
     def _get_inference_settings(self, settings: Dict = None):
         if settings is None:
             settings = {}
@@ -1474,6 +1481,9 @@ class Inference:
                     f"Field {key} not found in inference settings. Use default value {value}"
                 )
                 settings[key] = value
+        conf = settings.get("conf", None)
+        if conf is not None:
+            settings = self.set_conf_auto(conf, settings)
         return settings
 
     # pylint: enable=method-hidden
