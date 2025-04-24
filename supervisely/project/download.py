@@ -1,12 +1,11 @@
 import asyncio
 import os
-import shutil
 from typing import Callable, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
 from supervisely import get_project_class
-from supervisely._utils import get_or_create_event_loop, rand_str
+from supervisely._utils import run_coroutine
 from supervisely.annotation.annotation import Annotation, ProjectMeta
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
@@ -20,7 +19,7 @@ from supervisely.io.fs import (
     get_directory_size,
     remove_dir,
 )
-from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.io.json import load_json_file
 from supervisely.project import Project
 from supervisely.project.project import Dataset, OpenMode, ProjectType
 from supervisely.sly_logger import logger
@@ -46,7 +45,7 @@ def download(
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
-    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output.
     :type log_progress: bool
@@ -205,12 +204,7 @@ def download_async(
             progress_cb=progress_cb,
             **kwargs,
         )
-        loop = get_or_create_event_loop()
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-            future.result()
-        else:
-            loop.run_until_complete(download_coro)
+        run_coroutine(download_coro)
     else:
         raise NotImplementedError(f"Method download_async is not implemented for {project_class}")
 
@@ -254,12 +248,7 @@ def download_async_or_sync(
                 progress_cb=progress_cb,
                 **kwargs,
             )
-            loop = get_or_create_event_loop()
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
-                future.result()
-            else:
-                loop.run_until_complete(download_coro)
+            run_coroutine(download_coro)
         except Exception as e:
             if kwargs.get("resume_download", False) is False:
                 remove_dir(dest_dir)
@@ -295,8 +284,64 @@ def download_fast(
     Download project in a fast mode.
     Items are downloaded asynchronously. If an error occurs, the method will fallback to synchronous download.
     Automatically detects project type.
-    You can pass :class:`ProjectInfo` as `project_info` kwarg to avoid additional API requests.
+
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :param project_id: Supervisely downloadable project ID.
+    :type project_id: :class:`int`
+    :param dest_dir: Destination directory.
+    :type dest_dir: :class:`str`
+    :param dataset_ids: Filter datasets by IDs.
+    :type dataset_ids: :class:`list` [ :class:`int` ], optional
+    :param log_progress: Show uploading progress bar.
+    :type log_progress: :class:`bool`
+    :param progress_cb: Function for tracking download progress.
+    :type progress_cb: tqdm or callable, optional
+    :param semaphore: Semaphore to limit the number of concurrent downloads of items.
+    :type semaphore: :class:`asyncio.Semaphore`, optional
+    :param only_image_tags: Download project with only images tags (without objects tags).
+    :type only_image_tags: :class:`bool`, optional
+    :param save_image_info: Download images infos or not.
+    :type save_image_info: :class:`bool`, optional
+    :param save_images: Download images or not.
+    :type save_images: :class:`bool`, optional
+    :param save_image_meta: Download images metadata in JSON format or not.
+    :type save_image_meta: :class:`bool`, optional
+    :param images_ids: Filter images by IDs.
+    :type images_ids: :class:`list` [ :class:`int` ], optional
+    :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
+    :type resume_download: :class:`bool`, optional
+    :param switch_size: Size threshold that determines how an item will be downloaded.
+                        Items larger than this size will be downloaded as single files, while smaller items will be downloaded as a batch.
+                        Useful for projects with different item sizes and when you exactly know which size will perform better with batch download.
+    :type switch_size: :class:`int`, optional
+    :param batch_size: Number of items to download in a single batch.
+    :type batch_size: :class:`int`, optional
+    :param download_blob_files: Download project with Blob files in native format.
+                                If False - download project like a regular project in classic Supervisely format.
+    :type download_blob_files: :class:`bool`, optional
+    :param project_info: Project info object. To avoid additional API requests.
+    :type project_info: :class:`ProjectInfo`, optional
+    :return: None
+    :rtype: NoneType
+
+    :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            project_id = 8888
+            save_directory = "/path/to/save/projects"
+
+            sly.download_fast(api, project_id, save_directory)
+
     """
+
     download_async_or_sync(
         api=api,
         project_id=project_id,

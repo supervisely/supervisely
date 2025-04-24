@@ -31,16 +31,22 @@ import supervisely as sly
 from supervisely._utils import (
     abs_url,
     batched,
-    generate_free_name,
     get_or_create_event_loop,
     is_development,
+    removesuffix,
     snake_to_human,
 )
 from supervisely.annotation.annotation import ANN_EXT, Annotation, TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
-from supervisely.api.api import Api, ApiContext
-from supervisely.api.image_api import ImageInfo
+from supervisely.api.api import Api, ApiContext, ApiField
+from supervisely.api.image_api import (
+    OFFSETS_PKL_BATCH_SIZE,
+    OFFSETS_PKL_SUFFIX,
+    BlobImageInfo,
+    ImageInfo,
+)
+from supervisely.api.project_api import ProjectInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
@@ -68,7 +74,9 @@ from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress, tqdm_sly
+from supervisely.task.progress import tqdm_sly
+
+TF_BLOB_DIR = "blob-files"  # directory for project blob files in team files
 
 
 class CustomUnpickler(pickle.Unpickler):
@@ -224,6 +232,7 @@ class Dataset(KeyObject):
     seg_dir_name = "seg"
     meta_dir_name = "meta"
     datasets_dir_name = "datasets"
+    blob_dir_name = "blob"
 
     def __init__(
         self,
@@ -273,6 +282,7 @@ class Dataset(KeyObject):
         self._project_dir = project_dir
         self._name = full_ds_name
         self._short_name = short_ds_name
+        self._blob_offset_paths = []
 
         if self.dataset_id is not None:
             self._read_api()
@@ -537,6 +547,23 @@ class Dataset(KeyObject):
         """
         return os.path.join(self.directory, self.meta_dir_name)
 
+    @property
+    def blob_offsets(self):
+        """
+        List of paths to the dataset blob offset files.
+
+        :return: List of paths to the dataset blob offset files.
+        :rtype: :class:`List[str]`
+        """
+        return self._blob_offset_paths
+
+    @blob_offsets.setter
+    def blob_offsets(self, value: List[str]):
+        """
+        Set the list of paths to the dataset blob offset files.
+        """
+        self._blob_offset_paths = value
+
     @classmethod
     def _has_valid_ext(cls, path: str) -> bool:
         """
@@ -552,16 +579,36 @@ class Dataset(KeyObject):
         Consistency checks. Every item must have an annotation, and the correspondence must be one to one.
         If not - it generate exception error.
         """
-        if not dir_exists(self.item_dir):
+        blob_offset_paths = list_files(
+            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
+        )
+        has_blob_offsets = len(blob_offset_paths) > 0
+
+        if not dir_exists(self.item_dir) and not has_blob_offsets:
             raise FileNotFoundError("Item directory not found: {!r}".format(self.item_dir))
         if not dir_exists(self.ann_dir):
             raise FileNotFoundError("Annotation directory not found: {!r}".format(self.ann_dir))
 
         raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
-
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
-        img_names = [os.path.basename(path) for path in img_paths]
+
+        if dir_exists(self.item_dir):
+            img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
+            img_names = [os.path.basename(path) for path in img_paths]
+        else:
+            img_names = []
+
+        # If we have blob offset files, add the image names from those
+        if has_blob_offsets:
+            self.blob_offsets = blob_offset_paths
+            for offset_file_path in self.blob_offsets:
+                try:
+                    blob_img_info_lists = BlobImageInfo.load_from_pickle_generator(offset_file_path)
+                    for blob_img_info_list in blob_img_info_lists:
+                        for blob_img_info in blob_img_info_list:
+                            img_names.append(blob_img_info.name)
+                except Exception as e:
+                    logger.warning(f"Failed to read blob offset file {offset_file_path}: {str(e)}")
 
         if len(img_names) == 0 and len(raw_ann_names) == 0:
             logger.info("Dataset {!r} is empty".format(self.name))
@@ -1301,19 +1348,16 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             img_path = "/home/admin/Pictures/Clouds.jpeg"
             img_np = sly.image.read(img_path)
             img_bytes = sly.image.write_bytes(img_np, "jpeg")
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.add_item_raw_bytes_async("IMG_050.jpeg", img_bytes)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
 
             print(ds.item_exists("IMG_050.jpeg"))
             # Output: True
@@ -1649,17 +1693,14 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
             new_ann = "/home/admin/work/supervisely/projects/kiwi_annotated/ds1/ann/IMG_1812.jpeg.json"
 
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_file_async("IMG_1812.jpeg", new_ann)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann_path) is not str:
             raise TypeError("Annotation path should be a string, not a {}".format(type(ann_path)))
@@ -1682,6 +1723,8 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
@@ -1696,13 +1739,8 @@ class Dataset(KeyObject):
                 "customBigData":{}
             }
 
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = ds.set_ann_dict_async("IMG_8888.jpeg", new_ann_json)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann) is not dict:
             raise TypeError("Ann should be a dict, not a {}".format(type(ann)))
@@ -1725,18 +1763,16 @@ class Dataset(KeyObject):
          .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
+
             dataset_path = "/home/admin/work/supervisely/projects/lemons_annotated/ds1"
             ds = sly.Dataset(dataset_path, sly.OpenMode.READ)
 
             height, width = 500, 700
             new_ann = sly.Annotation((height, width))
-            loop = sly.utils.get_or_create_event_loop()
+
             coroutine = ds.set_ann_async("IMG_0748.jpeg", new_ann)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
         """
         if type(ann) is not self.annotation_class:
             raise TypeError(
@@ -2028,6 +2064,84 @@ class Dataset(KeyObject):
             progress_cb=progress_cb,
         )
 
+    def get_blob_img_bytes(self, image_name: str) -> bytes:
+        """
+        Get image bytes from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Bytes of the image.
+        :rtype: :class:`bytes`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_bytes = dataset.get_blob_img_bytes(image_name)
+        """
+
+        if self.project_dir is None:
+            raise RuntimeError("Project directory is not set. Cannot get blob image bytes.")
+
+        blob_image_info = None
+
+        for offset in self.blob_offsets:
+            for batch in BlobImageInfo.load_from_pickle_generator(offset):
+                for file in batch:
+                    if file.name == image_name:
+                        blob_image_info = file
+                        blob_file_name = removesuffix(Path(offset).name, OFFSETS_PKL_SUFFIX)
+                        break
+        if blob_image_info is None:
+            logger.debug(
+                f"Image '{image_name}' not found in blob offsets. "
+                f"Make sure that the image is stored in the blob file."
+            )
+            return None
+
+        blob_file_path = os.path.join(self.project_dir, self.blob_dir_name, blob_file_name + ".tar")
+        if file_exists(blob_file_path):
+            with open(blob_file_path, "rb") as f:
+                f.seek(blob_image_info.offset_start)
+                img_bytes = f.read(blob_image_info.offset_end - blob_image_info.offset_start)
+        else:
+            logger.debug(
+                f"Blob file '{blob_file_path}' not found. "
+                f"Make sure that the blob file exists in the specified directory."
+            )
+            img_bytes = None
+        return img_bytes
+
+    def get_blob_img_np(self, image_name: str) -> np.ndarray:
+        """
+        Get image as numpy array from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Numpy array of the image.
+        :rtype: :class:`numpy.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_np = dataset.get_blob_img_np(image_name)
+        """
+        img_bytes = self.get_blob_img_bytes(image_name)
+        if img_bytes is None:
+            return None
+        return sly_image.read_bytes(img_bytes)
+
 
 class Project:
     """
@@ -2047,6 +2161,7 @@ class Project:
     """
 
     dataset_class = Dataset
+    blob_dir_name = "blob"
 
     class DatasetDict(KeyIndexedCollection):
         """
@@ -2086,6 +2201,7 @@ class Project:
 
         parent_dir, name = Project._parse_path(directory)
         self._parent_dir = parent_dir
+        self._blob_dir = os.path.join(directory, self.blob_dir_name)
         self._api = api
         self.project_id = project_id
 
@@ -2097,7 +2213,7 @@ class Project:
             self._name = name
         self._datasets = Project.DatasetDict()  # ds_name -> dataset object
         self._meta = None
-
+        self._blob_files = []
         if project_id is not None:
             self._read_api()
         elif mode is OpenMode.READ:
@@ -2148,6 +2264,25 @@ class Project:
             # Output: '/home/admin/work/supervisely/projects'
         """
         return self._parent_dir
+
+    @property
+    def blob_dir(self) -> str:
+        """
+        Directory for project blobs.
+        Blobs are .tar files with images. Used for fast data transfer.
+
+        :return: Path to project blob directory
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.blob_dir)
+            # Output: '/home/admin/work/supervisely/projects/lemons_annotated/blob'
+        """
+        return self._blob_dir
 
     @property
     def name(self) -> str:
@@ -2270,6 +2405,61 @@ class Project:
         """
         return sum(len(ds) for ds in self._datasets)
 
+    @property
+    def blob_files(self) -> List[str]:
+        """
+        List of blob files.
+
+        :return: List of blob files
+        :rtype: :class:`list`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            print(project.blob_files)
+            # Output: []
+        """
+        return self._blob_files
+
+    @blob_files.setter
+    def blob_files(self, blob_files: List[str]) -> None:
+        """
+        Sets blob files to the project.
+
+        :param blob_files: List of blob files.
+        :type
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            project.blob_files = ["blob_file.tar"]
+        """
+        self._blob_files = blob_files
+
+    def add_blob_file(self, file_name: str) -> None:
+        """
+        Adds blob file to the project.
+
+        :param file_name: File name.
+        :type file_name: :class:`str`
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            project = sly.Project("/home/admin/work/supervisely/projects/lemons_annotated", sly.OpenMode.READ)
+            project.add_blob_file("blob_file.tar")
+        """
+        self._blob_files.append(file_name)
+
     def get_classes_stats(
         self,
         dataset_names: Optional[List[str]] = None,
@@ -2307,6 +2497,10 @@ class Project:
     def _read(self):
         meta_json = load_json_file(self._get_project_meta_path())
         self._meta = ProjectMeta.from_json(meta_json)
+        if dir_exists(self.blob_dir):
+            self.blob_files = [Path(file).name for file in list_files(self.blob_dir)]
+        else:
+            self.blob_files = []
 
         ignore_dirs = self.dataset_class.ignorable_dirs()  # dir names that can not be datasets
 
@@ -2361,6 +2555,7 @@ class Project:
         else:
             mkdir(self.directory)
         self.set_meta(ProjectMeta())
+        self.blob_files = []
 
     def validate(self):
         # @TODO: remove?
@@ -3096,6 +3291,7 @@ class Project:
         save_images: bool = True,
         save_image_meta: bool = False,
         resume_download: bool = False,
+        **kwargs,
     ) -> None:
         """
         Download project from Supervisely to the given directory.
@@ -3124,6 +3320,9 @@ class Project:
         :type save_images: :class:`bool`, optional
         :param save_image_meta: Download images metadata in JSON format or not.
         :type save_image_meta: :class:`bool`, optional
+        :param download_blob_files: Default is False. It will download images in classic way.
+                                If True, it will download blob files, if they are present in the project, to optimize download process.
+        :type download_blob_files: bool, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -3162,6 +3361,7 @@ class Project:
             save_images=save_images,
             save_image_meta=save_image_meta,
             resume_download=resume_download,
+            **kwargs,
         )
 
     @staticmethod
@@ -3734,6 +3934,7 @@ class Project:
             .. code-block:: python
 
                 import supervisely as sly
+                from supervisely._utils import run_coroutine
 
                 os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
                 os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -3742,13 +3943,8 @@ class Project:
                 project_id = 8888
                 save_directory = "/path/to/save/projects"
 
-                loop = sly.utils.get_or_create_event_loop()
-                coro = sly.Project.download_async(api, project_id, save_directory)
-                if loop.is_running():
-                    future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                    future.result()
-                else:
-                    loop.run_until_complete(coroutine)
+                coroutine = sly.Project.download_async(api, project_id, save_directory)
+                run_coroutine(coroutine)
         """
         if kwargs.pop("cache", None) is not None:
             logger.warning(
@@ -3770,6 +3966,7 @@ class Project:
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+            **kwargs,
         )
 
     def to_coco(
@@ -4017,9 +4214,13 @@ def _download_project(
     save_image_meta: Optional[bool] = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    **kwargs,
 ):
+    download_blob_files = kwargs.pop("download_blob_files", False)
+
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
+
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir) and resume_download:
         dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
@@ -4044,6 +4245,7 @@ def _download_project(
 
     existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
+        blob_files_to_download = {}
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
         dataset_id = dataset.id
         if dataset_ids is not None and dataset_id not in dataset_ids:
@@ -4080,6 +4282,7 @@ def _download_project(
             project_meta=meta,
         ):
             for batch in batched(images, batch_size):
+                batch: List[ImageInfo]
                 image_ids = [image_info.id for image_info in batch]
                 image_names = [image_info.name for image_info in batch]
 
@@ -4100,18 +4303,97 @@ def _download_project(
                     ):
                         indexes_to_download.append(i)
 
-                # download images in numpy format
+                # Collect images that was added to the project as offsets from archive in Team Files
+                indexes_with_offsets = []
+                for idx in indexes_to_download:
+                    image_info: ImageInfo = batch[idx]
+                    if image_info.related_data_id is not None:
+                        blob_files_to_download[image_info.related_data_id] = image_info.download_id
+                        indexes_with_offsets.append(idx)
+
+                # Download images in numpy format
                 batch_imgs_bytes = [None] * len(image_ids)
                 if save_images and indexes_to_download:
-                    for index, img in zip(
-                        indexes_to_download,
-                        api.image.download_bytes(
-                            dataset_id,
-                            [image_ids[i] for i in indexes_to_download],
-                            progress_cb=ds_progress,
-                        ),
-                    ):
-                        batch_imgs_bytes[index] = img
+
+                    # For a lot of small files that stored in blob file. Downloads blob files to optimize download process.
+                    if download_blob_files and len(indexes_with_offsets) > 0:
+                        bytes_indexes_to_download = indexes_to_download.copy()
+                        for blob_file_id, download_id in blob_files_to_download.items():
+                            if blob_file_id not in project_fs.blob_files:
+                                api.image.download_blob_file(
+                                    project_id=project_id,
+                                    download_id=download_id,
+                                    path=os.path.join(project_fs.blob_dir, f"{blob_file_id}.tar"),
+                                    log_progress=(
+                                        True if log_progress or progress_cb is not None else False
+                                    ),
+                                )
+                                project_fs.add_blob_file(blob_file_id)
+
+                            # Process blob image offsets
+                            offsets_file_name = f"{blob_file_id}{OFFSETS_PKL_SUFFIX}"
+                            offsets_file_path = os.path.join(
+                                dataset_fs.directory, offsets_file_name
+                            )
+
+                            # Initialize counter for total image offsets for this blob file
+                            total_offsets_count = 0
+                            current_batch = []
+
+                            # Get offsets from image infos
+                            for idx in indexes_with_offsets:
+                                image_info = batch[idx]
+                                if image_info.related_data_id == blob_file_id:
+                                    blob_image_info = BlobImageInfo(
+                                        name=image_info.name,
+                                        offset_start=image_info.offset_start,
+                                        offset_end=image_info.offset_end,
+                                    )
+                                    current_batch.append(blob_image_info)
+                                    bytes_indexes_to_download.remove(idx)
+
+                                    # When batch size is reached, dump to file
+                                    if len(current_batch) >= OFFSETS_PKL_BATCH_SIZE:
+                                        BlobImageInfo.dump_to_pickle(
+                                            current_batch, offsets_file_path
+                                        )
+                                        total_offsets_count += len(current_batch)
+                                        current_batch = []
+                            # Dump any remaining items in the last batch
+                            if len(current_batch) > 0:
+                                BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
+                                total_offsets_count += len(current_batch)
+
+                            if total_offsets_count > 0:
+                                logger.debug(
+                                    f"Saved {total_offsets_count} image offsets for {blob_file_id} to {offsets_file_path} in {(total_offsets_count + OFFSETS_PKL_BATCH_SIZE - 1) // OFFSETS_PKL_BATCH_SIZE} batches"
+                                )
+                                ds_progress(total_offsets_count)
+
+                            image_ids_to_download = [
+                                image_ids[i] for i in bytes_indexes_to_download
+                            ]
+                            for index, img in zip(
+                                bytes_indexes_to_download,
+                                api.image.download_bytes(
+                                    dataset_id,
+                                    image_ids_to_download,
+                                    progress_cb=ds_progress,
+                                ),
+                            ):
+                                batch_imgs_bytes[index] = img
+                    # If you want to download images in classic way
+                    else:
+                        image_ids_to_download = [image_ids[i] for i in indexes_to_download]
+                        for index, img in zip(
+                            indexes_to_download,
+                            api.image.download_bytes(
+                                dataset_id,
+                                image_ids_to_download,
+                                progress_cb=ds_progress,
+                            ),
+                        ):
+                            batch_imgs_bytes[index] = img
 
                 if ds_progress is not None:
                     ds_progress(len(batch) - len(indexes_to_download))
@@ -4175,7 +4457,11 @@ def _download_project(
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
     try:
-        create_readme(dest_dir, project_id, api)
+        if download_blob_files:
+            project_info = api.project.get_info_by_id(project_id)
+            create_blob_readme(project_fs=project_fs, project_info=project_info)
+        else:
+            create_readme(dest_dir, project_id, api)
     except Exception as e:
         logger.info(f"There was an error while creating README: {e}")
 
@@ -4187,15 +4473,20 @@ def upload_project(
     project_name: Optional[str] = None,
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
+    project_id: Optional[int] = None,
 ) -> Tuple[int, str]:
     project_fs = read_single_project(dir)
-    if project_name is None:
-        project_name = project_fs.name
 
-    if api.project.exists(workspace_id, project_name):
-        project_name = api.project.get_free_name(workspace_id, project_name)
+    if not project_id:
+        if project_name is None:
+            project_name = project_fs.name
 
-    project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
+        if api.project.exists(workspace_id, project_name):
+            project_name = api.project.get_free_name(workspace_id, project_name)
+
+        project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
+    else:
+        project = api.project.get_info_by_id(project_id)
     updated_meta = api.project.update_meta(project.id, project_fs.meta.to_json())
 
     if progress_cb is not None:
@@ -4203,6 +4494,29 @@ def upload_project(
 
     # image_id_dct, anns_paths_dct = {}, {}
     dataset_map = {}
+
+    total_blob_size = 0
+    upload_blob_progress = None
+    src_paths = []
+    dst_paths = []
+    for blob_file in project_fs.blob_files:
+        if log_progress:
+            total_blob_size += os.path.getsize(os.path.join(project_fs.blob_dir, blob_file))
+        src_paths.append(os.path.join(project_fs.blob_dir, blob_file))
+        dst_paths.append(os.path.join(f"/{TF_BLOB_DIR}", blob_file))
+    if log_progress and len(src_paths) > 0:
+        upload_blob_progress = tqdm_sly(
+            desc="Uploading blob files", total=total_blob_size, unit="B", unit_scale=True
+        )
+    if len(src_paths) > 0:
+        blob_file_infos = api.file.upload_bulk(
+            team_id=project.team_id,
+            src_paths=src_paths,
+            dst_paths=dst_paths,
+            progress_cb=upload_blob_progress,
+        )
+    else:
+        blob_file_infos = []
 
     for ds_fs in project_fs.datasets:
         if len(ds_fs.parents) > 0:
@@ -4236,13 +4550,26 @@ def upload_project(
                 else:
                     img_infos.append(None)
 
-            img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
+            # img_paths = list(filter(lambda x: os.path.isfile(x), img_paths))
+            source_img_paths_len = len(img_paths)
+            valid_indices = []
+            valid_paths = []
+            offset_indices = []
+            for i, path in enumerate(img_paths):
+                if os.path.isfile(path):
+                    valid_indices.append(i)
+                    valid_paths.append(path)
+                else:
+                    offset_indices.append(i)
+            img_paths = valid_paths
             ann_paths = list(filter(lambda x: os.path.isfile(x), ann_paths))
+            # Create a mapping from name to index position for quick lookups
+            offset_name_to_idx = {names[i]: i for i in offset_indices}
             metas = [{} for _ in names]
 
             img_infos_count = sum(1 for item in img_infos if item is not None)
 
-            if len(img_paths) == 0 and img_infos_count == 0:
+            if len(img_paths) == 0 and img_infos_count == 0 and len(offset_indices) == 0:
                 # Dataset is empty
                 continue
 
@@ -4273,56 +4600,57 @@ def upload_project(
                     merged_metas.append(merged_meta)
                 metas = merged_metas
 
-            if len(img_paths) != 0:
-                uploaded_img_infos = api.image.upload_paths(
-                    dataset.id, names, img_paths, ds_progress, metas=metas
+            if len(img_paths) != 0 or len(offset_indices) != 0:
+
+                uploaded_img_infos = [None] * source_img_paths_len
+                uploaded_img_infos_paths = api.image.upload_paths(
+                    dataset_id=dataset.id,
+                    names=[name for i, name in enumerate(names) if i in valid_indices],
+                    paths=img_paths,
+                    progress_cb=ds_progress,
+                    metas=[metas[i] for i in valid_indices],
                 )
+                for i, img_info in zip(valid_indices, uploaded_img_infos_paths):
+                    uploaded_img_infos[i] = img_info
+                for blob_offsets in ds_fs.blob_offsets:
+                    blob_file = None
+                    for blob_file_info in blob_file_infos:
+                        if Path(blob_file_info.name).stem == removesuffix(
+                            Path(blob_offsets).name, OFFSETS_PKL_SUFFIX
+                        ):
+                            blob_file = blob_file_info
+                            break
+
+                    if blob_file is None:
+                        raise ValueError(
+                            f"Cannot find blob file for offsets: {blob_offsets}. "
+                            f"Check the Team File directory '{TF_BLOB_DIR}', corresponding blob file should be uploaded."
+                        )
+                    uploaded_img_infos_offsets = api.image.upload_by_offsets_generator(
+                        dataset=dataset,
+                        team_file_id=blob_file.id,
+                        offsets_file_path=blob_offsets,
+                        progress_cb=ds_progress,
+                        metas={names[i]: metas[i] for i in offset_indices},
+                    )
+                    for img_info_batch in uploaded_img_infos_offsets:
+                        for img_info in img_info_batch:
+                            idx = offset_name_to_idx.get(img_info.name)
+                            if idx is not None:
+                                uploaded_img_infos[idx] = img_info
             elif img_infos_count != 0:
                 if img_infos_count != len(names):
                     raise ValueError(
                         f"Cannot upload Project: image info files count ({img_infos_count}) doesn't match with images count ({len(names)}) that are going to be uploaded. "
                         "Check the directory structure, all annotation files should have corresponding image info files."
                     )
-                # uploading links and hashes (the code from api.image.upload_ids)
-                links, links_names, links_order, links_metas = [], [], [], []
-                hashes, hashes_names, hashes_order, hashes_metas = [], [], [], []
-                dataset_id = dataset.id
-                for idx, (name, info, meta) in enumerate(zip(names, img_infos, metas)):
-                    if info.link is not None:
-                        links.append(info.link)
-                        links_names.append(name)
-                        links_order.append(idx)
-                        links_metas.append(meta)
-                    else:
-                        hashes.append(info.hash)
-                        hashes_names.append(name)
-                        hashes_order.append(idx)
-                        hashes_metas.append(meta)
-
-                result = [None] * len(names)
-                if len(links) > 0:
-                    res_infos_links = api.image.upload_links(
-                        dataset_id,
-                        links_names,
-                        links,
-                        ds_progress,
-                        metas=links_metas,
-                    )
-                    for info, pos in zip(res_infos_links, links_order):
-                        result[pos] = info
-
-                if len(hashes) > 0:
-                    res_infos_hashes = api.image.upload_hashes(
-                        dataset_id,
-                        hashes_names,
-                        hashes,
-                        ds_progress,
-                        metas=hashes_metas,
-                    )
-                    for info, pos in zip(res_infos_hashes, hashes_order):
-                        result[pos] = info
-
-                uploaded_img_infos = result
+                uploaded_img_infos = api.image.upload_ids(
+                    dataset_id=dataset.id,
+                    names=names,
+                    ids=[img_info.id for img_info in img_infos],
+                    progress_cb=ds_progress,
+                    metas=metas,
+                )
             else:
                 raise ValueError(
                     "Cannot upload Project: img_paths is empty and img_infos_paths is empty"
@@ -4358,6 +4686,7 @@ def download_project(
     save_image_meta: bool = False,
     images_ids: Optional[List[int]] = None,
     resume_download: Optional[bool] = False,
+    **kwargs,
 ) -> None:
     """
     Download image project to the local directory.
@@ -4368,7 +4697,7 @@ def download_project(
     :type project_id: int
     :param dest_dir: Destination path to local directory.
     :type dest_dir: str
-    :param dataset_ids: Specified list of Dataset IDs which will be downloaded. Datasets could be downloaded from different projects but with the same data type.
+    :param dataset_ids: Specified list of Dataset IDs which will be downloaded.
     :type dataset_ids: list(int), optional
     :param log_progress: Show downloading logs in the output. By default, it is True.
     :type log_progress: bool, optional
@@ -4390,6 +4719,9 @@ def download_project(
     :type images_ids: list(int), optional
     :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
     :type resume_download: bool, optional
+    :param download_blob_files: Default is False. It will download images in classic way.
+                                If True, it will download blob files, if they are present in the project, to optimize download process.
+    :type download_blob_files: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:
@@ -4441,6 +4773,7 @@ def download_project(
             save_image_meta=save_image_meta,
             images_ids=images_ids,
             resume_download=resume_download,
+            **kwargs,
         )
     else:
         _download_project_optimized(
@@ -4455,6 +4788,7 @@ def download_project(
             save_images=save_images,
             log_progress=log_progress,
             images_ids=images_ids,
+            **kwargs,
         )
 
 
@@ -4470,6 +4804,7 @@ def _download_project_optimized(
     save_images=True,
     log_progress=True,
     images_ids: List[int] = None,
+    **kwargs,
 ):
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
@@ -4751,6 +5086,209 @@ def create_readme(
     return readme_path
 
 
+def _dataset_blob_structure_md(
+    project_fs: Project,
+    project_info: sly.ProjectInfo,
+    entity_limit: Optional[int] = 2,
+) -> str:
+    """Creates a markdown string with the dataset structure of the project.
+    Supports only images and videos projects.
+
+    :project_fs: Project file system.
+    :type project_fs: :class:`Project<supervisely.project.project.Project>`
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :param entity_limit: The maximum number of entities to display in the README.
+    :type entity_limit: int, optional
+    :return: Markdown string with the dataset structure of the project.
+    :rtype: str
+    """
+    supported_project_types = [sly.ProjectType.IMAGES.value]
+    if project_info.type not in supported_project_types:
+        return ""
+
+    entity_icons = {
+        "images": " 🏞️ ",
+        "blob_files": " 📦 ",
+        "pkl_files": " 📄 ",
+        "annotations": " 📝 ",
+    }
+    dataset_icon = " 📂 "
+    folder_icon = " 📁 "
+
+    result_md = f"🗂️ {project_info.name}<br>"
+
+    # Add project-level blob files
+    if os.path.exists(project_fs.blob_dir) and project_fs.blob_files:
+        result_md += "┣" + folder_icon + f"{Project.blob_dir_name}<br>"
+        blob_files = [entry.name for entry in os.scandir(project_fs.blob_dir) if entry.is_file()]
+
+        for idx, blob_file in enumerate(blob_files):
+            if idx == entity_limit and len(blob_files) > entity_limit:
+                result_md += "┃ ┗ ... " + str(len(blob_files) - entity_limit) + " more<br>"
+                break
+            symbol = "┗" if idx == len(blob_files) - 1 or idx == entity_limit - 1 else "┣"
+            result_md += "┃ " + symbol + entity_icons["blob_files"] + blob_file + "<br>"
+
+    # Build a dataset hierarchy tree
+    dataset_tree = {}
+    root_datasets = []
+
+    # First pass: create nodes for all datasets
+    for dataset in project_fs.datasets:
+        dataset_tree[dataset.directory] = {
+            "dataset": dataset,
+            "children": [],
+            "parent_dir": os.path.dirname(dataset.directory) if dataset.parents else None,
+        }
+
+    # Second pass: build parent-child relationships
+    for dir_path, node in dataset_tree.items():
+        parent_dir = node["parent_dir"]
+        if parent_dir in dataset_tree:
+            dataset_tree[parent_dir]["children"].append(dir_path)
+        else:
+            root_datasets.append(dir_path)
+
+    # Function to recursively render the dataset tree
+    def render_tree(dir_path, prefix=""):
+        nonlocal result_md
+        node = dataset_tree[dir_path]
+        dataset = node["dataset"]
+        children = node["children"]
+
+        # Create dataset display with proper path
+        dataset_path = Dataset._get_dataset_path(dataset.name, dataset.parents)
+        result_md += prefix + "┣" + dataset_icon + f"[{dataset.name}]({dataset_path})<br>"
+
+        # Set indentation for dataset content
+        content_prefix = prefix + "┃ "
+
+        # Add pkl files at the dataset level
+        offset_files = [
+            entry.name
+            for entry in os.scandir(dataset.directory)
+            if entry.is_file() and entry.name.endswith(".pkl")
+        ]
+
+        if offset_files:
+            for idx, pkl_file in enumerate(offset_files):
+                last_file = idx == len(offset_files) - 1
+                has_more_content = (
+                    os.path.exists(dataset.img_dir) or os.path.exists(dataset.ann_dir) or children
+                )
+                symbol = "┗" if last_file and not has_more_content else "┣"
+                result_md += content_prefix + symbol + entity_icons["pkl_files"] + pkl_file + "<br>"
+
+        # Add img directory
+        if os.path.exists(dataset.img_dir):
+            has_ann_dir = os.path.exists(dataset.ann_dir)
+            has_more_content = has_ann_dir or children
+            symbol = "┣" if has_more_content else "┗"
+            result_md += content_prefix + symbol + folder_icon + "img<br>"
+
+            # Add image files
+            entities = [entry.name for entry in os.scandir(dataset.img_dir) if entry.is_file()]
+            entities = sorted(entities)
+            selected_entities = entities[: min(len(entities), entity_limit)]
+
+            img_prefix = content_prefix + "┃ "
+            for idx, entity in enumerate(selected_entities):
+                last_img = idx == len(selected_entities) - 1
+                symbol = "┗" if last_img and len(entities) <= entity_limit else "┣"
+                result_md += img_prefix + symbol + entity_icons["images"] + entity + "<br>"
+
+            if len(entities) > entity_limit:
+                result_md += img_prefix + "┗ ... " + str(len(entities) - entity_limit) + " more<br>"
+
+        # Add ann directory
+        if os.path.exists(dataset.ann_dir):
+            has_more_content = bool(children)
+            symbol = "┣"
+            result_md += content_prefix + "┣" + folder_icon + "ann<br>"
+
+            anns = [entry.name for entry in os.scandir(dataset.ann_dir) if entry.is_file()]
+            anns = sorted(anns)
+
+            # Try to match annotations with displayed images
+            possible_anns = [f"{entity}.json" for entity in selected_entities]
+            matched_anns = [pa for pa in possible_anns if pa in anns]
+
+            # Add additional annotations if we haven't reached the limit
+            if len(matched_anns) < min(entity_limit, len(anns)):
+                for ann in anns:
+                    if ann not in matched_anns and len(matched_anns) < entity_limit:
+                        matched_anns.append(ann)
+
+            ann_prefix = content_prefix + "┃ "
+            for idx, ann in enumerate(matched_anns):
+                last_ann = idx == len(matched_anns) - 1
+                symbol = "┗" if last_ann and len(anns) <= entity_limit else "┣"
+                result_md += ann_prefix + symbol + entity_icons["annotations"] + ann + "<br>"
+
+            if len(anns) > entity_limit:
+                result_md += ann_prefix + "┗ ... " + str(len(anns) - entity_limit) + " more<br>"
+
+            if not has_more_content:
+                result_md += content_prefix + "...<br>"
+        # Recursively render child datasets
+        for idx, child_dir in enumerate(children):
+            render_tree(child_dir, content_prefix)
+
+    # Start rendering from root datasets
+    for root_dir in sorted(root_datasets):
+        render_tree(root_dir)
+
+    return result_md
+
+
+def create_blob_readme(
+    project_fs: Project,
+    project_info: ProjectInfo,
+) -> str:
+    """Creates a README.md file using the template, adds general information
+    about the project and creates a dataset structure section.
+
+    :param project_fs: Project file system.
+    :type project_fs: :class:`Project<supervisely.project.project.Project>`
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :return: Path to the created README.md file.
+    :rtype: str
+
+    :Usage example:
+
+    .. code-block:: python
+
+        import supervisely as sly
+
+        api = sly.Api.from_env()
+
+        project_id = 123
+        project_dir = "/path/to/project"
+
+        readme_path = sly.create_readme(project_dir, project_id, api)
+
+        print(f"README.md file was created at {readme_path}")
+    """
+    current_path = os.path.dirname(os.path.abspath(__file__))
+    template_path = os.path.join(current_path, "readme_template.md")
+    with open(template_path, "r") as file:
+        template = file.read()
+
+    readme_path = os.path.join(project_fs.directory, "README.md")
+
+    template = template.replace("{{general_info}}", _project_info_md(project_info))
+
+    template = template.replace(
+        "{{dataset_structure_info}}", _dataset_blob_structure_md(project_fs, project_info)
+    )
+
+    with open(readme_path, "w") as f:
+        f.write(template)
+    return readme_path
+
+
 def _project_info_md(project_info: sly.ProjectInfo) -> str:
     """Creates a markdown string with general information about the project
     using the fields of the ProjectInfo NamedTuple.
@@ -4799,12 +5337,17 @@ def _dataset_structure_md(
     entity_icons = {
         "images": " 🏞️ ",
         "videos": " 🎥 ",
+        "blob_files": " 📦 ",
+        "pkl_files": " 📄 ",
+        "annotations": " 📝 ",
     }
     dataset_icon = " 📂 "
     list_function = list_functions[project_info.type]
     entity_icon = entity_icons[project_info.type]
 
     result_md = f"🗂️ {project_info.name}<br>"
+
+    # if project_info
 
     for parents, dataset_info in api.dataset.tree(project_info.id):
         # The dataset path is needed to create a clickable link in the README.
@@ -4856,6 +5399,8 @@ async def _download_project_async(
     switch_size = kwargs.get("switch_size", 1.28 * 1024 * 1024)
     # batch size for bulk download
     batch_size = kwargs.get("batch_size", 100)
+    # control whether to download blob files
+    download_blob_files = kwargs.get("download_blob_files", False)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
@@ -4905,11 +5450,19 @@ async def _download_project_async(
         small_images = []
         large_images = []
         dataset_images = []
+        blob_files_to_download = {}
+        blob_images = []
+
         async for image_batch in all_images:
             for image in image_batch:
                 if images_ids is None or image.id in images_ids:
                     dataset_images.append(image)
-                    if image.size < switch_size:
+                    # Check for images with blob offsets
+
+                    if download_blob_files and image.related_data_id is not None:
+                        blob_files_to_download[image.related_data_id] = image.download_id
+                        blob_images.append(image)
+                    elif image.size < switch_size:
                         small_images.append(image)
                     else:
                         large_images.append(image)
@@ -4918,7 +5471,7 @@ async def _download_project_async(
         if log_progress is True:
             ds_progress = tqdm_sly(
                 desc="Downloading images from {!r}".format(dataset.name),
-                total=len(small_images) + len(large_images),
+                total=len(small_images) + len(large_images) + len(blob_images),
                 leave=False,
             )
 
@@ -4954,14 +5507,82 @@ async def _download_project_async(
                 )
                 return created_tasks
 
+            # Download blob files if required
+            if download_blob_files and len(blob_files_to_download) > 0:
+                blob_paths = []
+                download_ids = []
+                # Process each blob file
+                for blob_file_id, download_id in blob_files_to_download.items():
+                    if blob_file_id not in project_fs.blob_files:
+                        # Download the blob file
+                        blob_paths.append(os.path.join(project_fs.blob_dir, f"{blob_file_id}.tar"))
+                        download_ids.append(download_id)
+                await api.image.download_blob_files_async(
+                    project_id=project_id,
+                    download_ids=download_ids,
+                    paths=blob_paths,
+                    semaphore=semaphore,
+                    log_progress=(True if log_progress or progress_cb is not None else False),
+                )
+                for blob_file_id, download_id in blob_files_to_download.items():
+                    project_fs.add_blob_file(blob_file_id)
+
+                    # Process blob image offsets
+                    offsets_file_name = f"{blob_file_id}{OFFSETS_PKL_SUFFIX}"
+                    offsets_file_path = os.path.join(dataset_fs.directory, offsets_file_name)
+
+                    total_offsets_count = 0  # for logging
+                    current_batch = []
+                    for img in blob_images:
+                        if img.related_data_id == blob_file_id:
+                            blob_image_info = BlobImageInfo(
+                                name=img.name,
+                                offset_start=img.offset_start,
+                                offset_end=img.offset_end,
+                            )
+                            current_batch.append(blob_image_info)
+                        if len(current_batch) >= OFFSETS_PKL_BATCH_SIZE:
+                            BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
+                            total_offsets_count += len(current_batch)
+                            current_batch = []
+                    if len(current_batch) > 0:
+                        BlobImageInfo.dump_to_pickle(current_batch, offsets_file_path)
+                        total_offsets_count += len(current_batch)
+                    if total_offsets_count > 0:
+                        logger.debug(
+                            f"Saved {total_offsets_count} image offsets for {blob_file_id} to {offsets_file_path} in {(total_offsets_count + OFFSETS_PKL_BATCH_SIZE - 1) // OFFSETS_PKL_BATCH_SIZE} batches"
+                        )
+                    offset_tasks = []
+                    # Download annotations for images with offsets
+                    for offsets_batch in batched(blob_images, batch_size=batch_size):
+                        offset_task = _download_project_items_batch_async(
+                            api=api,
+                            dataset_id=dataset_id,
+                            img_infos=offsets_batch,
+                            meta=meta,
+                            dataset_fs=dataset_fs,
+                            id_to_tagmeta=id_to_tagmeta,
+                            semaphore=semaphore,
+                            save_images=False,
+                            save_image_info=save_image_info,
+                            only_image_tags=only_image_tags,
+                            progress_cb=ds_progress,
+                        )
+                        offset_tasks.append(offset_task)
+                    created_tasks = await run_tasks_with_delay(offset_tasks, 0.05)
+                    await asyncio.gather(*created_tasks)
+
             tasks = []
+            # Check which images need to be downloaded
             small_images = await check_items(small_images)
             large_images = await check_items(large_images)
 
+            # If only one small image, treat it as a large image for efficiency
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
-            for images_batch in batched(small_images, batch_size=batch_size):
 
+            # Create batch download tasks
+            for images_batch in batched(small_images, batch_size=batch_size):
                 task = _download_project_items_batch_async(
                     api=api,
                     dataset_id=dataset_id,
@@ -4976,6 +5597,8 @@ async def _download_project_async(
                     progress_cb=ds_progress,
                 )
                 tasks.append(task)
+
+            # Create individual download tasks for large images
             for image in large_images:
                 task = _download_project_item_async(
                     api=api,
@@ -5010,7 +5633,11 @@ async def _download_project_async(
                 dataset_fs.delete_item(item_name)
 
     try:
-        create_readme(dest_dir, project_id, api)
+        if download_blob_files:
+            project_info = api.project.get_info_by_id(project_id)
+            create_blob_readme(project_fs=project_fs, project_info=project_info)
+        else:
+            create_readme(dest_dir, project_id, api)
     except Exception as e:
         logger.info(f"There was an error while creating README: {e}")
 

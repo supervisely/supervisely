@@ -19,3 +19,5 @@ _LABEL_GROUP_TAG_NAME = "@label-group-id"
 _METADATA_SYSTEM_KEY = "sly_system"
 _METADATA_VALIDATION_SCHEMA_KEY = "validation_schema"
 _METADATA_TIMESTAMP_KEY = "validation_schema_timestamp"
+
+_BLOB_TAG_NAME = "is_blob_project"

@@ -48,8 +48,8 @@ def validate_mimetypes(name: str, path: str) -> list:
     mimetypes.add_type("image/webp", ".webp")  # to extend types_map
     mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
 
-    mime = magic.Magic(mime=True)
-    mimetype = mime.from_file(path)
+    with open(path, "rb") as f:
+        mimetype = magic.from_buffer(f.read(), mime=True)
     file_ext = get_file_ext(path).lower()
     if file_ext in mimetypes.guess_all_extensions(mimetype):
         return name

@@ -1,16 +1,27 @@
 # coding: utf-8
 
 # docs
+import base64
 import errno
+import hashlib
 import mimetypes
 import os
 import re
 import shutil
 import subprocess
 import tarfile
-import hashlib
-import base64
-from typing import Callable, Dict, Generator, List, Literal, Optional, Tuple, Union
+from pathlib import Path
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import aiofiles
 import requests
@@ -18,11 +29,17 @@ from requests.structures import CaseInsensitiveDict
 from tqdm import tqdm
 
 from supervisely._utils import get_bytes_hash, get_or_create_event_loop, get_string_hash
+
+if TYPE_CHECKING:
+    from supervisely.api.image_api import BlobImageInfo
+
 from supervisely.io.fs_cache import FileCache
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 
 JUNK_FILES = [".DS_Store", "__MACOSX", "._.DS_Store", "Thumbs.db", "desktop.ini"]
+OFFSETS_PKL_SUFFIX = "_offsets.pkl"  # suffix for pickle file with image offsets
+OFFSETS_PKL_BATCH_SIZE = 10000  # 10k images per batch when loading from pickle
 
 
 def get_file_name(path: str) -> str:
@@ -1417,14 +1434,10 @@ async def copy_file_async(
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+        coroutine = sly.fs.copy_file_async('/home/admin/work/projects/example/1.png', '/home/admin/work/tests/2.png')
+        run_coroutine(coroutine)
     """
     ensure_base_path(dst)
     async with aiofiles.open(dst, "wb") as out_f:
@@ -1453,14 +1466,10 @@ async def get_file_hash_async(path: str) -> str:
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            hash = future.result()
-        else:
-            hash = loop.run_until_complete(coro)
+        coroutine = sly.fs.get_file_hash_async('/home/admin/work/projects/examples/1.jpeg')
+        hash = run_coroutine(coroutine)
     """
     async with aiofiles.open(path, "rb") as file:
         file_bytes = await file.read()
@@ -1493,17 +1502,13 @@ async def unpack_archive_async(
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
         archive_path = '/home/admin/work/examples.tar'
         target_dir = '/home/admin/work/projects'
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.unpack_archive_async(archive_path, target_dir)
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+        coroutine = sly.fs.unpack_archive_async(archive_path, target_dir)
+        run_coroutine(coroutine)
     """
     if is_split:
         chunk = chunk_size_mb * 1024 * 1024
@@ -1549,14 +1554,10 @@ async def touch_async(path: str) -> None:
      .. code-block:: python
 
         import supervisely as sly
+        from supervisely._utils import run_coroutine
 
-        loop = sly.utils.get_or_create_event_loop()
-        coro = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            future.result()
-        else:
-            loop.run_until_complete(coro)
+        coroutine = sly.fs.touch_async('/home/admin/work/projects/examples/1.jpeg')
+        run_coroutine(coroutine)
     """
     ensure_base_path(path)
     async with aiofiles.open(path, "a"):
@@ -1587,19 +1588,16 @@ async def list_files_recursively_async(
     :rtype: List[str]
 
     :Usage example:
-    
+
          .. code-block:: python
-    
+
             import supervisely as sly
-    
+            from supervisely._utils import run_coroutine
+
             dir_path = '/home/admin/work/projects/examples'
-            loop = sly.utils.get_or_create_event_loop()
-            coro = sly.fs.list_files_recursively_async(dir_path)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coro, loop)
-                files = future.result()
-            else:
-                files = loop.run_until_complete(coro)
+
+            coroutine = sly.fs.list_files_recursively_async(dir_path)
+            files = run_coroutine(coroutine)
     """
 
     def sync_file_list():
@@ -1635,3 +1633,220 @@ async def list_files_recursively_async(
 
     loop = get_or_create_event_loop()
     return await loop.run_in_executor(None, sync_file_list)
+
+
+def get_file_offsets_batch_generator(
+    archive_path: str,
+    team_file_id: Optional[int] = None,
+    filter_func: Optional[Callable] = None,
+    output_format: Literal["dicts", "objects"] = "dicts",
+    batch_size: int = OFFSETS_PKL_BATCH_SIZE,
+) -> Generator[Union[List[Dict], List["BlobImageInfo"]], None, None]:
+    """
+    Extracts offset information for files from TAR archives and returns a generator that yields the information in batches.
+
+    `team_file_id` may be None if it's not possible to obtain the ID at this moment.
+    You can set the `team_file_id` later when uploading the file to Supervisely.
+
+    :param archive_path: Local path to the archive
+    :type archive_path: str
+    :param team_file_id: ID of file in Team Files. Default is None.
+                    `team_file_id` may be None if it's not possible to obtain the ID at this moment.
+                    You can set the `team_file_id` later when uploading the file to Supervisely.
+    :type team_file_id: Optional[int]
+    :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
+    :type filter_func: Callable, optional
+    :param output_format: Format of the output. Default is `dicts`.
+                   `objects` - returns a list of BlobImageInfo objects.
+                   `dicts` - returns a list of dictionaries.
+    :type output_format: Literal["dicts", "objects"]
+    :returns: Generator yielding batches of file information in the specified format.
+    :rtype: Generator[Union[List[Dict], List[BlobImageInfo]]], None, None]
+
+    :raises ValueError: If the archive type is not supported or contains compressed files
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+
+        archive_path = '/home/admin/work/projects/examples.tar'
+        file_infos = sly.fs.get_file_offsets_batch_generator(archive_path)
+        for batch in file_infos:
+            print(batch)
+
+        # Output:
+        # [
+        #     {
+        #         "title": "image1.jpg",
+        #         "teamFileId": None,
+        #         "sourceBlob": {
+        #             "offsetStart": 0,
+        #             "offsetEnd": 123456
+        #         }
+        #     },
+        #     {
+        #         "title": "image2.jpg",
+        #         "teamFileId": None,
+        #         "sourceBlob": {
+        #             "offsetStart": 123456,
+        #             "offsetEnd": 234567
+        #         }
+        #     }
+        # ]
+    """
+    from supervisely.api.image_api import BlobImageInfo
+
+    ext = Path(archive_path).suffix.lower()
+
+    if ext == ".tar":
+        if output_format == "dicts":
+            yield from _process_tar_generator(
+                tar_path=archive_path,
+                team_file_id=team_file_id,
+                filter_func=filter_func,
+                batch_size=batch_size,
+            )
+        else:
+            for batch in _process_tar_generator(
+                tar_path=archive_path,
+                team_file_id=team_file_id,
+                filter_func=filter_func,
+                batch_size=batch_size,
+            ):
+                blob_file_infos = [BlobImageInfo.from_dict(file_info) for file_info in batch]
+                yield blob_file_infos
+    else:
+        raise ValueError(f"Unsupported archive type: {ext}. Only .tar are supported")
+
+
+def _process_tar_generator(
+    tar_path: str,
+    team_file_id: Optional[int] = None,
+    filter_func: Optional[Callable] = None,
+    batch_size: int = OFFSETS_PKL_BATCH_SIZE,
+) -> Generator[List[Dict], None, None]:
+    """
+    Processes a TAR archive and yields batches of offset information for files.
+
+    :param tar_path: Path to the TAR archive
+    :type tar_path: str
+    :param team_file_id: ID of the team file, defaults to None
+    :type team_file_id: Optional[int], optional
+    :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
+    :type filter_func: Optional[Callable], optional
+    :param batch_size: Number of files in each batch, defaults to 10000
+    :type batch_size: int, optional
+    :yield: Batches of dictionaries with file offset information
+    :rtype: Generator[List[Dict], None, None]
+    """
+    from supervisely.api.api import ApiField
+
+    with tarfile.open(tar_path, "r") as tar:
+        batch = []
+        processed_count = 0
+        members = tar.getmembers()
+        total_members_count = len(members)  # for logging
+
+        logger.debug(f"Processing TAR archive with {total_members_count} members")
+
+        for member in members:
+            skip = not member.isfile()
+
+            if filter_func and not filter_func(member.name):
+                logger.debug(f"File '{member.name}' is skipped by filter function")
+                skip = True
+
+            if not skip:
+                file_info = {
+                    ApiField.TITLE: os.path.basename(member.name),
+                    ApiField.TEAM_FILE_ID: team_file_id,
+                    ApiField.SOURCE_BLOB: {
+                        ApiField.OFFSET_START: member.offset_data,
+                        ApiField.OFFSET_END: member.offset_data + member.size,
+                    },
+                }
+                batch.append(file_info)
+
+                # Yield batch when it reaches the specified size
+                if len(batch) >= batch_size:
+                    processed_count += len(batch)
+                    logger.debug(
+                        f"Yielding batch of {len(batch)} files, processed {processed_count} files so far"
+                    )
+                    yield batch
+                    batch = []
+
+        # Yield any remaining files in the last batch
+        if batch:
+            processed_count += len(batch)
+            logger.debug(
+                f"Yielding final batch of {len(batch)} files, processed {processed_count} files total"
+            )
+            yield batch
+
+
+def save_blob_offsets_pkl(
+    blob_file_path: str,
+    output_dir: str,
+    team_file_id: Optional[int] = None,
+    filter_func: Optional[Callable] = None,
+    batch_size: int = OFFSETS_PKL_BATCH_SIZE,
+    replace: bool = False,
+) -> str:
+    """
+    Processes blob file locally and creates a pickle file with offset information.
+
+    :param blob_file_path: Path to the local blob file
+    :type blob_file_path: str
+    :param output_dir: Path to the output directory
+    :type output_dir: str
+    :param team_file_id: ID of file in Team Files. Default is None.
+                    `team_file_id` may be None if it's not possible to obtain the ID at this moment.
+                    You can set the `team_file_id` later when uploading the file to Supervisely.
+    :type team_file_id: Optional[int]
+    :param filter_func: Function to filter files. The function should take a filename as input and return True if the file should be included.
+    :type filter_func: Callable, optional
+    :param batch_size: Number of files to process in each batch, defaults to 10000
+    :type batch_size: int, optional
+    :param replace: If True, overwrite the existing file if it exists.
+                    If False, skip processing if the file already exists and return its path.
+                    Default is False.
+    :type replace: bool
+    :returns: Path to the output pickle file
+    :rtype: str
+
+    :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            archive_path = '/path/to/examples.tar'
+            output_dir = '/path/to/output'
+            sly.fs.save_blob_offsets_pkl(archive_path, output_dir)
+    """
+    from supervisely.api.image_api import BlobImageInfo
+
+    archive_name = Path(blob_file_path).stem
+    output_path = os.path.join(output_dir, archive_name + OFFSETS_PKL_SUFFIX)
+
+    if file_exists(output_path):
+        logger.debug(f"Offsets file already exists: {output_path}")
+        if replace:
+            logger.debug(f"Replacing existing offsets file: {output_path}")
+            silent_remove(output_path)
+        else:
+            logger.debug(f"Skipping processing, using existing offsets file: {output_path}")
+            return output_path
+
+    offsets_batch_generator = get_file_offsets_batch_generator(
+        archive_path=blob_file_path,
+        team_file_id=team_file_id,
+        filter_func=filter_func,
+        output_format="objects",
+        batch_size=batch_size,
+    )
+
+    BlobImageInfo.dump_to_pickle(offsets_batch_generator, output_path)
+    return output_path

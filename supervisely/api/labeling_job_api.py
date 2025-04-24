@@ -130,6 +130,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """"""
         STOPPED = "stopped"
         """"""
+        REVIEW_COMPLETED = "review_completed"
+        """"""
 
     @staticmethod
     def info_sequence():

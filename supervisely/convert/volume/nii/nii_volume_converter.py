@@ -207,7 +207,7 @@ class NiiConverter(VolumeConverter):
 
                     if self._meta_changed:
                         meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
-
+                        self._meta_changed = False
                     api.volume.annotation.append(info.id, ann)
 
             if log_progress:

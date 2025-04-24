@@ -1,21 +1,23 @@
 import os
+from pathlib import Path
 
+import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely import (
     Annotation,
     Api,
-    ProjectMeta,
     Label,
+    Project,
+    ProjectMeta,
     Rectangle,
     batched,
     is_development,
     logger,
 )
-from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
-import supervisely.convert.image.sly.sly_image_helper as helper
 from supervisely.convert.image.image_converter import ImageConverter
-from supervisely.io.fs import get_file_ext
-from supervisely.io.json import load_json_file
 from supervisely.convert.image.image_helper import validate_image_bounds
+from supervisely.convert.image.sly.sly_image_converter import SLYImageConverter
+from supervisely.io.fs import dir_empty, dir_exists, get_file_ext
+from supervisely.io.json import load_json_file
 
 
 class FastSlyImageConverter(SLYImageConverter, ImageConverter):
@@ -29,7 +31,11 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
         detected_ann_cnt = 0
         self._items = []
         meta = ProjectMeta()
+
         for root, _, files in os.walk(self._input_data):
+            if Path(root).name == Project.blob_dir_name:
+                logger.debug("FastSlyImageConverter: Detected blob directory. Skipping...")
+                return False
             for file in files:
                 full_path = os.path.join(root, file)
                 ext = get_file_ext(full_path)

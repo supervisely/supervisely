@@ -240,6 +240,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
                     for src_images in self.api.image.get_list_generator(
                         pred_dataset_info.id, force_metadata_for_links=False, batch_size=100
                     ):
+                        if len(src_images) == 0:
+                            continue
                         dst_images = self.api.image.copy_batch_optimized(
                             pred_dataset_info.id,
                             src_images,
@@ -274,8 +276,8 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
                                 )
 
                         p.update(len(src_images))
-                except Exception:
-                    raise RuntimeError("Match data was not created properly")
+                except Exception as e:
+                    raise RuntimeError(f"Match data was not created properly. {e}")
 
     def _get_sample_data_for_gallery(self):
         # get sample images with annotations for visualization

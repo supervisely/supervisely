@@ -83,6 +83,7 @@ API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
 
+
 class ApiContext:
     """
     Context manager for the API object for optimization purposes.
@@ -290,6 +291,8 @@ class Api:
         # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
+    _checked_servers = set()
+
     def __init__(
         self,
         server_address: str = None,
@@ -371,8 +374,18 @@ class Api:
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self._skip_https_redirect_check = sly_env.supervisely_skip_https_user_helper_check()
-        self._require_https_redirect_check = False if self._skip_https_redirect_check else not self.server_address.startswith("https://")
+        skip_from_env = sly_env.supervisely_skip_https_user_helper_check()
+        self._skip_https_redirect_check = (
+            skip_from_env or self.server_address in Api._checked_servers
+        )
+        self.logger.trace(
+            f"Skip HTTPS redirect check on API init: {self._skip_https_redirect_check}. ENV: {skip_from_env}. Checked servers: {Api._checked_servers}"
+        )
+        self._require_https_redirect_check = (
+            False
+            if self._skip_https_redirect_check
+            else not self.server_address.startswith("https://")
+        )
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
@@ -886,7 +899,16 @@ class Api:
         return self.headers.pop(key)
 
     def _check_https_redirect(self):
+        """
+        Check if HTTP server should be redirected to HTTPS.
+        If the server has already been checked before (for any instance of this class),
+        skip the check to avoid redundant network requests.
+        """
         if self._require_https_redirect_check is True:
+            if self.server_address in Api._checked_servers:
+                self._require_https_redirect_check = False
+                return
+
             try:
                 response = requests.get(
                     self.server_address.replace("http://", "https://"),
@@ -904,6 +926,7 @@ class Api:
             except:
                 pass
             finally:
+                Api._checked_servers.add(self.server_address)
                 self._require_https_redirect_check = False
 
     @classmethod

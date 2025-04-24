@@ -368,6 +368,9 @@ class VideoFigure:
         if self._priority is not None:
             data_json[ApiField.PRIORITY] = self._priority
 
+        if self.track_id is not None:
+            data_json[ApiField.TRACK_ID] = self.track_id
+
         self._add_creation_info(data_json)
         return data_json
 
@@ -441,9 +444,7 @@ class VideoFigure:
                 raise RuntimeError("Figure can not be deserialized: key_id_map is None")
             object_key = key_id_map.get_object_key(object_id)
             if object_key is None:
-                raise RuntimeError(
-                    "Object with id={!r} not found in key_id_map".format(object_id)
-                )
+                raise RuntimeError("Object with id={!r} not found in key_id_map".format(object_id))
 
         object = objects.get(object_key)
         if object is None:

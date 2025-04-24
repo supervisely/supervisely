@@ -69,6 +69,8 @@ class VideoDataset(Dataset):
     annotation_class = VideoAnnotation
     item_info_class = VideoInfo
 
+    datasets_dir_name = "datasets"
+
     @property
     def project_dir(self) -> str:
         """
@@ -1211,6 +1213,7 @@ class VideoProject(Project):
         .. code-block:: python
 
             import supervisely as sly
+            from supervisely._utils import run_coroutine
 
             os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
             os.environ['API_TOKEN'] = 'Your Supervisely API Token'
@@ -1219,13 +1222,9 @@ class VideoProject(Project):
             save_directory = "/home/admin/work/supervisely/source/video_project"
             project_id = 8888
 
-            loop = sly.utils.get_or_create_event_loop()
             coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
-            if loop.is_running():
-                future = asyncio.run_coroutine_threadsafe(coroutine, loop)
-                future.result()
-            else:
-                loop.run_until_complete(coroutine)
+            run_coroutine(coroutine)
+            
         """
         await download_video_project_async(
             api=api,
@@ -1311,24 +1310,19 @@ def download_video_project(
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
-
     project_fs = VideoProject(dest_dir, OpenMode.CREATE)
-
     meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     project_fs.set_meta(meta)
-
     if progress_cb is not None:
         log_progress = False
 
-    datasets = []
-    if dataset_ids is not None:
-        for ds_id in dataset_ids:
-            datasets.append(api.dataset.get_info_by_id(ds_id))
-    else:
-        datasets = api.dataset.get_list(project_id)
+    dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+    for parents, dataset in api.dataset.tree(project_id):
+        if dataset_ids is not None and dataset.id not in dataset_ids:
+            continue
 
-    for dataset in datasets:
-        dataset_fs = project_fs.create_dataset(dataset.name)
+        dataset_path = Dataset._get_dataset_path(dataset.name, parents)
+        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         ds_progress = progress_cb
@@ -1466,9 +1460,17 @@ def upload_video_project(
     if progress_cb is not None:
         log_progress = False
 
+    dataset_map = {}
     for dataset_fs in project_fs.datasets:
         dataset_fs: VideoDataset
-        dataset = api.dataset.create(project.id, dataset_fs.name)
+        if len(dataset_fs.parents) > 0:
+            parent = f"{os.path.sep}".join(dataset_fs.parents)
+            parent_id = dataset_map.get(parent)
+        else:
+            parent = ""
+            parent_id = None      
+        dataset = api.dataset.create(project.id, dataset_fs.short_name, parent_id=parent_id)
+        dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
         names, item_paths, ann_paths = [], [], []
         for item_name in dataset_fs:
@@ -1606,15 +1608,14 @@ async def download_video_project_async(
     if progress_cb is not None:
         log_progress = False
 
-    datasets = []
-    if dataset_ids is not None:
-        for ds_id in dataset_ids:
-            datasets.append(api.dataset.get_info_by_id(ds_id))
-    else:
-        datasets = api.dataset.get_list(project_id, recursive=True)
+    dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+    for parents, dataset in api.dataset.tree(project_id):
+        if dataset_ids is not None and dataset.id not in dataset_ids:
+            continue
 
-    for dataset in datasets:
-        dataset_fs = project_fs.create_dataset(dataset.name)
+        dataset_path = Dataset._get_dataset_path(dataset.name, parents)
+
+        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         if log_progress is True:
