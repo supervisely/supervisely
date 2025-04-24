@@ -6,13 +6,13 @@ training workflows in Supervisely.
 """
 
 from os import environ
-from typing import Union
+from typing import Union, List, Dict, Callable, Any, Optional, Tuple
 
 import supervisely.io.env as sly_env
 import supervisely.io.json as sly_json
 from supervisely import Api, ProjectMeta
 from supervisely._utils import is_production
-from supervisely.app.widgets import Stepper, Widget
+from supervisely.app.widgets import Stepper, Widget, Button, Card
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
@@ -29,6 +29,182 @@ from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
 from supervisely.nn.utils import ModelSource, RuntimeType
+
+
+class StepFlow:
+    """
+    Manages the flow of steps in the GUI, including wrappers and button handlers.
+    
+    Allows flexible configuration of dependencies between steps and automatically
+    sets up proper handlers based on layout from app_options.
+    """
+    
+    def __init__(self, stepper: Stepper, app_options: Dict[str, Any]):
+        """
+        Initializes the step manager.
+        
+        :param stepper: Stepper object for step navigation
+        :param app_options: Application options
+        """
+        self.stepper = stepper
+        self.app_options = app_options
+        self.collapsable = app_options.get("collapsable", False)
+        self.steps = {}  # Step configuration
+        self.step_sequence = []  # Step sequence
+    
+    def register_step(self, 
+                     name: str, 
+                     card: Card, 
+                     button: Optional[Button] = None,
+                     widgets_to_disable: Optional[List[Widget]] = None, 
+                     validation_text: Optional[Widget] = None, 
+                     validation_func: Optional[Callable] = None, 
+                     position: Optional[int] = None) -> 'StepFlow':
+        """
+        Registers a step in the GUI.
+        
+        :param name: Unique step name
+        :param card: Step card widget
+        :param button: Button for proceeding to the next step (optional)
+        :param widgets_to_disable: Widgets to disable during validation (optional)
+        :param validation_text: Widget for displaying validation text (optional)
+        :param validation_func: Validation function (optional)
+        :param position: Step position in the sequence (starting from 0)
+        :return: Current StepFlow object for method chaining
+        """
+        self.steps[name] = {
+            "card": card,
+            "button": button,
+            "widgets_to_disable": widgets_to_disable or [], 
+            "validation_text": validation_text,
+            "validation_func": validation_func,
+            "position": position,
+            "next_steps": [],
+            "on_select_click": [],
+            "on_reselect_click": [],
+            "wrapper": None,
+            "has_button": button is not None
+        }
+        
+        if position is not None:
+            while len(self.step_sequence) <= position:
+                self.step_sequence.append(None)
+            self.step_sequence[position] = name
+            
+        return self
+    
+    def set_next_steps(self, step_name: str, next_steps: List[str]) -> 'StepFlow':
+        """
+        Sets the list of next steps for the given step.
+        
+        :param step_name: Current step name
+        :param next_steps: List of names of the next steps
+        :return: Current StepFlow object for method chaining
+        """
+        if step_name in self.steps:
+            self.steps[step_name]["next_steps"] = next_steps
+        return self
+    
+    def add_on_select_actions(self, 
+                             step_name: str, 
+                             actions: List[Callable], 
+                             is_reselect: bool = False) -> 'StepFlow':
+        """
+        Adds actions to be executed when a step is selected/reselected.
+        
+        :param step_name: Step name
+        :param actions: List of functions to execute
+        :param is_reselect: True if these are actions for reselection, otherwise False
+        :return: Current StepFlow object for method chaining
+        """
+        if step_name in self.steps:
+            key = "on_reselect_click" if is_reselect else "on_select_click"
+            self.steps[step_name][key].extend(actions)
+        return self
+    
+    def build_wrappers(self) -> Dict[str, Callable]:
+        """
+        Creates wrappers for all steps based on established dependencies.
+        
+        :return: Dictionary with created wrappers by step name
+        """
+        valid_sequence = [s for s in self.step_sequence if s is not None and s in self.steps]
+        
+        for step_name in reversed(valid_sequence):
+            step = self.steps[step_name]
+            
+            cards_to_unlock = []
+            for next_step_name in step["next_steps"]:
+                if next_step_name in self.steps:
+                    cards_to_unlock.append(self.steps[next_step_name]["card"])
+            
+            callback = None
+            if step["next_steps"] and step["has_button"]:
+                for next_step_name in step["next_steps"]:
+                    if (next_step_name in self.steps and 
+                        self.steps[next_step_name].get("wrapper") and
+                        self.steps[next_step_name]["has_button"]):
+                        callback = self.steps[next_step_name]["wrapper"]
+                        break
+            
+            if step["has_button"]:
+                wrapper = wrap_button_click(
+                    button=step["button"],
+                    cards_to_unlock=cards_to_unlock,
+                    widgets_to_disable=step["widgets_to_disable"],
+                    callback=callback,
+                    validation_text=step["validation_text"],
+                    validation_func=step["validation_func"],
+                    on_select_click=step["on_select_click"],
+                    on_reselect_click=step["on_reselect_click"],
+                    collapse_card=(step["card"], self.collapsable)
+                )
+                
+                step["wrapper"] = wrapper
+        
+        return {name: self.steps[name]["wrapper"] 
+                for name in self.steps 
+                if self.steps[name].get("wrapper") and self.steps[name]["has_button"]}
+    
+    def setup_button_handlers(self) -> None:
+        """
+        Sets up handlers for buttons of all steps.
+        """
+        positions = {}
+        pos = 1
+        
+        for i, step_name in enumerate(self.step_sequence):
+            if step_name is not None and step_name in self.steps:
+                positions[step_name] = pos
+                pos += 1
+        
+        for step_name, step in self.steps.items():
+            if (step_name in positions and 
+                step.get("wrapper") and 
+                step["has_button"]):
+                
+                button = step["button"]
+                wrapper = step["wrapper"]
+                position = positions[step_name]
+                next_position = position + 1
+                
+                def create_handler(btn, cb, next_pos):
+                    def handler():
+                        cb()
+                        set_stepper_step(self.stepper, btn, next_pos=next_pos)
+                    return handler
+                
+                button.click(create_handler(button, wrapper, next_position))
+    
+    def build(self) -> Dict[str, Callable]:
+        """
+        Performs the complete setup of the step system.
+        
+        :return: Dictionary with created wrappers by step name
+        """
+        wrappers = self.build_wrappers()
+        self.setup_button_handlers()
+        return wrappers
 
 
 class TrainGUI:
@@ -87,11 +263,11 @@ class TrainGUI:
         # ------------------------------------------------- #
         self.steps = []
 
-        # 1. Project selection + Train/val split
+        # 1. Project selection
         self.input_selector = InputSelector(self.project_info, self.app_options)
         self.steps.append(self.input_selector.card)
 
-        # 2. Select train val splits
+        # 2. Train/val split
         self.train_val_splits_selector = TrainValSplitsSelector(
             self._api, self.project_id, self.app_options
         )
@@ -114,7 +290,7 @@ class TrainGUI:
         )
         self.steps.append(self.model_selector.card)
 
-        # 5. Training parameters (yaml), scheduler preview
+        # 5. Training parameters (yaml)
         self.hyperparameters_selector = HyperparametersSelector(
             self.hyperparameters, self.app_options
         )
@@ -175,16 +351,23 @@ class TrainGUI:
                             TaskType.SEMANTIC_SEGMENTATION,
                         ]:
                             return shape == Polygon.geometry_name()
-                        return
+                        return False
 
-                    data = self.classes_selector.classes_table._table_data
-                    selected_classes = set(
-                        self.classes_selector.classes_table.get_selected_classes()
-                    )
-                    empty = set(
-                        r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0
-                    )
-                    need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
+                    if self.classes_selector is not None:
+                        data = self.classes_selector.classes_table._table_data
+                        selected_classes = set(
+                            self.classes_selector.classes_table.get_selected_classes()
+                        )
+                        empty = set(
+                            r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0
+                        )
+                        need_convert = set(r[0]["data"] for r in data if _need_convert(r[1]["data"]))
+                    else:
+                        selected_classes = set(self.project_meta.obj_classes.keys())
+                        need_convert = set(obj_class.name for obj_class in self.project_meta.obj_classes 
+                                       if _need_convert(obj_class.geometry_type))
+                        # @TODO: fix empty classes when self.classes_selector is None
+                        empty = set()
 
                     if need_convert.intersection(selected_classes - empty):
                         self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
@@ -197,7 +380,10 @@ class TrainGUI:
 
         def validate_class_shape_for_model_task():
             task_type = self.model_selector.get_selected_task_type()
-            classes = self.classes_selector.get_selected_classes()
+            if self.classes_selector is not None:
+                classes = self.classes_selector.get_selected_classes()
+            else:
+                classes = list(self.project_meta.obj_classes.keys())
 
             required_geometries = {
                 TaskType.INSTANCE_SEGMENTATION: {Polygon, Bitmap},
@@ -230,171 +416,186 @@ class TrainGUI:
 
         # ------------------------------------------------- #
 
-        # Wrappers
-        self.training_process_cb = wrap_button_click(
-            button=self.hyperparameters_selector.button,
-            cards_to_unlock=[self.training_logs.card],
-            widgets_to_disable=self.training_process.widgets_to_disable,
-            callback=None,
-            validation_text=self.training_process.validator_text,
-            validation_func=self.training_process.validate_step,
+        self.step_flow = StepFlow(self.stepper, self.app_options)
+        position = 0
+        
+        # 1. Input selector
+        self.step_flow.register_step(
+            "input_selector", 
+            self.input_selector.card,
+            self.input_selector.button,
+            self.input_selector.widgets_to_disable,
+            self.input_selector.validator_text,
+            self.input_selector.validate_step,
+            position=position
+        ).add_on_select_actions("input_selector", [update_classes_table])
+        position += 1
+        
+        # 2. Train/Val splits selector
+        self.step_flow.register_step(
+            "train_val_splits", 
+            self.train_val_splits_selector.card,
+            self.train_val_splits_selector.button,
+            self.train_val_splits_selector.widgets_to_disable,
+            self.train_val_splits_selector.validator_text,
+            self.train_val_splits_selector.validate_step,
+            position=position
         )
-
-        self.hyperparameters_selector_cb = wrap_button_click(
-            button=self.hyperparameters_selector.button,
-            cards_to_unlock=[self.training_process.card],
-            widgets_to_disable=self.hyperparameters_selector.widgets_to_disable,
-            callback=self.training_process_cb,
-            validation_text=self.hyperparameters_selector.validator_text,
-            validation_func=self.hyperparameters_selector.validate_step,
-            on_select_click=[disable_hyperparams_editor],
-            on_reselect_click=[disable_hyperparams_editor],
-            collapse_card=(self.hyperparameters_selector.card, self.collapsable),
-        )
-
-        self.model_selector_cb = wrap_button_click(
-            button=self.model_selector.button,
-            cards_to_unlock=[self.hyperparameters_selector.card],
-            widgets_to_disable=self.model_selector.widgets_to_disable,
-            callback=self.hyperparameters_selector_cb,
-            validation_text=self.model_selector.validator_text,
-            validation_func=self.model_selector.validate_step,
-            on_select_click=[
-                set_experiment_name,
-                need_convert_class_shapes,
-                validate_class_shape_for_model_task,
-            ],
-            collapse_card=(self.model_selector.card, self.collapsable),
-        )
-
-        if self.tags_selector is None:
-            self.classes_selector_cb = wrap_button_click(
-                button=self.classes_selector.button,
-                cards_to_unlock=[self.model_selector.card],
-                widgets_to_disable=self.classes_selector.widgets_to_disable,
-                callback=self.model_selector_cb,
-                validation_text=self.classes_selector.validator_text,
-                validation_func=self.classes_selector.validate_step,
-                collapse_card=(self.classes_selector.card, self.collapsable),
-            )
-        else:
-            self.tags_selector_cb = wrap_button_click(
-                button=self.tags_selector.button,
-                cards_to_unlock=[self.model_selector.card],
-                widgets_to_disable=self.tags_selector.widgets_to_disable,
-                callback=self.model_selector_cb,
-                validation_text=self.tags_selector.validator_text,
-                validation_func=self.tags_selector.validate_step,
-                collapse_card=(self.tags_selector.card, self.collapsable),
-            )
-            self.classes_selector_cb = wrap_button_click(
-                button=self.classes_selector.button,
-                cards_to_unlock=[self.tags_selector.card],
-                widgets_to_disable=self.classes_selector.widgets_to_disable,
-                callback=self.tags_selector_cb,
-                validation_text=self.classes_selector.validator_text,
-                validation_func=self.classes_selector.validate_step,
-                collapse_card=(self.classes_selector.card, self.collapsable),
-            )
-
-        self.train_val_splits_selector_cb = wrap_button_click(
-            button=self.train_val_splits_selector.button,
-            cards_to_unlock=[self.classes_selector.card],
-            widgets_to_disable=self.train_val_splits_selector.widgets_to_disable,
-            callback=self.classes_selector_cb,
-            validation_text=self.train_val_splits_selector.validator_text,
-            validation_func=self.train_val_splits_selector.validate_step,
-            collapse_card=(self.train_val_splits_selector.card, self.collapsable),
-        )
-
-        self.input_selector_cb = wrap_button_click(
-            button=self.input_selector.button,
-            cards_to_unlock=[self.train_val_splits_selector.card],
-            widgets_to_disable=self.input_selector.widgets_to_disable,
-            callback=self.train_val_splits_selector_cb,
-            validation_text=self.input_selector.validator_text,
-            validation_func=self.input_selector.validate_step,
-            on_select_click=[update_classes_table],
-            collapse_card=(self.input_selector.card, self.collapsable),
-        )
-        # ------------------------------------------------- #
-
-        # Main Buttons
-
-        # Define outside. Used by user in app
-        # @self.training_process.start_button.click
-        # def start_training():
-        #     pass
-
-        # @self.training_process.stop_button.click
-        # def stop_training():
-        #     pass
-
-        # ------------------------------------------------- #
-
-        # Select Buttons
-        @self.hyperparameters_selector.button.click
-        def select_hyperparameters():
-            self.hyperparameters_selector_cb()
-            set_stepper_step(
-                self.stepper,
-                self.hyperparameters_selector.button,
-                next_pos=6,
-            )
-
-        @self.model_selector.button.click
-        def select_model():
-            self.model_selector_cb()
-            set_stepper_step(
-                self.stepper,
-                self.model_selector.button,
-                next_pos=5,
-            )
-
-        @self.classes_selector.button.click
-        def select_classes():
-            self.classes_selector_cb()
-            set_stepper_step(
-                self.stepper,
+        position += 1
+        
+        # 3. Classes selector
+        if self.app_options.get("show_classes_selector", True) and self.classes_selector is not None:
+            self.step_flow.register_step(
+                "classes_selector",
+                self.classes_selector.card,
                 self.classes_selector.button,
-                next_pos=4,
+                self.classes_selector.widgets_to_disable,
+                self.classes_selector.validator_text,
+                self.classes_selector.validate_step,
+                position=position
             )
-
-        @self.train_val_splits_selector.button.click
-        def select_train_val_splits():
-            self.train_val_splits_selector_cb()
-            set_stepper_step(
-                self.stepper,
-                self.train_val_splits_selector.button,
-                next_pos=3,
+            position += 1
+        
+        # 4. Tags selector
+        if self.app_options.get("show_tags_selector", False) and self.tags_selector is not None:
+            self.step_flow.register_step(
+                "tags_selector",
+                self.tags_selector.card,
+                self.tags_selector.button,
+                self.tags_selector.widgets_to_disable,
+                self.tags_selector.validator_text,
+                self.tags_selector.validate_step,
+                position=position
             )
-
-        @self.input_selector.button.click
-        def select_input():
-            self.input_selector_cb()
-            set_stepper_step(
-                self.stepper,
-                self.input_selector.button,
-                next_pos=2,
-            )
-
+            position += 1
+        
+        # 5. Model selector
+        self.step_flow.register_step(
+            "model_selector",
+            self.model_selector.card,
+            self.model_selector.button,
+            self.model_selector.widgets_to_disable,
+            self.model_selector.validator_text,
+            self.model_selector.validate_step,
+            position=position
+        ).add_on_select_actions("model_selector", [
+            set_experiment_name,
+            need_convert_class_shapes,
+            validate_class_shape_for_model_task
+        ])
+        position += 1
+        
+        # 6. Hyperparameters selector
+        self.step_flow.register_step(
+            "hyperparameters_selector",
+            self.hyperparameters_selector.card,
+            self.hyperparameters_selector.button,
+            self.hyperparameters_selector.widgets_to_disable,
+            self.hyperparameters_selector.validator_text,
+            self.hyperparameters_selector.validate_step,
+            position=position
+        ).add_on_select_actions("hyperparameters_selector", [disable_hyperparams_editor])
+        self.step_flow.add_on_select_actions(
+            "hyperparameters_selector", 
+            [disable_hyperparams_editor], 
+            is_reselect=True
+        )
+        position += 1
+        
+        # 7. Training process
+        self.step_flow.register_step(
+            "training_process",
+            self.training_process.card,
+            None,
+            self.training_process.widgets_to_disable,
+            self.training_process.validator_text,
+            self.training_process.validate_step,
+            position=position
+        )
+        position += 1
+        
+        # 8. Training logs
+        self.step_flow.register_step(
+            "training_logs",
+            self.training_logs.card,
+            None,
+            self.training_logs.widgets_to_disable,
+            self.training_logs.validator_text,
+            self.training_logs.validate_step,
+            position=position
+        )
+        position += 1
+        
+        # 9. Training artifacts
+        self.step_flow.register_step(
+            "training_artifacts",
+            self.training_artifacts.card,
+            None,
+            self.training_artifacts.widgets_to_disable,
+            self.training_artifacts.validator_text,
+            self.training_artifacts.validate_step,
+            position=position
+        )
+        
+        # Set dependencies between steps
+        # 1. Input selector -> 2. Train/Val splits
+        self.step_flow.set_next_steps("input_selector", ["train_val_splits"])
+        
+        # 2. Train/Val splits -> depends on settings
+        has_classes_selector = self.app_options.get("show_classes_selector", True) and self.classes_selector is not None
+        has_tags_selector = self.app_options.get("show_tags_selector", False) and self.tags_selector is not None
+        
+        if has_classes_selector:
+            self.step_flow.set_next_steps("train_val_splits", ["classes_selector"])
+            
+            if has_tags_selector:
+                self.step_flow.set_next_steps("classes_selector", ["tags_selector"])
+                self.step_flow.set_next_steps("tags_selector", ["model_selector"])
+            else:
+                self.step_flow.set_next_steps("classes_selector", ["model_selector"])
+        elif has_tags_selector:
+            self.step_flow.set_next_steps("train_val_splits", ["tags_selector"])
+            self.step_flow.set_next_steps("tags_selector", ["model_selector"])
+        else:
+            self.step_flow.set_next_steps("train_val_splits", ["model_selector"])
+        
+        # 3. Model selector -> 4. Hyperparameters selector
+        self.step_flow.set_next_steps("model_selector", ["hyperparameters_selector"])
+        
+        # 4. Hyperparameters selector -> 5. Training process
+        self.step_flow.set_next_steps("hyperparameters_selector", ["training_process"])
+        
+        # 5. Training process -> 6. Training logs
+        self.step_flow.set_next_steps("training_process", ["training_logs"])
+        
+        # 6. Training logs -> 7. Training artifacts
+        self.step_flow.set_next_steps("training_logs", ["training_artifacts"])
+        
+        # Create all wrappers and set button handlers
+        wrappers = self.step_flow.build()
+        
+        self.input_selector_cb = wrappers.get("input_selector")
+        self.train_val_splits_selector_cb = wrappers.get("train_val_splits")
+        self.classes_selector_cb = wrappers.get("classes_selector")
+        self.tags_selector_cb = wrappers.get("tags_selector")
+        self.model_selector_cb = wrappers.get("model_selector")
+        self.hyperparameters_selector_cb = wrappers.get("hyperparameters_selector")
+        self.training_process_cb = wrappers.get("training_process")
+        self.training_logs_cb = wrappers.get("training_logs")
+        self.training_artifacts_cb = wrappers.get("training_artifacts")
         # ------------------------------------------------- #
-
-        # Other Buttons
+        
+        # Other handlers
         if self.app_options.get("show_logs_in_gui", False):
-
             @self.training_logs.logs_button.click
             def show_logs():
                 self.training_logs.toggle_logs()
 
-        # Other handlers
         if self.hyperparameters_selector.run_model_benchmark_checkbox is not None:
-
             @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
             def show_mb_speedtest(is_checked: bool):
                 self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
                 need_convert_class_shapes()
-
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper
@@ -448,7 +649,7 @@ class TrainGUI:
             "train_val_split": ["method"],
             "classes": list,
             "model": ["source"],
-            "hyperparameters": (dict, str),  # Allowing dict or str for hyperparameters
+            "hyperparameters": (dict, str),
         }
 
         for key, subkeys_or_type in required_keys.items():

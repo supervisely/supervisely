@@ -376,6 +376,8 @@ class TrainApp:
         :return: List of selected classes names.
         :rtype: List[str]
         """
+        if self.gui.classes_selector is None:
+            return list(self.project_meta.obj_classes.keys())
         selected_classes = set(self.gui.classes_selector.get_selected_classes())
         # remap classes with project_meta order
         return [x for x in self.project_meta.obj_classes.keys() if x in selected_classes]
@@ -388,7 +390,28 @@ class TrainApp:
         :return: Number of selected classes.
         :rtype: int
         """
+        if self.gui.classes_selector is None:
+            return len(self.project_meta.obj_classes.keys())
         return len(self.gui.classes_selector.get_selected_classes())
+
+    @property
+    def tags(self) -> List[str]:
+        """
+        Returns the selected tags for training.
+        """
+        if self.gui.tags_selector is None:
+            return list(self.project_meta.tag_metas.keys())
+        selected_tags = set(self.gui.tags_selector.get_selected_tags())
+        return [x for x in self.project_meta.tag_metas.keys() if x in selected_tags]
+
+    @property
+    def num_tags(self) -> int:
+        """
+        Returns the number of selected tags for training.
+        """
+        if self.gui.tags_selector is None:
+            return len(self.project_meta.tag_metas.keys())
+        return len(self.gui.tags_selector.get_selected_tags())
 
     # Hyperparameters
     @property
@@ -546,6 +569,7 @@ class TrainApp:
             try:
                 # Convert GT project
                 gt_project_id, bm_splits_data = None, train_splits_data
+                # @TODO: check with anyshape classes
                 if self._app_options.get("auto_convert_classes", True):
                     if self.gui.need_convert_shapes_for_bm:
                         self._set_text_status("convert_gt_project")
