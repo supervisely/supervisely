@@ -1464,7 +1464,7 @@ class Inference:
         )
         return is_predict_batch_overridden or is_predict_benchmark_overridden
 
-    def set_conf_auto(conf: float, inference_settings: dict):
+    def set_conf_auto(self, conf: float, inference_settings: dict):
         conf_names = ["conf", "confidence", "confidence_threshold", "confidence_thresh"]
         for name in conf_names:
             if name in inference_settings:
@@ -2115,7 +2115,7 @@ class Inference:
 
         batch_generator = image_batch_generator(batch_size)
 
-        with Uploader(upload_f=upload_f) as uploader:
+        with Uploader(upload_f=upload_f, logger) as uploader:
             for i in range(num_iterations + num_warmup):
                 if inference_request.is_stopped():
                     logger.debug(
