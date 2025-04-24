@@ -533,7 +533,6 @@ class PointTracking(BaseTracking):
                 settings,
                 polygon_points,
             )
-        h, w = frames[0].shape[:2]
         points_loc = [F.dto_points_to_point_location(frame_points) for frame_points in points]
         return F.exteriors_to_sly_polygons(points_loc)
 

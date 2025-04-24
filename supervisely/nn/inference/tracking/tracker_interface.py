@@ -16,7 +16,6 @@ from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.point import Point
-from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
@@ -118,15 +117,7 @@ class TrackerInterface:
                 self.clear_cache()
                 return
 
-    def _fix_point(self, point: PointLocation, h, w):
-        row, col = point.row, point.col
-        row = max(0, row)
-        row = min(row, h - 1)
-        col = max(0, col)
-        col = min(col, w - 1)
-        return PointLocation(row, col)
-
-    def _fix_geometry(self, geometry: Geometry):
+    def _crop_geometry(self, geometry: Geometry):
         h = self.video_info.frame_height
         w = self.video_info.frame_width
         rect = Rectangle.from_size((h, w))
@@ -152,7 +143,7 @@ class TrackerInterface:
 
         for object_id, geometries_frame_indexes in geometries_by_object.items():
             for i, (geometry, frame_index) in enumerate(geometries_frame_indexes):
-                geometries_frame_indexes[i] = (self._fix_geometry(geometry), frame_index)
+                geometries_frame_indexes[i] = (self._crop_geometry(geometry), frame_index)
             geometries_frame_indexes = [
                 (geometry, frame_index)
                 for geometry, frame_index in geometries_frame_indexes
@@ -162,7 +153,7 @@ class TrackerInterface:
                 {
                     ApiField.OBJECT_ID: object_id,
                     ApiField.GEOMETRY_TYPE: geometry.geometry_name(),
-                    ApiField.GEOMETRY: self._fix_geometry(geometry).to_json(),
+                    ApiField.GEOMETRY: self._crop_geometry(geometry).to_json(),
                     ApiField.META: {ApiField.FRAME: frame_index},
                     ApiField.TRACK_ID: self.track_id,
                 }
