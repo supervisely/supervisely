@@ -1,0 +1,120 @@
+<link
+  rel="stylesheet"
+  href="./sly/css/app/widgets/solutions_project/style.css"
+/>
+
+<div
+  class="solutions-node project-node"
+  :style="{width: data.{{{widget.widget_id}}}.width}"
+>
+  <!-- badges -->
+  <div class="node-badges-row">
+    <div v-for="item in state.{{{widget.widget_id}}}.badges">
+      <div
+        class="node-badge"
+        :class="{
+                    'badge-success': item.badge_type == 'success',
+                    'badge-info': item.badge_type == 'info',
+                    'badge-warning': item.badge_type == 'warning',
+                    'badge-error': item.badge_type == 'error',
+                  }"
+      >
+        <div class="badge-label">
+          <div class="mr5">{{item.on_hover}}:</div>
+        </div>
+
+        <div class="badge-counter">{{item.label}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- content -->
+  <div class="node-content">
+    <div class="node-title" v-if="data.{{{widget.widget_id}}}.title !== null">
+      {{data.{{{widget.widget_id}}}.title}}
+    </div>
+
+    <div class="project-node-previews-wrapper">
+      <div
+        class="project-node-preview"
+        v-for="(item, idx) in data.{{{widget.widget_id}}}.preview_urls"
+      >
+        <div class="project-node-preview-backdrop"></div>
+        <div v-if="item" class="project-node-preview-container">
+          <img :src="item" />
+        </div>
+
+        <div
+          class="project-node-preview-title"
+          v-if="data.{{{widget.widget_id}}}.items_counts"
+        >
+          {{data.{{{widget.widget_id}}}.items_counts[idx]}}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- tooltip -->
+  {% if widget._show_tooltip == true %} {% if widget._tooltip_position ==
+  "right" %}
+  <div class="node-tooltip-wrapper right">
+    {% else %}
+    <div class="node-tooltip-wrapper left">
+      {% endif %}
+      <div class="node-tooltip">
+        <div
+          class="node-section description-section"
+          v-if="state.{{{widget.widget_id}}}.tooltip_description"
+        >
+          {{state.{{{widget.widget_id}}}.tooltip_description}}
+        </div>
+
+        <div
+          class="node-section info-section"
+          v-if="state.{{{widget.widget_id}}}.tooltip_properties.length > 0"
+        >
+          <div
+            class="info-section-row"
+            v-for="item in state.{{{widget.widget_id}}}.tooltip_properties"
+          >
+            <div class="info-section-row-label fw500">{{item.key}}:</div>
+
+            <div
+              v-if="item.highlight"
+              class="info-section-row-value fw500 badge"
+            >
+              <!-- <div v-if="item.highlight" class="info-section-row-value fw500" :class="{'badge' : item.highlight}"> -->
+              <a
+                v-if="item.is_link"
+                class="default-link"
+                :href="item.value"
+                target="_blank"
+                >{{item.value}}</a
+              >
+              <div v-if="!item.is_link">{{item.value}}</div>
+            </div>
+            <div v-if="!item.highlight" class="info-section-row-value fw500">
+              <a
+                v-if="item.is_link"
+                class="default-link"
+                :href="item.value"
+                target="_blank"
+                >{{item.value}}</a
+              >
+              <div v-if="!item.is_link">{{item.value}}</div>
+            </div>
+          </div>
+        </div>
+
+        {% if widget._tooltip._content %}
+        <div class="node-section actions-section">
+          {% for item in widget._tooltip._content %}
+          <div class="actions-section-row fflex">{{{item}}}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
