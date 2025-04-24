@@ -377,6 +377,12 @@ class PredictionSession:
         self.api = api
         if log_progress:
             kwargs["log_progress"] = log_progress
+        if "stride" in kwargs:
+            kwargs["step"] = kwargs["stride"]
+        if "start_frame" in kwargs:
+            kwargs["start_frame_index"] = kwargs["start_frame"]
+        if "num_frames" in kwargs:
+            kwargs["frames_count"] = kwargs["num_frames"]
         self.kwargs = kwargs
 
         # extra input args

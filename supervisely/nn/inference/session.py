@@ -373,7 +373,10 @@ class SessionJSON:
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        frames_direction: Literal["forward", "backward"] = None,
+        direction: Literal["forward", "backward"] = None,
+        step=None,
+        end_frame=None,
+        duration=None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
     ) -> Dict[str, Any]:
@@ -382,9 +385,14 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
+        state["start_frame_index"] = start_frame_index
+        state["frames_count"] = frames_count
+        state["step"] = step
+        state["end_frame"] = end_frame
+        state["duration"] = duration
         state["batch_size"] = batch_size
         state.update(
-            self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
+            self._collect_state_for_infer_video(start_frame_index, frames_count, direction)
         )
         state["tracker"] = tracker
         resp = self._post(url, json=json_body)
@@ -395,7 +403,10 @@ class SessionJSON:
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        frames_direction: Literal["forward", "backward"] = None,
+        direction: Literal["forward", "backward"] = None,
+        step=None,
+        end_frame=None,
+        duration=None,
         process_fn=None,
         preparing_cb=None,
         tracker: Literal["bot", "deepsort"] = None,
@@ -416,9 +427,12 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
+        state["step"] = step
+        state["end_frame"] = end_frame
+        state["duration"] = duration
         state["batch_size"] = batch_size
         state.update(
-            self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
+            self._collect_state_for_infer_video(start_frame_index, frames_count, direction)
         )
         state["tracker"] = tracker
         json_body["context"]["apiToken"] = os.getenv("API_TOKEN")
@@ -474,9 +488,13 @@ class SessionJSON:
     def inference_video_path_async(
         self,
         video_path,
-        batch_size=None,
-        direction=None,
+        start_frame_index: int = None,
+        frames_count: int = None,
+        direction: Literal["forward", "backward"] = None,
         step=None,
+        end_frame=None,
+        duration=None,
+        batch_size=None,
         process_fn=None,
         log_progress=False,
     ):
@@ -493,11 +511,16 @@ class SessionJSON:
         endpoint = "inference_video_async"
         url = f"{self._base_url}/{endpoint}"
         files = [("files", open(video_path, "rb"))]
-        settings = {"settings": self.inference_settings}
-        for k, v in [("batch_size", batch_size), ("direction", direction), ("step", step)]:
-            if v is not None:
-                settings[k] = v
-        uploads = files + [("settings", (None, json.dumps(settings), "text/plain"))]
+        state = {"settings": self.inference_settings}
+        state["step"] = step
+        state["end_frame"] = end_frame
+        state["duration"] = duration
+        state["batch_size"] = batch_size
+        state.update(
+            self._collect_state_for_infer_video(start_frame_index, frames_count, direction)
+        )
+
+        uploads = files + [("settings", (None, json.dumps(state), "text/plain"))]
         resp = self._post(url, files=uploads).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -1048,12 +1071,23 @@ class Session(SessionJSON):
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        frames_direction: Literal["forward", "backward"] = None,
+        direction: Literal["forward", "backward"] = None,
+        step=None,
+        end_frame=None,
+        duration=None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
-            video_id, start_frame_index, frames_count, frames_direction, tracker, batch_size
+            video_id,
+            start_frame_index,
+            frames_count,
+            direction,
+            step,
+            end_frame,
+            duration,
+            tracker,
+            batch_size,
         )
         pred_list_raw = pred_list_raw["ann"]
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
@@ -1064,7 +1098,10 @@ class Session(SessionJSON):
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        frames_direction: Literal["forward", "backward"] = None,
+        direction: Literal["forward", "backward"] = None,
+        step=None,
+        end_frame=None,
+        duration=None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
         preparing_cb=None,
@@ -1074,23 +1111,39 @@ class Session(SessionJSON):
             video_id,
             start_frame_index,
             frames_count,
-            frames_direction,
+            direction,
+            step,
+            end_frame,
+            duration,
             process_fn=self._convert_to_sly_annotation,
             tracker=tracker,
-            batch_size=batch_size,
             preparing_cb=preparing_cb,
+            batch_size=batch_size,
             log_progress=log_progress,
         )
         return frame_iterator
 
     def inference_video_path_async(
-        self, video_path, batch_size=None, direction=None, step=None, log_progress: bool = False
+        self,
+        video_path,
+        start_frame_index: int = None,
+        frames_count: int = None,
+        direction: Literal["forward", "backward"] = None,
+        step=None,
+        end_frame=None,
+        duration=None,
+        batch_size=None,
+        log_progress: bool = False,
     ):
         frame_iterator = super().inference_video_path_async(
             video_path,
+            start_frame_index,
+            frames_count,
+            direction,
+            step,
+            end_frame,
+            duration,
             batch_size=batch_size,
-            direction=direction,
-            step=step,
             process_fn=self._convert_to_sly_annotation,
             log_progress=log_progress,
         )
