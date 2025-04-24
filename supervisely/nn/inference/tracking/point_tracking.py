@@ -18,7 +18,6 @@ from supervisely.api.video.video_figure_api import FigureInfo
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.point import Point
-from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle

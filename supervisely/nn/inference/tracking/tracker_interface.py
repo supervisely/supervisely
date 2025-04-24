@@ -19,6 +19,7 @@ from supervisely.geometry.point import Point
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -126,20 +127,13 @@ class TrackerInterface:
         return PointLocation(row, col)
 
     def _fix_geometry(self, geometry: Geometry):
-        if isinstance(geometry, Polygon):
-            h = self.video_info.frame_height
-            w = self.video_info.frame_width
-            fixed_points = [self._fix_point(point, h, w) for point in geometry.exterior]
-            return Polygon(
-                fixed_points,
-                geometry.interior,
-                geometry.sly_id,
-                geometry.class_id,
-                geometry.labeler_login,
-                geometry.updated_at,
-                geometry.created_at,
-            )
-        return geometry
+        h = self.video_info.frame_height
+        w = self.video_info.frame_width
+        rect = Rectangle.from_size((h, w))
+        cropped = geometry.crop(rect)
+        if len(cropped) == 0:
+            return None
+        return cropped[0]
 
     def add_object_geometries_on_frames(
         self,
@@ -157,6 +151,13 @@ class TrackerInterface:
         geometries_by_object = _split(geometries, object_ids, frame_indexes)
 
         for object_id, geometries_frame_indexes in geometries_by_object.items():
+            for i, (geometry, frame_index) in enumerate(geometries_frame_indexes):
+                geometries_frame_indexes[i] = (self._fix_geometry(geometry), frame_index)
+            geometries_frame_indexes = [
+                (geometry, frame_index)
+                for geometry, frame_index in geometries_frame_indexes
+                if geometry is not None
+            ]
             figures_json = [
                 {
                     ApiField.OBJECT_ID: object_id,
