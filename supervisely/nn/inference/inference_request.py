@@ -112,7 +112,7 @@ class InferenceRequest:
     def pending_num(self):
         return len(self._pending_results)
 
-    def set_stage(self, stage: str, current: int = None, total: int = None):
+    def set_stage(self, stage: str, current: int = None, total: int = None, is_size: bool = False):
         with self._lock:
             self._stage = stage
             self.progress.message = self._stage
@@ -120,6 +120,8 @@ class InferenceRequest:
                 self.progress.current = current
             if total is not None:
                 self.progress.total = total
+            if is_size:
+                self.progress.is_size = True
             self.progress.report_progress()
             if self._stage == InferenceRequest.Stage.INFERENCE:
                 self.global_progress_total = total
@@ -164,9 +166,11 @@ class InferenceRequest:
 
     def progress_json(self):
         return {
-            # "message": self.progress.message,
+            "message": self.progress.message,
+            "status": self.progress.message,
             "current": self.progress.current,
             "total": self.progress.total,
+            "is_size": self.progress.is_size,
         }
 
     def exception_json(self):

@@ -349,6 +349,7 @@ class PredictionSession:
         dataset_id: int = None,
         project_id: int = None,
         api: "Api" = None,
+        log_progress: bool = False,
         **kwargs: dict,
     ):
         extra_input_args = ["image_id"]

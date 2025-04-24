@@ -202,6 +202,7 @@ class ModelAPI:
         conf: float = None,
         classes: List[str] = None,
         upload_mode: str = None,
+        log_progress: bool = False,
         **kwargs,
     ) -> PredictionSession:
         extra_input_args = ["image_id"]
@@ -236,6 +237,7 @@ class ModelAPI:
             batch_size=batch_size,
             conf=conf,
             classes=classes,
+            log_progress=log_progress,
             **kwargs,
         )
 
@@ -250,6 +252,7 @@ class ModelAPI:
         conf: float = None,
         classes: List[str] = None,
         upload_mode: str = None,
+        log_progress: bool = False,
         **kwargs,
     ) -> List[Prediction]:
         # TODO: add tqdm
@@ -264,6 +267,7 @@ class ModelAPI:
                 conf,
                 classes,
                 upload_mode,
+                log_progress,
                 **kwargs,
             )
         )

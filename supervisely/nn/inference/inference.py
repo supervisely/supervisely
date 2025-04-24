@@ -2696,12 +2696,8 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            logger.debug("getting inference request")
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
-            logger.debug("inference request found")
-            # log_extra = _get_log_extra_for_inference_request(inference_request)
-            # logger.debug("log_extra", extra={"log_extra": log_extra})
-            log_extra = {}
+            log_extra = _get_log_extra_for_inference_request(inference_request)
             data = {**inference_request.to_json(), **log_extra}
             logger.debug(
                 f"Sending inference progress with uuid:",
@@ -3603,9 +3599,11 @@ def _filter_duplicated_predictions_from_ann(
 
 
 def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
+    progress = inference_request.progress_json()
+    del progress["message"]
     log_extra = {
         "uuid": inference_request.uuid,
-        "progress": inference_request.progress_json(),
+        "progress": progress,
         "is_inferring": inference_request.is_inferring(),
         "cancel_inference": inference_request.is_stopped(),
         "has_result": inference_request.final_result is not None,
