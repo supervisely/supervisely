@@ -1476,6 +1476,9 @@ class Inference:
     def _get_inference_settings(self, settings: Dict = None):
         if settings is None:
             settings = {}
+        conf = settings.get("conf", None)
+        if conf is not None:
+            settings = self.set_conf_auto(conf, settings)
         settings["sliding_window_mode"] = self.sliding_window_mode
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
@@ -1483,9 +1486,6 @@ class Inference:
                     f"Field {key} not found in inference settings. Use default value {value}"
                 )
                 settings[key] = value
-        conf = settings.get("conf", None)
-        if conf is not None:
-            settings = self.set_conf_auto(conf, settings)
         return settings
 
     # pylint: enable=method-hidden
