@@ -4093,6 +4093,17 @@ def upload_predictions(
                 project_meta = api.project.update_meta(project_id, project_meta)
                 context["project_meta"][project_id] = project_meta
 
+            anns = _exclude_duplicated_predictions(
+                api,
+                [pred.annotation for pred in preds],
+                dataset_id,
+                [pred.image_id for pred in preds],
+                iou=iou_merge_threshold,
+                meta=project_meta,
+            )
+            for pred, ann in zip(preds, anns):
+                pred.annotation = ann
+
             if upload_mode in ["iou_merge", "append"]:
                 context.setdefault("annotation", {})
                 missing = []
