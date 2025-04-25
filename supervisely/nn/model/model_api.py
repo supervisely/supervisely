@@ -227,6 +227,8 @@ class ModelAPI:
             raise ValueError(
                 "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
             )
+        if upload_mode is not None:
+            kwargs["upload_mode"] = upload_mode
         return PredictionSession(
             self.url,
             input=input,

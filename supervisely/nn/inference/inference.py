@@ -4071,7 +4071,25 @@ def upload_predictions(
                 ds_info = api.dataset.get_info_by_id(dataset_id)
                 context["dataset_info"][dataset_id] = ds_info
             project_id = ds_info.project_id
-            if upload_mode == "merge":
+
+            project_meta = context.setdefault("project_meta", {}).get(project_id, None)
+            if project_meta is None:
+                project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+                context["project_meta"][project_id] = project_meta
+
+            meta_changed = False
+            for pred in preds:
+                ann = pred.annotation
+                project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                meta_changed = meta_changed or meta_changed_
+                pred.annotation = ann
+                prediction.model_meta = project_meta
+
+            if meta_changed:
+                project_meta = api.project.update_meta(project_id, project_meta)
+                context["project_meta"][project_id] = project_meta
+
+            if upload_mode == "merge_iou":
                 context.setdefault("annotation", {})
                 missing = []
                 for pred in preds:
@@ -4085,6 +4103,7 @@ def upload_predictions(
                     )
                 for pred in preds:
                     pred.annotation = context["annotation"][pred.image_id].merge(pred.annotation)
+
             api.annotation.upload_anns(
                 [pred.image_id for pred in preds],
                 [pred.annotation for pred in preds],
