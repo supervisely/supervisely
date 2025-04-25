@@ -265,8 +265,8 @@ class GlobalProgress:
         with self._lock:
             if self.progress.message == "Ready":
                 return
-            self.progress.current = max(0, self.progress.current - current)
-            self.progress.total = max(1, self.progress.total - total)
+            self.progress.current = self.progress.current - current
+            self.progress.total = self.progress.total - total
         if self.progress.current >= self.progress.total:
             self.set_ready()
 
