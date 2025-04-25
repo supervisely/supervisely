@@ -38,6 +38,7 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 
 if TYPE_CHECKING:
@@ -349,7 +350,7 @@ class PredictionSession:
         dataset_id: int = None,
         project_id: int = None,
         api: "Api" = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
         **kwargs: dict,
     ):
         extra_input_args = ["image_id"]
@@ -375,15 +376,15 @@ class PredictionSession:
         self._base_url = url
         self.input = input
         self.api = api
-        if log_progress:
-            kwargs["log_progress"] = log_progress
         if "stride" in kwargs:
             kwargs["step"] = kwargs["stride"]
         if "start_frame" in kwargs:
             kwargs["start_frame_index"] = kwargs["start_frame"]
         if "num_frames" in kwargs:
             kwargs["frames_count"] = kwargs["num_frames"]
-        self.kwargs = kwargs
+        self.kwargs = kwargs.copy()
+        if tqdm is not None:
+            kwargs["tqdm"] = tqdm
 
         # extra input args
         image_id = kwargs.get("image_id", None)

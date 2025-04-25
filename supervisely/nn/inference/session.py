@@ -17,14 +17,12 @@ from requests import HTTPError, Timeout
 
 import supervisely as sly
 from supervisely.api.api import ApiField
-from supervisely.api.module_api import WaitingTimeExceeded
-from supervisely.api.task_api import TaskApi
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.imaging.image import write_bytes
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.nn.utils import DeployInfo
 from supervisely.sly_logger import logger
-from supervisely.task.progress import tqdm_sly as tqdm
+from supervisely.task.progress import tqdm_sly
 
 
 class SessionJSON:
@@ -207,7 +205,7 @@ class SessionJSON:
         self,
         images: List[bytes],
         batch_size: int = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
         process_fn=None,
     ) -> "AsyncInferenceIterator":
         if self._async_inference_uuid:
@@ -230,13 +228,13 @@ class SessionJSON:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, progress=progress
+            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
         )
         return frame_iterator
 
@@ -244,12 +242,12 @@ class SessionJSON:
         self,
         images: List[np.ndarray],
         batch_size: int = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ) -> "AsyncInferenceIterator":
         return self.inference_images_bytes_async(
             [write_bytes(image, ".png") for image in images],
             batch_size=batch_size,
-            log_progress=log_progress,
+            tqdm=tqdm,
         )
 
     def inference_image_ids(self, image_ids: List[int]) -> List[Dict[str, Any]]:
@@ -266,7 +264,7 @@ class SessionJSON:
         output_project_id: int = None,
         batch_size: int = None,
         process_fn=None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -288,13 +286,14 @@ class SessionJSON:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, progress=progress
+            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
         )
         return frame_iterator
 
@@ -335,7 +334,7 @@ class SessionJSON:
         image_paths: List[str],
         batch_size: int = None,
         process_fn=None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -358,13 +357,14 @@ class SessionJSON:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, progress=progress
+            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
         )
         return frame_iterator
 
@@ -411,7 +411,7 @@ class SessionJSON:
         preparing_cb=None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -475,13 +475,14 @@ class SessionJSON:
                 progress_widget.update(current - prev_current)
                 prev_current = current
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, progress=progress
+            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
         )
         return frame_iterator
 
@@ -496,7 +497,7 @@ class SessionJSON:
         duration=None,
         batch_size=None,
         process_fn=None,
-        log_progress=False,
+        tqdm: tqdm_sly = None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -525,13 +526,14 @@ class SessionJSON:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, progress=progress
+            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
         )
         return frame_iterator
 
@@ -543,7 +545,7 @@ class SessionJSON:
         cache_project_on_model: bool = False,
         batch_size: int = None,
         process_fn=None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -567,13 +569,14 @@ class SessionJSON:
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, progress=progress
+            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
         )
         return frame_iterator
 
@@ -586,7 +589,7 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         cache_project_on_model: bool = False,
         preparing_cb=None,
-        log_progress=False,
+        tqdm: tqdm_sly = None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -658,13 +661,14 @@ class SessionJSON:
                         prev_current = current
                         resp = self._get_preparing_progress()
 
-        logger.info("Inference has started:", extra={"response": resp})
-        progress = None
-        if log_progress:
-            progress = tqdm()
-        resp, has_started = self._wait_for_async_inference_start(progress=progress)
+        logger.info(
+            "Inference has started:",
+            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
+        )
+
+        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=None, progress=progress
+            resp["progress"]["total"], self, process_fn=None, tqdm=tqdm
         )
         return frame_iterator
 
@@ -722,43 +726,42 @@ class SessionJSON:
         endpoint = "clear_inference_request"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
-    def _update_progress(self, progress: tqdm, response: dict):
-        if progress is None:
+    def _update_progress(self, tqdm: tqdm_sly, response: dict):
+        if tqdm is None:
             return
         json_progress = response.get("progress", None)
         if json_progress is None:
             return
         refresh = False
         message = json_progress.get("message", json_progress.get("status", None))
-        if message is not None and progress.desc not in [message, f"{message}:"]:
-            progress.set_description(message, refresh=False)
+        if message is not None and tqdm.desc not in [message, f"{message}:"]:
+            tqdm.set_description(message, refresh=False)
             refresh = True
         current = json_progress.get("current", None)
-        if current is not None and progress.n != current:
-            progress.n = current
+        if current is not None and tqdm.n != current:
+            tqdm.n = current
             refresh = True
         total = json_progress.get("total", None)
-        if total is not None and progress.total != total:
-            progress.total = total
+        if total is not None and tqdm.total != total:
+            tqdm.total = total
             refresh = True
         is_size = json_progress.get("is_size", False)
-        if is_size and progress.unit == "it":
-            progress.unit = "iB"
-            progress.unit_scale = True
-            progress.unit_divisor = 1024
+        if is_size and tqdm.unit == "it":
+            tqdm.unit = "iB"
+            tqdm.unit_scale = True
+            tqdm.unit_divisor = 1024
             refresh = True
-        if not is_size and progress.unit == "iB":
-            progress.unit = "it"
-            progress.unit_scale = False
-            progress.unit_divisor = 1
+        if not is_size and tqdm.unit == "iB":
+            tqdm.unit = "it"
+            tqdm.unit_scale = False
+            tqdm.unit_divisor = 1
             refresh = True
         if refresh:
-            progress.refresh()
+            tqdm.refresh()
 
     def _wait_for_async_inference_start(
-        self, delay=1, timeout=None, progress: tqdm = None
+        self, delay=1, timeout=None, tqdm: tqdm_sly = None
     ) -> Tuple[dict, bool]:
-        logger.info("Preparing data on the model, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
@@ -771,7 +774,7 @@ class SessionJSON:
                 last_stage = stage
             has_started = stage not in ["preparing", "preprocess", None]
             has_started = has_started or bool(resp.get("result")) or resp["progress"]["total"] != 1
-            self._update_progress(progress, resp)
+            self._update_progress(tqdm, resp)
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout
@@ -779,12 +782,10 @@ class SessionJSON:
             self.stop_async_inference()
             self._on_async_inference_end()
             raise Timeout("Timeout exceeded. The server didn't start the inference")
-        if has_started:
-            logger.info("Inference has started:", extra={"response": resp})
         return resp, has_started
 
     def _wait_for_new_pending_results(
-        self, delay=1, timeout=600, progress: tqdm = None
+        self, delay=1, timeout=600, tqdm: tqdm_sly = None
     ) -> List[dict]:
         logger.debug("waiting pending results...")
         has_results = False
@@ -792,7 +793,7 @@ class SessionJSON:
         t0 = time.time()
         while not has_results and not timeout_exceeded:
             resp = self._pop_pending_results()
-            self._update_progress(progress, resp)
+            self._update_progress(tqdm, resp)
             pending_results = resp["pending_results"]
             exception_json = resp["exception"]
             if exception_json:
@@ -909,12 +910,12 @@ class SessionJSON:
 
 
 class AsyncInferenceIterator:
-    def __init__(self, total, nn_api: SessionJSON, process_fn=None, progress: tqdm = None):
+    def __init__(self, total, nn_api: SessionJSON, process_fn=None, tqdm: tqdm_sly = None):
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
         self.process_fn = process_fn
-        self.progress = progress
+        self.tqdm = tqdm
 
     def __len__(self) -> int:
         return self.total
@@ -927,7 +928,7 @@ class AsyncInferenceIterator:
             if self.nn_api._stop_async_inference_flag:
                 raise StopIteration
             if not self.results_queue:
-                pending_results = self.nn_api._wait_for_new_pending_results(progress=self.progress)
+                pending_results = self.nn_api._wait_for_new_pending_results(tqdm=self.tqdm)
                 self.results_queue += pending_results
             if not self.results_queue:
                 raise StopIteration
@@ -1028,9 +1029,9 @@ class Session(SessionJSON):
         return predictions
 
     def inference_images_np_async(
-        self, images: List[np.ndarray], log_progress: bool = False
+        self, images: List[np.ndarray], tqdm: tqdm_sly = None
     ) -> AsyncInferenceIterator:
-        pred_json = super().inference_images_np_async(images, log_progress=log_progress)
+        pred_json = super().inference_images_np_async(images, tqdm=tqdm)
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
@@ -1039,14 +1040,14 @@ class Session(SessionJSON):
         image_ids: List[int],
         output_project_id: int = None,
         batch_size: int = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
             output_project_id,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
-            log_progress=log_progress,
+            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1056,13 +1057,13 @@ class Session(SessionJSON):
         return predictions
 
     def inference_image_paths_async(
-        self, image_paths, batch_size: int = None, log_progress: bool = False
+        self, image_paths, batch_size: int = None, tqdm: tqdm_sly = None
     ) -> List[sly.Annotation]:
         frame_iterator = super().inference_image_paths_async(
             image_paths,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_annotation,
-            log_progress=log_progress,
+            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1105,7 +1106,7 @@ class Session(SessionJSON):
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
         preparing_cb=None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
@@ -1119,7 +1120,7 @@ class Session(SessionJSON):
             tracker=tracker,
             preparing_cb=preparing_cb,
             batch_size=batch_size,
-            log_progress=log_progress,
+            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1133,7 +1134,7 @@ class Session(SessionJSON):
         end_frame=None,
         duration=None,
         batch_size=None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_video_path_async(
             video_path,
@@ -1145,7 +1146,7 @@ class Session(SessionJSON):
             duration,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_annotation,
-            log_progress=log_progress,
+            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1156,7 +1157,7 @@ class Session(SessionJSON):
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
@@ -1165,7 +1166,7 @@ class Session(SessionJSON):
             cache_project_on_model=cache_project_on_model,
             batch_size=batch_size,
             process_fn=self._convert_to_sly_ann_info,
-            log_progress=log_progress,
+            tqdm=tqdm,
         )
         return frame_iterator
 

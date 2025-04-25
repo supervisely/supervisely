@@ -13,6 +13,7 @@ from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.model.prediction import Prediction, PredictionSession
 from supervisely.nn.utils import ModelSource
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.task.progress import tqdm_sly
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -202,7 +203,7 @@ class ModelAPI:
         conf: float = None,
         classes: List[str] = None,
         upload_mode: str = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
         **kwargs,
     ) -> PredictionSession:
         extra_input_args = ["image_id"]
@@ -237,7 +238,7 @@ class ModelAPI:
             batch_size=batch_size,
             conf=conf,
             classes=classes,
-            log_progress=log_progress,
+            tqdm=tqdm,
             **kwargs,
         )
 
@@ -252,10 +253,9 @@ class ModelAPI:
         conf: float = None,
         classes: List[str] = None,
         upload_mode: str = None,
-        log_progress: bool = False,
+        tqdm: tqdm_sly = None,
         **kwargs,
     ) -> List[Prediction]:
-        # TODO: add tqdm
         return list(
             self.predict_detached(
                 input,
@@ -267,7 +267,7 @@ class ModelAPI:
                 conf,
                 classes,
                 upload_mode,
-                log_progress,
+                tqdm,
                 **kwargs,
             )
         )
