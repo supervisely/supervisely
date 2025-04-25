@@ -1565,7 +1565,11 @@ class Inference:
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
         start_frame_index = state.get("startFrameIndex", 0)
-        step = state.get("stride", state.get("step", 1))
+        step = state.get("stride", None)
+        if step is None:
+            step = state.get("step", None)
+        if step is None:
+            step = 1
         end_frame_index = state.get("endFrameIndex", None)
         duration = state.get("duration", None)
         frames_count = state.get("framesCount", None)
@@ -1791,7 +1795,11 @@ class Inference:
             raise ValueError("Video id is not provided")
         video_info = api.video.get_info_by_id(video_id)
         start_frame_index = state.get("startFrameIndex", 0)
-        step = state.get("stride", state.get("step", 1))
+        step = state.get("stride", None)
+        if step is None:
+            step = state.get("step", None)
+        if step is None:
+            step = 1
         end_frame_index = state.get("endFrameIndex", None)
         duration = state.get("duration", None)
         frames_count = state.get("framesCount", None)

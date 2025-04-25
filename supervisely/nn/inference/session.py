@@ -770,7 +770,7 @@ class SessionJSON:
             resp = self._get_inference_progress()
             stage = resp.get("stage")
             if stage != last_stage:
-                logger.info(f"Stage: {stage}")
+                logger.info(stage)
                 last_stage = stage
             has_started = stage not in ["preparing", "preprocess", None]
             has_started = has_started or bool(resp.get("result")) or resp["progress"]["total"] != 1
