@@ -43,7 +43,9 @@ class TrackerInterface:
 
         self.track_id = context["trackId"]
         self.video_id = context["videoId"]
-        self.video_info = self.api.video.get_info_by_id(self.video_id)
+        self.frame_width = context.get("frameWidth", None)
+        self.frame_height = context.get("frameHeight", None)
+        self._video_info = None
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
@@ -76,6 +78,12 @@ class TrackerInterface:
                 self.stop += self.frames_count + 1
             self._load_frames_to_hot_cache()
             self._load_frames()
+
+    @property
+    def video_info(self):
+        if self._video_info is None:
+            self._video_info = self.api.video.get_info_by_id(self.video_id)
+        return self._video_info
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
@@ -118,8 +126,10 @@ class TrackerInterface:
                 return
 
     def _crop_geometry(self, geometry: Geometry):
-        h = self.video_info.frame_height
-        w = self.video_info.frame_width
+        h, w = self.frame_height, self.frame_width
+        if h is None or w is None:
+            h = self.video_info.frame_height
+            w = self.video_info.frame_width
         rect = Rectangle.from_size((h, w))
         cropped = geometry.crop(rect)
         if len(cropped) == 0:
