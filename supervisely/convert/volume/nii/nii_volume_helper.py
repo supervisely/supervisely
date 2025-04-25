@@ -5,6 +5,7 @@ import nrrd
 import numpy as np
 from pathlib import Path
 from collections import defaultdict, namedtuple
+from collections import namedtuple
 
 from supervisely import Api
 from supervisely.collection.str_enum import StrEnum
@@ -72,6 +73,7 @@ def read_cls_color_map(path: str) -> dict:
         return None
     return cls_color_map
 
+
 def read_json_map(path: str) -> dict:
     import json
 
@@ -115,6 +117,7 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
         mask = Mask3D(data == class_id)
         yield mask, class_id
 
+
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
         self._items = items
@@ -143,7 +146,9 @@ class AnnotationMatcher:
         if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
             self._project_wide = False
         else:
-            datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
+            datasets = {
+                dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)
+            }
             self._project_wide = True
 
         volumes = defaultdict(lambda: {})
@@ -166,24 +171,31 @@ class AnnotationMatcher:
 
         def extract_prefix(ann_file):
             import re
-            pattern = r'^(?P<prefix>cor|sag|axl).*?(?:' + "|".join(LABEL_NAME) + r')'
+
+            pattern = r"^(?P<prefix>cor|sag|axl).*?(?:" + "|".join(LABEL_NAME) + r")"
             m = re.match(pattern, ann_file, re.IGNORECASE)
             if m:
                 return m.group("prefix").lower()
             return None
 
         def is_volume_match(volume_name, prefix):
-            pattern = r'^' + re.escape(prefix) + r'.*?anatomic'
+            pattern = r"^" + re.escape(prefix) + r".*?anatomic"
             return re.match(pattern, volume_name, re.IGNORECASE) is not None
 
         def find_best_volume_match(prefix, available_volumes):
-            candidates = {name: volume for name, volume in available_volumes.items() if is_volume_match(name, prefix)}
+            candidates = {
+                name: volume
+                for name, volume in available_volumes.items()
+                if is_volume_match(name, prefix)
+            }
             if not candidates:
                 return None, None
 
             # Prefer an exact candidate
             ann_name_no_ext = ann_file.split(".")[0]
-            exact_candidate = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_name_no_ext, flags=re.IGNORECASE)
+            exact_candidate = re.sub(
+                r"(" + "|".join(LABEL_NAME) + r")", "anatomic", ann_name_no_ext, flags=re.IGNORECASE
+            )
             for name in candidates:
                 if re.fullmatch(re.escape(exact_candidate), name, re.IGNORECASE):
                     return name, candidates[name]
@@ -197,12 +209,16 @@ class AnnotationMatcher:
         def process_annotation_file(ann_file, dataset_name, volumes):
             prefix = extract_prefix(ann_file)
             if prefix is None:
-                logger.warning(f"Failed to extract prefix from annotation file {ann_file}. Skipping.")
+                logger.warning(
+                    f"Failed to extract prefix from annotation file {ann_file}. Skipping."
+                )
                 return
 
             matched_name, matched_volume = find_best_volume_match(prefix, volumes)
             if not matched_volume:
-                logger.warning(f"No matching volume found for annotation with prefix '{prefix}' in dataset {dataset_name}.")
+                logger.warning(
+                    f"No matching volume found for annotation with prefix '{prefix}' in dataset {dataset_name}."
+                )
                 return
 
             # Retrieve the correct item based on matching mode.
@@ -212,18 +228,28 @@ class AnnotationMatcher:
                 else self._item_by_filename.get(ann_file)
             )
             if not item:
-                logger.warning(f"Item not found for annotation file {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}.")
+                logger.warning(
+                    f"Item not found for annotation file {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}."
+                )
                 return
 
             item_to_volume[item] = matched_volume
             ann_file = ann_file.split(".")[0]
-            ann_supposed_match = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_file, flags=re.IGNORECASE)
+            ann_supposed_match = re.sub(
+                r"(" + "|".join(LABEL_NAME) + r")", "anatomic", ann_file, flags=re.IGNORECASE
+            )
             if matched_name.lower() != ann_supposed_match:
-                logger.debug(f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'.")
+                logger.debug(
+                    f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'."
+                )
 
         # Perform matching
         for dataset_name, volumes in self._volumes.items():
-            ann_files = self._ann_paths.get(dataset_name, []) if self._project_wide else list(self._ann_paths.values())[0]
+            ann_files = (
+                self._ann_paths.get(dataset_name, [])
+                if self._project_wide
+                else list(self._ann_paths.values())[0]
+            )
             for ann_file in ann_files:
                 process_annotation_file(ann_file, dataset_name, volumes)
 
@@ -231,7 +257,7 @@ class AnnotationMatcher:
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
             volume_to_items[volume.id].append(item)
-        
+
         for volume_id, items in volume_to_items.items():
             if len(items) == 1:
                 items[0].is_semantic = True
@@ -304,3 +330,59 @@ class AnnotationMatcher:
                 items[0].is_semantic = True
 
         return item_to_volume
+
+
+NameParts = namedtuple(
+    "NameParts",
+    ["full_name", "name_no_ext", "plane", "is_ann", "patient_uuid", "case_uuid", "ending_idx"],
+)
+
+
+def parse_name_parts(full_name: str) -> NameParts:
+    import re
+
+    name = get_file_name(full_name)
+    if name.endswith(".nii"):
+        name = get_file_name(name)
+    name_no_ext = name
+
+    plane = None
+    for part in PlanePrefix.values():
+        if part in name:
+            plane = part
+            break
+
+    if plane is None:
+        return
+
+    is_ann = any(part in name.lower() for part in LABEL_NAME)
+
+    patient_uuid = None
+    case_uuid = None
+
+    uuid_pattern = re.compile(
+        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+    )
+
+    uuids = uuid_pattern.findall(name)
+    if len(uuids) > 0:
+        patient_uuid = uuids[0]
+    if len(uuids) > 1:
+        case_uuid = uuids[1]
+
+    joint = None
+    side = None
+    arbituary = None
+    sequence_prefix = None
+    ending_idx = re.search(r"_(\d+)(?:\.[^.]+)+$", full_name)
+    ending_idx = ending_idx.start() if ending_idx else None
+
+    return NameParts(
+        full_name=full_name,
+        name_no_ext=name_no_ext,
+        plane=plane,
+        is_ann=is_ann,
+        patient_uuid=patient_uuid,
+        case_uuid=case_uuid,
+        ending_idx=ending_idx,
+    )

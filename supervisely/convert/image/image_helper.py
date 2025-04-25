@@ -1,7 +1,6 @@
 import mimetypes
 from pathlib import Path
 
-import magic
 import numpy as np
 from PIL import Image
 from typing import Union, List
@@ -44,6 +43,8 @@ def validate_image(path: str) -> tuple:
 
 def validate_mimetypes(name: str, path: str) -> list:
     """Validate mimetypes for images."""
+    import magic
+
 
     mimetypes.add_type("image/webp", ".webp")  # to extend types_map
     mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map

@@ -71,7 +71,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
 
         def create_empty_annotation(self):
             return VolumeAnnotation(self.volume_meta)
-        
+
     def __str__(self):
         return "nii_custom"
 
@@ -81,6 +81,9 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
 
         volumes_dict = defaultdict(list)
         ann_dict = defaultdict(list)
+
+        volumes_uuid = defaultdict(lambda: defaultdict(list))
+        ann_uuid = defaultdict(lambda: defaultdict(list))
         cls_color_map = None
 
         for root, _, files in os.walk(self._input_data):
@@ -89,16 +92,21 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
             for file in files:
                 path = os.path.join(root, file)
                 if is_nifti_file(path):
-                    full_name = get_file_name(path)
-                    if full_name.endswith(".nii"):
-                        full_name = get_file_name(full_name)
-                    prefix = full_name.split("_")[0]
-                    if prefix not in helper.PlanePrefix.values():
+                    name_parts = helper.parse_name_parts(file)
+                    if name_parts is None:
+                        logger.warning(
+                            "File recognized as NIfTI, but failed to parse plane identifier from name.",
+                            extra={"filename": file},
+                        )
                         continue
-                    if any(label_name in full_name for label_name in helper.LABEL_NAME):
-                        ann_dict[prefix].append(path)
-                    else:
-                        volumes_dict[prefix].append(path)
+
+                    dict_to_use = ann_uuid if name_parts.is_ann else volumes_uuid
+                    key = (
+                        name_parts.plane
+                        if name_parts.patient_uuid is None and name_parts.case_uuid is None
+                        else f"{name_parts.plane}_{name_parts.patient_uuid}_{name_parts.case_uuid}"
+                    )
+                    dict_to_use[key].append(path)
                 ext = get_file_ext(path)
                 if ext == ".txt":
                     cls_color_map = helper.read_cls_color_map(path)
@@ -129,6 +137,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
+
         self._meta = ProjectMeta()
         return self.items_count > 0
 
@@ -221,20 +230,22 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         if json_map is not None:
             self._json_map = helper.read_json_map(json_map)
 
-        is_ann = lambda x: any(label_name in x for label_name in helper.LABEL_NAME)
+        is_nii = lambda x: any(ext in x for ext in [".nii", ".nii.gz"])
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 path = os.path.join(root, file)
-                if is_ann(file):
-                    prefix = get_file_name(path).split("_")[0]
-                    if prefix not in helper.PlanePrefix.values():
+                if is_nii(file):
+                    name_parts = helper.parse_name_parts(file)
+                    if name_parts is None or not name_parts.is_ann:
                         continue
                     try:
                         nii = load(path)
                     except filebasedimages.ImageFileError:
+                        logger.warning(f"Failed to load NIfTI file: {path}")
                         continue
                     item = self.Item(item_path=None, ann_data=path)
                     item.set_shape(nii.shape)
+                    item.custom_data["name_parts"] = name_parts
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
@@ -255,14 +266,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     ) -> VolumeAnnotation:
         """Convert to Supervisely format."""
         import re
+
         try:
             objs = []
             spatial_figures = []
             ann_path = item.ann_data
-            ann_idx = 0
-            match = re.search(r"_(\d+)(?:\.[^.]+)+$", ann_path)
-            if match:
-                ann_idx = int(match.group(1))
+            ann_idx = item.custom_data["name_parts"].ending_idx
             for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
                 class_id = pixel_id if item.is_semantic else ann_idx
                 class_name = f"Segment_{class_id}"
@@ -336,7 +345,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         if res_ds_info.items_count == 0:
             logger.info("Resulting dataset is empty. Removing it.")
             api.dataset.remove(dataset_id)
-
 
         if log_progress:
             if is_development():
