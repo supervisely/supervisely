@@ -404,14 +404,14 @@ class InferenceImageCache:
                     self.download_video,
                     api,
                     video_id,
-                    **{**kwargs, return_images: False},
+                    **{**kwargs, "return_images": False},
                 )
         elif redownload_video:
             self._download_executor.submit(
                 self.download_video,
                 api,
                 video_id,
-                **{**kwargs, return_images: False},
+                **{**kwargs, "return_images": False},
             )
 
         def name_constuctor(frame_index: int):
