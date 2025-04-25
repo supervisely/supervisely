@@ -317,9 +317,11 @@ class InferenceRequestsManager:
 
     def monitor(self):
         while True:
-            for inference_request in self._inference_requests.values():
+            for inference_request_uuid in list(self._inference_requests.keys()):
+                inference_request = self._inference_requests.get(inference_request_uuid)
+                if inference_request is None:
+                    continue
                 if inference_request.is_expired():
-                    inference_request_uuid = inference_request.uuid
                     self.remove(inference_request_uuid)
                     logger.debug(f"Expired inference request {inference_request_uuid} was deleted")
             time.sleep(30)
