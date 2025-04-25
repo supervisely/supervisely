@@ -192,12 +192,12 @@ class SessionJSON:
                     f"Key '{key}' is not acceptable. Acceptable keys are: {acceptable_keys}"
                 )
 
-    def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
+    def inference_image_id(self, image_id: int, upload_mode: str = None) -> Dict[str, Any]:
         endpoint = "inference_image_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         json_body["state"]["image_id"] = image_id
-        json_body["state"]["upload"] = upload
+        json_body["state"]["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body)
         return resp.json()
 
@@ -250,11 +250,14 @@ class SessionJSON:
             tqdm=tqdm,
         )
 
-    def inference_image_ids(self, image_ids: List[int]) -> List[Dict[str, Any]]:
+    def inference_image_ids(
+        self, image_ids: List[int], upload_mode: str = None
+    ) -> List[Dict[str, Any]]:
         endpoint = "inference_batch_ids"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         json_body["state"]["batch_ids"] = image_ids
+        json_body["state"]["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body)
         return resp.json()
 
@@ -263,6 +266,7 @@ class SessionJSON:
         image_ids: List[int],
         output_project_id: int = None,
         batch_size: int = None,
+        upload_mode: str = None,
         process_fn=None,
         tqdm: tqdm_sly = None,
     ) -> Iterator:
@@ -282,6 +286,7 @@ class SessionJSON:
         state["images_ids"] = image_ids
         state["output_project_id"] = output_project_id
         state["batch_size"] = batch_size
+        state["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -544,6 +549,7 @@ class SessionJSON:
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
+        upload_mode: str = None,
         process_fn=None,
         tqdm: tqdm_sly = None,
     ):
@@ -565,6 +571,7 @@ class SessionJSON:
         state["cache_project_on_model"] = cache_project_on_model
         state["dataset_ids"] = dataset_ids
         state["batch_size"] = batch_size
+        state["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -679,6 +686,7 @@ class SessionJSON:
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
+        upload_mode: str = None,
     ):
         return [
             pred
@@ -688,6 +696,7 @@ class SessionJSON:
                 output_project_id,
                 cache_project_on_model=cache_project_on_model,
                 batch_size=batch_size,
+                upload_mode=upload_mode,
                 process_fn=None,
             )
         ]
@@ -1008,8 +1017,8 @@ class Session(SessionJSON):
     def get_deploy_info(self) -> DeployInfo:
         return DeployInfo(**super().get_deploy_info())
 
-    def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
-        pred_json = super().inference_image_id(image_id, upload)
+    def inference_image_id(self, image_id: int, upload_mode: str = None) -> sly.Annotation:
+        pred_json = super().inference_image_id(image_id, upload_mode)
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
@@ -1023,8 +1032,10 @@ class Session(SessionJSON):
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
-    def inference_image_ids(self, image_ids: List[int]) -> List[sly.Annotation]:
-        pred_list_raw = super().inference_image_ids(image_ids)
+    def inference_image_ids(
+        self, image_ids: List[int], upload_mode: str = None
+    ) -> List[sly.Annotation]:
+        pred_list_raw = super().inference_image_ids(image_ids, upload_mode)
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
 
@@ -1040,12 +1051,14 @@ class Session(SessionJSON):
         image_ids: List[int],
         output_project_id: int = None,
         batch_size: int = None,
+        upload_mode: str = None,
         tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
             output_project_id,
             batch_size=batch_size,
+            upload_mode=upload_mode,
             process_fn=self._convert_to_sly_ann_info,
             tqdm=tqdm,
         )
@@ -1157,6 +1170,7 @@ class Session(SessionJSON):
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
+        upload_mode: str = None,
         tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_project_id_async(
@@ -1165,6 +1179,7 @@ class Session(SessionJSON):
             output_project_id,
             cache_project_on_model=cache_project_on_model,
             batch_size=batch_size,
+            upload_mode=upload_mode,
             process_fn=self._convert_to_sly_ann_info,
             tqdm=tqdm,
         )
@@ -1177,11 +1192,17 @@ class Session(SessionJSON):
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
+        upload_mode: str = None,
     ):
         return [
             pred
             for pred in self.inference_project_id_async(
-                project_id, dataset_ids, output_project_id, cache_project_on_model, batch_size
+                project_id,
+                dataset_ids,
+                output_project_id,
+                cache_project_on_model,
+                batch_size,
+                upload_mode,
             )
         ]
 
