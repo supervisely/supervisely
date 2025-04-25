@@ -3,31 +3,24 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Union, List, Tuple
 import re
 from jinja2 import Environment, FileSystemLoader
-from supervisely.template.extensions import MarkdownExtension
+from supervisely.template.extensions import MarkdownExtension, AutoSidebarExtension
 
 
 class TemplateRenderer:
 
     def __init__(
-        self, 
-        md_template_path: str,
+        self,
         jinja_options: Optional[Dict[str, Any]] = None,
         jinja_extensions: Optional[list] = None,
     ):
         """
         Initializes template renderer with specified parameters.
         
-        :param md_template_path: Path to the markdown template file relative to template directory
-        :type md_template_path: str
         :param jinja_extensions: List of Jinja2 extensions to use. By default includes MarkdownExtension.
         :type jinja_extensions: Optional[list]
         :param jinja_options: Additional options for configuring Jinja2 environment.
         :type jinja_options: Optional[Dict[str, Any]]
         """
-        self.base_template_dir = Path(__file__).parent
-        self.layout_template_name = "template.html.jinja"
-        self.md_template_path = md_template_path
-
         if jinja_options is None:
             jinja_options = {
                 "autoescape": False,
@@ -36,10 +29,10 @@ class TemplateRenderer:
             }
 
         if jinja_extensions is None:
-            jinja_extensions = [MarkdownExtension]
+            jinja_extensions = [MarkdownExtension, AutoSidebarExtension]
 
-        jinja_extensions = jinja_extensions
-        jinja_options = jinja_options
+        self.jinja_extensions = jinja_extensions
+        self.jinja_options = jinja_options
         
         self.env_options = {}
         self.env_options.update(jinja_options)
@@ -49,10 +42,10 @@ class TemplateRenderer:
         self.environment = Environment(loader=self.loader, **self.env_options)
     
     
-    def render_template(
-        self, 
-        template_path: str, 
-        context: Dict[str, Any] = None,
+    def render(
+        self,
+        template_path: str,
+        context: dict,
     ) -> str:
         """
         Renders a template with the provided context.
@@ -65,49 +58,22 @@ class TemplateRenderer:
         :returns: Result of template rendering as a string.
         :rtype: str
         """
-        if context is None:
-            context = {}
+        # Render
+        template = self.environment.get_template(template_path)
+        html = template.render(**context)
+
+        # Generate sidebar if AutoSidebarExtension is used
+        if AutoSidebarExtension in self.jinja_extensions:
+            html = self._generate_autosidebar(html)
         
-        markdown_content = self._render_markdown_template(template_path, context)
-        navigation, processed_content = self._prepare_markdown_with_sections(markdown_content)
-        
-        context['navigation'] = {'sections': navigation}
-        context['markdown_content'] = processed_content
-        
-        layout_template = self.environment.get_template(self.layout_template_name)
-        return layout_template.render(**context)
+        return html
     
-    def _render_markdown_template(self, template_path: str, context: Dict[str, Any]) -> str:
-        """
-        Renders a markdown template to process Jinja variables.
-        
-        :param template_path: Path to the markdown template file relative to template dir.
-        :type template_path: str
-        :param context: Context for Jinja template rendering.
-        :type context: Dict[str, Any]
-        
-        :returns: Processed markdown content with variables rendered
-        :rtype: str
-        """
-        md_template = self.environment.get_template(template_path)
-        markdown_content = md_template.render(**context)
-        return markdown_content
-    
-    def _prepare_markdown_with_sections(self, html_content: str) -> Tuple[List[Dict[str, str]], str]:
-        """
-        Prepares HTML content by adding section markers for navigation.
-        
-        :param html_content: HTML content with processed Jinja variables.
-        :type html_content: str
-        
-        :returns: Tuple containing navigation list and modified HTML content with section markers
-        :rtype: Tuple[List[Dict[str, str]], str]
-        """
+    def _generate_autosidebar(self, content_html: str):
+        # Extract h2 headers and generate ids
         h2_pattern = r'<h2>(.*?)</h2>'
         headers = []
         navigation = []
-        
-        lines = html_content.split('\n')
+        lines = content_html.split('\n')
         for i, line in enumerate(lines):
             match = re.search(h2_pattern, line)
             if match:
@@ -123,18 +89,13 @@ class TemplateRenderer:
                     'title': title
                 })
         
-        if not headers:
-            return navigation, html_content
-              
+        # Add ids to h2 headers      
         new_lines = []
-        
         first_header_index = headers[0]['index']
         new_lines.extend(lines[:first_header_index])
-        
         for i, header in enumerate(headers):
             new_lines.append(f'<div id="{header["id"]}" class="section">')
             new_lines.append(lines[header['index']])
-            
             if i < len(headers) - 1:
                 next_header_index = headers[i + 1]['index']
                 new_lines.extend(lines[header['index'] + 1:next_header_index])
@@ -142,35 +103,56 @@ class TemplateRenderer:
             else:
                 new_lines.extend(lines[header['index'] + 1:])
                 new_lines.append('</div>')
-        
-        processed_html = '\n'.join(new_lines)
-        return navigation, processed_html
+        html = '\n'.join(new_lines)
+
+        # Generate sidebar
+        sidebar_placeholder_pattern = r'^([ \t]*)<!--AUTOSIDEBAR_PLACEHOLDER-->$'
+        sidebar_match = re.search(sidebar_placeholder_pattern, html, re.MULTILINE)
+        if sidebar_match:
+            base_indent = sidebar_match.group(1)
+            sidebar_parts = []
+            for section in headers:
+                button_html = (
+                    f"{base_indent}<div>\n"
+                    f"{base_indent}    <el-button type=\"text\" @click=\"data.scrollIntoView='{section['id']}'\"\n"
+                    f"{base_indent}        :style=\"{{fontWeight: data.scrollIntoView === '{section['id']}' ? 'bold' : 'normal'}}\">\n"
+                    f"{base_indent}        {section['title']}\n"
+                    f"{base_indent}    </el-button>\n"
+                    f"{base_indent}</div>"
+                )
+                sidebar_parts.append(button_html)
+            sidebar_code = '\n'.join(sidebar_parts)
+            html = re.sub(
+                sidebar_placeholder_pattern, 
+                sidebar_code, 
+                html, 
+                flags=re.MULTILINE
+            )
+            
+        return html
     
     def render_to_file(
         self, 
-        template_path: str, 
-        output_file_path: str, 
-        context: Dict[str, Any] = None,
+        template_path: str,
+        context: dict,
+        output_path: str,
     ) -> None:
         """
         Renders a template and saves the result to a file.
         
         :param template_path: Path to the markdown template file relative to template dir.
         :type template_path: str
-        :param output_file_path: Path to the file where the result will be saved.
-        :type output_file_path: str
         :param context: Dictionary with data for template rendering.
         :type context: Dict[str, Any]
+        :param output_path: Path to the file where the result will be saved.
+        :type output_path: str
         
         :returns: None
         """
-        if context is None:
-            context = {}
-            
-        rendered_content = self.render_template(template_path, context)
-        output_path = Path(output_file_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
+        rendered_content = self.render(template_path, context)
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
             f.write(rendered_content)
     
     def add_filter(self, filter_name: str, filter_function: callable) -> None:

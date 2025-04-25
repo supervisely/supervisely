@@ -60,3 +60,17 @@ class MarkdownExtension(Extension):
 
     def _dedent(self, text):
         return textwrap.dedent(text.strip("\n"))
+
+
+class AutoSidebarExtension(Extension):
+    tags = {'autosidebar'}
+    
+    def parse(self, parser):
+        lineno = next(parser.stream).lineno
+        return CallBlock(
+            self.call_method('_placeholder'),
+            [], [], []
+        ).set_lineno(lineno)
+    
+    def _placeholder(self, caller):
+        return "<!--AUTOSIDEBAR_PLACEHOLDER-->"
