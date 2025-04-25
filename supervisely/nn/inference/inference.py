@@ -1673,7 +1673,7 @@ class Inference:
             image_ids = [image_ids]
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
-        if upload_mode == "merge_iou" and iou_merge_threshold is None:
+        if upload_mode == "iou_merge" and iou_merge_threshold is None:
             iou_merge_threshold = 0.7
 
         images_infos = api.image.get_info_by_id_batch(image_ids)
@@ -1913,7 +1913,7 @@ class Inference:
             raise ValueError("Only images projects are supported.")
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
-        if upload_mode == "merge_iou" and iou_merge_threshold is None:
+        if upload_mode == "iou_merge" and iou_merge_threshold is None:
             iou_merge_threshold = 0.7
         cache_project_on_model = state.get("cache_project_on_model", False)
 
@@ -4093,7 +4093,7 @@ def upload_predictions(
                 project_meta = api.project.update_meta(project_id, project_meta)
                 context["project_meta"][project_id] = project_meta
 
-            if upload_mode in ["merge_iou", "append"]:
+            if upload_mode in ["iou_merge", "append"]:
                 context.setdefault("annotation", {})
                 missing = []
                 for pred in preds:
