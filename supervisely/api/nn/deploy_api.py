@@ -563,12 +563,14 @@ class DeployApi:
         return task_info
 
     def _load_model_from_api(self, task_id, deploy_params, model_name: Optional[str] = None):
+        logger.info("Loading model")
         self._api.task.send_request(
             task_id,
             "deploy_from_api",
             data={"deploy_params": deploy_params, "model_name": model_name},
             raise_error=True,
         )
+        logger.info("Model loaded successfully")
 
     def find_serving_app_by_framework(self, framework: str):
         modules = self._api.app.get_list_ecosystem_modules(

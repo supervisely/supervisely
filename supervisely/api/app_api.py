@@ -1774,6 +1774,10 @@ class AppApi(TaskApi):
             else:
                 is_ready = True
                 break
+        if is_ready:
+            logger.info("App is ready for API calls")
+        else:
+            logger.info("App is not ready for API calls after all attempts")
         return is_ready
 
     def find_module_id_by_app_name(self, app_name):
