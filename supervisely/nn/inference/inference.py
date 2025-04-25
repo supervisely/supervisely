@@ -4103,7 +4103,7 @@ def upload_predictions(
                     missing, api.annotation.download_batch(dataset_id, missing)
                 ):
                     context["annotation"][image_id] = Annotation.from_json(
-                        ann_info.annotation, project_id
+                        ann_info.annotation, project_meta
                     )
                 for pred in preds:
                     pred.annotation = context["annotation"][pred.image_id].merge(pred.annotation)
