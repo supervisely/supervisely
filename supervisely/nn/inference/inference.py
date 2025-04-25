@@ -1919,7 +1919,7 @@ class Inference:
         if dataset_ids is None:
             dataset_ids = state.get("datasetIds", None)
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
-        inference_request.set_stage("dataset_info", {}).update(
+        inference_request.context.setdefault("dataset_info", {}).update(
             {ds_info.id: ds_info for ds_info in datasets_infos}
         )
         if dataset_ids is not None:
