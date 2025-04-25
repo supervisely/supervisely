@@ -2567,7 +2567,7 @@ class TrainApp:
                     export_weights[RuntimeType.TENSORRT] = tensorrt_path
             except Exception as e:
                 logger.error(f"Failed to export TensorRT model: {e}")
-                
+
         return export_weights
 
     def _upload_export_weights(
