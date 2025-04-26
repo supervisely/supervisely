@@ -369,6 +369,8 @@ class PointTracking(BaseTracking):
                 if video_interface.global_stop_indicatior:
                     return
 
+                geometries = [video_interface._crop_geometry(g) for g in geometries]
+                geometries = [g for g in geometries if g is not None]
                 geometries = [{"type": g.geometry_name(), "data": g.to_json()} for g in geometries]
                 predictions.append(geometries)
 
