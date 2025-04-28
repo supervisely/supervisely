@@ -3,12 +3,12 @@ import os
 import tempfile
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
 
 import numpy as np
 import requests
+from tqdm.auto import tqdm
 
-import supervisely.io.env as env
 from supervisely._utils import get_valid_kwargs, logger, rand_str
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
@@ -38,7 +38,6 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 
 if TYPE_CHECKING:
@@ -350,7 +349,6 @@ class PredictionSession:
         dataset_id: int = None,
         project_id: int = None,
         api: "Api" = None,
-        tqdm: tqdm_sly = None,
         **kwargs: dict,
     ):
         extra_input_args = ["image_id"]
@@ -382,9 +380,9 @@ class PredictionSession:
             kwargs["start_frame_index"] = kwargs["start_frame"]
         if "num_frames" in kwargs:
             kwargs["frames_count"] = kwargs["num_frames"]
-        self.kwargs = kwargs.copy()
-        if tqdm is not None:
-            kwargs["tqdm"] = tqdm
+        self.kwargs = kwargs
+        if kwargs.get("show_progress", False) and "tqdm" not in kwargs:
+            kwargs["tqdm"] = tqdm()
 
         # extra input args
         image_id = kwargs.get("image_id", None)
@@ -530,9 +528,10 @@ class PredictionSession:
     def session(self):
         from supervisely.nn.inference.session import SessionJSON
 
+        kwargs = {k: v for k, v in self.kwargs.items() if isinstance(v, (str, int, float))}
         if self._session is None:
             self._session = SessionJSON(
-                api=self.api, session_url=self._base_url, inference_settings=self.kwargs
+                api=self.api, session_url=self._base_url, inference_settings=kwargs
             )
         return self._session
 

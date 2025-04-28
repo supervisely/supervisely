@@ -203,7 +203,6 @@ class ModelAPI:
         conf: float = None,
         classes: List[str] = None,
         upload_mode: str = None,
-        tqdm: tqdm_sly = None,
         **kwargs,
     ) -> PredictionSession:
         extra_input_args = ["image_id"]
@@ -240,7 +239,6 @@ class ModelAPI:
             batch_size=batch_size,
             conf=conf,
             classes=classes,
-            tqdm=tqdm,
             **kwargs,
         )
 
@@ -255,9 +253,10 @@ class ModelAPI:
         conf: float = None,
         classes: List[str] = None,
         upload_mode: str = None,
-        tqdm: tqdm_sly = None,
         **kwargs,
     ) -> List[Prediction]:
+        if "show_progress" not in kwargs:
+            kwargs["show_progress"] = True
         return list(
             self.predict_detached(
                 input,
@@ -269,7 +268,6 @@ class ModelAPI:
                 conf,
                 classes,
                 upload_mode,
-                tqdm,
                 **kwargs,
             )
         )

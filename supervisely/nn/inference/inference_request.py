@@ -225,6 +225,7 @@ class InferenceRequest:
         for key in ["pending_results", "final_result", "created_at", "updated_at"]:
             status_data.pop(key, None)
         status_data.update(self.get_usage())
+        return status_data
 
 
 class GlobalProgress:
