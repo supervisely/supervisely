@@ -121,7 +121,7 @@ class SolutionsGraph(Widget):
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "1"] = arrow_line
         leader_line = "https://cdn.jsdelivr.net/npm/leader-line@1.0.7/leader-line.min.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "2"] = leader_line
-        script_path = "./sly/css/app/widgets/flow_diagram/script.js"
+        script_path = "./sly/css/app/widgets/solutions_graph/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):
