@@ -93,7 +93,7 @@ class ModelAPI:
         """Return a list of training experiments in Supervisely"""
         raise NotImplementedError
 
-    def healthcheck(self):
+    def is_deployed(self) -> bool:
         if self.task_id is not None:
             return self.api.task.is_ready(self.task_id)
         return self._post("is_ready", {})["status"] == "ready"

@@ -116,15 +116,10 @@ class NeuralNetworkApi:
     def list_deployed_models(
         self,
         workspace_id: int,
-        model_name: str = None,
-        framework: str = None,
-        model_id: str = None,
-        checkpoint: str = None,
         model: str = None,
+        framework: str = None,
         task_type: str = None,
     ) -> List[Dict]:
-        if not any([model_name, framework, model_id, checkpoint, model, task_type]):
-            raise ValueError("At least one filter parameter must be provided")
         # 1. Define apps
         categories = ["serve"]
         if framework is not None:

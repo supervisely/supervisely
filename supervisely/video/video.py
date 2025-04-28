@@ -539,6 +539,9 @@ class VideoFrameReader:
 
                 self.vr = decord.VideoReader(str(self.video_path))
             except ImportError:
+                default_logger.debug(
+                    "Decord is not installed. Falling back to OpenCV for video reading."
+                )
                 self.cap = cv2.VideoCapture(str(self.video_path))
 
     def close(self):
