@@ -1,11 +1,10 @@
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 
 from supervisely.annotation.annotation import Annotation
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.model.model_api import Prediction
-from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.frame_collection import FrameCollection
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -14,53 +13,38 @@ from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 
+def none_generator():
+    while True:
+        yield None
+
+
 def apply_boxmot(
     tracker,
     predictions: Union[List[Prediction], List[Annotation]],
     class_names: List[str],
-    frame_range: Optional[tuple] = None,
-    video_path: Optional[str] = None,
-    frames_count: Optional[int] = None,
+    frames: Optional[Iterable[np.ndarray]] = None,
 ) -> VideoAnnotation:
+    if frames is None:
+        frames = none_generator()
     results = []
     annotations = []
-    frame_indexes = None
-    if frame_range is not None:
-        frame_indexes = list(range(frame_range[0], frame_range[1] + 1))
-    if video_path is not None:
-        frame_reader = VideoFrameReader(video_path, frame_indexes)
-        frame_shape = frame_reader.frame_size()
-        if frames_count is None:
-            frames_count = frame_reader.frames_count()
-        if frame_indexes is None:
-            frame_indexes = list(range(frames_count))
-        for prediction, frame in zip(predictions, frame_reader):
-            if isinstance(prediction, Prediction):
-                annotation = prediction.annotation
-            else:
-                annotation = prediction
-            annotations.append(annotation)
-            detections = to_boxes(annotation, class_names)  # N x (x, y, x, y, conf, label)
-            tracks = tracker.update(
-                detections, frame
-            )  # M x (x, y, x, y, track_id, conf, label, det_id)
-            results.append(tracks)
-        return create_video_annotation(annotations, results, class_names, frame_shape, frames_count)
-    else:
-        if frame_indexes is None:
-            frame_indexes = list(range(len(predictions)))
-        for frame_index, prediction in zip(frame_indexes, predictions):
-            frame = prediction.load_image()
+    frames_count = 0
+    for prediction, frame in zip(predictions, frames):
+        frames_count += 1
+        if isinstance(prediction, Prediction):
             annotation = prediction.annotation
-            annotations.append(annotation)
-            detections = to_boxes(annotation, class_names)  # N x (x, y, x, y, conf, label)
-            tracks = tracker.update(
-                detections, frame
-            )  # M x (x, y, x, y, track_id, conf, label, det_id)
-            results.append(tracks)
-        return create_video_annotation(
-            annotations, results, class_names, list(frame.shape[:2]), frames_count
-        )
+            if frame is None:
+                frame = prediction.load_image()
+        else:
+            annotation = prediction
+        frame_shape = frame.shape[:2]
+        annotations.append(annotation)
+        detections = to_boxes(annotation, class_names)  # N x (x, y, x, y, conf, label)
+        tracks = tracker.update(
+            detections, frame
+        )  # M x (x, y, x, y, track_id, conf, label, det_id)
+        results.append(tracks)
+    return create_video_annotation(annotations, results, class_names, frame_shape, frames_count)
 
 
 def to_boxes(ann: Annotation, class_names: List[str]) -> np.ndarray:
