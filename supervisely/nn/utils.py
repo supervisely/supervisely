@@ -76,7 +76,9 @@ def get_gpu_usage(device: str = None):
         return None, None
     try:
         import torch
-    except ImportError:
+    except Exception as e:
+        from supervisely import logger
+        logger.warning(f"Cannot import torch. Install PyTorch to get GPU usage info. Error: {e}")
         return None, None
     if not torch.cuda.is_available():
         return None, None

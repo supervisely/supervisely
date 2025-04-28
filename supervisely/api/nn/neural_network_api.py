@@ -45,7 +45,7 @@ class NeuralNetworkApi:
         :type device: Optional[str]
         :param runtime: If specified, the model will be converted to the given format (e.g., "onnx", "tensorrt") and will be deployed in the corresponding accelerated runtime. This option is used for pretrained models. For custom models, the runtime will be defined automatically based on the model checkpoint.
         :type runtime: Optional[str]
-        :param workspace_id: Workspace ID, if not present will be defined automatically.
+        :param workspace_id: Workspace ID, if None, will be got from env.
         :type workspace_id: Optional[int]
         :param agent_id: Agent ID, if not present will be defined automatically.
         :type agent_id: Optional[int]
@@ -113,7 +113,7 @@ class NeuralNetworkApi:
             )
         return ModelAPI(self._api, task_id=task_info["id"])
 
-    def get_deployed_models(
+    def list_deployed_models(
         self,
         workspace_id: int,
         model_name: str = None,
@@ -161,7 +161,7 @@ class NeuralNetworkApi:
             result.append(
                 {
                     "task_info": task,
-                    "deploy_info": deploy_info,
+                    "model_info": deploy_info,
                 }
             )
         return result

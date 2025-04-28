@@ -342,7 +342,7 @@ class PredictionSession:
         self,
         url: str,
         input: Union[
-            np.ndarray, str, PathLike, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo, list
+            np.ndarray, str, PathLike, list
         ] = None,
         image_ids: List[int] = None,
         video_id: int = None,

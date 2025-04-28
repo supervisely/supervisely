@@ -38,13 +38,30 @@ class ModelAPI:
                 raise ValueError(f"Task with id {self.task_id} not found.")
             self.url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
 
-    # region Main
+    # region Requests
+    def _post(self, method: str, data: dict, raise_for_status: bool = True):
+        url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
+        response = requests.post(url, json=data)
+        if raise_for_status:
+            response.raise_for_status()
+        return response.json()
+
+    def _get(self, method: str, params: dict = None, raise_for_status: bool = True):
+        url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
+        response = requests.get(url, params=params)
+        if raise_for_status:
+            response.raise_for_status()
+        return response.json()
+
+    # ------------------------------------ #
+
+    # region Info
     def get_info(self):
         if self.task_id is not None:
             return self.api.nn._deploy_api.get_deploy_info(self.task_id)
         return self._post("get_deploy_info", {})
 
-    def get_default_settings(self):
+    def get_settings(self):
         if self.task_id is not None:
             return self.api.task.send_request(self.task_id, "get_custom_inference_settings", {})[
                 "settings"
@@ -174,24 +191,7 @@ class ModelAPI:
 
     # --------------------------------- #
 
-    # region HTTP
-    def _post(self, method: str, data: dict, raise_for_status: bool = True):
-        url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
-        response = requests.post(url, json=data)
-        if raise_for_status:
-            response.raise_for_status()
-        return response.json()
-
-    def _get(self, method: str, params: dict = None, raise_for_status: bool = True):
-        url = f"{self.url.rstrip('/')}/{method.lstrip('/')}"
-        response = requests.get(url, params=params)
-        if raise_for_status:
-            response.raise_for_status()
-        return response.json()
-
-    # ------------------------------------ #
-
-    # region Prediction
+    # region Predict
     def predict_detached(
         self,
         input: Union[np.ndarray, str, PathLike, list] = None,
@@ -245,14 +245,16 @@ class ModelAPI:
     def predict(
         self,
         input: Union[np.ndarray, str, PathLike, list] = None,
-        image_ids: List[int] = None,
-        video_id: int = None,
-        dataset_id: int = None,
-        project_id: int = None,
+        image_id: Union[List[int], int] = None,
+        video_id: Union[List[int], int] = None,
+        dataset_id: Union[List[int], int] = None,
+        project_id: Union[List[int], int] = None,
         batch_size: int = None,
         conf: float = None,
+        img_size: int = None,
         classes: List[str] = None,
         upload_mode: str = None,
+        recursive: bool = None,
         **kwargs,
     ) -> List[Prediction]:
         if "show_progress" not in kwargs:
@@ -260,7 +262,7 @@ class ModelAPI:
         return list(
             self.predict_detached(
                 input,
-                image_ids,
+                image_id,
                 video_id,
                 dataset_id,
                 project_id,
