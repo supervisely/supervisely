@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import base64
 import inspect
 import json
 import os
@@ -18,6 +19,7 @@ from queue import Queue
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
+import cv2
 import numpy as np
 import requests
 import uvicorn
@@ -1389,6 +1391,27 @@ class Inference:
         )
         return self._format_output(anns, slides_data)
 
+    def _inference_image_np(self, api: Api, state: dict):
+        def decode_image(encoded_str: bytes) -> np.ndarray:
+            encoded_bytes = encoded_str.encode("utf-8")
+            decoded_bytes = base64.b64decode(encoded_bytes)
+            img_array = np.frombuffer(decoded_bytes, np.uint8)
+            decoded_img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+            if decoded_img is None:
+                raise ValueError("Image decoding failed")
+            return decoded_img
+
+        logger.debug("Inferring image_np...", extra={"state": state})
+        settings = self._get_inference_settings(state)
+        image_np = decode_image(state["image_np"])
+        logger.debug("Inference settings:", extra=settings)
+        logger.debug(f"Image recieved")
+        anns, slides_data = self._inference_auto(
+            [image_np],
+            settings=settings,
+        )
+        return self._format_output(anns, slides_data)[0]
+
     def _inference_batch_ids(self, api: Api, state: dict):
         logger.debug("Inferring batch_ids...", extra={"state": state})
         settings = self._get_inference_settings(state)
@@ -2620,6 +2643,11 @@ class Inference:
         @server.post("/get_output_classes_and_tags")
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
+
+        @server.post("/inference_image_np")
+        def inference_image_np(request: Request):
+            logger.debug(f"'inference_image_np' request in json format:{request.state.state}")
+            return self._inference_image_np(request.state.api, request.state.state)
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
