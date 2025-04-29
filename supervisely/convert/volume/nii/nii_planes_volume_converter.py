@@ -227,7 +227,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         if json_map is not None:
             self._json_map = helper.read_json_map(json_map)
 
-        is_nii = lambda x: any(ext in x for ext in [".nii", ".nii.gz"])
+        is_nii = lambda x: any(x.endswith(ext) for ext in [".nii", ".nii.gz"])
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 path = os.path.join(root, file)
@@ -268,7 +268,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             objs = []
             spatial_figures = []
             ann_path = item.ann_data
-            ann_idx = item.custom_data["name_parts"].ending_idx
+            ann_idx = item.custom_data["name_parts"].ending_idx or 0
             for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
                 class_id = pixel_id if item.is_semantic else ann_idx
                 class_name = f"Segment_{class_id}"
