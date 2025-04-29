@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 from typing_extensions import Literal
 
 import supervisely.io.env as sly_env
+import supervisely.io.env as env
 from supervisely.api.nn.deploy_api import DeployApi
 from supervisely.sly_logger import logger
 
@@ -120,10 +121,11 @@ class NeuralNetworkApi:
 
     def list_deployed_models(
         self,
-        workspace_id: int,
         model: str = None,
         framework: str = None,
         task_type: str = None,
+        team_id: int = None,
+        workspace_id: int = None,
     ) -> List[Dict]:
         # 1. Define apps
         categories = ["serve"]
@@ -136,12 +138,38 @@ class NeuralNetworkApi:
             return []
         serve_apps_module_ids = {app["id"] for app in serve_apps}
         # 2. Get tasks infos
-        all_tasks = self._api.task.get_list(
-            workspace_id=workspace_id,
-            filters=[
-                {"field": "status", "operator": "in", "value": [str(self._api.task.Status.STARTED)]}
-            ],
-        )
+        if workspace_id is not None:
+            workspaces = [workspace_id]
+        elif team_id is not None:
+            workspaces = self._api.workspace.get_list(team_id)
+            workspaces = [workspace["id"] for workspace in workspaces]
+        else:
+            workspace_id = env.workspace_id(raise_not_found=False)
+            if workspace_id is None:
+                team_id = env.team_id(raise_not_found=False)
+                if team_id is None:
+                    raise ValueError(
+                        "Workspace ID and Team ID are not specified and cannot be found in the environment."
+                    )
+                workspaces = self._api.workspace.get_list(team_id)
+                workspaces = [workspace["id"] for workspace in workspaces]
+            else:
+                workspaces = [workspace_id]
+
+        all_tasks = []
+        for workspace_id in workspaces:
+            all_tasks.extend(
+                self._api.task.get_list(
+                    workspace_id=workspace_id,
+                    filters=[
+                        {
+                            "field": "status",
+                            "operator": "in",
+                            "value": [str(self._api.task.Status.STARTED)],
+                        }
+                    ],
+                )
+            )
         all_tasks = [
             task for task in all_tasks if task["meta"]["app"]["moduleId"] in serve_apps_module_ids
         ]
@@ -149,11 +177,10 @@ class NeuralNetworkApi:
         result = []
         for task in all_tasks:
             deploy_info = self._deploy_api.get_deploy_info(task["id"])
-            if model_name is not None:
-                if deploy_info["model_name"] != model_name:
-                    continue
-            if checkpoint is not None:
-                if deploy_info["checkpoint_name"] != checkpoint:
+            if model is not None:
+                checkpoint = deploy_info["checkpoint_name"]
+                deployed_model = deploy_info["model_name"]
+                if checkpoint != model and not model.endswith(deployed_model):
                     continue
             if task_type is not None:
                 if deploy_info["task_type"] != task_type:
