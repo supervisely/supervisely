@@ -833,6 +833,8 @@ class FigureApi(RemoveableBulkModuleApi):
             download_coroutine = api.image.figure.download_async(dataset_id)
             figures = sly.run_coroutine(download_coroutine)
         """
+        method = "figures.list"
+
         fields = [
             ApiField.ID,
             ApiField.CREATED_AT,
@@ -867,7 +869,7 @@ class FigureApi(RemoveableBulkModuleApi):
             }
 
             async with semaphore:
-                response = await self._api.post_async("figures.list", page_data)
+                response = await self._api.post_async(method, page_data)
                 response_json = response.json()
 
                 pages_count = response_json["pagesCount"]

@@ -140,7 +140,7 @@ ALT_INSTALL_REQUIRES = {
 
 
 def check_alternative_installation(install_require, alternative_install_requires):
-    """If some version version of alternative requirement installed, return alternative,
+    """If some version of alternative requirement installed, return alternative,
     else return main.
     """
     for alternative_install_require in alternative_install_requires:
