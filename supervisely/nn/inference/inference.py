@@ -2938,6 +2938,7 @@ class Inference:
             ram_allocated, ram_total = get_ram_usage()
             gpu_allocated, gpu_total = get_gpu_usage()
             return {
+                "is_deployed": self.is_model_deployed(),
                 "progress": progress,
                 "gpu_memory": {
                     "allocated": gpu_allocated,
