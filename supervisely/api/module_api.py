@@ -637,6 +637,10 @@ class ApiField:
     """"""
     SOURCE_BLOB = "sourceBlob"
     """"""
+    EMBEDDINGS_ENABLED = "embeddingsEnabled"
+    """"""
+    EMBEDDINGS_UPDATED_AT = "embeddingsUpdatedAt"
+    """"""
 
 
 def _get_single_item(items):
