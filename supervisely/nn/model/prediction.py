@@ -3,11 +3,10 @@ import os
 import tempfile
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import numpy as np
 import requests
-from tqdm.auto import tqdm
 
 from supervisely._utils import get_valid_kwargs, logger, rand_str
 from supervisely.annotation.annotation import Annotation
@@ -20,23 +19,16 @@ from supervisely.api.project_api import ProjectInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
-from supervisely.imaging._video import ALLOWED_VIDEO_EXTENSIONS
-from supervisely.imaging.image import SUPPORTED_IMG_EXTS
 from supervisely.imaging.image import read as read_image
 from supervisely.imaging.image import read_bytes as read_image_bytes
 from supervisely.imaging.image import write as write_image
 from supervisely.io.fs import (
     clean_dir,
     dir_empty,
-    dir_exists,
     ensure_base_path,
-    file_exists,
     get_file_ext,
-    list_files,
-    list_files_recursively,
     mkdir,
 )
-from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
 
@@ -270,12 +262,16 @@ class Prediction:
     def visualize(
         self,
         save_path: Optional[str] = None,
+        save_dir: Optional[str] = None,
         color: Optional[List[int]] = None,
         thickness: Optional[int] = None,
         opacity: Optional[float] = 0.5,
         draw_tags: Optional[bool] = False,
         fill_rectangles: Optional[bool] = True,
     ) -> np.ndarray:
+        if save_dir is not None and save_path is not None:
+            raise ValueError("Only one of save_path or save_dir can be provided.")
+
         mkdir(self._temp_dir)
         if not Prediction.__cleanup_registered:
             atexit.register(self._clear_temp_files)
@@ -291,6 +287,8 @@ class Prediction:
             output_path=None,
             fill_rectangles=fill_rectangles,
         )
+        if save_dir is not None:
+            save_path = save_dir
         if save_path is None:
             return img
         if Path(save_path).suffix == "":
@@ -315,264 +313,3 @@ class Prediction:
         write_image(save_path, img)
         logger.info("Visualization for prediction saved to %s", save_path)
         return img
-
-
-class PredictionSession:
-
-    class _Iterator:
-        def __init__(
-            self, source: Any, iterator: Iterator, items_kwargs: List[Dict] = None, **kwargs
-        ):
-            self.source = source
-            self.inner = iterator
-            self.items_kwargs = items_kwargs
-            self.kwargs = kwargs
-            self._index = -1
-
-        def __len__(self):
-            return len(self.inner)
-
-        def __next__(self):
-            prediction_json = self.inner.__next__()
-            self._index += 1
-            this_item_kwargs = self.items_kwargs[self._index] if self.items_kwargs else {}
-            return {**prediction_json, **self.kwargs, **this_item_kwargs, "source": self.source}
-
-    def __init__(
-        self,
-        url: str,
-        input: Union[
-            np.ndarray, str, PathLike, list
-        ] = None,
-        image_ids: List[int] = None,
-        video_id: int = None,
-        dataset_id: int = None,
-        project_id: int = None,
-        api: "Api" = None,
-        **kwargs: dict,
-    ):
-        extra_input_args = ["image_id"]
-        assert (
-            sum(
-                [
-                    x is not None
-                    for x in [
-                        input,
-                        image_ids,
-                        video_id,
-                        dataset_id,
-                        project_id,
-                        *[kwargs.get(extra_input, None) for extra_input in extra_input_args],
-                    ]
-                ]
-            )
-            == 1
-        ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
-
-        self._session = None
-        self._iterator = None
-        self._base_url = url
-        self.input = input
-        self.api = api
-        if "stride" in kwargs:
-            kwargs["step"] = kwargs["stride"]
-        if "start_frame" in kwargs:
-            kwargs["start_frame_index"] = kwargs["start_frame"]
-        if "num_frames" in kwargs:
-            kwargs["frames_count"] = kwargs["num_frames"]
-        self.kwargs = kwargs
-        if kwargs.get("show_progress", False) and "tqdm" not in kwargs:
-            kwargs["tqdm"] = tqdm()
-
-        # extra input args
-        image_id = kwargs.get("image_id", None)
-        if image_ids is not None:
-            if isinstance(image_ids, int):
-                image_id = image_ids
-                image_ids = None
-            elif len(image_ids) == 1:
-                image_id = image_ids[0]
-                image_ids = None
-
-        if not isinstance(input, list):
-            input = [input]
-        if len(input) == 0:
-            raise ValueError("Input cannot be empty.")
-        if isinstance(input[0], np.ndarray):
-            # input is numpy array
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_images_np_async, exclude=["images"]
-            )
-            self._iterator = self._Iterator(
-                self.input, self.session.inference_images_np_async(input, **kwargs)
-            )
-        elif isinstance(input[0], (str, PathLike)):
-            if len(input) > 1:
-                # if the input is a list of paths, assume they are images
-                for x in input:
-                    if not isinstance(x, (str, PathLike)):
-                        raise ValueError("Input must be a list of strings or PathLike objects.")
-                kwargs = get_valid_kwargs(
-                    kwargs, self.session.inference_image_paths_async, exclude=["image_paths"]
-                )
-                self._iterator = self._Iterator(
-                    self.input,
-                    self.session.inference_image_paths_async(input, **kwargs),
-                    items_kwargs=[{"path": x} for x in input],
-                )
-            else:
-                if dir_exists(input[0]):
-                    try:
-                        project = Project(str(input[0]), mode=OpenMode.READ)
-                    except Exception:
-                        project = None
-                    image_paths = []
-                    if project is not None:
-                        for dataset in project.datasets:
-                            dataset: Dataset
-                            for _, image_path, _ in dataset.items():
-                                image_paths.append(image_path)
-                    else:
-                        # if the input is a directory, assume it contains images
-                        recursive = kwargs.get("recursive", False)
-                        if recursive:
-                            image_paths = list_files_recursively(
-                                input[0], valid_extensions=SUPPORTED_IMG_EXTS
-                            )
-                        else:
-                            image_paths = list_files(input[0], valid_extensions=SUPPORTED_IMG_EXTS)
-                    kwargs = get_valid_kwargs(
-                        kwargs,
-                        self.session.inference_image_paths_async,
-                        exclude=["image_paths"],
-                    )
-                    if len(image_paths) == 0:
-                        raise ValueError("Directory is empty.")
-                    self._iterator = self._Iterator(
-                        self.input,
-                        self.session.inference_image_paths_async(image_paths, **kwargs),
-                        items_kwargs=[{"path": x} for x in image_paths],
-                    )
-                elif file_exists(input[0]):
-                    ext = get_file_ext(input[0])
-                    if ext == "":
-                        raise ValueError("File has no extension.")
-                    if ext in SUPPORTED_IMG_EXTS:
-                        kwargs = get_valid_kwargs(
-                            kwargs,
-                            self.session.inference_image_paths_async,
-                            exclude=["image_paths"],
-                        )
-                        self._iterator = self._Iterator(
-                            self.input,
-                            self.session.inference_image_paths_async([input[0]], **kwargs),
-                        )
-                    elif ext in ALLOWED_VIDEO_EXTENSIONS:
-                        kwargs = get_valid_kwargs(
-                            kwargs, self.session.inference_video_path_async, exclude=["video_path"]
-                        )
-                        self._iterator = self._Iterator(
-                            self.input,
-                            self.session.inference_video_path_async(input[0], **kwargs),
-                            path=input[0],
-                        )
-                    else:
-                        raise ValueError(
-                            f"Unsupported file extension: {ext}. Supported extensions are: {SUPPORTED_IMG_EXTS + ALLOWED_VIDEO_EXTENSIONS}"
-                        )
-                else:
-                    raise ValueError(f"File or directory does not exist: {input[0]}")
-        elif image_id is not None:
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
-            )
-            self._iterator = self._Iterator(
-                image_id, self.session.inference_image_ids_async([image_id], **kwargs)
-            )
-        elif image_ids is not None:
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_image_ids_async, exclude=["image_ids"]
-            )
-            self._iterator = self._Iterator(
-                image_ids, self.session.inference_image_ids_async(image_ids, **kwargs)
-            )
-        elif video_id is not None:
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_video_id_async, exclude=["video_id"]
-            )
-            self._iterator = self._Iterator(
-                video_id, self.session.inference_video_id_async(video_id, **kwargs)
-            )
-        elif dataset_id is not None:
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_project_id_async, exclude=["project_id"]
-            )
-            self._iterator = self._Iterator(
-                dataset_id,
-                self.session.inference_project_id_async(dataset_id, **kwargs),
-            )
-        elif project_id is not None:
-            kwargs = get_valid_kwargs(
-                kwargs, self.session.inference_project_id_async, exclude=["project_id"]
-            )
-            self._iterator = self._Iterator(
-                project_id,
-                self.session.inference_project_id_async(project_id, **kwargs),
-            )
-        else:
-            raise ValueError(
-                "Unknown input type. Supported types are: numpy array, path to a file or directory, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo."
-            )
-
-    @property
-    def session(self):
-        from supervisely.nn.inference.session import SessionJSON
-
-        kwargs = {k: v for k, v in self.kwargs.items() if isinstance(v, (str, int, float))}
-        if self._session is None:
-            self._session = SessionJSON(
-                api=self.api, session_url=self._base_url, inference_settings=kwargs
-            )
-        return self._session
-
-    def stop(self):
-        try:
-            self.session.stop_async_inference()
-            self.session._on_async_inference_end()
-        except Exception as e:
-            logger.warning("Failed to stop the session: %s", e, exc_info=True)
-
-    def next(self):
-        return self.__next__()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            self.stop()
-            return False
-
-    def __next__(self):
-        prediction_json = self._iterator.__next__()
-        prediction_json["source"] = self.input
-        prediction = Prediction.from_json(
-            prediction_json,
-            model_meta=self.session.get_model_meta(),
-        )
-        return prediction
-
-    def __iter__(self):
-        return self
-
-    def __len__(self):
-        return len(self._iterator)
-
-    def is_done(self):
-        return not self.session._get_inference_progress()["is_inferring"]
-
-    def status(self):
-        return self.session._get_inference_status()
-
-    def progress(self):
-        return self.session._get_inference_progress()["progress"]
