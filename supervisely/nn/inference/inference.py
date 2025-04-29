@@ -1490,10 +1490,21 @@ class Inference:
 
     # pylint: enable=method-hidden
     def _get_inference_settings_from_state(self, state: dict):
-        settings = state.get("settings", {})
+        settings = state.get("settings")
+        if settings is None:
+            settings = {}
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
-        settings = self._get_inference_settings(settings)
+        conf = settings.get("conf", None)
+        if conf is not None:
+            settings = self.set_conf_auto(conf, settings)
+        settings["sliding_window_mode"] = self.sliding_window_mode
+        for key, value in self.custom_inference_settings_dict.items():
+            if key not in settings:
+                logger.debug(
+                    f"Field {key} not found in inference settings. Use default value {value}"
+                )
+                settings[key] = value
         return settings
 
     def _get_batch_size_from_state(self, state: dict):
@@ -3617,6 +3628,8 @@ def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
         "uuid": inference_request.uuid,
         "progress": progress,
         "is_inferring": inference_request.is_inferring(),
+        "stopped": inference_request.stopped,
+        "finished": inference_request.is_finished(),
         "cancel_inference": inference_request.is_stopped(),
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
