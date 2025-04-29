@@ -25,12 +25,14 @@ class RadioGroup(ConditionalWidget):
         direction: Literal["vertical", "horizontal"] = "horizontal",
         gap: int = 10,
         widget_id: str = None,
+        button_style: bool = False,
     ) -> RadioGroup:
 
         self._changes_handled = False
         self._size = size
         self._gap = gap
         self._value = None
+        self._button_style = button_style
 
         self._flex_direction = "row"
         if direction == "vertical":
