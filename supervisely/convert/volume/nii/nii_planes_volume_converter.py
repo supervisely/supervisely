@@ -81,9 +81,6 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
 
         volumes_dict = defaultdict(list)
         ann_dict = defaultdict(list)
-
-        volumes_uuid = defaultdict(lambda: defaultdict(list))
-        ann_uuid = defaultdict(lambda: defaultdict(list))
         cls_color_map = None
 
         for root, _, files in os.walk(self._input_data):
@@ -100,7 +97,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         )
                         continue
 
-                    dict_to_use = ann_uuid if name_parts.is_ann else volumes_uuid
+                    dict_to_use = ann_dict if name_parts.is_ann else volumes_dict
                     key = (
                         name_parts.plane
                         if name_parts.patient_uuid is None and name_parts.case_uuid is None
@@ -114,22 +111,22 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         logger.warning(f"Failed to read class color map from {path}.")
 
         self._items = []
-        for prefix, paths in volumes_dict.items():
+        for key, paths in volumes_dict.items():
             if len(paths) == 1:
                 item = self.Item(item_path=paths[0])
-                item.ann_data = ann_dict.get(prefix, [])
+                item.ann_data = ann_dict.get(key, [])
                 item.is_semantic = len(item.ann_data) == 1
                 if cls_color_map is not None:
                     item.custom_data["cls_color_map"] = cls_color_map
                 self._items.append(item)
             elif len(paths) > 1:
                 logger.info(
-                    f"Found {len(paths)} volumes with prefix {prefix}. Will try to match them by directories."
+                    f"Found {len(paths)} volumes with key {key}. Will try to match them by directories."
                 )
                 for path in paths:
                     item = self.Item(item_path=path)
                     possible_ann_paths = []
-                    for ann_path in ann_dict.get(prefix, []):
+                    for ann_path in ann_dict.get(key, []):
                         if Path(ann_path).parent == Path(path).parent:
                             possible_ann_paths.append(ann_path)
                     item.ann_data = possible_ann_paths
