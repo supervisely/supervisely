@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 from typing_extensions import Literal
 
+import supervisely.io.env as sly_env
 from supervisely.api.nn.deploy_api import DeployApi
 from supervisely.sly_logger import logger
-import supervisely.io.env as sly_env
+
 if TYPE_CHECKING:
     from supervisely.api.api import Api
     from supervisely.nn.experiments import ExperimentInfo
@@ -66,13 +67,17 @@ class NeuralNetworkApi:
         pretrained = None
         team_id = None
         if workspace_id is None:
-            workspace_id = sly_env.workspace_id()
+            workspace_id = sly_env.workspace_id(raise_not_found=False)
+        if workspace_id is None:
+            raise ValueError(
+                "Workspace ID is not specified and cannot be found in the environment."
+            )
         if team_id is None:
             workspace_info = self._api.workspace.get_info_by_id(workspace_id)
             team_id = workspace_info.team_id
         if agent_id is None:
             agent_id = self._deploy_api._find_agent(team_id)
-        
+
         if model.startswith("/"):
             checkpoint = model
         else:
