@@ -16,7 +16,7 @@ from typing import (
 
 import requests
 
-from supervisely._utils import batched, camel_to_snake
+from supervisely._utils import batched, camel_to_snake, logger, run_coroutine
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
@@ -725,49 +725,64 @@ class ModuleApiBase(_JsonConvertibleModule):
         :param return_first_response: Specify if return first response
         :type return_first_response: bool, optional
         """
+        try:
+            return self.get_list_all_pages_fast(
+                method=method,
+                data=data,
+                progress_cb=progress_cb,
+                convert_json_info_cb=convert_json_info_cb,
+                limit=limit,
+                return_first_response=return_first_response,
+            )
+        except Exception as e:
+            logger.debug(
+                "Getting list of all pages asynchronously failed. Trying synchronously.", exc_info=e
+            )
 
-        if convert_json_info_cb is None:
-            convert_func = self._convert_json_info
-        else:
-            convert_func = convert_json_info_cb
+            if convert_json_info_cb is None:
+                convert_func = self._convert_json_info
+            else:
+                convert_func = convert_json_info_cb
 
-        if ApiField.SORT not in data:
-            data = self._add_sort_param(data)
-        first_response = self._api.post(method, data).json()
-        total = first_response["total"]
-        per_page = first_response["perPage"]
-        pages_count = first_response["pagesCount"]
+            if ApiField.SORT not in data:
+                data = self._add_sort_param(data)
+            first_response = self._api.post(method, data).json()
+            total = first_response["total"]
+            per_page = first_response["perPage"]
+            pages_count = first_response["pagesCount"]
 
-        limit_exceeded = False
-        results = first_response["entities"]
-        if limit is not None and len(results) > limit:
-            limit_exceeded = True
+            limit_exceeded = False
+            results = first_response["entities"]
+            if limit is not None and len(results) > limit:
+                limit_exceeded = True
 
-        if progress_cb is not None:
-            progress_cb(len(results))
-        if (pages_count == 1 and len(results) == total) or limit_exceeded is True:
-            pass
-        else:
-            for page_idx in range(2, pages_count + 1):
-                temp_resp = self._api.post(method, {**data, "page": page_idx, "per_page": per_page})
-                temp_items = temp_resp.json()["entities"]
-                results.extend(temp_items)
-                if progress_cb is not None:
-                    progress_cb(len(temp_items))
-                if limit is not None and len(results) > limit:
-                    limit_exceeded = True
-                    break
+            if progress_cb is not None:
+                progress_cb(len(results))
+            if (pages_count == 1 and len(results) == total) or limit_exceeded is True:
+                pass
+            else:
+                for page_idx in range(2, pages_count + 1):
+                    temp_resp = self._api.post(
+                        method, {**data, "page": page_idx, "per_page": per_page}
+                    )
+                    temp_items = temp_resp.json()["entities"]
+                    results.extend(temp_items)
+                    if progress_cb is not None:
+                        progress_cb(len(temp_items))
+                    if limit is not None and len(results) > limit:
+                        limit_exceeded = True
+                        break
 
-            if len(results) != total and limit is None:
-                raise RuntimeError(
-                    "Method {!r}: error during pagination, some items are missed".format(method)
-                )
+                if len(results) != total and limit is None:
+                    raise RuntimeError(
+                        "Method {!r}: error during pagination, some items are missed".format(method)
+                    )
 
-        if limit is not None:
-            results = results[:limit]
-        if return_first_response:
-            return [convert_func(item) for item in results], first_response
-        return [convert_func(item) for item in results]
+            if limit is not None:
+                results = results[:limit]
+            if return_first_response:
+                return [convert_func(item) for item in results], first_response
+            return [convert_func(item) for item in results]
 
     def get_list_all_pages_generator(
         self,
@@ -1024,6 +1039,129 @@ class ModuleApiBase(_JsonConvertibleModule):
                 yield items
             else:
                 break
+
+    async def get_list_all_pages_async(
+        self,
+        method,
+        data,
+        progress_cb=None,
+        convert_json_info_cb=None,
+        limit: int = None,
+        return_first_response: bool = False,
+        semaphore: Optional[List[asyncio.Semaphore]] = None,
+    ):
+        """
+        Get list of all or limited quantity entities from the Supervisely server.
+        """
+
+        if convert_json_info_cb is None:
+            convert_func = self._convert_json_info
+        else:
+            convert_func = convert_json_info_cb
+
+        if ApiField.SORT not in data:
+            data = self._add_sort_param(data)
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        # Get first page to determine pagination details
+        first_page_data = {**data, "page": 1}
+        first_response = await self._api.post_async(method, first_page_data)
+        first_response_json = first_response.json()
+
+        total = first_response_json["total"]
+        per_page = first_response_json["perPage"]
+        pages_count = first_response_json["pagesCount"]
+
+        results = first_response_json["entities"]
+        if progress_cb is not None:
+            progress_cb(len(results))
+
+        # If only one page or limit is already exceeded with first page
+        if (pages_count == 1 and len(results) == total) or (
+            limit is not None and len(results) >= limit
+        ):
+            if limit is not None:
+                results = results[:limit]
+            if return_first_response:
+                return [convert_func(item) for item in results], first_response_json
+            return [convert_func(item) for item in results]
+
+        # Process remaining pages concurrently
+        async def fetch_page(page_num):
+            async with semaphore:
+                page_data = {**data, "page": page_num, "per_page": per_page}
+                response = await self._api.post_async(method, page_data)
+                response_json = response.json()
+                page_items = response_json.get("entities", [])
+                if progress_cb is not None:
+                    progress_cb(len(page_items))
+                return page_items
+
+        # Create tasks for all remaining pages
+        tasks = []
+        for page_num in range(2, pages_count + 1):
+            tasks.append(asyncio.create_task(fetch_page(page_num)))
+
+        # Wait for all tasks to complete
+        for task in asyncio.as_completed(tasks):
+            page_items = await task
+            results.extend(page_items)
+            if limit is not None and len(results) >= limit:
+                break
+
+        if len(results) != total and limit is None:
+            raise RuntimeError(f"Method {method!r}: error during pagination, some items are missed")
+
+        if limit is not None:
+            results = results[:limit]
+
+        return [convert_func(item) for item in results]
+
+    def get_list_all_pages_fast(
+        self,
+        method,
+        data,
+        progress_cb=None,
+        convert_json_info_cb=None,
+        limit: int = None,
+        return_first_response: bool = False,
+        semaphore: Optional[List[asyncio.Semaphore]] = None,
+    ):
+        """
+        Get list of all or limited quantity entities from the Supervisely server.
+
+        :param method: Request method name
+        :type method: str
+        :param data: Dictionary with request body info
+        :type data: dict
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: Progress, optional
+        :param convert_json_info_cb: Function for convert json info
+        :type convert_json_info_cb: Callable, optional
+        :param limit: Number of entity to retrieve
+        :type limit: int, optional
+        :param return_first_response: Specify if return first response
+        :type return_first_response: bool, optional
+        :param semaphore: Semaphore for limiting the number of simultaneous requests.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :return: List of entities.
+        :rtype: List[NamedTuple]
+        :raises RuntimeError: If the number of items retrieved does not match the expected total.
+        """
+
+        return run_coroutine(
+            self.get_list_all_pages_async(
+                method,
+                data,
+                progress_cb=progress_cb,
+                convert_json_info_cb=convert_json_info_cb,
+                limit=limit,
+                return_first_response=return_first_response,
+                semaphore=semaphore,
+            )
+        )
 
 
 class ModuleApi(ModuleApiBase):
