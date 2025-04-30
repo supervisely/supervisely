@@ -322,6 +322,8 @@ def download_fast(
     :type download_blob_files: :class:`bool`, optional
     :param project_info: Project info object. To avoid additional API requests.
     :type project_info: :class:`ProjectInfo`, optional
+    :param skip_create_readme: Skip creating README.md file. Default is False.
+    :type skip_create_readme: bool, optional
     :return: None
     :rtype: NoneType
 
