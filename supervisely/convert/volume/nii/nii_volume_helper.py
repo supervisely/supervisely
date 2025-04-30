@@ -193,6 +193,11 @@ class AnnotationMatcher:
                     logger.warning(f"Failed to parse annotation name: {ann_file}")
                     continue
                 match = find_best_volume_match_for_ann(ann_name, volume_names)
+                if match.plane != ann_name.plane:
+                    logger.warning(
+                        f"Plane mismatch: {match.plane} != {ann_name.plane} for {ann_file}. Skipping."
+                    )
+                    continue
                 if match is not None:
                     item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
 
@@ -358,18 +363,20 @@ def find_best_volume_match_for_ann(ann, volumes):
     Prefers an exact match where all fields except `type` are the same, and `type` is 'anatomic'.
     Returns the matched NameParts object or None if not found.
     """
+    volume_names = [volume.full_name for volume in volumes]
+    ann_name = ann.full_name
     # Prefer exact match except for type
     for vol in volumes:
-        if vol.name_no_ext.replace(ann.type, "anatomic") == vol.name_no_ext:
+        if vol.name_no_ext == ann.name_no_ext.replace(ann.type, "anatomic"):
             logger.debug(
                 "Found exact match for annotation.",
-                extra={"ann": ann, "vol": vol},
+                extra={"ann": ann_name, "vol": vol.full_name},
             )
             return vol
 
     logger.debug(
         "Failed to find exact match, trying to find a fallback match UUIDs.",
-        extra={"ann": ann, "volumes": volumes},
+        extra={"ann": ann_name, "volumes": volume_names},
     )
 
     # Fallback: match by plane and patient_uuid, type='anatomic'
@@ -381,13 +388,13 @@ def find_best_volume_match_for_ann(ann, volumes):
         ):
             logger.debug(
                 "Found fallback match for annotation by UUIDs.",
-                extra={"ann": ann, "vol": vol},
+                extra={"ann": ann_name, "vol": vol.full_name},
             )
             return vol
 
     logger.debug(
         "Failed to find fallback match, trying to find a fallback match by plane.",
-        extra={"ann": ann, "volumes": volumes},
+        extra={"ann": ann_name, "volumes": volume_names},
     )
 
     # Fallback: match by plane and type='anatomic'
@@ -395,13 +402,13 @@ def find_best_volume_match_for_ann(ann, volumes):
         if vol.plane == ann.plane:
             logger.debug(
                 "Found fallback match for annotation by plane.",
-                extra={"ann": ann, "vol": vol},
+                extra={"ann": ann_name, "vol": vol.full_name},
             )
             return vol
 
     logger.debug(
         "Failed to find any match for annotation.",
-        extra={"ann": ann, "volumes": volumes},
+        extra={"ann": ann_name, "volumes": volume_names},
     )
 
     return None
