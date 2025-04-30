@@ -5,7 +5,6 @@ import nrrd
 import numpy as np
 from pathlib import Path
 from collections import defaultdict, namedtuple
-from collections import namedtuple
 
 from supervisely import Api
 from supervisely.collection.str_enum import StrEnum
@@ -193,12 +192,12 @@ class AnnotationMatcher:
                     logger.warning(f"Failed to parse annotation name: {ann_file}")
                     continue
                 match = find_best_volume_match_for_ann(ann_name, volume_names)
-                if match.plane != ann_name.plane:
-                    logger.warning(
-                        f"Plane mismatch: {match.plane} != {ann_name.plane} for {ann_file}. Skipping."
-                    )
-                    continue
                 if match is not None:
+                    if match.plane != ann_name.plane:
+                        logger.warning(
+                            f"Plane mismatch: {match.plane} != {ann_name.plane} for {ann_file}. Skipping."
+                        )
+                        continue
                     item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
 
         # Mark volumes having only one matching item as semantic and validate shape.
