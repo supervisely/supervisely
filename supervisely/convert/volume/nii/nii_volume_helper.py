@@ -296,7 +296,7 @@ NameParts = namedtuple(
 
 
 def parse_name_parts(full_name: str) -> NameParts:
-    import re
+    from uuid import UUID
 
     name = get_file_name(full_name)
     if name.endswith(".nii"):
@@ -328,22 +328,40 @@ def parse_name_parts(full_name: str) -> NameParts:
     patient_uuid = None
     case_uuid = None
 
-    uuid_pattern = re.compile(
-        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
-    )
+    if len(name_no_ext) > 73:
+        try:
+            uuids = name_no_ext[:73].split("_")
+            if len(uuids) != 2:
+                raise ValueError("Invalid UUID format")
+            patient_uuid = UUID(name_no_ext[:36])
+            case_uuid = UUID(name_no_ext[37:73])
+        except ValueError:
+            logger.debug(
+                f"Failed to parse UUIDs from name: {name_no_ext}.",
+                extra={"full_name": full_name},
+            )
+            patient_uuid = None
+            case_uuid = None
 
-    uuids = uuid_pattern.findall(name)
-    if len(uuids) > 0:
-        patient_uuid = uuids[0]
-    if len(uuids) > 1:
-        case_uuid = uuids[1]
+    # joint = None
+    # side = None
+    # arbituary = None
+    # sequence_prefix = None
+    # ending_idx = re.search(r"_(\d+)(?:\.[^.]+)+$", full_name)
+    # ending_idx = ending_idx.start() if ending_idx else None
 
-    joint = None
-    side = None
-    arbituary = None
-    sequence_prefix = None
-    ending_idx = re.search(r"_(\d+)(?:\.[^.]+)+$", full_name)
-    ending_idx = ending_idx.start() if ending_idx else None
+    try:
+        ending_idx = name_no_ext.split("_")[-1]
+        if ending_idx.isdigit():
+            ending_idx = int(ending_idx)
+        else:
+            ending_idx = None
+    except ValueError:
+        ending_idx = None
+        logger.debug(
+            f"Failed to parse ending index from name: {name_no_ext}.",
+            extra={"full_name": full_name},
+        )
 
     return NameParts(
         full_name=full_name,
