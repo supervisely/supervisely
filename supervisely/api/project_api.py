@@ -24,7 +24,7 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from supervisely import logger
 from supervisely._utils import (
@@ -2172,19 +2172,28 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False})
 
-    def set_embeddings_updated_at(self, id: int, time: Optional[datetime] = None) -> None:
+    def set_embeddings_updated_at(
+        self, id: int, time: Optional[Union[datetime, str]] = None
+    ) -> None:
         """
         Set embeddings updated at for the project.
 
         :param id: Project ID
         :type id: int
         :param time: Time to set. If None, current time will be set.
-        :type time: Optional[datetime], default None
+        :type time: Optional[Union[datetime, str]]
         :return: None
         :rtype: :class:`NoneType`
         """
         if time is None:
-            time = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-        else:
+            time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif isinstance(time, datetime):
             time = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        elif isinstance(time, str):
+            try:
+                datetime.strptime(time, "%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
+                raise ValueError("time should be in format 'YYYY-MM-DDTHH:MM:SSZ' or None")
+        else:
+            raise ValueError("time should be in format 'YYYY-MM-DDTHH:MM:SSZ' or None")
         self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time})
