@@ -343,13 +343,6 @@ def parse_name_parts(full_name: str) -> NameParts:
             patient_uuid = None
             case_uuid = None
 
-    # joint = None
-    # side = None
-    # arbituary = None
-    # sequence_prefix = None
-    # ending_idx = re.search(r"_(\d+)(?:\.[^.]+)+$", full_name)
-    # ending_idx = ending_idx.start() if ending_idx else None
-
     try:
         ending_idx = name_no_ext.split("_")[-1]
         if ending_idx.isdigit():

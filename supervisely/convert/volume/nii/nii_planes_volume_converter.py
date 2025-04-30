@@ -262,8 +262,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         renamed_tags: dict = None,
     ) -> VolumeAnnotation:
         """Convert to Supervisely format."""
-        import re
-
         try:
             objs = []
             spatial_figures = []
