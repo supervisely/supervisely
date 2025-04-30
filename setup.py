@@ -97,7 +97,7 @@ INSTALL_REQUIRES = [
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.8.2",
+    "pydantic>=1.7.4, <=2.11.3",
     "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "fastapi>=0.79.0, <=0.109.0",
     "websockets>=10.3, <=13.1",
