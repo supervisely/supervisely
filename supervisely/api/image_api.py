@@ -66,6 +66,7 @@ from supervisely.api.module_api import (
     _get_single_item,
 )
 from supervisely.imaging import image as sly_image
+from supervisely.io.env import app_categories, increment_upload_count
 from supervisely.io.fs import (
     OFFSETS_PKL_BATCH_SIZE,
     OFFSETS_PKL_SUFFIX,
@@ -2543,6 +2544,13 @@ class ImageApi(RemoveableBulkModuleApi):
                             info_json_copy[ApiField.EXT] = info_json[ApiField.MIME].split("/")[1]
                         # results.append(self.InfoType(*[info_json_copy[field_name] for field_name in self.info_sequence()]))
                         results.append(self._convert_json_info(info_json_copy))
+
+                    try:
+                        if "import" in app_categories() and len(batch_names) > 0:
+                            increment_upload_count(dataset_id, len(batch_names))
+                    except:
+                        pass
+
                     break
                 except HTTPError as e:
                     error_details = e.response.json().get("details", {})
