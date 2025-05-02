@@ -306,10 +306,10 @@ class TrainValSplits(Widget):
         else:
             raise ValueError("Split value must be 'train', 'training', 'val' or 'validation'")
 
-    def get_train_split_percent(self) -> List[int]:
+    def get_train_split_percent(self) -> int:
         return self._random_splits_table.get_train_split_percent()
 
-    def get_val_split_percent(self) -> List[int]:
+    def get_val_split_percent(self) -> int:
         return 100 - self._random_splits_table.get_train_split_percent()
 
     def set_tags_splits(
