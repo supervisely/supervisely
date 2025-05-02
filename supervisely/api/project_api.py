@@ -99,6 +99,7 @@ class ProjectInfo(NamedTuple):
     created_by_id: int
     embeddings_enabled: bool = False
     embeddings_updated_at: Optional[str] = None
+    embeddings_in_progress: Optional[bool] = None
 
     @property
     def image_preview_url(self):
@@ -199,6 +200,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.CREATED_BY_ID,
             ApiField.EMBEDDINGS_ENABLED,
             ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.EMBEDDINGS_IN_PROGRESS,
         ]
 
     @staticmethod
@@ -2197,3 +2199,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         else:
             raise ValueError("time should be in format 'YYYY-MM-DDTHH:MM:SSZ' or None")
         self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time})
+
+    def set_embeddings_in_progress(self, id: int, status: bool) -> None:
+        """
+        Set embeddings in progress status for the project.
+        :param id: Project ID
+        :type id: int
+        :param status: Status to set. If True, embeddings are in progress right now.
+        :type status: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.embeddings-in-progress.update",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: status},
+        )
