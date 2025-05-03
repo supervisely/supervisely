@@ -1,20 +1,22 @@
 import os
+from collections import defaultdict, namedtuple
+from pathlib import Path
 from typing import Generator
 
 import nrrd
 import numpy as np
-from pathlib import Path
-from collections import defaultdict, namedtuple
 
-from supervisely import Api
+from supervisely import Api, ProjectMeta, TagApplicableTo, TagMeta, TagValueType, logger
 from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, get_file_ext, get_file_name
 from supervisely.sly_logger import logger
 from supervisely.volume.volume import convert_3d_nifti_to_nrrd
+from supervisely.volume_annotation.volume_tag import VolumeTag
 
 VOLUME_NAME = "anatomic"
 LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
+SCORE_NAME = "score"
 
 
 class PlanePrefix(str, StrEnum):
@@ -118,9 +120,9 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
 
 
 class AnnotationMatcher:
-    def __init__(self, items, dataset_id):
+    def __init__(self, items, ds_info):
         self._items = items
-        self._ds_id = dataset_id
+        self._ds_info = ds_info
         self._ann_paths = defaultdict(list)
 
         self._item_by_filename = {}
@@ -139,7 +141,7 @@ class AnnotationMatcher:
         self._volumes = None
 
     def get_volumes(self, api: Api):
-        dataset_info = api.dataset.get_info_by_id(self._ds_id)
+        dataset_info = self._ds_info
         datasets = {dataset_info.name: dataset_info}
         project_id = dataset_info.project_id
         if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
@@ -165,9 +167,7 @@ class AnnotationMatcher:
         self._volumes = volumes
 
     def match_items(self):
-        """Match annotation files with corresponding volumes using regex-based matching."""
-        import re
-
+        """Match annotation files with corresponding volumes."""
         item_to_volume = {}
 
         # Perform matching
@@ -193,11 +193,6 @@ class AnnotationMatcher:
                     continue
                 match = find_best_volume_match_for_ann(ann_name, volume_names)
                 if match is not None:
-                    if match.plane != ann_name.plane:
-                        logger.warning(
-                            f"Plane mismatch: {match.plane} != {ann_name.plane} for {ann_file}. Skipping."
-                        )
-                        continue
                     item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
 
         # Mark volumes having only one matching item as semantic and validate shape.
@@ -305,9 +300,11 @@ def parse_name_parts(full_name: str) -> NameParts:
     type = None
     is_ann = False
     if VOLUME_NAME in full_name:
-        type = "anatomic"
+        type = VOLUME_NAME
     else:
         type = next((part for part in LABEL_NAME if part in full_name), None)
+        if type is None and SCORE_NAME in name:
+            type = SCORE_NAME
         is_ann = type is not None
 
     if type is None:
@@ -422,3 +419,33 @@ def find_best_volume_match_for_ann(ann, volumes):
     )
 
     return None
+
+
+def get_score_tags_json(api: Api, volume_info, item, tag_meta):
+    # expected json structure
+    # {
+    #     "tagId": 25926,
+    #     "figureId": 652959,
+    #     "value": None
+    # },
+    volume_ann = api.volume.annotation.download(volume_info.id)
+    tag_id = tag_meta.sly_id
+    tags = []
+    class_idx_to_id = {}  # todo move to format validation or upper
+    for layer_idx, scores in item.custom_data["layer_to_scores"].items():
+        for label_idx, score in scores:
+            class_name = f"Segment_{label_idx}"
+            cls_color_map = item.custom_data.get("cls_color_map", None)
+            if cls_color_map:
+                class_name, _ = cls_color_map.get(label_idx, None)
+            # todo: this is probably wrong, change to idx of figure
+            print(volume_ann)
+            figure_id = NotImplemented
+            tags.append(
+                {
+                    "tagId": tag_id,
+                    "figureId": figure_id,
+                    "value": score,
+                }
+            )
+    return tags

@@ -2,7 +2,8 @@ import os
 from collections import defaultdict
 from pathlib import Path
 
-from supervisely import ProjectMeta, logger, Api
+from supervisely import Api, ProjectMeta, TagApplicableTo, TagMeta, TagValueType, logger
+from supervisely._utils import batched, is_development
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.convert.volume.nii import nii_volume_helper as helper
 from supervisely.convert.volume.nii.nii_volume_converter import NiiConverter
@@ -12,7 +13,7 @@ from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursivel
 from supervisely.volume.volume import is_nifti_file
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely._utils import batched, is_development
+from supervisely.volume_annotation.volume_tag import VolumeTag
 
 
 class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
@@ -182,9 +183,10 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
 
     class Item(VolumeConverter.BaseItem):
         def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
             self._is_semantic = False
             self.volume_meta = None
+            self._is_scores = kwargs.pop("is_scores", False)
+            super().__init__(*args, **kwargs)
 
         @property
         def is_semantic(self) -> bool:
@@ -200,13 +202,16 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._json_map = None
+        self._score_tag_meta = TagMeta(
+            "score", TagValueType.ANY_NUMBER, applicable_to=TagApplicableTo.OBJECTS_ONLY
+        )
 
     def __str__(self):
         return "nii_custom_ann"
 
     def validate_format(self) -> bool:
         try:
-            from nibabel import load, filebasedimages
+            from nibabel import filebasedimages, load
         except ImportError:
             raise ImportError(
                 "No module named nibabel. Please make sure that module is installed from pip and try again."
@@ -247,12 +252,60 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
 
+        scores = {}
+        csvs = list_files_recursively(self._input_data, [".csv"], None, True)
+        if csvs:
+            scores = {Path(csv).name: csv for csv in csvs}
+
+        scores_found = False
+        for name, table_path in scores.items():
+            layer_to_scores = defaultdict(list)
+            try:
+                with open(table_path, "r") as f:
+                    lines = f.readlines()
+            except Exception as e:
+                logger.warning(f"Failed to read CSV file: {e}")
+                continue
+            try:
+                name_parts = helper.parse_name_parts(name)
+            except Exception as e:
+                logger.warning(f"Failed to parse name parts from {name}: {e}")
+                continue
+            header = lines.pop(0).strip().replace("\n", "").replace("Label-", "").split(",")
+            for line in lines:
+                line_values = line.strip().replace("\n", "").split(",")
+                layer_idx = int(line_values.pop(0))
+                for i, value in enumerate(line_values, start=1):
+                    if value == "":
+                        continue
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        logger.warning(f"Failed to convert value to float: {value}")
+                        continue
+                    try:
+                        label_idx = int(header[i])
+                    except ValueError:
+                        logger.warning(f"Failed to convert header index to int: {header[i]}")
+                        continue
+                    layer_to_scores[layer_idx].append((label_idx, value))
+            item = self.Item(
+                item_path=None,
+                ann_data=table_path,
+                custom_data={"layer_to_scores": layer_to_scores},
+                is_scores=True,
+            )
+            self._items.append(item)
+            scores_found = True
+
         obj_classes = None
         if cls_color_map is not None:
             obj_classes = [ObjClass(name, Mask3D, color) for name, color in cls_color_map.values()]
 
-        self._meta = ProjectMeta(obj_classes=obj_classes)
-        return len(self._items) > 0
+        self._meta = ProjectMeta(
+            obj_classes=obj_classes, tag_metas=[self._score_tag_meta] if scores_found else None
+        )
+        return self.items_count > 0
 
     def to_supervisely(
         self,
@@ -293,9 +346,19 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
     def upload_dataset(
         self, api: Api, dataset_id: int, batch_size: int = 50, log_progress=True
     ) -> None:
-        meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
+        meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
+        res_ds_info = api.dataset.get_info_by_id(dataset_id)
+        # score_items = [item for item in self._items if getattr(item, "_is_scores", False)]
+        # if score_items:
+        #     score_tag_id = self._score_tag_meta.sly_id
+        #     tags_list = [
+        #         helper.get_score_tags_json(item, renamed_tags, score_tag_id) for item in score_items
+        #     ]
+        #     api.volume.tag.add_to_objects(project_id, tags_list, batch_size, log_progress)
 
-        matcher = helper.AnnotationMatcher(self._items, dataset_id)
+        # self._items = [item for item in self._items if not getattr(item, "_is_scores", False)]
+
+        matcher = helper.AnnotationMatcher(self._items, res_ds_info)
         if self._json_map is not None:
             try:
                 matched_dict = matcher.match_from_json(api, self._json_map)
@@ -327,8 +390,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         else:
             progress_cb = None
 
+        score_items = []
         for item, volume in matched_dict.items():
             item.volume_meta = volume.meta
+            if item._is_scores:
+                score_items.append((item, volume))
+                continue
             ann = self.to_supervisely(item, meta, renamed_classes, None)
             if self._meta_changed:
                 meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
@@ -336,7 +403,22 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             api.volume.annotation.append(volume.id, ann, volume_info=volume)
             progress_cb(1) if log_progress else None
 
-        res_ds_info = api.dataset.get_info_by_id(dataset_id)
+        if score_items:
+            tag_name = self._score_tag_meta.name
+            tag_name = renamed_tags.get(tag_name, tag_name)
+            tag_meta = self._meta.get_tag_meta(tag_name)
+            project_id = res_ds_info.project_id
+
+            progress, progress_cb = self.get_progress(
+                len(score_items), "Uploading volumes annotations scores..."
+            )
+            for batch in batched(score_items, batch_size):
+                tags = []
+                for item, volume in batch:
+                    tags.append(helper.get_score_tags_json(api, volume, item, tag_meta))
+                api.volume.tag.add_to_objects(project_id, tags)
+                progress_cb(1) if log_progress else None
+
         if res_ds_info.items_count == 0:
             logger.info("Resulting dataset is empty. Removing it.")
             api.dataset.remove(dataset_id)
