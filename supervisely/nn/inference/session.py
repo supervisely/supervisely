@@ -1,9 +1,7 @@
 import json
-import os
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
-import numpy as np
 import requests
 
 try:
@@ -16,19 +14,16 @@ import yaml
 from requests import HTTPError, Timeout
 
 import supervisely as sly
-from supervisely.api.api import ApiField
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
-from supervisely.imaging.image import write_bytes
 from supervisely.io.network_exceptions import process_requests_exception
 from supervisely.nn.utils import DeployInfo
 from supervisely.sly_logger import logger
-from supervisely.task.progress import tqdm_sly
 
 
 class SessionJSON:
     def __init__(
         self,
-        api: sly.Api = None,
+        api: sly.Api,
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
@@ -90,10 +85,6 @@ class SessionJSON:
             self._base_url = f'{self.api.server_address}/net/{task_info["meta"]["sessionToken"]}'
         else:
             self._base_url = session_url
-        if self.api is not None:
-            self.api_token = self.api.token
-        else:
-            self.api_token = sly.env.api_token()
         self.inference_settings = {}
         self._session_info = None
         self._default_inference_settings = None
@@ -144,9 +135,8 @@ class SessionJSON:
         return hr_info
 
     def get_model_meta(self) -> Dict[str, Any]:
-        if self._model_meta is None:
-            meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-            self._model_meta = meta_json
+        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
+        self._model_meta = meta_json
         return self._model_meta
 
     def get_deploy_info(self) -> Dict[str, Any]:
@@ -162,7 +152,7 @@ class SessionJSON:
         return self._default_inference_settings
 
     def update_inference_settings(self, **inference_settings) -> Dict[str, Any]:
-        # self._validate_new_inference_settings(inference_settings)
+        self._validate_new_inference_settings(inference_settings)
         self.inference_settings.update(inference_settings)
         return self.inference_settings
 
@@ -180,7 +170,7 @@ class SessionJSON:
             raise ValueError(
                 "The `inference_settings` parameter must be either a dict or a path to a YAML file."
             )
-        # self._validate_new_inference_settings(new_settings)
+        self._validate_new_inference_settings(new_settings)
         self.inference_settings = new_settings
 
     def _validate_new_inference_settings(self, new_settings: dict) -> None:
@@ -192,72 +182,20 @@ class SessionJSON:
                     f"Key '{key}' is not acceptable. Acceptable keys are: {acceptable_keys}"
                 )
 
-    def inference_image_id(self, image_id: int, upload_mode: str = None) -> Dict[str, Any]:
+    def inference_image_id(self, image_id: int, upload=False) -> Dict[str, Any]:
         endpoint = "inference_image_id"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         json_body["state"]["image_id"] = image_id
-        json_body["state"]["upload_mode"] = upload_mode
+        json_body["state"]["upload"] = upload
         resp = self._post(url, json=json_body)
         return resp.json()
 
-    def inference_images_bytes_async(
-        self,
-        images: List[bytes],
-        batch_size: int = None,
-        tqdm: tqdm_sly = None,
-        process_fn=None,
-    ) -> "AsyncInferenceIterator":
-        if self._async_inference_uuid:
-            logger.info(
-                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
-            )
-            try:
-                self.stop_async_inference()
-                self._on_async_inference_end()
-            except Exception as exc:
-                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
-        endpoint = "inference_batch_async"
-        url = f"{self._base_url}/{endpoint}"
-        files = [
-            ("files", (f"image_{i}.png", image, "image/png")) for i, image in enumerate(images)
-        ]
-        settings_json = json.dumps({"settings": self.inference_settings, "batch_size": batch_size})
-        uploads = files + [("settings", (None, json.dumps(settings_json), "text/plain"))]
-        resp = self._post(url, files=uploads).json()
-        self._async_inference_uuid = resp["inference_request_uuid"]
-        self._stop_async_inference_flag = False
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
-        frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
-        )
-        return frame_iterator
-
-    def inference_images_np_async(
-        self,
-        images: List[np.ndarray],
-        batch_size: int = None,
-        tqdm: tqdm_sly = None,
-    ) -> "AsyncInferenceIterator":
-        return self.inference_images_bytes_async(
-            [write_bytes(image, ".png") for image in images],
-            batch_size=batch_size,
-            tqdm=tqdm,
-        )
-
-    def inference_image_ids(
-        self, image_ids: List[int], upload_mode: str = None
-    ) -> List[Dict[str, Any]]:
+    def inference_image_ids(self, image_ids: List[int]) -> List[Dict[str, Any]]:
         endpoint = "inference_batch_ids"
         url = f"{self._base_url}/{endpoint}"
         json_body = self._get_default_json_body()
         json_body["state"]["batch_ids"] = image_ids
-        json_body["state"]["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body)
         return resp.json()
 
@@ -266,9 +204,7 @@ class SessionJSON:
         image_ids: List[int],
         output_project_id: int = None,
         batch_size: int = None,
-        upload_mode: str = None,
         process_fn=None,
-        tqdm: tqdm_sly = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -286,19 +222,14 @@ class SessionJSON:
         state["images_ids"] = image_ids
         state["output_project_id"] = output_project_id
         state["batch_size"] = batch_size
-        state["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
+            resp["progress"]["total"], self, process_fn=process_fn
         )
         return frame_iterator
 
@@ -334,54 +265,12 @@ class SessionJSON:
             f.close()
         return resp.json()
 
-    def inference_image_paths_async(
-        self,
-        image_paths: List[str],
-        batch_size: int = None,
-        process_fn=None,
-        tqdm: tqdm_sly = None,
-    ) -> Iterator:
-        if self._async_inference_uuid:
-            logger.info(
-                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
-            )
-            try:
-                self.stop_async_inference()
-                self._on_async_inference_end()
-            except Exception as exc:
-                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
-        endpoint = "inference_batch_async"
-        url = f"{self._base_url}/{endpoint}"
-        files = [
-            ("files", (os.path.basename(f), open(f, "rb"), "application/octet-stream"))
-            for f in image_paths
-        ]
-        settings_json = {"settings": self.inference_settings, "batch_size": batch_size}
-        uploads = files + [("settings", (None, json.dumps(settings_json), "text/plain"))]
-        resp = self._post(url, files=uploads).json()
-        self._async_inference_uuid = resp["inference_request_uuid"]
-        self._stop_async_inference_flag = False
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
-        frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
-        )
-        return frame_iterator
-
     def inference_video_id(
         self,
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        direction: Literal["forward", "backward"] = None,
-        step=None,
-        end_frame=None,
-        duration=None,
+        frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
     ) -> Dict[str, Any]:
@@ -390,14 +279,9 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
-        state["start_frame_index"] = start_frame_index
-        state["frames_count"] = frames_count
-        state["step"] = step
-        state["end_frame"] = end_frame
-        state["duration"] = duration
         state["batch_size"] = batch_size
         state.update(
-            self._collect_state_for_infer_video(start_frame_index, frames_count, direction)
+            self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
         state["tracker"] = tracker
         resp = self._post(url, json=json_body)
@@ -408,15 +292,11 @@ class SessionJSON:
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        direction: Literal["forward", "backward"] = None,
-        step=None,
-        end_frame=None,
-        duration=None,
+        frames_direction: Literal["forward", "backward"] = None,
         process_fn=None,
         preparing_cb=None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
-        tqdm: tqdm_sly = None,
     ) -> Iterator:
         if self._async_inference_uuid:
             logger.info(
@@ -432,15 +312,11 @@ class SessionJSON:
         json_body = self._get_default_json_body()
         state = json_body["state"]
         state["videoId"] = video_id
-        state["step"] = step
-        state["end_frame"] = end_frame
-        state["duration"] = duration
         state["batch_size"] = batch_size
         state.update(
-            self._collect_state_for_infer_video(start_frame_index, frames_count, direction)
+            self._collect_state_for_infer_video(start_frame_index, frames_count, frames_direction)
         )
         state["tracker"] = tracker
-        json_body["context"]["apiToken"] = os.getenv("API_TOKEN")
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
@@ -480,65 +356,10 @@ class SessionJSON:
                 progress_widget.update(current - prev_current)
                 prev_current = current
 
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
-        )
-        return frame_iterator
-
-    def inference_video_path_async(
-        self,
-        video_path,
-        start_frame_index: int = None,
-        frames_count: int = None,
-        direction: Literal["forward", "backward"] = None,
-        step=None,
-        end_frame=None,
-        duration=None,
-        batch_size=None,
-        process_fn=None,
-        tqdm: tqdm_sly = None,
-    ):
-        if self._async_inference_uuid:
-            logger.info(
-                "Trying to run a new inference while `_async_inference_uuid` already exists. Stopping the old one..."
-            )
-            try:
-                self.stop_async_inference()
-                self._on_async_inference_end()
-            except Exception as exc:
-                logger.error(f"An error has occurred while stopping the previous inference. {exc}")
-
-        endpoint = "inference_video_async"
-        url = f"{self._base_url}/{endpoint}"
-        files = [("files", open(video_path, "rb"))]
-        state = {"settings": self.inference_settings}
-        state["step"] = step
-        state["end_frame"] = end_frame
-        state["duration"] = duration
-        state["batch_size"] = batch_size
-        state.update(
-            self._collect_state_for_infer_video(start_frame_index, frames_count, direction)
-        )
-
-        uploads = files + [("settings", (None, json.dumps(state), "text/plain"))]
-        resp = self._post(url, files=uploads).json()
-        self._async_inference_uuid = resp["inference_request_uuid"]
-        self._stop_async_inference_flag = False
-
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
-        frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
+            resp["progress"]["total"], self, process_fn=process_fn
         )
         return frame_iterator
 
@@ -549,9 +370,7 @@ class SessionJSON:
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
-        upload_mode: str = None,
         process_fn=None,
-        tqdm: tqdm_sly = None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -571,19 +390,14 @@ class SessionJSON:
         state["cache_project_on_model"] = cache_project_on_model
         state["dataset_ids"] = dataset_ids
         state["batch_size"] = batch_size
-        state["upload_mode"] = upload_mode
         resp = self._post(url, json=json_body).json()
         self._async_inference_uuid = resp["inference_request_uuid"]
         self._stop_async_inference_flag = False
 
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
         frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=process_fn, tqdm=tqdm
+            resp["progress"]["total"], self, process_fn=process_fn
         )
         return frame_iterator
 
@@ -596,7 +410,6 @@ class SessionJSON:
         dataset_ids: List[int] = None,
         cache_project_on_model: bool = False,
         preparing_cb=None,
-        tqdm: tqdm_sly = None,
     ):
         if self._async_inference_uuid:
             logger.info(
@@ -646,37 +459,32 @@ class SessionJSON:
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-                    while resp["status"] == "download_info":
-                        current = resp["current"]
-                        progress_widget.update(current - prev_current)
-                        prev_current = current
-                        resp = self._get_preparing_progress()
+
+                while resp["status"] == "download_info":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
 
                 if resp["status"] == "download_project":
                     progress_widget = preparing_cb(message="Download project", total=resp["total"])
-                    while resp["status"] == "download_project":
-                        current = resp["current"]
-                        progress_widget.update(current - prev_current)
-                        prev_current = current
-                        resp = self._get_preparing_progress()
+                while resp["status"] == "download_project":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
 
                 if resp["status"] == "warmup":
                     progress_widget = preparing_cb(message="Running warmup", total=resp["total"])
-                    while resp["status"] == "warmup":
-                        current = resp["current"]
-                        progress_widget.update(current - prev_current)
-                        prev_current = current
-                        resp = self._get_preparing_progress()
+                while resp["status"] == "warmup":
+                    current = resp["current"]
+                    progress_widget.update(current - prev_current)
+                    prev_current = current
+                    resp = self._get_preparing_progress()
 
-        logger.info(
-            "Inference has started:",
-            extra={"inference_request_uuid": resp.get("inference_request_uuid")},
-        )
-
-        resp, has_started = self._wait_for_async_inference_start(tqdm=tqdm)
-        frame_iterator = AsyncInferenceIterator(
-            resp["progress"]["total"], self, process_fn=None, tqdm=tqdm
-        )
+        logger.info("Inference has started:", extra={"response": resp})
+        resp, has_started = self._wait_for_async_inference_start()
+        frame_iterator = AsyncInferenceIterator(resp["progress"]["total"], self, process_fn=None)
         return frame_iterator
 
     def inference_project_id(
@@ -686,7 +494,6 @@ class SessionJSON:
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
-        upload_mode: str = None,
     ):
         return [
             pred
@@ -696,7 +503,6 @@ class SessionJSON:
                 output_project_id,
                 cache_project_on_model=cache_project_on_model,
                 batch_size=batch_size,
-                upload_mode=upload_mode,
                 process_fn=None,
             )
         ]
@@ -708,19 +514,8 @@ class SessionJSON:
         logger.info("Inference will be stopped on the server")
         return resp
 
-    def stop_serving_app(self, timeout=60):
-        logger.debug("Stopping the serving app...")
-        endpoint = "shutdown"
-        url = f"{self._base_url}/{endpoint}"
-        self._post(url, json={ApiField.ID: id})
-        logger.info("The serving app will be stopped")
-
     def _get_inference_progress(self) -> Dict[str, Any]:
         endpoint = "get_inference_progress"
-        return self._get_from_endpoint_for_async_inference(endpoint)
-
-    def _get_inference_status(self) -> Dict[str, Any]:
-        endpoint = "get_inference_status"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
     def _get_preparing_progress(self) -> Dict[str, Any]:
@@ -735,55 +530,14 @@ class SessionJSON:
         endpoint = "clear_inference_request"
         return self._get_from_endpoint_for_async_inference(endpoint)
 
-    def _update_progress(self, tqdm: tqdm_sly, response: dict):
-        if tqdm is None:
-            return
-        json_progress = response.get("progress", None)
-        if json_progress is None:
-            return
-        refresh = False
-        message = json_progress.get("message", json_progress.get("status", None))
-        if message is not None and tqdm.desc not in [message, f"{message}:"]:
-            tqdm.set_description(message, refresh=False)
-            refresh = True
-        current = json_progress.get("current", None)
-        if current is not None and tqdm.n != current:
-            tqdm.n = current
-            refresh = True
-        total = json_progress.get("total", None)
-        if total is not None and tqdm.total != total:
-            tqdm.total = total
-            refresh = True
-        is_size = json_progress.get("is_size", False)
-        if is_size and tqdm.unit == "it":
-            tqdm.unit = "iB"
-            tqdm.unit_scale = True
-            tqdm.unit_divisor = 1024
-            refresh = True
-        if not is_size and tqdm.unit == "iB":
-            tqdm.unit = "it"
-            tqdm.unit_scale = False
-            tqdm.unit_divisor = 1
-            refresh = True
-        if refresh:
-            tqdm.refresh()
-
-    def _wait_for_async_inference_start(
-        self, delay=1, timeout=None, tqdm: tqdm_sly = None
-    ) -> Tuple[dict, bool]:
+    def _wait_for_async_inference_start(self, delay=1, timeout=None) -> Tuple[dict, bool]:
+        logger.info("Preparing data on the model, this may take a while...")
         has_started = False
         timeout_exceeded = False
         t0 = time.time()
-        last_stage = None
         while not has_started and not timeout_exceeded:
             resp = self._get_inference_progress()
-            stage = resp.get("stage")
-            if stage != last_stage:
-                logger.info(stage)
-                last_stage = stage
-            has_started = stage not in ["preparing", "preprocess", None]
-            has_started = has_started or bool(resp.get("result")) or resp["progress"]["total"] != 1
-            self._update_progress(tqdm, resp)
+            has_started = bool(resp["result"]) or resp["progress"]["total"] != 1
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout
@@ -793,21 +547,14 @@ class SessionJSON:
             raise Timeout("Timeout exceeded. The server didn't start the inference")
         return resp, has_started
 
-    def _wait_for_new_pending_results(
-        self, delay=1, timeout=600, tqdm: tqdm_sly = None
-    ) -> List[dict]:
+    def _wait_for_new_pending_results(self, delay=1, timeout=600) -> List[dict]:
         logger.debug("waiting pending results...")
         has_results = False
         timeout_exceeded = False
         t0 = time.time()
         while not has_results and not timeout_exceeded:
             resp = self._pop_pending_results()
-            self._update_progress(tqdm, resp)
             pending_results = resp["pending_results"]
-            exception_json = resp["exception"]
-            if exception_json:
-                exception_str = f"{exception_json['type']}: {exception_json['message']}"
-                raise RuntimeError(f"Inference Error: {exception_str}")
             has_results = bool(pending_results)
             if resp["is_inferring"] is False:
                 break
@@ -837,20 +584,12 @@ class SessionJSON:
             self._async_inference_uuid = None
 
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
-        if self.api is not None:
-            retries = min(self.api.retry_count, retries)
+        retries = min(self.api.retry_count, retries)
         url = kwargs.get("url") or args[0]
         method = url[len(self._base_url) :]
-        if "timeout" not in kwargs:
-            kwargs["timeout"] = 60
-        if kwargs.get("headers") is None:
-            kwargs["headers"] = {}
-        if "x-api-key" not in kwargs["headers"]:
-            kwargs["headers"]["x-api-key"] = self.api_token
         for retry_idx in range(retries):
             response = None
             try:
-                logger.trace(f"POST {url}")
                 response = requests.post(*args, **kwargs)
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     sly.Api._raise_for_status(response)
@@ -904,13 +643,11 @@ class SessionJSON:
         return state
 
     def _get_default_json_body(self) -> Dict[str, Any]:
-        body = {
+        return {
             "state": {"settings": self.inference_settings},
             "context": {},
+            "api_token": self.api.token,
         }
-        if self.api_token is not None:
-            body["api_token"] = self.api_token
-        return body
 
     def _get_default_json_body_for_async_inference(self) -> Dict[str, Any]:
         json_body = self._get_default_json_body()
@@ -919,12 +656,11 @@ class SessionJSON:
 
 
 class AsyncInferenceIterator:
-    def __init__(self, total, nn_api: SessionJSON, process_fn=None, tqdm: tqdm_sly = None):
+    def __init__(self, total, nn_api: SessionJSON, process_fn=None):
         self.total = total
         self.nn_api = nn_api
         self.results_queue = []
         self.process_fn = process_fn
-        self.tqdm = tqdm
 
     def __len__(self) -> int:
         return self.total
@@ -937,7 +673,7 @@ class AsyncInferenceIterator:
             if self.nn_api._stop_async_inference_flag:
                 raise StopIteration
             if not self.results_queue:
-                pending_results = self.nn_api._wait_for_new_pending_results(tqdm=self.tqdm)
+                pending_results = self.nn_api._wait_for_new_pending_results()
                 self.results_queue += pending_results
             if not self.results_queue:
                 raise StopIteration
@@ -961,7 +697,7 @@ class AsyncInferenceIterator:
 class Session(SessionJSON):
     def __init__(
         self,
-        api: sly.Api = None,
+        api: sly.Api,
         task_id: int = None,
         session_url: str = None,
         inference_settings: Union[dict, str] = None,
@@ -1002,23 +738,20 @@ class Session(SessionJSON):
         super().__init__(api, task_id, session_url, inference_settings)
 
     def is_model_deployed(self):
-        endpoint = "is_deployed"
-        url = f"{self._base_url}/{endpoint}"
-        is_deployed = self._post(url, json={}).json()
+        is_deployed = self.api.task.send_request(self._task_id, "is_deployed", {})
         return is_deployed
 
     def get_model_meta(self) -> sly.ProjectMeta:
-        if self._model_meta is None:
-            model_meta_json = super().get_model_meta()
-            model_meta = sly.ProjectMeta.from_json(model_meta_json)
-            self._model_meta = model_meta
+        model_meta_json = super().get_model_meta()
+        model_meta = sly.ProjectMeta.from_json(model_meta_json)
+        self._model_meta = model_meta
         return self._model_meta
 
     def get_deploy_info(self) -> DeployInfo:
         return DeployInfo(**super().get_deploy_info())
 
-    def inference_image_id(self, image_id: int, upload_mode: str = None) -> sly.Annotation:
-        pred_json = super().inference_image_id(image_id, upload_mode)
+    def inference_image_id(self, image_id: int, upload=False) -> sly.Annotation:
+        pred_json = super().inference_image_id(image_id, upload)
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
@@ -1032,35 +765,22 @@ class Session(SessionJSON):
         pred_ann = self._convert_to_sly_annotation(pred_json)
         return pred_ann
 
-    def inference_image_ids(
-        self, image_ids: List[int], upload_mode: str = None
-    ) -> List[sly.Annotation]:
-        pred_list_raw = super().inference_image_ids(image_ids, upload_mode)
+    def inference_image_ids(self, image_ids: List[int]) -> List[sly.Annotation]:
+        pred_list_raw = super().inference_image_ids(image_ids)
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
-
-    def inference_images_np_async(
-        self, images: List[np.ndarray], tqdm: tqdm_sly = None
-    ) -> AsyncInferenceIterator:
-        pred_json = super().inference_images_np_async(images, tqdm=tqdm)
-        pred_ann = self._convert_to_sly_annotation(pred_json)
-        return pred_ann
 
     def inference_image_ids_async(
         self,
         image_ids: List[int],
         output_project_id: int = None,
         batch_size: int = None,
-        upload_mode: str = None,
-        tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_image_ids_async(
             image_ids,
             output_project_id,
             batch_size=batch_size,
-            upload_mode=upload_mode,
             process_fn=self._convert_to_sly_ann_info,
-            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1069,39 +789,17 @@ class Session(SessionJSON):
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
         return predictions
 
-    def inference_image_paths_async(
-        self, image_paths, batch_size: int = None, tqdm: tqdm_sly = None
-    ) -> List[sly.Annotation]:
-        frame_iterator = super().inference_image_paths_async(
-            image_paths,
-            batch_size=batch_size,
-            process_fn=self._convert_to_sly_annotation,
-            tqdm=tqdm,
-        )
-        return frame_iterator
-
     def inference_video_id(
         self,
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        direction: Literal["forward", "backward"] = None,
-        step=None,
-        end_frame=None,
-        duration=None,
+        frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
-            video_id,
-            start_frame_index,
-            frames_count,
-            direction,
-            step,
-            end_frame,
-            duration,
-            tracker,
-            batch_size,
+            video_id, start_frame_index, frames_count, frames_direction, tracker, batch_size
         )
         pred_list_raw = pred_list_raw["ann"]
         predictions = self._convert_to_sly_annotation_batch(pred_list_raw)
@@ -1112,54 +810,20 @@ class Session(SessionJSON):
         video_id: int,
         start_frame_index: int = None,
         frames_count: int = None,
-        direction: Literal["forward", "backward"] = None,
-        step=None,
-        end_frame=None,
-        duration=None,
+        frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
         preparing_cb=None,
-        tqdm: tqdm_sly = None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
             start_frame_index,
             frames_count,
-            direction,
-            step,
-            end_frame,
-            duration,
+            frames_direction,
             process_fn=self._convert_to_sly_annotation,
             tracker=tracker,
+            batch_size=batch_size,
             preparing_cb=preparing_cb,
-            batch_size=batch_size,
-            tqdm=tqdm,
-        )
-        return frame_iterator
-
-    def inference_video_path_async(
-        self,
-        video_path,
-        start_frame_index: int = None,
-        frames_count: int = None,
-        direction: Literal["forward", "backward"] = None,
-        step=None,
-        end_frame=None,
-        duration=None,
-        batch_size=None,
-        tqdm: tqdm_sly = None,
-    ):
-        frame_iterator = super().inference_video_path_async(
-            video_path,
-            start_frame_index,
-            frames_count,
-            direction,
-            step,
-            end_frame,
-            duration,
-            batch_size=batch_size,
-            process_fn=self._convert_to_sly_annotation,
-            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1170,8 +834,6 @@ class Session(SessionJSON):
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
-        upload_mode: str = None,
-        tqdm: tqdm_sly = None,
     ):
         frame_iterator = super().inference_project_id_async(
             project_id,
@@ -1179,9 +841,7 @@ class Session(SessionJSON):
             output_project_id,
             cache_project_on_model=cache_project_on_model,
             batch_size=batch_size,
-            upload_mode=upload_mode,
             process_fn=self._convert_to_sly_ann_info,
-            tqdm=tqdm,
         )
         return frame_iterator
 
@@ -1192,17 +852,11 @@ class Session(SessionJSON):
         output_project_id: int = None,
         cache_project_on_model: bool = False,
         batch_size: int = None,
-        upload_mode: str = None,
     ):
         return [
             pred
             for pred in self.inference_project_id_async(
-                project_id,
-                dataset_ids,
-                output_project_id,
-                cache_project_on_model,
-                batch_size,
-                upload_mode,
+                project_id, dataset_ids, output_project_id, cache_project_on_model, batch_size
             )
         ]
 
