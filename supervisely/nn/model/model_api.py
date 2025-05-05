@@ -10,10 +10,10 @@ import supervisely.io.json as sly_json
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 from supervisely.nn.experiments import ExperimentInfo
-from supervisely.nn.model.prediction import Prediction, PredictionSession
+from supervisely.nn.model.prediction import Prediction
+from supervisely.nn.model.prediction_session import PredictionSession
 from supervisely.nn.utils import ModelSource
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.task.progress import tqdm_sly
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api

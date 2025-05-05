@@ -13,10 +13,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagValueType
-from supervisely.api.dataset_api import DatasetInfo
-from supervisely.api.image_api import ImageInfo
-from supervisely.api.project_api import ProjectInfo
-from supervisely.api.video.video_api import VideoInfo
+from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.image import read as read_image
@@ -152,7 +149,8 @@ class Prediction:
         if self._annotation is None:
             if self.model_meta is None:
                 raise ValueError("Model meta is not provided. Cannot create annotation.")
-            self._annotation = Annotation.from_json(self.annotation_json, self.model_meta)
+            model_meta = get_meta_from_annotation(self.annotation_json, self.model_meta)
+            self._annotation = Annotation.from_json(self.annotation_json, model_meta)
         return self._annotation
 
     @annotation.setter
@@ -161,7 +159,7 @@ class Prediction:
             self._annotation = annotation
             self.annotation_json = annotation.to_json()
         elif isinstance(annotation, dict):
-            self._annotation = Annotation.from_json(annotation, self.model_meta)
+            self._annotation = None
             self.annotation_json = annotation
         else:
             raise ValueError("Annotation must be either a dict or an Annotation object.")

@@ -1791,19 +1791,25 @@ class Inference:
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
         video_id = state["videoId"]
-        video_id = get_value_for_keys(state, ["videoId", "video_id"])
+        video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
         video_info = api.video.get_info_by_id(video_id)
-        start_frame_index = state.get("startFrameIndex", 0)
-        step = state.get("stride", None)
-        if step is None:
-            step = state.get("step", None)
+        start_frame_index = get_value_for_keys(
+            state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        step = get_value_for_keys(state, ["stride", "step"], ignore_none=True)
         if step is None:
             step = 1
-        end_frame_index = state.get("endFrameIndex", None)
+        end_frame_index = get_value_for_keys(
+            state, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+        )
         duration = state.get("duration", None)
-        frames_count = state.get("framesCount", None)
+        frames_count = get_value_for_keys(
+            state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
+        )
         tracking = state.get("tracker", None)
         direction = state.get("direction", "forward")
         direction = 1 if direction == "forward" else -1
@@ -4156,8 +4162,10 @@ def _format_output(
     return output
 
 
-def get_value_for_keys(data: dict, keys: List):
+def get_value_for_keys(data: dict, keys: List, ignore_none: False):
     for key in keys:
         if key in data:
+            if ignore_none and data[key] is None:
+                continue
             return data[key]
     return None

@@ -5,7 +5,7 @@ import time
 import traceback
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
-from functools import partial
+from functools import partial, wraps
 from typing import Any, Dict, List, Tuple, Union
 
 from supervisely._utils import rand_str
@@ -56,6 +56,7 @@ class InferenceRequest:
         )
         self._created_at = time.monotonic()
         self._updated_at = self._created_at
+        self._finished = False
 
         self.global_progress = None
         self.global_progress_total = 1
@@ -130,6 +131,7 @@ class InferenceRequest:
                     current=self.global_progress_current,
                     total=self.global_progress_total,
                 )
+            self.__updated()
 
     def done(self, n=1):
         with self._lock:
@@ -138,6 +140,7 @@ class InferenceRequest:
                 self.global_progress_current += n
                 if self.manager is not None:
                     self.manager.done(n)
+            self.__updated()
 
     @property
     def exception(self):
@@ -158,6 +161,9 @@ class InferenceRequest:
 
     def is_stopped(self):
         return self.stopped
+
+    def is_finished(self):
+        return self._finished
 
     def is_expired(self):
         if self._ttl is None:
@@ -191,6 +197,8 @@ class InferenceRequest:
             "final_result": self._final_result is not None,
             "exception": self.exception_json(),
             "stopped": self.stopped,
+            "finished": self._finished,
+            "context": self.context,
             "created_at": self._created_at,
             "updated_at": self._updated_at,
         }
@@ -205,6 +213,8 @@ class InferenceRequest:
                 self.set_stage(InferenceRequest.Stage.CANCELLED)
             else:
                 self.set_stage(InferenceRequest.Stage.FINISHED)
+        self._finished = True
+        self.__updated()
 
     def get_usage(self):
         ram_allocated, ram_total = get_ram_usage()
