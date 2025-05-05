@@ -2188,16 +2188,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :rtype: :class:`NoneType`
         """
         if time is None:
-            time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         elif isinstance(time, datetime):
-            time = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+            time = time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         elif isinstance(time, str):
             try:
-                datetime.strptime(time, "%Y-%m-%dT%H:%M:%SZ")
+                datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
             except ValueError:
-                raise ValueError("time should be in format 'YYYY-MM-DDTHH:MM:SSZ' or None")
+                raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ'")
         else:
-            raise ValueError("time should be in format 'YYYY-MM-DDTHH:MM:SSZ' or None")
+            raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ' or None")
         self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time})
 
     def set_embeddings_in_progress(self, id: int, status: bool) -> None:

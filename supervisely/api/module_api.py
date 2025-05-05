@@ -642,7 +642,7 @@ class ApiField:
     EMBEDDINGS_UPDATED_AT = "embeddingsUpdatedAt"
     """"""
     EMBEDDINGS_IN_PROGRESS = "embeddingsInProgress"
-
+    """"""
 
 def _get_single_item(items):
     """_get_single_item"""
