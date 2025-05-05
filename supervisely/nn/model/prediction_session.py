@@ -519,7 +519,7 @@ class PredictionSession:
 
     def _predict_videos(
         self,
-        videos: List[int, str, PathLike],
+        videos: Union[List[int], List[str], List[PathLike]],
         start_frame: int = None,
         num_frames: int = None,
         stride=None,
