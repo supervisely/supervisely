@@ -1,7 +1,6 @@
 import json
 import time
 from os import PathLike
-from pathlib import Path
 from typing import Any, Dict, Iterator, List, Literal, Tuple, Union
 
 import numpy as np
@@ -27,6 +26,11 @@ from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project_meta import ProjectMeta
 
 
+def value_generator(value):
+    while True:
+        yield value
+
+
 class PredictionSession:
 
     class Iterator:
@@ -44,31 +48,12 @@ class PredictionSession:
 
         def __next__(self) -> Dict[str, Any]:
             if not self.results_queue:
-                pending_results = self.session._wait_for_new_pending_results(tqdm=self.tqdm)
+                pending_results = self.session._wait_for_pending_results(tqdm=self.tqdm)
                 self.results_queue += pending_results
             if not self.results_queue:
                 raise StopIteration
             pred = self.results_queue.pop(0)
             return pred
-
-    # class _Iterator:
-    #     def __init__(
-    #         self, source: Any, iterator: Iterator, items_kwargs: List[Dict] = None, **kwargs
-    #     ):
-    #         self.source = source
-    #         self.inner = iterator
-    #         self.items_kwargs = items_kwargs
-    #         self.kwargs = kwargs
-    #         self._index = -1
-
-    #     def __len__(self):
-    #         return len(self.inner)
-
-    #     def __next__(self):
-    #         prediction_json = self.inner.__next__()
-    #         self._index += 1
-    #         this_item_kwargs = self.items_kwargs[self._index] if self.items_kwargs else {}
-    #         return {**prediction_json, **self.kwargs, **this_item_kwargs, "source": self.source}
 
     def __init__(
         self,
@@ -143,6 +128,8 @@ class PredictionSession:
             ]
             if x is not None
         )
+        self.kwargs["source"] = source
+        self.prediction_kwargs_iterator = value_generator({})
 
         if not isinstance(input, list):
             input = [input]
@@ -188,6 +175,7 @@ class PredictionSession:
                     if ext in SUPPORTED_IMG_EXTS:
                         self._iterator = self._predict_images(input, **kwargs)
                     elif ext in ALLOWED_VIDEO_EXTENSIONS:
+                        kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
                         self._iterator = self._predict_videos(input, **kwargs)
                     else:
                         raise ValueError(
@@ -200,12 +188,23 @@ class PredictionSession:
         elif video_ids is not None:
             if len(video_ids) > 1:
                 raise ValueError("Only one video id can be provided.")
+            kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
             self._iterator = self._predict_videos(video_ids, **kwargs)
         elif dataset_ids is not None:
+            kwargs = get_valid_kwargs(
+                kwargs,
+                self._predict_datasets,
+                exclude=["dataset_ids"],
+            )
             self._iterator = self._predict_datasets(dataset_ids, **kwargs)
         elif project_ids is not None:
             if len(project_ids) > 1:
                 raise ValueError("Only one project id can be provided.")
+            kwargs = get_valid_kwargs(
+                kwargs,
+                self._predict_projects,
+                exclude=["project_ids"],
+            )
             self._iterator = self._predict_projects(project_ids, **kwargs)
         else:
             raise ValueError(
@@ -230,11 +229,10 @@ class PredictionSession:
 
     def __next__(self):
         try:
-            prediction_json = self._iterator.__next__()
-            prediction_json["source"] = self.input
+            annotation_json = self._iterator.__next__()
+            this_kwargs = next(self.prediction_kwargs_iterator)
             prediction = Prediction.from_json(
-                prediction_json,
-                model_meta=self.model_meta,
+                {"annotation": annotation_json}, **self.kwargs, **this_kwargs
             )
             return prediction
         except StopIteration:
@@ -275,7 +273,7 @@ class PredictionSession:
             retries = min(self.api.retry_count, retries)
             if "x-api-key" not in kwargs["headers"]:
                 kwargs["headers"]["x-api-key"] = self.api.token
-        url = Path(self._base_url).joinpath(method).as_posix()
+        url = self._base_url.rstrip("/") + "/" + method.lstrip("/")
         if "timeout" not in kwargs:
             kwargs["timeout"] = 60
         for retry_idx in range(retries):
@@ -318,7 +316,7 @@ class PredictionSession:
             json=self._get_json_body(),
         )
         logger.info("Inference will be stopped on the server")
-        return r
+        return r.json()
 
     def _clear_inference_request(self):
         method = "clear_inference_request"
@@ -327,7 +325,7 @@ class PredictionSession:
             json=self._get_json_body(),
         )
         logger.info("Inference request will be cleared on the server")
-        return r
+        return r.json()
 
     def _on_infernce_end(self):
         try:
@@ -335,12 +333,14 @@ class PredictionSession:
                 return
             self._clear_inference_request()
         finally:
-            self._async_inference_uuid = None
+            self.inference_request_uuid = None
 
     @property
     def model_meta(self) -> ProjectMeta:
         if self._model_meta is None:
-            self._model_meta = ProjectMeta.from_json(self._post("get_model_meta"))
+            self._model_meta = ProjectMeta.from_json(
+                self._post("get_model_meta", json=self._get_json_body()).json()
+            )
         return self._model_meta
 
     def stop(self):
@@ -361,7 +361,8 @@ class PredictionSession:
 
     def _pop_pending_results(self) -> Dict[str, Any]:
         method = "pop_inference_results"
-        return self._post(method)
+        json_body = self._get_json_body()
+        return self._post(method, json=json_body).json()
 
     def _update_progress(self, tqdm: tqdm, response: Dict[str, Any]):
         if tqdm is None:
@@ -404,7 +405,7 @@ class PredictionSession:
         t0 = time.time()
         last_stage = None
         while not has_started and not timeout_exceeded:
-            resp = self.progress()
+            resp = self._get_inference_progress()
             stage = resp.get("stage")
             if stage != last_stage:
                 logger.info(stage)
@@ -457,8 +458,12 @@ class PredictionSession:
             "Inference has started:",
             extra={"inference_request_uuid": resp.get("inference_request_uuid")},
         )
-        resp, has_started = self._wait_for_inference_start(tqdm=tqdm)
-        frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=tqdm)
+        try:
+            resp, has_started = self._wait_for_inference_start(tqdm=kwargs.get("tqdm"))
+        except:
+            self.stop()
+            raise
+        frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=kwargs.get("tqdm"))
         return frame_iterator
 
     def _predict_images(self, images: List, **kwargs: dict):

@@ -2789,8 +2789,8 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-            return inference_request["preparing_progress"]
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
+            return _get_log_extra_for_inference_request(inference_request)["preparing_progress"]
 
         @server.post("/get_deploy_settings")
         def _get_deploy_settings(response: Response, request: Request):
@@ -3628,6 +3628,10 @@ def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
         "cancel_inference": inference_request.is_stopped(),
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
+        "exception": inference_request.exception_json(),
+        
+        "result": inference_request.final_result,
+        "preparing_progress": progress,
     }
     return log_extra
 
@@ -4162,7 +4166,7 @@ def _format_output(
     return output
 
 
-def get_value_for_keys(data: dict, keys: List, ignore_none: False):
+def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
     for key in keys:
         if key in data:
             if ignore_none and data[key] is None:

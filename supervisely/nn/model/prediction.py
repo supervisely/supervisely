@@ -174,22 +174,20 @@ class Prediction:
         return np.array([cls_name_to_idx[class_name] for class_name in self.classes])
 
     @classmethod
-    def from_json(cls, json_data: Dict, source=None, model_meta: Optional[ProjectMeta] = None):
-        kwargs = get_valid_kwargs(
-            json_data,
-            Prediction.__init__,
-            exclude=["self", "annotation", "source", "model_meta"],
-        )
-        if "annotation" in json_data:
-            annotation_json = json_data["annotation"]
+    def from_json(cls, json_data: Dict, **kwargs) -> "Prediction":
+        kwargs = {**json_data, **kwargs}
+        if "annotation_json" in kwargs:
+            annotation_json = kwargs.pop("annotation_json")
+        elif "annotation" in kwargs:
+            annotation_json = kwargs.pop("annotation")
         else:
-            annotation_json = json_data
-        return cls(
-            annotation_json=annotation_json,
-            source=source,
-            model_meta=model_meta,
-            **kwargs,
+            raise ValueError("Annotation JSON is required.")
+        kwargs = get_valid_kwargs(
+            kwargs,
+            Prediction.__init__,
+            exclude=["self", "annotation_json"],
         )
+        return cls(annotation_json, **kwargs)
 
     def to_json(self):
         return {
