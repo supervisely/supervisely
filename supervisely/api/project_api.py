@@ -2152,30 +2152,40 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         _convert_entities(first_response)
         return first_response
 
-    def enable_embeddings(self, id: int) -> None:
+    def enable_embeddings(self, id: int, silent: bool = True) -> None:
         """
         Enable embeddings for the project.
 
         :param id: Project ID
         :type id: int
+        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :type silent: bool
         :return: None
         :rtype: :class:`NoneType`
         """
-        self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: True})
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: True, ApiField.SILENT: silent},
+        )
 
-    def disable_embeddings(self, id: int) -> None:
+    def disable_embeddings(self, id: int, silent: bool = True) -> None:
         """
         Disable embeddings for the project.
 
         :param id: Project ID
         :type id: int
+        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :type silent: bool
         :return: None
         :rtype: :class:`NoneType`
         """
-        self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False})
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
+        )
 
     def set_embeddings_updated_at(
-        self, id: int, time: Optional[Union[datetime, str]] = None
+        self, id: int, time: Optional[Union[datetime, str]] = None, silent: bool = True
     ) -> None:
         """
         Set embeddings updated at for the project.
@@ -2184,6 +2194,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param time: Time to set. If None, current time will be set.
         :type time: Optional[Union[datetime, str]]
+        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :type silent: bool
         :return: None
         :rtype: :class:`NoneType`
         """
@@ -2198,7 +2210,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ'")
         else:
             raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ' or None")
-        self._api.post("projects.editInfo", {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time})
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time, ApiField.SILENT: silent},
+        )
 
     def set_embeddings_in_progress(self, id: int, status: bool) -> None:
         """
