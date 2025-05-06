@@ -111,7 +111,7 @@ class ObjectDetection3D(Inference):
             )
             state = request.state.state
             api: Api = request.state.api
-            settings = self._get_inference_settings_from_state(state)
+            settings = self._get_inference_settings(state)
             prediction = self._inference_pointcloud_id(api, state["pointcloud_id"], settings)
             annotation = self.annotation_from_prediction(prediction)
             raw_results = self.raw_results_from_prediction(prediction)
@@ -131,7 +131,7 @@ class ObjectDetection3D(Inference):
             )
             state = request.state.state
             api: Api = request.state.api
-            settings = self._get_inference_settings_from_state(state)
+            settings = self._get_inference_settings(state)
             annotations = []
             for pcd_id in state["pointcloud_ids"]:
                 prediction = self._inference_pointcloud_id(api, pcd_id, settings)

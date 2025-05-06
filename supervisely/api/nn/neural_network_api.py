@@ -71,7 +71,7 @@ class NeuralNetworkApi:
             workspace_id = sly_env.workspace_id(raise_not_found=False)
         if workspace_id is None:
             raise ValueError(
-                "Workspace ID is not specified and cannot be found in the environment."
+                "Workspace ID is not specified. Please, provide it in the function call, or set 'WORKSPACE_ID' variable in the environment."
             )
         if team_id is None:
             workspace_info = self._api.workspace.get_info_by_id(workspace_id)

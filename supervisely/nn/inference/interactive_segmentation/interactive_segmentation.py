@@ -115,7 +115,7 @@ class InteractiveSegmentation(Inference):
             # Parse request
             try:
                 state = request.state.state
-                settings = self._get_inference_settings_from_state(state)
+                settings = self._get_inference_settings(state)
                 smtool_state = request.state.context
                 api = request.state.api
                 crop = smtool_state["crop"]
@@ -236,7 +236,7 @@ class InteractiveSegmentation(Inference):
             # Parse request
             try:
                 state = request.state.state
-                settings = self._get_inference_settings_from_state(state)
+                settings = self._get_inference_settings(state)
                 api = request.state.api
                 smtool_states = request.state.context.get("states", [])
             except Exception as exc:
@@ -370,7 +370,7 @@ class InteractiveSegmentation(Inference):
                 extra={settings},
             )
             smtool_states = settings.get("state", [])
-            inf_settings = self._get_inference_settings_from_state(settings)
+            inf_settings = self._get_inference_settings(settings)
             for file, smtool_state in zip(files, smtool_states):
                 # Parse request
                 try:

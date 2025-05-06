@@ -1260,7 +1260,7 @@ class Inference:
             source = [source]
 
         if settings is None:
-            settings = self._get_inference_settings_from_state({})
+            settings = self._get_inference_settings({})
 
         if isinstance(source[0], int):
             results = self.inference_requests_manager.run(
@@ -1473,11 +1473,8 @@ class Inference:
                 inference_settings[name] = conf
         return inference_settings
 
-    def _get_inference_settings(self, state: dict):
-        return self._get_inference_settings_from_state(state)
-
     # pylint: enable=method-hidden
-    def _get_inference_settings_from_state(self, state: dict):
+    def _get_inference_settings(self, state: dict):
         settings = state.get("settings")
         if settings is None:
             settings = {}
@@ -1532,7 +1529,7 @@ class Inference:
         inference_request: InferenceRequest,
     ):
         logger.debug("Inferring batch...", extra={"state": state})
-        settings = self._get_inference_settings_from_state(state)
+        settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra={"inference_settings": settings})
         batch_size = self._get_batch_size_from_state(state)
 
@@ -1560,7 +1557,7 @@ class Inference:
         inference_request: InferenceRequest,
     ):
         logger.debug("Inferring video...", extra={"path": path, "state": state})
-        inference_settings = self._get_inference_settings_from_state(state)
+        inference_settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
         start_frame_index = state.get("startFrameIndex", 0)
@@ -1660,7 +1657,7 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring batch_ids", extra={"state": state})
-        inference_settings = self._get_inference_settings_from_state(state)
+        inference_settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
         batch_size = self._get_batch_size_from_state(state)
         image_ids = get_value_for_keys(
@@ -1787,7 +1784,7 @@ class Inference:
         inference_request: InferenceRequest,
     ):
         logger.debug("Inferring video_id...", extra={"state": state})
-        inference_settings = self._get_inference_settings_from_state(state)
+        inference_settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
         video_id = state["videoId"]
@@ -1907,7 +1904,7 @@ class Inference:
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring project...", extra={"state": state})
-        inference_settings = self._get_inference_settings_from_state(state)
+        inference_settings = self._get_inference_settings(state)
         logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
         batch_size = self._get_batch_size_from_state(state)
         project_id = get_value_for_keys(state, keys=["projectId", "project_id"])
@@ -2061,7 +2058,7 @@ class Inference:
     ):
         """Run speedtest on project images."""
         logger.debug("Running speedtest...", extra={"state": state})
-        settings = self._get_inference_settings_from_state(state)
+        settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=settings)
 
         project_id = state["projectId"]
