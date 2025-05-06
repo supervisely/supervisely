@@ -135,8 +135,8 @@ class SessionJSON:
         return hr_info
 
     def get_model_meta(self) -> Dict[str, Any]:
-        meta_json = self._get_from_endpoint("get_output_classes_and_tags")
-        self._model_meta = meta_json
+        if self._model_meta is None:
+            self._model_meta = self._get_from_endpoint("get_output_classes_and_tags")
         return self._model_meta
 
     def get_deploy_info(self) -> Dict[str, Any]:
@@ -744,8 +744,7 @@ class Session(SessionJSON):
     def get_model_meta(self) -> sly.ProjectMeta:
         model_meta_json = super().get_model_meta()
         model_meta = sly.ProjectMeta.from_json(model_meta_json)
-        self._model_meta = model_meta
-        return self._model_meta
+        return model_meta
 
     def get_deploy_info(self) -> DeployInfo:
         return DeployInfo(**super().get_deploy_info())

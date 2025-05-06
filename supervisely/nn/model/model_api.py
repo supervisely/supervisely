@@ -195,7 +195,7 @@ class ModelAPI:
     def predict_detached(
         self,
         input: Union[np.ndarray, str, PathLike, list] = None,
-        image_ids: int = None,
+        image_id: int = None,
         video_id: int = None,
         dataset_id: int = None,
         project_id: int = None,
@@ -205,33 +205,12 @@ class ModelAPI:
         upload_mode: str = None,
         **kwargs,
     ) -> PredictionSession:
-        extra_input_args = ["image_id"]
-
-        if (
-            sum(
-                [
-                    x is not None
-                    for x in [
-                        input,
-                        image_ids,
-                        video_id,
-                        dataset_id,
-                        project_id,
-                        *[kwargs.get(extra_input, None) for extra_input in extra_input_args],
-                    ]
-                ]
-            )
-            != 1
-        ):
-            raise ValueError(
-                "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
-            )
         if upload_mode is not None:
             kwargs["upload_mode"] = upload_mode
         return PredictionSession(
             self.url,
             input=input,
-            image_ids=image_ids,
+            image_id=image_id,
             video_id=video_id,
             dataset_id=dataset_id,
             project_id=project_id,
@@ -259,6 +238,10 @@ class ModelAPI:
     ) -> List[Prediction]:
         if "show_progress" not in kwargs:
             kwargs["show_progress"] = True
+        if recursive is not None:
+            kwargs["recursive"] = recursive
+        if img_size is not None:
+            kwargs["img_size"] = img_size
         return list(
             self.predict_detached(
                 input,

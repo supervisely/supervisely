@@ -229,10 +229,10 @@ class PredictionSession:
 
     def __next__(self):
         try:
-            annotation_json = self._iterator.__next__()
+            prediction_json = self._iterator.__next__()
             this_kwargs = next(self.prediction_kwargs_iterator)
             prediction = Prediction.from_json(
-                {"annotation": annotation_json}, **self.kwargs, **this_kwargs
+                prediction_json, **self.kwargs, **this_kwargs, model_meta=self.model_meta
             )
             return prediction
         except StopIteration:
