@@ -92,8 +92,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     name_parts = helper.parse_name_parts(file)
                     if name_parts is None:
                         logger.warning(
-                            "File recognized as NIfTI, but failed to parse plane identifier from name.",
-                            extra={"filename": file},
+                            f"File recognized as NIfTI, but failed to parse plane identifier from name. Path: {path}",
                         )
                         continue
 
