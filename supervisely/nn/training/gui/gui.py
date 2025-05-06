@@ -272,56 +272,48 @@ class TrainGUI:
         self.steps.append(self.input_selector.card)
 
         # 2. Train/val split
-        self.train_val_splits_selector = TrainValSplitsSelector(
-            self._api, self.project_id, self.app_options
-        )
-        self.steps.append(self.train_val_splits_selector.card)
+        self.train_val_splits_selector = None
+        if self.app_options.get("show_train_val_splits_selector", True):
+            self.train_val_splits_selector = TrainValSplitsSelector(self._api, self.project_id, self.app_options)
+            self.steps.append(self.train_val_splits_selector.card)
 
-        # 3. Select definitions
+        # 3. Select Classes
         self.classes_selector = None
         if self.app_options.get("show_classes_selector", True):
             self.classes_selector = ClassesSelector(self.project_id, [], self.app_options)
             self.steps.append(self.classes_selector.card)
 
+        # 4. Select Tags
         self.tags_selector = None
         if self.app_options.get("show_tags_selector", False):
             self.tags_selector = TagsSelector(self.project_id, [], self.app_options)
             self.steps.append(self.tags_selector.card)
 
-        # 4. Model selection
-        self.model_selector = ModelSelector(
-            self._api, self.framework_name, self.models, self.app_options
-        )
+        # 5. Model selection
+        self.model_selector = ModelSelector(self._api, self.framework_name, self.models, self.app_options)
         self.steps.append(self.model_selector.card)
 
-        # 5. Training parameters (yaml)
-        self.hyperparameters_selector = HyperparametersSelector(
-            self.hyperparameters, self.app_options
-        )
+        # 6. Training parameters (yaml)
+        self.hyperparameters_selector = HyperparametersSelector(self.hyperparameters, self.app_options)
         self.steps.append(self.hyperparameters_selector.card)
 
-        # 6. Start Train
+        # 7. Start Training
         self.training_process = TrainingProcess(self.app_options)
         self.steps.append(self.training_process.card)
 
-        # 7. Training logs
+        # 8. Training logs
         self.training_logs = TrainingLogs(self.app_options)
         self.steps.append(self.training_logs.card)
 
-        # 8. Training Artifacts
+        # 9. Training Artifacts
         self.training_artifacts = TrainingArtifacts(self._api, self.app_options)
         self.steps.append(self.training_artifacts.card)
 
         # Stepper layout
-        self.stepper = Stepper(
-            widgets=self.steps,
-        )
+        self.stepper = Stepper(widgets=self.steps)
         # ------------------------------------------------- #
 
         # Button utils
-        def update_classes_table():
-            pass
-
         def disable_hyperparams_editor():
             if self.hyperparameters_selector.editor.readonly:
                 self.hyperparameters_selector.editor.readonly = False
@@ -369,13 +361,13 @@ class TrainGUI:
                             r[0]["data"] for r in data if _need_convert(r[1]["data"])
                         )
                     else:
-                        selected_classes = set(self.project_meta.obj_classes.keys())
+                        # Set project meta classes when classes selector is disabled
+                        selected_classes = set(cls.name for cls in self.project_meta.obj_classes)
                         need_convert = set(
                             obj_class.name
                             for obj_class in self.project_meta.obj_classes
                             if _need_convert(obj_class.geometry_type)
                         )
-                        # @TODO: fix empty classes when self.classes_selector is None
                         empty = set()
 
                     if need_convert.intersection(selected_classes - empty):
@@ -437,26 +429,24 @@ class TrainGUI:
             self.input_selector.validator_text,
             self.input_selector.validate_step,
             position=position,
-        ).add_on_select_actions("input_selector", [update_classes_table])
-        position += 1
-
-        # 2. Train/Val splits selector
-        self.step_flow.register_step(
-            "train_val_splits",
-            self.train_val_splits_selector.card,
-            self.train_val_splits_selector.button,
-            self.train_val_splits_selector.widgets_to_disable,
-            self.train_val_splits_selector.validator_text,
-            self.train_val_splits_selector.validate_step,
-            position=position,
         )
         position += 1
 
+        # 2. Train/Val splits selector
+        if self.app_options.get("show_train_val_splits_selector", True) and self.train_val_splits_selector is not None:
+            self.step_flow.register_step(
+                "train_val_splits",
+                self.train_val_splits_selector.card,
+                self.train_val_splits_selector.button,
+                self.train_val_splits_selector.widgets_to_disable,
+                self.train_val_splits_selector.validator_text,
+                self.train_val_splits_selector.validate_step,
+                position=position,
+            )
+            position += 1
+
         # 3. Classes selector
-        if (
-            self.app_options.get("show_classes_selector", True)
-            and self.classes_selector is not None
-        ):
+        if self.app_options.get("show_classes_selector", True) and self.classes_selector is not None:
             self.step_flow.register_step(
                 "classes_selector",
                 self.classes_selector.card,
@@ -547,43 +537,36 @@ class TrainGUI:
         )
 
         # Set dependencies between steps
-        # 1. Input selector -> 2. Train/Val splits
-        self.step_flow.set_next_steps("input_selector", ["train_val_splits"])
+        has_train_val_splits = self.app_options.get("show_train_val_splits_selector", True) and self.train_val_splits_selector is not None
+        has_classes_selector = self.app_options.get("show_classes_selector", True) and self.classes_selector is not None
+        has_tags_selector = self.app_options.get("show_tags_selector", False) and self.tags_selector is not None
 
-        # 2. Train/Val splits -> depends on settings
-        has_classes_selector = (
-            self.app_options.get("show_classes_selector", True)
-            and self.classes_selector is not None
-        )
-        has_tags_selector = (
-            self.app_options.get("show_tags_selector", False) and self.tags_selector is not None
-        )
-
+        # Set step dependency chain
+        # 1. Input selector
+        prev_step = "input_selector"
+        if has_train_val_splits:
+            self.step_flow.set_next_steps(prev_step, ["train_val_splits"])
+            prev_step = "train_val_splits"
         if has_classes_selector:
-            self.step_flow.set_next_steps("train_val_splits", ["classes_selector"])
+            self.step_flow.set_next_steps(prev_step, ["classes_selector"])
+            prev_step = "classes_selector"
+        if has_tags_selector:
+            self.step_flow.set_next_steps(prev_step, ["tags_selector"])
+            prev_step = "tags_selector"
+        self.step_flow.set_next_steps(prev_step, ["model_selector"])
 
-            if has_tags_selector:
-                self.step_flow.set_next_steps("classes_selector", ["tags_selector"])
-                self.step_flow.set_next_steps("tags_selector", ["model_selector"])
-            else:
-                self.step_flow.set_next_steps("classes_selector", ["model_selector"])
-        elif has_tags_selector:
-            self.step_flow.set_next_steps("train_val_splits", ["tags_selector"])
-            self.step_flow.set_next_steps("tags_selector", ["model_selector"])
-        else:
-            self.step_flow.set_next_steps("train_val_splits", ["model_selector"])
-
-        # 3. Model selector -> 4. Hyperparameters selector
+        # 5. Model selector -> 6. Hyperparameters selector
         self.step_flow.set_next_steps("model_selector", ["hyperparameters_selector"])
 
-        # 4. Hyperparameters selector -> 5. Training process
+        # 6. Hyperparameters selector -> 7. Training process
         self.step_flow.set_next_steps("hyperparameters_selector", ["training_process"])
 
-        # 5. Training process -> 6. Training logs
+        # 7. Training process -> 8. Training logs
         self.step_flow.set_next_steps("training_process", ["training_logs"])
 
-        # 6. Training logs -> 7. Training artifacts
+        # 8. Training logs -> 9. Training artifacts
         self.step_flow.set_next_steps("training_logs", ["training_artifacts"])
+        # ------------------------------------------------- #
 
         # Create all wrappers and set button handlers
         wrappers = self.step_flow.build()
@@ -635,21 +618,35 @@ class TrainGUI:
         """
         Makes all select buttons in the GUI available for interaction.
         """
-        self.input_selector.button.enable()
-        self.train_val_splits_selector.button.enable()
-        self.classes_selector.button.enable()
-        self.model_selector.button.enable()
-        self.hyperparameters_selector.button.enable()
+        if self.input_selector is not None:
+            self.input_selector.button.enable()
+        if self.train_val_splits_selector is not None:
+            self.train_val_splits_selector.button.enable()
+        if self.classes_selector is not None:
+            self.classes_selector.button.enable()
+        if self.tags_selector is not None:
+            self.tags_selector.button.enable()
+        if self.model_selector is not None: 
+            self.model_selector.button.enable()
+        if self.hyperparameters_selector is not None:
+            self.hyperparameters_selector.button.enable()
 
     def disable_select_buttons(self):
         """
         Makes all select buttons in the GUI unavailable for interaction.
         """
-        self.input_selector.button.disable()
-        self.train_val_splits_selector.button.disable()
-        self.classes_selector.button.disable()
-        self.model_selector.button.disable()
-        self.hyperparameters_selector.button.disable()
+        if self.input_selector is not None:
+            self.input_selector.button.disable()
+        if self.train_val_splits_selector is not None:
+            self.train_val_splits_selector.button.disable()
+        if self.classes_selector is not None:
+            self.classes_selector.button.disable()
+        if self.tags_selector is not None:
+            self.tags_selector.button.disable()
+        if self.model_selector is not None:
+            self.model_selector.button.disable()
+        if self.hyperparameters_selector is not None:
+            self.hyperparameters_selector.button.disable()
 
     # Set GUI from config
     def validate_app_state(self, app_state: dict) -> dict:
@@ -662,17 +659,26 @@ class TrainGUI:
         if not isinstance(app_state, dict):
             raise ValueError("app_state must be a dictionary")
 
-        required_keys = {
-            "train_val_split": ["method"],
-            "classes": list,
+        # Determine which selectors are enabled to validate corresponding sections
+        show_train_val = self.app_options.get("show_train_val_splits_selector", True)
+        show_classes = self.app_options.get("show_classes_selector", True)
+        show_tags = self.app_options.get("show_tags_selector", False)
+
+        # Basic required keys always needed
+        base_required = {
             "model": ["source"],
             "hyperparameters": (dict, str),
         }
+        if show_train_val:
+            base_required["train_val_split"] = ["method"]
+        if show_classes:
+            base_required["classes"] = list
+        if show_tags:
+            base_required["tags"] = list
 
-        for key, subkeys_or_type in required_keys.items():
+        for key, subkeys_or_type in base_required.items():
             if key not in app_state:
                 raise KeyError(f"Missing required key in app_state: {key}")
-
             if isinstance(subkeys_or_type, list):
                 for subkey in subkeys_or_type:
                     if subkey not in app_state[key]:
@@ -684,6 +690,14 @@ class TrainGUI:
                     else subkeys_or_type.__name__
                 )
                 raise ValueError(f"app_state['{key}'] must be of type {valid_types}")
+
+        # Provide defaults for optional sections when selectors are disabled
+        if not show_train_val:
+            app_state.setdefault("train_val_split", {"method": "random"})
+        if not show_classes:
+            app_state.setdefault("classes", [])
+        if not show_tags:
+            app_state.setdefault("tags", [])
 
         model = app_state["model"]
         if model["source"] == "Pretrained models":
@@ -791,20 +805,21 @@ class TrainGUI:
         """
         if isinstance(app_state, str):
             app_state = sly_json.load_json_file(app_state)
-
         app_state = self.validate_app_state(app_state)
 
         options = app_state.get("options", {})
         input_settings = app_state.get("input")
-        train_val_splits_settings = app_state["train_val_split"]
-        classes_settings = app_state["classes"]
+        train_val_splits_settings = app_state.get("train_val_split", {})
+        classes_settings = app_state.get("classes", [])
+        tags_settings = app_state.get("tags", [])
         model_settings = app_state["model"]
         hyperparameters_settings = app_state["hyperparameters"]
 
         self._init_input(input_settings, options)
-        self._init_classes(classes_settings)
-        self._init_train_val_splits(train_val_splits_settings)
-        self._init_model(model_settings)
+        self._init_train_val_splits(train_val_splits_settings, options)
+        self._init_classes(classes_settings, options)
+        self._init_tags(tags_settings, options)
+        self._init_model(model_settings, options)
         self._init_hyperparameters(hyperparameters_settings, options)
 
     def _init_input(self, input_settings: Union[dict, None], options: dict) -> None:
@@ -821,13 +836,32 @@ class TrainGUI:
         self.input_selector_cb()
         # ----------------------------------------- #
 
-    def _init_train_val_splits(self, train_val_splits_settings: dict) -> None:
+    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict) -> None:
         """
         Initialize the train/val splits selector with the given settings.
 
         :param train_val_splits_settings: The train/val splits settings.
         :type train_val_splits_settings: dict
+        :param options: The application options.
+        :type options: dict
         """
+        if self.train_val_splits_selector is None:
+            return  # Selector disabled by app options
+        
+        if train_val_splits_settings == {}:
+            available_methods = self.app_options.get("train_val_splits_methods", [])
+            if available_methods == []:
+                method = "random"
+                train_val_splits_settings = {"method": method, "split": "train", "percent": 80}
+            else:
+                method = available_methods[0]
+                if method == "random":
+                    train_val_splits_settings = {"method": method, "split": "train", "percent": 80}
+                elif method == "tags":
+                    train_val_splits_settings = {"method": method, "train_tag": "train", "val_tag": "val", "untagged_action": "ignore"}
+                elif method == "datasets":
+                    train_val_splits_settings = {"method": method, "train_datasets": [], "val_datasets": []}
+
         split_method = train_val_splits_settings["method"]
         if split_method == "random":
             split = train_val_splits_settings["split"]
@@ -848,24 +882,48 @@ class TrainGUI:
             )
         self.train_val_splits_selector_cb()
 
-    def _init_classes(self, classes_settings: list) -> None:
+    def _init_classes(self, classes_settings: list, options: dict) -> None:
         """
         Initialize the classes selector with the given settings.
 
         :param classes_settings: The classes settings.
         :type classes_settings: list
+        :param options: The application options.
+        :type options: dict
         """
+        if self.classes_selector is None:
+            return  # Selector disabled by app options
+        
         # Set Classes
         self.classes_selector.set_classes(classes_settings)
         self.classes_selector_cb()
         # ----------------------------------------- #
 
-    def _init_model(self, model_settings: dict) -> None:
+    def _init_tags(self, tags_settings: list, options: dict) -> None:
+        """
+        Initialize the tags selector with the given settings.
+
+        :param tags_settings: The tags settings.
+        :type tags_settings: list
+        :param options: The application options.
+        :type options: dict
+        """
+        if self.tags_selector is None:
+            return  # Selector disabled by app options
+
+        # Set Tags
+        self.tags_selector.set_tags(tags_settings)
+        self.tags_selector_cb()
+        # ----------------------------------------- #
+
+    def _init_model(self, model_settings: dict, options: dict) -> None:
         """
         Initialize the model selector with the given settings.
 
         :param model_settings: The model settings.
         :type model_settings: dict
+        :param options: The application options.
+        :type options: dict
         """
 
         # Pretrained
@@ -919,5 +977,4 @@ class TrainGUI:
                 export_weights_settings.get(RuntimeType.TENSORRT, False)
             )
         self.hyperparameters_selector_cb()
-
     # ----------------------------------------- #
