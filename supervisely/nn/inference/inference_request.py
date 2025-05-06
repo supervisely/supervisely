@@ -9,7 +9,6 @@ from functools import partial, wraps
 from typing import Any, Dict, List, Tuple, Union
 
 from supervisely._utils import rand_str
-from supervisely.nn.model.model_api import Prediction
 from supervisely.nn.utils import get_gpu_usage, get_ram_usage
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
@@ -98,7 +97,7 @@ class InferenceRequest:
             self._pending_results.extend(results)
             self.__updated()
 
-    def pop_pending_predictions(self, n: int = None) -> List[Prediction]:
+    def pop_pending_results(self, n: int = None):
         with self._lock:
             if len(self._pending_results) == 0:
                 return []
@@ -110,10 +109,6 @@ class InferenceRequest:
             self._pending_results = self._pending_results[n:]
             self.__updated()
             return results
-
-    def pop_pending_results(self, n: int = None):
-        predictions = self.pop_pending_predictions(n)
-        return [p.annotation_json for p in predictions]
 
     def pending_num(self):
         return len(self._pending_results)
@@ -393,4 +388,4 @@ class InferenceRequestsManager:
     def run(self, func, *args, **kwargs):
         inference_request, future = self.schedule_task(func, *args, **kwargs)
         future.result()
-        return inference_request.pop_pending_predictions()
+        return inference_request.pop_pending_results()
