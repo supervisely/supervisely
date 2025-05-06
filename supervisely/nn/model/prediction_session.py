@@ -48,8 +48,8 @@ class PredictionSession:
 
         def __next__(self) -> Dict[str, Any]:
             if not self.results_queue:
-                pending_results = self.session._wait_for_pending_results(tqdm=self.tqdm)
-                self.results_queue += pending_results
+                pending_predictions = self.session._wait_for_pending_predictions(tqdm=self.tqdm)
+                self.results_queue += pending_predictions
             if not self.results_queue:
                 raise StopIteration
             pred = self.results_queue.pop(0)
@@ -359,7 +359,7 @@ class PredictionSession:
     def status(self):
         return self._get_inference_status()
 
-    def _pop_pending_results(self) -> Dict[str, Any]:
+    def _pop_pending_predictions(self) -> Dict[str, Any]:
         method = "pop_inference_results"
         json_body = self._get_json_body()
         return self._post(method, json=json_body).json()
@@ -421,20 +421,20 @@ class PredictionSession:
             raise Timeout("Timeout exceeded. The server didn't start the inference")
         return resp, has_started
 
-    def _wait_for_pending_results(self, delay=1, timeout=600, tqdm: tqdm = None) -> List[dict]:
+    def _wait_for_pending_predictions(self, delay=1, timeout=600, tqdm: tqdm = None) -> List[dict]:
         logger.debug("waiting pending results...")
         has_results = False
         timeout_exceeded = False
         t0 = time.monotonic()
         while not has_results and not timeout_exceeded:
-            resp = self._pop_pending_results()
+            resp = self._pop_pending_predictions()
             self._update_progress(tqdm, resp)
-            pending_results = resp["pending_results"]
+            pending_predictions = resp["pending_predictions"]
             exception_json = resp["exception"]
             if exception_json:
                 exception_str = f"{exception_json['type']}: {exception_json['message']}"
                 raise RuntimeError(f"Inference Error: {exception_str}")
-            has_results = bool(pending_results)
+            has_results = bool(pending_predictions)
             if resp.get("finished", False):
                 break
             if not has_results:
@@ -443,7 +443,7 @@ class PredictionSession:
         if timeout_exceeded:
             self.stop()
             raise Timeout("Timeout exceeded. Pending results not received from the server.")
-        return pending_results
+        return pending_predictions
 
     def _start_inference(self, method, **kwargs):
         if self.inference_request_uuid:

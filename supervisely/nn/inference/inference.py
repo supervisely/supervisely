@@ -8,13 +8,11 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
-import uuid
 from collections import OrderedDict, defaultdict
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from logging import Logger
@@ -38,12 +36,11 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely import DatasetInfo, ProjectInfo, batched
+from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
     get_filename_from_headers,
     get_or_create_event_loop,
-    get_valid_kwargs,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -2731,10 +2728,12 @@ class Inference:
 
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(inference_request)
+            pending_predictions = inference_request.pop_pending_predictions()
             data = {
                 **inference_request.to_json(),
                 **log_extra,
-                "pending_results": inference_request.pop_pending_results(),
+                "pending_predictions": pending_predictions,
+                "pending_results": [p.annotation_json for p in pending_predictions],
             }
 
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
@@ -3629,7 +3628,6 @@ def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        
         "result": inference_request.final_result,
         "preparing_progress": progress,
     }
