@@ -56,8 +56,6 @@ class NeuralNetworkApi:
                 api = sly.Api()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
-        from supervisely.nn.model.model_api import ModelAPI
-
         checkpoint = None
         pretrained = None
         team_id = None
@@ -121,6 +119,30 @@ class NeuralNetworkApi:
         team_id: int = None,
         workspace_id: int = None,
     ) -> List[Dict]:
+        """
+        Returns a list of deployed models in the Supervisely platform.
+        The list can be filtered by model name, framework, task type, team ID, and workspace ID.
+
+        :param model: Model name or checkpoint path to filter the results. If None, all models will be returned.
+        :type model: Optional[str]
+        :param framework: Framework name to filter the results. If None, all frameworks will be returned.
+        :type framework: Optional[str]
+        :param task_type: CV Task to filter the results, e.g., "object detection", "instance segmentation", etc. If None, all task types will be returned.
+        :type task_type: Optional[str]
+        :param team_id: Team ID to filter the results. If None, the team ID from the environment will be used.
+        :type team_id: Optional[int]
+        :param workspace_id: Workspace ID to filter the results. If None, the workspace ID from the environment will be used.
+        :type workspace_id: Optional[int]
+        :return: A list of dictionaries containing information about the deployed models.
+        :rtype: List[Dict]
+        :Usage example:
+            .. code-block:: python
+
+                import supervisely as sly
+
+                api = sly.Api()
+                deployed_models = api.nn.list_deployed_models(framework="RT-DETRv2")
+        """
         # 1. Define apps
         categories = ["serve"]
         if framework is not None:
@@ -212,13 +234,11 @@ class NeuralNetworkApi:
         task_id: int,
     ) -> "ModelAPI":
         """
-        Connect to a running Serving App by `task_id`. This allows you to make predictions and control the model state via API.
+        Connect to a running Serving App by its `task_id`. This allows you to make predictions and control the model state via API.
 
         :param task_id: the task_id of a running Serving App session in the Supervisely platform.
         :type task_id: int
         :return: a :class:`ModelAPI` object
         :rtype: ModelAPI
         """
-        from supervisely.nn.model.model_api import ModelAPI
-
         return ModelAPI(self._api, task_id)
