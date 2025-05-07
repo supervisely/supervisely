@@ -91,12 +91,9 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     def __init__(self, api):
         ModuleApi.__init__(self, api)
 
-    def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
-        """ """
-        res = super()._convert_json_info(info, skip_missing=skip_missing)
-        return EntitiesCollectionInfo(**res._asdict())
-
-    def create(self, project_id: int, name: str) -> EntitiesCollectionInfo:
+    def create(
+        self, project_id: int, name: str, description: Optional[str] = None
+    ) -> EntitiesCollectionInfo:
         """
         Creates Entities Collections.
 
@@ -104,6 +101,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type project_id: int
         :param name: Entities Collection name in Supervisely.
         :type name: str
+        :param description: Entities Collection description.
+        :type description: str
         :return: Information about new Entities Collection
         :rtype: :class:`EntitiesCollectionInfo`
         :Usage example:
@@ -123,12 +122,14 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
 
         data = {ApiField.NAME: name, ApiField.PROJECT_ID: project_id}
+        if description is not None:
+            data[ApiField.DESCRIPTION] = description
         response = self._api.post("entities-collections.add", data)
         return self._convert_json_info(response.json())
 
     def get_list(
         self,
-        project_id: Optional[int] = None,
+        project_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
     ) -> List[EntitiesCollectionInfo]:
         """
