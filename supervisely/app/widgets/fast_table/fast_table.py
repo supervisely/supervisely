@@ -469,6 +469,17 @@ class FastTable(Widget):
             DataJson().send_changes()
             return popped_row
 
+    def clear(self) -> None:
+        """Clears the table data."""
+        self._source_data = pd.DataFrame(columns=self._columns_first_idx)
+        self._parsed_source_data = {"data": [], "columns": []}
+        self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
+        self._parsed_active_data = {"data": [], "columns": []}
+        self._rows_total = 0
+        DataJson()[self.widget_id]["data"] = []
+        DataJson()[self.widget_id]["total"] = 0
+        DataJson().send_changes()
+
     def row_click(self, func: Callable[[ClickedRow], Any]) -> Callable[[], None]:
         """Decorator for function that handles row click event.
 
@@ -802,6 +813,8 @@ class FastTable(Widget):
         failed_column_idxs = []
         failed_column_idx = 0
         for column, value in zip(self._source_data.columns, row):
+            if len(self._source_data[column].values) == 0:
+                continue
             col_type = type(self._source_data[column].values[0])
             if col_type == str and not isinstance(value, str):
                 failed_column_idxs.append(
