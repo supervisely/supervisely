@@ -628,7 +628,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
         :type recursive: bool, optional
-        :param entities_collection_id: Collection ID to which the images belong.
+        :param entities_collection_id: :class:`EntitiesCollection<supervisely.api.entities_collection_api.EntitiesCollectionApi>` ID to which the images belong. Can be used to filter images by specific entities collection.
         :type entities_collection_id: int, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
