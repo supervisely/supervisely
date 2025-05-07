@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Literal, NamedTuple, Optional, Union
 
+from supervisely.api.constants import PLAYBACK_RATE_POSSIBLE_VALUES
 from supervisely.api.labeling_job_api import LabelingJobApi
 from supervisely.api.module_api import (
     ApiField,
@@ -68,32 +69,32 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     @staticmethod
     def info_sequence():
         """
-            NamedTuple LabelingQueueInfo information about Labeling Queue.
+        NamedTuple LabelingQueueInfo information about Labeling Queue.
 
-            :Example:
+        :Example:
 
-             .. code-block:: python
+         .. code-block:: python
 
-                LabelingQueueInfo(
-                    id=2,
-                    name='Annotation Queue (#1)',
-                    team_id=4,
-                    project_id=58,
-                    dataset_id=54,
-                    created_by_id=4,
-                    labelers=[4],
-                    reviewers=[4],
-                    created_at='2020-04-08T15:10:12.618Z',
-                    finished_at='2020-04-08T15:13:39.788Z',
-                    status='completed',
-                    jobs=[283, 282, 281],
-                    entities_count=3,
-                    accepted_count=2,
-                    annotated_count=3,
-                    in_progress_count=2,
-                    pending_count=1,
-                    meta={}
-                )
+            LabelingQueueInfo(
+                id=2,
+                name='Annotation Queue (#1)',
+                team_id=4,
+                project_id=58,
+                dataset_id=54,
+                created_by_id=4,
+                labelers=[4],
+                reviewers=[4],
+                created_at='2020-04-08T15:10:12.618Z',
+                finished_at='2020-04-08T15:13:39.788Z',
+                status='completed',
+                jobs=[283, 282, 281],
+                entities_count=3,
+                accepted_count=2,
+                annotated_count=3,
+                in_progress_count=2,
+                pending_count=1,
+                meta={}
+            )
         """
         return [
             ApiField.ID,
@@ -335,30 +336,11 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             project_info = self._api.project.get_info_by_id(project_id)
             project_type = project_info.type
             if project_type == ProjectType.VIDEOS.value:
-                playback_rate_possible_values = [
-                    0.1,
-                    0.3,
-                    0.5,
-                    0.6,
-                    0.7,
-                    0.8,
-                    0.9,
-                    1,
-                    1.1,
-                    1.2,
-                    1.3,
-                    1.5,
-                    2,
-                    4,
-                    8,
-                    16,
-                    32,
-                ]
                 playback_rate = toolbox_settings.get("playbackRate", None)
                 if playback_rate is not None:
-                    if playback_rate not in playback_rate_possible_values:
+                    if playback_rate not in PLAYBACK_RATE_POSSIBLE_VALUES:
                         raise ValueError(
-                            f"'playbackRate' must be one of: '{','.join(playback_rate_possible_values)}'"
+                            f"'playbackRate' must be one of: '{','.join(PLAYBACK_RATE_POSSIBLE_VALUES)}'"
                         )
                 meta["toolboxSettings"] = toolbox_settings
 
