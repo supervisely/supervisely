@@ -264,6 +264,21 @@ class TrainGUI:
             self.team_id = self.project_info.team_id
             environ["TEAM_ID"] = str(self.team_id)
 
+        # ---------- Parse selector options ----------
+        self._classes_selector_opts = self.app_options.get("classes_selector", {})
+        self._tags_selector_opts = self.app_options.get("tags_selector", {})
+        self._train_val_splits_opts = self.app_options.get("train_val_splits_selector", {})
+        self._model_selector_opts = self.app_options.get("model_selector", {})
+
+        self.show_classes_selector = self._classes_selector_opts.get("enabled", True)
+        self.show_tags_selector = self._tags_selector_opts.get("enabled", False)
+        self.show_train_val_splits_selector = self._train_val_splits_opts.get("enabled", True)
+        self.show_model_selector = self._model_selector_opts.get("enabled", True)
+
+        # Ensure train_val_splits_methods compatibility
+        self._train_val_methods = self._train_val_splits_opts.get("methods", [])
+        # --------------------------------------------------------- #
+
         # ------------------------------------------------- #
         self.steps = []
 
@@ -273,25 +288,26 @@ class TrainGUI:
 
         # 2. Train/val split
         self.train_val_splits_selector = None
-        if self.app_options.get("show_train_val_splits_selector", True):
+        if self.show_train_val_splits_selector:
             self.train_val_splits_selector = TrainValSplitsSelector(self._api, self.project_id, self.app_options)
             self.steps.append(self.train_val_splits_selector.card)
 
         # 3. Select Classes
         self.classes_selector = None
-        if self.app_options.get("show_classes_selector", True):
+        if self.show_classes_selector:
             self.classes_selector = ClassesSelector(self.project_id, [], self.app_options)
             self.steps.append(self.classes_selector.card)
 
         # 4. Select Tags
         self.tags_selector = None
-        if self.app_options.get("show_tags_selector", False):
+        if self.show_tags_selector:
             self.tags_selector = TagsSelector(self.project_id, [], self.app_options)
             self.steps.append(self.tags_selector.card)
 
         # 5. Model selection
         self.model_selector = ModelSelector(self._api, self.framework_name, self.models, self.app_options)
-        self.steps.append(self.model_selector.card)
+        if self.show_model_selector:
+            self.steps.append(self.model_selector.card)
 
         # 6. Training parameters (yaml)
         self.hyperparameters_selector = HyperparametersSelector(self.hyperparameters, self.app_options)
@@ -433,7 +449,7 @@ class TrainGUI:
         position += 1
 
         # 2. Train/Val splits selector
-        if self.app_options.get("show_train_val_splits_selector", True) and self.train_val_splits_selector is not None:
+        if self.show_train_val_splits_selector and self.train_val_splits_selector is not None:
             self.step_flow.register_step(
                 "train_val_splits",
                 self.train_val_splits_selector.card,
@@ -446,7 +462,7 @@ class TrainGUI:
             position += 1
 
         # 3. Classes selector
-        if self.app_options.get("show_classes_selector", True) and self.classes_selector is not None:
+        if self.show_classes_selector and self.classes_selector is not None:
             self.step_flow.register_step(
                 "classes_selector",
                 self.classes_selector.card,
@@ -459,7 +475,7 @@ class TrainGUI:
             position += 1
 
         # 4. Tags selector
-        if self.app_options.get("show_tags_selector", False) and self.tags_selector is not None:
+        if self.show_tags_selector and self.tags_selector is not None:
             self.step_flow.register_step(
                 "tags_selector",
                 self.tags_selector.card,
@@ -472,19 +488,20 @@ class TrainGUI:
             position += 1
 
         # 5. Model selector
-        self.step_flow.register_step(
-            "model_selector",
-            self.model_selector.card,
-            self.model_selector.button,
-            self.model_selector.widgets_to_disable,
-            self.model_selector.validator_text,
-            self.model_selector.validate_step,
-            position=position,
-        ).add_on_select_actions(
-            "model_selector",
-            [set_experiment_name, need_convert_class_shapes, validate_class_shape_for_model_task],
-        )
-        position += 1
+        if self.show_model_selector:
+            self.step_flow.register_step(
+                "model_selector",
+                self.model_selector.card,
+                self.model_selector.button,
+                self.model_selector.widgets_to_disable,
+                self.model_selector.validator_text,
+                self.model_selector.validate_step,
+                position=position,
+            ).add_on_select_actions(
+                "model_selector",
+                [set_experiment_name, need_convert_class_shapes, validate_class_shape_for_model_task],
+            )
+            position += 1
 
         # 6. Hyperparameters selector
         self.step_flow.register_step(
@@ -537,9 +554,9 @@ class TrainGUI:
         )
 
         # Set dependencies between steps
-        has_train_val_splits = self.app_options.get("show_train_val_splits_selector", True) and self.train_val_splits_selector is not None
-        has_classes_selector = self.app_options.get("show_classes_selector", True) and self.classes_selector is not None
-        has_tags_selector = self.app_options.get("show_tags_selector", False) and self.tags_selector is not None
+        has_train_val_splits = self.show_train_val_splits_selector and self.train_val_splits_selector is not None
+        has_classes_selector = self.show_classes_selector and self.classes_selector is not None
+        has_tags_selector = self.show_tags_selector and self.tags_selector is not None
 
         # Set step dependency chain
         # 1. Input selector
@@ -553,10 +570,15 @@ class TrainGUI:
         if has_tags_selector:
             self.step_flow.set_next_steps(prev_step, ["tags_selector"])
             prev_step = "tags_selector"
-        self.step_flow.set_next_steps(prev_step, ["model_selector"])
 
-        # 5. Model selector -> 6. Hyperparameters selector
-        self.step_flow.set_next_steps("model_selector", ["hyperparameters_selector"])
+        if self.show_model_selector and self.model_selector is not None:
+            self.step_flow.set_next_steps(prev_step, ["model_selector"])
+            # Model selector -> hyperparameters
+            self.step_flow.set_next_steps("model_selector", ["hyperparameters_selector"])
+            prev_step = "model_selector"
+        else:
+            # Если селектор модели отключён, сразу переходим к гиперпараметрам
+            self.step_flow.set_next_steps(prev_step, ["hyperparameters_selector"])
 
         # 6. Hyperparameters selector -> 7. Training process
         self.step_flow.set_next_steps("hyperparameters_selector", ["training_process"])
@@ -599,6 +621,8 @@ class TrainGUI:
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper
+
+        # (дублирующийся блок был перемещён выше и здесь удалён)
 
     def set_next_step(self):
         current_step = self.stepper.get_active_step()
@@ -659,10 +683,9 @@ class TrainGUI:
         if not isinstance(app_state, dict):
             raise ValueError("app_state must be a dictionary")
 
-        # Determine which selectors are enabled to validate corresponding sections
-        show_train_val = self.app_options.get("show_train_val_splits_selector", True)
-        show_classes = self.app_options.get("show_classes_selector", True)
-        show_tags = self.app_options.get("show_tags_selector", False)
+        show_train_val = self.show_train_val_splits_selector
+        show_classes = self.show_classes_selector
+        show_tags = self.show_tags_selector
 
         # Basic required keys always needed
         base_required = {

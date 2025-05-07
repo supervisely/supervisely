@@ -155,8 +155,8 @@ class TrainApp:
         self.sly_project = None
         # -------------------------- #
 
-        self._train_split: Optional[list] = None
-        self._val_split: Optional[list] = None
+        self._train_split = None
+        self._val_split = None
         # -------------------------- #
 
         # Input
@@ -923,9 +923,7 @@ class TrainApp:
         :param total_images: Total number of images to download.
         :type total_images: int
         """
-        to_download = [
-            info for info in dataset_infos if not is_cached(self.project_info.id, info.name)
-        ]
+        to_download = [info for info in dataset_infos if not is_cached(self.project_info.id, info.name)]
         cached = [info for info in dataset_infos if is_cached(self.project_info.id, info.name)]
 
         logger.info(self._get_cache_log_message(cached, to_download))
