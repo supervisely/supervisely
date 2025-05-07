@@ -667,6 +667,13 @@ class ApiField:
     """"""
     EMBEDDINGS_IN_PROGRESS = "embeddingsInProgress"
     """"""
+    AI_SEARCH_KEY = "aiSearchKey"
+    """"""
+    SCORE = "score"
+    """"""
+    ENTITY_ITEMS = "entityItems"
+    """"""
+
 
 def _get_single_item(items):
     """_get_single_item"""
