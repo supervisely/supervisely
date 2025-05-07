@@ -297,10 +297,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
 
             new_labeling_queue_id = api.labeling_queue.create(
-                name="Labeling Job name",
+                name="Labeling Queue name",
                 dataset_id=dataset_id,
                 user_ids=[user_id],
-                readme="Labeling Job readme",
+                readme="Labeling Queue readme",
                 description="Some description",
                 classes_to_label=["car", "animal"],
                 tags_to_label=["animal_age_group"],
@@ -391,7 +391,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         queue_meta = {}
         if allow_review_own_annotations is True:
             queue_meta["reviewOwnAnnotationsAvailable"] = True
-        
+
         if skip_complete_job_on_empty is True:
             queue_meta["skipCompleteAnnotationJobOnEmpty"] = True
 
@@ -608,29 +608,32 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
     def get_project_meta(self, id: int) -> ProjectMeta:
         """
-        Returns project meta with classes and tags used in the labeling job with given id.
+        Returns project meta with classes and tags used in the labeling queue with given id.
 
-        :param id: Labeling Job ID in Supervisely.
+        :param id: Labeling Queue ID in Supervisely.
         :type id: int
-        :return: Project meta of the labeling job with given id.
+        :return: Project meta of the labeling queue with given id.
         :rtype: :class:`ProjectMeta`
         """
         queue_info = self.get_info_by_id(id)
         project_meta_json = self._api.project.get_meta(queue_info.project_id, with_settings=True)
         project_meta = ProjectMeta.from_json(project_meta_json)
 
-        job_classes = [
-            obj_class
-            for obj_class in project_meta.obj_classes
-            if obj_class.name in queue_info.classes_to_label
+        jobs = [self._api.labeling_job.get_info_by_id(job_id) for job_id in queue_info.jobs]
+        job_classes = set()
+        job_tags = set()
+        for job in jobs:
+            job_classes.update(job.classes_to_label)
+            job_tags.update(job.tags_to_label)
+
+        filtered_classes = [
+            obj_cls for obj_cls in project_meta.obj_classes if obj_cls.name in job_classes
         ]
-        job_tags = [
-            tag_meta
-            for tag_meta in project_meta.tag_metas
-            if tag_meta.name in queue_info.tags_to_label
+        filtered_tags = [
+            tag_meta for tag_meta in project_meta.tag_metas if tag_meta.name in job_tags
         ]
-        job_meta = ProjectMeta(obj_classes=job_classes, tag_metas=job_tags)
-        return job_meta
+        queue_meta = ProjectMeta(obj_classes=filtered_classes, tag_metas=filtered_tags)
+        return queue_meta
 
     def get_entities_all_pages(
         self,
@@ -684,7 +687,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         }
         if collection_id is not None:
             data[ApiField.FILTERS] = [
-                {"type": "entities_collection", "data": {ApiField.COLLECTION_ID: collection_id, ApiField.INCLUDE: True}}
+                {
+                    "type": "entities_collection",
+                    "data": {ApiField.COLLECTION_ID: collection_id, ApiField.INCLUDE: True},
+                }
             ]
         if filter_by is not None:
             data[ApiField.FILTER] = filter_by
@@ -733,7 +739,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
     ) -> int:
         """
         Get count of entities in the given Labeling Queue with given status.
-        :param id: Labeling Job ID in Supervisely.
+        :param id: Labeling Queue ID in Supervisely.
         :type id: int
         :param status: Status of entities to filter.
                         "null" - pending (in queue).
@@ -747,7 +753,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                         - operator - operator to use for filtering ("=", ">", "<", ">=", "<=")
                         - value - value to filter by
         :type filter_by: List[Dict], optional
-        :return: Count of entities in the Labeling Job with given status.
+        :return: Count of entities in the Labeling Queue with given status.
         :rtype: int
         :Usage example:
 
