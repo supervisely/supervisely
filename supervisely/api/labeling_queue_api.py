@@ -141,9 +141,6 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         """
         return "LabelingQueueInfo"
 
-    def __init__(self, api):
-        ModuleApi.__init__(self, api)
-
     def _convert_json_info(self, info: Dict, skip_missing: Optional[bool] = True):
         """ """
 
