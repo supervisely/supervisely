@@ -72,6 +72,7 @@ def read_cls_color_map(path: str) -> dict:
         return None
     return cls_color_map
 
+
 def read_json_map(path: str) -> dict:
     import json
 
@@ -115,6 +116,7 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
         mask = Mask3D(data == class_id)
         yield mask, class_id
 
+
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
         self._items = items
@@ -143,7 +145,9 @@ class AnnotationMatcher:
         if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
             self._project_wide = False
         else:
-            datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
+            datasets = {
+                dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)
+            }
             self._project_wide = True
 
         volumes = defaultdict(lambda: {})
@@ -164,86 +168,55 @@ class AnnotationMatcher:
         """Match annotation files with corresponding volumes using regex-based matching."""
         import re
 
-        def extract_prefix(ann_file):
-            import re
-            pattern = r'^(?P<prefix>cor|sag|axl).*?(?:' + "|".join(LABEL_NAME) + r')'
-            m = re.match(pattern, ann_file, re.IGNORECASE)
-            if m:
-                return m.group("prefix").lower()
-            return None
-
-        def is_volume_match(volume_name, prefix):
-            pattern = r'^' + re.escape(prefix) + r'.*?anatomic'
-            return re.match(pattern, volume_name, re.IGNORECASE) is not None
-
-        def find_best_volume_match(prefix, available_volumes):
-            candidates = {name: volume for name, volume in available_volumes.items() if is_volume_match(name, prefix)}
-            if not candidates:
-                return None, None
-
-            # Prefer an exact candidate
-            ann_name_no_ext = ann_file.split(".")[0]
-            exact_candidate = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_name_no_ext, flags=re.IGNORECASE)
-            for name in candidates:
-                if re.fullmatch(re.escape(exact_candidate), name, re.IGNORECASE):
-                    return name, candidates[name]
-
-            # Otherwise, choose the candidate with the shortest name
-            best_match = sorted(candidates.keys(), key=len)[0]
-            return best_match, candidates[best_match]
-
         item_to_volume = {}
-
-        def process_annotation_file(ann_file, dataset_name, volumes):
-            prefix = extract_prefix(ann_file)
-            if prefix is None:
-                logger.warning(f"Failed to extract prefix from annotation file {ann_file}. Skipping.")
-                return
-
-            matched_name, matched_volume = find_best_volume_match(prefix, volumes)
-            if not matched_volume:
-                logger.warning(f"No matching volume found for annotation with prefix '{prefix}' in dataset {dataset_name}.")
-                return
-
-            # Retrieve the correct item based on matching mode.
-            item = (
-                self._item_by_path.get((dataset_name, ann_file))
-                if self._project_wide
-                else self._item_by_filename.get(ann_file)
-            )
-            if not item:
-                logger.warning(f"Item not found for annotation file {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}.")
-                return
-
-            item_to_volume[item] = matched_volume
-            ann_file = ann_file.split(".")[0]
-            ann_supposed_match = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_file, flags=re.IGNORECASE)
-            if matched_name.lower() != ann_supposed_match:
-                logger.debug(f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'.")
 
         # Perform matching
         for dataset_name, volumes in self._volumes.items():
-            ann_files = self._ann_paths.get(dataset_name, []) if self._project_wide else list(self._ann_paths.values())[0]
+            volume_names = [parse_name_parts(name) for name in list(volumes.keys())]
+            _volume_names = [vol for vol in volume_names if vol is not None]
+            if len(_volume_names) == 0:
+                logger.warning(f"No valid volume names found in dataset {dataset_name}.")
+                continue
+            elif len(_volume_names) != len(volume_names):
+                logger.debug(f"Some volume names in dataset {dataset_name} could not be parsed.")
+            volume_names = _volume_names
+
+            ann_files = (
+                self._ann_paths.get(dataset_name, [])
+                if self._project_wide
+                else list(self._ann_paths.values())[0]
+            )
             for ann_file in ann_files:
-                process_annotation_file(ann_file, dataset_name, volumes)
+                ann_name = parse_name_parts(ann_file)
+                if ann_name is None:
+                    logger.warning(f"Failed to parse annotation name: {ann_file}")
+                    continue
+                match = find_best_volume_match_for_ann(ann_name, volume_names)
+                if match is not None:
+                    if match.plane != ann_name.plane:
+                        logger.warning(
+                            f"Plane mismatch: {match.plane} != {ann_name.plane} for {ann_file}. Skipping."
+                        )
+                        continue
+                    item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
 
         # Mark volumes having only one matching item as semantic and validate shape.
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
             volume_to_items[volume.id].append(item)
-        
+
         for volume_id, items in volume_to_items.items():
             if len(items) == 1:
                 items[0].is_semantic = True
 
-        items_to_remove = []
+        # items_to_remove = []
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
             if item.shape != volume_shape:
                 logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}")
                 # items_to_remove.append(item)
-        for item in items_to_remove:
-            del item_to_volume[item]
+        # for item in items_to_remove:
+        # del item_to_volume[item]
 
         return item_to_volume
 
@@ -304,3 +277,148 @@ class AnnotationMatcher:
                 items[0].is_semantic = True
 
         return item_to_volume
+
+
+NameParts = namedtuple(
+    "NameParts",
+    [
+        "full_name",
+        "name_no_ext",
+        "type",
+        "plane",
+        "is_ann",
+        "patient_uuid",
+        "case_uuid",
+        "ending_idx",
+    ],
+)
+
+
+def parse_name_parts(full_name: str) -> NameParts:
+    from uuid import UUID
+
+    name = get_file_name(full_name)
+    if name.endswith(".nii"):
+        name = get_file_name(name)
+    name_no_ext = name
+
+    type = None
+    is_ann = False
+    if VOLUME_NAME in full_name:
+        type = "anatomic"
+    else:
+        type = next((part for part in LABEL_NAME if part in full_name), None)
+        is_ann = type is not None
+
+    if type is None:
+        return
+
+    plane = None
+    for part in PlanePrefix.values():
+        if part in name:
+            plane = part
+            break
+
+    if plane is None:
+        return
+
+    is_ann = any(part in name.lower() for part in LABEL_NAME)
+
+    patient_uuid = None
+    case_uuid = None
+
+    if len(name_no_ext) > 73:
+        try:
+            uuids = name_no_ext[:73].split("_")
+            if len(uuids) != 2:
+                raise ValueError("Invalid UUID format")
+            patient_uuid = UUID(name_no_ext[:36])
+            case_uuid = UUID(name_no_ext[37:73])
+        except ValueError:
+            logger.debug(
+                f"Failed to parse UUIDs from name: {name_no_ext}.",
+                extra={"full_name": full_name},
+            )
+            patient_uuid = None
+            case_uuid = None
+
+    try:
+        ending_idx = name_no_ext.split("_")[-1]
+        if ending_idx.isdigit():
+            ending_idx = int(ending_idx)
+        else:
+            ending_idx = None
+    except ValueError:
+        ending_idx = None
+        logger.debug(
+            f"Failed to parse ending index from name: {name_no_ext}.",
+            extra={"full_name": full_name},
+        )
+
+    return NameParts(
+        full_name=full_name,
+        name_no_ext=name_no_ext,
+        type=type,
+        plane=plane,
+        is_ann=is_ann,
+        patient_uuid=patient_uuid,
+        case_uuid=case_uuid,
+        ending_idx=ending_idx,
+    )
+
+
+def find_best_volume_match_for_ann(ann, volumes):
+    """
+    Finds the best matching NameParts object from `volumes` for the given annotation NameParts `ann`.
+    Prefers an exact match where all fields except `type` are the same, and `type` is 'anatomic'.
+    Returns the matched NameParts object or None if not found.
+    """
+    volume_names = [volume.full_name for volume in volumes]
+    ann_name = ann.full_name
+    # Prefer exact match except for type
+    for vol in volumes:
+        if vol.name_no_ext == ann.name_no_ext.replace(ann.type, "anatomic"):
+            logger.debug(
+                "Found exact match for annotation.",
+                extra={"ann": ann_name, "vol": vol.full_name},
+            )
+            return vol
+
+    logger.debug(
+        "Failed to find exact match, trying to find a fallback match UUIDs.",
+        extra={"ann": ann_name, "volumes": volume_names},
+    )
+
+    # Fallback: match by plane and patient_uuid, type='anatomic'
+    for vol in volumes:
+        if (
+            vol.plane == ann.plane
+            and vol.patient_uuid == ann.patient_uuid
+            and vol.case_uuid == ann.case_uuid
+        ):
+            logger.debug(
+                "Found fallback match for annotation by UUIDs.",
+                extra={"ann": ann_name, "vol": vol.full_name},
+            )
+            return vol
+
+    logger.debug(
+        "Failed to find fallback match, trying to find a fallback match by plane.",
+        extra={"ann": ann_name, "volumes": volume_names},
+    )
+
+    # Fallback: match by plane and type='anatomic'
+    for vol in volumes:
+        if vol.plane == ann.plane:
+            logger.debug(
+                "Found fallback match for annotation by plane.",
+                extra={"ann": ann_name, "vol": vol.full_name},
+            )
+            return vol
+
+    logger.debug(
+        "Failed to find any match for annotation.",
+        extra={"ann": ann_name, "volumes": volume_names},
+    )
+
+    return None
