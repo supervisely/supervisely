@@ -46,7 +46,7 @@ import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
-import supervisely.api.entities_collection as entities_collection_api
+import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
