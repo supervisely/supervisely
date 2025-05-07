@@ -62,56 +62,38 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         # Pass values into the API constructor (optional, not recommended)
         # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
 
-        jobs = api.labeling_queues.get_list(9) # api usage example
+        queue = api.labeling_queues.get_info_by_id(2) # api usage example
     """
 
     @staticmethod
     def info_sequence():
         """
-        NamedTuple LabelingQueueInfo information about Labeling Queue.
+            NamedTuple LabelingQueueInfo information about Labeling Queue.
 
-        :Example:
+            :Example:
 
-         .. code-block:: python
+             .. code-block:: python
 
-             LabelingQueueInfo(id=2,
-                             name='Annotation Queue (#1) (#1) (dataset_01)',
-                             readme='',
-                             description='',
-                             team_id=4,
-                             workspace_id=8,
-                             workspace_name='First Workspace',
-                             project_id=58,
-                             project_name='tutorial_project',
-                             dataset_id=54,
-                             dataset_name='dataset_01',
-                             created_by_id=4,
-                             created_by_login='anna',
-                             assigned_to_id=4,
-                             assigned_to_login='anna',
-                             reviewer_id=4,
-                             reviewer_login='anna',
-                             created_at='2020-04-08T15:10:12.618Z',
-                             started_at='2020-04-08T15:10:19.833Z',
-                             finished_at='2020-04-08T15:13:39.788Z',
-                             status='completed',
-                             disabled=False,
-                             labeling_queue_id=3,
-                             labeling_exam_id=None,
-                             images_count=3,
-                             finished_images_count=0,
-                             rejected_images_count=1,
-                             accepted_images_count=2,
-                             progress_images_count=2,
-                             classes_to_label=[],
-                             tags_to_label=[],
-                             images_range=(1, 5),
-                             objects_limit_per_image=None,
-                             tags_limit_per_image=None,
-                             filter_images_by_tags=[],
-                             include_images_with_tags=[],
-                             exclude_images_with_tags=[],
-                             entities=None)
+                LabelingQueueInfo(
+                    id=2,
+                    name='Annotation Queue (#1)',
+                    team_id=4,
+                    project_id=58,
+                    dataset_id=54,
+                    created_by_id=4,
+                    labelers=[4],
+                    reviewers=[4],
+                    created_at='2020-04-08T15:10:12.618Z',
+                    finished_at='2020-04-08T15:13:39.788Z',
+                    status='completed',
+                    jobs=[283, 282, 281],
+                    entities_count=3,
+                    accepted_count=2,
+                    annotated_count=3,
+                    in_progress_count=2,
+                    pending_count=1,
+                    meta={}
+                )
         """
         return [
             ApiField.ID,
