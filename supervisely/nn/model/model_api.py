@@ -1,6 +1,7 @@
+from __future__ import annotations
 import os
 from os import PathLike
-from typing import TYPE_CHECKING, List, Union
+from typing import List, Union
 
 import numpy as np
 import requests
@@ -14,9 +15,7 @@ from supervisely.nn.model.prediction import Prediction
 from supervisely.nn.model.prediction_session import PredictionSession
 from supervisely.nn.utils import ModelSource
 from supervisely.project.project_meta import ProjectMeta
-
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
+from supervisely.api.api import Api
 
 
 class ModelAPI:

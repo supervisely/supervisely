@@ -1,16 +1,15 @@
+from __future__ import annotations
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Tuple, Union
+from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as env
 from supervisely._utils import get_valid_kwargs
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.sly_logger import logger
-
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
-    from supervisely.nn.experiments import ExperimentInfo
+from supervisely.api.api import Api
+from supervisely.nn.experiments import ExperimentInfo
 
 
 def get_runtime(runtime: str):

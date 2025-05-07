@@ -1,3 +1,4 @@
+from __future__ import annotations
 import random
 import string
 from abc import abstractmethod
@@ -8,8 +9,7 @@ from datetime import datetime
 from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
-from typing import Any, Dict, List, Literal, NamedTuple, Union, TYPE_CHECKING
-
+from typing import Any, Dict, List, Literal, NamedTuple, Union
 import requests
 
 from supervisely import logger
@@ -17,10 +17,9 @@ from supervisely._utils import abs_url, is_development
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file
+from supervisely.api.api import Api, ApiField
+from supervisely.nn.experiments import ExperimentInfo
 
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
-    from supervisely.nn.experiments import ExperimentInfo
 
 class TrainInfo(NamedTuple):
     """
@@ -52,7 +51,6 @@ class BaseTrainArtifacts:
                 "BaseTrainArtifacts is a base class and should not be instantiated directly"
             )
 
-        from supervisely.api.api import Api
         self._api: Api = Api.from_env()
         self._team_id: int = team_id
         self._metadata_file_name: str = "train_info.json"
@@ -424,7 +422,6 @@ class BaseTrainArtifacts:
         return train_json
 
     def _fetch_json_from_path(self, remote_path: str):
-        from supervisely.api.api import ApiField
         try:
             response = self._api.post(
                 "file-storage.download",

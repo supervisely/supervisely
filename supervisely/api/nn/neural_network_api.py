@@ -1,25 +1,19 @@
-# coding: utf-8
-"""download/upload/manipulate neural networks"""
-
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
-
-from typing_extensions import Literal
+from __future__ import annotations
+from typing import Dict, List, Optional, Union
 
 import supervisely.io.env as sly_env
 import supervisely.io.env as env
 from supervisely.api.nn.deploy_api import DeployApi
 from supervisely.sly_logger import logger
-
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
-    from supervisely.nn.experiments import ExperimentInfo
-    from supervisely.nn.model.model_api import ModelAPI
+from supervisely.api.api import Api
+from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.model.model_api import ModelAPI
 
 
 class NeuralNetworkApi:
     """
     API to interact with neural networks in Supervisely.
-    It provides methods to deploy models and run inference.
+    It provides methods to deploy and connect to models for running inference.
     """
 
     def __init__(self, api: "Api"):

@@ -1,9 +1,10 @@
+from __future__ import annotations
 import atexit
 import os
 import tempfile
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import requests
@@ -28,9 +29,7 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
-
-if TYPE_CHECKING:
-    from supervisely.api.api import Api
+from supervisely.api.api import Api
 
 
 class Prediction:
@@ -221,8 +220,6 @@ class Prediction:
                 return read_image_bytes(r.content)
             if self.image_id is not None:
                 try:
-                    from supervisely.api.api import Api
-
                     if api is None:
                         api = Api()
                     return api.image.download_np(self.image_id)
@@ -233,8 +230,6 @@ class Prediction:
             if self.frame_index is None:
                 raise ValueError("Frame index is not provided for video.")
             try:
-                from supervisely.api.api import Api
-
                 if api is None:
                     api = Api()
                 return api.video.frame.download_np(self.video_id, self.frame_index)
