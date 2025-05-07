@@ -13,7 +13,7 @@ from supervisely.video_annotation.video_object import VideoObject
 from supervisely.video_annotation.video_object_collection import VideoObjectCollection
 
 
-def none_generator():
+def _none_generator():
     while True:
         yield None
 
@@ -25,7 +25,7 @@ def apply_boxmot(
     frames: Optional[Iterable[np.ndarray]] = None,
 ) -> VideoAnnotation:
     if frames is None:
-        frames = none_generator()
+        frames = _none_generator()
     results = []
     annotations = []
     frames_count = 0
