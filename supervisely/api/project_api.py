@@ -2158,7 +2158,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param id: Project ID
         :type id: int
-        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
         :type silent: bool
         :return: None
         :rtype: :class:`NoneType`
