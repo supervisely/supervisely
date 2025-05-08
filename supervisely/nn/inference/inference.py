@@ -1706,6 +1706,7 @@ class Inference:
                 name=f"Predictions from task #{self.task_id}",
                 description=f"Auto created project from inference request {inference_request.uuid}",
                 change_name_if_conflict=True,
+
             )
             output_project_id = output_project_info.id
             inference_request.context.setdefault("project_info", {})[

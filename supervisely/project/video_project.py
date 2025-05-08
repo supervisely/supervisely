@@ -1182,6 +1182,7 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         include_custom_data: bool = False,
+        **kwargs,
     ) -> None:
         """
         Download video project from Supervisely to the given directory asynchronously.
@@ -1224,7 +1225,7 @@ class VideoProject(Project):
 
             coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
             run_coroutine(coroutine)
-            
+
         """
         await download_video_project_async(
             api=api,
@@ -1237,6 +1238,7 @@ class VideoProject(Project):
             log_progress=log_progress,
             progress_cb=progress_cb,
             include_custom_data=include_custom_data,
+            **kwargs,
         )
 
 
@@ -1468,7 +1470,7 @@ def upload_video_project(
             parent_id = dataset_map.get(parent)
         else:
             parent = ""
-            parent_id = None      
+            parent_id = None
         dataset = api.dataset.create(project.id, dataset_fs.short_name, parent_id=parent_id)
         dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
@@ -1547,6 +1549,7 @@ async def download_video_project_async(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
+    **kwargs,
 ) -> None:
     """
     Download video project to the local directory.

@@ -579,21 +579,24 @@ class Dataset(KeyObject):
         Consistency checks. Every item must have an annotation, and the correspondence must be one to one.
         If not - it generate exception error.
         """
-        if not dir_exists(self.item_dir):
+        blob_offset_paths = list_files(
+            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
+        )
+        has_blob_offsets = len(blob_offset_paths) > 0
+
+        if not dir_exists(self.item_dir) and not has_blob_offsets:
             raise FileNotFoundError("Item directory not found: {!r}".format(self.item_dir))
         if not dir_exists(self.ann_dir):
             raise FileNotFoundError("Annotation directory not found: {!r}".format(self.ann_dir))
 
         raw_ann_paths = list_files(self.ann_dir, [ANN_EXT])
-        img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
-
         raw_ann_names = set(os.path.basename(path) for path in raw_ann_paths)
-        img_names = [os.path.basename(path) for path in img_paths]
 
-        blob_offset_paths = list_files(
-            self.directory, filter_fn=lambda x: x.endswith(OFFSETS_PKL_SUFFIX)
-        )
-        has_blob_offsets = len(blob_offset_paths) > 0
+        if dir_exists(self.item_dir):
+            img_paths = list_files(self.item_dir, filter_fn=self._has_valid_ext)
+            img_names = [os.path.basename(path) for path in img_paths]
+        else:
+            img_names = []
 
         # If we have blob offset files, add the image names from those
         if has_blob_offsets:
@@ -2061,6 +2064,84 @@ class Dataset(KeyObject):
             progress_cb=progress_cb,
         )
 
+    def get_blob_img_bytes(self, image_name: str) -> bytes:
+        """
+        Get image bytes from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Bytes of the image.
+        :rtype: :class:`bytes`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_bytes = dataset.get_blob_img_bytes(image_name)
+        """
+
+        if self.project_dir is None:
+            raise RuntimeError("Project directory is not set. Cannot get blob image bytes.")
+
+        blob_image_info = None
+
+        for offset in self.blob_offsets:
+            for batch in BlobImageInfo.load_from_pickle_generator(offset):
+                for file in batch:
+                    if file.name == image_name:
+                        blob_image_info = file
+                        blob_file_name = removesuffix(Path(offset).name, OFFSETS_PKL_SUFFIX)
+                        break
+        if blob_image_info is None:
+            logger.debug(
+                f"Image '{image_name}' not found in blob offsets. "
+                f"Make sure that the image is stored in the blob file."
+            )
+            return None
+
+        blob_file_path = os.path.join(self.project_dir, self.blob_dir_name, blob_file_name + ".tar")
+        if file_exists(blob_file_path):
+            with open(blob_file_path, "rb") as f:
+                f.seek(blob_image_info.offset_start)
+                img_bytes = f.read(blob_image_info.offset_end - blob_image_info.offset_start)
+        else:
+            logger.debug(
+                f"Blob file '{blob_file_path}' not found. "
+                f"Make sure that the blob file exists in the specified directory."
+            )
+            img_bytes = None
+        return img_bytes
+
+    def get_blob_img_np(self, image_name: str) -> np.ndarray:
+        """
+        Get image as numpy array from blob file.
+
+        :param image_name: Image name with extension.
+        :type image_name: :class:`str`
+        :return: Numpy array of the image.
+        :rtype: :class:`numpy.ndarray`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            dataset_path = "/path/to/project/lemons_annotated/ds1"
+            dataset = sly.Dataset(dataset_path, sly.OpenMode.READ)
+            image_name = "IMG_0748.jpeg"
+
+            img_np = dataset.get_blob_img_np(image_name)
+        """
+        img_bytes = self.get_blob_img_bytes(image_name)
+        if img_bytes is None:
+            return None
+        return sly_image.read_bytes(img_bytes)
+
 
 class Project:
     """
@@ -3242,6 +3323,8 @@ class Project:
         :param download_blob_files: Default is False. It will download images in classic way.
                                 If True, it will download blob files, if they are present in the project, to optimize download process.
         :type download_blob_files: bool, optional
+        :param skip_create_readme: Skip creating README.md file. Default is False.
+        :type skip_create_readme: bool, optional
         :return: None
         :rtype: NoneType
         :Usage example:
@@ -3845,6 +3928,8 @@ class Project:
         :type images_ids: :class:`list` [ :class:`int` ], optional
         :param resume_download: Resume download enables to download only missing files avoiding erase of existing files.
         :type resume_download: :class:`bool`, optional
+        :param skip_create_readme: Skip creating README.md file. Default is False.
+        :type skip_create_readme: bool, optional
         :return: None
         :rtype: NoneType
 
@@ -4136,6 +4221,7 @@ def _download_project(
     **kwargs,
 ):
     download_blob_files = kwargs.pop("download_blob_files", False)
+    skip_create_readme = kwargs.pop("skip_create_readme", False)
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
     project_fs = None
@@ -4375,14 +4461,15 @@ def _download_project(
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
-    try:
-        if download_blob_files:
-            project_info = api.project.get_info_by_id(project_id)
-            create_blob_readme(project_fs=project_fs, project_info=project_info)
-        else:
-            create_readme(dest_dir, project_id, api)
-    except Exception as e:
-        logger.info(f"There was an error while creating README: {e}")
+    if not skip_create_readme:
+        try:
+            if download_blob_files:
+                project_info = api.project.get_info_by_id(project_id)
+                create_blob_readme(project_fs=project_fs, project_info=project_info)
+            else:
+                create_readme(dest_dir, project_id, api)
+        except Exception as e:
+            logger.info(f"There was an error while creating README: {e}")
 
 
 def upload_project(
@@ -4641,6 +4728,8 @@ def download_project(
     :param download_blob_files: Default is False. It will download images in classic way.
                                 If True, it will download blob files, if they are present in the project, to optimize download process.
     :type download_blob_files: bool, optional
+    :param skip_create_readme: Skip creating README.md file. Default is False.
+    :type skip_create_readme: bool, optional
     :return: None.
     :rtype: NoneType
     :Usage example:
@@ -4725,6 +4814,9 @@ def _download_project_optimized(
     images_ids: List[int] = None,
     **kwargs,
 ):
+
+    skip_create_readme = kwargs.pop("skip_create_readme", False)
+
     project_info = api.project.get_info_by_id(project_id)
     project_id = project_info.id
     logger.info("Annotations are not cached (always download latest version from server)")
@@ -4770,11 +4862,11 @@ def _download_project_optimized(
                 save_images=save_images,
                 images_ids=images_ids,
             )
-
-    try:
-        create_readme(project_dir, project_id, api)
-    except Exception as e:
-        logger.info(f"There was an error while creating README: {e}")
+    if not skip_create_readme:
+        try:
+            create_readme(project_dir, project_id, api)
+        except Exception as e:
+            logger.info(f"There was an error while creating README: {e}")
 
 
 def _split_images_by_cache(images, cache):
@@ -5230,7 +5322,7 @@ def _project_info_md(project_info: sly.ProjectInfo) -> str:
 
 
 def _dataset_structure_md(
-    project_info: sly.ProjectInfo, api: sly.Api, entity_limit: Optional[int] = 10
+    project_info: sly.ProjectInfo, api: sly.Api, entity_limit: Optional[int] = 4
 ) -> str:
     """Creates a markdown string with the dataset structure of the project.
     Supports only images and videos projects.
@@ -5240,6 +5332,7 @@ def _dataset_structure_md(
     :param api: Supervisely API address and token.
     :type api: :class:`Api<supervisely.api.api.Api>`
     :param entity_limit: The maximum number of entities to display in the README.
+                        This is the limit for top level datasets and items in the dataset at the same time.
     :type entity_limit: int, optional
     :return: Markdown string with the dataset structure of the project.
     :rtype: str
@@ -5266,28 +5359,76 @@ def _dataset_structure_md(
 
     result_md = f"🗂️ {project_info.name}<br>"
 
-    # if project_info
+    # Build a dataset hierarchy tree
+    dataset_tree = {}
+    root_datasets = []
 
     for parents, dataset_info in api.dataset.tree(project_info.id):
-        # The dataset path is needed to create a clickable link in the README.
-        dataset_path = Dataset._get_dataset_path(dataset_info.name, parents)
-        basic_indent = "┃ " * len(parents)
-        result_md += (
-            basic_indent + "┣ " + dataset_icon + f"[{dataset_info.name}]({dataset_path})" + "<br>"
+        level = len(parents)
+        parent_id = dataset_info.parent_id
+
+        if level == 0:  # Root dataset
+            root_datasets.append(dataset_info)
+
+        dataset_tree[dataset_info.id] = {
+            "info": dataset_info,
+            "path": Dataset._get_dataset_path(dataset_info.name, parents),
+            "level": level,
+            "parents": parents,
+            "children": [],
+        }
+
+    # Connect parents with children
+    for ds_id, ds_data in dataset_tree.items():
+        parent_id = ds_data["info"].parent_id
+        if parent_id in dataset_tree:
+            dataset_tree[parent_id]["children"].append(ds_id)
+
+    # Display only top entity_limit root datasets
+    if len(root_datasets) > entity_limit:
+        root_datasets = root_datasets[:entity_limit]
+        result_md += f"(Showing only {entity_limit} top-level datasets)<br>"
+
+    # Function to render a dataset and its children up to a certain depth
+    def render_dataset(ds_id, current_depth=0, max_depth=2):
+        if current_depth > max_depth:
+            return
+
+        ds_data = dataset_tree[ds_id]
+        ds_info = ds_data["info"]
+        basic_indent = "┃ " * current_depth
+
+        # Render the dataset
+        result_md.append(
+            basic_indent + "┣ " + dataset_icon + f"[{ds_info.name}]({ds_data['path']})" + "<br>"
         )
-        entity_infos = list_function(dataset_info.id)
+
+        # Render items in the dataset
+        entity_infos = list_function(ds_info.id)
         for idx, entity_info in enumerate(entity_infos):
             if idx == entity_limit:
-                result_md += (
+                result_md.append(
                     basic_indent + "┃ ┗ ... " + str(len(entity_infos) - entity_limit) + " more<br>"
                 )
                 break
             symbol = "┗" if idx == len(entity_infos) - 1 else "┣"
-            result_md += (
-                "┃ " * (len(parents) + 1) + symbol + entity_icon + entity_info.name + "<br>"
-            )
+            result_md.append(basic_indent + "┃ " + symbol + entity_icon + entity_info.name + "<br>")
 
-    return result_md
+        # Render children (limited to entity_limit)
+        children = ds_data["children"]
+        if len(children) > entity_limit:
+            children = children[:entity_limit]
+            result_md.append(basic_indent + f"┃ (Showing only {entity_limit} child datasets)<br>")
+
+        for child_id in children:
+            render_dataset(child_id, current_depth + 1, max_depth)
+
+    # Render each root dataset
+    result_md = [result_md]  # Convert to list for appending in the recursive function
+    for root_ds in root_datasets:
+        render_dataset(root_ds.id)
+
+    return "".join(result_md)
 
 
 async def _download_project_async(
@@ -5320,6 +5461,8 @@ async def _download_project_async(
     batch_size = kwargs.get("batch_size", 100)
     # control whether to download blob files
     download_blob_files = kwargs.get("download_blob_files", False)
+    # control whether to create README file
+    skip_create_readme = kwargs.get("skip_create_readme", False)
 
     if semaphore is None:
         semaphore = api.get_default_semaphore()
@@ -5550,15 +5693,15 @@ async def _download_project_async(
         for item_name in dataset_fs.get_items_names():
             if item_name not in items_names_set:
                 dataset_fs.delete_item(item_name)
-
-    try:
-        if download_blob_files:
-            project_info = api.project.get_info_by_id(project_id)
-            create_blob_readme(project_fs=project_fs, project_info=project_info)
-        else:
-            create_readme(dest_dir, project_id, api)
-    except Exception as e:
-        logger.info(f"There was an error while creating README: {e}")
+    if not skip_create_readme:
+        try:
+            if download_blob_files:
+                project_info = api.project.get_info_by_id(project_id)
+                create_blob_readme(project_fs=project_fs, project_info=project_info)
+            else:
+                create_readme(dest_dir, project_id, api)
+        except Exception as e:
+            logger.info(f"There was an error while creating README: {e}")
 
 
 async def _download_project_item_async(

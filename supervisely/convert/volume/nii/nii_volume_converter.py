@@ -81,9 +81,9 @@ class NiiConverter(VolumeConverter):
                     if name.endswith(".nii"):
                         name = get_file_name(name)
                     nifti_dict[name] = path
-                    for prefix in planes_detected.keys():
-                        if name.startswith(prefix):
-                            planes_detected[prefix] = True
+                    for plane in planes_detected.keys():
+                        if plane in name:
+                            planes_detected[plane] = True
 
         if any(planes_detected.values()):
             return False
@@ -207,7 +207,7 @@ class NiiConverter(VolumeConverter):
 
                     if self._meta_changed:
                         meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
-
+                        self._meta_changed = False
                     api.volume.annotation.append(info.id, ann)
 
             if log_progress:

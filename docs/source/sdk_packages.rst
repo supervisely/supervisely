@@ -124,7 +124,9 @@ API
     :nosignatures:
     :template: autosummary/custom-class-template.rst
 
-    AppApi
+    AppApi    
+    WorkflowSettings
+    WorkflowMeta
 
 .. currentmodule:: supervisely.api.dataset_api
 
@@ -172,6 +174,7 @@ API
 
     ImageApi
     ImageInfo
+    BlobImageInfo
 
 .. currentmodule:: supervisely.api.import_storage_api
 
@@ -190,6 +193,24 @@ API
     :template: autosummary/custom-class-template.rst
 
     LabelingJobApi
+
+.. currentmodule:: supervisely.api.entities_collection_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    EntitiesCollectionApi
+
+.. currentmodule:: supervisely.api.labeling_queue_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    LabelingQueueApi
 
 .. currentmodule:: supervisely.api.module_api
 
@@ -913,6 +934,16 @@ Project
     VolumeProject
     VolumeDataset
 
+.. currentmodule:: supervisely.project.data_version
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    VersionInfo
+    DataVersion
+
 Task
 ----
 **Task**
@@ -1121,3 +1152,16 @@ Volume Annotation
     :template: autosummary/custom-class-template.rst
 
       Slice
+
+Utility Functions
+-----------------
+**A collection of useful utility functions for common tasks in the Supervisely SDK**
+
+.. currentmodule:: supervisely.project.download
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-function-template.rst
+
+    download_fast
