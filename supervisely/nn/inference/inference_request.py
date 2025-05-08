@@ -62,7 +62,7 @@ class InferenceRequest:
         self.global_progress_total = 1
         self.global_progress_current = 0
 
-    def __updated(self):
+    def _updated(self):
         self._updated_at = time.monotonic()
 
     @property
@@ -90,12 +90,12 @@ class InferenceRequest:
     def final_result(self, result: Any):
         with self._lock:
             self._final_result = result
-            self.__updated()
+            self._updated()
 
     def add_results(self, results: List[Dict]):
         with self._lock:
             self._pending_results.extend(results)
-            self.__updated()
+            self._updated()
 
     def pop_pending_results(self, n: int = None):
         with self._lock:
@@ -107,7 +107,7 @@ class InferenceRequest:
                 n = len(self._pending_results)
             results = self._pending_results[:n]
             self._pending_results = self._pending_results[n:]
-            self.__updated()
+            self._updated()
             return results
 
     def pending_num(self):
@@ -131,7 +131,7 @@ class InferenceRequest:
                     current=self.global_progress_current,
                     total=self.global_progress_total,
                 )
-            self.__updated()
+            self._updated()
 
     def done(self, n=1):
         with self._lock:
@@ -140,7 +140,7 @@ class InferenceRequest:
                 self.global_progress_current += n
                 if self.manager is not None:
                     self.manager.done(n)
-            self.__updated()
+            self._updated()
 
     @property
     def exception(self):
@@ -150,14 +150,14 @@ class InferenceRequest:
     def exception(self, exc: Exception):
         self._exception = exc
         self.set_stage(InferenceRequest.Stage.ERROR)
-        self.__updated()
+        self._updated()
 
     def is_inferring(self):
         return self.stage == InferenceRequest.Stage.INFERENCE
 
     def stop(self):
         self.stopped = True
-        self.__updated()
+        self._updated()
 
     def is_stopped(self):
         return self.stopped
@@ -214,7 +214,7 @@ class InferenceRequest:
             else:
                 self.set_stage(InferenceRequest.Stage.FINISHED)
         self._finished = True
-        self.__updated()
+        self._updated()
 
     def get_usage(self):
         ram_allocated, ram_total = get_ram_usage()
@@ -297,18 +297,35 @@ class InferenceRequestsManager:
         self._executor = executor
         self._inference_requests: Dict[str, InferenceRequest] = {}
         self._lock = threading.Lock()
+        self._stop_event = threading.Event()
         self._monitor_thread = threading.Thread(target=self.monitor, daemon=True)
         self._monitor_thread.start()
         self.global_progress = GlobalProgress()
+
+    def __del__(self):
+        try:
+            self._executor.shutdown(wait=False)
+            self._stop_event.set()
+            self._monitor_thread.join(timeout=5)
+        finally:
+            logger.debug("InferenceRequestsManager was deleted")
 
     def add(self, inference_request: InferenceRequest):
         with self._lock:
             self._inference_requests[inference_request.uuid] = inference_request
 
-    def remove(self, uuid_: str):
+    def remove(self, inference_request_uuid: str):
         with self._lock:
-            if uuid_ in self._inference_requests:
-                del self._inference_requests[uuid_]
+            if inference_request_uuid in self._inference_requests:
+                del self._inference_requests[inference_request_uuid]
+
+    def remove_after(self, inference_request_uuid, wait_time=0):
+        with self._lock:
+            inference_request = self._inference_requests.get(inference_request_uuid)
+            if inference_request is not None:
+                inference_request.on_inference_end()
+                inference_request._ttl = wait_time
+                inference_request._updated()
 
     def get(self, inference_request_uuid: str):
         if inference_request_uuid is None:
@@ -327,7 +344,7 @@ class InferenceRequestsManager:
         return inference_request
 
     def monitor(self):
-        while True:
+        while self._stop_event.is_set() is False:
             for inference_request_uuid in list(self._inference_requests.keys()):
                 inference_request = self._inference_requests.get(inference_request_uuid)
                 if inference_request is None:

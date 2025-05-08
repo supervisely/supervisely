@@ -1031,7 +1031,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :rtype: bool
         """
         try:
-            self.send_request(task_id, "is_running", {}, retries=0, raise_error=True)
+            self.send_request(task_id, "is_running", {}, retries=1, raise_error=True)
         except requests.exceptions.HTTPError as e:
             return False
         return True
@@ -1047,7 +1047,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         """
         try:
             return (
-                self.send_request(task_id, "is_ready", {}, retries=0, raise_error=True)["status"]
+                self.send_request(task_id, "is_ready", {}, retries=1, raise_error=True)["status"]
                 == "ready"
             )
         except requests.exceptions.HTTPError as e:

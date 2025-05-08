@@ -328,12 +328,9 @@ class PredictionSession:
         return r.json()
 
     def _on_infernce_end(self):
-        try:
-            if self.inference_request_uuid is None:
-                return
-            self._clear_inference_request()
-        finally:
-            self.inference_request_uuid = None
+        if self.inference_request_uuid is None:
+            return
+        self._clear_inference_request()
 
     @property
     def model_meta(self) -> ProjectMeta:
@@ -351,12 +348,24 @@ class PredictionSession:
         self._on_infernce_end()
 
     def is_done(self):
+        if self.inference_request_uuid is None:
+            raise RuntimeError(
+                "Inference is not started. Please start inference before checking the status."
+            )
         return not self._get_inference_progress()["is_inferring"]
 
     def progress(self):
+        if self.inference_request_uuid is None:
+            raise RuntimeError(
+                "Inference is not started. Please start inference before checking the status."
+            )
         return self._get_inference_progress()["progress"]
 
     def status(self):
+        if self.inference_request_uuid is None:
+            raise RuntimeError(
+                "Inference is not started. Please start inference before checking the status."
+            )
         return self._get_inference_status()
 
     def _pop_pending_results(self) -> Dict[str, Any]:
