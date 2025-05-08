@@ -402,6 +402,39 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             extra_fields = None
         return self._get_info_by_id(id, method, extra_fields)
 
+    def get_info_by_ai_search_key(
+        self, project_id: int, ai_search_key: str
+    ) -> EntitiesCollectionInfo:
+        """
+        Get information about Entities Collection with given AI search key.
+
+        :param prject_id: Project ID in Supervisely.
+        :type prject_id: int
+        :param ai_search_key: AI search key for the collection.
+        :type  ai_search_key: str
+        :return: Information about Entities Collection.
+        :rtype: :class:`EntitiesCollectionInfo`
+        :Usage example:
+         .. code-block:: python
+            import supervisely as sly
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            project_id = 123
+            ai_search_key = "0ed6a5256433bbe32822949d563d476a"
+
+            # Get collection by AI search key
+            collection = api.entities_collection.get_info_by_ai_search_key(project_id, ai_search_key)
+        """
+        collections = self.get_list(
+            project_id=project_id,
+            with_meta=True,
+        )
+        return next(
+            (collection for collection in collections if collection.ai_search_key == ai_search_key),
+            None,
+        )
+
     def _get_response_by_id(self, id, method, id_field, extra_fields=None):
         """Differs from the original method by using extra_fields."""
         try:

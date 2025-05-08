@@ -48,6 +48,7 @@ class TestEntitiesCollectionApi(unittest.TestCase):
         cls.item_id_1 = image_infos[0].id
         cls.item_id_2 = image_infos[1].id
         cls.item_id_3 = image_infos[2].id
+        cls.ai_search_key = "0ed6a5256433bbe32822949d563d476a"
 
         # Create the collection once for all tests
         result = cls.entities_collection_api.create(
@@ -115,23 +116,30 @@ class TestEntitiesCollectionApi(unittest.TestCase):
         self.assertEqual(result.project_id, self.project_id)
 
     def test_E005_create_ai_search_collection(self):
-        ai_search_key = "0ed6a5256433bbe32822949d563d476a"
         ai_search_name = self.collection_name + " AI Search" + f"{time.time()}"
         result = self.entities_collection_api.create(
             project_id=self.project_id,
             name=ai_search_name,
             description=self.collection_description,
             type=CollectionType.AI_SEARCH,
-            ai_search_key=ai_search_key,
+            ai_search_key=self.ai_search_key,
         )
-
+        self.collection_id = result.id
         self.assertEqual(result.type, CollectionType.AI_SEARCH)
 
         result = self.entities_collection_api.get_info_by_id(result.id, with_meta=True)
 
-        self.assertEqual(result.ai_search_key, ai_search_key)
+        self.assertEqual(result.ai_search_key, self.ai_search_key)
 
-    def test_E006_create_ai_search_without_key_raises_error(self):
+    def test_E006_get_ai_search_collection_by_key(self):
+        result = self.entities_collection_api.get_info_by_ai_search_key(
+            project_id=self.project_id, ai_search_key=self.ai_search_key
+        )
+
+        self.assertEqual(result.type, CollectionType.AI_SEARCH)
+        self.assertEqual(result.ai_search_key, self.ai_search_key)
+
+    def test_E007_create_ai_search_without_key_raises_error(self):
         with self.assertRaises(ValueError):
             self.entities_collection_api.create(
                 project_id=self.project_id,
@@ -139,12 +147,12 @@ class TestEntitiesCollectionApi(unittest.TestCase):
                 type=CollectionType.AI_SEARCH,
             )
 
-    def test_E007_get_list(self):
+    def test_E008_get_list(self):
         result = self.entities_collection_api.get_list(project_id=self.project_id, with_meta=True)
 
         self.assertEqual(len(result), 2)
 
-    def test_E008_add_items(self):
+    def test_E009_add_items(self):
         items = [CollectionItem(entity_id=self.item_id_3)]
 
         result = self.entities_collection_api.add_items(self.collection_id, items)
@@ -152,19 +160,19 @@ class TestEntitiesCollectionApi(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["imageId"], self.item_id_3)
 
-    def test_E009_add_items_with_missing(self):
+    def test_E010_add_items_with_missing(self):
         items = [CollectionItem(entity_id=99999999)]
 
         with self.assertRaises(RuntimeError):
             self.entities_collection_api.add_items(self.collection_id, items)
 
-    def test_E010_get_items(self):
+    def test_E011_get_items(self):
         image_info = self.api.image.get_info_by_id(self.item_id_3)
         result = self.entities_collection_api.get_items(self.collection_id)[0]
 
         self.assertEqual(result, image_info)
 
-    def test_E011_remove_items(self):
+    def test_E012_remove_items(self):
         item_ids = [self.item_id_3]
         result = self.entities_collection_api.remove_items(self.collection_id, item_ids)
 
