@@ -12,7 +12,7 @@ from supervisely.project.download import is_cached
 
 class InputSelector:
     title = "Input project"
-    description = "Selected project from which images and annotations will be downloaded"
+    description = "Selected project from which items and annotations will be downloaded"
     lock_message = None
 
     def __init__(self, project_info: ProjectInfo, app_options: dict = {}):

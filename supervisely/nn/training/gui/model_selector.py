@@ -36,6 +36,13 @@ class ModelSelector:
         self.display_widgets = []
         self.app_options = app_options
 
+        model_selector_opts = self.app_options.get("model_selector", {})
+        if not isinstance(model_selector_opts, dict):
+            model_selector_opts = {}
+
+        self.show_pretrained = True
+        self.show_custom = model_selector_opts.get("show_custom", True)
+
         self.team_id = sly_env.team_id()
         self.models = models
 
@@ -51,14 +58,28 @@ class ModelSelector:
                 logger.warning(f"Legacy checkpoints are not available for '{framework}'")
 
         self.experiment_selector = ExperimentSelector(self.team_id, experiment_infos)
+
+        tab_titles = []
+        tab_descriptions = []
+        tab_contents = []
+        if self.show_pretrained:
+            tab_titles.append(ModelSource.PRETRAINED)
+            tab_descriptions.append("Publicly available models")
+            tab_contents.append(self.pretrained_models_table)
+        if self.show_custom:
+            tab_titles.append(ModelSource.CUSTOM)
+            tab_descriptions.append("Models trained by you in Supervisely")
+            tab_contents.append(self.experiment_selector)
+
         self.model_source_tabs = RadioTabs(
-            titles=[ModelSource.PRETRAINED, ModelSource.CUSTOM],
-            descriptions=[
-                "Publicly available models",
-                "Models trained by you in Supervisely",
-            ],
-            contents=[self.pretrained_models_table, self.experiment_selector],
+            titles=tab_titles,
+            descriptions=tab_descriptions,
+            contents=tab_contents,
         )
+
+        # @TODO:If first tab is disabled, set active tab explicitly to the first available
+        if len(tab_titles) > 0:
+            self.model_source_tabs.set_active_tab(tab_titles[0])
 
         self.validator_text = Text("")
         self.validator_text.hide()
