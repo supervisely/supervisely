@@ -1,13 +1,10 @@
 from __future__ import annotations
-from typing import Dict, List, Optional, Union
+
+from typing import Dict, List
 
 import supervisely.io.env as sly_env
 import supervisely.io.env as env
-from supervisely.api.nn.deploy_api import DeployApi
 from supervisely.sly_logger import logger
-from supervisely.api.api import Api
-from supervisely.nn.experiments import ExperimentInfo
-from supervisely.nn.model.model_api import ModelAPI
 
 
 class NeuralNetworkApi:
@@ -17,6 +14,8 @@ class NeuralNetworkApi:
     """
 
     def __init__(self, api: "Api"):
+        from supervisely.api.nn.deploy_api import DeployApi
+
         self._api = api
         self._deploy_api = DeployApi(api)
 
@@ -56,6 +55,9 @@ class NeuralNetworkApi:
                 api = sly.Api()
                 model = api.nn.deploy(model="RT-DETRv2/RT-DETRv2-M")
         """
+
+        from supervisely.nn.model.model_api import ModelAPI
+
         checkpoint = None
         pretrained = None
         team_id = None
@@ -241,4 +243,6 @@ class NeuralNetworkApi:
         :return: a :class:`ModelAPI` object
         :rtype: ModelAPI
         """
+        from supervisely.nn.model.model_api import ModelAPI
+
         return ModelAPI(self._api, task_id)

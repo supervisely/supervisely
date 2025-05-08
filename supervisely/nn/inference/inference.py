@@ -1519,8 +1519,18 @@ class Inference:
             fill_rectangles=False,
         )
 
-    def _format_output(self, predictions: List[Prediction]):
-        return _format_output(predictions)
+    def _format_output(
+        self,
+        predictions: List[Prediction],
+    ) -> List[dict]:
+        output = [
+            {
+                **pred.to_json(),
+                "data": pred.extra_data.get("slides_data", {}),
+            }
+            for pred in predictions
+        ]
+        return output
 
     def _inference_images(
         self,
@@ -1722,7 +1732,7 @@ class Inference:
             )
 
         _upload_predictions = partial(
-            upload_predictions,
+            self.upload_predictions,
             api=api,
             upload_mode=upload_mode,
             context=inference_request.context,
@@ -1733,7 +1743,7 @@ class Inference:
         )
 
         _add_results_to_request = partial(
-            add_results_to_request, inference_request=inference_request
+            self.add_results_to_request, inference_request=inference_request
         )
 
         if upload_mode is None:
@@ -1979,7 +1989,7 @@ class Inference:
             threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
         _upload_predictions = partial(
-            upload_predictions,
+            self.upload_predictions,
             api=api,
             upload_mode=upload_mode,
             context=inference_request.context,
@@ -1990,7 +2000,7 @@ class Inference:
         )
 
         _add_results_to_request = partial(
-            add_results_to_request, inference_request=inference_request
+            self.add_results_to_request, inference_request=inference_request
         )
 
         if upload_mode is None:
@@ -2262,6 +2272,199 @@ class Inference:
             if log_error:
                 logger.error(f"Error validating request state: {e}", exc_info=True)
             raise
+
+    def upload_predictions(
+        self,
+        predictions: List[Prediction],
+        api: Api,
+        upload_mode: str,
+        context: Dict = None,
+        dst_dataset_id: int = None,
+        dst_project_id: int = None,
+        progress_cb=None,
+        iou_merge_threshold: float = None,
+        inference_request: InferenceRequest = None,
+    ):
+        ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
+        for prediction in predictions:
+            ds_predictions[prediction.dataset_id].append(prediction)
+
+        def _new_name(image_info: ImageInfo):
+            name = Path(image_info.name)
+            stem = name.stem
+            return str(name.with_stem(stem + f"(dataset_id:{image_info.dataset_id})"))
+
+        def _get_or_create_dataset(src_dataset_id, dst_project_id):
+            if src_dataset_id is None:
+                return None
+            created_dataset_id = context.setdefault("created_dataset", {}).get(src_dataset_id, None)
+            if created_dataset_id is not None:
+                return created_dataset_id
+            src_dataset_info: DatasetInfo = context.setdefault("dataset_info", {}).get(
+                src_dataset_id
+            )
+            if src_dataset_info is None:
+                src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+                context["dataset_info"][src_dataset_id] = src_dataset_info
+            src_parent_id = src_dataset_info.parent_id
+            dst_parent_id = _get_or_create_dataset(src_parent_id, dst_project_id)
+            created_dataset = api.dataset.create(
+                dst_project_id,
+                src_dataset_info.name,
+                description=f"Auto created dataset from inference request {inference_request.uuid if inference_request is not None else ''}",
+                change_name_if_conflict=True,
+                parent_id=dst_parent_id,
+            )
+            context["dataset_info"][created_dataset.id] = created_dataset
+            context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
+            return created_dataset.id
+
+        created_names = []
+        if context is None:
+            context = {}
+        for dataset_id, preds in ds_predictions.items():
+            if dst_project_id is not None:
+                # upload to the destination project
+                dst_dataset_id = _get_or_create_dataset(
+                    src_dataset_id=dataset_id, dst_project_id=dst_project_id
+                )
+            if dst_dataset_id is not None:
+                # upload to the destination dataset
+                dataset_info = context.setdefault("dataset_info", {}).get(dst_dataset_id, None)
+                if dataset_info is None:
+                    dataset_info = api.dataset.get_info_by_id(dst_dataset_id)
+                    context["dataset_info"][dst_dataset_id] = dataset_info
+                project_id = dataset_info.project_id
+                project_meta = context.setdefault("project_meta", {}).get(project_id, None)
+                if project_meta is None:
+                    project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+                    context["project_meta"][project_id] = project_meta
+
+                meta_changed = False
+                for pred in preds:
+                    ann = pred.annotation
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    meta_changed = meta_changed or meta_changed_
+                    pred.annotation = ann
+                    prediction.model_meta = project_meta
+
+                if meta_changed:
+                    project_meta = api.project.update_meta(project_id, project_meta)
+                    context["project_meta"][project_id] = project_meta
+
+                anns = _exclude_duplicated_predictions(
+                    api,
+                    [pred.annotation for pred in preds],
+                    dataset_id,
+                    [pred.image_id for pred in preds],
+                    iou=iou_merge_threshold,
+                    meta=project_meta,
+                )
+                for pred, ann in zip(preds, anns):
+                    pred.annotation = ann
+
+                context.setdefault("image_info", {})
+                missing = [
+                    pred.image_id for pred in preds if pred.image_id not in context["image_info"]
+                ]
+                if missing:
+                    context["image_info"].update(
+                        {
+                            image_info.id: image_info
+                            for image_info in api.image.get_info_by_id_batch(missing)
+                        }
+                    )
+                image_infos: List[ImageInfo] = [
+                    context["image_info"][pred.image_id] for pred in preds
+                ]
+                dst_names = [
+                    _new_name(image_info) if image_info.name in created_names else image_info.name
+                    for image_info in image_infos
+                ]
+                dst_image_infos = api.image.copy_batch_optimized(
+                    dataset_id,
+                    image_infos,
+                    dst_dataset_id,
+                    dst_names=dst_names,
+                    with_annotations=False,
+                    save_source_date=False,
+                )
+                created_names.extend([image_info.name for image_info in dst_image_infos])
+                api.annotation.upload_anns([image_info.id for image_info in dst_image_infos])
+            else:
+                # upload to the source dataset
+                ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
+                if ds_info is None:
+                    ds_info = api.dataset.get_info_by_id(dataset_id)
+                    context["dataset_info"][dataset_id] = ds_info
+                project_id = ds_info.project_id
+
+                project_meta = context.setdefault("project_meta", {}).get(project_id, None)
+                if project_meta is None:
+                    project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+                    context["project_meta"][project_id] = project_meta
+
+                meta_changed = False
+                for pred in preds:
+                    ann = pred.annotation
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    meta_changed = meta_changed or meta_changed_
+                    pred.annotation = ann
+                    prediction.model_meta = project_meta
+
+                if meta_changed:
+                    project_meta = api.project.update_meta(project_id, project_meta)
+                    context["project_meta"][project_id] = project_meta
+
+                anns = _exclude_duplicated_predictions(
+                    api,
+                    [pred.annotation for pred in preds],
+                    dataset_id,
+                    [pred.image_id for pred in preds],
+                    iou=iou_merge_threshold,
+                    meta=project_meta,
+                )
+                for pred, ann in zip(preds, anns):
+                    pred.annotation = ann
+
+                if upload_mode in ["iou_merge", "append"]:
+                    context.setdefault("annotation", {})
+                    missing = []
+                    for pred in preds:
+                        if pred.image_id not in context["annotation"]:
+                            missing.append(pred.image_id)
+                    for image_id, ann_info in zip(
+                        missing, api.annotation.download_batch(dataset_id, missing)
+                    ):
+                        context["annotation"][image_id] = Annotation.from_json(
+                            ann_info.annotation, project_meta
+                        )
+                    for pred in preds:
+                        pred.annotation = context["annotation"][pred.image_id].merge(
+                            pred.annotation
+                        )
+
+                api.annotation.upload_anns(
+                    [pred.image_id for pred in preds],
+                    [pred.annotation for pred in preds],
+                )
+
+            if progress_cb is not None:
+                progress_cb(len(preds))
+
+        if inference_request is not None:
+            results = self._format_output(predictions)
+            for result in results:
+                result["annotation"] = None
+                result["data"] = None
+            inference_request.add_results(results)
+
+    def add_results_to_request(
+        self, predictions: List[Prediction], inference_request: InferenceRequest
+    ):
+        results = self._format_output(predictions)
+        inference_request.add_results(results)
+        inference_request.done(len(results))
 
     def serve(self):
         if not self._use_gui and not self._is_local_deploy:
@@ -3626,7 +3829,6 @@ def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        
         "result": inference_request.final_result,
         "preparing_progress": progress,
     }
@@ -3962,205 +4164,6 @@ def batched_iter(iterable, batch_size):
             batch = []
     if batch:
         yield batch
-
-
-def upload_predictions(
-    predictions: List[Prediction],
-    api: Api,
-    upload_mode: str,
-    context: Dict = None,
-    dst_dataset_id: int = None,
-    dst_project_id: int = None,
-    progress_cb=None,
-    iou_merge_threshold: float = None,
-    inference_request: InferenceRequest = None,
-):
-    ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
-    for prediction in predictions:
-        ds_predictions[prediction.dataset_id].append(prediction)
-
-    def _new_name(image_info: ImageInfo):
-        name = Path(image_info.name)
-        stem = name.stem
-        return str(name.with_stem(stem + f"(dataset_id:{image_info.dataset_id})"))
-
-    def _get_or_create_dataset(src_dataset_id, dst_project_id):
-        if src_dataset_id is None:
-            return None
-        created_dataset_id = context.setdefault("created_dataset", {}).get(src_dataset_id, None)
-        if created_dataset_id is not None:
-            return created_dataset_id
-        src_dataset_info: DatasetInfo = context.setdefault("dataset_info", {}).get(src_dataset_id)
-        if src_dataset_info is None:
-            src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            context["dataset_info"][src_dataset_id] = src_dataset_info
-        src_parent_id = src_dataset_info.parent_id
-        dst_parent_id = _get_or_create_dataset(src_parent_id, dst_project_id)
-        created_dataset = api.dataset.create(
-            dst_project_id,
-            src_dataset_info.name,
-            description=f"Auto created dataset from inference request {inference_request.uuid if inference_request is not None else ''}",
-            change_name_if_conflict=True,
-            parent_id=dst_parent_id,
-        )
-        context["dataset_info"][created_dataset.id] = created_dataset
-        context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
-        return created_dataset.id
-
-    created_names = []
-    if context is None:
-        context = {}
-    for dataset_id, preds in ds_predictions.items():
-        if dst_project_id is not None:
-            # upload to the destination project
-            dst_dataset_id = _get_or_create_dataset(
-                src_dataset_id=dataset_id, dst_project_id=dst_project_id
-            )
-        if dst_dataset_id is not None:
-            # upload to the destination dataset
-            dataset_info = context.setdefault("dataset_info", {}).get(dst_dataset_id, None)
-            if dataset_info is None:
-                dataset_info = api.dataset.get_info_by_id(dst_dataset_id)
-                context["dataset_info"][dst_dataset_id] = dataset_info
-            project_id = dataset_info.project_id
-            project_meta = context.setdefault("project_meta", {}).get(project_id, None)
-            if project_meta is None:
-                project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
-                context["project_meta"][project_id] = project_meta
-
-            meta_changed = False
-            for pred in preds:
-                ann = pred.annotation
-                project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
-                meta_changed = meta_changed or meta_changed_
-                pred.annotation = ann
-                prediction.model_meta = project_meta
-
-            if meta_changed:
-                project_meta = api.project.update_meta(project_id, project_meta)
-                context["project_meta"][project_id] = project_meta
-
-            anns = _exclude_duplicated_predictions(
-                api,
-                [pred.annotation for pred in preds],
-                dataset_id,
-                [pred.image_id for pred in preds],
-                iou=iou_merge_threshold,
-                meta=project_meta,
-            )
-            for pred, ann in zip(preds, anns):
-                pred.annotation = ann
-
-            context.setdefault("image_info", {})
-            missing = [
-                pred.image_id for pred in preds if pred.image_id not in context["image_info"]
-            ]
-            if missing:
-                context["image_info"].update(
-                    {
-                        image_info.id: image_info
-                        for image_info in api.image.get_info_by_id_batch(missing)
-                    }
-                )
-            image_infos: List[ImageInfo] = [context["image_info"][pred.image_id] for pred in preds]
-            dst_names = [
-                _new_name(image_info) if image_info.name in created_names else image_info.name
-                for image_info in image_infos
-            ]
-            dst_image_infos = api.image.copy_batch_optimized(
-                dataset_id,
-                image_infos,
-                dst_dataset_id,
-                dst_names=dst_names,
-                with_annotations=False,
-                save_source_date=False,
-            )
-            created_names.extend([image_info.name for image_info in dst_image_infos])
-            api.annotation.upload_anns([image_info.id for image_info in dst_image_infos])
-        else:
-            # upload to the source dataset
-            ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
-            if ds_info is None:
-                ds_info = api.dataset.get_info_by_id(dataset_id)
-                context["dataset_info"][dataset_id] = ds_info
-            project_id = ds_info.project_id
-
-            project_meta = context.setdefault("project_meta", {}).get(project_id, None)
-            if project_meta is None:
-                project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
-                context["project_meta"][project_id] = project_meta
-
-            meta_changed = False
-            for pred in preds:
-                ann = pred.annotation
-                project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
-                meta_changed = meta_changed or meta_changed_
-                pred.annotation = ann
-                prediction.model_meta = project_meta
-
-            if meta_changed:
-                project_meta = api.project.update_meta(project_id, project_meta)
-                context["project_meta"][project_id] = project_meta
-
-            anns = _exclude_duplicated_predictions(
-                api,
-                [pred.annotation for pred in preds],
-                dataset_id,
-                [pred.image_id for pred in preds],
-                iou=iou_merge_threshold,
-                meta=project_meta,
-            )
-            for pred, ann in zip(preds, anns):
-                pred.annotation = ann
-
-            if upload_mode in ["iou_merge", "append"]:
-                context.setdefault("annotation", {})
-                missing = []
-                for pred in preds:
-                    if pred.image_id not in context["annotation"]:
-                        missing.append(pred.image_id)
-                for image_id, ann_info in zip(
-                    missing, api.annotation.download_batch(dataset_id, missing)
-                ):
-                    context["annotation"][image_id] = Annotation.from_json(
-                        ann_info.annotation, project_meta
-                    )
-                for pred in preds:
-                    pred.annotation = context["annotation"][pred.image_id].merge(pred.annotation)
-
-            api.annotation.upload_anns(
-                [pred.image_id for pred in preds],
-                [pred.annotation for pred in preds],
-            )
-
-        if progress_cb is not None:
-            progress_cb(len(preds))
-
-    if inference_request is not None:
-        results = _format_output(predictions)
-        for result in results:
-            result["annotation"] = None
-            result["data"] = None
-        inference_request.add_results(results)
-
-
-def add_results_to_request(predictions: List[Prediction], inference_request: InferenceRequest):
-    results = _format_output(predictions)
-    inference_request.add_results(results)
-    inference_request.done(len(results))
-
-
-def _format_output(
-    predictions: List[Prediction],
-) -> List[dict]:
-    output = [
-        {
-            **pred.to_json(),
-            "data": pred.extra_data.get("slides_data", {}),
-        }
-        for pred in predictions
-    ]
-    return output
 
 
 def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
