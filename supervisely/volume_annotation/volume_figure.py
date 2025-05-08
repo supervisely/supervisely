@@ -637,10 +637,15 @@ class VolumeFigure(VideoFigure):
         """
         if isinstance(geometry_data, str):
             mask_3d = Mask3D.create_from_file(geometry_data)
-        if isinstance(geometry_data, ndarray):
+        elif isinstance(geometry_data, ndarray):
             mask_3d = Mask3D(geometry_data)
-        if isinstance(geometry_data, bytes):
+        elif isinstance(geometry_data, bytes):
             mask_3d = Mask3D.from_bytes(geometry_data)
+        else:
+            raise TypeError(
+                f"geometry_data must be str, ndarray, or bytes, but got {type(geometry_data)}"
+            )
+
         return cls(
             volume_object,
             mask_3d,
