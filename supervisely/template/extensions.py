@@ -73,4 +73,4 @@ class AutoSidebarExtension(Extension):
         ).set_lineno(lineno)
     
     def _placeholder(self, caller):
-        return "<!--AUTOSIDEBAR_PLACEHOLDER-->"
+        return "<!--AUTOSIDEBAR_PLACEHOLDER-->\n"

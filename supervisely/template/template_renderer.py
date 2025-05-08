@@ -3,13 +3,15 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Union, List, Tuple
 import re
 from jinja2 import Environment, FileSystemLoader
-from supervisely.template.extensions import MarkdownExtension, AutoSidebarExtension
+from extensions import MarkdownExtension, AutoSidebarExtension
+from supervisely import logger
 
 
 class TemplateRenderer:
 
     def __init__(
         self,
+        generate_sidebar: bool = True,
         jinja_options: Optional[Dict[str, Any]] = None,
         jinja_extensions: Optional[list] = None,
     ):
@@ -29,19 +31,13 @@ class TemplateRenderer:
             }
 
         if jinja_extensions is None:
-            jinja_extensions = [MarkdownExtension, AutoSidebarExtension]
+            jinja_extensions = [MarkdownExtension]
+        if generate_sidebar:
+            jinja_extensions.append(AutoSidebarExtension)
 
         self.jinja_extensions = jinja_extensions
         self.jinja_options = jinja_options
         
-        self.env_options = {}
-        self.env_options.update(jinja_options)
-        self.env_options.update({"extensions": jinja_extensions})
-
-        self.loader = FileSystemLoader(self.base_template_dir)
-        self.environment = Environment(loader=self.loader, **self.env_options)
-    
-    
     def render(
         self,
         template_path: str,
@@ -59,7 +55,16 @@ class TemplateRenderer:
         :rtype: str
         """
         # Render
-        template = self.environment.get_template(template_path)
+        p = Path(template_path)
+        directory = p.parent.absolute()
+        filename = p.name
+        loader = FileSystemLoader(directory)
+        env_options = {
+            **self.jinja_options,
+            "extensions": self.jinja_extensions
+        }
+        environment = Environment(loader=loader, **env_options)
+        template = environment.get_template(filename)
         html = template.render(**context)
 
         # Generate sidebar if AutoSidebarExtension is used
@@ -101,15 +106,28 @@ class TemplateRenderer:
                 new_lines.extend(lines[header['index'] + 1:next_header_index])
                 new_lines.append('</div>')
             else:
-                new_lines.extend(lines[header['index'] + 1:])
-                new_lines.append('</div>')
+                closing_found = False
+                for j in range(header['index'] + 1, len(lines)):
+                    if lines[j].strip().startswith('</sly-iw-sidebar>'):
+                        new_lines.append('</div>')
+                        new_lines.extend(lines[j:])
+                        closing_found = True
+                        break
+                    else:
+                        new_lines.append(lines[j])
+                if not closing_found:
+                    logger.warning(f"</sly-iw-sidebar> closing tag not found after the last h2 header."
+                          f" Check that all <h2> headers are presented within <sly-iw-sidebar>"
+                          f" to generate sidebar correctly.")
+                    new_lines.append('</div>')
         html = '\n'.join(new_lines)
 
         # Generate sidebar
         sidebar_placeholder_pattern = r'^([ \t]*)<!--AUTOSIDEBAR_PLACEHOLDER-->$'
         sidebar_match = re.search(sidebar_placeholder_pattern, html, re.MULTILINE)
         if sidebar_match:
-            base_indent = sidebar_match.group(1)
+            # base_indent = sidebar_match.group(1)
+            base_indent = ' ' * 4 * 3
             sidebar_parts = []
             for section in headers:
                 button_html = (

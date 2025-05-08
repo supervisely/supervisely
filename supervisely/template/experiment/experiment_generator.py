@@ -12,6 +12,8 @@ from supervisely.nn.inference import Inference
 from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
 from supervisely.template.template_renderer import TemplateRenderer
+
+
 class ExperimentGenerator:
     """
     Base class for generating experiment reports.
