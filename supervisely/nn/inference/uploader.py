@@ -24,6 +24,7 @@ class Uploader:
             self._exception_handler = self._default_exception_handler
         self._logger = logger
         self.exception = None
+        self._lock = threading.Lock()
         self._q = Queue()
         self._stop_event = threading.Event()
         self._exception_event = threading.Event()
@@ -74,14 +75,13 @@ class Uploader:
             if self._logger is not None:
                 self._logger.error("Error in notify loop: %s", str(e), exc_info=True)
             if self.raise_from_notify and not self._exception_event.is_set():
-                self._exception_event.set()
-                self.exception = e
+                self.set_exception(e)
             return
 
     def _upload_loop(self):
         try:
             while not self._stop_event.is_set() or not self._q.empty():
-                if self._exception_event.set():
+                if self._exception_event.is_set():
                     return
                 items = []
                 try:
@@ -111,8 +111,7 @@ class Uploader:
             if self._logger is not None:
                 self._logger.error("Error in upload loop: %s", str(e), exc_info=True)
             if not self._exception_event.is_set():
-                self._exception_event.set()
-                self.exception = e
+                self.set_exception(e)
             return
 
     def put(self, items):
@@ -134,6 +133,11 @@ class Uploader:
 
     def has_exception(self):
         return self._exception_event.is_set()
+
+    def set_exception(self, exception: Exception):
+        with self._lock:
+            self._exception_event.set()
+            self.exception = exception
 
     def __enter__(self):
         return self
