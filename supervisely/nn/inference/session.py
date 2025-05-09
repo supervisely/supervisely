@@ -459,9 +459,9 @@ class SessionJSON:
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-
                 while resp["status"] == "download_info":
                     current = resp["current"]
+                    # pylint: disable=possibly-used-before-assignment
                     progress_widget.update(current - prev_current)
                     prev_current = current
                     resp = self._get_preparing_progress()

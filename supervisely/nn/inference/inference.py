@@ -2260,7 +2260,9 @@ class Inference:
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
             stem = name.stem
-            return str(name.with_stem(stem + f"(dataset_id:{image_info.dataset_id})"))
+            parent = name.parent
+            suffix = name.suffix
+            return str(parent / f"{stem}(dataset_id:{image_info.dataset_id}){suffix}")
 
         def _get_or_create_dataset(src_dataset_id, dst_project_id):
             if src_dataset_id is None:
@@ -3110,7 +3112,8 @@ class Inference:
             else:
                 if hasattr(self, "pretrained_models_table"):
                     return [
-                        _get_model_name(model) for model in self.pretrained_models_table._models
+                        _get_model_name(model)
+                        for model in self.pretrained_models_table._models  # pylint: disable=no-member
                     ]
                 else:
                     raise HTTPException(

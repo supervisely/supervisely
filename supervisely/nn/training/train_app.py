@@ -1416,6 +1416,7 @@ class TrainApp:
             shutil.move(checkpoint_path, new_checkpoint_path)
             if len(model_files) > 0:
                 try:
+                    # pylint: disable=import-error
                     import torch
 
                     state_dict = torch.load(new_checkpoint_path)
