@@ -8,19 +8,15 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
-import uuid
 from collections import OrderedDict, defaultdict
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial, wraps
-from logging import Logger
 from pathlib import Path
-from queue import Empty, Queue
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
 import numpy as np
@@ -38,12 +34,11 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely import DatasetInfo, ProjectInfo, batched
+from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
     get_filename_from_headers,
     get_or_create_event_loop,
-    get_valid_kwargs,
     is_debug_with_sly_net,
     is_production,
     rand_str,
@@ -78,6 +73,7 @@ from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
+from supervisely.nn.inference.uploader import Uploader
 from supervisely.nn.model.model_api import Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
@@ -102,81 +98,6 @@ try:
 except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
-
-
-class ThreadWithException(threading.Thread):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.exception = None
-
-    def run(self):
-        try:
-            super().run()
-        except Exception as e:
-            self.exception = e
-
-
-class Uploader:
-    def __init__(self, upload_f: Callable, logger: Logger):
-        self._upload_f = upload_f
-        self._logger = logger
-        self._q = Queue()
-        self._stop_event = threading.Event()
-        self._exception_event = threading.Event()
-        self._loop = ThreadWithException(
-            target=self._upload_loop,
-            daemon=True,
-        )
-        self._loop.start()
-
-    def _upload_loop(self):
-        try:
-            while not self._stop_event.is_set() or not self._q.empty():
-                items = []
-                try:
-                    timeout = 0.1 if self._stop_event.is_set() else 1.0
-                    item = self._q.get(timeout=timeout)
-                    items.append(item)
-                    while True:
-                        try:
-                            items.append(self._q.get_nowait())
-                        except Empty:
-                            break
-                    joined_items = [item for batch in items if len(batch) > 0 for item in batch]
-                    if joined_items:
-                        self._upload_f(joined_items)
-
-                    for _ in range(len(items)):
-                        self._q.task_done()
-                except Empty:
-                    pass
-        except Exception as e:
-            self._logger.error("Error in upload loop: %s", str(e), exc_info=True)
-            self._exception_event.set()
-            raise
-
-    def put(self, item):
-        self._q.put(item)
-
-    def stop(self):
-        self._stop_event.set()
-
-    def join(self):
-        self._loop.join()
-
-    def has_exception(self):
-        return self._exception_event.is_set()
-
-    def exception(self) -> Exception:
-        return self._loop.exception
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
-        self.join()
-        return False
 
 
 @dataclass
@@ -1706,7 +1627,6 @@ class Inference:
                 name=f"Predictions from task #{self.task_id}",
                 description=f"Auto created project from inference request {inference_request.uuid}",
                 change_name_if_conflict=True,
-
             )
             output_project_id = output_project_info.id
             inference_request.context.setdefault("project_info", {})[
@@ -2010,11 +1930,8 @@ class Inference:
             upload_f = _upload_predictions
 
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
-        cancelled = False
         with Uploader(upload_f, logger=logger) as uploader:
             for dataset_info in datasets_infos:
-                if cancelled:
-                    break
                 for images_infos_batch in batched(
                     images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
@@ -2023,8 +1940,10 @@ class Inference:
                             f"Cancelling inference project...",
                             extra={"inference_request_uuid": inference_request.uuid},
                         )
-                        cancelled = True
-                        break
+                        return
+                    if uploader.has_exception():
+                        exception = uploader.exception
+                        raise RuntimeError(f"Error in upload loop: {exception}") from exception
                     if cache_project_on_model:
                         images_paths, _ = zip(
                             *read_from_cached_project(
@@ -2149,7 +2068,10 @@ class Inference:
                         f"Cancelling inference project...",
                         extra={"inference_request_uuid": inference_request.uuid},
                     )
-                    break
+                    return
+                if uploader.has_exception():
+                    exception = uploader.exception
+                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
                 if i == num_warmup:
                     inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, num_iterations)
 
