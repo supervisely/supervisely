@@ -12,6 +12,7 @@ from supervisely._utils import batched
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
+from supervisely.geometry.constants import MASK_3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import (
@@ -33,7 +34,7 @@ from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
-
+import tempfile
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
     """
@@ -68,11 +69,13 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
-    def download(self, volume_id: int):
+    def download(self, volume_id: int, download_geometry: bool = False) -> Dict:
         """
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
+        :param download_geometry: If True, downloads 3D geometry data (e.g., Mask3D) for spatial figures.
+        :type download_geometry: bool, optional
         :return: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -125,9 +128,19 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             #     'volumeName': 'CTChest.nrrd'
             # }
         """
-
+        SF_FIELD = "spatialFigures"
         volume_info = self._api.volume.get_info_by_id(volume_id)
-        return self._download(volume_info.dataset_id, volume_id)
+        ann = self._download(volume_info.dataset_id, volume_id)
+        if download_geometry:
+            spatial_figures = ann[SF_FIELD]
+            for sf in spatial_figures:
+                figure_id = sf[ApiField.ID]
+                figure_path = f"{temp_dir}/{figure_id}.nrrd"
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    self._api.volume.figure.download_sf_geometries([figure_id], [figure_path])
+                    sf[ApiField.GEOMETRY] = Mask3D.create_from_file(figure_path).to_json()[MASK_3D]
+            ann[SF_FIELD] = spatial_figures
+        return ann
 
     def append(
         self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None, volume_info=None
