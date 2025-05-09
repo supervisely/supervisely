@@ -150,4 +150,4 @@ class Uploader:
         if exc_type is not None:
             exc = exc_val.with_traceback(exc_tb)
             return self._exception_handler(exc)
-        raise False
+        return False
