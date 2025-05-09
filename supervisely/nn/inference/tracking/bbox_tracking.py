@@ -6,7 +6,6 @@ from typing import Any, BinaryIO, Dict, List, Optional
 import numpy as np
 from pydantic import ValidationError
 
-from build.lib.supervisely.nn.inference.inference_request import InferenceRequest
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Geometry, Label
 from supervisely.annotation.obj_class import ObjClass
@@ -17,6 +16,7 @@ from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging import image as sly_image
 from supervisely.nn.inference.inference import Uploader
+from supervisely.nn.inference.inference_request import InferenceRequest
 from supervisely.nn.inference.tracking.base_tracking import BaseTracking
 from supervisely.nn.inference.tracking.tracker_interface import (
     TrackerInterface,
@@ -37,7 +37,6 @@ class BBoxTracking(BaseTracking):
         self,
         api: Api,
         context: dict,
-        notify_annotation_tool: bool,
         inference_request: InferenceRequest,
     ):
         video_interface = TrackerInterface(
@@ -46,7 +45,7 @@ class BBoxTracking(BaseTracking):
             load_all_frames=False,
             frame_loader=self.cache.download_frame,
             frames_loader=self.cache.download_frames,
-            should_notify=notify_annotation_tool,
+            should_notify=False,
         )
 
         range_of_frames = [
@@ -68,14 +67,42 @@ class BBoxTracking(BaseTracking):
                 video_id=video_interface.video_id,
             )
 
-        def upload_f(items: List[Prediction]):
+        def _upload_f(items: List):
             video_interface.add_object_geometries(*list(zip(*items)))
             inference_request.done(len(items))
+
+        def _notify_f(items: List):
+            frame_range = [
+                min(frame_index for (_, _, frame_index) in items),
+                max(frame_index for (_, _, frame_index) in items),
+            ]
+            pos_inc = (
+                inference_request.progress.total
+                - inference_request.progress.current
+                - video_interface.global_pos
+            )
+
+            video_interface._notify(
+                pos_increment=pos_inc,
+                fstart=frame_range[0],
+                fend=frame_range[1],
+                task=inference_request.stage,
+            )
+
+        def _exception_handler(exception: Exception):
+            api.logger.error(f"Error saving predictions: {str(exception)}", exc_info=True)
+            video_interface._notify(True, task="Stop tracking due to an error")
+            raise exception
 
         api.logger.info("Start tracking.")
         total_progress = video_interface.frames_count * len(video_interface.figure_ids)
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, total_progress)
-        with Uploader(upload_f=upload_f, logger=api.logger) as uploader:
+        with Uploader(
+            upload_f=_upload_f,
+            notify_f=_notify_f,
+            exception_handler=_exception_handler,
+            logger=api.logger,
+        ) as uploader:
             for fig_id, obj_id in zip(
                 video_interface.geometries.keys(),
                 video_interface.object_ids,
@@ -107,12 +134,28 @@ class BBoxTracking(BaseTracking):
 
                     uploader.put((sly_geometry, obj_id, video_interface._cur_frames_indexes[-1]))
 
+                    if inference_request.is_stopped() or video_interface.global_stop_indicatior:
+                        api.logger.info(
+                            "Inference request stopped.",
+                            extra={"inference_request_uuid": inference_request.uuid},
+                        )
+                        video_interface._notify(True, task="Stop tracking")
+                        return
                     if uploader.has_exception():
-                        video_interface._notify(True, task="stop tracking")
-                        exception = uploader.exception()
-                        raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                        raise uploader.exception
 
-                api.logger.info(f"Figure #{fig_id} tracked.")
+                api.logger.info(
+                    f"Figure #{fig_id} tracked.",
+                    extra={
+                        "figure_id": fig_id,
+                        "object_id": obj_id,
+                        "inference_request_uuid": inference_request.uuid,
+                    },
+                )
+            api.logger.info(
+                "Finished tracking.", extra={"inference_request_uuid": inference_request.uuid}
+            )
+            video_interface._notify(True, task="Finished tracking")
 
     def _track_api(self, api: Api, context: dict, inference_request: InferenceRequest):
         track_t = time.monotonic()
@@ -271,6 +314,11 @@ class BBoxTracking(BaseTracking):
         tracker_interface = TrackerInterfaceV2(api, context, self.cache)
         frames_count = tracker_interface.frames_count
         figures = tracker_interface.figures
+        frame_range = [
+            tracker_interface.frame_indexes[0],
+            tracker_interface.frame_indexes[-1],
+        ]
+        frame_range_asc = [min(frame_range), max(frame_range)]
         progress_total = frames_count * len(figures)
 
         def _upload_f(items: List[FigureInfo]):
@@ -288,10 +336,15 @@ class BBoxTracking(BaseTracking):
 
         def _exception_handler(exception: Exception):
             api.logger.error(f"Error saving predictions: {str(exception)}", exc_info=True)
+            tracker_interface.notify_progress(
+                inference_request.progress.current,
+                inference_request.progress.current,
+                frame_range_asc,
+            )
             tracker_interface.notify_error(exception)
             raise Exception
 
-        api.logger.info("Start tracking.")
+        api.logger.info("Start tracking.", extra={"inference_request_uuid": inference_request.uuid})
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
         with Uploader(
             upload_f=_upload_f,
@@ -356,10 +409,25 @@ class BBoxTracking(BaseTracking):
                         "Frame [%d / %d] processed.",
                         frame_i,
                         tracker_interface.frames_count,
+                        extra={
+                            "frame_index": frame_i,
+                            "figure_index": fig_i,
+                            "inference_request_uuid": inference_request.uuid,
+                        },
                     )
 
                     if inference_request.is_stopped() or tracker_interface.is_stopped():
-                        api.logger.info("Inference request stopped.")
+                        if isinstance(tracker_interface.stop_reason(), Exception):
+                            raise tracker_interface.stop_reason()
+                        api.logger.info(
+                            "Inference request stopped.",
+                            extra={"inference_request_uuid": inference_request.uuid},
+                        )
+                        tracker_interface.notify_progress(
+                            inference_request.progress.current,
+                            inference_request.progress.current,
+                            frame_range_asc,
+                        )
                         return
                     if uploader.has_exception():
                         raise uploader.exception
@@ -368,12 +436,24 @@ class BBoxTracking(BaseTracking):
                     "Figure [%d, %d] tracked.",
                     fig_i,
                     len(figures),
-                    extra={"figure_id": figure.id},
+                    extra={
+                        "figure_id": figure.id,
+                        "figure_index": fig_i,
+                        "inference_request_uuid": inference_request.uuid,
+                    },
                 )
+            api.logger.info(
+                "Finished tracking", extra={"inference_request_uuid": inference_request.uuid}
+            )
+            tracker_interface.notify_progress(
+                inference_request.progress.current,
+                inference_request.progress.current,
+                frame_range_asc,
+            )
 
     def track(self, api: Api, state: Dict, context: Dict):
         fn = self.send_error_data(api, context)(self._track)
-        self.inference_requests_manager.schedule_task(fn, api, context, notify_annotation_tool=True)
+        self.inference_requests_manager.schedule_task(fn, api, context)
         return {"message": "Track task started."}
 
     def track_api(self, api: Api, state: Dict, context: Dict):

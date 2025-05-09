@@ -2,7 +2,6 @@ import functools
 import inspect
 import json
 import traceback
-from threading import Lock
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 from fastapi import Form, Request, Response, UploadFile, status
@@ -14,7 +13,6 @@ from supervisely.api.module_api import ApiField
 from supervisely.io import env
 from supervisely.nn.inference.inference import (
     Inference,
-    _convert_sly_progress_to_dict,
     _get_log_extra_for_inference_request,
 )
 from supervisely.sly_logger import logger
