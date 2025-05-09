@@ -68,7 +68,7 @@ class BBoxTracking(BaseTracking):
             )
 
         def _upload_f(items: List):
-            video_interface.add_object_geometries(*list(zip(*items)))
+            video_interface.add_object_geometries_on_frames(*list(zip(*items)), notify=False)
             inference_request.done(len(items))
 
         def _notify_f(items: List):
