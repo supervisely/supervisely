@@ -156,6 +156,11 @@ class BBoxTracking(BaseTracking):
                         video_interface._notify(True, task="Stop tracking")
                         return
                     if uploader.has_exception():
+                        exception = uploader.exception
+                        if not isinstance(exception, Exception):
+                            raise RuntimeError(
+                                f"Uploader exception is not an instance of Exception: {str(exception)}"
+                            )
                         raise uploader.exception
 
                 api.logger.info(
