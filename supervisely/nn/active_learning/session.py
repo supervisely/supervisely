@@ -148,3 +148,15 @@ class ActiveLearningSession:
         Unschedule the job to move labeled images to the training project.
         """
         self.labeling_service.unschedule_move_to_training_project()
+
+    def add_annotators_to_labeling_queue(self, annotators: list) -> None:
+        """
+        Add annotators to the labeling queue.
+        """
+        self.labeling_service.add_annotators(annotators)
+
+    def add_reviewers_to_labeling_queue(self, reviewers: list) -> None:
+        """
+        Add reviewers to the labeling queue.
+        """
+        self.labeling_service.add_reviewers(reviewers)
