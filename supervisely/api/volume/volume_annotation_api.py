@@ -133,9 +133,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         ann = self._download(volume_info.dataset_id, volume_id)
         if download_geometry:
             spatial_figures = ann[SPATIAL_FIGURES]
-            for sf in spatial_figures:
-                figure_id = sf[ApiField.ID]
-                with tempfile.TemporaryDirectory() as temp_dir:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                for sf in spatial_figures:
+                    figure_id = sf[ApiField.ID]
                     figure_path = f"{temp_dir}/{figure_id}.nrrd"
                     self._api.volume.figure.download_sf_geometries([figure_id], [figure_path])
                     sf[ApiField.GEOMETRY] = Mask3D.create_from_file(figure_path).to_json()
