@@ -733,3 +733,53 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return self.get_entities_all_pages(id, status=status, limit=1, filter_by=filter_by).get(
             "total", 0
         )
+
+    def add_annotators(self, id: int, user_ids: List[int]) -> None:
+        """
+        Add annotators to the Labeling Queue.
+
+        :param id: Labeling Queue ID in Supervisely.
+        :type id: int
+        :param user_ids: List of User IDs in Supervisely to assign Users as labelers to Labeling Queue.
+        :type user_ids: List[int]
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.labeling_queue.add_annotators(2, [4, 5])
+        """
+        method = "labeling-queues.users.add"
+        self._api.post(method, {ApiField.ID: id, ApiField.USER_IDS: user_ids})
+
+    def add_reviewers(self, id: int, user_ids: List[int]) -> None:
+        """
+        Add reviewers to the Labeling Queue.
+
+        :param id: Labeling Queue ID in Supervisely.
+        :type id: int
+        :param user_ids: List of User IDs in Supervisely to assign Users as reviewers to Labeling Queue.
+        :type user_ids: List[int]
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            api.labeling_queue.add_reviewers(2, [4, 5])
+        """
+        method = "labeling-queues.users.add"
+        self._api.post(method, {ApiField.ID: id, ApiField.REVIEWER_IDS: user_ids})
