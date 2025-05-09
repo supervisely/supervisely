@@ -44,7 +44,7 @@ class Uploader:
             while (
                 not self._stop_event.is_set() or not self._notify_q.empty() or not self._q.empty()
             ):
-                if self.exception is not None:
+                if self._exception_event.is_set():
                     return
                 items = []
                 try:
@@ -77,7 +77,7 @@ class Uploader:
     def _upload_loop(self):
         try:
             while not self._stop_event.is_set() or not self._q.empty():
-                if self.exception is not None:
+                if self._exception_event.set():
                     return
                 items = []
                 try:
