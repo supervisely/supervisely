@@ -277,9 +277,9 @@ class Inference:
             self.gui.on_serve_callbacks.append(on_serve_callback)
             self._initialize_app_layout()
 
+        self._inference_requests = {}
         max_workers = 1 if not multithread_inference else None
-        self._inference_executor = ThreadPoolExecutor(max_workers=max_workers)
-        self._upload_executor = ThreadPoolExecutor(max_workers=5)
+        self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
         self.get_info = self._check_serve_before_call(self.get_info)
@@ -292,9 +292,7 @@ class Inference:
             log_progress=True,
         )
 
-        self.inference_requests_manager = InferenceRequestsManager(
-            executor=self._inference_executor
-        )
+        self.inference_requests_manager = InferenceRequestsManager(executor=self._executor)
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -1124,6 +1122,16 @@ class Inference:
             return self._custom_inference_settings
         else:
             return yaml.safe_load(self._custom_inference_settings)
+
+    def _handle_error_in_async(self, uuid, func, *args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            inf_request = self._inference_requests.get(uuid, None)
+            if inf_request is not None:
+                inf_request["exception"] = str(e)
+            logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
+            raise e
 
     def api_from_request(self, request) -> Api:
         """
@@ -2146,6 +2154,43 @@ class Inference:
     def is_model_deployed(self):
         return self._model_served
 
+    def _on_inference_start(self, inference_request_uuid):
+        inference_request = {
+            "progress": Progress("Inferring model...", total_cnt=1),
+            "is_inferring": True,
+            "cancel_inference": False,
+            "result": None,
+            "pending_results": [],
+            "preparing_progress": {"current": 0, "total": 1},
+            "exception": None,
+        }
+        self._inference_requests[inference_request_uuid] = inference_request
+
+    def _on_inference_end(self, future, inference_request_uuid):
+        logger.debug("callback: on_inference_end()")
+        inference_request = self._inference_requests.get(inference_request_uuid)
+        if inference_request is not None:
+            inference_request["is_inferring"] = False
+
+    def schedule_task(self, func, *args, **kwargs):
+        inference_request_uuid = kwargs.get("inference_request_uuid", None)
+        if inference_request_uuid is None:
+            self._executor.submit(func, *args, **kwargs)
+        else:
+            self._on_inference_start(inference_request_uuid)
+            future = self._executor.submit(
+                self._handle_error_in_async,
+                inference_request_uuid,
+                func,
+                *args,
+                **kwargs,
+            )
+            end_callback = partial(
+                self._on_inference_end, inference_request_uuid=inference_request_uuid
+            )
+            future.add_done_callback(end_callback)
+        logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
+
     def _deploy_on_autorestart(self):
         try:
             self._api_request_model_layout._title = (
@@ -2463,7 +2508,7 @@ class Inference:
                             logger.debug("Deploying the model via autostart...")
                             self.gui.deploy_with_current_params()
 
-                    self._inference_executor.submit(delayed_autostart)
+                    self._executor.submit(delayed_autostart)
                 else:
                     # run autostart immediately
                     self.gui.deploy_with_current_params()
@@ -2837,7 +2882,9 @@ class Inference:
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
-            log_extra = _get_log_extra_for_inference_request(inference_request)
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request.uuid, inference_request
+            )
             data = {**inference_request.to_json(), **log_extra}
             logger.debug(
                 f"Sending inference progress with uuid:",
@@ -2852,8 +2899,26 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid].copy()
+                inference_request["pending_results"] = inference_request["pending_results"].copy()
+
+                # Clear the queue `pending_results`
+                self._inference_requests[inference_request_uuid]["pending_results"].clear()
+
+                inference_request["progress"] = _convert_sly_progress_to_dict(
+                    inference_request["progress"]
+                )
+                log_extra = _get_log_extra_for_inference_request(
+                    inference_request_uuid, inference_request
+                )
+                logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+                return inference_request
+
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
-            log_extra = _get_log_extra_for_inference_request(inference_request)
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request.uuid, inference_request
+            )
             data = {
                 **inference_request.to_json(),
                 **log_extra,
@@ -2870,8 +2935,28 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid].copy()
+
+                inference_request["progress"] = _convert_sly_progress_to_dict(
+                    inference_request["progress"]
+                )
+
+                # Logging
+                log_extra = _get_log_extra_for_inference_request(
+                    inference_request_uuid, inference_request
+                )
+
+                logger.debug(
+                    f"Sending inference result with uuid:",
+                    extra=log_extra,
+                )
+                return inference_request["result"]
+
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
-            log_extra = _get_log_extra_for_inference_request(inference_request)
+            log_extra = _get_log_extra_for_inference_request(
+                inference_request.uuid, inference_request
+            )
             logger.debug(
                 f"Sending inference result with uuid:",
                 extra=log_extra,
@@ -2888,8 +2973,12 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            inference_request = self.inference_requests_manager.get(inference_request_uuid)
-            inference_request.stop()
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid]
+                inference_request["cancel_inference"] = True
+            else:
+                inference_request = self.inference_requests_manager.get(inference_request_uuid)
+                inference_request.stop()
             return {"message": "Inference will be stopped.", "success": True}
 
         @server.post(f"/clear_inference_request")
@@ -2901,7 +2990,10 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            self.inference_requests_manager.remove_after(inference_request_uuid, 60)
+            if inference_request_uuid in self._inference_requests:
+                del self._inference_requests[inference_request_uuid]
+            else:
+                self.inference_requests_manager.remove_after(inference_request_uuid, 60)
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
 
@@ -2912,8 +3004,13 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid].copy()
+                return inference_request["preparing_progress"]
             inference_request = self.inference_requests_manager.get(inference_request_uuid)
-            return _get_log_extra_for_inference_request(inference_request)["preparing_progress"]
+            return _get_log_extra_for_inference_request(inference_request.uuid, inference_request)[
+                "preparing_progress"
+            ]
 
         @server.post("/get_deploy_settings")
         def _get_deploy_settings(response: Response, request: Request):
@@ -3739,7 +3836,20 @@ def _filter_duplicated_predictions_from_ann(
     return pred_ann.clone(labels=new_labels)
 
 
-def _get_log_extra_for_inference_request(inference_request: InferenceRequest):
+def _get_log_extra_for_inference_request(
+    inference_request_uuid, inference_request: Union[InferenceRequest, dict]
+):
+    if isinstance(inference_request, dict):
+        log_extra = {
+            "uuid": inference_request_uuid,
+            "progress": inference_request["progress"],
+            "is_inferring": inference_request["is_inferring"],
+            "cancel_inference": inference_request["cancel_inference"],
+            "has_result": inference_request["result"] is not None,
+            "pending_results": len(inference_request["pending_results"]),
+        }
+        return log_extra
+
     progress = inference_request.progress_json()
     del progress["message"]
     log_extra = {
