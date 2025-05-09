@@ -250,3 +250,14 @@ class SolutionsProject(Widget):
         else:
             self._badges = StateJson()[self.widget_id]["badges"]
         StateJson().send_changes()
+
+    def remove_badge_by_key(self, key: str):
+        found = False
+        for idx, prop in enumerate(self._badges):
+            if prop["on_hover"] == key:
+                found = True
+                break
+        if found:
+            self._badges.pop(idx)
+            StateJson()[self.widget_id]["badges"] = deepcopy(self._badges)
+            StateJson().send_changes()
