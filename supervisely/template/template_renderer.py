@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Union, List, Tuple
 import re
 from jinja2 import Environment, FileSystemLoader
-from extensions import MarkdownExtension, AutoSidebarExtension
+from supervisely.template.extensions import MarkdownExtension, AutoSidebarExtension
 from supervisely import logger
 
 

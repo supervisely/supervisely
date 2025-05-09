@@ -1,7 +1,7 @@
 from jinja2.ext import Extension
+from jinja2.nodes import CallBlock
 import markdown
 import textwrap
-from jinja2.nodes import CallBlock
 
 class MarkdownExtension(Extension):
     EXTENSIONS = [

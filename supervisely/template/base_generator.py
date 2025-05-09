@@ -1,3 +1,4 @@
+import inspect
 import os
 from datetime import datetime
 from pathlib import Path
@@ -13,19 +14,23 @@ from supervisely.template.template_renderer import TemplateRenderer
 
 class BaseGenerator:
     """
-    Base class for generating reports from Jinja2 templates.
+    Base class for generating reports from Jinja2 templates and uploading them to Supervisely.
     """
 
-    URL_NAME = None
-    LINK_FILE = "Open Report.lnk"
+    TEMPLATE = "template.html.jinja"
     VUE_TEMPLATE_NAME = "template.vue"
+    LINK_FILE = "Open Report.lnk"
 
-    def __init__(self, api: Api, template_path: str, output_dir: str):
+    def __init__(self, api: Api, output_dir: str):
         self.api = api
-        self.template_path = template_path
         self.output_dir = output_dir
-        self.template_renderer = TemplateRenderer(self.template_path)
+        self.template_renderer = TemplateRenderer()
         os.makedirs(self.output_dir, exist_ok=True)
+    
+    @property
+    def template_path(self) -> str:
+        cls_dir = Path(inspect.getfile(self.__class__)).parent
+        return f"{cls_dir}/{self.TEMPLATE}"
 
     def context(self) -> dict:
         raise NotImplementedError("Subclasses must implement the context method.")
@@ -58,9 +63,12 @@ class BaseGenerator:
             team_id=team_id,
             remote_path=f"{remote_dir}/{self.VUE_TEMPLATE_NAME}",
         ).id
-        link_path = self._generate_link_file(template_id)
-        self._upload_link_file(remote_dir, link_path, team_id)
-        logger.info(f"Open URL: {self._get_report_url(template_id)}")
+        # Upload link file
+        if self._report_url(self.api.server_address, template_id) is not None:
+            url = self._upload_link_file(template_id, remote_dir, team_id)
+            logger.info(f"Open URL: {url}")
+        else:
+            logger.warning("Subclasses must implement the `_report_url` method to upload a link file.")
         return template_id
     
     def _render(self) -> str:
@@ -68,15 +76,16 @@ class BaseGenerator:
         content = self.template_renderer.render(self.template_path, context)
         return content
 
-    def _upload_link_file(self, remote_dir: str, link_path: str, team_id: int):
-        self.api.file.upload(team_id=team_id, src=link_path, dst=f"{remote_dir}/{self.LINK_FILE}")
-        
-    def _generate_link_file(self, template_id: int) -> str:
-        url = self._get_report_url(template_id)
-        open_link_path = os.path.join(self.output_dir, self.LINK_FILE)
-        with open(open_link_path, "w") as f:
+    def _upload_link_file(self, template_id: int, remote_dir: str, team_id: int):
+        url = self._report_url(self.api.server_address, template_id)
+        link_path = os.path.join(self.output_dir, self.LINK_FILE)
+        with open(link_path, "w") as f:
             f.write(url)
-        return open_link_path
+        self.api.file.upload(team_id=team_id, src=link_path, dst=self._link_file_dst_path(remote_dir))
+        return url
+        
+    def _link_file_dst_path(self, remote_dir: str) -> str:
+        return f"{remote_dir}/{self.LINK_FILE}"
 
-    def _get_report_url(self, template_id: int) -> str:
-        return f"{self.api.server_address}/{self.URL_NAME}&id={template_id}"
+    def _report_url(self, server_address: str, template_id: int) -> str:
+        return None
