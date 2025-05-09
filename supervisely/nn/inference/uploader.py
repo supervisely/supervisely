@@ -95,6 +95,7 @@ class Uploader:
                             break
                     if items:
                         self._upload_f(items)
+                        self.notify(items)
 
                     for _ in range(len(items)):
                         self._q.task_done()
