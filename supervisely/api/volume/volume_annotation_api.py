@@ -3,6 +3,7 @@
 import asyncio
 import os
 import re
+import tempfile
 from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
@@ -27,13 +28,14 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume import stl_converter
+from supervisely.volume_annotation.constants import SPATIAL_FIGURES
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
-import tempfile
+
 
 class VolumeAnnotationAPI(EntityAnnotationAPI):
     """
@@ -127,18 +129,17 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             #     'volumeName': 'CTChest.nrrd'
             # }
         """
-        SF_FIELD = "spatialFigures"
         volume_info = self._api.volume.get_info_by_id(volume_id)
         ann = self._download(volume_info.dataset_id, volume_id)
         if download_geometry:
-            spatial_figures = ann[SF_FIELD]
+            spatial_figures = ann[SPATIAL_FIGURES]
             for sf in spatial_figures:
                 figure_id = sf[ApiField.ID]
                 with tempfile.TemporaryDirectory() as temp_dir:
                     figure_path = f"{temp_dir}/{figure_id}.nrrd"
                     self._api.volume.figure.download_sf_geometries([figure_id], [figure_path])
                     sf[ApiField.GEOMETRY] = Mask3D.create_from_file(figure_path).to_json()
-            ann[SF_FIELD] = spatial_figures
+            ann[SPATIAL_FIGURES] = spatial_figures
         return ann
 
     def append(
