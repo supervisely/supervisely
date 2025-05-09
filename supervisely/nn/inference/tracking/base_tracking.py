@@ -187,7 +187,7 @@ class BaseTracking(Inference):
 
         data = {
             **inference_request.to_json(),
-            **_get_log_extra_for_inference_request(inference_request),
+            **_get_log_extra_for_inference_request(inference_request.uuid, inference_request),
             "pending_results": data["pending_results"],
         }
 
@@ -239,7 +239,7 @@ class BaseTracking(Inference):
         inference_request_uuid = context["inference_request_uuid"]
 
         inference_request = self.inference_requests_manager.get(inference_request_uuid)
-        log_extra = _get_log_extra_for_inference_request(inference_request)
+        log_extra = _get_log_extra_for_inference_request(inference_request.uuid, inference_request)
         frame_range = find_value_by_keys(context, ["frameRange", "frame_range", "frames"])
         tracking_results = self._pop_tracking_results(inference_request_uuid, frame_range)
         logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
