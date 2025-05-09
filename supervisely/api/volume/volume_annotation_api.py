@@ -12,7 +12,6 @@ from supervisely._utils import batched
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
-from supervisely.geometry.constants import MASK_3D
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import (
