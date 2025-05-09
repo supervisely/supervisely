@@ -45,7 +45,7 @@ class BBoxTracking(BaseTracking):
             load_all_frames=False,
             frame_loader=self.cache.download_frame,
             frames_loader=self.cache.download_frames,
-            should_notify=False,
+            should_notify=True,
         )
 
         range_of_frames = [
