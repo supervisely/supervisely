@@ -1446,7 +1446,7 @@ class AppApi(TaskApi):
         return response.json()
 
     def get_ecosystem_module_info(
-        self, module_id: int, version: Optional[str] = None
+        self, module_id: int = None, version: Optional[str] = None, slug: Optional[str] = None
     ) -> ModuleInfo:
         """Returns ModuleInfo object by module id and version.
 
@@ -1454,6 +1454,10 @@ class AppApi(TaskApi):
         :type module_id: int
         :param version: version of the module, e.g. "v1.0.0"
         :type version: Optional[str]
+        :param slug: slug of the module, e.g. "supervisely-ecosystem/export-to-supervisely-format"
+        :type slug: Optional[str]
+        :raises ValueError: if both module_id and slug are None
+        :raises ValueError: if both module_id and slug are provided
         :return: ModuleInfo object
         :rtype: ModuleInfo
         :Usage example:
@@ -1473,7 +1477,13 @@ class AppApi(TaskApi):
             module_id = 81
             module_info = api.app.get_ecosystem_module_info(module_id)
         """
-        data = {ApiField.ID: module_id}
+        if module_id is None and slug is None:
+            raise ValueError("Either module_id or slug must be provided")
+        if module_id is not None:
+            data = {ApiField.ID: module_id}
+        else:
+            data = {ApiField.SLUG: slug}
+
         if version is not None:
             data[ApiField.VERSION] = version
         response = self._api.post("ecosystem.info", data)

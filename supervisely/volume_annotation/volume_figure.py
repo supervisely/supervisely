@@ -529,6 +529,7 @@ class VolumeFigure(VideoFigure):
         else:
             geometry_json = data[ApiField.GEOMETRY]
         geometry = shape.from_json(geometry_json)
+        geometry.sly_id = data.get(ID, None)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
@@ -636,10 +637,15 @@ class VolumeFigure(VideoFigure):
         """
         if isinstance(geometry_data, str):
             mask_3d = Mask3D.create_from_file(geometry_data)
-        if isinstance(geometry_data, ndarray):
+        elif isinstance(geometry_data, ndarray):
             mask_3d = Mask3D(geometry_data)
-        if isinstance(geometry_data, bytes):
+        elif isinstance(geometry_data, bytes):
             mask_3d = Mask3D.from_bytes(geometry_data)
+        else:
+            raise TypeError(
+                f"geometry_data must be str, ndarray, or bytes, but got {type(geometry_data)}"
+            )
+
         return cls(
             volume_object,
             mask_3d,

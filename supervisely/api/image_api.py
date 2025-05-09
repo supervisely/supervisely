@@ -601,6 +601,7 @@ class ImageApi(RemoveableBulkModuleApi):
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
         recursive: Optional[bool] = False,
+        entities_collection_id: Optional[int] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -627,6 +628,8 @@ class ImageApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
         :type recursive: bool, optional
+        :param entities_collection_id: :class:`EntitiesCollection<supervisely.api.entities_collection_api.EntitiesCollectionApi>` ID to which the images belong. Can be used to filter images by specific entities collection.
+        :type entities_collection_id: int, optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -700,6 +703,18 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
+        if entities_collection_id is not None:
+            if ApiField.FILTERS not in data:
+                data[ApiField.FILTERS] = []
+            data[ApiField.FILTERS].append(
+                {
+                    "type": "entities_collection",
+                    "data": {
+                        ApiField.COLLECTION_ID: entities_collection_id,
+                        ApiField.INCLUDE: True,
+                    },
+                }
+            )
         if fields is not None:
             data[ApiField.FIELDS] = fields
         return self.get_list_all_pages(
