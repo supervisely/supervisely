@@ -67,6 +67,10 @@ class Uploader:
             self.stop()
             return
         except Exception as e:
+            try:
+                raise RuntimeError("Error in notify loop") from e
+            except RuntimeError as e_:
+                e = e_
             if self._logger is not None:
                 self._logger.error("Error in notify loop: %s", str(e), exc_info=True)
             if self.raise_from_notify and not self._exception_event.is_set():
@@ -100,6 +104,10 @@ class Uploader:
             self.stop()
             return
         except Exception as e:
+            try:
+                raise RuntimeError("Error in upload loop") from e
+            except RuntimeError as e_:
+                e = e_
             if self._logger is not None:
                 self._logger.error("Error in upload loop: %s", str(e), exc_info=True)
             if not self._exception_event.is_set():

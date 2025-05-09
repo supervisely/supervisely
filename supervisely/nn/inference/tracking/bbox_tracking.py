@@ -101,7 +101,7 @@ class BBoxTracking(BaseTracking):
             )
 
         def _exception_handler(exception: Exception):
-            api.logger.error(f"Error saving predictions: {str(exception)}", exc_info=True)
+            api.logger.error(f"Error: {str(exception)}", exc_info=True)
             video_interface._notify(True, task="Stop tracking due to an error")
             raise exception
 
