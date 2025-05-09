@@ -1,19 +1,14 @@
 import random
 from collections import defaultdict
-from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
-from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
-from supervisely.nn.active_learning.sampling.constants import (
-    SamplingMode,
-    SamplingSettings,
-)
 from supervisely.nn.active_learning.scheduler.scheduler import SchedulerJobs
 
 if TYPE_CHECKING:
     from supervisely.nn.active_learning.session import ActiveLearningSession
 
+from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
 from supervisely.nn.active_learning.utils.project import (
     create_dataset_mapping,
@@ -26,7 +21,7 @@ class LabelingService:
 
     def __init__(self, al_session):
         self.al_session: ActiveLearningSession = al_session
-        self.api = al_session.api
+        self.api: Api = al_session.api
         self.project_id = al_session.project_id
         self.workspace_id = al_session.workspace_id
         self.team_id = al_session.team_id
@@ -305,9 +300,16 @@ class LabelingService:
         """
         self.al_session.scheduler.remove_job(SchedulerJobs.MOVE_TO_TRAINING)
 
-    # def add_annotators(self, annotators: List[int]) -> None:
-    #     """
-    #     Add annotators to the labeling queue.
-    #     """
-    #     queue_id = self.al_session.state.labeling_queue_id
-    #     self.api.labeling_queue.ad
+    def add_annotators(self, annotators: List[int]) -> None:
+        """
+        Add annotators to the labeling queue.
+        """
+        queue_id = self.al_session.state.labeling_queue_id
+        self.api.labeling_queue.add_annotators(queue_id, annotators)
+
+    def add_reviewers(self, reviewers: List[int]) -> None:
+        """
+        Add reviewers to the labeling queue.
+        """
+        queue_id = self.al_session.state.labeling_queue_id
+        self.api.labeling_queue.add_reviewers(queue_id, reviewers)
