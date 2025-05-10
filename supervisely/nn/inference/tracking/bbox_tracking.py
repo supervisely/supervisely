@@ -77,17 +77,6 @@ class BBoxTracking(BaseTracking):
                 max(frame_index for (_, _, frame_index) in items),
             ]
             pos_inc = inference_request.progress.current - video_interface.global_pos
-            api.logger.debug(
-                "in _notify_f",
-                extra={
-                    "items": len(items),
-                    "pos_inc": pos_inc,
-                    "total": inference_request.progress.total,
-                    "current": inference_request.progress.current,
-                    "global_pos": video_interface.global_pos,
-                    "frame_range": frame_range,
-                },
-            )
 
             video_interface._notify(
                 pos_increment=pos_inc,
