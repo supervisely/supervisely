@@ -170,14 +170,7 @@ class MaskTracking(BaseTracking):
             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
             inference_request.done(len(items))
 
-        def _exception_handler(exception: Exception):
-            api.logger.error(f"Error saving predictions: {str(exception)}", exc_info=True)
-            video_interface._notify(True, task="Stop tracking due to an error")
-            raise exception
-
-        with Uploader(
-            upload_f=_upload_f, exception_handler=_exception_handler, logger=api.logger
-        ) as uploader:
+        with Uploader(upload_f=_upload_f, logger=api.logger) as uploader:
             # run tracker
             tracked_multilabel_masks = self.predict(frames=frames, input_mask=multilabel_mask)
             for curframe_i, mask in enumerate(
