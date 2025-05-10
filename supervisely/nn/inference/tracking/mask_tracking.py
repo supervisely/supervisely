@@ -161,6 +161,7 @@ class MaskTracking(BaseTracking):
         api.logger.debug("unique_labels = %s", unique_labels)
         total_progress = len(unique_labels) * video_interface.frames_count
         api.logger.info("Starting tracking process")
+        api.logger.debug("total_progress = %s", total_progress)
         inference_request.set_stage(
             InferenceRequest.Stage.INFERENCE,
             0,

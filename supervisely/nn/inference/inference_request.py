@@ -120,6 +120,7 @@ class InferenceRequest:
             if current is not None:
                 self.progress.current = current
             if total is not None:
+                logger.debug("setting total = %s", total)
                 self.progress.total = total
             if is_size:
                 self.progress.is_size = True
