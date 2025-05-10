@@ -102,7 +102,7 @@ class MaskTracking(BaseTracking):
             frame_loader=self.cache.download_frame,
             frames_loader=self.cache.download_frames,
         )
-        video_interface.stop += video_interface.frames_count
+        video_interface.stop += video_interface.frames_count + 1
         range_of_frames = [
             video_interface.frames_indexes[0],
             video_interface.frames_indexes[-1],
