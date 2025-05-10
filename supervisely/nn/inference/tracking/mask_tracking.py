@@ -158,6 +158,7 @@ class MaskTracking(BaseTracking):
         unique_labels = np.unique(multilabel_mask)
         if 0 in unique_labels:
             unique_labels = unique_labels[1:]
+        api.logger.debug("unique_labels = %s", unique_labels)
         total_progress = len(unique_labels) * video_interface.frames_count
         api.logger.info("Starting tracking process")
         inference_request.set_stage(
