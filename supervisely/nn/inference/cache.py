@@ -424,6 +424,7 @@ class InferenceImageCache:
 
         def load_generator(frame_indexes: List[int]):
             return api.video.frame.download_nps_generator(video_id, frame_indexes)
+            return self.download_frame()
 
         return self._download_many(
             frame_indexes,
@@ -774,13 +775,16 @@ class InferenceImageCache:
         logger: Logger,
         return_images: bool = True,
         progress_cb=None,
+        video_id=None,
     ) -> Optional[List[np.ndarray]]:
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
 
         def get_one_image(item):
-            pos, name = item
-            return pos, self._cache.get_image(name)
+            pos, index = item
+            if video_id in self._cache:
+                return pos, self.get_frame_from_cache(video_id, index)
+            return pos, self._cache.get_image(name_cunstructor(index))
 
         pos = 0
         batch_size = 4
@@ -791,12 +795,12 @@ class InferenceImageCache:
                 name = name_cunstructor(hash_or_id)
                 self._wait_if_in_queue(name, logger)
 
-                if name not in self._cache:
+                if name not in self._cache and video_id not in self._cache:
                     self._load_queue.set(name, hash_or_id)
                     indexes_to_load.append(hash_or_id)
                     pos_by_name[name] = pos
                 elif return_images is True:
-                    items.append((pos, name))
+                    items.append((pos, hash_or_id))
                 pos += 1
 
             if len(items) > 0:
