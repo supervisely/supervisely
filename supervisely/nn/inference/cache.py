@@ -807,6 +807,7 @@ class InferenceImageCache:
                 with ThreadPoolExecutor(min(64, len(items))) as executor:
                     for pos, image in executor.map(get_one_image, items):
                         all_frames[pos] = image
+                        logger.debug("put image to position %s", pos)
                         if progress_cb is not None:
                             progress_cb()
 
@@ -819,6 +820,7 @@ class InferenceImageCache:
                     if return_images:
                         pos = pos_by_name[name]
                         all_frames[pos] = image
+                        logger.debug("put image to position %s", pos)
                         if progress_cb is not None:
                             progress_cb()
             download_time = time.monotonic() - download_time
