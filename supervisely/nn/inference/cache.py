@@ -825,7 +825,7 @@ class InferenceImageCache:
                 extra={"indexes": indexes_to_load, "download_time": download_time},
             )
             logger.debug(
-                f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}"
+                f"Images/Frames found in cache: {set(indexes_to_load).difference(indexes)}"
             )
 
         if return_images:
