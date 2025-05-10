@@ -98,7 +98,7 @@ class MaskTracking(BaseTracking):
         video_interface = TrackerInterface(
             context=context,
             api=api,
-            load_all_frames=True,
+            load_all_frames=False,
             notify_in_predict=True,
             per_point_polygon_tracking=False,
             frame_loader=self.cache.download_frame,
@@ -148,6 +148,10 @@ class MaskTracking(BaseTracking):
         with Uploader(
             upload_f=_upload_f, exception_handler=_exception_handler, logger=api.logger
         ) as uploader:
+            frames = self.cache.download_frames(
+                api,
+                video_interface.video_id,
+            )
             for (fig_id, geometry), obj_id in zip(
                 video_interface.geometries.items(),
                 video_interface.object_ids,
@@ -433,14 +437,19 @@ class MaskTracking(BaseTracking):
                 video_id=video_interface.video_id,
             )
 
-        api.logger.info("Starting tracking process")
+        inference_request.set_stage("Downloading frames", 0, video_interface.frames_count)
         # load frames
-        frames = video_interface.frames
+        frames = self.cache.download_frames(
+            api,
+            video_interface.video_id,
+            video_interface.frames_indexes,
+            progress_cb=inference_request.done,
+        )
         # combine several binary masks into one multilabel mask
-        i = 0
         label2id = {}
 
-        for input_geom in input_geometries:
+        multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
+        for i, input_geom in enumerate(input_geometries, 1):
             geometry = self._deserialize_geometry(input_geom)
             if not isinstance(geometry, Bitmap) and not isinstance(geometry, Polygon):
                 raise TypeError(f"This app does not support {geometry.geometry_name()} tracking")
@@ -451,22 +460,22 @@ class MaskTracking(BaseTracking):
                 bitmap_obj_class = ObjClass("bitmap", Bitmap)
                 bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
                 geometry = bitmap_label.geometry
-            if i == 0:
-                multilabel_mask = geometry.data.astype(int)
-                multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
-                geometry.draw(bitmap=multilabel_mask, color=[1, 1, 1])
-                i += 1
-            else:
-                i += 1
-                geometry.draw(bitmap=multilabel_mask, color=[i, i, i])
+            geometry.draw(bitmap=multilabel_mask, color=i)
             label2id[i] = {
                 "original_geometry": geometry.geometry_name(),
             }
 
+        result_indexes = np.unique(multilabel_mask)
+        progress_total = len(result_indexes)
+        if 0 in result_indexes:
+            progress_total -= 1
+        progress_total = progress_total * video_interface.frames_count
+
+        api.logger.info("Starting tracking process")
         inference_request.set_stage(
             InferenceRequest.Stage.INFERENCE,
             0,
-            len(input_geometries) * video_interface.frames_count,
+            progress_total,
         )
 
         # run tracker

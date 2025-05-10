@@ -392,10 +392,15 @@ class InferenceImageCache:
     ) -> List[np.ndarray]:
         return_images = kwargs.get("return_images", True)
         redownload_video = kwargs.get("redownload_video", False)
+        progress_cb = kwargs.get("progress_cb", None)
 
         if video_id in self._cache:
             try:
-                return self.get_frames_from_cache(video_id, frame_indexes)
+                frames = self.get_frames_from_cache(video_id, frame_indexes)
+                if progress_cb is not None:
+                    progress_cb(len(frame_indexes))
+                if return_images:
+                    return frames
             except:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
@@ -426,6 +431,7 @@ class InferenceImageCache:
             load_generator,
             api.logger,
             return_images,
+            progress_cb=progress_cb,
         )
 
     def add_video_to_cache_by_io(self, video_id: int, video_io: BinaryIO) -> None:
@@ -767,42 +773,53 @@ class InferenceImageCache:
         ],
         logger: Logger,
         return_images: bool = True,
+        progress_cb=None,
     ) -> Optional[List[np.ndarray]]:
-        indexes_to_load = []
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
-        items = []
-
-        for pos, hash_or_id in enumerate(indexes):
-            name = name_cunstructor(hash_or_id)
-            self._wait_if_in_queue(name, logger)
-
-            if name not in self._cache:
-                self._load_queue.set(name, hash_or_id)
-                indexes_to_load.append(hash_or_id)
-                pos_by_name[name] = pos
-            elif return_images is True:
-                items.append((pos, name))
+        download_time = 0
 
         def get_one_image(item):
             pos, name = item
             return pos, self._cache.get_image(name)
 
-        if len(items) > 0:
-            with ThreadPoolExecutor(min(64, len(items))) as executor:
-                for pos, image in executor.map(get_one_image, items):
-                    all_frames[pos] = image
+        pos = 0
+        batch_size = 4
+        for batch in batched(indexes, batch_size):
+            indexes_to_load = []
+            items = []
+            for hash_or_id in batch:
+                name = name_cunstructor(hash_or_id)
+                self._wait_if_in_queue(name, logger)
 
-        download_time = time.monotonic()
-        if len(indexes_to_load) > 0:
-            for id_or_hash, image in load_generator(indexes_to_load):
-                name = name_cunstructor(id_or_hash)
-                self._add_to_cache(name, image)
+                if name not in self._cache:
+                    self._load_queue.set(name, hash_or_id)
+                    indexes_to_load.append(hash_or_id)
+                    pos_by_name[name] = pos
+                elif return_images is True:
+                    items.append((pos, name))
+                pos += 1
 
-                if return_images:
-                    pos = pos_by_name[name]
-                    all_frames[pos] = image
-        download_time = time.monotonic() - download_time
+            if len(items) > 0:
+                with ThreadPoolExecutor(min(64, len(items))) as executor:
+                    for pos, image in executor.map(get_one_image, items):
+                        all_frames[pos] = image
+                        if progress_cb is not None:
+                            progress_cb()
+
+            batch_download_time = time.monotonic()
+            if len(indexes_to_load) > 0:
+                for id_or_hash, image in load_generator(indexes_to_load):
+                    name = name_cunstructor(id_or_hash)
+                    self._add_to_cache(name, image)
+
+                    if return_images:
+                        pos = pos_by_name[name]
+                        all_frames[pos] = image
+                        if progress_cb is not None:
+                            progress_cb()
+            batch_download_time = time.monotonic() - batch_download_time
+            download_time += batch_download_time
 
         # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
         logger.debug(
