@@ -1,13 +1,12 @@
+import inspect
 import time
 import uuid
-from queue import Queue
-from threading import Event, Thread
 from typing import BinaryIO, Dict, List, Tuple
 
 import numpy as np
 from pydantic import ValidationError
 
-from supervisely._utils import find_value_by_keys
+from supervisely._utils import find_value_by_keys, get_valid_kwargs
 from supervisely.annotation.label import Geometry, Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
@@ -25,7 +24,6 @@ from supervisely.nn.inference.tracking.tracker_interface import (
 )
 from supervisely.nn.inference.uploader import Uploader
 from supervisely.sly_logger import logger
-from supervisely.task.progress import Progress
 
 
 class MaskTracking(BaseTracking):
@@ -124,11 +122,48 @@ class MaskTracking(BaseTracking):
                 video_id=video_interface.video_id,
             )
 
+        inference_request.set_stage("Downloading frames", 0, video_interface.frames_count)
         # load frames
-        frames = video_interface.frames
+        frames = self.cache.download_frames(
+            api, video_interface.video_id, video_interface.frames_indexes
+        )
+
         # combine several binary masks into one multilabel mask
-        i = 0
+        i = 1
         label2id = {}
+        multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
+        for (fig_id, geometry), obj_id in zip(
+            video_interface.geometries.items(),
+            video_interface.object_ids,
+        ):
+            original_geometry = geometry.clone()
+            if not isinstance(geometry, Bitmap) and not isinstance(geometry, Polygon):
+                raise TypeError(f"This app does not support {geometry.geometry_name()} tracking")
+            # convert polygon to bitmap
+            if isinstance(geometry, Polygon):
+                polygon_obj_class = ObjClass("polygon", Polygon)
+                polygon_label = Label(geometry, polygon_obj_class)
+                bitmap_obj_class = ObjClass("bitmap", Bitmap)
+                bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
+                geometry = bitmap_label.geometry
+            geometry.draw(bitmap=multilabel_mask, color=i)
+            i += 1
+            label2id[i] = {
+                "fig_id": fig_id,
+                "obj_id": obj_id,
+                "original_geometry": original_geometry.geometry_name(),
+            }
+
+        unique_labels = np.unique(multilabel_mask)
+        if 0 in unique_labels:
+            unique_labels = unique_labels[1:]
+        total_progress = len(unique_labels) * video_interface.frames_count
+        api.logger.info("Starting tracking process")
+        inference_request.set_stage(
+            InferenceRequest.Stage.INFERENCE,
+            0,
+            total_progress,
+        )
 
         def _upload_f(items: List):
             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
@@ -139,91 +174,43 @@ class MaskTracking(BaseTracking):
             video_interface._notify(True, task="Stop tracking due to an error")
             raise exception
 
-        api.logger.info("Starting tracking process")
-        inference_request.set_stage(
-            InferenceRequest.Stage.INFERENCE,
-            0,
-            video_interface.frames_count * len(video_interface.geometries),
-        )
         with Uploader(
             upload_f=_upload_f, exception_handler=_exception_handler, logger=api.logger
         ) as uploader:
-            frames = self.cache.download_frames(
-                api,
-                video_interface.video_id,
-            )
-            for (fig_id, geometry), obj_id in zip(
-                video_interface.geometries.items(),
-                video_interface.object_ids,
-            ):
-                original_geometry = geometry.clone()
-                if not isinstance(geometry, Bitmap) and not isinstance(geometry, Polygon):
-                    raise TypeError(
-                        f"This app does not support {geometry.geometry_name()} tracking"
-                    )
-                # convert polygon to bitmap
-                if isinstance(geometry, Polygon):
-                    polygon_obj_class = ObjClass("polygon", Polygon)
-                    polygon_label = Label(geometry, polygon_obj_class)
-                    bitmap_obj_class = ObjClass("bitmap", Bitmap)
-                    bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
-                    geometry = bitmap_label.geometry
-                if i == 0:
-                    multilabel_mask = geometry.data.astype(int)
-                    multilabel_mask = np.zeros(frames[0].shape, dtype=np.uint8)
-                    geometry.draw(bitmap=multilabel_mask, color=[1, 1, 1])
-                    i += 1
-                else:
-                    i += 1
-                    geometry.draw(bitmap=multilabel_mask, color=[i, i, i])
-                label2id[i] = {
-                    "fig_id": fig_id,
-                    "obj_id": obj_id,
-                    "original_geometry": original_geometry.geometry_name(),
-                }
             # run tracker
-            tracked_multilabel_masks = self.predict(
-                frames=frames, input_mask=multilabel_mask[:, :, 0]
-            )
-            tracked_multilabel_masks = np.array(tracked_multilabel_masks)
-            # decompose multilabel masks into binary masks
-            for i in np.unique(tracked_multilabel_masks):
-                if i != 0:
-                    binary_masks = tracked_multilabel_masks == i
+            tracked_multilabel_masks = self.predict(frames=frames, input_mask=multilabel_mask)
+            for curframe_i, mask in enumerate(
+                tracked_multilabel_masks, video_interface.frame_index + 1
+            ):
+                for i in unique_labels:
+                    binary_mask = mask == i
                     fig_id = label2id[i]["fig_id"]
                     obj_id = label2id[i]["obj_id"]
                     geometry_type = label2id[i]["original_geometry"]
-                    for j, mask in enumerate(binary_masks[1:]):
-                        # check if mask is not empty
-                        if not np.any(mask):
-                            api.logger.info(
-                                f"Skipping empty mask on frame {video_interface.frame_index + j + 1}"
-                            )
-                            # update progress bar anyway (otherwise it will not be finished)
-                            video_interface._notify(task="add geometry on frame")
+                    if not np.any(binary_mask):
+                        api.logger.info(f"Skipping empty mask on frame {curframe_i}")
+                        inference_request.done()
+                    else:
+                        if geometry_type == "polygon":
+                            bitmap_geometry = Bitmap(mask)
+                            bitmap_obj_class = ObjClass("bitmap", Bitmap)
+                            bitmap_label = Label(bitmap_geometry, bitmap_obj_class)
+                            polygon_obj_class = ObjClass("polygon", Polygon)
+                            polygon_labels = bitmap_label.convert(polygon_obj_class)
+                            geometries = [label.geometry for label in polygon_labels]
                         else:
-                            if geometry_type == "polygon":
-                                bitmap_geometry = Bitmap(mask)
-                                bitmap_obj_class = ObjClass("bitmap", Bitmap)
-                                bitmap_label = Label(bitmap_geometry, bitmap_obj_class)
-                                polygon_obj_class = ObjClass("polygon", Polygon)
-                                polygon_labels = bitmap_label.convert(polygon_obj_class)
-                                geometries = [label.geometry for label in polygon_labels]
-                            else:
-                                geometries = [Bitmap(mask)]
-                            for l, geometry in enumerate(geometries):
-                                if l == len(geometries) - 1:
-                                    notify = True
-                                else:
-                                    notify = False
-                                uploader.put(
-                                    (
-                                        geometry,
-                                        obj_id,
-                                        video_interface.frames_indexes[j + 1],
-                                        notify,
-                                    )
+                            geometries = [Bitmap(mask)]
+                        uploader.put(
+                            [
+                                (
+                                    geometry,
+                                    obj_id,
+                                    curframe_i,
+                                    True if g_idx == len(geometries) - 1 else False,
                                 )
+                                for g_idx, geometry in enumerate(geometries)
+                            ]
+                        )
                     if inference_request.is_stopped() or video_interface.global_stop_indicatior:
                         api.logger.info(
                             "Tracking stopped by user",
@@ -234,7 +221,7 @@ class MaskTracking(BaseTracking):
                     if uploader.has_exception():
                         raise uploader.exception
 
-                    api.logger.info(f"Figure with id {fig_id} was successfully tracked")
+                api.logger.info(f"Frame {curframe_i} was successfully tracked")
 
     def _track_async(self, api: Api, context: dict, inference_request: InferenceRequest):
         tracker_interface = TrackerInterfaceV2(api, context, self.cache)
@@ -500,7 +487,6 @@ class MaskTracking(BaseTracking):
                         predictions_for_label.append(
                             {"type": geometry.geometry_name(), "data": geometry.to_json()}
                         )
-                    inference_request.done()
                 predictions.append(predictions_for_label)
 
         # predictions must be NxK masks: N=number of frames, K=number of objects
