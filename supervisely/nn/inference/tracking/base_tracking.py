@@ -2,7 +2,6 @@ import functools
 import inspect
 import json
 import traceback
-from threading import Lock
 from typing import Any, BinaryIO, Dict, List, Optional, Tuple, Union
 
 from fastapi import Form, Request, Response, UploadFile, status
@@ -14,7 +13,6 @@ from supervisely.api.module_api import ApiField
 from supervisely.io import env
 from supervisely.nn.inference.inference import (
     Inference,
-    _convert_sly_progress_to_dict,
     _get_log_extra_for_inference_request,
 )
 from supervisely.sly_logger import logger
@@ -97,10 +95,6 @@ class BaseTracking(Inference):
         info["task type"] = "tracking"
         return info
 
-    def _on_inference_start(self, inference_request_uuid: str):
-        super()._on_inference_start(inference_request_uuid)
-        self._inference_requests[inference_request_uuid]["lock"] = Lock()
-
     @staticmethod
     def _notify_error_default(
         api: Api, track_id: str, exception: Exception, with_traceback: bool = False
@@ -130,23 +124,6 @@ class BaseTracking(Inference):
             track_id=track_id,
             message=f"{error_name}: {message}",
         )
-
-    def _handle_error_in_async(self, uuid):
-        def decorator(func):
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    inf_request = self._inference_requests.get(uuid, None)
-                    if inf_request is not None:
-                        inf_request["exception"] = str(e)
-                    logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
-                    raise e
-
-            return wrapper
-
-        return decorator
 
     @staticmethod
     def send_error_data(api, context):
@@ -181,72 +158,58 @@ class BaseTracking(Inference):
 
         return decorator
 
-    def schedule_task(self, func, *args, **kwargs):
-        inference_request_uuid = kwargs.get("inference_request_uuid", None)
-        if inference_request_uuid is None:
-            self._executor.submit(func, *args, **kwargs)
-        else:
-            self._on_inference_start(inference_request_uuid)
-            fn = self._handle_error_in_async(inference_request_uuid)(func)
-            future = self._executor.submit(
-                fn,
-                *args,
-                **kwargs,
-            )
-            end_callback = functools.partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
-        logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
-
     def _pop_tracking_results(self, inference_request_uuid: str, frame_range: Tuple = None):
-        inference_request = self._inference_requests[inference_request_uuid]
+        inference_request = self.inference_requests_manager.get(inference_request_uuid)
         logger.debug(
             "Pop tracking results",
             extra={
                 "inference_request_uuid": inference_request_uuid,
-                "pending_results_len": len(inference_request["pending_results"]),
+                "pending_results_len": inference_request.pending_num(),
                 "frame_range": frame_range,
             },
         )
-        with inference_request["lock"]:
-            inference_request_copy = inference_request.copy()
 
-            if frame_range is not None:
+        data = {}
+        if frame_range is not None:
 
-                def _in_range(figure):
-                    return (
-                        figure.frame_index >= frame_range[0]
-                        and figure.frame_index <= frame_range[1]
-                    )
+            def _in_range(figure):
+                return figure.frame_index >= frame_range[0] and figure.frame_index <= frame_range[1]
 
-                inference_request_copy["pending_results"] = list(
-                    filter(_in_range, inference_request_copy["pending_results"])
-                )
-                inference_request["pending_results"] = list(
-                    filter(lambda x: not _in_range(x), inference_request["pending_results"])
-                )
-            else:
-                inference_request["pending_results"] = []
-        inference_request_copy.pop("lock")
-        inference_request_copy["progress"] = _convert_sly_progress_to_dict(
-            inference_request_copy["progress"]
-        )
+            with inference_request._lock:
+                data["pending_results"] = [
+                    x for x in inference_request._pending_results if _in_range(x)
+                ]
+                inference_request._pending_results = [
+                    x for x in inference_request._pending_results if not _in_range(x)
+                ]
+        else:
+            data["pending_results"] = inference_request.pop_pending_results()
 
-        inference_request_copy["pending_results"] = [
-            figure.to_json() for figure in inference_request_copy["pending_results"]
-        ]
+        data = {
+            **inference_request.to_json(),
+            **_get_log_extra_for_inference_request(inference_request.uuid, inference_request),
+            "pending_results": data["pending_results"],
+        }
 
-        return inference_request_copy
+        return data
 
     def _clear_tracking_results(self, inference_request_uuid):
-        del self._inference_requests[inference_request_uuid]
+        if inference_request_uuid is None:
+            raise ValueError("'inference_request_uuid' is required.")
+        self.inference_requests_manager.remove_after(inference_request_uuid, 60)
         logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
+        return {"success": True}
 
     def _stop_tracking(self, inference_request_uuid: str):
-        inference_request = self._inference_requests[inference_request_uuid]
-        inference_request["cancel_inference"] = True
-        logger.debug("Stopped tracking:", extra={"uuid": inference_request_uuid})
+        inference_request = self.inference_requests_manager.get(inference_request_uuid)
+        inference_request.stop()
+        logger.debug(
+            "Stopped tracking:",
+            extra={
+                "uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request_uuid,
+            },
+        )
 
     # Implement the following methods in the derived class
     def track(self, api: Api, state: Dict, context: Dict):
@@ -274,14 +237,17 @@ class BaseTracking(Inference):
     def pop_tracking_results(self, state: Dict, context: Dict):
         validate_key(context, "inference_request_uuid", str)
         inference_request_uuid = context["inference_request_uuid"]
+
+        inference_request = self.inference_requests_manager.get(inference_request_uuid)
+        log_extra = _get_log_extra_for_inference_request(inference_request.uuid, inference_request)
         frame_range = find_value_by_keys(context, ["frameRange", "frame_range", "frames"])
         tracking_results = self._pop_tracking_results(inference_request_uuid, frame_range)
-        log_extra = _get_log_extra_for_inference_request(inference_request_uuid, tracking_results)
         logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
         return tracking_results
 
     def clear_tracking_results(self, state: Dict, context: Dict):
-        self._clear_tracking_results(context)
+        inference_request_uuid = context.get("inference_request_uuid", None)
+        self._clear_tracking_results(inference_request_uuid)
         return {"message": "Inference results cleared.", "success": True}
 
     def _register_endpoints(self):
@@ -290,7 +256,7 @@ class BaseTracking(Inference):
         @server.post("/track")
         @handle_validation
         def track_handler(request: Request):
-            api = request.state.api
+            api = self.api_from_request(request)
             state = request.state.state
             context = request.state.context
             logger.info("Received track request.", extra={"context": context, "state": state})
@@ -299,7 +265,7 @@ class BaseTracking(Inference):
         @server.post("/track-api")
         @handle_validation
         async def track_api_handler(request: Request):
-            api = request.state.api
+            api = self.api_from_request(request)
             state = request.state.state
             context = request.state.context
             logger.info("Received track-api request.", extra={"context": context, "state": state})
@@ -320,7 +286,7 @@ class BaseTracking(Inference):
         @server.post("/track_async")
         @handle_validation
         def track_async_handler(request: Request):
-            api = request.state.api
+            api = self.api_from_request(request)
             state = request.state.state
             context = request.state.context
             logger.info("Received track_async request.", extra={"context": context, "state": state})

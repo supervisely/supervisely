@@ -1,8 +1,6 @@
 from dataclasses import dataclass
-from typing import List
 
-from supervisely.nn.artifacts.artifacts import TrainInfo
-from supervisely.nn.experiments import ExperimentInfo
+import psutil
 
 
 class ModelSource:
@@ -62,5 +60,47 @@ def _get_model_name(model_info: dict):
     if not name:
         name = model_info.get("meta", {}).get("model_name")
     if not name:
+        name = model_info.get("Model")
+    if not name:
         raise ValueError("Model name not found not in model_info nor in meta.")
     return name
+
+
+def get_ram_usage():
+    memory = psutil.virtual_memory()
+    return memory.used, memory.total
+
+
+def get_gpu_usage(device: str = None):
+    if device == "cpu":
+        return None, None
+    try:
+        import torch
+    except Exception as e:
+        from supervisely import logger
+        logger.warning(f"Cannot import torch. Install PyTorch to get GPU usage info. Error: {e}")
+        return None, None
+    if not torch.cuda.is_available():
+        return None, None
+    gpu_index = None
+    if device is None or device in ["", "auto", "cuda"]:
+        gpu_index = torch.cuda.current_device()
+    elif isinstance(device, int):
+        gpu_index = device
+    elif device.startswith("cuda:"):
+        try:
+            gpu_index = int(device.split(":")[-1])
+        except ValueError:
+            return None, None
+    else:
+        for i in range(torch.cuda.device_count()):
+            if device == torch.cuda.get_device_name(i):
+                gpu_index = i
+                break
+        if gpu_index is None:
+            return None, None
+    if gpu_index is None or gpu_index > torch.cuda.device_count() or gpu_index < 0:
+        return None, None
+    allocated = torch.cuda.memory_allocated(gpu_index)
+    total = torch.cuda.get_device_properties(gpu_index).total_memory
+    return allocated, total

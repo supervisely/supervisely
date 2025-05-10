@@ -45,9 +45,9 @@ import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
+import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
 import supervisely.api.entities_collection_api as entities_collection_api
-import supervisely.api.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -345,7 +345,7 @@ class Api:
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
         self.project = project_api.ProjectApi(self)
-        self.model = neural_network_api.NeuralNetworkApi(self)
+        self.nn = neural_network_api.NeuralNetworkApi(self)
         self.task = task_api.TaskApi(self)
         self.dataset = dataset_api.DatasetApi(self)
         self.image = image_api.ImageApi(self)

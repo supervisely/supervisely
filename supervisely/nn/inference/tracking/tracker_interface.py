@@ -637,6 +637,29 @@ class TrackerInterfaceV2:
                 logger.info("Task stopped by user.", extra=self.log_extra)
                 self.stop()
 
+    def notify_error(self, exception: Exception):
+        logger.debug(f"Notify error: {str(exception)}", extra=self.log_extra)
+        error = type(exception).__name__
+        message = str(exception)
+        if self.direct_progress:
+            self.api.vid_ann_tool.set_direct_tracking_error(
+                self.session_id,
+                self.video_id,
+                self.track_id,
+                f"{type(exception).__name__}: {str(exception)}",
+            )
+        else:
+            self.api.video.notify_tracking_error(self.track_id, error, message)
+
+    def notify_warning(self, message: str):
+        logger.debug(f"Notify warning: {message}", extra=self.log_extra)
+        if self.direct_progress:
+            self.api.vid_ann_tool.set_direct_tracking_warning(
+                self.session_id, self.video_id, self.track_id, message
+            )
+        else:
+            self.api.video.notify_tracking_warning(self.track_id, self.video_id, message)
+
     def _upload_exception_handler(self, exception: Exception):
         logger.error(
             "Error in upload loop: %s", str(exception), exc_info=True, extra=self.log_extra

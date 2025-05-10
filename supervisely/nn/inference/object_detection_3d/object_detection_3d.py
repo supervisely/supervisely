@@ -1,19 +1,22 @@
-from typing import Dict, List, Any
-from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.nn.prediction_dto import PredictionCuboid3d
+import os
+from typing import Any, Dict, List
+
+from fastapi import Request, Response, status
+
+from supervisely import Api, PointcloudAnnotation, PointcloudFigure, PointcloudObject
+from supervisely._utils import rand_str
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
-from supervisely.nn.inference.inference import Inference
-from fastapi import Response, Request, status
-from supervisely.sly_logger import logger
-import os
-from supervisely import Api, PointcloudAnnotation, PointcloudObject, PointcloudFigure
-from supervisely.io.fs import silent_remove
-from supervisely._utils import rand_str
 from supervisely.app.content import get_data_dir
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.io.fs import silent_remove
+from supervisely.nn.inference.inference import Inference
+from supervisely.nn.prediction_dto import PredictionCuboid3d
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
+from supervisely.sly_logger import logger
+
 
 class ObjectDetection3D(Inference):
     def get_info(self) -> dict:
@@ -23,7 +26,7 @@ class ObjectDetection3D(Inference):
         info["async_video_inference_support"] = False
         info["tracking_on_videos_support"] = False
         info["async_image_inference_support"] = False
-        
+
         # recommended parameters:
         # info["model_name"] = ""
         # info["checkpoint_name"] = ""
@@ -44,7 +47,7 @@ class ObjectDetection3D(Inference):
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
-    
+
     def _inference_pointcloud_id(self, api: Api, pointcloud_id: int, settings: Dict[str, Any]):
         # 1. download pointcloud
         pcd_path = os.path.join(get_data_dir(), rand_str(10) + ".pcd")
@@ -73,7 +76,9 @@ class ObjectDetection3D(Inference):
         annotation = PointcloudAnnotation(objects, figures)
         return annotation
 
-    def raw_results_from_prediction(self, prediction: List[PredictionCuboid3d]) -> List[Dict[str, Any]]:
+    def raw_results_from_prediction(
+        self, prediction: List[PredictionCuboid3d]
+    ) -> List[Dict[str, Any]]:
         results = []
         for pred in prediction:
             detection_name = pred.class_name
@@ -82,14 +87,16 @@ class ObjectDetection3D(Inference):
             rotation_z = pred.cuboid_3d.rotation.z
             velocity = [0, 0]  # Is not supported now
             detection_score = pred.score
-            results.append({
-                "detection_name": detection_name,
-                "translation": translation,
-                "size": size,
-                "rotation": rotation_z,
-                "velocity": velocity,
-                "detection_score": detection_score,
-            })
+            results.append(
+                {
+                    "detection_name": detection_name,
+                    "translation": translation,
+                    "size": size,
+                    "rotation": rotation_z,
+                    "velocity": velocity,
+                    "detection_score": detection_score,
+                }
+            )
         return results
 
     def serve(self):
@@ -103,7 +110,7 @@ class ObjectDetection3D(Inference):
                 extra={**request.state.state, "api_token": "***"},
             )
             state = request.state.state
-            api : Api = request.state.api
+            api: Api = request.state.api
             settings = self._get_inference_settings(state)
             prediction = self._inference_pointcloud_id(api, state["pointcloud_id"], settings)
             annotation = self.annotation_from_prediction(prediction)
@@ -123,7 +130,7 @@ class ObjectDetection3D(Inference):
                 extra={**request.state.state, "api_token": "***"},
             )
             state = request.state.state
-            api : Api = request.state.api
+            api: Api = request.state.api
             settings = self._get_inference_settings(state)
             annotations = []
             for pcd_id in state["pointcloud_ids"]:

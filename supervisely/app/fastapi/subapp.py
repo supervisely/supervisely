@@ -1018,6 +1018,7 @@ class Application(metaclass=Singleton):
 
         @server.get("/readyz")
         @server.get("/is_ready")
+        @server.post("/is_ready")
         async def is_ready(response: Response, request: Request):
             is_ready = True
             if self._ready_check_function is not None:
