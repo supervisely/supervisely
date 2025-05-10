@@ -122,6 +122,7 @@ class MaskTracking(BaseTracking):
                 video_id=video_interface.video_id,
             )
 
+        api.logger.debug("frames_count = %s", video_interface.frames_count)
         inference_request.set_stage("Downloading frames", 0, video_interface.frames_count)
         # load frames
         frames = self.cache.download_frames(
