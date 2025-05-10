@@ -172,7 +172,9 @@ class MaskTracking(BaseTracking):
 
         with Uploader(upload_f=_upload_f, logger=api.logger) as uploader:
             # run tracker
-            tracked_multilabel_masks = self.predict(frames=frames, input_mask=multilabel_mask)
+            tracked_multilabel_masks = self.predict(
+                frames=frames, input_mask=multilabel_mask[:, :, 0]
+            )
             for curframe_i, mask in enumerate(
                 tracked_multilabel_masks, video_interface.frame_index + 1
             ):
