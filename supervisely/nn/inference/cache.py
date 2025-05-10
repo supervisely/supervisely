@@ -789,6 +789,7 @@ class InferenceImageCache:
         pos = 0
         batch_size = 4
         for batch in batched(indexes, batch_size):
+            logger.debug("pos = %s", pos)
             indexes_to_load = []
             items = []
             for hash_or_id in batch:
