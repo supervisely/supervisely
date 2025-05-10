@@ -424,7 +424,6 @@ class InferenceImageCache:
 
         def load_generator(frame_indexes: List[int]):
             return api.video.frame.download_nps_generator(video_id, frame_indexes)
-            return self.download_frame()
 
         return self._download_many(
             frame_indexes,
@@ -433,6 +432,7 @@ class InferenceImageCache:
             api.logger,
             return_images,
             progress_cb=progress_cb,
+            video_id=video_id,
         )
 
     def add_video_to_cache_by_io(self, video_id: int, video_io: BinaryIO) -> None:

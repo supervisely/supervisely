@@ -147,8 +147,6 @@ class Uploader:
         self,
         exception: Exception,
     ):
-        if self._logger is not None:
-            self._logger.error(f"Error saving predictions: {str(exception)}", exc_info=True)
         raise exception
 
     def __exit__(self, exc_type, exc_val, exc_tb):
