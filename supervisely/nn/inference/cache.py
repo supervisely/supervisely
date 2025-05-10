@@ -777,7 +777,6 @@ class InferenceImageCache:
     ) -> Optional[List[np.ndarray]]:
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
-        download_time = 0
 
         def get_one_image(item):
             pos, name = item
@@ -807,7 +806,7 @@ class InferenceImageCache:
                         if progress_cb is not None:
                             progress_cb()
 
-            batch_download_time = time.monotonic()
+            download_time = time.monotonic()
             if len(indexes_to_load) > 0:
                 for id_or_hash, image in load_generator(indexes_to_load):
                     name = name_cunstructor(id_or_hash)
@@ -818,15 +817,16 @@ class InferenceImageCache:
                         all_frames[pos] = image
                         if progress_cb is not None:
                             progress_cb()
-            batch_download_time = time.monotonic() - batch_download_time
-            download_time += batch_download_time
+            download_time = time.monotonic() - download_time
 
-        # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-        logger.debug(
-            f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
-            extra={"indexes": indexes_to_load, "download_time": download_time},
-        )
-        logger.debug(f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}")
+            # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
+            logger.debug(
+                f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
+                extra={"indexes": indexes_to_load, "download_time": download_time},
+            )
+            logger.debug(
+                f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}"
+            )
 
         if return_images:
             return all_frames
