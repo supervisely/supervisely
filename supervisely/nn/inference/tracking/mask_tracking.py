@@ -189,14 +189,14 @@ class MaskTracking(BaseTracking):
                         inference_request.done()
                     else:
                         if geometry_type == "polygon":
-                            bitmap_geometry = Bitmap(mask)
+                            bitmap_geometry = Bitmap(binary_mask)
                             bitmap_obj_class = ObjClass("bitmap", Bitmap)
                             bitmap_label = Label(bitmap_geometry, bitmap_obj_class)
                             polygon_obj_class = ObjClass("polygon", Polygon)
                             polygon_labels = bitmap_label.convert(polygon_obj_class)
                             geometries = [label.geometry for label in polygon_labels]
                         else:
-                            geometries = [Bitmap(mask)]
+                            geometries = [Bitmap(binary_mask)]
                         uploader.put(
                             [
                                 (
