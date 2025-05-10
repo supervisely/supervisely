@@ -124,6 +124,7 @@ class InferenceRequest:
                 self.progress.total = total
             if is_size:
                 self.progress.is_size = True
+            self.progress._refresh_labels()
             self.progress.report_progress()
             if self._stage == InferenceRequest.Stage.INFERENCE:
                 self.global_progress_total = total
