@@ -170,7 +170,7 @@ class MaskTracking(BaseTracking):
 
         def _upload_f(items: List):
             video_interface.add_object_geometries_on_frames(*list(zip(*items)))
-            inference_request.done(len(items))
+            inference_request.done(sum(item[-1] for item in items))
 
         with Uploader(upload_f=_upload_f, logger=api.logger) as uploader:
             # run tracker
@@ -178,8 +178,10 @@ class MaskTracking(BaseTracking):
                 frames=frames, input_mask=multilabel_mask[:, :, 0]
             )
             for curframe_i, mask in enumerate(
-                tracked_multilabel_masks, video_interface.frame_index + 1
+                tracked_multilabel_masks, video_interface.frame_index
             ):
+                if curframe_i == video_interface.frame_index:
+                    continue
                 for i in unique_labels:
                     binary_mask = mask == i
                     fig_id = label2id[i]["fig_id"]
