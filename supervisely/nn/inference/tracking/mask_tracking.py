@@ -102,6 +102,7 @@ class MaskTracking(BaseTracking):
             frame_loader=self.cache.download_frame,
             frames_loader=self.cache.download_frames,
         )
+        video_interface.stop += video_interface.frames_count
         range_of_frames = [
             video_interface.frames_indexes[0],
             video_interface.frames_indexes[-1],
@@ -125,8 +126,16 @@ class MaskTracking(BaseTracking):
         api.logger.debug("frames_count = %s", video_interface.frames_count)
         inference_request.set_stage("Downloading frames", 0, video_interface.frames_count)
         # load frames
+
+        def _load_frames_cb(n: int = 1):
+            inference_request.done(n)
+            video_interface._notify(pos_increment=n, task="Downloading frames")
+
         frames = self.cache.download_frames(
-            api, video_interface.video_id, video_interface.frames_indexes
+            api,
+            video_interface.video_id,
+            video_interface.frames_indexes,
+            progress_cb=_load_frames_cb,
         )
 
         # combine several binary masks into one multilabel mask
