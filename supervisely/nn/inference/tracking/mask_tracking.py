@@ -148,12 +148,12 @@ class MaskTracking(BaseTracking):
                 bitmap_label = polygon_label.convert(bitmap_obj_class)[0]
                 geometry = bitmap_label.geometry
             geometry.draw(bitmap=multilabel_mask, color=i)
-            i += 1
             label2id[i] = {
                 "fig_id": fig_id,
                 "obj_id": obj_id,
                 "original_geometry": original_geometry.geometry_name(),
             }
+            i += 1
 
         unique_labels = np.unique(multilabel_mask)
         if 0 in unique_labels:
