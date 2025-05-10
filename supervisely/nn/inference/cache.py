@@ -786,10 +786,9 @@ class InferenceImageCache:
                 return pos, self.get_frame_from_cache(video_id, index)
             return pos, self._cache.get_image(name_cunstructor(index))
 
-        pos = 0
+        position = 0
         batch_size = 4
         for batch in batched(indexes, batch_size):
-            logger.debug("pos = %s", pos)
             indexes_to_load = []
             items = []
             for hash_or_id in batch:
@@ -799,16 +798,15 @@ class InferenceImageCache:
                 if name not in self._cache and video_id not in self._cache:
                     self._load_queue.set(name, hash_or_id)
                     indexes_to_load.append(hash_or_id)
-                    pos_by_name[name] = pos
+                    pos_by_name[name] = position
                 elif return_images is True:
-                    items.append((pos, hash_or_id))
-                pos += 1
+                    items.append((position, hash_or_id))
+                position += 1
 
             if len(items) > 0:
                 with ThreadPoolExecutor(min(64, len(items))) as executor:
                     for pos, image in executor.map(get_one_image, items):
                         all_frames[pos] = image
-                        logger.debug("put image to position %s", pos)
                         if progress_cb is not None:
                             progress_cb()
 
@@ -821,7 +819,6 @@ class InferenceImageCache:
                     if return_images:
                         pos = pos_by_name[name]
                         all_frames[pos] = image
-                        logger.debug("put image to position %s", pos)
                         if progress_cb is not None:
                             progress_cb()
             download_time = time.monotonic() - download_time
