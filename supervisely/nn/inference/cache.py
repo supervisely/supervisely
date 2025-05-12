@@ -824,13 +824,14 @@ class InferenceImageCache:
             download_time = time.monotonic() - download_time
 
             # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-            logger.debug(
-                f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
-                extra={"indexes": indexes_to_load, "download_time": download_time},
-            )
-            logger.debug(
-                f"Images/Frames found in cache: {set(indexes_to_load).difference(indexes)}"
-            )
+            if indexes_to_load:
+                logger.debug(
+                    f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
+                    extra={"indexes": indexes_to_load, "download_time": download_time},
+                )
+            found = set(batch).difference(indexes_to_load)
+            if found:
+                logger.debug(f"Images/Frames found in cache: {found}")
 
         if return_images:
             return all_frames
