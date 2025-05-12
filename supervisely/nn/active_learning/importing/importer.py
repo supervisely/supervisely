@@ -148,7 +148,9 @@ class ActiveLearningImporter:
         auto_import_tasks = self.filter_tasks_by_slug(import_history, slug)
         if any([task not in solutions_autoimport_tasks for task in auto_import_tasks]):
             self.al_session.state.add_import_tasks(slug, auto_import_tasks)
+            self.al_session.send_project_to_embedding_generator()
 
+        solutions_autoimport_tasks = self.al_session.state.import_tasks.get(slug, [])
         # get last imported images count
         last_imported_images_count = None
         for import_task in import_history[::-1]:

@@ -79,7 +79,7 @@ class ActiveLearningSession:
         session = sessions[0]
         # g.api.app.wait(session.task_id, target_status=g.api.task.Status.STARTED)
         logger.info(f"Session is ready for API calls: {session.task_id} (embeddings generator)")
-        self.api.app.send_request(
+        return self.api.app.send_request(
             session.task_id, "embeddings", data={"project_id": self.project_id}
         )
 
