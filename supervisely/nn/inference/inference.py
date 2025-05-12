@@ -2927,7 +2927,6 @@ class Inference:
                 **log_extra,
                 "pending_results": inference_request.pop_pending_results(),
             }
-            logger.debug("data", extra={"data": data})
 
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return data
