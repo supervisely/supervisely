@@ -1980,6 +1980,7 @@ class Inference:
                             name=image_info.name,
                             dataset_id=dataset_info.id,
                             project_id=dataset_info.project_id,
+                            image_name=image_info.name,
                         )
                         for ann, image_info in zip(anns, images_infos_batch)
                     ]
