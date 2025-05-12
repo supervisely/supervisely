@@ -78,7 +78,8 @@ class ExperimentGenerator(BaseGenerator):
         metrics = self._generate_metrics_table()
         checkpoints = self._generate_checkpoints_table()
         hyperparameters = self._generate_hyperparameters_yaml()
-        experiment_dir = os.path.basename(self.info["artifacts_dir"])
+        artifacts_dir = self.info["artifacts_dir"].rstrip("/")
+        experiment_dir = os.path.basename(artifacts_dir)
         docker_image = self._get_docker_image()
         repo_info = self._get_repository_info()
         has_onnx, has_tensorrt, optimized_checkpoint = self._get_optimized_checkpoint()
@@ -90,6 +91,8 @@ class ExperimentGenerator(BaseGenerator):
                 "task_name": task_type,
                 "framework_name": framework_name,
                 "date": date,
+                "artifacts_dir": artifacts_dir,
+                "export": self.info.get("export"),
             },
             "project": {
                 "name": project_info.name if project_info else "",
@@ -114,7 +117,7 @@ class ExperimentGenerator(BaseGenerator):
                     "url": f"{self.api.server_address}/files/?path={self.info.get('logs', {}).get('link')}" if self.info.get("logs", {}).get("link") else None,
                 },
                 "team_files": {
-                    "path": self.artifacts_dir,
+                    "path": artifacts_dir,
                     "url": f"{self.api.server_address}/files/?path={self.artifacts_dir}" if self.artifacts_dir else None,
                 },
                 "checkpoint_dir_url": f"{self.api.server_address}/files/?path={self.artifacts_dir}",
