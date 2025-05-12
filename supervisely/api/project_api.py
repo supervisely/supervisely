@@ -24,7 +24,7 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from supervisely import logger
 from supervisely._utils import (
@@ -97,6 +97,9 @@ class ProjectInfo(NamedTuple):
     import_settings: dict
     version: dict
     created_by_id: int
+    embeddings_enabled: bool = False
+    embeddings_updated_at: Optional[str] = None
+    embeddings_in_progress: Optional[bool] = None
 
     @property
     def image_preview_url(self):
@@ -195,6 +198,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.IMPORT_SETTINGS,
             ApiField.VERSION,
             ApiField.CREATED_BY_ID,
+            ApiField.EMBEDDINGS_ENABLED,
+            ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.EMBEDDINGS_IN_PROGRESS,
         ]
 
     @staticmethod
@@ -223,11 +229,15 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         *NOTE*: Version information is not available while getting list of projects.
         If you need version information, use :func:`get_info_by_id`.
 
+        *NOTE*: Embeddings information is not available while getting list of projects.
+        To receive additionally embeddings information, you need to list all the fields you want to receive:
+        `fields=[ApiField.ID, ApiField.NAME, ... other standard fields ..., ApiField.EMBEDDINGS_ENABLED, ApiField.EMBEDDINGS_UPDATED_AT]`
+
         :param workspace_id: Workspace ID in which the Projects are located.
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
-        :param fields: The list of api fields which will be returned with the response.
+        :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
         :type fields: List[str]
 
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
@@ -2141,3 +2151,81 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
         _convert_entities(first_response)
         return first_response
+
+    def enable_embeddings(self, id: int, silent: bool = True) -> None:
+        """
+        Enable embeddings for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
+        :type silent: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: True, ApiField.SILENT: silent},
+        )
+
+    def disable_embeddings(self, id: int, silent: bool = True) -> None:
+        """
+        Disable embeddings for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :type silent: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
+        )
+
+    def set_embeddings_updated_at(
+        self, id: int, time: Optional[Union[datetime, str]] = None, silent: bool = True
+    ) -> None:
+        """
+        Set embeddings updated at for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param time: Time to set. If None, current time will be set.
+        :type time: Optional[Union[datetime, str]]
+        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :type silent: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        if time is None:
+            time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        elif isinstance(time, datetime):
+            time = time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        elif isinstance(time, str):
+            try:
+                datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
+            except ValueError:
+                raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ'")
+        else:
+            raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ' or None")
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time, ApiField.SILENT: silent},
+        )
+
+    def set_embeddings_in_progress(self, id: int, status: bool) -> None:
+        """
+        Set embeddings in progress status for the project.
+        :param id: Project ID
+        :type id: int
+        :param status: Status to set. If True, embeddings are in progress right now.
+        :type status: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.embeddings-in-progress.update",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: status},
+        )
