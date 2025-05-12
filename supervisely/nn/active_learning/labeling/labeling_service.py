@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
+from supervisely.api.entities_collection_api import CollectionItem
 from supervisely.api.image_api import ImageInfo
 from supervisely.nn.active_learning.scheduler.scheduler import SchedulerJobs
 
@@ -153,8 +154,11 @@ class LabelingService:
                     logger.info(
                         f"Created collections '{train_collection.name}' and '{val_collection.name}' for new train and val sets"
                     )
-                    self.api.entities_collection.add_items(train_collection.id, train_ids)
-                    self.api.entities_collection.add_items(val_collection.id, val_ids)
+
+                    train_items = [CollectionItem(entity_id=i) for i in train_ids]
+                    val_items = [CollectionItem(entity_id=i) for i in val_ids]
+                    self.api.entities_collection.add_items(train_collection.id, train_items)
+                    self.api.entities_collection.add_items(val_collection.id, val_items)
 
                     logger.info(
                         f"Added {len(train_ids)} images to train collection '{train_collection.name}' "

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.entities_collection_api import CollectionItem
 from supervisely.nn.active_learning.sampling.constants import (
     SamplingMode,
     SamplingSettings,
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
 import random
 
+from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.nn.active_learning.utils.constants import EMBEDDINGS_GENERATOR_SLUG
 from supervisely.nn.active_learning.utils.project import get_diffs
@@ -23,7 +25,7 @@ from supervisely.sly_logger import logger
 class ActiveLearningSampler:
     def __init__(self, al_session):
         self.al_session: ActiveLearningSession = al_session
-        self.api = al_session.api
+        self.api: Api = al_session.api
         self.project_id = al_session.project_id
         self.workspace_id = al_session.workspace_id
         self.team_id = al_session.team_id
@@ -198,21 +200,21 @@ class ActiveLearningSampler:
             src_to_dst_map, new_sampled_images, ds_to_create
         )
 
-        all_img_ids = []
+        items = []
         for dst_imgs in added.values():
-            all_img_ids.extend(dst_imgs)
+            items.extend([CollectionItem(entity_id=item_id) for item_id in dst_imgs])
         self.al_session.state.add_sampling_batch(batch_data=src)
         labeling_collection_id = self.al_session.state.labeling_collection_id
-        self.api.entities_collection.add_items(labeling_collection_id, all_img_ids)
-        logger.info(f"Copied {len(all_img_ids)} images to labeling project")
+        self.api.entities_collection.add_items(labeling_collection_id, items)
+        logger.info(f"Copied {len(items)} images to labeling project")
 
         res = {"src": src, "dst": added}
         # Add record to history
         self._add_record_to_history(
-            status="completed", total_items=len(all_img_ids), items=res, mode=settings["mode"]
+            status="completed", total_items=len(items), items=res, mode=settings["mode"]
         )
 
-        return len(all_img_ids)
+        return len(items)
 
     def preview(self, settings: SamplingSettings, limit: int) -> None:
         """Preview the sampling images without copying them to the labeling project."""
