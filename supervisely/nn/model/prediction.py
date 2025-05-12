@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import atexit
 import os
 import tempfile
@@ -14,6 +15,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagValueType
+from supervisely.api.api import Api
 from supervisely.convert.image.sly.sly_image_helper import get_meta_from_annotation
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.rectangle import Rectangle
@@ -29,7 +31,6 @@ from supervisely.io.fs import (
 )
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video.video import VideoFrameReader
-from supervisely.api.api import Api
 
 
 class Prediction:
@@ -50,6 +51,7 @@ class Prediction:
         video_id: Optional[int] = None,
         frame_index: Optional[int] = None,
         api: Optional["Api"] = None,
+        **kwargs,
     ):
         self.source = source
         if isinstance(annotation_json, Annotation):
@@ -68,6 +70,8 @@ class Prediction:
         self.video_id = video_id
         self.frame_index = frame_index
         self.extra_data = {}
+        if kwargs:
+            self.extra_data.update(kwargs)
         self.api = api
 
         self._annotation = None
@@ -200,6 +204,7 @@ class Prediction:
             "image_id": self.image_id,
             "video_id": self.video_id,
             "frame_index": self.frame_index,
+            **self.extra_data,
         }
 
     def _clear_temp_files(self):
