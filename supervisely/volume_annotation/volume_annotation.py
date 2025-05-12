@@ -501,6 +501,8 @@ class VolumeAnnotation:
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
+        :param spatial_figures_geometry_mapping: Mapping of figure's id to spatial geometry files.
+        :type spatial_figures_geometry_mapping: dict, optional
         :return: VolumeAnnotation object
         :rtype: :class:`VolumeAnnotation<VolumeAnnotation>`
         :Usage example:
