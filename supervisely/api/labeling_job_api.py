@@ -88,6 +88,7 @@ class LabelingJobInfo(NamedTuple):
     include_images_with_tags: list
     exclude_images_with_tags: list
     entities: list
+    priority: int
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -179,7 +180,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              filter_images_by_tags=[],
                              include_images_with_tags=[],
                              exclude_images_with_tags=[],
-                             entities=None)
+                             entities=None,
+                             priority=2)
         """
         return [
             ApiField.ID,
@@ -220,6 +222,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.INCLUDE_IMAGES_WITH_TAGS,
             ApiField.EXCLUDE_IMAGES_WITH_TAGS,
             ApiField.ENTITIES,
+            ApiField.PRIORITY,
         ]
 
     @staticmethod
