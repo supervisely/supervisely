@@ -229,7 +229,7 @@ class ActiveLearningSampler:
         # Prepare the sample
         new_sampled_images = self._prepare_sample(diff_images, settings)
         if new_sampled_images is None:
-            logger.warning("No new items to preview")
+            logger.warning("Failed to prepare sample for preview")
             return []
 
         # flatten the list of images and limit the number of images
@@ -281,10 +281,13 @@ class ActiveLearningSampler:
 
         # Calculate the sample size for each dataset
         samples_per_dataset = {}
-        remaining = sample_size
+        remaining = sample_size or total_diffs
         for ds_id, imgs in diffs.items():
             # Calculate proportional size and round down
-            ds_sample = int((len(imgs) / total_diffs) * sample_size)
+            if sample_size is not None:
+                ds_sample = int((len(imgs) / total_diffs) * sample_size)
+            else:
+                ds_sample = len(imgs)
             samples_per_dataset[ds_id] = ds_sample
             remaining -= ds_sample
 
@@ -301,49 +304,73 @@ class ActiveLearningSampler:
                 else:
                     datasets_with_space.remove(ds_id)
 
-        # Prepare the sampled images
-        new_sampled_images = {}
-        for ds_id, sample_count in samples_per_dataset.items():
-            if sample_count > 0:
-                if mode == SamplingMode.RANDOM.value:
+        if mode == SamplingMode.RANDOM.value:
+            new_sampled_images = {}
+            for ds_id, sample_count in samples_per_dataset.items():
+                if sample_count > 0:
                     new_sampled_images[ds_id] = random.sample(diffs[ds_id], sample_count)
-                elif mode in [SamplingMode.DIVERSE.value, SamplingMode.AI_SEARCH.value]:
-                    logger.info(
-                        f"Sampling {sample_count} images from dataset {ds_id} using {mode} mode"
-                    )
-                    module_info = self.api.app.get_ecosystem_module_info(
-                        slug=EMBEDDINGS_GENERATOR_SLUG
-                    )
-                    sessions = self.api.app.get_sessions(
-                        self.team_id, module_info.id, statuses=[self.api.task.Status.STARTED]
-                    )
-                    if len(sessions) == 0:
-                        logger.error("No active sessions found for embeddings generator.")
-                        return
-                    session = sessions[0]
-                    # api.app.wait(session.task_id, target_status=api.task.Status.STARTED)
-                    logger.info(
-                        f"Session is ready for API calls: {session.task_id} (embeddings generator)"
-                    )
-                    method = "search" if mode == SamplingMode.AI_SEARCH.value else "diverse"
-                    data = {
-                        "project_id": self.project_id,
-                        "image_ids": [img.id for img in diffs[ds_id]],
+        elif mode in [SamplingMode.DIVERSE.value, SamplingMode.AI_SEARCH.value]:
+            all_diffs_flat = []
+            for ds_id, imgs in diffs.items():
+                all_diffs_flat.extend([img.id for img in imgs])
+            logger.info(f"Sample mode: {mode}. Settings: {settings}")
+
+            method = "diverse" if mode == SamplingMode.DIVERSE.value else "search"
+            data = {"project_id": self.project_id}
+            data["image_ids"] = all_diffs_flat
+
+            if mode == SamplingMode.AI_SEARCH.value:
+                # AI search mode
+                prompt = settings.get("prompt", None)
+                if prompt is None:
+                    logger.error("Prompt is required for AI search mode.")
+                    return None
+                data["prompt"] = prompt
+                data["limit"] = settings.get("limit", None)
+            elif mode == SamplingMode.DIVERSE.value:
+                # Diverse mode
+                data["sample_size"] = sample_size
+                data["method"] = settings.get("diversity_mode", "centroids")
+            else:
+                logger.error(f"Unknown sampling mode: {mode}")
+                return None
+            # Send request to the API
+            module_info = self.api.app.get_ecosystem_module_info(slug=EMBEDDINGS_GENERATOR_SLUG)
+            sessions = self.api.app.get_sessions(
+                self.team_id, module_info.id, statuses=[self.api.task.Status.STARTED]
+            )
+            if len(sessions) == 0:
+                logger.error("No active sessions found for embeddings generator.")
+                return None
+            session = sessions[0]
+            # api.app.wait(session.task_id, target_status=api.task.Status.STARTED)
+            logger.info(f"Embeddings generator session: {session.task_id}")
+            res = self.api.app.send_request(session.task_id, method, data=data)
+            if isinstance(res, dict):
+                if "collection_id" in res:
+                    collection_id = res["collection_id"]
+                    all_sampled_images = self.api.entities_collection.get_items(collection_id)
+                    all_sampled_ids = [img.id for img in all_sampled_images]
+                    new_sampled_images = {
+                        ds_id: [img for img in diffs[ds_id] if img.id in all_sampled_ids]
+                        for ds_id in diffs.keys()
                     }
-                    if mode == SamplingMode.AI_SEARCH.value:
-                        data["prompt"] = settings.get("prompt", None)
-                    if mode == SamplingMode.DIVERSE.value:
-                        data["sample_size"] = sample_count
-                        data["method"] = settings.get("diversity_mode", "random")
-                    res = self.api.app.send_request(session.task_id, method, data=data)
-                    if isinstance(res, list):
-                        res_ids = {img.id for img in res}
-                        new_sampled_images[ds_id] = [
-                            img for img in diffs[ds_id] if img.id in res_ids
-                        ]
-                    else:
-                        logger.error(f"Error during diverse sampling: {res['error']}")
-                        return
+                elif "message" in res:
+                    logger.error(f"Error during sampling: {res['message']}")
+                    return None
+            elif isinstance(res, list):
+                res_ids = {img["id"] for img in res}
+                new_sampled_images = {
+                    ds_id: [img for img in diffs[ds_id] if img.id in res_ids]
+                    for ds_id in diffs.keys()
+                }
+            else:
+                logger.error(f"Error during sampling: {res}")
+                return None
+
+        else:
+            logger.error(f"Unknown sampling mode: {mode}")
+            return None
 
         return new_sampled_images
 

@@ -7,6 +7,7 @@ class SamplingSettings(TypedDict, total=False):
     sample_size: NotRequired[int]
     diversity_mode: NotRequired[str]
     prompt: NotRequired[str]
+    limit: NotRequired[int]
 
 
 class SamplingMode(Enum):
