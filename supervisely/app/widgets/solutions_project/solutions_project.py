@@ -154,10 +154,10 @@ class SolutionsProject(Widget):
             for i in range(len(items_count)):
                 if isinstance(items_count[i], int):
                     items_count[i] = f"{items_count[i]} {self._items_type}"
-                elif not isinstance(items_count[i], str):
-                    raise TypeError(
-                        f"items_count[{i}] must be either int or str, but got {type(items_count[i])}"
-                    )
+                # elif not isinstance(items_count[i], str):
+                #     raise TypeError(
+                #         f"items_count[{i}] must be either int or str, but got {type(items_count[i])}"
+                #     )
 
         self._items_count = items_count
         DataJson()[self.widget_id]["items_counts"] = self._items_count
