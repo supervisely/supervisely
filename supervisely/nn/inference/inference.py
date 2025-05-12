@@ -3859,13 +3859,13 @@ def _get_log_extra_for_inference_request(
         "uuid": inference_request.uuid,
         "progress": progress,
         "is_inferring": inference_request.is_inferring(),
-        "stopped": inference_request.stopped,
+        "stopped": inference_request.is_stopped(),
         "finished": inference_request.is_finished(),
         "cancel_inference": inference_request.is_stopped(),
         "has_result": inference_request.final_result is not None,
         "pending_results": inference_request.pending_num(),
         "exception": inference_request.exception_json(),
-        "result": inference_request.final_result,
+        "result": inference_request._final_result,
         "preparing_progress": progress,
     }
     return log_extra
