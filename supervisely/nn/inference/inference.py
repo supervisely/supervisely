@@ -2361,7 +2361,7 @@ class Inference:
                     save_source_date=False,
                 )
                 created_names.extend([image_info.name for image_info in dst_image_infos])
-                api.annotation.upload_anns([image_info.id for image_info in dst_image_infos])
+                api.annotation.upload_anns([image_info.id for image_info in dst_image_infos], anns)
             else:
                 # upload to the source dataset
                 ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)

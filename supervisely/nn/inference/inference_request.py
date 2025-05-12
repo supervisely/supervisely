@@ -200,7 +200,6 @@ class InferenceRequest:
             "exception": self.exception_json(),
             "stopped": self.stopped,
             "finished": self._finished,
-            "context": self.context,
             "created_at": self._created_at,
             "updated_at": self._updated_at,
         }
