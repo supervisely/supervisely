@@ -661,6 +661,18 @@ class ApiField:
     """"""
     COLLECTION_ID = "collectionId"
     """"""
+    EMBEDDINGS_ENABLED = "embeddingsEnabled"
+    """"""
+    EMBEDDINGS_UPDATED_AT = "embeddingsUpdatedAt"
+    """"""
+    EMBEDDINGS_IN_PROGRESS = "embeddingsInProgress"
+    """"""
+    AI_SEARCH_KEY = "aiSearchKey"
+    """"""
+    SCORE = "score"
+    """"""
+    ENTITY_ITEMS = "entityItems"
+    """"""
 
 
 def _get_single_item(items):
