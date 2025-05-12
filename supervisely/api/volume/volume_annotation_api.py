@@ -125,6 +125,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             #     'volumeName': 'CTChest.nrrd'
             # }
         """
+
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
