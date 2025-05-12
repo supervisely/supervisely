@@ -27,7 +27,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume import stl_converter
-from supervisely.volume_annotation.constants import SPATIAL_FIGURES
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_figure import VolumeFigure
 from supervisely.volume_annotation.volume_object import VolumeObject
@@ -69,7 +68,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
-    def download(self, volume_id: int) -> Dict:
+    def download(self, volume_id: int):
         """
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
