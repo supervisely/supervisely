@@ -3,7 +3,6 @@
 import asyncio
 import os
 import re
-import tempfile
 from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
@@ -70,13 +69,11 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
     _method_download_bulk = "volumes.annotations.bulk.info"
     _entity_ids_str = ApiField.VOLUME_IDS
 
-    def download(self, volume_id: int, download_geometry: bool = False) -> Dict:
+    def download(self, volume_id: int) -> Dict:
         """
         Download information about VolumeAnnotation by volume ID from API.
         :param volume_id: Volume ID in Supervisely.
         :type volume_id: int
-        :param download_geometry: If True, downloads 3D geometry data (e.g., Mask3D) for spatial figures.
-        :type download_geometry: bool, optional
         :return: Information about VolumeAnnotation in json format
         :rtype: :class:`dict`
         :Usage example:
@@ -130,17 +127,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             # }
         """
         volume_info = self._api.volume.get_info_by_id(volume_id)
-        ann = self._download(volume_info.dataset_id, volume_id)
-        if download_geometry:
-            spatial_figures = ann[SPATIAL_FIGURES]
-            with tempfile.TemporaryDirectory() as temp_dir:
-                for sf in spatial_figures:
-                    figure_id = sf[ApiField.ID]
-                    figure_path = f"{temp_dir}/{figure_id}.nrrd"
-                    self._api.volume.figure.download_sf_geometries([figure_id], [figure_path])
-                    sf[ApiField.GEOMETRY] = Mask3D.create_from_file(figure_path).to_json()
-            ann[SPATIAL_FIGURES] = spatial_figures
-        return ann
+        return self._download(volume_info.dataset_id, volume_id)
 
     def append(
         self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None, volume_info=None

@@ -11,6 +11,7 @@ from supervisely.volume_annotation.volume_figure import VolumeFigure
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
+from supervisely.io.fs import file_exists
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
@@ -484,7 +485,13 @@ class VolumeAnnotation:
         )
 
     @classmethod
-    def from_json(cls, data: dict, project_meta: ProjectMeta, key_id_map: KeyIdMap = None):
+    def from_json(
+        cls,
+        data: dict,
+        project_meta: ProjectMeta,
+        key_id_map: KeyIdMap = None,
+        spatial_figures_geometry_mapping: dict = None,
+    ):
         """
         Convert a json dict to VolumeAnnotation.
 
@@ -585,6 +592,19 @@ class VolumeAnnotation:
                 slice_index=None,
                 key_id_map=key_id_map,
             )
+            if spatial_figures_geometry_mapping and isinstance(
+                spatial_figures_geometry_mapping, dict
+            ):
+                figure_id = figure_json["id"]
+                geometry_path = spatial_figures_geometry_mapping.get(figure_id, None)
+                if geometry_path is not None:
+                    if not file_exists(geometry_path):
+                        raise RuntimeError(
+                            f"Geometry file {geometry_path} for figure {figure_id} does not exist."
+                        )
+                    mask3d = Mask3D.create_from_file(geometry_path)
+                    figure._set_3d_geometry(mask3d)
+
             spatial_figures.append(figure)
 
         return cls(
