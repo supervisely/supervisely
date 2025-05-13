@@ -318,13 +318,16 @@ class InferenceRequestsManager:
 
     def remove(self, inference_request_uuid: str):
         with self._lock:
-            if inference_request_uuid in self._inference_requests:
+            inference_request = self._inference_requests.get(inference_request_uuid)
+            if inference_request is not None:
+                inference_request.stop()
                 del self._inference_requests[inference_request_uuid]
 
     def remove_after(self, inference_request_uuid, wait_time=0):
         with self._lock:
             inference_request = self._inference_requests.get(inference_request_uuid)
             if inference_request is not None:
+                inference_request.stop()
                 inference_request.on_inference_end()
                 inference_request._ttl = wait_time
                 inference_request._updated()
