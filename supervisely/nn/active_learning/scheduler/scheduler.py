@@ -200,7 +200,7 @@ class PersistentTasksScheduler:
                 restored_jobs.append(job_id)
 
         return restored_jobs
-    
+
     def is_job_scheduled(self, job_id: str) -> bool:
         """
         Check if a job is scheduled
