@@ -377,6 +377,8 @@ class PredictionSession:
         if tqdm is None:
             return
         json_progress = response.get("progress", None)
+        if json_progress is None or json_progress.get("message") is None:
+            json_progress = response.get("preparing_progress", None)
         if json_progress is None:
             return
         refresh = False

@@ -1666,6 +1666,7 @@ class Inference:
             upload_mode=upload_mode,
             context=inference_request.context,
             dst_dataset_id=output_dataset_id,
+            dst_project_id=output_project_id,
             progress_cb=inference_request.done,
             iou_merge_threshold=iou_merge_threshold,
             inference_request=inference_request,
@@ -2051,9 +2052,9 @@ class Inference:
             # start downloading in parallel
             threading.Thread(target=_download_images, daemon=True).start()
 
-        def upload_f(benchmark):
-            inference_request.add_results([benchmark])
-            inference_request.done()
+        def upload_f(benchmarks: List):
+            inference_request.add_results(benchmarks)
+            inference_request.done(len(benchmarks))
 
         def image_batch_generator(batch_size):
             logger.debug(
@@ -2129,7 +2130,7 @@ class Inference:
                 )
                 # Collect results if warmup is done
                 if i >= num_warmup:
-                    uploader.put(benchmark)
+                    uploader.put([benchmark])
                 else:
                     inference_request.done()
 
