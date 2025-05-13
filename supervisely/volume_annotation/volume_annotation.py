@@ -602,9 +602,8 @@ class VolumeAnnotation:
                 if isinstance(spatial_geometry_paths, list):
                     geometry_path = None
                     for path in spatial_geometry_paths:
-                        if (
-                            get_file_name(path) == figure.key().hex
-                            or get_file_name(path) == str(figure_id)
+                        if get_file_name(path) == figure.key().hex or get_file_name(path) == str(
+                            figure_id
                         ):
                             geometry_path = path
                             break

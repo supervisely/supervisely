@@ -620,8 +620,7 @@ class Mask3D(Geometry):
             geometries_dict[key] = geometry_bytes
         return geometries_dict
 
-
-    def get_trimesh(
+    def _get_trimesh(
         self,
         spacing: tuple = (1.0, 1.0, 1.0),
         level: float = 0.5,
@@ -649,11 +648,13 @@ class Mask3D(Geometry):
                 "Please install trimesh and skimage to use this function. "
                 "You can do this by running 'pip install trimesh scikit-image'."
             )
-        
+
         mask = self.data
 
         # marching_cubes expects (z, y, x) order
-        verts, faces, normals, _ = measure.marching_cubes(mask.astype(np.float32), level=level, spacing=spacing)
+        verts, faces, normals, _ = measure.marching_cubes(
+            mask.astype(np.float32), level=level, spacing=spacing
+        )
         mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
         if apply_decimation and 0 < decimation_fraction < 1:

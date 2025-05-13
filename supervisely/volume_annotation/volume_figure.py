@@ -1,28 +1,31 @@
 # coding: utf-8
 from __future__ import annotations
+
 import uuid
-from typing import Union, Optional, Literal
-from numpy import ndarray
+from typing import Literal, Optional, Union
 from uuid import UUID
-from supervisely.video_annotation.video_figure import VideoFigure
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
-from supervisely.geometry.mask_3d import Mask3D
+
+from numpy import ndarray
+
+import supervisely.volume_annotation.constants as constants
+from supervisely._utils import take_with_default
+from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
-from supervisely._utils import take_with_default
-from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.geometry.geometry import Geometry
-import supervisely.volume_annotation.constants as constants
-from supervisely.volume_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
     LABELER_LOGIN,
     UPDATED_AT,
-    CREATED_AT,
-    CLASS_ID,
 )
-
+from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.mask_3d import Mask3D
+from supervisely.io.fs import get_file_ext
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.volume_annotation.constants import ID, KEY, META, OBJECT_ID, OBJECT_KEY
+from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
@@ -676,3 +679,67 @@ class VolumeFigure(VideoFigure):
         self.geometry._space = new_geometry._space
         self.geometry._space_origin = new_geometry._space_origin
         self.geometry._space_directions = new_geometry._space_directions
+
+    def _get_trimesh(
+        self,
+        include_zeros: bool = False,
+        z_scaling_factor: float = 1.0,
+        resize_factor: int = 1,
+        apply_decimation: bool = False,
+        decimation_percent: int = 50,
+    ):
+        if isinstance(self.geometry, Mask3D):
+            return self.geometry._get_trimesh()
+
+        try:
+            import numpy as np
+            import trimesh
+        except ImportError:
+            raise ImportError(
+                "Please install and 'trimesh' to use this method. "
+                "You can do this by running 'pip install trimesh'."
+            )
+
+        if resize_factor > 1:
+            mask = mask[::resize_factor, ::resize_factor]
+
+        rows, cols = mask.shape
+        x = np.linspace(0, cols - 1, cols)
+        y = np.linspace(0, rows - 1, rows)
+        x, y = np.meshgrid(x, y)
+        z = mask.astype(np.float32) * z_scaling_factor
+
+        vertices = np.column_stack([x.ravel(), y.ravel(), z.ravel()])
+        faces = []
+
+        for i in range(rows - 1):
+            for j in range(cols - 1):
+                top_left = i * cols + j
+                top_right = top_left + 1
+                bottom_left = top_left + cols
+                bottom_right = bottom_left + 1
+
+                vals = [z[i, j], z[i, j + 1], z[i + 1, j], z[i + 1, j + 1]]
+                if not include_zeros and all(v == 0 for v in vals):
+                    continue
+
+                faces.append([top_left, bottom_left, bottom_right])
+                faces.append([top_left, bottom_right, top_right])
+
+        mesh = trimesh.Trimesh(vertices=vertices, faces=np.array(faces))
+
+        if apply_decimation and len(mesh.faces) > 0:
+            percent = decimation_percent / 100
+            mesh = mesh.simplify_quadratic_decimation(int(len(mesh.faces) * percent))
+
+        # Optionally remove center or apply other post-processing here
+
+        return mesh
+
+    def write_mesh_to_file(self, file_path: str, kwargs=None):
+        if get_file_ext(file_path) not in [".stl", ".obj"]:
+            raise ValueError('File extension must be either ".stl" or ".obj"')
+        if kwargs is None:
+            kwargs = {}
+        mesh = self._get_trimesh(**kwargs)
+        mesh.export(file_path)
