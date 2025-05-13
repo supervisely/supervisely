@@ -2889,6 +2889,8 @@ class Inference:
                 inference_request.uuid, inference_request
             )
             data = {**inference_request.to_json(), **log_extra}
+            if inference_request.stage != InferenceRequest.Stage.INFERENCE:
+                data["progress"] = {"current": 0, "total": 1}
             logger.debug(
                 f"Sending inference progress with uuid:",
                 extra=data,
@@ -2927,6 +2929,8 @@ class Inference:
                 **log_extra,
                 "pending_results": inference_request.pop_pending_results(),
             }
+
+            print(data)
 
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return data
