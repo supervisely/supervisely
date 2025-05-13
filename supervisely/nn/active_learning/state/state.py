@@ -5,6 +5,7 @@ from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.nn.active_learning.state.managers import (
     BackgroundTask,
+    ConfigStateManager,
     ImportStateManager,
     LabelingStateManager,
     ProjectStateManager,
@@ -58,6 +59,9 @@ class ALState:
 
         # Background tasks state
         self.background_tasks = SchedulerStateManager(self.state_manager)
+
+        # Config state manager
+        self.config = ConfigStateManager(self.state_manager, api)
 
         # Initialize resources if needed
         self._initialize_resources()

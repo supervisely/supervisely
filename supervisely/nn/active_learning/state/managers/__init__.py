@@ -18,6 +18,9 @@ from supervisely.nn.active_learning.state.managers.scheduler_state_manager impor
 from supervisely.nn.active_learning.state.managers.split_state_manager import (
     TrainValSplitStateManager,
 )
+from supervisely.nn.active_learning.state.managers.config_state_manager import (
+    ConfigStateManager,
+)
 from supervisely.nn.active_learning.state.managers.training_state_manager import (
     TrainingStateManager,
 )
