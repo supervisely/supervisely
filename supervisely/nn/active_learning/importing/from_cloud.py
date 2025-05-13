@@ -69,8 +69,9 @@ def schedule_cloud_import(al_session, path: str, interval: int = 60) -> int:
     job_id = al_session.scheduler.add_job(
         job_id=SchedulerJobs.CLOUD_IMPORT,
         func=import_from_cloud,
-        interval_sec=interval,
+        sec=interval,
         args=(path,),
+        metadata={"path": path},
     )
 
     return job_id
@@ -86,3 +87,14 @@ def unschedule_cloud_import(al_session) -> bool:
     al_session: ActiveLearningSession
     removed = al_session.scheduler.remove_job(SchedulerJobs.CLOUD_IMPORT)
     return removed
+
+
+def is_cloud_import_scheduled(al_session) -> bool:
+    """
+    Check if cloud import job is scheduled
+
+    Returns:
+        bool: True if job is scheduled, False otherwise
+    """
+    al_session: ActiveLearningSession
+    return al_session.scheduler.is_job_scheduled(SchedulerJobs.CLOUD_IMPORT)

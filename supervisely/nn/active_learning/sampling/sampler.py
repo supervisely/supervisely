@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.entities_collection_api import CollectionItem
@@ -8,6 +8,7 @@ from supervisely.nn.active_learning.sampling.constants import (
     SamplingSettings,
 )
 from supervisely.nn.active_learning.scheduler.scheduler import SchedulerJobs
+from supervisely.nn.active_learning.state.managers import BackgroundTask
 from supervisely.nn.active_learning.utils.constants import DATA_ORGANIZER_SLUG
 
 if TYPE_CHECKING:
@@ -122,7 +123,7 @@ class ActiveLearningSampler:
     #     self.api.app.stop(task_id)
     #     return len(all_img_ids)
 
-    def schedule_sampling(self, settings: SamplingSettings, interval: int) -> str:
+    def schedule_sampling(self, func: Callable, settings: SamplingSettings, interval: int) -> str:
         """
         Schedule a sampling task
 
@@ -130,11 +131,19 @@ class ActiveLearningSampler:
 
             interval (int): Interval in seconds for the scheduled task.
         """
+        metadata = {"mode": settings.get("mode")}
+        if settings.get("sample_size") is not None:
+            metadata["sample_size"] = settings["sample_size"]
+        if settings.get("prompt") is not None:
+            metadata["prompt"] = settings["prompt"]
+        if settings.get("limit") is not None:
+            metadata["limit"] = settings["limit"]
         return self.al_session.scheduler.add_job(
             job_id=SchedulerJobs.START_SAMPLING,
-            func=self.sample,
-            interval_sec=interval,
+            func=func,
+            sec=interval,
             args=(settings,),
+            metadata=metadata,
         )
 
     def unschedule_sampling(self) -> bool:
@@ -142,6 +151,24 @@ class ActiveLearningSampler:
         Unschedule the sampling task
         """
         return self.al_session.scheduler.remove_job(SchedulerJobs.START_SAMPLING)
+
+    def restore_scheduled_sampling(self, func: Callable) -> None:
+        """
+        Restore the scheduled sampling task
+        """
+        self.al_session.scheduler.restore_jobs({SchedulerJobs.START_SAMPLING: func})
+
+    def is_sampling_scheduled(self) -> bool:
+        """
+        Check if the sampling task is scheduled
+        """
+        return self.al_session.scheduler.is_job_scheduled(SchedulerJobs.START_SAMPLING)
+
+    def get_sampling_job(self) -> Optional[BackgroundTask]:
+        """
+        Get the scheduled sampling job
+        """
+        return self.al_session.state.background_tasks.get_task(SchedulerJobs.START_SAMPLING)
 
     def get_sampling_history_data(self) -> List[List]:
         """

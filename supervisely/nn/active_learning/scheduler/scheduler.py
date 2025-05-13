@@ -200,6 +200,18 @@ class PersistentTasksScheduler:
                 restored_jobs.append(job_id)
 
         return restored_jobs
+    
+    def is_job_scheduled(self, job_id: str) -> bool:
+        """
+        Check if a job is scheduled
+
+        Args:
+            job_id: Task identifier
+
+        Returns:
+            bool: True if job is scheduled
+        """
+        return job_id in self.scheduler.jobs
 
     def shutdown(self):
         """Shutdown the scheduler"""
