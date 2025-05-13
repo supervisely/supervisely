@@ -653,6 +653,8 @@ class Inference:
         elif deploy_params["model_source"] == ModelSource.CUSTOM:
             if deploy_params["runtime"] != RuntimeType.PYTORCH:
                 export = deploy_params["model_info"].get("export", {})
+                if export is None:
+                    export = {}
                 export_model = export.get(deploy_params["runtime"], None)
                 if export_model is not None:
                     if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(

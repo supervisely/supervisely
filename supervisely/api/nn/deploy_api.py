@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -6,10 +7,10 @@ from typing import Any, Dict, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as env
 from supervisely._utils import get_valid_kwargs
-from supervisely.io.fs import get_file_name_with_ext
-from supervisely.sly_logger import logger
 from supervisely.api.api import Api
+from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
+from supervisely.sly_logger import logger
 
 
 def get_runtime(runtime: str):
@@ -479,7 +480,7 @@ class DeployApi:
 
         logger.debug(f"Starting model deployment from experiment info. Task ID: '{task_id}'")
         train_module_id = train_task_info["meta"]["app"]["moduleId"]
-        module = self.get_serving_app_by_train_app(train_module_id)
+        module = self.get_serving_app_by_train_app(module_id=train_module_id)
         serve_app_name = module["name"]
         module_id = module["id"]
         logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
@@ -593,7 +594,7 @@ class DeployApi:
         framework = None
         for category in categories:
             if category.lower().startswith("framework:"):
-                framework = category
+                framework = category.lstrip("framework:")
                 break
         if framework is None:
             raise ValueError(
@@ -709,7 +710,7 @@ class DeployApi:
         serve_app_name = None
         if with_module:
             train_module_id = experiment_task_info["meta"]["app"]["moduleId"]
-            module = self.get_serving_app_by_train_app(train_module_id)
+            module = self.get_serving_app_by_train_app(module_id=train_module_id)
             serve_app_name = module["name"]
             module_id = module["id"]
             logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
