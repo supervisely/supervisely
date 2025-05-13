@@ -17,6 +17,7 @@ class SolutionsCard(Widget):
             label: str,
             on_hover: str = None,
             badge_type: Literal["info", "success", "warning", "error"] = "info",
+            plain: bool = False,
         ):
             self._label = label
             self._on_hover = on_hover
@@ -25,6 +26,7 @@ class SolutionsCard(Widget):
                     "badge_type must be one of ['info', 'success', 'warning', 'error']"
                 )
             self._badge_type = badge_type
+            self._plain = plain
 
     class Tooltip:
 
@@ -135,6 +137,7 @@ class SolutionsCard(Widget):
                     "label": badge._label,
                     "on_hover": badge._on_hover,
                     "badge_type": badge._badge_type,
+                    "plain": badge._plain,
                 }
                 info.append(badge_data)
         return info
@@ -211,6 +214,7 @@ class SolutionsCard(Widget):
                 "label": badge._label,
                 "on_hover": badge._on_hover,
                 "badge_type": badge._badge_type,
+                "plain": badge._plain,
             }
         )
         self._show_badges = True
@@ -218,7 +222,14 @@ class SolutionsCard(Widget):
         StateJson()[self.widget_id]["show_badges"] = self._show_badges
         StateJson().send_changes()
 
-    def update_badge(self, idx: int, label: str, on_hover: str = None, badge_type: str = None):
+    def update_badge(
+        self,
+        idx: int,
+        label: str,
+        on_hover: str = None,
+        badge_type: str = None,
+        plain: bool = None,
+    ):
         if idx < 0 or idx >= len(self._badges):
             raise IndexError("Badge index out of range")
 
@@ -227,6 +238,7 @@ class SolutionsCard(Widget):
             "label": label,
             "on_hover": self._badges[idx]["on_hover"],
             "badge_type": self._badges[idx]["badge_type"],
+            "plain": self._badges[idx]["plain"],
         }
         if on_hover is not None:
             badge_data["on_hover"] = on_hover
