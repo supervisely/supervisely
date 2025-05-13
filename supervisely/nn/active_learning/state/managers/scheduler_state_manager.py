@@ -90,12 +90,13 @@ class SchedulerStateManager:
             existing = tasks_data[job_id]
             task.enabled = True  # existing.get("enabled", True)  # ! TODO: Check if this is correct
             task.last_run = existing.get("last_run")
+            task.metadata = metadata
             # Merge metadata
-            if existing.get("metadata"):
-                merged_metadata = existing["metadata"].copy()
-                if metadata:
-                    merged_metadata.update(metadata)
-                task.metadata = merged_metadata
+            # if existing.get("metadata"):
+            #     merged_metadata = existing["metadata"].copy()
+            #     if metadata:
+            #         merged_metadata.update(metadata)
+            #         task.metadata = merged_metadata
 
         # Save task
         tasks_data[job_id] = task.to_dict()
