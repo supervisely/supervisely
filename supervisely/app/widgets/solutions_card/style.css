@@ -163,6 +163,24 @@ a {
   background-color: #fff;
 }
 
+.solutions-node.icon-node .wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  border-radius: 6px;
+  z-index: 1000;
+}
+
+.solutions-node.icon-node .wrapper.disabled {
+  pointer-events: none;
+  opacity: 0.7;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
 .solutions-node.icon-node .node-content {
   display: flex;
   align-items: center;

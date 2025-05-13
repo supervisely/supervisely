@@ -19,6 +19,8 @@
         </div>
     </div>
 
+    <div v-if="data.{{{widget.widget_id}}}.disabled" class="wrapper disabled"></div>
+
     <!-- content -->
     <div class="node-content">
         <div class="node-title" v-if="data.{{{widget.widget_id}}}.title !== null">
@@ -64,7 +66,7 @@
                 </div>
 
                 <div class="node-section info-section"
-                    v-if="state.{{{widget.widget_id}}}.tooltip_properties.length > 0">
+                    v-if="state.{{{widget.widget_id}}}.tooltip_properties.length > 0 && !data.{{{widget.widget_id}}}.disabled">
                     <div class="info-section-row" v-for="item in state.{{{widget.widget_id}}}.tooltip_properties">
                         <div class="info-section-row-label fw500">{{item.key}}:</div>
 
@@ -83,7 +85,7 @@
                 </div>
 
                 {% if widget._tooltip._content %}
-                <div class="node-section actions-section">
+                <div v-if="!data.{{{widget.widget_id}}}.disabled" class="node-section actions-section">
                     {% for item in widget._tooltip._content %}
                     <div class="actions-section-row fflex">{{{item}}}</div>
                     {% endfor %}
