@@ -1,10 +1,11 @@
 import random
 from collections import defaultdict
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
 from supervisely.api.entities_collection_api import CollectionItem
 from supervisely.api.image_api import ImageInfo
 from supervisely.nn.active_learning.scheduler.scheduler import SchedulerJobs
+from supervisely.nn.active_learning.state.managers import BackgroundTask
 
 if TYPE_CHECKING:
     from supervisely.nn.active_learning.session import ActiveLearningSession
@@ -58,7 +59,6 @@ class LabelingService:
         reviewing = self.api.labeling_queue.get_entities_count_by_status(queue_id, "done")
         annotating = queue_info.in_progress_count
         pending += queue_info.pending_count
-        reviewing = queue_info.entities_count - annotating - pending - finished
         for job in jobs:
             for entity in job.entities:
                 if entity["reviewStatus"] == "rejected":
@@ -275,6 +275,12 @@ class LabelingService:
                 logger.info(f"Copied {len(new_imgs)} images to dataset {dst_ds_id}")
         return src, added
 
+    def is_refresh_scheduled(self) -> bool:
+        """
+        Check if the labeling queue refresh task is scheduled.
+        """
+        return self.al_session.scheduler.is_job_scheduled(SchedulerJobs.LABELING_QUEUE_STATS)
+
     def schedule_refresh(self, func, interval: int = 20) -> None:
         """
         Schedule a job to refresh labeling information at a specified interval.
@@ -282,6 +288,32 @@ class LabelingService:
         if interval <= 0:
             raise ValueError("Interval must be greater than 0 seconds")
         self.al_session.scheduler.add_job(SchedulerJobs.LABELING_QUEUE_STATS, func, interval)
+
+    def unschedule_refresh(self) -> None:
+        """
+        Unschedule the job to refresh labeling information.
+        """
+        self.al_session.scheduler.remove_job(SchedulerJobs.LABELING_QUEUE_STATS)
+        logger.info("Labeling queue info job unscheduled")
+
+    def restore_scheduled_refresh(self, func: Callable) -> None:
+        """
+        Restore scheduled job if exists.
+        """
+        self.al_session.scheduler.restore_jobs({SchedulerJobs.LABELING_QUEUE_STATS: func})
+        logger.info("Labeling queue info job restored")
+
+    def is_move_to_training_project_scheduled(self) -> bool:
+        """
+        Check if the job to move labeled images to the training project is scheduled.
+        """
+        return self.al_session.scheduler.is_job_scheduled(SchedulerJobs.MOVE_TO_TRAINING)
+
+    def get_move_to_training_project_job(self) -> Optional[BackgroundTask]:
+        """
+        Get the job to move labeled images to the training project.
+        """
+        return self.al_session.state.background_tasks.get_task(SchedulerJobs.MOVE_TO_TRAINING)
 
     def schedule_move_to_training_project(
         self, func, interval: int = 20, min_batch: Optional[int] = None
@@ -296,6 +328,7 @@ class LabelingService:
             func,
             interval,
             args=(min_batch,),
+            metadata={"min_batch": min_batch},
         )
 
     def unschedule_move_to_training_project(self) -> None:
@@ -303,6 +336,12 @@ class LabelingService:
         Unschedule the job to move labeled images to the training project.
         """
         self.al_session.scheduler.remove_job(SchedulerJobs.MOVE_TO_TRAINING)
+
+    def restore_scheduled_move_to_training_project(self, func: Callable) -> None:
+        """
+        Restore scheduled job if exists.
+        """
+        self.al_session.scheduler.restore_jobs({SchedulerJobs.MOVE_TO_TRAINING: func})
 
     def add_annotators(self, annotators: List[int]) -> None:
         """

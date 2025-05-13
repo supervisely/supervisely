@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from typing import Optional
+from typing import Callable, Optional
 
 from supervisely.api.api import Api
 from supervisely.io.json import dump_json_file, load_json_file
@@ -83,6 +83,12 @@ class ActiveLearningSession:
             session.task_id, "embeddings", data={"project_id": self.project_id}
         )
 
+    def is_refresh_project_info_scheduled(self) -> bool:
+        """
+        Check if the project information refresh task is scheduled.
+        """
+        return self.scheduler.is_job_scheduled(SchedulerJobs.REFRESH_PROJECT_INFO)
+
     def schedule_refresh_project_info(self, func, interval: int = 20) -> None:
         """
         Schedule a job to refresh project information at a specified interval.
@@ -90,6 +96,13 @@ class ActiveLearningSession:
         if interval <= 0:
             raise ValueError("Interval must be greater than 0 seconds")
         self.scheduler.add_job(SchedulerJobs.REFRESH_PROJECT_INFO, func, interval)
+
+    def restore_scheduled_refresh_project_info(self, func: Callable) -> None:
+        """
+        Restore scheduled job if exists.
+        """
+        self.scheduler.restore_jobs({SchedulerJobs.REFRESH_PROJECT_INFO: func})
+        logger.info("Project info refresh job restored")
 
     def import_from_cloud(self, path: str) -> None:
         """
@@ -133,6 +146,18 @@ class ActiveLearningSession:
         """
         self.labeling_service.schedule_refresh(func=func, interval=interval)
 
+    def is_labeling_info_scheduled(self) -> bool:
+        """
+        Check if the labeling information refresh task is scheduled.
+        """
+        return self.labeling_service.is_refresh_scheduled()
+
+    def restore_scheduled_refresh_labeling_info(self, func: Callable) -> None:
+        """
+        Restore scheduled job if exists.
+        """
+        self.labeling_service.restore_scheduled_refresh(func=func)
+
     def schedule_move_to_training_project(
         self, func, interval: int = 20, min_batch: Optional[int] = None
     ) -> None:
@@ -148,6 +173,18 @@ class ActiveLearningSession:
         Unschedule the job to move labeled images to the training project.
         """
         self.labeling_service.unschedule_move_to_training_project()
+
+    def restore_scheduled_move_to_training_project(self, func: Callable) -> None:
+        """
+        Restore scheduled job if exists.
+        """
+        self.labeling_service.restore_scheduled_move_to_training_project(func=func)
+
+    def is_move_to_training_project_scheduled(self) -> bool:
+        """
+        Check if the move to training project task is scheduled.
+        """
+        return self.labeling_service.is_move_to_training_project_scheduled()
 
     def add_annotators_to_labeling_queue(self, annotators: list) -> None:
         """

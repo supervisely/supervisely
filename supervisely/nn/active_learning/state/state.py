@@ -1,9 +1,10 @@
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 import time
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.nn.active_learning.state.managers import (
+    BackgroundTask,
     ImportStateManager,
     LabelingStateManager,
     ProjectStateManager,
@@ -75,7 +76,7 @@ class ALState:
             ALState instance
         """
         project = api.project.create(workspace_id, project_name, change_name_if_conflict=True)
-        time.sleep(0.2) # Give some time for the project to be created
+        time.sleep(0.1)  # Give some time for the project to be created
         logger.info(f"Created project: {project.name} ({project.id})")
         return cls(api, project)
 
@@ -92,10 +93,10 @@ class ALState:
             ALState instance
         """
         ws = api.workspace.create(team_id, "Solutions Workspace", change_name_if_conflict=True)
-        time.sleep(0.2) # Give some time for the workspace to be created
+        time.sleep(0.1)  # Give some time for the workspace to be created
         logger.info(f"Created workspace: {ws.name} ({ws.id})")
         project = api.project.create(ws.id, project_name, change_name_if_conflict=True)
-        time.sleep(0.2) # Give some time for the project to be created
+        time.sleep(0.1)  # Give some time for the project to be created
         logger.info(f"Created project: {project.name} ({project.id})")
         return cls(api, project)
 
@@ -326,16 +327,23 @@ class ALState:
         task = self.background_tasks.get_task(job_id)
         return task.to_dict() if task else None
 
-    def get_all_background_tasks(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_background_tasks(self) -> Dict[str, BackgroundTask]:
         """
         Get all background tasks
 
         Returns:
             Dict: Dictionary of task IDs to task data
         """
-        return {
-            job_id: task.to_dict() for job_id, task in self.background_tasks.get_all_tasks().items()
-        }
+        return self.background_tasks.get_all_tasks()
+
+    def get_all_background_tasks_json(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get all background tasks
+
+        Returns:
+            Dict: Dictionary of task IDs to task data
+        """
+        return {job_id: task.to_dict() for job_id, task in self.get_all_background_tasks().items()}
 
     def get_enabled_background_tasks(self) -> Dict[str, Dict[str, Any]]:
         """

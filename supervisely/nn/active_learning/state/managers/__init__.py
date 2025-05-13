@@ -13,6 +13,7 @@ from supervisely.nn.active_learning.state.managers.sampling_state_manager import
 )
 from supervisely.nn.active_learning.state.managers.scheduler_state_manager import (
     SchedulerStateManager,
+    BackgroundTask,
 )
 from supervisely.nn.active_learning.state.managers.split_state_manager import (
     TrainValSplitStateManager,

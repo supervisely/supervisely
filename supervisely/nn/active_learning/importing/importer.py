@@ -1,5 +1,7 @@
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
+from supervisely.nn.active_learning.scheduler.scheduler import SchedulerJobs
+from supervisely.nn.active_learning.state.managers import BackgroundTask
 from supervisely.nn.active_learning.utils.constants import (
     AUTOIMPORT_SLUG,
     CLOUD_IMPORT_SLUG,
@@ -48,7 +50,27 @@ class ActiveLearningImporter:
         """
         Unschedule the cloud import task
         """
-        return cloud_import.unschedule_cloud_import(self)
+        return cloud_import.unschedule_cloud_import(self.al_session)
+
+    def restore_scheduled_cloud_import_job(self) -> None:
+        """
+        Restore scheduled job if exists.
+        """
+        self.al_session.scheduler.restore_jobs(
+            {SchedulerJobs.CLOUD_IMPORT: cloud_import.import_from_cloud}
+        )
+
+    def is_cloud_import_scheduled(self) -> bool:
+        """
+        Check if the cloud import task is scheduled
+        """
+        return cloud_import.is_cloud_import_scheduled(self.al_session)
+
+    def get_cloud_import_scheduled_job(self) -> Optional[BackgroundTask]:
+        """
+        Get the scheduled cloud import job
+        """
+        return self.al_session.state.background_tasks.get_task(SchedulerJobs.CLOUD_IMPORT)
 
     def get_differences_count(self) -> int:
         src_datasets = self.api.dataset.get_list(self.project_id, recursive=True)

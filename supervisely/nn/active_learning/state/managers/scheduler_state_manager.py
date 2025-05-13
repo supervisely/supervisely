@@ -88,7 +88,7 @@ class SchedulerStateManager:
         # If task exists, preserve some fields
         if job_id in tasks_data:
             existing = tasks_data[job_id]
-            task.enabled = existing.get("enabled", True)
+            task.enabled = True  # existing.get("enabled", True)  # ! TODO: Check if this is correct
             task.last_run = existing.get("last_run")
             # Merge metadata
             if existing.get("metadata"):
