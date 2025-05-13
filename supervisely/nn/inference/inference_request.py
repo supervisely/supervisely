@@ -46,7 +46,7 @@ class InferenceRequest:
         self._pending_results = []
         self._final_result = None
         self._exception = None
-        self.stopped = False
+        self._stopped = threading.Event()
         self.progress = Progress(
             message=self._stage,
             total_cnt=1,
@@ -158,11 +158,11 @@ class InferenceRequest:
         return self.stage == InferenceRequest.Stage.INFERENCE
 
     def stop(self):
-        self.stopped = True
+        self._stopped.set()
         self._updated()
 
     def is_stopped(self):
-        return self.stopped
+        return self._stopped.is_set()
 
     def is_finished(self):
         return self._finished
@@ -199,7 +199,7 @@ class InferenceRequest:
             "final_result": self._final_result is not None,
             "exception": self.exception_json(),
             "is_inferring": self.is_inferring(),
-            "stopped": self.stopped,
+            "stopped": self.is_stopped(),
             "finished": self._finished,
             "created_at": self._created_at,
             "updated_at": self._updated_at,
