@@ -10,6 +10,7 @@ from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import nrrd
 import numpy as np
+from trimesh import Trimesh
 
 from supervisely import logger
 from supervisely._utils import unwrap_if_numpy
@@ -626,7 +627,7 @@ class Mask3D(Geometry):
         level: float = 0.5,
         apply_decimation: bool = False,
         decimation_fraction: float = 0.5,
-    ):
+    ) -> Trimesh:
         """
         Converts a 3D binary mask to a mesh using marching cubes.
 
@@ -640,14 +641,7 @@ class Mask3D(Geometry):
         Returns:
             trimesh.Trimesh: The generated mesh.
         """
-        try:
-            import trimesh
-            from skimage import measure
-        except ImportError:
-            raise ImportError(
-                "Please install trimesh and skimage to use this function. "
-                "You can do this by running 'pip install trimesh scikit-image'."
-            )
+        from skimage import measure
 
         mask = self.data
 
@@ -655,9 +649,17 @@ class Mask3D(Geometry):
         verts, faces, normals, _ = measure.marching_cubes(
             mask.astype(np.float32), level=level, spacing=spacing
         )
-        mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
+        mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
         if apply_decimation and 0 < decimation_fraction < 1:
             mesh = mesh.simplify_quadratic_decimation(int(len(mesh.faces) * decimation_fraction))
 
         return mesh
+
+    def write_mesh_to_file(self, file_path: str, kwargs=None):
+        if get_file_ext(file_path) not in [".stl", ".obj"]:
+            raise ValueError('File extension must be either ".stl" or ".obj"')
+        if kwargs is None:
+            kwargs = {}
+        mesh = self._get_trimesh(**kwargs)
+        mesh.export(file_path)
