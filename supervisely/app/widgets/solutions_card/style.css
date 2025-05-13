@@ -76,6 +76,35 @@ a {
 .badge-info {
   background-color: #4683ec;
 }
+.badge-success-plain {
+  /* border: 1px solid #0dbf5c; */
+  background-color: transparent;
+  color: #222;
+  font-size: 18px !important;
+}
+.badge-warning-plain {
+  /* border: 1px solid #f6a600; */
+  background-color: transparent;
+  color: #222;
+  font-size: 18px !important;
+}
+.badge-error-plain {
+  /* border: 1px solid #dc3545; */
+  background-color: transparent;
+  color: #222;
+  font-size: 18px !important;
+}
+.badge-info-plain {
+  /* border: 1px solid #17a2b8; */
+  background-color: transparent;
+  color: #222;
+  font-size: 18px !important;
+}
+
+.badge-label-plain {
+  color: #222;
+  font-size: 12px !important;
+}
 
 .solutions-node .node-badges-row .node-badge .badge-label {
   overflow: hidden;
