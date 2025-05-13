@@ -198,6 +198,7 @@ class InferenceRequest:
             "pending_results": self.pending_num(),
             "final_result": self._final_result is not None,
             "exception": self.exception_json(),
+            "is_inferring": self.is_inferring(),
             "stopped": self.stopped,
             "finished": self._finished,
             "created_at": self._created_at,
