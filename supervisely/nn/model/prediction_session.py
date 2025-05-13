@@ -103,6 +103,7 @@ class PredictionSession:
         self.kwargs = kwargs
         if kwargs.get("show_progress", False) and "tqdm" not in kwargs:
             kwargs["tqdm"] = tqdm()
+        self.tqdm = kwargs.pop("tqdm", None)
 
         self.inference_settings = {
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
@@ -470,11 +471,11 @@ class PredictionSession:
             extra={"inference_request_uuid": resp.get("inference_request_uuid")},
         )
         try:
-            resp, has_started = self._wait_for_inference_start(tqdm=kwargs.get("tqdm"))
+            resp, has_started = self._wait_for_inference_start(tqdm=self.tqdm)
         except:
             self.stop()
             raise
-        frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=kwargs.get("tqdm"))
+        frame_iterator = self.Iterator(resp["progress"]["total"], self, tqdm=self.tqdm)
         return frame_iterator
 
     def _predict_images(self, images: List, **kwargs: dict):
