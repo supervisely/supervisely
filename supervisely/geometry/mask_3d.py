@@ -631,15 +631,22 @@ class Mask3D(Geometry):
         """
         Converts a 3D binary mask to a mesh using marching cubes.
 
-        Args:
-            mask (np.ndarray): 3D numpy array (binary mask).
-            spacing (tuple): Voxel spacing along each axis (z, y, x).
-            level (float): Value at which to generate the surface.
-            apply_decimation (bool): Whether to simplify the mesh.
-            decimation_fraction (float): Fraction of faces to keep (0 < f <= 1).
+        :param spacing: Voxel spacing along each axis (z, y, x).
+        :type spacing: tuple
+        :param level: Value at which to generate the surface.
+        :type level: float
+        :param apply_decimation: Whether to simplify the mesh.
+        :type apply_decimation: bool
+        :param decimation_fraction: Fraction of faces to keep (0 < f <= 1).
+        :type decimation_fraction: float
+        :return: The generated mesh.
+        :rtype: trimesh.Trimesh
 
-        Returns:
-            trimesh.Trimesh: The generated mesh.
+        :Usage example:
+
+         .. code-block:: python
+
+            mesh = mask3d._get_trimesh(spacing=(1.0, 1.0, 1.0), level=0.5)
         """
         from skimage import measure
 
@@ -656,10 +663,27 @@ class Mask3D(Geometry):
 
         return mesh
 
-    def write_mesh_to_file(self, file_path: str, kwargs=None):
-        if get_file_ext(file_path) not in [".stl", ".obj"]:
-            raise ValueError('File extension must be either ".stl" or ".obj"')
+    def write_mesh_to_file(self, file_path: str, kwargs: dict = None) -> None:
+        """
+        Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
+
+        :param file_path: The path to the output file. Must have a ".stl" or ".obj" extension.
+        :type file_path: str
+        :param kwargs: Additional keyword arguments to pass to the mesh generation method.
+        :type kwargs: dict, optional
+        :return: None
+
+        :Usage example:
+
+         .. code-block:: python
+
+            mask3d.write_mesh_to_file("output.stl", {"spacing": (1.0, 1.0, 1.0)})
+        """
         if kwargs is None:
             kwargs = {}
+
+        if get_file_ext(file_path) not in [".stl", ".obj"]:
+            raise ValueError('File extension must be either ".stl" or ".obj"')
+
         mesh = self._get_trimesh(**kwargs)
         mesh.export(file_path)
