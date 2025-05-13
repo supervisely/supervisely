@@ -604,7 +604,7 @@ class VolumeAnnotation:
                     for path in spatial_geometry_paths:
                         if (
                             get_file_name(path) == figure.key().hex
-                            or get_file_name(path) == figure_id
+                            or get_file_name(path) == str(figure_id)
                         ):
                             geometry_path = path
                             break

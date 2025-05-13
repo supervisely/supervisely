@@ -619,3 +619,44 @@ class Mask3D(Geometry):
                 continue
             geometries_dict[key] = geometry_bytes
         return geometries_dict
+
+
+    def get_trimesh(
+        self,
+        spacing: tuple = (1.0, 1.0, 1.0),
+        level: float = 0.5,
+        apply_decimation: bool = False,
+        decimation_fraction: float = 0.5,
+    ):
+        """
+        Converts a 3D binary mask to a mesh using marching cubes.
+
+        Args:
+            mask (np.ndarray): 3D numpy array (binary mask).
+            spacing (tuple): Voxel spacing along each axis (z, y, x).
+            level (float): Value at which to generate the surface.
+            apply_decimation (bool): Whether to simplify the mesh.
+            decimation_fraction (float): Fraction of faces to keep (0 < f <= 1).
+
+        Returns:
+            trimesh.Trimesh: The generated mesh.
+        """
+        try:
+            import trimesh
+            from skimage import measure
+        except ImportError:
+            raise ImportError(
+                "Please install trimesh and skimage to use this function. "
+                "You can do this by running 'pip install trimesh scikit-image'."
+            )
+        
+        mask = self.data
+
+        # marching_cubes expects (z, y, x) order
+        verts, faces, normals, _ = measure.marching_cubes(mask.astype(np.float32), level=level, spacing=spacing)
+        mesh = trimesh.Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
+
+        if apply_decimation and 0 < decimation_fraction < 1:
+            mesh = mesh.simplify_quadratic_decimation(int(len(mesh.faces) * decimation_fraction))
+
+        return mesh
