@@ -328,7 +328,6 @@ class InferenceRequestsManager:
             inference_request = self._inference_requests.get(inference_request_uuid)
             if inference_request is not None:
                 inference_request.stop()
-                inference_request.on_inference_end()
                 inference_request._ttl = wait_time
                 inference_request._updated()
 
