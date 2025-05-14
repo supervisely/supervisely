@@ -589,7 +589,6 @@ class TrainGUI:
             self.step_flow.set_next_steps("model_selector", ["hyperparameters_selector"])
             prev_step = "model_selector"
         else:
-            # Если селектор модели отключён, сразу переходим к гиперпараметрам
             self.step_flow.set_next_steps(prev_step, ["hyperparameters_selector"])
 
         # 6. Hyperparameters selector -> 7. Training process
