@@ -4,7 +4,10 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
+
+import cv2
+import numpy as np
 
 from supervisely import logger as default_logger
 from supervisely._utils import abs_url, is_development, rand_str
@@ -519,3 +522,106 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
     :rtype: str
     """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
+
+
+class VideoFrameReader:
+    def __init__(self, video_path: str, frame_indexes: List[int] = None):
+        self.video_path = video_path
+        self.frame_indexes = frame_indexes
+        self.vr = None
+        self.cap = None
+        self.prev_idx = -1
+
+    def _ensure_initialized(self):
+        if self.vr is None and self.cap is None:
+            try:
+                import decord
+
+                self.vr = decord.VideoReader(str(self.video_path))
+            except ImportError:
+                default_logger.debug(
+                    "Decord is not installed. Falling back to OpenCV for video reading."
+                )
+                self.cap = cv2.VideoCapture(str(self.video_path))
+
+    def close(self):
+        if self.vr is not None:
+            self.vr = None
+        if self.cap is not None:
+            self.cap.release()
+            self.cap = None
+        self.prev_idx = -1
+
+    def __enter__(self):
+        self._ensure_initialized()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __del__(self):
+        self.close()
+
+    def iterate_frames(self, frame_indexes: List[int] = None) -> Generator[np.ndarray, None, None]:
+        self._ensure_initialized()
+        if frame_indexes is None:
+            frame_indexes = self.frame_indexes
+        if self.vr is not None:
+            if frame_indexes is None:
+                frame_indexes = range(len(self.vr))
+            for frame_index in frame_indexes:
+                frame = self.vr[frame_index]
+                yield frame.asnumpy()
+        else:
+            if frame_indexes is None:
+                frame_count = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                frame_indexes = range(frame_count)
+            for frame_index in frame_indexes:
+                if 1 > frame_index - self.prev_idx < 20:
+                    while self.prev_idx < frame_index - 1:
+                        self.cap.read()
+                if frame_index != self.prev_idx + 1:
+                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                ret, frame = self.cap.read()
+                if not ret:
+                    raise KeyError(f"Frame {frame_index} not found in video {self.video_path}")
+                yield cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.prev_idx = frame_index
+
+    def read_frames(self, frame_indexes: List[int] = None) -> List[np.ndarray]:
+        return list(self.iterate_frames(frame_indexes))
+
+    def __iter__(self):
+        return self.iterate_frames()
+
+    def __next__(self):
+        if not hasattr(self, "_frame_generator"):
+            self._frame_generator = self.iterate_frames()
+        try:
+            return next(self._frame_generator)
+        except StopIteration:
+            self._frame_generator = None
+            raise
+
+    def frame_size(self):
+        self._ensure_initialized()
+        if self.vr is not None:
+            return self.vr[0].shape[:2]
+        else:
+            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            return height, width
+
+    def frames_count(self):
+        self._ensure_initialized()
+        if self.vr is not None:
+            return len(self.vr)
+        else:
+            return int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    def fps(self):
+        self._ensure_initialized()
+        if self.vr is not None:
+            return self.vr.get_avg_fps()
+        else:
+            return int(self.cap.get(cv2.CAP_PROP_FPS))
