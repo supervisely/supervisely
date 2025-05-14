@@ -9,6 +9,7 @@ import numpy as np
 import pydicom
 import SimpleITK as sitk
 import stringcase
+from trimesh import Trimesh
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
@@ -783,7 +784,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
 
-    import nibabel as nib # pylint: disable=import-error
+    import nibabel as nib  # pylint: disable=import-error
 
     nifti = nib.load(path)
     reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
@@ -798,6 +799,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         "dimension": len(data.shape),
     }
     return data, header
+
 
 def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     """Convert 3D NIFTI volume to NRRD format.
@@ -830,14 +832,14 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     space_directions = (direction.T * spacing[:, None]).tolist()
 
     header = {
-            "dimension": 3,
-            "space": "right-anterior-superior",
-            "sizes": list(data.shape),
-            "space directions": space_directions,
-            "endian": "little",
-            "encoding": "gzip",
-            "space origin": origin
-        }
+        "dimension": 3,
+        "space": "right-anterior-superior",
+        "sizes": list(data.shape),
+        "space directions": space_directions,
+        "endian": "little",
+        "encoding": "gzip",
+        "space origin": origin,
+    }
     return data, header
 
 
@@ -861,3 +863,57 @@ def is_nifti_file(path: str) -> bool:
         return True
     except nib.filebasedimages.ImageFileError:
         return False
+
+
+def convert_3d_geometry_to_mesh(
+    geometry,
+    spacing: tuple = (1.0, 1.0, 1.0),
+    level: float = 0.5,
+    apply_decimation: bool = False,
+    decimation_fraction: float = 0.5,
+) -> Trimesh:
+    from skimage import measure
+
+    mask = geometry.data
+
+    # marching_cubes expects (z, y, x) order
+    verts, faces, normals, _ = measure.marching_cubes(
+        mask.astype(np.float32), level=level, spacing=spacing
+    )
+    mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
+
+    if apply_decimation and 0 < decimation_fraction < 1:
+        mesh = mesh.simplify_quadratic_decimation(int(len(mesh.faces) * decimation_fraction))
+
+    return mesh
+
+
+def export_3d_as_mesh(geometry, output_path: str):
+    """
+    Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
+
+    :param output_path: The path to the output file. Must have a ".stl" or ".obj" extension.
+    :type output_path: str
+    :param kwargs: Additional keyword arguments for mesh generation. Supported keys:
+        - spacing (tuple): Voxel spacing in (x, y, z). Default is (1.0, 1.0, 1.0).
+        - level (float): Isosurface value for marching cubes. Default is 0.5.
+        - apply_decimation (bool): Whether to simplify the mesh. Default is False.
+        - decimation_fraction (float): Fraction of faces to keep if decimation is applied. Default is 0.5.
+    :type kwargs: dict, optional
+    :return: None
+
+    :Usage example:
+
+        .. code-block:: python
+
+        mask3d.write_mesh_to_file("output.stl", {"spacing": (1.0, 1.0, 1.0), "level": 0.7, "apply_decimation": True})
+    """
+
+    if kwargs is None:
+        kwargs = {}
+
+    if get_file_ext(output_path) not in [".stl", ".obj"]:
+        raise ValueError('File extension must be either ".stl" or ".obj"')
+
+    mesh = convert_3d_geometry_to_mesh(geometry, **kwargs)
+    mesh.export(output_path)
