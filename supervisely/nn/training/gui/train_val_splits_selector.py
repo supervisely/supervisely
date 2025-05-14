@@ -31,6 +31,7 @@ class TrainValSplitsSelector:
         tag_split = "Based on tags" in split_methods
         ds_split = "Based on datasets" in split_methods
 
+        # @TODO: check if datasets are selected with nested datasets
         self.train_val_splits = TrainValSplits(project_id, None, random_split, tag_split, ds_split)
         train_val_dataset_ids = {"train": [], "val": []}
         for _, dataset in api.dataset.tree(project_id):
@@ -180,6 +181,7 @@ class TrainValSplitsSelector:
                 return False
 
             # Check if datasets are not empty
+            # @TODO: check if datasets stats are checked from nested datasets also
             stats = self.api.project.get_stats(self.project_id)
             datasets_count = {}
             for dataset in stats["images"]["datasets"]:

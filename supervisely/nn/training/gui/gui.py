@@ -721,9 +721,18 @@ class TrainGUI:
             elif not isinstance(app_state[key], subkeys_or_type):
                 valid_types = ""
                 if isinstance(subkeys_or_type, tuple):
-                    valid_types = " or ".join(t.__name__ for t in subkeys_or_type)
+                    type_names = []
+                    for t in subkeys_or_type:
+                        if hasattr(t, "__name__"):
+                            type_names.append(t.__name__)
+                        else:
+                            type_names.append(type(t).__name__)
+                    valid_types = " or ".join(type_names)
                 else:
-                    valid_types = subkeys_or_type.__name__
+                    if hasattr(subkeys_or_type, "__name__"):
+                        valid_types = subkeys_or_type.__name__
+                    else:
+                        valid_types = type(subkeys_or_type).__name__
                 raise ValueError(f"app_state['{key}'] must be of type {valid_types}")
 
         # Provide defaults for optional sections when selectors are disabled
