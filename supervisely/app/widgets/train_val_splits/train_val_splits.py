@@ -80,7 +80,7 @@ class TrainValSplits(Widget):
             contents.append(self._get_random_content())
         if tags_splits:
             self._split_methods.append("Based on item tags")
-            tabs_descriptions.append("Images should have assigned train or val tag")
+            tabs_descriptions.append(f"{self._project_type.capitalize()} should have assigned train or val tag")
             contents.append(self._get_tags_content())
         if datasets_splits:
             self._split_methods.append("Based on datasets")
@@ -128,26 +128,26 @@ class TrainValSplits(Widget):
         self._untagged_select = SelectString(
             values=["train", "val", "ignore"],
             labels=[
-                "add untagged images to train set",
-                "add untagged images to val set",
-                "ignore untagged images",
+                f"add untagged {self._project_type} to train set",
+                f"add untagged {self._project_type} to val set",
+                f"ignore untagged {self._project_type}",
             ],
             placeholder="Select action",
         )
         train_field = Field(
             self._train_tag_select,
             title="Train tag",
-            description="all images with this tag are considered as training set",
+            description=f"all {self._project_type} with this tag are considered as training set",
         )
         val_field = Field(
             self._val_tag_select,
             title="Validation tag",
-            description="all images with this tag are considered as validation set",
+            description=f"all {self._project_type} with this tag are considered as validation set",
         )
         without_tags_field = Field(
             self._untagged_select,
-            title="Images without selected tags",
-            description="Choose what to do with untagged images",
+            title=f"{self._project_type.capitalize()} without selected tags",
+            description=f"Choose what to do with untagged {self._project_type}",
         )
         return Container(
             widgets=[
@@ -205,12 +205,12 @@ class TrainValSplits(Widget):
         train_field = Field(
             self._train_ds_select,
             title="Train dataset(s)",
-            description="all images in selected dataset(s) are considered as training set",
+            description=f"all {self._project_type} in selected dataset(s) are considered as training set",
         )
         val_field = Field(
             self._val_ds_select,
             title="Validation dataset(s)",
-            description="all images in selected dataset(s) are considered as validation set",
+            description=f"all {self._project_type} in selected dataset(s) are considered as validation set",
         )
         return Container(
             widgets=[notification_box, train_field, val_field], direction="vertical", gap=5
@@ -306,10 +306,10 @@ class TrainValSplits(Widget):
         else:
             raise ValueError("Split value must be 'train', 'training', 'val' or 'validation'")
 
-    def get_train_split_percent(self) -> List[int]:
+    def get_train_split_percent(self) -> int:
         return self._random_splits_table.get_train_split_percent()
 
-    def get_val_split_percent(self) -> List[int]:
+    def get_val_split_percent(self) -> int:
         return 100 - self._random_splits_table.get_train_split_percent()
 
     def set_tags_splits(
@@ -342,24 +342,36 @@ class TrainValSplits(Widget):
 
     def disable(self):
         self._content.disable()
-        self._random_splits_table.disable()
-        self._train_tag_select.disable()
-        self._val_tag_select.disable()
-        self._untagged_select.disable()
-        self._train_ds_select.disable()
-        self._val_ds_select.disable()
+        if self._random_splits_table is not None:
+            self._random_splits_table.disable()
+        if self._train_tag_select is not None:
+            self._train_tag_select.disable()
+        if self._val_tag_select is not None:
+            self._val_tag_select.disable()
+        if self._untagged_select is not None:
+            self._untagged_select.disable()
+        if self._train_ds_select is not None:
+            self._train_ds_select.disable()
+        if self._val_ds_select is not None:
+            self._val_ds_select.disable()
         self._disabled = True
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
 
     def enable(self):
         self._content.enable()
-        self._random_splits_table.enable()
-        self._train_tag_select.enable()
-        self._val_tag_select.enable()
-        self._untagged_select.enable()
-        self._train_ds_select.enable()
-        self._val_ds_select.enable()
+        if self._random_splits_table is not None:
+            self._random_splits_table.enable()
+        if self._train_tag_select is not None:
+            self._train_tag_select.enable()
+        if self._val_tag_select is not None:
+            self._val_tag_select.enable()
+        if self._untagged_select is not None:
+            self._untagged_select.enable()
+        if self._train_ds_select is not None:
+            self._train_ds_select.enable()
+        if self._val_ds_select is not None:
+            self._val_ds_select.enable()
         self._disabled = False
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
