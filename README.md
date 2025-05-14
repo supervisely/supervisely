@@ -330,7 +330,7 @@ Imagine, how it will be great if all ML tools and repositories have an interacti
 
 Hundreds of interactive UI widgets and components are ready for you. Just add to your program and populate with the data. Python devs don't need to have any front‑end experience, in our developer portal you will find needed guides, examples, and tutorials. We support the following UI widgets:
 
-1. [Widgets made by Supervisely](https://ecosystem.supervisely.com/docs/grid-gallery) specifically for computer vision tasks, like rendering galleries of images with annotations, playing videos forward and backward with labels, interactive confusion matrices, tables, charts, ...
+1. [Widgets made by Supervisely](https://developer.supervisely.com/app-development/widgets) specifically for computer vision tasks, like rendering galleries of images with annotations, playing videos forward and backward with labels, interactive confusion matrices, tables, charts, ...
 2. [Element widgets](https://element.eleme.io/1.4/#/en-US/component/button) - Vue 2.0 based component library
 3. [Plotly](https://plotly.com/python/) Graphing Library for Python
 4. You can develop your own UI widgets ([example](https://github.com/supervisely-ecosystem/dev-smart-tool-batched/blob/master/static/smarttool.js))
