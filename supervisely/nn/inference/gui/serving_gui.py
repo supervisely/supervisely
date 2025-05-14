@@ -129,7 +129,9 @@ class ServingGUI:
         self._device_select._select.enable()
         self._device_select.enable()
         self._change_model_button.hide()
-        Progress("model deployment canceled", 1).iter_done_report()
+        # @TODO: Ask web team to add message to list of request ready messages
+        # Progress("model deployment canceled", 1).iter_done_report()
+        Progress("Application is started ...", 1).iter_done_report()
 
     def _hide_info_after_change(self):
         self._model_full_info_card.collapse()
