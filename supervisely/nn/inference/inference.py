@@ -1729,7 +1729,6 @@ class Inference:
         inference_settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
-        video_id = state["videoId"]
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
