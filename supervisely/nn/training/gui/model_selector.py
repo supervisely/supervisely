@@ -77,7 +77,6 @@ class ModelSelector:
             contents=tab_contents,
         )
 
-        # @TODO:If first tab is disabled, set active tab explicitly to the first available
         if len(tab_titles) > 0:
             self.model_source_tabs.set_active_tab(tab_titles[0])
 
