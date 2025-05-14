@@ -1519,7 +1519,7 @@ class Inference:
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
-            n_frames = end_frame_index - start_frame_index
+            n_frames = end_frame_index - start_frame_index + 1
         elif duration is not None:
             fps = frames_reader.fps()
             n_frames = int(duration * fps)
