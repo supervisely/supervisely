@@ -333,7 +333,7 @@ Hundreds of interactive UI widgets and components are ready for you. Just add to
 1. [Widgets made by Supervisely](https://developer.supervisely.com/app-development/widgets) specifically for computer vision tasks, like rendering galleries of images with annotations, playing videos forward and backward with labels, interactive confusion matrices, tables, charts, ...
 2. [Element widgets](https://element.eleme.io/1.4/#/en-US/component/button) - Vue 2.0 based component library
 3. [Plotly](https://plotly.com/python/) Graphing Library for Python
-4. You can develop your own UI widgets ([example](https://github.com/supervisely-ecosystem/dev-smart-tool-batched/blob/master/static/smarttool.js))
+4. [Develop your own custom widgets](https://developer.supervisely.com/app-development/advanced/how-to-make-your-own-widget)
 
 Supervisely team makes most of its apps publically available on [GitHub](https://github.com/supervisely-ecosystem). Use them as examples for your future apps: fork, modify, and copy-paste code snippets.
 
