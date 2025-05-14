@@ -694,8 +694,8 @@ class TrainApp:
             if self.gui.train_val_splits_selector is not None
             else None
         )
-        classes = self.classes if self.gui.classes_selector is not None else None
-        tags = self.tags if self.gui.tags_selector is not None else None
+        classes = self.classes
+        tags = self.tags
 
         model = self._get_model_config_for_app_state(experiment_info)
         options = {
