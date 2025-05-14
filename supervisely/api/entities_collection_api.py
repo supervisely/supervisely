@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Union
 
 import requests
 
-from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -20,11 +19,18 @@ from supervisely.sly_logger import logger
 
 if TYPE_CHECKING:
     from supervisely.api.api import Api
+    from supervisely.api.image_api import ImageInfo
 
 
 class CollectionType:
     DEFAULT = "default"
     AI_SEARCH = "aiSearch"
+    ALL = "all"
+
+
+class CollectionTypeFilter:
+    AI_SEARCH = "entities_ai_search_collection"
+    DEFAULT = "entities_collection"
 
 
 @dataclass
@@ -326,11 +332,27 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         response = self._api.post(method, data)
         return self._convert_json_info(response.json())
 
+    def remove(self, id: int, force: bool = False):
+        """
+        Remove Entites Collection with the specified ID from the Supervisely server.
+        
+        If `force` is set to True, the collection will be removed permanently.
+        If `force` is set to False, the collection will be disabled instead of removed.
+
+        :param id: Entites Collection ID in Supervisely
+        :type id: int
+        :param force: If True, the collection will be removed permanently. Defaults to False.
+        :type force: bool
+        :return: None
+        """
+        self._api.post(self._remove_api_method_name(), {ApiField.ID: id, ApiField.HARD_DELETE: force})
+
     def get_list(
         self,
         project_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         with_meta: bool = False,
+        collection_type: CollectionType = CollectionType.DEFAULT,
     ) -> List[EntitiesCollectionInfo]:
         """
         Get list of information about Entities Collection for the given project.
@@ -341,6 +363,14 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type filters: List[Dict[str, str]], optional
         :param with_meta: If True, includes meta information in the response. Defaults to False.
         :type with_meta: bool, optional
+        :param collection_type: Type of the collection.
+                    Defaults to CollectionType.DEFAULT.
+
+                    Available types are:
+                     - CollectionType.DEFAULT
+                     - CollectionType.AI_SEARCH
+                     - CollectionType.ALL
+        :type collection_type: CollectionType
         :return: List of information about Entities Collections.
         :rtype: :class:`List[EntitiesCollectionInfo]`
         :Usage example:
@@ -357,7 +387,11 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
         method = "entities-collections.list"
 
-        data = {ApiField.PROJECT_ID: project_id, ApiField.FILTER: filters or []}
+        data = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.FILTER: filters or [],
+            ApiField.TYPE: collection_type,
+        }
         if with_meta:
             data.update({ApiField.EXTRA_FIELDS: [ApiField.META]})
         return self.get_list_all_pages(method, data)
@@ -406,7 +440,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         self, project_id: int, ai_search_key: str
     ) -> EntitiesCollectionInfo:
         """
-        Get information about Entities Collection with given AI search key.
+        Get information about Entities Collection of type `CollectionType.AI_SEARCH` with given AI search key.
 
         :param prject_id: Project ID in Supervisely.
         :type prject_id: int
@@ -429,6 +463,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         collections = self.get_list(
             project_id=project_id,
             with_meta=True,
+            collection_type=CollectionType.AI_SEARCH,
         )
         return next(
             (collection for collection in collections if collection.ai_search_key == ai_search_key),
@@ -502,12 +537,19 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             )
         return response["items"]
 
-    def get_items(self, id: int, project_id: Optional[int] = None) -> List[ImageInfo]:
+    def get_items(
+        self,
+        collection_id: int,
+        collection_type: CollectionTypeFilter,
+        project_id: Optional[int] = None,
+    ) -> List[ImageInfo]:
         """
         Get items from Entities Collection.
 
-        :param id: Entities Collection ID in Supervisely.
-        :type id: int
+        :param collection_id: Entities Collection ID in Supervisely.
+        :type collection_id: int
+        :param collection_type: Type of the collection. Can be CollectionTypeFilter.AI_SEARCH or CollectionTypeFilter.DEFAULT.
+        :type collection_type: CollectionTypeFilter
         :param project_id: Project ID in Supervisely.
         :type project_id: int, optional
         :return: List of ImageInfo objects.
@@ -529,12 +571,22 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             print(item_ids)
         """
         if project_id is None:
-            info = self.get_info_by_id(id)
+            info = self.get_info_by_id(collection_id)
             if info is None:
-                raise RuntimeError(f"Entities Collection with id={id} not found.")
+                raise RuntimeError(f"Entities Collection with id={collection_id} not found.")
             project_id = info.project_id
 
-        return self._api.image.get_list(project_id=project_id, entities_collection_id=id)
+        if collection_type == CollectionTypeFilter.AI_SEARCH:
+            return self._api.image.get_list(
+                project_id=project_id,
+                ai_search_collection_id=collection_id,
+                extra_fields=[ApiField.IS_EMBEDDINGS_UPDATED],
+            )
+        else:
+            return self._api.image.get_list(
+                project_id=project_id,
+                entities_collection_id=collection_id,
+            )
 
     def remove_items(self, id: int, items: List[int]) -> List[Dict[str, int]]:
         """

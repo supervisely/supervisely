@@ -98,7 +98,7 @@ class ProjectInfo(NamedTuple):
     version: dict
     created_by_id: int
     embeddings_enabled: bool = False
-    embeddings_updated_at: Optional[str] = None
+    is_embeddings_updated: Optional[bool] = None
     embeddings_in_progress: Optional[bool] = None
 
     @property
@@ -199,7 +199,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.VERSION,
             ApiField.CREATED_BY_ID,
             ApiField.EMBEDDINGS_ENABLED,
-            ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.IS_EMBEDDINGS_UPDATED,
             ApiField.EMBEDDINGS_IN_PROGRESS,
         ]
 
@@ -2212,7 +2212,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ' or None")
         self._api.post(
             "projects.editInfo",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: time, ApiField.SILENT: silent},
+            {ApiField.ID: id, ApiField.IS_EMBEDDINGS_UPDATED: time, ApiField.SILENT: silent},
         )
 
     def set_embeddings_in_progress(self, id: int, status: bool) -> None:

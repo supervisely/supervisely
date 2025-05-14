@@ -667,11 +667,17 @@ class ApiField:
     """"""
     EMBEDDINGS_IN_PROGRESS = "embeddingsInProgress"
     """"""
+    IS_EMBEDDINGS_UPDATED = "isEmbeddingsUpdated"
+    """"""
     AI_SEARCH_KEY = "aiSearchKey"
+    """"""
+    AI_SEARCH_META = "aiSearchMeta"
+    """"""
+    ENTITY_ITEMS = "entityItems"
     """"""
     SCORE = "score"
     """"""
-    ENTITY_ITEMS = "entityItems"
+    HARD_DELETE = "hardDelete"
     """"""
 
 
