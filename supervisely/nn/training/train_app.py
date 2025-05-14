@@ -689,11 +689,7 @@ class TrainApp:
         :rtype: dict
         """
         # Prepare optional sections depending on what selectors are enabled in GUI
-        train_val_splits = (
-            self._get_train_val_splits_for_app_state()
-            if self.gui.train_val_splits_selector is not None
-            else None
-        )
+        train_val_splits = self._get_train_val_splits_for_app_state()
         classes = self.classes
         tags = self.tags
 
@@ -713,11 +709,11 @@ class TrainApp:
         }
 
         # Include optional fields only when they exist
-        if train_val_splits is not None:
+        if train_val_splits:
             app_state["train_val_split"] = train_val_splits
-        if classes is not None:
+        if classes:
             app_state["classes"] = classes
-        if tags is not None:
+        if tags:
             app_state["tags"] = tags
         return app_state
 
