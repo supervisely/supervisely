@@ -356,6 +356,7 @@ class ActiveLearningSampler:
                     return None
                 data["prompt"] = prompt
                 data["limit"] = settings.get("limit", None)
+                data["threshold"] = settings.get("threshold", 0.05)
             elif mode == SamplingMode.DIVERSE.value:
                 # Diverse mode
                 data["sample_size"] = sample_size
@@ -384,6 +385,13 @@ class ActiveLearningSampler:
                         ds_id: [img for img in diffs[ds_id] if img.id in all_sampled_ids]
                         for ds_id in diffs.keys()
                     }
+                    # ? uncomment this when API will be fixed
+                    # new_sampled_images = {}
+                    # for img in all_sampled_images:
+                    #     ds_id = img.dataset_id
+                    #     if ds_id not in new_sampled_images:
+                    #         new_sampled_images[ds_id] = []
+                    #     new_sampled_images[ds_id].append(img)
                 elif "message" in res:
                     logger.error(f"Error during sampling: {res['message']}")
                     return None
