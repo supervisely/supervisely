@@ -194,6 +194,24 @@ API
 
     LabelingJobApi
 
+.. currentmodule:: supervisely.api.entities_collection_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    EntitiesCollectionApi
+
+.. currentmodule:: supervisely.api.labeling_queue_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    LabelingQueueApi
+
 .. currentmodule:: supervisely.api.module_api
 
 .. autosummary::

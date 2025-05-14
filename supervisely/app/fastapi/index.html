@@ -220,7 +220,11 @@ if state.get("app_initializing", False) == True:
       } else {
         result = fn;
       }
+      {% if events_subscribed %}
+      
       subToStoreAction();
+
+      {% endif %}
     }
 
     let initPromise = null;

@@ -81,9 +81,9 @@ class NiiConverter(VolumeConverter):
                     if name.endswith(".nii"):
                         name = get_file_name(name)
                     nifti_dict[name] = path
-                    for prefix in planes_detected.keys():
-                        if name.startswith(prefix):
-                            planes_detected[prefix] = True
+                    for plane in planes_detected.keys():
+                        if plane in name:
+                            planes_detected[plane] = True
 
         if any(planes_detected.values()):
             return False
