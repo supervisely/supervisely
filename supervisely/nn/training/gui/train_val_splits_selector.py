@@ -30,7 +30,7 @@ class TrainValSplitsSelector:
         random_split = "Random" in split_methods
         tag_split = "Based on tags" in split_methods
         ds_split = "Based on datasets" in split_methods
-        
+
         self.train_val_splits = TrainValSplits(project_id, None, random_split, tag_split, ds_split)
         train_val_dataset_ids = {"train": [], "val": []}
         for _, dataset in api.dataset.tree(project_id):
@@ -81,6 +81,7 @@ class TrainValSplitsSelector:
         split_method = self.train_val_splits.get_split_method()
         warning_text = "Using the same data for training and validation leads to overfitting, poor generalization and biased model selection."
         ensure_text = "Ensure this is intentional."
+        is_valid = False
 
         def validate_random_split():
             train_ratio = self.train_val_splits.get_train_split_percent()
@@ -169,11 +170,11 @@ class TrainValSplitsSelector:
             if train_dataset_id is None and val_dataset_id is None:
                 self.validator_text.set("No datasets are selected", status="error")
                 return False
-            
+
             if train_dataset_id is None:
                 self.validator_text.set("No train dataset is selected", status="error")
                 return False
-            
+
             if val_dataset_id is None:
                 self.validator_text.set("No val dataset is selected", status="error")
                 return False

@@ -289,7 +289,9 @@ class TrainGUI:
         # 2. Train/val split
         self.train_val_splits_selector = None
         if self.show_train_val_splits_selector:
-            self.train_val_splits_selector = TrainValSplitsSelector(self._api, self.project_id, self.app_options)
+            self.train_val_splits_selector = TrainValSplitsSelector(
+                self._api, self.project_id, self.app_options
+            )
             self.steps.append(self.train_val_splits_selector.card)
 
         # 3. Select Classes
@@ -305,12 +307,16 @@ class TrainGUI:
             self.steps.append(self.tags_selector.card)
 
         # 5. Model selection
-        self.model_selector = ModelSelector(self._api, self.framework_name, self.models, self.app_options)
+        self.model_selector = ModelSelector(
+            self._api, self.framework_name, self.models, self.app_options
+        )
         if self.show_model_selector:
             self.steps.append(self.model_selector.card)
 
         # 6. Training parameters (yaml)
-        self.hyperparameters_selector = HyperparametersSelector(self.hyperparameters, self.app_options)
+        self.hyperparameters_selector = HyperparametersSelector(
+            self.hyperparameters, self.app_options
+        )
         self.steps.append(self.hyperparameters_selector.card)
 
         # 7. Start Training
@@ -499,7 +505,11 @@ class TrainGUI:
                 position=position,
             ).add_on_select_actions(
                 "model_selector",
-                [set_experiment_name, need_convert_class_shapes, validate_class_shape_for_model_task],
+                [
+                    set_experiment_name,
+                    need_convert_class_shapes,
+                    validate_class_shape_for_model_task,
+                ],
             )
             position += 1
 
@@ -554,7 +564,9 @@ class TrainGUI:
         )
 
         # Set dependencies between steps
-        has_train_val_splits = self.show_train_val_splits_selector and self.train_val_splits_selector is not None
+        has_train_val_splits = (
+            self.show_train_val_splits_selector and self.train_val_splits_selector is not None
+        )
         has_classes_selector = self.show_classes_selector and self.classes_selector is not None
         has_tags_selector = self.show_tags_selector and self.tags_selector is not None
 
@@ -650,7 +662,7 @@ class TrainGUI:
             self.classes_selector.button.enable()
         if self.tags_selector is not None:
             self.tags_selector.button.enable()
-        if self.model_selector is not None: 
+        if self.model_selector is not None:
             self.model_selector.button.enable()
         if self.hyperparameters_selector is not None:
             self.hyperparameters_selector.button.enable()
@@ -707,11 +719,11 @@ class TrainGUI:
                     if subkey not in app_state[key]:
                         raise KeyError(f"Missing required key in app_state['{key}']: {subkey}")
             elif not isinstance(app_state[key], subkeys_or_type):
-                valid_types = (
-                    " or ".join([t.__name__ for t in subkeys_or_type])
-                    if isinstance(subkeys_or_type, tuple)
-                    else subkeys_or_type.__name__
-                )
+                valid_types = ""
+                if isinstance(subkeys_or_type, tuple):
+                    valid_types = " or ".join(t.__name__ for t in subkeys_or_type)
+                else:
+                    valid_types = subkeys_or_type.__name__
                 raise ValueError(f"app_state['{key}'] must be of type {valid_types}")
 
         # Provide defaults for optional sections when selectors are disabled
@@ -870,7 +882,7 @@ class TrainGUI:
         """
         if self.train_val_splits_selector is None:
             return  # Selector disabled by app options
-        
+
         if train_val_splits_settings == {}:
             available_methods = self.app_options.get("train_val_splits_methods", [])
             if available_methods == []:
@@ -881,9 +893,18 @@ class TrainGUI:
                 if method == "random":
                     train_val_splits_settings = {"method": method, "split": "train", "percent": 80}
                 elif method == "tags":
-                    train_val_splits_settings = {"method": method, "train_tag": "train", "val_tag": "val", "untagged_action": "ignore"}
+                    train_val_splits_settings = {
+                        "method": method,
+                        "train_tag": "train",
+                        "val_tag": "val",
+                        "untagged_action": "ignore",
+                    }
                 elif method == "datasets":
-                    train_val_splits_settings = {"method": method, "train_datasets": [], "val_datasets": []}
+                    train_val_splits_settings = {
+                        "method": method,
+                        "train_datasets": [],
+                        "val_datasets": [],
+                    }
 
         split_method = train_val_splits_settings["method"]
         if split_method == "random":
@@ -916,7 +937,7 @@ class TrainGUI:
         """
         if self.classes_selector is None:
             return  # Selector disabled by app options
-        
+
         # Set Classes
         self.classes_selector.set_classes(classes_settings)
         self.classes_selector_cb()
@@ -1000,4 +1021,5 @@ class TrainGUI:
                 export_weights_settings.get(RuntimeType.TENSORRT, False)
             )
         self.hyperparameters_selector_cb()
+
     # ----------------------------------------- #
