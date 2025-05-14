@@ -304,6 +304,7 @@ a {
 .solutions-node .node-section.info-section .info-section-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
 }
 .solutions-node .node-section.info-section .info-section-row:not(:last-child) {
   margin-bottom: 5px;
@@ -325,14 +326,15 @@ a {
   .info-section-row-value.badge {
   background-color: #f3ebff;
   color: #382967;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border-radius: 20px;
+  margin: 2px 2px;
 }
 
 .solutions-node .node-section.actions-section {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
 }
 
 .solutions-node .node-section.actions-section .actions-section-row {

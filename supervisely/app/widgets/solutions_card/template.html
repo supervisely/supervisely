@@ -53,7 +53,7 @@
                     <div class="node-section description-section"
                         v-if="state.{{{widget.widget_id}}}.tooltip_description">
                         <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
-                            style="top: 15px; position: absolute;">
+                            style="top: 15px; position: absolute">
                             <rect y="0.5" width="12" height="13" rx="6" fill="#555C64" />
                             <path
                                 d="M6.34091 9.06031L6.82312 7.3523L7.17258 6.16641C7.46453 4.90795 4.4423 5.9767 4 6.29824L4.03548 6.6757C4.43821 6.41164 5.96322 6.07338 5.65917 7.0082L5.52276 7.48537L4.82742 9.90203C4.53547 11.1605 7.5577 10.0917 8 9.7702L7.96452 9.39274C7.56187 9.65687 6.03686 9.99513 6.34091 9.06031Z"
@@ -70,12 +70,21 @@
                         v-if="state.{{{widget.widget_id}}}.tooltip_properties.length > 0 && !data.{{{widget.widget_id}}}.disabled">
                         <div class="info-section-row" v-for="item in state.{{{widget.widget_id}}}.tooltip_properties">
                             <div class="info-section-row-label fw500">{{item.key}}:</div>
-
-                            <div class="info-section-row-value fw500" :class="{'badge' : item.highlight}">
-                                <a v-if="item.link" class="default-link" :href="item.link"
-                                    target="_blank">{{item.value}}</a>
-                                <div v-if="!item.link">{{item.value}}</div>
-                            </div>
+                            <template v-if="typeof item.value === 'string'">
+                                <div class="info-section-row-value fw500" :class="{'badge' : item.highlight}">
+                                    <a v-if="item.link" class="default-link" :href="item.link"
+                                        target="_blank">{{item.value}}</a>
+                                    <div v-if="!item.link">{{item.value}}</div>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <div v-for="subitem in item.value" class="info-section-row-value fw500"
+                                    :class="{'badge' : item.highlight}">
+                                    <a v-if="item.link" class="default-link" :href="item.link"
+                                        target="_blank">{{subitem}}</a>
+                                    <div v-if="!item.link">{{subitem}}</div>
+                                </div>
+                            </template>
                         </div>
                     </div>
 
