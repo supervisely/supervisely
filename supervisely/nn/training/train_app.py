@@ -708,13 +708,9 @@ class TrainApp:
             "options": options,
         }
 
-        # Include optional fields only when they exist
-        if train_val_splits:
-            app_state["train_val_split"] = train_val_splits
-        if classes:
-            app_state["classes"] = classes
-        if tags:
-            app_state["tags"] = tags
+        app_state["train_val_split"] = train_val_splits
+        app_state["classes"] = classes
+        app_state["tags"] = tags
         return app_state
 
     def load_app_state(self, app_state: dict) -> None:
