@@ -31,6 +31,8 @@ from supervisely import (
     Project,
     ProjectInfo,
     ProjectMeta,
+    ProjectType,
+    VideoProject,
     WorkflowMeta,
     WorkflowSettings,
     batched,
@@ -152,8 +154,8 @@ class TrainApp:
         self.sly_project = None
         # -------------------------- #
 
-        # Train/Val splits
-        self.train_split, self.val_split = None, None
+        self._train_split = None
+        self._val_split = None
         # -------------------------- #
 
         # Input
@@ -376,6 +378,8 @@ class TrainApp:
         :return: List of selected classes names.
         :rtype: List[str]
         """
+        if not self._has_classes_selector:
+            return []
         selected_classes = set(self.gui.classes_selector.get_selected_classes())
         # remap classes with project_meta order
         return [x for x in self.project_meta.obj_classes.keys() if x in selected_classes]
@@ -388,7 +392,28 @@ class TrainApp:
         :return: Number of selected classes.
         :rtype: int
         """
+        if not self._has_classes_selector:
+            return 0
         return len(self.gui.classes_selector.get_selected_classes())
+
+    @property
+    def tags(self) -> List[str]:
+        """
+        Returns the selected tags for training.
+        """
+        if not self._has_tags_selector:
+            return []
+        selected_tags = set(self.gui.tags_selector.get_selected_tags())
+        return [x for x in self.project_meta.tag_metas.keys() if x in selected_tags]
+
+    @property
+    def num_tags(self) -> int:
+        """
+        Returns the number of selected tags for training.
+        """
+        if not self._has_tags_selector:
+            return 0
+        return len(self.gui.tags_selector.get_selected_tags())
 
     # Hyperparameters
     @property
@@ -446,6 +471,24 @@ class TrainApp:
         )
 
     # Output
+    # ----------------------------------------- #
+
+    # Helper properties
+    @property
+    def _has_splits_selector(self) -> bool:
+        """Return True if Train/Val splits selector is enabled in GUI."""
+        return self.gui.train_val_splits_selector is not None
+
+    @property
+    def _has_classes_selector(self) -> bool:
+        """Return True if Classes selector is enabled in GUI."""
+        return self.gui.classes_selector is not None
+
+    @property
+    def _has_tags_selector(self) -> bool:
+        """Return True if Tags selector is enabled in GUI."""
+        return self.gui.tags_selector is not None
+
     # ----------------------------------------- #
 
     # Wrappers
@@ -546,6 +589,7 @@ class TrainApp:
             try:
                 # Convert GT project
                 gt_project_id, bm_splits_data = None, train_splits_data
+                # @TODO: check with anyshape classes
                 if self._app_options.get("auto_convert_classes", True):
                     if self.gui.need_convert_shapes_for_bm:
                         self._set_text_status("convert_gt_project")
@@ -644,9 +688,12 @@ class TrainApp:
         :return: Application state.
         :rtype: dict
         """
+        # Prepare optional sections depending on what selectors are enabled in GUI
         train_val_splits = self._get_train_val_splits_for_app_state()
-        model = self._get_model_config_for_app_state(experiment_info)
+        classes = self.classes
+        tags = self.tags
 
+        model = self._get_model_config_for_app_state(experiment_info)
         options = {
             "model_benchmark": {
                 "enable": self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value(),
@@ -656,12 +703,14 @@ class TrainApp:
         }
 
         app_state = {
-            "train_val_split": train_val_splits,
-            "classes": self.classes,
             "model": model,
             "hyperparameters": self.hyperparameters_yaml,
             "options": options,
         }
+
+        app_state["train_val_split"] = train_val_splits
+        app_state["classes"] = classes
+        app_state["tags"] = tags
         return app_state
 
     def load_app_state(self, app_state: dict) -> None:
@@ -675,12 +724,13 @@ class TrainApp:
 
             app_state = {
                 "input": {"project_id": 55555},
-                "train_val_splits": {
+                "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
                 },
                 "classes": ["apple"],
+                "tags": ["green", "red"],
                 "model": {
                     "source": "Pretrained models",
                     "model_name": "rtdetr_r50vd_coco_objects365"
@@ -786,25 +836,44 @@ class TrainApp:
 
     # Preprocess
     # Download Project
+    def _read_project(self, remove_unselected_classes: bool = True) -> None:
+        """
+        Reads the project data from Supervisely.
+
+        :param remove_unselected_classes: Whether to remove unselected classes from the project.
+        :type remove_unselected_classes: bool
+        """
+        if self.project_info.type == ProjectType.IMAGES.value:
+            self.sly_project = Project(self.project_dir, OpenMode.READ)
+            if remove_unselected_classes:
+                self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
+        elif self.project_info.type == ProjectType.VIDEOS.value:
+            self.sly_project = VideoProject(self.project_dir, OpenMode.READ)
+        else:
+            raise ValueError(
+                f"Unsupported project type: {self.project_info.type}. Only images and videos are supported."
+            )
+
     def _download_project(self) -> None:
         """
         Downloads the project data from Supervisely.
         If the cache is enabled, it will attempt to retrieve the project from the cache.
         """
         dataset_infos = [dataset for _, dataset in self._api.dataset.tree(self.project_id)]
-
-        if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
-            selected_ds_ids = (
-                self.gui.train_val_splits_selector.get_train_dataset_ids()
-                + self.gui.train_val_splits_selector.get_val_dataset_ids()
-            )
-            dataset_infos = [ds_info for ds_info in dataset_infos if ds_info.id in selected_ds_ids]
+        if self.gui.train_val_splits_selector is not None:
+            if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
+                selected_ds_ids = (
+                    self.gui.train_val_splits_selector.get_train_dataset_ids()
+                    + self.gui.train_val_splits_selector.get_val_dataset_ids()
+                )
+                dataset_infos = [
+                    ds_info for ds_info in dataset_infos if ds_info.id in selected_ds_ids
+                ]
 
         total_images = sum(ds_info.images_count for ds_info in dataset_infos)
-        if not self.gui.input_selector.get_cache_value() or is_development():
+        if not self.gui.input_selector.get_cache_value():
             self._download_no_cache(dataset_infos, total_images)
-            self.sly_project = Project(self.project_dir, OpenMode.READ)
-            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
+            self._read_project()
             return
 
         try:
@@ -818,8 +887,7 @@ class TrainApp:
                 sly_fs.clean_dir(self.project_dir)
             self._download_no_cache(dataset_infos, total_images)
         finally:
-            self.sly_project = Project(self.project_dir, OpenMode.READ)
-            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
+            self._read_project()
             logger.info(f"Project downloaded successfully to: '{self.project_dir}'")
 
     def _download_no_cache(self, dataset_infos: List[DatasetInfo], total_images: int) -> None:
@@ -919,6 +987,15 @@ class TrainApp:
         All images and annotations will be renamed and moved to the appropriate directories.
         Assigns self.sly_project to the new project, which contains only 2 datasets: train and val.
         """
+        if not self._has_splits_selector:
+            # Splits disabled in options, init empty splits
+            self.train_dataset_dir = None
+            self.val_dataset_dir = None
+            self._train_val_split_file = None
+            self._train_split = []
+            self._val_split = []
+            return
+
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
         self._train_split, self._val_split = (
@@ -1005,7 +1082,7 @@ class TrainApp:
 
         # Clean up temporary directory
         sly_fs.remove_dir(project_split_path)
-        self.sly_project = Project(self.project_dir, OpenMode.READ)
+        self._read_project(False)
 
     # ----------------------------------------- #
 
@@ -1272,6 +1349,9 @@ class TrainApp:
         train_dataset_ids = None
         train_images_ids = None
 
+        if not self._has_splits_selector:
+            return {}  # splits disabled in options
+
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_set, val_set = self._train_split, self._val_split
         if split_method == "Based on datasets":
@@ -1482,6 +1562,9 @@ class TrainApp:
         :param remote_dir: Remote directory path.
         :type remote_dir: str
         """
+        if not self._has_splits_selector:
+            return  # splits disabled in options
+
         local_train_val_split_path = join(self.output_dir, self._train_val_split_file)
         remote_train_val_split_path = join(remote_dir, self._train_val_split_file)
 
@@ -1575,9 +1658,6 @@ class TrainApp:
             "export": export_weights,
             "app_state": self._app_state_file,
             "model_meta": self._model_meta_file,
-            "train_val_split": self._train_val_split_file,
-            "train_size": len(self._train_split),
-            "val_size": len(self._val_split),
             "hyperparameters": self._hyperparameters_file,
             "artifacts_dir": remote_dir,
             "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -1586,6 +1666,11 @@ class TrainApp:
             "evaluation_metrics": eval_metrics,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
         }
+
+        if self._has_splits_selector:
+            experiment_info["train_val_split"] = self._train_val_split_file
+            experiment_info["train_size"] = len(self._train_split)
+            experiment_info["val_size"] = len(self._val_split)
 
         remote_checkpoints_dir = join(remote_dir, self._remote_checkpoints_dir_name)
         checkpoint_files = self._api.file.list(
@@ -1703,6 +1788,9 @@ class TrainApp:
         :return: Train and val splits information based on selected split method.
         :rtype: dict
         """
+        if not self._has_splits_selector:
+            return {}  # splits disabled in options
+
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_val_splits = {"method": split_method.lower()}
         if split_method == "Random":
@@ -2067,20 +2155,25 @@ class TrainApp:
             else:
                 raise ValueError(f"Task type: '{task_type}' is not supported for Model Benchmark")
 
-            if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
-                train_info = {
-                    "app_session_id": self.task_id,
-                    "train_dataset_ids": train_dataset_ids,
-                    "train_images_ids": None,
-                    "images_count": len(self._train_split),
-                }
+            if self._has_splits_selector:
+                if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
+                    train_info = {
+                        "app_session_id": self.task_id,
+                        "train_dataset_ids": train_dataset_ids,
+                        "train_images_ids": None,
+                        "images_count": len(self._train_split),
+                    }
+                else:
+                    train_info = {
+                        "app_session_id": self.task_id,
+                        "train_dataset_ids": None,
+                        "train_images_ids": train_images_ids,
+                        "images_count": len(self._train_split),
+                    }
             else:
-                train_info = {
-                    "app_session_id": self.task_id,
-                    "train_dataset_ids": None,
-                    "train_images_ids": train_images_ids,
-                    "images_count": len(self._train_split),
-                }
+                # @TODO: Add train info for apps without splits
+                train_info = None
+
             bm.train_info = train_info
 
             # 2. Run inference
@@ -2144,14 +2237,17 @@ class TrainApp:
         """
         Adds the input data to the workflow.
         """
-        try:
-            project_version_id = self._api.project.version.create(
-                self.project_info,
-                self._app_name,
-                f"This backup was created automatically by Supervisely before the {self._app_name} task with ID: {self._api.task_id}",
-            )
-        except Exception as e:
-            logger.warning(f"Failed to create a project version: {repr(e)}")
+        if self.project_info.type == ProjectType.IMAGES.value:
+            try:
+                project_version_id = self._api.project.version.create(
+                    self.project_info,
+                    self._app_name,
+                    f"This backup was created automatically by Supervisely before the {self._app_name} task with ID: {self._api.task_id}",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create a project version: {repr(e)}")
+                project_version_id = None
+        else:
             project_version_id = None
 
         try:
