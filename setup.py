@@ -49,6 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
+    return "6.73.357+deploy.api"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
