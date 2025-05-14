@@ -2933,8 +2933,6 @@ class Inference:
                 "pending_results": inference_request.pop_pending_results(),
             }
 
-            print(data)
-
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
             return data
 
