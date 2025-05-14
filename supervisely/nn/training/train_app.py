@@ -26,14 +26,13 @@ from supervisely import (
     Api,
     Application,
     Dataset,
-    VideoDataset,
     DatasetInfo,
     OpenMode,
     Project,
-    VideoProject,
     ProjectInfo,
     ProjectMeta,
     ProjectType,
+    VideoProject,
     WorkflowMeta,
     WorkflowSettings,
     batched,
@@ -489,6 +488,7 @@ class TrainApp:
     def _has_tags(self) -> bool:
         """Return True if Tags selector is enabled in GUI."""
         return self.gui.tags_selector is not None
+
     # ----------------------------------------- #
 
     # Wrappers
@@ -687,7 +687,11 @@ class TrainApp:
         :rtype: dict
         """
         # Prepare optional sections depending on what selectors are enabled in GUI
-        train_val_splits = self._get_train_val_splits_for_app_state() if self.gui.train_val_splits_selector is not None else None
+        train_val_splits = (
+            self._get_train_val_splits_for_app_state()
+            if self.gui.train_val_splits_selector is not None
+            else None
+        )
         classes = self.classes if self.gui.classes_selector is not None else None
         tags = self.tags if self.gui.tags_selector is not None else None
 
@@ -852,7 +856,9 @@ class TrainApp:
         elif self.project_info.type == ProjectType.VIDEOS.value:
             self.sly_project = VideoProject(self.project_dir, OpenMode.READ)
         else:
-            raise ValueError(f"Unsupported project type: {self.project_info.type}. Only images and videos are supported.")
+            raise ValueError(
+                f"Unsupported project type: {self.project_info.type}. Only images and videos are supported."
+            )
 
     def _download_project(self) -> None:
         """
@@ -866,7 +872,9 @@ class TrainApp:
                     self.gui.train_val_splits_selector.get_train_dataset_ids()
                     + self.gui.train_val_splits_selector.get_val_dataset_ids()
                 )
-                dataset_infos = [ds_info for ds_info in dataset_infos if ds_info.id in selected_ds_ids]
+                dataset_infos = [
+                    ds_info for ds_info in dataset_infos if ds_info.id in selected_ds_ids
+                ]
 
         total_images = sum(ds_info.images_count for ds_info in dataset_infos)
         if not self.gui.input_selector.get_cache_value():
@@ -923,7 +931,9 @@ class TrainApp:
         :param total_images: Total number of images to download.
         :type total_images: int
         """
-        to_download = [info for info in dataset_infos if not is_cached(self.project_info.id, info.name)]
+        to_download = [
+            info for info in dataset_infos if not is_cached(self.project_info.id, info.name)
+        ]
         cached = [info for info in dataset_infos if is_cached(self.project_info.id, info.name)]
 
         logger.info(self._get_cache_log_message(cached, to_download))
@@ -1079,6 +1089,7 @@ class TrainApp:
         # Clean up temporary directory
         sly_fs.remove_dir(project_split_path)
         self._read_project(False)
+
     # ----------------------------------------- #
 
     # ----------------------------------------- #
@@ -1345,8 +1356,8 @@ class TrainApp:
         train_images_ids = None
 
         if not self._has_splits:
-            return {} # splits disabled in options
-        
+            return {}  # splits disabled in options
+
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_set, val_set = self._train_split, self._val_split
         if split_method == "Based on datasets":
@@ -1528,7 +1539,7 @@ class TrainApp:
         :type remote_dir: str
         """
         if not self._has_splits:
-            return # splits disabled in options
+            return  # splits disabled in options
 
         local_train_val_split_path = join(self.output_dir, self._train_val_split_file)
         remote_train_val_split_path = join(remote_dir, self._train_val_split_file)
@@ -1754,8 +1765,8 @@ class TrainApp:
         :rtype: dict
         """
         if not self._has_splits:
-            return {} # splits disabled in options
-        
+            return {}  # splits disabled in options
+
         split_method = self.gui.train_val_splits_selector.get_split_method()
         train_val_splits = {"method": split_method.lower()}
         if split_method == "Random":
@@ -2202,14 +2213,17 @@ class TrainApp:
         """
         Adds the input data to the workflow.
         """
-        try:
-            project_version_id = self._api.project.version.create(
-                self.project_info,
-                self._app_name,
-                f"This backup was created automatically by Supervisely before the {self._app_name} task with ID: {self._api.task_id}",
-            )
-        except Exception as e:
-            logger.warning(f"Failed to create a project version: {repr(e)}")
+        if self.project_info.type == ProjectType.IMAGES.value:
+            try:
+                project_version_id = self._api.project.version.create(
+                    self.project_info,
+                    self._app_name,
+                    f"This backup was created automatically by Supervisely before the {self._app_name} task with ID: {self._api.task_id}",
+                )
+            except Exception as e:
+                logger.warning(f"Failed to create a project version: {repr(e)}")
+                project_version_id = None
+        else:
             project_version_id = None
 
         try:
