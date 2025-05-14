@@ -378,8 +378,8 @@ class TrainApp:
         :return: List of selected classes names.
         :rtype: List[str]
         """
-        if not self._has_classes:
-            return list(self.project_meta.obj_classes.keys())
+        if not self._has_classes_selector:
+            return []
         selected_classes = set(self.gui.classes_selector.get_selected_classes())
         # remap classes with project_meta order
         return [x for x in self.project_meta.obj_classes.keys() if x in selected_classes]
@@ -392,8 +392,8 @@ class TrainApp:
         :return: Number of selected classes.
         :rtype: int
         """
-        if not self._has_classes:
-            return len(self.project_meta.obj_classes.keys())
+        if not self._has_classes_selector:
+            return 0
         return len(self.gui.classes_selector.get_selected_classes())
 
     @property
@@ -401,8 +401,8 @@ class TrainApp:
         """
         Returns the selected tags for training.
         """
-        if not self._has_tags:
-            return list(self.project_meta.tag_metas.keys())
+        if not self._has_tags_selector:
+            return []
         selected_tags = set(self.gui.tags_selector.get_selected_tags())
         return [x for x in self.project_meta.tag_metas.keys() if x in selected_tags]
 
@@ -411,8 +411,8 @@ class TrainApp:
         """
         Returns the number of selected tags for training.
         """
-        if not self._has_tags:
-            return len(self.project_meta.tag_metas.keys())
+        if not self._has_tags_selector:
+            return 0
         return len(self.gui.tags_selector.get_selected_tags())
 
     # Hyperparameters
@@ -475,17 +475,17 @@ class TrainApp:
 
     # Helper properties
     @property
-    def _has_splits(self) -> bool:
+    def _has_splits_selector(self) -> bool:
         """Return True if Train/Val splits selector is enabled in GUI."""
         return self.gui.train_val_splits_selector is not None
 
     @property
-    def _has_classes(self) -> bool:
+    def _has_classes_selector(self) -> bool:
         """Return True if Classes selector is enabled in GUI."""
         return self.gui.classes_selector is not None
 
     @property
-    def _has_tags(self) -> bool:
+    def _has_tags_selector(self) -> bool:
         """Return True if Tags selector is enabled in GUI."""
         return self.gui.tags_selector is not None
 
@@ -995,7 +995,7 @@ class TrainApp:
         All images and annotations will be renamed and moved to the appropriate directories.
         Assigns self.sly_project to the new project, which contains only 2 datasets: train and val.
         """
-        if not self._has_splits:
+        if not self._has_splits_selector:
             # Splits disabled in options, init empty splits
             self.train_dataset_dir = None
             self.val_dataset_dir = None
@@ -1357,7 +1357,7 @@ class TrainApp:
         train_dataset_ids = None
         train_images_ids = None
 
-        if not self._has_splits:
+        if not self._has_splits_selector:
             return {}  # splits disabled in options
 
         split_method = self.gui.train_val_splits_selector.get_split_method()
@@ -1570,7 +1570,7 @@ class TrainApp:
         :param remote_dir: Remote directory path.
         :type remote_dir: str
         """
-        if not self._has_splits:
+        if not self._has_splits_selector:
             return  # splits disabled in options
 
         local_train_val_split_path = join(self.output_dir, self._train_val_split_file)
@@ -1675,7 +1675,7 @@ class TrainApp:
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
         }
 
-        if self._has_splits:
+        if self._has_splits_selector:
             experiment_info["train_val_split"] = self._train_val_split_file
             experiment_info["train_size"] = len(self._train_split)
             experiment_info["val_size"] = len(self._val_split)
@@ -1796,7 +1796,7 @@ class TrainApp:
         :return: Train and val splits information based on selected split method.
         :rtype: dict
         """
-        if not self._has_splits:
+        if not self._has_splits_selector:
             return {}  # splits disabled in options
 
         split_method = self.gui.train_val_splits_selector.get_split_method()
@@ -2163,7 +2163,7 @@ class TrainApp:
             else:
                 raise ValueError(f"Task type: '{task_type}' is not supported for Model Benchmark")
 
-            if self._has_splits:
+            if self._has_splits_selector:
                 if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
                     train_info = {
                         "app_session_id": self.task_id,
