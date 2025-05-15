@@ -40,6 +40,10 @@ Vue.component('fast-table', {
       type: String,
       default: '',
     },
+    showHeader: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
@@ -116,7 +120,7 @@ Vue.component('fast-table', {
   template: `
  <div class="tailwind fast-table">
     <div class="rounded-lg border border-slate-200 shadow bg-white" ref="wrapper">
-      <div class="py-2 px-2 md:px-5 md:py-4 flex flex-col md:flex-row gap-2 justify-between items-center">
+      <div v-if ="showHeader === true" class="py-2 px-2 md:px-5 md:py-4 flex flex-col md:flex-row gap-2 justify-between items-center">
         <div class="relative w-full md:max-w-[18rem]">
           <i class="zmdi zmdi-search h-4 absolute top-2 left-2.5 opacity-50"></i>
           <!--<img alt="Search" src="~assets/icons/search.png" class="h-4 absolute top-2 left-2.5 opacity-50" />
