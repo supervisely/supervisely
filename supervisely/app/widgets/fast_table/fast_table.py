@@ -112,6 +112,7 @@ class FastTable(Widget):
         sort_order: Optional[Literal["asc", "desc"]] = None,
         width: Optional[str] = "auto",
         widget_id: Optional[str] = None,
+        show_header: bool = True,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -127,6 +128,7 @@ class FastTable(Widget):
         self._clickable_rows = False
         self._clickable_cells = False
         self._search_str = ""
+        self._show_header = show_header
         self._project_meta = self._unpack_project_meta(project_meta)
 
         # table_options
@@ -212,6 +214,7 @@ class FastTable(Widget):
                 "fixColumns": self._fix_columns,
             },
             "pageSize": self._page_size,
+            "showHeader": self._show_header,
         }
 
     def get_json_state(self) -> Dict[str, Any]:
