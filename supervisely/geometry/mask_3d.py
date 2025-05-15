@@ -10,7 +10,6 @@ from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import nrrd
 import numpy as np
-from trimesh import Trimesh
 
 from supervisely import logger
 from supervisely._utils import unwrap_if_numpy

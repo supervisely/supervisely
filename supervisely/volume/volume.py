@@ -14,6 +14,7 @@ from trimesh import Trimesh
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+from supervisely.geometry.mask_3d import Mask3D
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -866,12 +867,35 @@ def is_nifti_file(path: str) -> bool:
 
 
 def convert_3d_geometry_to_mesh(
-    geometry,
+    geometry: Mask3D,
     spacing: tuple = (1.0, 1.0, 1.0),
     level: float = 0.5,
     apply_decimation: bool = False,
     decimation_fraction: float = 0.5,
 ) -> Trimesh:
+    """
+    Converts a 3D geometry (Mask3D) to a Trimesh mesh.
+
+    :param geometry: The 3D geometry to convert.
+    :type geometry: supervisely.geometry.mask_3d.Mask3D
+    :param spacing: Voxel spacing in (x, y, z). Default is (1.0, 1.0, 1.0).
+    :type spacing: tuple
+    :param level: Isosurface value for marching cubes. Default is 0.5.
+    :type level: float
+    :param apply_decimation: Whether to simplify the mesh. Default is False.
+    :type apply_decimation: bool
+    :param decimation_fraction: Fraction of faces to keep if decimation is applied. Default is 0.5.
+    :type decimation_fraction: float
+    :return: The resulting Trimesh mesh.
+    :rtype: trimesh.Trimesh
+
+    :Usage example:
+
+        .. code-block:: python
+
+            mask3d = Mask3D.create_from_file("path/to/mask3d")
+            mesh = convert_3d_geometry_to_mesh(mask3d, spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True)
+    """
     from skimage import measure
 
     mask = geometry.data
@@ -888,10 +912,12 @@ def convert_3d_geometry_to_mesh(
     return mesh
 
 
-def export_3d_as_mesh(geometry, output_path: str, kwargs=None):
+def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
     """
     Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
 
+    :param geometry: The 3D geometry to be exported.
+    :type geometry: supervisely.geometry.mask_3d.Mask3D
     :param output_path: The path to the output file. Must have a ".stl" or ".obj" extension.
     :type output_path: str
     :param kwargs: Additional keyword arguments for mesh generation. Supported keys:
@@ -906,7 +932,10 @@ def export_3d_as_mesh(geometry, output_path: str, kwargs=None):
 
         .. code-block:: python
 
-        mask3d.write_mesh_to_file("output.stl", {"spacing": (1.0, 1.0, 1.0), "level": 0.7, "apply_decimation": True})
+        mask3d_path = "path/to/mask3d"
+        mask3d = Mask3D.create_from_file(mask3d_path)
+
+        mask3d.export_3d_as_mesh(mask3d, "output.stl", {"spacing": (1.0, 1.0, 1.0), "level": 0.7, "apply_decimation": True})
     """
 
     if kwargs is None:
