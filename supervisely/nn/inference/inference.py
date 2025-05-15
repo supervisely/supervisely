@@ -1519,7 +1519,7 @@ class Inference:
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
-            n_frames = end_frame_index - start_frame_index
+            n_frames = end_frame_index - start_frame_index + 1
         elif duration is not None:
             fps = frames_reader.fps()
             n_frames = int(duration * fps)
@@ -1729,7 +1729,6 @@ class Inference:
         inference_settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
-        video_id = state["videoId"]
         video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
         if video_id is None:
             raise ValueError("Video id is not provided")
