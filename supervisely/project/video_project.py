@@ -1318,6 +1318,7 @@ def download_video_project(
 
     key_id_map = KeyIdMap()
 
+    project_fs = None
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir) and resume_download:
         dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
@@ -1622,6 +1623,7 @@ async def download_video_project_async(
 
     key_id_map = KeyIdMap()
 
+    project_fs = None
     meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
     if os.path.exists(dest_dir) and resume_download:
         dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
