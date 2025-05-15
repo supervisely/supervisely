@@ -424,6 +424,7 @@ def _validate_dataset(
     project_type: str,
     project_meta: ProjectMeta,
     dataset_info: DatasetInfo,
+    all_ds_infos: List[DatasetInfo] = None,
 ):
     try:
         project_class = get_project_class(project_type)
@@ -439,7 +440,8 @@ def _validate_dataset(
     except:
         logger.debug("Validating dataset failed. Unable to download items infos.", exc_info=True)
         return False
-    all_ds_infos = api.dataset.get_list(project_id, recursive=True)
+    if all_ds_infos is None:
+        all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
@@ -491,7 +493,11 @@ def _validate_dataset(
 
 
 def _validate(
-    api: Api, project_info: ProjectInfo, project_meta: ProjectMeta, dataset_infos: List[DatasetInfo]
+    api: Api,
+    project_info: ProjectInfo,
+    project_meta: ProjectMeta,
+    dataset_infos: List[DatasetInfo],
+    all_ds_infos: List[DatasetInfo] = None,
 ):
     project_id = project_info.id
     to_download, cached = _split_by_cache(
@@ -508,6 +514,7 @@ def _validate(
             project_info.type,
             project_meta,
             dataset_info,
+            all_ds_infos,
         ):
             to_download.add(ds_path)
             cached.remove(ds_path)
@@ -602,13 +609,14 @@ def download_to_cache(
     project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     if dataset_infos is not None and dataset_ids is not None:
         raise ValueError("dataset_infos and dataset_ids cannot be specified at the same time")
+    all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     if dataset_infos is None:
         if dataset_ids is None:
-            dataset_infos = api.dataset.get_list(project_id, recursive=True)
+            dataset_infos = all_ds_infos
         else:
-            dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
+            dataset_infos = [ds_info for ds_info in all_ds_infos if ds_info.id in dataset_ids]
     path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
-    to_download, cached = _validate(api, project_info, project_meta, dataset_infos)
+    to_download, cached = _validate(api, project_info, project_meta, dataset_infos, all_ds_infos)
     if progress_cb is not None:
         cached_items_n = sum(path_to_info[ds_path].items_count for ds_path in cached)
         progress_cb(cached_items_n)
