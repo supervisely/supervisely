@@ -268,5 +268,5 @@ class SolutionsProject(Widget):
         self._preview_url = [project.image_preview_url]
         self._items_count = [project.items_count]
         DataJson()[self.widget_id]["preview_urls"] = self._preview_url
-        DataJson()[self.widget_id]["items_counts"] = self._items_count
+        DataJson()[self.widget_id]["items_counts"] = f"{self._items_count} {self._items_type}"
         DataJson().send_changes()
