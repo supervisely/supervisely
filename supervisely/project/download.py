@@ -409,6 +409,15 @@ def _project_meta_changed(meta1: ProjectMeta, meta2: ProjectMeta) -> bool:
     return False
 
 
+def _get_ds_full_name(
+    dataset_info: DatasetInfo, all_ds_infos: List[DatasetInfo], suffix: str = ""
+) -> str:
+    if dataset_info.parent_id is None:
+        return dataset_info.name + suffix
+    parent = next((ds_info for ds_info in all_ds_infos if ds_info.id == dataset_info.parent_id))
+    return _get_ds_full_name(parent, all_ds_infos, "/" + dataset_info.name)
+
+
 def _validate_dataset(
     api: Api,
     project_id: int,
@@ -430,10 +439,11 @@ def _validate_dataset(
     except:
         logger.debug("Validating dataset failed. Unable to download items infos.", exc_info=True)
         return False
+    all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
-        if dataset.name.endswith(dataset_info.name):  # TODO: fix it later
+        if dataset.name == _get_ds_full_name(dataset_info, all_ds_infos):
             diff = set(items_infos_dict.keys()).difference(set(dataset.get_items_names()))
             if diff:
                 logger.debug(
@@ -520,7 +530,7 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
 
 
 def _add_resume_download_to_kwargs(kwargs: dict, project_type: str):
-    supported_force_projects = (str(ProjectType.IMAGES),)
+    supported_force_projects = (str(ProjectType.IMAGES), (str(ProjectType.VIDEOS)))
     if project_type in supported_force_projects:
         kwargs["resume_download"] = True
     return kwargs
