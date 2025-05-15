@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from enum import Enum, auto
-from typing import List, NotRequired, TypedDict
+from enum import Enum
+from typing_extensions import NotRequired, TypedDict
 
 
 class SamplingSettings(TypedDict, total=False):
