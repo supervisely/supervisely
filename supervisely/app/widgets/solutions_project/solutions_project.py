@@ -2,6 +2,7 @@ from copy import deepcopy
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from supervisely.api.api import Api
+from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
@@ -54,8 +55,9 @@ class SolutionsProject(Widget):
             items_count = [items_count]
         self._items_count = items_count
         self._items_type = items_type
-        if project_id is None and preview_url is None:
-            raise ValueError("Either project_id or preview_url must be provided")
+        self._preview_url = preview_url
+        # if project_id is None and preview_url is None:
+        #     raise ValueError("Either project_id or preview_url must be provided")
         if preview_url is not None:
             if isinstance(preview_url, str):
                 preview_url = [preview_url]
@@ -68,16 +70,16 @@ class SolutionsProject(Widget):
         if self._items_count is not None:
             self._items_count = [f"{count} {self._items_type}" for count in self._items_count]
 
-        if len(self._items_count) != len(self._preview_url):
-            raise ValueError(
-                f"Length of preview_url ({len(self._preview_url)}) must be equal to length of items_count ({len(self._items_count)})"
-            )
+            if len(self._items_count) != len(self._preview_url):
+                raise ValueError(
+                    f"Length of preview_url ({len(self._preview_url)}) must be equal to length of items_count ({len(self._items_count)})"
+                )
 
         self._title = title
         if isinstance(width, int):
             width = f"{width}px"
 
-        if len(self._items_count) > 1 and width is None:
+        if self._items_count is not None and len(self._items_count) > 1 and width is None:
             width = "270px"
 
         self._width = width or "100%"
@@ -261,3 +263,10 @@ class SolutionsProject(Widget):
             self._badges.pop(idx)
             StateJson()[self.widget_id]["badges"] = deepcopy(self._badges)
             StateJson().send_changes()
+
+    def set_project(self, project: ProjectInfo) -> None:
+        self._preview_url = [project.image_preview_url]
+        self._items_count = [project.items_count]
+        DataJson()[self.widget_id]["preview_urls"] = self._preview_url
+        DataJson()[self.widget_id]["items_counts"] = self._items_count
+        DataJson().send_changes()
