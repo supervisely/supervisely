@@ -1,3 +1,6 @@
+# coding: utf-8
+"""deploy and connect to to running inference apps"""
+
 from __future__ import annotations
 
 from typing import Dict, List
