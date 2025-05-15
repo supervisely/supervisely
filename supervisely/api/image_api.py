@@ -467,7 +467,7 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.OFFSET_START,
             ApiField.OFFSET_END,
             ApiField.AI_SEARCH_META,
-            ApiField.IS_EMBEDDINGS_UPDATED,
+            ApiField.EMBEDDINGS_UPDATED_AT,
         ]
 
     @staticmethod
@@ -5397,7 +5397,7 @@ class ImageApi(RemoveableBulkModuleApi):
                 f"Length of ids and timestamps should be equal. {len(ids)} != {len(timestamps)}"
             )
         images = [
-            {ApiField.ID: image_id, ApiField.IS_EMBEDDINGS_UPDATED: timestamp}
+            {ApiField.ID: image_id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp}
             for image_id, timestamp in zip(ids, timestamps)
         ]
         self._api.post(

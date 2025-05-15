@@ -316,11 +316,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+
+        debug_message = "While getting list of projects, the following fields are not available: "
+        message_updated = False
         if ApiField.VERSION in fields:
             fields.remove(ApiField.VERSION)
-            logger.debug(
-                "Project version information is not available while getting list of projects"
-            )
+            debug_message += "version, "
+            message_updated = True
+        if ApiField.IS_EMBEDDINGS_UPDATED in fields:
+            fields.remove(ApiField.IS_EMBEDDINGS_UPDATED)
+            debug_message += "is_embeddings_updated. "
+            message_updated = True
+        if message_updated:
+            logger.debug(debug_message)
         return self.get_list_all_pages(
             "projects.list",
             {
@@ -334,7 +342,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self,
         id: int,
         expected_type: Optional[str] = None,
-        raise_error: Optional[bool] = False,
+        raise_error: bool = False,
+        with_embeddings_info: bool = False,
     ) -> ProjectInfo:
         """
         Get Project information by ID.
@@ -345,6 +354,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type expected_type: ProjectType, optional
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
+        :param with_embeddings_info: If True, return Info about embeddings, e.g. `is_embeddings_updated`.
+        :type with_embeddings_info: bool, optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
@@ -382,7 +393,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 
         """
-        info = self._get_info_by_id(id, "projects.info")
+        fields = None
+        if with_embeddings_info:
+            fields = {ApiField.SHOW_EMBEDDINGS_UPDATED: True}
+        info = self._get_info_by_id(id, "projects.info", fields=fields)
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
@@ -2182,37 +2196,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post(
             "projects.editInfo",
             {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
-        )
-
-    def set_embeddings_updated_at(
-        self, id: int, time: Optional[Union[datetime, str]] = None, silent: bool = True
-    ) -> None:
-        """
-        Set embeddings updated at for the project.
-
-        :param id: Project ID
-        :type id: int
-        :param time: Time to set. If None, current time will be set.
-        :type time: Optional[Union[datetime, str]]
-        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
-        :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
-        """
-        if time is None:
-            time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        elif isinstance(time, datetime):
-            time = time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        elif isinstance(time, str):
-            try:
-                datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.%fZ")
-            except ValueError:
-                raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ'")
-        else:
-            raise ValueError("time should be in format '%Y-%m-%dT%H:%M:%S.%fZ' or None")
-        self._api.post(
-            "projects.editInfo",
-            {ApiField.ID: id, ApiField.IS_EMBEDDINGS_UPDATED: time, ApiField.SILENT: silent},
         )
 
     def set_embeddings_in_progress(self, id: int, status: bool) -> None:

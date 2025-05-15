@@ -669,6 +669,8 @@ class ApiField:
     """"""
     IS_EMBEDDINGS_UPDATED = "isEmbeddingsUpdated"
     """"""
+    SHOW_EMBEDDINGS_UPDATED = "showEmbeddingsUpdated"
+    """"""
     AI_SEARCH_KEY = "aiSearchKey"
     """"""
     AI_SEARCH_META = "aiSearchMeta"

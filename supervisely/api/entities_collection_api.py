@@ -335,7 +335,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
     def remove(self, id: int, force: bool = False):
         """
         Remove Entites Collection with the specified ID from the Supervisely server.
-        
+
         If `force` is set to True, the collection will be removed permanently.
         If `force` is set to False, the collection will be disabled instead of removed.
 
@@ -345,7 +345,9 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type force: bool
         :return: None
         """
-        self._api.post(self._remove_api_method_name(), {ApiField.ID: id, ApiField.HARD_DELETE: force})
+        self._api.post(
+            self._remove_api_method_name(), {ApiField.ID: id, ApiField.HARD_DELETE: force}
+        )
 
     def get_list(
         self,
@@ -580,7 +582,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             return self._api.image.get_list(
                 project_id=project_id,
                 ai_search_collection_id=collection_id,
-                extra_fields=[ApiField.IS_EMBEDDINGS_UPDATED],
+                extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT],
             )
         else:
             return self._api.image.get_list(
