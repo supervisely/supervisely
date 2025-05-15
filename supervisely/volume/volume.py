@@ -888,7 +888,7 @@ def convert_3d_geometry_to_mesh(
     return mesh
 
 
-def export_3d_as_mesh(geometry, output_path: str):
+def export_3d_as_mesh(geometry, output_path: str, kwargs=None):
     """
     Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
 
