@@ -907,7 +907,7 @@ def convert_3d_geometry_to_mesh(
     mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
     if apply_decimation and 0 < decimation_fraction < 1:
-        mesh = mesh.simplify_quadratic_decimation(int(len(mesh.faces) * decimation_fraction))
+        mesh = mesh.simplify_quadratic_decimation(int(len(mesh.faces) * decimation_fraction)) # pylint: disable=no-member
 
     return mesh
 
