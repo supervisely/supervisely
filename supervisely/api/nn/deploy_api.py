@@ -1,3 +1,6 @@
+# coding: utf-8
+"""deploy pretrained and custom models"""
+
 from __future__ import annotations
 
 import time
