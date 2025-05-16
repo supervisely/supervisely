@@ -2198,17 +2198,17 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
         )
 
-    def set_embeddings_in_progress(self, id: int, status: bool) -> None:
+    def set_embeddings_in_progress(self, id: int, in_progress: bool) -> None:
         """
         Set embeddings in progress status for the project.
         :param id: Project ID
         :type id: int
-        :param status: Status to set. If True, embeddings are in progress right now.
-        :type status: bool
+        :param in_progress: Status to set. If True, embeddings are in progress right now.
+        :type in_progress: bool
         :return: None
         :rtype: :class:`NoneType`
         """
         self._api.post(
             "projects.embeddings-in-progress.update",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: status},
+            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress},
         )
