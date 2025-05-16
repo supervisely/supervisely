@@ -1338,12 +1338,16 @@ def download_video_project(
         log_progress = False
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+    existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
         if dataset_ids is not None and dataset.id not in dataset_ids:
             continue
 
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         ds_progress = progress_cb
@@ -1649,7 +1653,11 @@ async def download_video_project_async(
 
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
 
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         if log_progress is True:
@@ -1771,7 +1779,7 @@ async def _download_project_item_async(
     try:
         await dataset_fs.add_item_file_async(
             video.name,
-            video_file_path,
+            None,
             ann=video_ann,
             _validate_item=False,
             _use_hardlink=True,

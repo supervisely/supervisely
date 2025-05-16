@@ -65,6 +65,7 @@ from supervisely.project.download import (
     download_fast,
     download_to_cache,
     get_cache_size,
+    get_dataset_path,
     is_cached,
 )
 
@@ -925,10 +926,15 @@ class TrainApp:
         :param total_images: Total number of images to download.
         :type total_images: int
         """
+        ds_paths = {
+            info.id: get_dataset_path(self._api, dataset_infos, info.id) for info in dataset_infos
+        }
         to_download = [
-            info for info in dataset_infos if not is_cached(self.project_info.id, info.name)
+            info for info in dataset_infos if not is_cached(self.project_info.id, ds_paths[info.id])
         ]
-        cached = [info for info in dataset_infos if is_cached(self.project_info.id, info.name)]
+        cached = [
+            info for info in dataset_infos if is_cached(self.project_info.id, ds_paths[info.id])
+        ]
 
         logger.info(self._get_cache_log_message(cached, to_download))
         with self.progress_bar_main(message="Downloading input data", total=total_images) as pbar:
@@ -955,7 +961,7 @@ class TrainApp:
             copy_from_cache(
                 project_id=self.project_info.id,
                 dest_dir=self.project_dir,
-                dataset_names=[ds_info.name for ds_info in dataset_infos],
+                dataset_names=[ds_paths[info.id] for info in dataset_infos],
                 progress_cb=pbar.update,
             )
         self.progress_bar_main.hide()

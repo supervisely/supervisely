@@ -501,11 +501,11 @@ def _validate(
 ):
     project_id = project_info.id
     to_download, cached = _split_by_cache(
-        project_id, [_get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
+        project_id, [get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
     )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        ds_path = _get_dataset_path(api, dataset_infos, dataset_info.id)
+        ds_path = get_dataset_path(api, dataset_infos, dataset_info.id)
         if ds_path in to_download:
             continue
         if not _validate_dataset(
@@ -615,7 +615,7 @@ def download_to_cache(
             dataset_infos = all_ds_infos
         else:
             dataset_infos = [ds_info for ds_info in all_ds_infos if ds_info.id in dataset_ids]
-    path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
+    path_to_info = {get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
     to_download, cached = _validate(api, project_info, project_meta, dataset_infos, all_ds_infos)
     if progress_cb is not None:
         cached_items_n = sum(path_to_info[ds_path].items_count for ds_path in cached)
@@ -632,24 +632,28 @@ def download_to_cache(
     return to_download, cached
 
 
-def _get_dataset_parents(api, dataset_infos, dataset_id):
+def _get_dataset_parents(api: Api, dataset_infos: List[DatasetInfo], dataset_id):
     dataset_infos_dict = {info.id: info for info in dataset_infos}
-    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    this_dataset_info = dataset_infos_dict.get(dataset_id, None)
+    if this_dataset_info is None:
+        this_dataset_info = api.dataset.get_info_by_id(dataset_id)
     if this_dataset_info.parent_id is None:
         return []
     parent = _get_dataset_parents(
         api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
     )
-    this_parent_name = dataset_infos_dict.get(
-        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
-    ).name
-    return [*parent, this_parent_name]
+    this_parent = dataset_infos_dict.get(this_dataset_info.parent_id, None)
+    if this_parent is None:
+        this_parent = api.dataset.get_info_by_id(this_dataset_info.parent_id)
+    return [*parent, this_parent.name]
 
 
-def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
+def get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
     parents = _get_dataset_parents(api, dataset_infos, dataset_id)
     dataset_infos_dict = {info.id: info for info in dataset_infos}
-    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    this_dataset_info = dataset_infos_dict.get(dataset_id, None)
+    if this_dataset_info is None:
+        this_dataset_info = api.dataset.get_info_by_id(dataset_id)
     return Dataset._get_dataset_path(this_dataset_info.name, parents)
 
 
