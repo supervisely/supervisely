@@ -222,6 +222,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         workspace_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         fields: List[str] = [],
+        with_embeddings_info: bool = False,
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -239,6 +240,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type filters: List[dict], optional
         :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
         :type fields: List[str]
+        :param with_embeddings_info: If True, return Info about embeddings, e.g. `is_embeddings_updated`.
+        :type with_embeddings_info: bool, optional
 
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
         :rtype: :class: `List[ProjectInfo]`
@@ -316,6 +319,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+        method = "projects.list"
 
         debug_message = "While getting list of projects, the following fields are not available: "
         message_updated = False
@@ -323,20 +327,26 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             fields.remove(ApiField.VERSION)
             debug_message += "version, "
             message_updated = True
+
         if ApiField.IS_EMBEDDINGS_UPDATED in fields:
             fields.remove(ApiField.IS_EMBEDDINGS_UPDATED)
+
+        data = {
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.FILTER: filters or [],
+            ApiField.FIELDS: fields,
+        }
+
+        if with_embeddings_info:
+            data.update({ApiField.SHOW_EMBEDDINGS_UPDATED: True})
+        else:
             debug_message += "is_embeddings_updated. "
             message_updated = True
+
         if message_updated:
             logger.debug(debug_message)
-        return self.get_list_all_pages(
-            "projects.list",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.FILTER: filters or [],
-                ApiField.FIELDS: fields,
-            },
-        )
+
+        return self.get_list_all_pages(method, data)
 
     def get_info_by_id(
         self,
@@ -2000,6 +2010,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         per_page: Optional[int] = None,
         page: Union[int, Literal["all"]] = "all",
         account_type: Optional[str] = None,
+        extra_fields: Optional[List[str]] = None,
     ) -> dict:
         """
         List all available projects from all available teams for the user that match the specified filtering criteria.
@@ -2032,6 +2043,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param account_type: (Deprecated) Type of user account
         :type account_type: str, optional
+
+        :param extra_fields: List of additional fields to be included in the response.
+        :type extra_fields: List[str], optional
 
         :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
         :rtype: dict
@@ -2125,6 +2139,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             logger.warning(
                 "The 'account_type' parameter is deprecated. The result will not be filtered by account type. To filter received ProjectInfos, you could use the 'team_id' from the ProjectInfo object to get TeamInfo and check the account type."
             )
+        if extra_fields is not None:
+            request_body[ApiField.EXTRA_FIELDS] = extra_fields
 
         first_response = self._api.post(method, request_body).json()
 
