@@ -1153,12 +1153,16 @@ def download(
 def copy_dir_recursively(
     src_dir: str, dst_dir: str, progress_cb: Optional[Union[tqdm, Callable]] = None
 ) -> List[str]:
-    files = list_dir_recursively(src_dir, include_subdirs=True)
+    mkdir(dst_dir)
+
+    for rel_sub_dir in get_subdirs(src_dir, recursive=True):
+        dst_sub_dir = os.path.join(dst_dir, rel_sub_dir)
+        mkdir(dst_sub_dir)
+
+    files = list_files_recursively(src_dir)
     for src_file_path in files:
         dst_file_path = os.path.normpath(src_file_path.replace(src_dir, dst_dir))
         ensure_base_path(dst_file_path)
-        if os.path.isdir(src_file_path):
-            mkdir(dst_file_path)
         if not file_exists(dst_file_path):
             copy_file(src_file_path, dst_file_path)
             if progress_cb is not None:
