@@ -1157,6 +1157,8 @@ def copy_dir_recursively(
     for src_file_path in files:
         dst_file_path = os.path.normpath(src_file_path.replace(src_dir, dst_dir))
         ensure_base_path(dst_file_path)
+        if os.path.isdir(src_file_path):
+            mkdir(dst_file_path)
         if not file_exists(dst_file_path):
             copy_file(src_file_path, dst_file_path)
             if progress_cb is not None:
