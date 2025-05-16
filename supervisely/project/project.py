@@ -611,7 +611,7 @@ class Dataset(KeyObject):
                     logger.warning(f"Failed to read blob offset file {offset_file_path}: {str(e)}")
 
         if len(img_names) == 0 and len(raw_ann_names) == 0:
-            logger.info("Dataset {!r} is empty".format(self.name))
+            logger.debug(f"Dataset '{self.name}' is empty")
             # raise RuntimeError("Dataset {!r} is empty".format(self.name))
 
         if len(img_names) == 0:  # items_names polyfield
