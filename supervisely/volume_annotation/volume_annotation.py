@@ -11,6 +11,7 @@ from supervisely.volume_annotation.volume_figure import VolumeFigure
 
 from supervisely.project.project_meta import ProjectMeta
 from supervisely._utils import take_with_default
+from supervisely.io.fs import file_exists
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.volume_annotation.slice import Slice
 from supervisely.volume_annotation.volume_tag_collection import VolumeTagCollection
@@ -30,7 +31,7 @@ from supervisely.volume_annotation.constants import (
     PLANES,
     SPATIAL_FIGURES,
 )
-
+from supervisely.io.fs import get_file_name
 from supervisely.io.json import dump_json_file
 
 
@@ -484,7 +485,13 @@ class VolumeAnnotation:
         )
 
     @classmethod
-    def from_json(cls, data: dict, project_meta: ProjectMeta, key_id_map: KeyIdMap = None):
+    def from_json(
+        cls,
+        data: dict,
+        project_meta: ProjectMeta,
+        key_id_map: KeyIdMap = None,
+        spatial_geometry_paths: Union[list, dict] = None,
+    ):
         """
         Convert a json dict to VolumeAnnotation.
 
@@ -494,6 +501,11 @@ class VolumeAnnotation:
         :type project_meta: ProjectMeta
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
+        :param spatial_geometry_paths: Optional. Can be either:
+            - a list of file paths to spatial geometry files, where each file name should match either the figure's id or the hex value of its key,
+            - or a dict mapping figure ids (or keys) to their corresponding geometry file paths.
+            Used to load 3D geometry for spatial figures.
+        :type spatial_geometry_paths: list or dict, optional
         :return: VolumeAnnotation object
         :rtype: :class:`VolumeAnnotation<VolumeAnnotation>`
         :Usage example:
@@ -585,6 +597,31 @@ class VolumeAnnotation:
                 slice_index=None,
                 key_id_map=key_id_map,
             )
+            if spatial_geometry_paths:
+                figure_id = figure_json["id"]
+                if isinstance(spatial_geometry_paths, list):
+                    spatial_geometry_paths = {
+                        get_file_name(path): path for path in spatial_geometry_paths
+                    }
+                    geometry_path = spatial_geometry_paths.get(
+                        figure.key().hex
+                    ) or spatial_geometry_paths.get(str(figure_id))
+                elif isinstance(spatial_geometry_paths, dict):
+                    geometry_path = spatial_geometry_paths.get(figure_id, None)
+                else:
+                    raise ValueError(
+                        f"spatial_geometry_paths should be either a list or a dict. Got: {type(spatial_geometry_paths)}"
+                    )
+
+                if geometry_path is not None:
+                    if not file_exists(geometry_path):
+                        raise RuntimeError(
+                            f"Geometry file {geometry_path} for figure {figure_id} does not exist."
+                        )
+                    mask3d = Mask3D.create_from_file(geometry_path)
+                    mask3d.sly_id = figure_id
+                    figure._set_3d_geometry(mask3d)
+
             spatial_figures.append(figure)
 
         return cls(
