@@ -648,6 +648,10 @@ class ImageApi(RemoveableBulkModuleApi):
         :type entities_collection_id: int, optional
         :param ai_search_collection_id: :class:`EntitiesCollection` ID of type `AI Search` to which the images belong.
         :type ai_search_collection_id: int, optional
+        :param ai_search_threshold: Confidence level to filter images in AI Search collection.
+        :type ai_search_threshold: float, optional
+        :param ai_search_threshold_direction: Direction of the confidence level filter. One of {'above' (default), 'below'}.
+        :type ai_search_threshold_direction: str, optional
         :param extra_fields: List of extra fields to return. If None, returns no extra fields.
         :type extra_fields: List[str], optional
         :return: Objects with image information from Supervisely.
