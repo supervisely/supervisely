@@ -34,6 +34,11 @@ class CollectionTypeFilter:
     DEFAULT = "entities_collection"
 
 
+class AiSearchThresholdDirection:
+    ABOVE = "above"
+    BELOW = "below"
+
+
 @dataclass
 class CollectionItem:
     """
@@ -545,6 +550,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         collection_id: int,
         collection_type: CollectionTypeFilter,
         project_id: Optional[int] = None,
+        ai_search_threshold: Optional[float] = None,
+        ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
     ) -> List[ImageInfo]:
         """
         Get items from Entities Collection.
@@ -555,6 +562,10 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type collection_type: CollectionTypeFilter
         :param project_id: Project ID in Supervisely.
         :type project_id: int, optional
+        :param ai_search_threshold: AI search threshold for filtering items. Optional, defaults to None.
+        :type ai_search_threshold: float, optional
+        :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to None.
+        :type ai_search_threshold_direction: str, optional
         :return: List of ImageInfo objects.
         :rtype: List[ImageInfo]
         :raises RuntimeError: If Entities Collection with given ID not found.
@@ -584,6 +595,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
                 project_id=project_id,
                 ai_search_collection_id=collection_id,
                 extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT],
+                ai_search_threshold=ai_search_threshold,
+                ai_search_threshold_direction=ai_search_threshold_direction,
             )
         else:
             return self._api.image.get_list(
