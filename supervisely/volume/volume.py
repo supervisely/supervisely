@@ -13,8 +13,8 @@ from trimesh import Trimesh
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
-from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 from supervisely.geometry.mask_3d import Mask3D
+from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -868,7 +868,7 @@ def is_nifti_file(path: str) -> bool:
 
 def convert_3d_geometry_to_mesh(
     geometry: Mask3D,
-    spacing: tuple = (1.0, 1.0, 1.0),
+    spacing: tuple = None,
     level: float = 0.5,
     apply_decimation: bool = False,
     decimation_fraction: float = 0.5,
@@ -878,7 +878,7 @@ def convert_3d_geometry_to_mesh(
 
     :param geometry: The 3D geometry to convert.
     :type geometry: supervisely.geometry.mask_3d.Mask3D
-    :param spacing: Voxel spacing in (x, y, z). Default is (1.0, 1.0, 1.0).
+    :param spacing: Voxel spacing in (x, y, z). Default is taken from geometry meta.
     :type spacing: tuple
     :param level: Isosurface value for marching cubes. Default is 0.5.
     :type level: float
@@ -899,6 +899,16 @@ def convert_3d_geometry_to_mesh(
     from skimage import measure
 
     mask = geometry.data
+    if spacing is None:
+        try:
+            spacing = tuple(
+                float(abs(direction[i])) for i, direction in enumerate(geometry._space_directions)
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to get spacing from geometry meta. Using (1.0, 1.0, 1.0).", exc_info=1
+            )
+            spacing = (1.0, 1.0, 1.0)
 
     # marching_cubes expects (z, y, x) order
     verts, faces, normals, _ = measure.marching_cubes(
@@ -921,7 +931,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
     :param output_path: The path to the output file. Must have a ".stl" or ".obj" extension.
     :type output_path: str
     :param kwargs: Additional keyword arguments for mesh generation. Supported keys:
-        - spacing (tuple): Voxel spacing in (x, y, z). Default is (1.0, 1.0, 1.0).
+        - spacing (tuple): Voxel spacing in (x, y, z). By default the value will be taken from geometry meta.
         - level (float): Isosurface value for marching cubes. Default is 0.5.
         - apply_decimation (bool): Whether to simplify the mesh. Default is False.
         - decimation_fraction (float): Fraction of faces to keep if decimation is applied. Default is 0.5.
