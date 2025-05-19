@@ -33,6 +33,11 @@ class CollectionTypeFilter:
     DEFAULT = "entities_collection"
 
 
+class AiSearchThresholdDirection:
+    ABOVE = "above"
+    BELOW = "below"
+
+
 @dataclass
 class CollectionItem:
     """
@@ -545,7 +550,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         collection_type: CollectionTypeFilter,
         project_id: Optional[int] = None,
         ai_search_threshold: Optional[float] = None,
-        ai_search_threshold_direction: Literal["above", "below"] = None,
+        ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
     ) -> List[ImageInfo]:
         """
         Get items from Entities Collection.

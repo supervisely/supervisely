@@ -57,7 +57,10 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.constants import DOWNLOAD_BATCH_SIZE
 from supervisely.api.dataset_api import DatasetInfo
-from supervisely.api.entities_collection_api import CollectionTypeFilter
+from supervisely.api.entities_collection_api import (
+    AiSearchThresholdDirection,
+    CollectionTypeFilter,
+)
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.file_api import FileInfo
@@ -616,7 +619,7 @@ class ImageApi(RemoveableBulkModuleApi):
         entities_collection_id: Optional[int] = None,
         ai_search_collection_id: Optional[int] = None,
         ai_search_threshold: Optional[float] = None,
-        ai_search_threshold_direction: Literal["above", "below"] = "above",
+        ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
         extra_fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
@@ -745,7 +748,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             collection_filter_data = {
                 ApiField.COLLECTION_ID: collection_id,
-                ApiField.INCLUDE: True
+                ApiField.INCLUDE: True,
             }
             if ai_search_threshold is not None:
                 if collection_type != CollectionTypeFilter.AI_SEARCH:
@@ -753,9 +756,7 @@ class ImageApi(RemoveableBulkModuleApi):
                         "ai_search_threshold is only available for AI Search collection"
                     )
                 collection_filter_data[ApiField.THRESHOLD] = ai_search_threshold
-                collection_filter_data[ApiField.THRESHOLD_DIRECTION] = (
-                    ai_search_threshold_direction
-                )
+                collection_filter_data[ApiField.THRESHOLD_DIRECTION] = ai_search_threshold_direction
             data[ApiField.FILTERS].append(
                 {
                     ApiField.TYPE: collection_type,
