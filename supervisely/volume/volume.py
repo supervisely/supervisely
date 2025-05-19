@@ -955,7 +955,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
     if kwargs is None:
         kwargs = {}
 
-    if get_file_ext(output_path) not in [".stl", ".obj"]:
+    if get_file_ext(output_path).lower() not in [".stl", ".obj"]:
         raise ValueError('File extension must be either ".stl" or ".obj"')
 
     mesh = convert_3d_geometry_to_mesh(geometry, **kwargs)
