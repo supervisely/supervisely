@@ -16,7 +16,7 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import mkdir, touch, touch_async
+from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
@@ -1056,6 +1056,7 @@ class VideoProject(Project):
         save_video_info: bool = False,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        resume_download: Optional[bool] = False,
     ) -> None:
         """
         Download video project from Supervisely to the given directory.
@@ -1109,6 +1110,7 @@ class VideoProject(Project):
             save_video_info=save_video_info,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            resume_download=resume_download,
         )
 
     @staticmethod
@@ -1182,6 +1184,7 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         include_custom_data: bool = False,
+        resume_download: Optional[bool] = False,
         **kwargs,
     ) -> None:
         """
@@ -1238,6 +1241,7 @@ class VideoProject(Project):
             log_progress=log_progress,
             progress_cb=progress_cb,
             include_custom_data=include_custom_data,
+            resume_download=resume_download,
             **kwargs,
         )
 
@@ -1252,6 +1256,7 @@ def download_video_project(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
+    resume_download: Optional[bool] = False,
 ) -> None:
     """
     Download video project to the local directory.
@@ -1312,9 +1317,22 @@ def download_video_project(
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
-    project_fs = VideoProject(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        try:
+            project_fs = VideoProject(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
+    if project_fs is None:
+        project_fs = VideoProject(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
+
     if progress_cb is not None:
         log_progress = False
 
@@ -1549,6 +1567,7 @@ async def download_video_project_async(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
+    resume_download: Optional[bool] = False,
     **kwargs,
 ) -> None:
     """
@@ -1603,9 +1622,19 @@ async def download_video_project_async(
 
     key_id_map = KeyIdMap()
 
-    project_fs = VideoProject(dest_dir, OpenMode.CREATE)
-
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        try:
+            project_fs = VideoProject(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
+    if project_fs is None:
+        project_fs = VideoProject(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
 
     if progress_cb is not None:
