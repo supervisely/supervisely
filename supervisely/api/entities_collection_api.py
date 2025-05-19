@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Union
 
 import requests
 
-from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
