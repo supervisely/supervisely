@@ -230,10 +230,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         *NOTE*: Version information is not available while getting list of projects.
         If you need version information, use :func:`get_info_by_id`.
 
-        *NOTE*: Embeddings information is not available while getting list of projects.
-        To receive additionally embeddings information, you need to list all the fields you want to receive:
-        `fields=[ApiField.ID, ApiField.NAME, ... other standard fields ..., ApiField.EMBEDDINGS_ENABLED, ApiField.EMBEDDINGS_UPDATED_AT]`
-
         :param workspace_id: Workspace ID in which the Projects are located.
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
