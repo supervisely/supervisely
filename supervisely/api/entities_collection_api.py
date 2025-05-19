@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List, Literal, NamedTuple, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Union
 
 import requests
 
