@@ -600,13 +600,12 @@ class VolumeAnnotation:
             if spatial_geometry_paths:
                 figure_id = figure_json["id"]
                 if isinstance(spatial_geometry_paths, list):
-                    geometry_path = None
-                    for path in spatial_geometry_paths:
-                        if get_file_name(path) == figure.key().hex or get_file_name(path) == str(
-                            figure_id
-                        ):
-                            geometry_path = path
-                            break
+                    spatial_geometry_paths = {
+                        get_file_name(path): path for path in spatial_geometry_paths
+                    }
+                    geometry_path = spatial_geometry_paths.get(
+                        figure.key().hex
+                    ) or spatial_geometry_paths.get(str(figure_id))
                 elif isinstance(spatial_geometry_paths, dict):
                     geometry_path = spatial_geometry_paths.get(figure_id, None)
                 else:
