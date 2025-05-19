@@ -615,8 +615,8 @@ class ImageApi(RemoveableBulkModuleApi):
         recursive: Optional[bool] = False,
         entities_collection_id: Optional[int] = None,
         ai_search_collection_id: Optional[int] = None,
-        ai_seatch_threshold: Optional[float] = None,
-        ai_seatch_threshold_direction: Literal["above", "below"] = "above",
+        ai_search_threshold: Optional[float] = None,
+        ai_search_threshold_direction: Literal["above", "below"] = "above",
         extra_fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
@@ -739,23 +739,23 @@ class ImageApi(RemoveableBulkModuleApi):
             if ApiField.FILTERS not in data:
                 data[ApiField.FILTERS] = []
 
-            collection_filter = {
+            collection_filter_data = {
                 ApiField.COLLECTION_ID: collection_id,
                 ApiField.INCLUDE: True
             }
-            if ai_seatch_threshold is not None:
+            if ai_search_threshold is not None:
                 if collection_type != CollectionTypeFilter.AI_SEARCH:
                     raise ValueError(
-                        "ai_seatch_threshold is only available for AI Search collection"
+                        "ai_search_threshold is only available for AI Search collection"
                     )
-                collection_filter[ApiField.THRESHOLD] = ai_seatch_threshold
-                collection_filter[ApiField.THRESHOLD_DIRECTION] = (
-                    ai_seatch_threshold_direction
+                collection_filter_data[ApiField.THRESHOLD] = ai_search_threshold
+                collection_filter_data[ApiField.THRESHOLD_DIRECTION] = (
+                    ai_search_threshold_direction
                 )
             data[ApiField.FILTERS].append(
                 {
                     ApiField.TYPE: collection_type,
-                    ApiField.DATA: collection_filter,
+                    ApiField.DATA: collection_filter_data,
                 }
             )
 
