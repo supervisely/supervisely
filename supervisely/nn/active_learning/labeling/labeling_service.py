@@ -2,6 +2,7 @@ import random
 from collections import defaultdict
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple
 
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.entities_collection_api import CollectionItem
 from supervisely.api.image_api import ImageInfo
 from supervisely.nn.active_learning.scheduler.scheduler import SchedulerJobs
@@ -17,6 +18,7 @@ from supervisely.nn.active_learning.utils.project import (
     create_dataset_mapping,
     merge_update_metas,
 )
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 
 
@@ -29,6 +31,30 @@ class LabelingService:
         self.workspace_id = al_session.workspace_id
         self.team_id = al_session.team_id
         self.state = al_session.state
+
+    def set_classes(self, classes: List[ObjClass]) -> None:
+        """
+        Set classes for the labeling project.
+        Args:
+            classes (list): List of class names or ObjClass objects.
+        """
+        if not isinstance(classes, list):
+            raise TypeError("Classes must be a list")
+        if not all(isinstance(c, ObjClass) for c in classes):
+            raise TypeError("All elements in classes must be of type ObjClass")
+        if len(classes) == 0:
+            raise ValueError("Classes list is empty")
+        state_classes = [c.name for c in self.al_session.state.config.classes]
+        curr_meta = ProjectMeta.from_json(self.api.project.get_meta(self.state.labeling_project_id, with_settings=True))
+        project_classes = [c.name for c in curr_meta.obj_classes]
+        for obj_class in classes:
+            if obj_class.name in state_classes:
+                raise ValueError(f"Class {obj_class.name} already exists in the project state")
+            if obj_class.name in project_classes:
+                raise ValueError(f"Class {obj_class.name} already exists in the project meta")
+        self.al_session.state.config.set_classes(classes)
+        new_meta = curr_meta.add_obj_classes(classes)
+        self.api.project.update_meta(self.state.labeling_project_id, new_meta)
 
     def get_labeling_stats(self):
         logger.info("Checking labeling queue info...")
@@ -118,7 +144,7 @@ class LabelingService:
             items[img_info.dataset_id].append(img_info)
 
         # Move the images to the destination project
-        _, added = self._move_to_images(src_to_dst_map, items, ds_to_create)
+        _, added = self._move_images(src_to_dst_map, items, ds_to_create)
         num_added = sum([len(i) for i in added.values()])
         logger.info(f"Copied {num_added} images to the destination project")
 
@@ -126,6 +152,9 @@ class LabelingService:
         self.api.entities_collection.remove_items(
             self.al_session.state.labeling_collection_id, image_ids
         )
+
+        # Remove the images from the source project
+        self.api.image.remove_batch(image_ids)
 
         # add the images to the destination collections (train/val)
         if split_settings is not None:
@@ -218,7 +247,7 @@ class LabelingService:
         print(f"train_count: {train_count}, val_count: {val_count}")
         return train_count, val_count, len(train_collections)
 
-    def _move_to_images(
+    def _move_images(
         self,
         src_to_dst_map: Dict[int, int],
         sampled_images: Dict[int, List[ImageInfo]],
