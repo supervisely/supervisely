@@ -138,6 +138,7 @@ class ALState:
                 reviewer_ids=user_ids,
                 collection_id=collection_id,
                 dynamic_classes=True,
+                classes_to_label=self.config.classes_names,
                 dynamic_tags=True,
                 allow_review_own_annotations=True,
                 skip_complete_job_on_empty=True,

@@ -1,5 +1,6 @@
 from typing import List, Optional
 
+from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.api import Api
 from supervisely.nn.active_learning.state.managers.project_state_manager import (
     StateManager,
@@ -18,22 +19,39 @@ class ConfigStateManager:
         self.api = api
 
     @property
-    def classes(self) -> List[str]:
+    def classes(self) -> List[ObjClass]:
         """Get classes names"""
-        return self.state_manager.get("classes", default=[])
-
-    def set_classes(self, classes: List[str]) -> None:
-        """Set classes names"""
-        self.state_manager.set("classes", classes)
+        # return self.state_manager.get("classes", default=[])
+        classes = self.state_manager.get("classes", default=[])
+        return [ObjClass.from_json(obj_class) for obj_class in classes]
 
     @property
-    def tags(self) -> List[str]:
-        """Get tags names"""
-        return self.state_manager.get("tags", default=[])
+    def classes_names(self) -> List[str]:
+        """Get classes names"""
+        return [obj_class.name for obj_class in self.classes]
 
-    def set_tags(self, tags: List[str]) -> None:
-        """Set tags names"""
-        self.state_manager.set("tags", tags)
+    def set_classes(self, classes: List[ObjClass]) -> None:
+        """Set classes names"""
+        if not all(isinstance(obj_class, ObjClass) for obj_class in classes):
+            raise ValueError("All elements in classes must be of type ObjClass.")
+        existing_classes = self.classes
+        existing_classes_names = [o.name for o in existing_classes]
+        new_classes = []
+        for obj_class in classes:
+            if obj_class.name not in existing_classes_names:
+                new_classes.append(obj_class)
+        all_classes = existing_classes + new_classes
+        prepared_classes = [o.to_json() for o in all_classes]
+        self.state_manager.set("classes", prepared_classes)
+
+    # @property
+    # def tags(self) -> List[str]:
+    #     """Get tags names"""
+    #     return self.state_manager.get("tags", default=[])
+
+    # def set_tags(self, tags: List[str]) -> None:
+    #     """Set tags names"""
+    #     self.state_manager.set("tags", tags)
 
     @property
     def annotators(self) -> List[int]:

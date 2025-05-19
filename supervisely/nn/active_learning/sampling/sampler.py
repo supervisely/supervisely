@@ -434,7 +434,7 @@ class ActiveLearningSampler:
         """
         filtered_diffs = {}
         for ds_id, imgs in all_diffs.items():
-            ignore_ids = {img for img in sampled_images.get(ds_id, [])}
+            ignore_ids = {img for img in sampled_images.get(str(ds_id), [])}
             filtered_diffs[ds_id] = [img for img in imgs if img.id not in ignore_ids]
         return filtered_diffs
 

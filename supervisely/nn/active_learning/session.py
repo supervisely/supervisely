@@ -37,17 +37,15 @@ class ActiveLearningSession:
         if project_id is None and workspace_id is None and team_id is None:
             raise ValueError("Either project_id or workspace_id or team_id must be provided.")
         self.api = api
-        self.project_id = project_id
-        self.workspace_id = workspace_id
         if project_id is not None:
             self.state = ALState(api, project_id)
         elif workspace_id is not None:
             self.state = ALState.create_from_workspace(api, workspace_id, self.INPUT_PROJECT_NAME)
-            self.project_id = self.state.project_id
         else:
             self.state = ALState.create_from_team(api, team_id, self.INPUT_PROJECT_NAME)
-            self.project_id = self.state.project_id
-            self.workspace_id = self.state.project.workspace_id
+        self.project_id = self.state.project_id
+        self.workspace_id = self.state.project.workspace_id
+        self.team_id = self.state.project.team_id
 
         self.scheduler = PersistentTasksScheduler(self.state)
         # * to be implemented
@@ -122,7 +120,7 @@ class ActiveLearningSession:
         """
         return self.sampler.sample(settings=sampling_settings)
 
-    def preview_sampled_images(self, sample_settings: dict, limit: int = 6) -> None:
+    def preview_sampled_images(self, sample_settings: dict, limit: int = 6) -> list:
         """
         Preview sampled images.
         """
