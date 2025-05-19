@@ -681,6 +681,10 @@ class ApiField:
     """"""
     HARD_DELETE = "hardDelete"
     """"""
+    THRESHOLD = "threshold"
+    """"""
+    THRESHOLD_DIRECTION = "thresholdDirection"
+    """"""
 
 
 def _get_single_item(items):
