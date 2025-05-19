@@ -1504,6 +1504,9 @@ def upload_video_project(
             item_paths.append(video_path)
             ann_paths.append(ann_path)
 
+        if len(item_paths) == 0:
+            continue
+
         ds_progress = progress_cb
         if log_progress is True:
             ds_progress = tqdm_sly(
