@@ -415,7 +415,7 @@ def _get_ds_full_name(
     if dataset_info.parent_id is None:
         return dataset_info.name + suffix
     parent = next((ds_info for ds_info in all_ds_infos if ds_info.id == dataset_info.parent_id))
-    return _get_ds_full_name(parent, all_ds_infos, "/" + dataset_info.name)
+    return _get_ds_full_name(parent, all_ds_infos, "/" + dataset_info.name + suffix)
 
 
 def _validate_dataset(
