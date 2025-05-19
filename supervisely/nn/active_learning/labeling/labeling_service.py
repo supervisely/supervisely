@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from supervisely.nn.active_learning.session import ActiveLearningSession
 
 from supervisely.api.api import Api
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.labeling_jobs.utils import Status
 from supervisely.nn.active_learning.utils.project import (
     create_dataset_mapping,
@@ -197,10 +198,22 @@ class LabelingService:
         train_count = 0
         val_count = 0
         for collection in train_collections:
-            train_count += len(self.api.entities_collection.get_items(collection.id, project_id))
+            train_count += len(
+                self.api.entities_collection.get_items(
+                    collection_id=collection.id,
+                    collection_type=CollectionTypeFilter.DEFAULT,
+                    project_id=project_id,
+                )
+            )
 
         for collection in val_collections:
-            val_count += len(self.api.entities_collection.get_items(collection.id, project_id))
+            val_count += len(
+                self.api.entities_collection.get_items(
+                    collection_id=collection.id,
+                    collection_type=CollectionTypeFilter.DEFAULT,
+                    project_id=project_id,
+                )
+            )
 
         print(f"train_count: {train_count}, val_count: {val_count}")
         return train_count, val_count, len(train_collections)

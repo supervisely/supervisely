@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 import random
 
 from supervisely.api.api import Api
+from supervisely.api.entities_collection_api import CollectionTypeFilter, AiSearchThresholdDirection
 from supervisely.api.image_api import ImageInfo
 from supervisely.nn.active_learning.utils.constants import EMBEDDINGS_GENERATOR_SLUG
 from supervisely.nn.active_learning.utils.project import get_diffs
@@ -243,7 +244,7 @@ class ActiveLearningSampler:
 
         return len(items)
 
-    def preview(self, settings: SamplingSettings, limit: int) -> None:
+    def preview(self, settings: SamplingSettings, limit: int) -> List[ImageInfo]:
         """Preview the sampling images without copying them to the labeling project."""
 
         # Create a mapping with different between source and destination datasets
@@ -267,8 +268,7 @@ class ActiveLearningSampler:
             all_sampled_images.extend(imgs)
         all_sampled_images = all_sampled_images[:limit]
 
-        image_urls = [img.full_storage_url for img in all_sampled_images]
-        return image_urls
+        return all_sampled_images
 
     def _prepare_sample(
         self,
@@ -379,19 +379,25 @@ class ActiveLearningSampler:
             if isinstance(res, dict):
                 if "collection_id" in res:
                     collection_id = res["collection_id"]
-                    all_sampled_images = self.api.entities_collection.get_items(collection_id)
-                    all_sampled_ids = [img.id for img in all_sampled_images]
-                    new_sampled_images = {
-                        ds_id: [img for img in diffs[ds_id] if img.id in all_sampled_ids]
-                        for ds_id in diffs.keys()
-                    }
-                    # ? uncomment this when API will be fixed
-                    # new_sampled_images = {}
-                    # for img in all_sampled_images:
-                    #     ds_id = img.dataset_id
-                    #     if ds_id not in new_sampled_images:
-                    #         new_sampled_images[ds_id] = []
-                    #     new_sampled_images[ds_id].append(img)
+
+                    if mode == SamplingMode.AI_SEARCH.value:
+                        all_sampled_images = self.api.entities_collection.get_items(
+                            collection_id=collection_id,
+                            collection_type=CollectionTypeFilter.AI_SEARCH,
+                            ai_search_threshold=data.get("threshold", 0.05),
+                            ai_search_threshold_direction=AiSearchThresholdDirection.ABOVE,
+                        )
+                    else:
+                        all_sampled_images = self.api.entities_collection.get_items(
+                            collection_id=collection_id,
+                            collection_type=CollectionTypeFilter.DEFAULT,
+                        )
+                    new_sampled_images = {}
+                    for img in all_sampled_images:
+                        ds_id = img.dataset_id
+                        if ds_id not in new_sampled_images:
+                            new_sampled_images[ds_id] = []
+                        new_sampled_images[ds_id].append(img)
                 elif "message" in res:
                     logger.error(f"Error during sampling: {res['message']}")
                     return None
