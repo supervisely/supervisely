@@ -6,7 +6,11 @@ import unittest
 import numpy as np
 
 from supervisely.api.api import Api, ApiField
-from supervisely.api.entities_collection_api import CollectionItem, CollectionType
+from supervisely.api.entities_collection_api import (
+    CollectionItem,
+    CollectionType,
+    CollectionTypeFilter,
+)
 
 sdk_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, sdk_path)
@@ -148,7 +152,9 @@ class TestEntitiesCollectionApi(unittest.TestCase):
             )
 
     def test_E008_get_list(self):
-        result = self.entities_collection_api.get_list(project_id=self.project_id, with_meta=True)
+        result = self.entities_collection_api.get_list(
+            project_id=self.project_id, collection_type=CollectionType.ALL, with_meta=True
+        )
 
         self.assertEqual(len(result), 2)
 
@@ -168,7 +174,12 @@ class TestEntitiesCollectionApi(unittest.TestCase):
 
     def test_E011_get_items(self):
         image_info = self.api.image.get_info_by_id(self.item_id_3)
-        result = self.entities_collection_api.get_items(self.collection_id)[0]
+        collection_info = self.entities_collection_api.get_info_by_id(self.collection_id)
+        if collection_info.type == CollectionType.AI_SEARCH:
+            search_type = CollectionTypeFilter.AI_SEARCH
+        else:
+            search_type = CollectionTypeFilter.DEFAULT
+        result = self.entities_collection_api.get_items(self.collection_id, search_type)[0]
 
         self.assertEqual(result, image_info)
 
