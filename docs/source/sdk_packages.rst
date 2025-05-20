@@ -602,6 +602,16 @@ Geometry
     Cuboid3d
     Vector3d
 
+
+.. currentmodule:: supervisely.geometry.mask_3d
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Mask3D
+
 .. currentmodule:: supervisely.geometry.geometry
 
 .. autosummary::
