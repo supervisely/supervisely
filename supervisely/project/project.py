@@ -612,7 +612,7 @@ class Dataset(KeyObject):
                     logger.warning(f"Failed to read blob offset file {offset_file_path}: {str(e)}")
 
         if len(img_names) == 0 and len(raw_ann_names) == 0:
-            logger.info("Dataset {!r} is empty".format(self.name))
+            logger.debug(f"Dataset '{self.name}' is empty")
             # raise RuntimeError("Dataset {!r} is empty".format(self.name))
 
         if len(img_names) == 0:  # items_names polyfield
@@ -1641,10 +1641,10 @@ class Dataset(KeyObject):
         """
         if self.item_exists(item_name):
             data_path, ann_path = self.get_item_paths(item_name)
-            img_info_path = self.get_img_info_path(item_name)
+            item_info_path = self.get_item_info_path(item_name)
             silent_remove(data_path)
             silent_remove(ann_path)
-            silent_remove(img_info_path)
+            silent_remove(item_info_path)
             self._item_to_ann.pop(item_name)
             return True
         return False

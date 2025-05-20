@@ -1,3 +1,6 @@
+# coding: utf-8
+"""load and inference models"""
+
 from __future__ import annotations
 import os
 from os import PathLike

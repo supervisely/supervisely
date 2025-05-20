@@ -1,3 +1,6 @@
+# coding: utf-8
+"""single prediction object"""
+
 from __future__ import annotations
 
 import atexit
