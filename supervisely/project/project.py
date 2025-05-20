@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
 import os
 import pickle
 import random
@@ -4465,7 +4466,7 @@ def _download_project(
         try:
             if download_blob_files:
                 project_info = api.project.get_info_by_id(project_id)
-                create_blob_readme(project_fs=project_fs, project_info=project_info)
+                create_blob_readme(project_fs=project_fs, project_info=project_info, api=api)
             else:
                 create_readme(dest_dir, project_id, api)
         except Exception as e:
@@ -5092,6 +5093,10 @@ def create_readme(
         "{{dataset_structure_info}}", _dataset_structure_md(project_info, api)
     )
 
+    template = template.replace(
+        "{{dataset_description_info}}", _dataset_descriptions_md(project_info, api)
+    )
+
     with open(readme_path, "w") as f:
         f.write(template)
     return readme_path
@@ -5256,6 +5261,7 @@ def _dataset_blob_structure_md(
 def create_blob_readme(
     project_fs: Project,
     project_info: ProjectInfo,
+    api: Api,
 ) -> str:
     """Creates a README.md file using the template, adds general information
     about the project and creates a dataset structure section.
@@ -5294,7 +5300,9 @@ def create_blob_readme(
     template = template.replace(
         "{{dataset_structure_info}}", _dataset_blob_structure_md(project_fs, project_info)
     )
-
+    template = template.replace(
+        "{{dataset_description_info}}", _dataset_descriptions_md(project_info, api)
+    )
     with open(readme_path, "w") as f:
         f.write(template)
     return readme_path
@@ -5429,6 +5437,37 @@ def _dataset_structure_md(
         render_dataset(root_ds.id)
 
     return "".join(result_md)
+
+def _dataset_descriptions_md(project_info: sly.ProjectInfo, api: sly.Api) -> str:
+    """Creates a markdown string with dictionary of descriptions and custom data of datasets.
+    :param project_info: Project information.
+    :type project_info: :class:`ProjectInfo<supervisely.project.project_info.ProjectInfo>`
+    :param api: Supervisely API address and token.
+    :type api: :class:`Api<supervisely.api.api.Api>`
+    :return: Markdown string with dictionary of descriptions and custom data of datasets.
+    :rtype: str
+    """
+
+    data_found = False
+    result_md = "All datasets in the project can have their own descriptions and custom data. You can add or edit the description and custom data of a dataset in the datasets list page. In this section, you can find this information for each dataset by dataset name (e.g. `ds1/ds2/ds3`, where `ds1` and `ds2` are parent datasets for `ds3` dataset).<br>"
+    result_md += "\n\n```json\n{\n"
+    for parents, dataset_info in api.dataset.tree(project_info.id):
+        dataset_info = api.dataset.get_info_by_id(dataset_info.id)
+        full_ds_name = "/".join(parents + [dataset_info.name])
+        if dataset_info.description or dataset_info.custom_data:
+            data_found = True
+            result_md += f"  \"{full_ds_name}\": {{\n"
+            if dataset_info.description:
+                result_md += f"    \"description\": \"{dataset_info.description}\",\n"
+            if dataset_info.custom_data:
+                formated_custom_data = json.dumps(dataset_info.custom_data, indent=4)
+                formated_custom_data = formated_custom_data.replace("\n", "\n    ")
+                result_md += f"    \"custom_data\": {formated_custom_data}\n"
+            result_md += "  },\n"
+    result_md += "}\n```"
+    if not data_found:
+        result_md = "_No dataset descriptions or custom data found in the project._"
+    return result_md
 
 
 async def _download_project_async(
@@ -5697,7 +5736,7 @@ async def _download_project_async(
         try:
             if download_blob_files:
                 project_info = api.project.get_info_by_id(project_id)
-                create_blob_readme(project_fs=project_fs, project_info=project_info)
+                create_blob_readme(project_fs=project_fs, project_info=project_info, api=api)
             else:
                 create_readme(dest_dir, project_id, api)
         except Exception as e:
