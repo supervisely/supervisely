@@ -904,6 +904,7 @@ class Application(metaclass=Singleton):
         ready_check_function: Optional[
             Callable
         ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
+        show_header: bool = True,
     ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
@@ -961,6 +962,7 @@ class Application(metaclass=Singleton):
 
         if session_info_solid:
             JinjaWidgets().context["__app_session_info_solid__"] = True
+        Jinja2Templates().context["__show_header__"] = show_header
 
         if is_production():
             logger.info("Application is running on Supervisely Platform in production mode")
