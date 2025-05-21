@@ -909,6 +909,7 @@ class Application(metaclass=Singleton):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
+        JinjaWidgets().context["__show_header__"] = show_header
 
         self._static_dir = static_dir
 
@@ -962,7 +963,6 @@ class Application(metaclass=Singleton):
 
         if session_info_solid:
             JinjaWidgets().context["__app_session_info_solid__"] = True
-        Jinja2Templates().context["__show_header__"] = show_header
 
         if is_production():
             logger.info("Application is running on Supervisely Platform in production mode")
