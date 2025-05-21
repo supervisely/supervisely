@@ -48,7 +48,6 @@ class TrainValSplits(Widget):
         self._project_id = project_id
         self._project_fs = project_fs
 
-
         self._project_info = None
         self._project_type = None
         self._project_class = None
@@ -405,6 +404,7 @@ class TrainValSplits(Widget):
         if not self._train_collections_select or not self._val_collections_select:
             raise ValueError("Collections select widgets are not initialized.")
         self._train_collections_select.set_project_id(project_id)
+        self._val_collections_select.set_project_id(project_id)
 
     def get_train_collections_ids(self) -> List[int]:
         return self._train_collections_select.get_selected_ids() or []
