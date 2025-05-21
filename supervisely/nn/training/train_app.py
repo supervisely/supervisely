@@ -1821,6 +1821,13 @@ class TrainApp:
                     "val_datasets": self.gui.train_val_splits_selector.train_val_splits.get_val_dataset_ids(),
                 }
             )
+        elif split_method == "Based on collections":
+            train_val_splits.update(
+                {
+                    "train_collections": self.gui.train_val_splits_selector.train_val_splits.get_train_collection_ids(),
+                    "val_collections": self.gui.train_val_splits_selector.train_val_splits.get_val_collection_ids(),
+                }
+            )
         return train_val_splits
 
     def _get_model_config_for_app_state(self, experiment_info: Dict = None) -> Dict:
@@ -2055,7 +2062,7 @@ class TrainApp:
         ]
         task_type = experiment_info["task_type"]
         if task_type not in supported_task_types:
-            logger.warn(
+            logger.warning(
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
