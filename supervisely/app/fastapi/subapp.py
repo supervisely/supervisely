@@ -904,10 +904,12 @@ class Application(metaclass=Singleton):
         ready_check_function: Optional[
             Callable
         ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
+        show_header: bool = True,
     ):
         self._favicon = os.environ.get("icon", "https://cdn.supervise.ly/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
+        JinjaWidgets().context["__show_header__"] = show_header
 
         self._static_dir = static_dir
 
