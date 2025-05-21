@@ -1824,8 +1824,8 @@ class TrainApp:
         elif split_method == "Based on collections":
             train_val_splits.update(
                 {
-                    "train_collections": self.gui.train_val_splits_selector.train_val_splits.get_train_collection_ids(),
-                    "val_collections": self.gui.train_val_splits_selector.train_val_splits.get_val_collection_ids(),
+                    "train_collections": self.gui.train_val_splits_selector.get_train_collection_ids(),
+                    "val_collections": self.gui.train_val_splits_selector.get_val_collection_ids(),
                 }
             )
         return train_val_splits
