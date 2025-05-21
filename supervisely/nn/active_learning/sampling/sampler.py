@@ -257,6 +257,7 @@ class ActiveLearningSampler:
             return []
 
         # Prepare the sample
+        settings["sample_size"] = limit
         new_sampled_images = self._prepare_sample(diff_images, settings)
         if new_sampled_images is None:
             logger.warning("Failed to prepare sample for preview")
@@ -360,7 +361,9 @@ class ActiveLearningSampler:
             elif mode == SamplingMode.DIVERSE.value:
                 # Diverse mode
                 data["sample_size"] = sample_size
-                data["method"] = settings.get("diversity_mode", "centroids")
+                data["num_clusters"] = sample_size
+                data["clustering_method"] = "kmeans"
+                data["sampling_method"] = "centroids"
             else:
                 logger.error(f"Unknown sampling mode: {mode}")
                 return None
