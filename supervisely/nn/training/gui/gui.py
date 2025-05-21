@@ -953,8 +953,11 @@ class TrainGUI:
                 train_datasets, val_datasets
             )
         elif split_method == "collections":
+            print("Collections splits")
             train_collections = train_val_splits_settings["train_collections"]
             val_collections = train_val_splits_settings["val_collections"]
+            print(f"Train collections: {train_collections}")
+            print(f"Val collections: {val_collections}")
             self.train_val_splits_selector.train_val_splits.set_project_id_for_collections(
                 self.project_id
             )
