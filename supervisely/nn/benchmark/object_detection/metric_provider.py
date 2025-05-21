@@ -4,6 +4,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
+from supervisely._utils import logger
 from supervisely.nn.benchmark.utils.detection import metrics
 
 METRIC_NAMES = {
@@ -106,6 +107,8 @@ class MetricProvider:
 
         # Confidence threshold that will be used in visualizations
         self.conf_threshold = self.custom_conf_threshold or self.f1_optimal_conf
+        if self.conf_threshold is None:
+            raise RuntimeError("Model predicted no TP matches. Cannot calculate metrics.")
 
         # Filter by optimal confidence threshold
         if self.conf_threshold is not None:

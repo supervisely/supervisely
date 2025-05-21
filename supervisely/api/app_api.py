@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
+from typing_extensions import Literal
+
 from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
@@ -1532,10 +1534,21 @@ class AppApi(TaskApi):
             )
         return modules[0]["id"]
 
-    def get_list_ecosystem_modules(self):
+    def get_list_ecosystem_modules(
+        self,
+        search: Optional[str] = None,
+        categories: Optional[List[str]] = None,
+        categories_operation: Literal["or", "and"] = "or",
+    ):
+        data = {}
+        if search is not None:
+            data["search"] = search
+        if categories is not None:
+            data["categories"] = categories
+            data["categoriesOperation"] = categories_operation
         modules = self.get_list_all_pages(
             method="ecosystem.list",
-            data={},
+            data=data,
             convert_json_info_cb=lambda x: x,
         )
         if len(modules) == 0:
@@ -1771,7 +1784,19 @@ class AppApi(TaskApi):
             else:
                 is_ready = True
                 break
+        if is_ready:
+            logger.info("App is ready for API calls")
+        else:
+            logger.info("App is not ready for API calls after all attempts")
         return is_ready
+
+    def find_module_id_by_app_name(self, app_name):
+        modules = self._api.app.get_list_ecosystem_modules(search=app_name)
+        if len(modules) == 0:
+            raise ValueError(f"No serving apps found for app name {app_name}")
+        if len(modules) > 1:
+            raise ValueError(f"Multiple serving apps found for app name {app_name}")
+        return modules[0]["id"]
 
 
 # info about app in team
