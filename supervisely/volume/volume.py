@@ -15,6 +15,7 @@ import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+from supervisely.volume.stl_converter import matrix_from_nrrd_header
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -898,18 +899,26 @@ def convert_3d_geometry_to_mesh(
     """
     from skimage import measure
 
+
     # Flip the mask along the x-axis to correct mirroring
     mask = np.flip(geometry.data, axis=0)
+    space_directions = geometry._space_directions
+    space_origin = geometry._space_origin
+
     if spacing is None:
-        try:
-            spacing = tuple(
-                float(abs(direction[i])) for i, direction in enumerate(geometry._space_directions)
-            )
-        except Exception as e:
-            logger.warning(
-                "Failed to get spacing from geometry meta. Using (1.0, 1.0, 1.0).", exc_info=1
-            )
+        if space_directions is None:
             spacing = (1.0, 1.0, 1.0)
+        else:
+            try:
+                spacing = tuple(
+                    float(abs(direction[i])) for i, direction in enumerate(space_directions)
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to get spacing from geometry meta. Using (1.0, 1.0, 1.0).", exc_info=1
+                )
+                spacing = (1.0, 1.0, 1.0)
+    
 
     # marching_cubes expects (z, y, x) order
     verts, faces, normals, _ = measure.marching_cubes(
@@ -919,6 +928,14 @@ def convert_3d_geometry_to_mesh(
 
     if apply_decimation and 0 < decimation_fraction < 1:
         mesh = mesh.simplify_quadric_decimation(int(len(mesh.faces) * decimation_fraction))
+
+    if space_directions is not None and space_origin is not None:
+        header = {
+            "space directions": space_directions,
+            "space origin": space_origin,
+        }
+        transform_matrix = matrix_from_nrrd_header(header)
+        mesh.apply_transform(transform_matrix)
 
     return mesh
 
