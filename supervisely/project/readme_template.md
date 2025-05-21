@@ -10,6 +10,10 @@ This is a general information about the project.<br>
 In this section, you can find information about the dataset structure. Dataset names are clickable and will redirect you to the corresponding folder.<br><br>
 {{dataset_structure_info}}<br>
 
+## Additional information (descriptions and custom data for datasets)
+
+{{dataset_description_info}}
+
 ## Useful links
 
 Please, visit the [Supervisely blog](https://supervisely.com/blog) to keep up with the latest news, updates, and tutorials and subscribe to [our YouTube channel](https://www.youtube.com/c/Supervisely) to watch video tutorials.<br>

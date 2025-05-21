@@ -274,6 +274,7 @@ setup(
             "faiss-gpu",
             "tabulate",
             "tensorboard",
+            "decord",
         ],
         "model-benchmark": [
             "pycocotools",
