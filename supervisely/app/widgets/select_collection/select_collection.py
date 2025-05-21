@@ -135,6 +135,7 @@ class SelectCollection(Widget):
         self._select_workspace = None
         self._select_project = None
         self._select_collection = None
+        self._select_all_collections_checkbox = None
         self._width = width
 
         # List of widgets will be used to create a Container.
@@ -148,7 +149,6 @@ class SelectCollection(Widget):
         self._create_collection_selector(select_all_collections)
 
         # Create the checkbox to select all collections if needed.
-        self._select_all_collections_checkbox = None
         if show_select_all_collections_checkbox:
             self._create_select_all_collections_checkbox(select_all_collections)
 
@@ -258,8 +258,7 @@ class SelectCollection(Widget):
         """
         if not self._compact:
             self._select_project.set_value(project_id)
-        self._project_id = project_id
-        self._select_collection.set_items(self._read_collections(project_id))  # ! TODO
+        self.set_project_id(project_id)
 
     def get_selected_project_id(self) -> Optional[int]:
         """Get the ID of the selected project.
@@ -269,24 +268,35 @@ class SelectCollection(Widget):
         """
         return self.project_id
 
-    def set_collection_id(self, collection_id: int) -> None:
-        """Set the ID of the collection to be selected by default.
+    def set_collection(self, collection: Union[int, str]) -> None:
+        """Set the collection to be selected.
 
-        :param id: The ID of the collection.
-        :type id: int
+        :param collection: The ID or name of the collection.
+        :type collection: The ID or name of the collection. 
+        :raise ValueError: If multiselect is enabled.
         """
-        self._select_collection.set_selected_by_id(collection_id)  # ! TODO
+        if isinstance(collection, int):
+            self.set_selected_id(collection)
+        elif isinstance(collection, str):
+            self.set_selected_name(collection)
+        else:
+            raise ValueError("Collection ID must be an integer or a string.")
 
-    def set_collection_ids(self, collection_ids: List[int]) -> None:
-        """Set the IDs of the collections to be selected by default.
+    def set_collections(self, collections: Union[List[int], List[str]]) -> None:
+        """Set the collections to be selected.
 
+        :param collection: The ID or name of the collection.
+        :type collection: The ID or name of the collection.
         :raise ValueError: If multiselect is disabled.
-        :param ids: The IDs of the collections.
-        :type ids: List[int]
         """
-        if not self._multiselect:
-            raise ValueError("This method can only be called when multiselect is enabled.")
-        self._select_collection.set_selected_by_id(collection_ids)  # ! TODO
+        if not isinstance(collections, list):
+            raise ValueError("Collections must be a list of integers or strings.")
+        if all(isinstance(i, int) for i in collections) or len(collections) == 0:
+            self.set_selected_ids(collections)
+        elif all(isinstance(i, str) for i in collections):
+            self.set_selected_names(collections)
+        else:
+            raise ValueError("Collection IDs must be a list of integers or a list of strings.")
 
     def value_changed(self, func: Callable) -> Callable:
         """Decorator to set the callback function for the value changed event.
@@ -331,17 +341,13 @@ class SelectCollection(Widget):
 
             if checked:
                 self.select_all()
-                self._select_collection.hide()
             else:
-                self._select_collection.set_value([])
-                self._select_collection.show()
-
-        if select_all_collections:
-            self._select_collection.hide()
-            select_all_collections_checkbox.check()
+                self.deselect_all()
 
         self._widgets.append(select_all_collections_checkbox)
         self._select_all_collections_checkbox = select_all_collections_checkbox
+        if select_all_collections:
+            self.select_all()
 
     def _create_collection_selector(self, select_all_collections: bool) -> None:
         """Create the collection selector.
@@ -359,7 +365,8 @@ class SelectCollection(Widget):
         if self._collection_id is not None:
             info = self._collections_ids_map.get(self._collection_id)
             if info is not None:
-                self._select_collection.set_value(info.name)
+                value = [info.name] if self._multiselect else info.name
+                self._select_collection.set_value(value)
         if select_all_collections:
             self.select_all()
 
@@ -523,15 +530,15 @@ class SelectCollection(Widget):
         :param project_id: The ID of the project.
         :type project_id: int
         """
-        self.project_id = project_id
+        self._project_id = project_id
         self._select_collection.set(self._read_collections(project_id))
         if self._multiselect:
             if self._select_all_collections_checkbox.is_checked():
                 self.select_all()
             else:
-                self._select_collection.set_value([])
+                self.deselect_all()
         else:
-            self._select_collection.set_value(None)  # ! TODO check
+            self._select_collection.set_value("")
 
     def _get_selected(self) -> Optional[Union[List[int], int]]:
         """Get the ID of the selected collection(s).
@@ -596,14 +603,63 @@ class SelectCollection(Widget):
         :param collection_ids: The IDs of the collections.
         :type collection_ids: List[int]
         """
-        if not self._collections_names_map:
+        if not self._collections_ids_map:
             return
 
         selected = []
         for i in collection_ids:
+            if i in self._collections_ids_map:
+                selected.append(self._collections_ids_map[i].name)
+        
+        if self._multiselect:
+            if len(selected) == len(self._collections_ids_map):
+                self.select_all()
+            else:
+                self.deselect_all()
+                self._select_collection.set_value(selected)
+                
+        else:
+            if len(selected) > 1:
+                raise ValueError("More than one collection found, but multiselect is disabled.")
+            value = selected[0] if selected else ""
+            self._select_collection.set_value(value)
+
+
+    def set_selected_name(self, collection_name: str) -> None:
+        """Set the name of the collection to be selected by default.
+
+        :param collection_name: The name of the collection.
+        :type collection_name: str
+        """
+        if self._multiselect:
+            raise ValueError("This method can only be called when multiselect is disabled.")
+        self._set_selected_by_names([collection_name])
+
+    def set_selected_names(self, collection_names: List[str]) -> None:
+        """Set the names of the collections to be selected by default.
+
+        :param collection_names: The names of the collections.
+        :type collection_names: List[str]
+        """
+        if not self._multiselect:
+            raise ValueError("This method can only be called when multiselect is enabled.")
+        self._set_selected_by_names(collection_names)
+
+    def _set_selected_by_names(self, collection_names: List[str]) -> None:
+        """Set the names of the collections to be selected by default.
+
+        :param collection_names: The names of the collections.
+        :type collection_names: List[str]
+        """
+        if not self._collections_names_map:
+            return
+        
+        ids = []
+        for i in collection_names:
             if i in self._collections_names_map:
-                selected.append(self._collections_names_map[i].name)
-        self._select_collection.set_value(selected)
+                ids.append(self._collections_names_map[i].id)
+        self._set_selected_by_ids(ids)
+
 
     def is_all_selected(self) -> bool:
         """Check if all collections are selected.
@@ -615,4 +671,18 @@ class SelectCollection(Widget):
 
     def select_all(self) -> None:
         """Select all collections."""
+        if not self._multiselect:
+            raise ValueError("This method can only be called when multiselect is enabled.")
         self._select_collection.set_value(list(self._collections_names_map.keys()))
+        if self._select_all_collections_checkbox is not None:
+            self._select_all_collections_checkbox.check()
+            self._select_collection.hide()
+
+    def deselect_all(self) -> None:
+        """Deselect all collections."""
+        if not self._multiselect:
+            raise ValueError("This method can only be called when multiselect is enabled.")
+        self._select_collection.set_value([])
+        if self._select_all_collections_checkbox is not None:
+            self._select_all_collections_checkbox.uncheck()
+            self._select_collection.show()
