@@ -459,9 +459,9 @@ class SessionJSON:
                     progress_widget = preparing_cb(
                         message="Downloading infos", total=resp["total"], unit="it"
                     )
-
                 while resp["status"] == "download_info":
                     current = resp["current"]
+                    # pylint: disable=possibly-used-before-assignment
                     progress_widget.update(current - prev_current)
                     prev_current = current
                     resp = self._get_preparing_progress()
@@ -813,7 +813,7 @@ class Session(SessionJSON):
         frames_direction: Literal["forward", "backward"] = None,
         tracker: Literal["bot", "deepsort"] = None,
         batch_size: int = None,
-        preparing_cb = None,
+        preparing_cb=None,
     ) -> AsyncInferenceIterator:
         frame_iterator = super().inference_video_id_async(
             video_id,
