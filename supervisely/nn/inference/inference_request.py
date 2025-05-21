@@ -219,8 +219,12 @@ class InferenceRequest:
         self._updated()
 
     def get_usage(self):
-        ram_allocated, ram_total = get_ram_usage()
-        gpu_allocated, gpu_total = get_gpu_usage()
+        ram_usage = get_ram_usage()
+        ram_allocated = ram_usage["used"]
+        ram_total = ram_usage["total"]
+        gpu_usage = get_gpu_usage()
+        gpu_allocated = gpu_usage["allocated"]
+        gpu_total = gpu_usage["total"]
         return {
             "gpu_memory": {
                 "allocated": gpu_allocated,

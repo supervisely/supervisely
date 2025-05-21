@@ -1,3 +1,4 @@
+import subprocess
 from dataclasses import dataclass
 
 import psutil
@@ -68,7 +69,23 @@ def _get_model_name(model_info: dict):
 
 def get_ram_usage():
     memory = psutil.virtual_memory()
-    return memory.used, memory.total
+    return {"used": memory.used, "total": memory.total}
+
+
+def get_nvidia_smi_usage():
+    result = subprocess.check_output(
+        [
+            "nvidia-smi",
+            "--query-gpu=utilization.gpu,memory.used",
+            "--format=csv,noheader,nounits",
+        ],
+        encoding="utf-8",
+    )
+    values = result.strip().split(", ")
+    utilization, memory_used = values
+    utilization = int(utilization)
+    memory_used = float(memory_used) * 1024 * 1024
+    return {"utilization": utilization, "memory_used": memory_used}
 
 
 def get_gpu_usage(device: str = None):
@@ -78,6 +95,7 @@ def get_gpu_usage(device: str = None):
         import torch
     except Exception as e:
         from supervisely import logger
+
         logger.warning(f"Cannot import torch. Install PyTorch to get GPU usage info. Error: {e}")
         return None, None
     if not torch.cuda.is_available():
@@ -102,5 +120,15 @@ def get_gpu_usage(device: str = None):
     if gpu_index is None or gpu_index > torch.cuda.device_count() or gpu_index < 0:
         return None, None
     allocated = torch.cuda.memory_allocated(gpu_index)
+    peak = torch.cuda.max_memory_allocated()
+    reserved = torch.cuda.memory_reserved()
+    cached = reserved - allocated
     total = torch.cuda.get_device_properties(gpu_index).total_memory
-    return allocated, total
+
+    return {
+        "allocated": allocated,
+        "peak": peak,
+        "reserved": reserved,
+        "cached": cached,
+        "total": total,
+    }
