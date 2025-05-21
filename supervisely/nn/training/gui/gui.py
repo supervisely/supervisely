@@ -812,6 +812,23 @@ class TrainGUI:
                 raise ValueError("split must be 'train' or 'val'")
             if not isinstance(percent, int) or not 0 < percent < 100:
                 raise ValueError("percent must be an integer in range 1 to 99")
+        elif train_val_splits_settings.get("method") == "collections":
+            train_collections = train_val_splits_settings.get("train_collections", [])
+            val_collections = train_val_splits_settings.get("val_collections", [])
+            collection_ids = set()
+            for collection in self._api.entities_collection.get_list(self.project_id):
+                collection_ids.add(collection.id)
+            missing_collections_ids = []
+            for collection_id in train_collections + val_collections:
+                if collection_id not in collection_ids:
+                    missing_collections_ids.append(collection_id)
+            if len(missing_collections_ids) > 0:
+                missing_collections_text = ", ".join(
+                    [str(collection_id) for collection_id in missing_collections_ids]
+                )
+                raise ValueError(
+                    f"Collections with ids: {missing_collections_text} not found in the project"
+                )
         return app_state
 
     def load_from_app_state(self, app_state: Union[str, dict]) -> None:
@@ -934,6 +951,15 @@ class TrainGUI:
             val_datasets = train_val_splits_settings["val_datasets"]
             self.train_val_splits_selector.train_val_splits.set_datasets_splits(
                 train_datasets, val_datasets
+            )
+        elif split_method == "collections":
+            train_collections = train_val_splits_settings["train_collections"]
+            val_collections = train_val_splits_settings["val_collections"]
+            self.train_val_splits_selector.train_val_splits.set_project_id_for_collections(
+                self.project_id
+            )
+            self.train_val_splits_selector.train_val_splits.set_collections_splits(
+                train_collections, val_collections
             )
         self.train_val_splits_selector_cb()
 
