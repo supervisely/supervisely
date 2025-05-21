@@ -36,46 +36,70 @@ class TrainValSplitsSelector:
             project_id, None, random_split, tag_split, ds_split, collections_splits=coll_split
         )
 
+        # check for collections with "train" and "val" prefixes
+        all_collections = self.api.entities_collection.get_list(self.project_id)
+        train_collections = []
+        val_collections = []
+        collections_found = False
+        for collection in all_collections:
+            if collection.name.lower().startswith("train"):
+                train_collections.append(collection.id)
+            elif collection.name.lower().startswith("val"):
+                val_collections.append(collection.id)
+        
+        if len(train_collections) > 0 and len(val_collections) > 0:
+            self.train_val_splits.set_collections_splits(train_collections, val_collections)
+            self.validator_text = Text(
+                "Train and val collections are detected", status="info"
+            )
+            self.validator_text.show()
+            collections_found = True
+        else:
+            self.validator_text = Text("")
+            self.validator_text.hide()
+        
+
         def _extend_with_nested(root_ds):
             nested = self.api.dataset.get_nested(self.project_id, root_ds.id)
             nested_ids = [ds.id for ds in nested]
             return [root_ds.id] + nested_ids
 
-        train_val_dataset_ids = {"train": set(), "val": set()}
-        for _, dataset in self.api.dataset.tree(self.project_id):
-            ds_name = dataset.name.lower()
+        if not collections_found:
+            train_val_dataset_ids = {"train": set(), "val": set()}
+            for _, dataset in self.api.dataset.tree(self.project_id):
+                ds_name = dataset.name.lower()
 
-            if ds_name in {"train", "training"}:
-                for _id in _extend_with_nested(dataset):
-                    train_val_dataset_ids["train"].add(_id)
+                if ds_name in {"train", "training"}:
+                    for _id in _extend_with_nested(dataset):
+                        train_val_dataset_ids["train"].add(_id)
 
-            elif ds_name in {"val", "validation", "test", "testing"}:
-                for _id in _extend_with_nested(dataset):
-                    train_val_dataset_ids["val"].add(_id)
+                elif ds_name in {"val", "validation", "test", "testing"}:
+                    for _id in _extend_with_nested(dataset):
+                        train_val_dataset_ids["val"].add(_id)
 
-        train_val_dataset_ids["train"] = list(train_val_dataset_ids["train"])
-        train_val_dataset_ids["val"] = list(train_val_dataset_ids["val"])
+            train_val_dataset_ids["train"] = list(train_val_dataset_ids["train"])
+            train_val_dataset_ids["val"] = list(train_val_dataset_ids["val"])
 
-        train_count = len(train_val_dataset_ids["train"])
-        val_count = len(train_val_dataset_ids["val"])
+            train_count = len(train_val_dataset_ids["train"])
+            val_count = len(train_val_dataset_ids["val"])
 
-        if train_count > 0 and val_count > 0:
-            self.train_val_splits.set_datasets_splits(
-                train_val_dataset_ids["train"], train_val_dataset_ids["val"]
-            )
-
-        if train_count > 0 and val_count > 0:
-            if train_count == val_count == 1:
-                self.validator_text = Text("train and val datasets are detected", status="info")
-            else:
-                self.validator_text = Text(
-                    "Multiple train and val datasets are detected. Check manually if selection is correct",
-                    status="info",
+            if train_count > 0 and val_count > 0:
+                self.train_val_splits.set_datasets_splits(
+                    train_val_dataset_ids["train"], train_val_dataset_ids["val"]
                 )
-            self.validator_text.show()
-        else:
-            self.validator_text = Text("")
-            self.validator_text.hide()
+
+            if train_count > 0 and val_count > 0:
+                if train_count == val_count == 1:
+                    self.validator_text = Text("train and val datasets are detected", status="info")
+                else:
+                    self.validator_text = Text(
+                        "Multiple train and val datasets are detected. Check manually if selection is correct",
+                        status="info",
+                    )
+                self.validator_text.show()
+            else:
+                self.validator_text = Text("")
+                self.validator_text.hide()
 
         self.button = Button("Select")
         self.display_widgets.extend([self.train_val_splits, self.validator_text, self.button])
@@ -298,7 +322,7 @@ class TrainValSplitsSelector:
                     status="error",
                 )
                 return True
-                
+
             else:
                 self.validator_text.set("Train and val collections are selected", status="success")
                 return True
@@ -338,12 +362,12 @@ class TrainValSplitsSelector:
 
     def get_train_collection_ids(self) -> List[int]:
         return self.train_val_splits._train_collections_select.get_selected_ids()
-    
+
     def set_train_collection_ids(self, collection_ids: List[int]) -> None:
         self.train_val_splits._train_collections_select.set_selected_ids(collection_ids)
 
     def get_val_collection_ids(self) -> List[int]:
         return self.train_val_splits._val_collections_select.get_selected_ids()
-    
+
     def set_val_collection_ids(self, collection_ids: List[int]) -> None:
         self.train_val_splits._val_collections_select.set_selected_ids(collection_ids)

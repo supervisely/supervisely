@@ -531,7 +531,11 @@ class SelectCollection(Widget):
         :type project_id: int
         """
         self._project_id = project_id
-        self._select_collection.set(self._read_collections(project_id))
+        items = self._read_collections(project_id)
+        if items is None or len(items) == 0:
+            self._select_collection.set([])
+            return
+        self._select_collection.set(items)
         if self._multiselect:
             if self._select_all_collections_checkbox.is_checked():
                 self.select_all()
