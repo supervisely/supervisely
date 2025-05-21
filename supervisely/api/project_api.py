@@ -148,6 +148,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         project_info = api.project.get_info_by_id(project_id)
     """
 
+    debug_messages_sent = {"get_list_versions": False, "get_list_embeddings": False}
+
     @staticmethod
     def info_sequence():
         """
@@ -318,11 +320,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         method = "projects.list"
 
         debug_message = "While getting list of projects, the following fields are not available: "
-        message_updated = False
+
         if ApiField.VERSION in fields:
             fields.remove(ApiField.VERSION)
-            debug_message += "version, "
-            message_updated = True
+            if self.debug_messages_sent.get("get_list_versions", False) is False:
+                self.debug_messages_sent["get_list_versions"] = True
+                logger.debug(debug_message + "version. ")
 
         if ApiField.IS_EMBEDDINGS_UPDATED in fields:
             fields.remove(ApiField.IS_EMBEDDINGS_UPDATED)
@@ -335,12 +338,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         if with_embeddings_info:
             data.update({ApiField.SHOW_EMBEDDINGS_UPDATED: True})
-        else:
-            debug_message += "is_embeddings_updated. "
-            message_updated = True
-
-        if message_updated:
-            logger.debug(debug_message)
+        elif self.debug_messages_sent.get("get_list_embeddings", False) is False:
+            self.debug_messages_sent["get_list_embeddings"] = True
+            logger.debug(debug_message + "is_embeddings_updated. ")
 
         return self.get_list_all_pages(method, data)
 
