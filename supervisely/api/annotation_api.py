@@ -46,6 +46,7 @@ class AnnotationInfo(NamedTuple):
     annotation: dict
     created_at: str
     updated_at: str
+    dataset_id: int = None
 
     def to_json(self) -> Dict[str, Any]:
         """
@@ -60,6 +61,7 @@ class AnnotationInfo(NamedTuple):
             ApiField.ANNOTATION: self.annotation,
             ApiField.CREATED_AT: self.created_at,
             ApiField.UPDATED_AT: self.updated_at,
+            ApiField.DATASET_ID: self.dataset_id,
         }
 
 
@@ -112,6 +114,7 @@ class AnnotationApi(ModuleApi):
             ApiField.ANNOTATION,
             ApiField.CREATED_AT,
             ApiField.UPDATED_AT,
+            ApiField.DATASET_ID,
         ]
 
     @staticmethod
