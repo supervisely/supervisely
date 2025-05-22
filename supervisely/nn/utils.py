@@ -209,6 +209,30 @@ class GpuUsageMonitor:
             self._thread.join(timeout=timeout)
 
 
+def _log_gpu_usage(logger, message):
+    gpu_usage = get_gpu_usage()
+    allocated = gpu_usage["allocated"] / (1024**2)
+    peak = gpu_usage["peak"] / (1024**2)
+    reserved = gpu_usage["reserved"] / (1024**2)
+    cached = gpu_usage["cached"] / (1024**2)
+    total = gpu_usage["total"] / (1024**2)
+    nvidia_usage = get_nvidia_smi_usage()
+    utilization = nvidia_usage["utilization"]
+    memory_used = nvidia_usage["memory_used"] / (1024**2)
+    logger.info(
+        message,
+        extra={
+            "allocated memory (MB)": round(allocated, 2),
+            "peak memory (MB)": round(peak, 2),
+            "reserved memory (MB)": round(reserved, 2),
+            "cached memory (MB)": round(cached, 2),
+            "total memory (MB)": round(total, 2),
+            "utilization (%)": utilization,
+            "system used memory (MB)": round(memory_used, 2),
+        },
+    )
+
+
 def log_gpu_usage(func):
     try:
         import torch
@@ -218,36 +242,18 @@ def log_gpu_usage(func):
     if not env.enable_gpu_monitoring():
         return func
 
-    logger = sly_logger
-
     @wraps
     def wrapper(*args, **kwargs):
         try:
             torch.cuda.reset_peak_memory_stats()
-            gpu_usage = get_gpu_usage()
-            allocated = gpu_usage["allocated"] / (1024**2)
-            peak = gpu_usage["peak"] / (1024**2)
-            reserved = gpu_usage["reserved"] / (1024**2)
-            cached = gpu_usage["cached"] / (1024**2)
-            total = gpu_usage["total"] / (1024**2)
-            nvidia_usage = get_nvidia_smi_usage()
-            utilization = nvidia_usage["utilization"]
-            memory_used = nvidia_usage["memory_used"] / (1024**2)
-            logger.info(
-                "GPU monitoring:",
-                extra={
-                    "function": func.__name__,
-                    "allocated memory (MB)": round(allocated, 2),
-                    "peak memory (MB)": round(peak, 2),
-                    "reserved memory (MB)": round(reserved, 2),
-                    "cached memory (MB)": round(cached, 2),
-                    "total memory (MB)": round(total, 2),
-                    "utilization (%)": utilization,
-                    "system used memory (MB)": round(memory_used, 2),
-                },
-            )
+            _log_gpu_usage(sly_logger, f"GPU monitoring: Before {func.__name__} call:")
         except Exception as e:
-            logger.error(f"Error in VRAM monitoring: {str(e)}", exc_info=True)
-        return func(*args, **kwargs)
+            sly_logger.error(f"Error in VRAM monitoring: {str(e)}", exc_info=True)
+        result = func(*args, **kwargs)
+        try:
+            _log_gpu_usage(sly_logger, f"GPU monitoring: After {func.__name__} call:")
+        except Exception as e:
+            sly_logger.error(f"Error in VRAM monitoring: {str(e)}", exc_info=True)
+        return result
 
     return wrapper
