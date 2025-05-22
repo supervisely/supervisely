@@ -571,6 +571,7 @@ def supervisely_server_path_prefix() -> str:
         raise_not_found=False,
     )
 
+
 def supervisely_skip_https_user_helper_check() -> bool:
     """Returns decision to skip `_check_https_redirect` for API from environment variable using following
         - SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"
@@ -581,6 +582,38 @@ def supervisely_skip_https_user_helper_check() -> bool:
     return _parse_from_env(
         name="supervisely_skip_https_user_helper_check",
         keys=["SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"],
+        postprocess_fn=flag_from_env,
+        default=False,
+        raise_not_found=False,
+    )
+
+
+def gpu_monitoring_interval() -> int:
+    """Returns GPU monitoring interval from environment variable using following
+        - SUPERVISELY_GPU_MONITORING_INTERVAL
+
+    :return: GPU monitoring interval
+    :rtype: int
+    """
+    return _parse_from_env(
+        name="gpu_monitoring_interval",
+        keys=["SUPERVISELY_GPU_MONITORING_INTERVAL"],
+        postprocess_fn=lambda x: int(x),
+        default=5,
+        raise_not_found=False,
+    )
+
+
+def enable_gpu_monitoring() -> bool:
+    """Returns decision to enable GPU monitoring from environment variable using following
+        - SUPERVISELY_ENABLE_GPU_MONITORING
+
+    :return: decision to enable GPU monitoring
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="enable_gpu_monitoring",
+        keys=["SUPERVISELY_ENABLE_GPU_MONITORING"],
         postprocess_fn=flag_from_env,
         default=False,
         raise_not_found=False,

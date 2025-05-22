@@ -240,7 +240,16 @@ class InferenceRequest:
         status_data = self.to_json()
         for key in ["pending_results", "final_result", "created_at", "updated_at"]:
             status_data.pop(key, None)
-        status_data.update(self.get_usage())
+        try:
+            usage = self.get_usage()
+        except Exception as e:
+            usage = {
+                "gpu_memory": {"allocated": None, "total": None},
+                "ram_memory": {"allocated": None, "total": None},
+                "exception": str(e),
+            }
+            logger.error(f"Error getting usage: {e}", exc_info=True)
+        status_data.update(usage)
         return status_data
 
 
