@@ -465,7 +465,7 @@ class VolumeFigure(VideoFigure):
         key_id_map: KeyIdMap = None,
     ):
         """
-        Convert a json dict to VolumeFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VolumeFigure. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
         :type data: dict
@@ -557,7 +557,7 @@ class VolumeFigure(VideoFigure):
 
     def to_json(self, key_id_map=None, save_meta=True):
         """
-        Convert the VolumeFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VolumeFigure to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional

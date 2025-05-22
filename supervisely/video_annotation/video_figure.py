@@ -298,7 +298,7 @@ class VideoFigure:
         self, key_id_map: Optional[KeyIdMap] = None, save_meta: Optional[bool] = False
     ) -> Dict:
         """
-        Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoFigure to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -406,7 +406,7 @@ class VideoFigure:
         key_id_map: Optional[KeyIdMap] = None,
     ) -> VideoFigure:
         """
-        Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VideoFigure. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
         :type data: :class:`dict`

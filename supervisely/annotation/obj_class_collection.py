@@ -166,7 +166,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
 
     def to_json(self) -> List[Dict]:
         """
-        Convert the ObjClassCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the ObjClassCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: List of dicts in json format
         :rtype: :class:`List[dict]`
@@ -206,7 +206,7 @@ class ObjClassCollection(KeyIndexedCollection, JsonSerializable):
     @classmethod
     def from_json(cls, data: List[Dict]) -> ObjClassCollection:
         """
-        Convert a list with dicts in json format to ObjClassCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list with dicts in json format to ObjClassCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]

@@ -1,6 +1,6 @@
 """Functions for processing pointcloud episodes"""
 
-from supervisely._utils import is_development, abs_url
+from supervisely._utils import abs_url, is_development
 
 
 def get_labeling_tool_url(dataset_id, pointcloud_id):
@@ -29,7 +29,7 @@ def get_labeling_tool_url(dataset_id, pointcloud_id):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud_episodes.get_info_by_id(pointcloud_id)
