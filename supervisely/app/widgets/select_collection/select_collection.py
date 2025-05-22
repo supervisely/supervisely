@@ -272,7 +272,7 @@ class SelectCollection(Widget):
         """Set the collection to be selected.
 
         :param collection: The ID or name of the collection.
-        :type collection: The ID or name of the collection. 
+        :type collection: The ID or name of the collection.
         :raise ValueError: If multiselect is enabled.
         """
         if isinstance(collection, int):
@@ -355,8 +355,11 @@ class SelectCollection(Widget):
         :param select_all_collections: Whether all collections should be selected by default.
         :type select_all_collections: bool
         """
+        items = self._read_collections(self._project_id)
+        if items is None or len(items) == 0:
+            items = []
         self._select_collection = Select(
-            items=self._read_collections(self._project_id),
+            items=items,
             multiple=self._multiselect,
             width_px=self._width,
             placeholder="Select collection",
@@ -614,20 +617,19 @@ class SelectCollection(Widget):
         for i in collection_ids:
             if i in self._collections_ids_map:
                 selected.append(self._collections_ids_map[i].name)
-        
+
         if self._multiselect:
             if len(selected) == len(self._collections_ids_map):
                 self.select_all()
             else:
                 self.deselect_all()
                 self._select_collection.set_value(selected)
-                
+
         else:
             if len(selected) > 1:
                 raise ValueError("More than one collection found, but multiselect is disabled.")
             value = selected[0] if selected else ""
             self._select_collection.set_value(value)
-
 
     def set_selected_name(self, collection_name: str) -> None:
         """Set the name of the collection to be selected by default.
@@ -657,13 +659,12 @@ class SelectCollection(Widget):
         """
         if not self._collections_names_map:
             return
-        
+
         ids = []
         for i in collection_names:
             if i in self._collections_names_map:
                 ids.append(self._collections_names_map[i].id)
         self._set_selected_by_ids(ids)
-
 
     def is_all_selected(self) -> bool:
         """Check if all collections are selected.
