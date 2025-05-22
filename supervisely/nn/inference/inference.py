@@ -3169,8 +3169,12 @@ class Inference:
         @server.post("/get_status")
         def _get_status(request: Request):
             progress = self.inference_requests_manager.global_progress.to_json()
-            ram_allocated, ram_total = get_ram_usage()
-            gpu_allocated, gpu_total = get_gpu_usage()
+            ram_usage = get_ram_usage()
+            ram_allocated = ram_usage["used"]
+            ram_total = ram_usage["total"]
+            gpu_usage = get_gpu_usage()
+            gpu_allocated = gpu_usage["allocated"]
+            gpu_total = gpu_usage["total"]
             return {
                 "is_deployed": self.is_model_deployed(),
                 "progress": progress,

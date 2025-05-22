@@ -219,8 +219,12 @@ class InferenceRequest:
         self._updated()
 
     def get_usage(self):
-        ram_allocated, ram_total = get_ram_usage()
-        gpu_allocated, gpu_total = get_gpu_usage()
+        ram_usage = get_ram_usage()
+        ram_allocated = ram_usage["used"]
+        ram_total = ram_usage["total"]
+        gpu_usage = get_gpu_usage()
+        gpu_allocated = gpu_usage["allocated"]
+        gpu_total = gpu_usage["total"]
         return {
             "gpu_memory": {
                 "allocated": gpu_allocated,
@@ -236,7 +240,16 @@ class InferenceRequest:
         status_data = self.to_json()
         for key in ["pending_results", "final_result", "created_at", "updated_at"]:
             status_data.pop(key, None)
-        status_data.update(self.get_usage())
+        try:
+            usage = self.get_usage()
+        except Exception as e:
+            usage = {
+                "gpu_memory": {"allocated": None, "total": None},
+                "ram_memory": {"allocated": None, "total": None},
+                "exception": str(e),
+            }
+            logger.error(f"Error getting usage: {e}", exc_info=True)
+        status_data.update(usage)
         return status_data
 
 
