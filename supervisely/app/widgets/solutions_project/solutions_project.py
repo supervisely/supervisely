@@ -266,7 +266,7 @@ class SolutionsProject(Widget):
 
     def set_project(self, project: ProjectInfo) -> None:
         self._preview_url = [project.image_preview_url]
-        self._items_count = [project.items_count]
+        self._items_count = [f"{project.items_count or 0} {self._items_type}"]
         DataJson()[self.widget_id]["preview_urls"] = self._preview_url
         DataJson()[self.widget_id]["items_counts"] = self._items_count
         DataJson().send_changes()
