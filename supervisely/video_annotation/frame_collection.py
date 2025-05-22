@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from supervisely.sly_logger import logger
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
+from supervisely.sly_logger import logger
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_figure import VideoFigure
@@ -207,7 +207,7 @@ class FrameCollection(KeyIndexedCollection):
 
     def to_json(self, key_id_map: KeyIdMap = None) -> List[Dict]:
         """
-        Convert the FrameCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the FrameCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -248,7 +248,7 @@ class FrameCollection(KeyIndexedCollection):
         skip_corrupted: Optional[bool] = False,
     ) -> FrameCollection:
         """
-        Convert a list of json dicts to FrameCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list of json dicts to FrameCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]

@@ -50,7 +50,7 @@ def _parse_from_env(
     # env not found
     if raise_not_found is True:
         raise KeyError(
-            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervise.ly/getting-started/environment-variables"
+            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervisely.com/getting-started/environment-variables"
         )
 
     return default
@@ -570,6 +570,7 @@ def supervisely_server_path_prefix() -> str:
         default="",
         raise_not_found=False,
     )
+
 
 def supervisely_skip_https_user_helper_check() -> bool:
     """Returns decision to skip `_check_https_redirect` for API from environment variable using following

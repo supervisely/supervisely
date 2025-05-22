@@ -10,7 +10,7 @@ Supervisely SDK for Python
    :caption: Python API
 
    sdk_packages
-   Public REST API ⬀             <https://api.docs.supervise.ly/>
+   Public REST API ⬀             <https://api.docs.supervisely.com/>
 
 
 .. toctree::
@@ -19,11 +19,11 @@ Supervisely SDK for Python
 
    Supervisely GitHub ⬀                   <https://github.com/supervisely/supervisely>
    Supervisely Ecosystem ⬀                <https://github.com/supervisely-ecosystem/>
-   Supervisely Developer ⬀                <https://developer.supervise.ly/>
+   Supervisely Developer ⬀                <https://developer.supervisely.com/>
 
 .. toctree::
    :caption: Social
    :hidden:
 
-   Slack                   <https://supervise.ly/slack>
+   Slack                   <https://supervisely.com/slack>
    YouTube                <https://www.youtube.com/supervisely>

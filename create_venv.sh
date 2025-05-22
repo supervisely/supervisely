@@ -2,7 +2,7 @@
 
 # learn more in documentation
 # Official python docs: https://docs.python.org/3/library/venv.html
-# Superviely developer portal: https://developer.supervise.ly/getting-started/installation#venv
+# Superviely developer portal: https://developer.supervisely.com/getting-started/installation#venv
 
 if [ -d ".venv" ]; then
     echo "VENV already exists, will be removed"

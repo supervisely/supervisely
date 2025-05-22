@@ -1,12 +1,13 @@
 from __future__ import annotations
-from typing import Optional, List, Dict, Any, Iterator
 
-from supervisely.video_annotation.key_id_map import KeyIdMap
+from typing import Any, Dict, Iterator, List, Optional
+
+import supervisely.sly_logger as logger
 from supervisely.annotation.tag_collection import TagCollection
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.pointcloud_annotation.pointcloud_tag import PointcloudTag
-from supervisely.annotation.tag_meta import TagMeta
-import supervisely.sly_logger as logger
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudTagCollection(TagCollection):
@@ -192,7 +193,7 @@ class PointcloudTagCollection(TagCollection):
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
         Convert the :class:`PointcloudTagCollection<PointcloudTagCollection>` to a list of json dicts.
-        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
@@ -241,7 +242,7 @@ class PointcloudTagCollection(TagCollection):
     ) -> PointcloudTagCollection:
         """
         Convert a list with dicts in json format to :class:`PointcloudTagCollection<PointcloudTagCollection>`.
-        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: :class:`List[Dict]`

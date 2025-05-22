@@ -195,7 +195,7 @@ class Tag(KeyObject):
 
     def to_json(self) -> Dict:
         """
-        Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -235,7 +235,7 @@ class Tag(KeyObject):
     @classmethod
     def from_json(cls, data: Dict, tag_meta_collection: TagMetaCollection) -> Tag:
         """
-        Convert a json dict to Tag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Tag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Tag in json format as a dict.
         :type data: dict
