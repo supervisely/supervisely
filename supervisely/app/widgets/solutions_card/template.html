@@ -1,105 +1,110 @@
 <link rel="stylesheet" href="./sly/css/app/widgets/solutions_card/style.css" />
-{% if widget._link is not none %}
-<a :href="data.{{{widget.widget_id}}}.link" target="_blank">
-    {% endif %}
-    <div class="solutions-node icon-node" :style="{width: data.{{{widget.widget_id}}}.width}" {% if
-        widget._click_handled %} @click="post('/{{{widget.widget_id}}}/solutions_card_clicked_cb')" {% endif %} :class="{
+<div class="solutions-node icon-node" :style="{width: data.{{{widget.widget_id}}}.width}">
+    <div class="node-badges-row" v-if="state.{{{widget.widget_id}}}.show_badges">
+        <div v-for="item in state.{{{widget.widget_id}}}.badges">
+            <div class="node-badge" :class="{
+            'badge-success': item.badge_type == 'success' && !item.plain,
+            'badge-info': item.badge_type == 'info' && !item.plain,
+            'badge-warning': item.badge_type == 'warning' && !item.plain,
+            'badge-error': item.badge_type == 'error' && !item.plain,
+            'badge-success-plain': item.badge_type == 'success' && !!item.plain,
+            'badge-info-plain': item.badge_type == 'info' && !!item.plain,
+            'badge-warning-plain': item.badge_type == 'warning' && !!item.plain,
+            'badge-error-plain': item.badge_type == 'error' && !!item.plain,
+        }">
+                <div class="badge-label" :class="{
+                    'badge-label-plain': item.plain,
+                }">
+                    <div class="mr5">{{item.on_hover}}</div>
+                </div>
+
+                <div class="badge-counter">{{item.label}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="data.{{{widget.widget_id}}}.disabled" class="wrapper disabled"></div>
+
+    <div {% if widget._click_handled %} @click="post('/{{{widget.widget_id}}}/solutions_card_clicked_cb')" {% endif %}
+        class="node-content-wrapper" :class="{
             'clickable': data.{{{widget.widget_id}}}.clickable,
             'node-loading': data.{{{widget.widget_id}}}.loading,
             }">
-        <div class="node-badges-row" v-if="state.{{{widget.widget_id}}}.show_badges">
-            <div v-for="item in state.{{{widget.widget_id}}}.badges">
-                <div class="node-badge" :class="{
-                'badge-success': item.badge_type == 'success' && !item.plain,
-                'badge-info': item.badge_type == 'info' && !item.plain,
-                'badge-warning': item.badge_type == 'warning' && !item.plain,
-                'badge-error': item.badge_type == 'error' && !item.plain,
-                'badge-success-plain': item.badge_type == 'success' && !!item.plain,
-                'badge-info-plain': item.badge_type == 'info' && !!item.plain,
-                'badge-warning-plain': item.badge_type == 'warning' && !!item.plain,
-                'badge-error-plain': item.badge_type == 'error' && !!item.plain,
-            }">
-                    <div class="badge-label" :class="{
-                        'badge-label-plain': item.plain,
-                    }">
-                        <div class="mr5">{{item.on_hover}}</div>
-                    </div>
+        {% if widget._link is not none %}
+        <a v-if="!data.{{{widget.widget_id}}}.disabled" :href="data.{{{widget.widget_id}}}.link" target="_blank">
+            {% endif %}
 
-                    <div class="badge-counter">{{item.label}}</div>
-                </div>
+            <div class="node-content" v-if="data.{{{widget.widget_id}}}.title !== null">
+                <div class="icon"></div>
+                <div class="node-title" v-html="data.{{{widget.widget_id}}}.title"></div>
             </div>
-        </div>
 
-        <div v-if="data.{{{widget.widget_id}}}.disabled" class="wrapper disabled"></div>
-
-        <div class="node-content" v-if="data.{{{widget.widget_id}}}.title !== null">
-            <div class="icon"></div>
-            <div class="node-title" v-html="data.{{{widget.widget_id}}}.title"></div>
-        </div>
-
-        {% if widget._content %}
-        <div class="main-section">
-            {% for item in widget._content %}
-            <div class="main-section-row fflex">{{{item}}}</div>
-            {% endfor %}
-        </div>
-        {% endif %} {% if widget._show_tooltip == true %} {% if
-        widget._tooltip_position == "right" %}
-        <div class="node-tooltip-wrapper right">
-            {% else %}
-            <div class="node-tooltip-wrapper left">
-                {% endif %}
-                <div class="node-tooltip">
-                    <div class="node-section description-section"
-                        v-if="state.{{{widget.widget_id}}}.tooltip_description">
-                        <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
-                            style="top: 15px; position: absolute">
-                            <rect y="0.5" width="12" height="13" rx="6" fill="#555C64" />
-                            <path
-                                d="M6.34091 9.06031L6.82312 7.3523L7.17258 6.16641C7.46453 4.90795 4.4423 5.9767 4 6.29824L4.03548 6.6757C4.43821 6.41164 5.96322 6.07338 5.65917 7.0082L5.52276 7.48537L4.82742 9.90203C4.53547 11.1605 7.5577 10.0917 8 9.7702L7.96452 9.39274C7.56187 9.65687 6.03686 9.99513 6.34091 9.06031Z"
-                                fill="white" />
-                            <path
-                                d="M6.74063 5.2424C7.25708 5.2424 7.67575 4.85235 7.67575 4.3712C7.67575 3.89005 7.25708 3.5 6.74063 3.5C6.22419 3.5 5.80552 3.89005 5.80552 4.3712C5.80552 4.85235 6.22419 5.2424 6.74063 5.2424Z"
-                                fill="white" />
-                        </svg>
-
-                        &emsp;&nbsp;{{state.{{{widget.widget_id}}}.tooltip_description}}
-                    </div>
-
-                    <div class="node-section info-section"
-                        v-if="state.{{{widget.widget_id}}}.tooltip_properties.length > 0 && !data.{{{widget.widget_id}}}.disabled">
-                        <div class="info-section-row" v-for="item in state.{{{widget.widget_id}}}.tooltip_properties">
-                            <div class="info-section-row-label fw500">{{item.key}}:</div>
-                            <template v-if="typeof item.value === 'string'">
-                                <div class="info-section-row-value fw500" :class="{'badge' : item.highlight}">
-                                    <a v-if="item.link" class="default-link" :href="item.link"
-                                        target="_blank">{{item.value}}</a>
-                                    <div v-if="!item.link">{{item.value}}</div>
-                                </div>
-                            </template>
-                            <template v-else>
-                                <div v-for="subitem in item.value" class="info-section-row-value fw500"
-                                    :class="{'badge' : item.highlight}">
-                                    <a v-if="item.link" class="default-link" :href="item.link"
-                                        target="_blank">{{subitem}}</a>
-                                    <div v-if="!item.link">{{subitem}}</div>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    {% if widget._tooltip._content %}
-                    <div v-if="!data.{{{widget.widget_id}}}.disabled" class="node-section actions-section">
-                        {% for item in widget._tooltip._content %}
-                        <div class="actions-section-row fflex">{{{item}}}</div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
+            {% if widget._content %}
+            <div class="main-section">
+                {% for item in widget._content %}
+                <div class="main-section-row fflex">{{{item}}}</div>
+                {% endfor %}
             </div>
             {% endif %}
-        </div>
+
+            {% if widget._link is not none %}
+        </a>
+        {% endif %}
     </div>
-    {% if widget._link is not none %}
-</a>
-{% endif %}
+
+    {% if widget._show_tooltip == true %} {% if
+    widget._tooltip_position == "right" %}
+    <div class="node-tooltip-wrapper right">
+        {% else %}
+        <div class="node-tooltip-wrapper left">
+            {% endif %}
+            <div class="node-tooltip">
+                <div class="node-section description-section" v-if="state.{{{widget.widget_id}}}.tooltip_description">
+                    <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        style="top: 15px; position: absolute">
+                        <rect y="0.5" width="12" height="13" rx="6" fill="#555C64" />
+                        <path
+                            d="M6.34091 9.06031L6.82312 7.3523L7.17258 6.16641C7.46453 4.90795 4.4423 5.9767 4 6.29824L4.03548 6.6757C4.43821 6.41164 5.96322 6.07338 5.65917 7.0082L5.52276 7.48537L4.82742 9.90203C4.53547 11.1605 7.5577 10.0917 8 9.7702L7.96452 9.39274C7.56187 9.65687 6.03686 9.99513 6.34091 9.06031Z"
+                            fill="white" />
+                        <path
+                            d="M6.74063 5.2424C7.25708 5.2424 7.67575 4.85235 7.67575 4.3712C7.67575 3.89005 7.25708 3.5 6.74063 3.5C6.22419 3.5 5.80552 3.89005 5.80552 4.3712C5.80552 4.85235 6.22419 5.2424 6.74063 5.2424Z"
+                            fill="white" />
+                    </svg>
+
+                    &emsp;&nbsp;{{state.{{{widget.widget_id}}}.tooltip_description}}
+                </div>
+
+                <div class="node-section info-section"
+                    v-if="state.{{{widget.widget_id}}}.tooltip_properties.length > 0 && !data.{{{widget.widget_id}}}.disabled">
+                    <div class="info-section-row" v-for="item in state.{{{widget.widget_id}}}.tooltip_properties">
+                        <div class="info-section-row-label fw500">{{item.key}}:</div>
+                        <template v-if="typeof item.value === 'string'">
+                            <div class="info-section-row-value fw500" :class="{'badge' : item.highlight}">
+                                <a v-if="item.link" class="default-link" :href="item.link"
+                                    target="_blank">{{item.value}}</a>
+                                <div v-if="!item.link">{{item.value}}</div>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div v-for="subitem in item.value" class="info-section-row-value fw500"
+                                :class="{'badge' : item.highlight}">
+                                <a v-if="item.link" class="default-link" :href="item.link"
+                                    target="_blank">{{subitem}}</a>
+                                <div v-if="!item.link">{{subitem}}</div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {% if widget._tooltip._content %}
+                <div v-if="!data.{{{widget.widget_id}}}.disabled" class="node-section actions-section">
+                    {% for item in widget._tooltip._content %}
+                    <div class="actions-section-row fflex">{{{item}}}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>

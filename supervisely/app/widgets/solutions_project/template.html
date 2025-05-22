@@ -22,23 +22,35 @@
     <div v-if="data.{{{widget.widget_id}}}.disabled" class="wrapper disabled"></div>
 
     <!-- content -->
-    <div class="node-content">
-        <div class="node-title" v-if="data.{{{widget.widget_id}}}.title !== null">
-            {{data.{{{widget.widget_id}}}.title}}
-        </div>
-
-        <div class="project-node-previews-wrapper">
-            <div class="project-node-preview" v-for="(item, idx) in data.{{{widget.widget_id}}}.preview_urls">
-                <div class="project-node-preview-backdrop"></div>
-                <div v-if="item" class="project-node-preview-container">
-                    <img :src="item" />
+    <div {% if widget._click_handled %} @click="post('/{{{widget.widget_id}}}/solutions_card_clicked_cb')" {% endif %}
+        class="node-content-wrapper" :class="{
+        'clickable': data.{{{widget.widget_id}}}.clickable,
+        'node-loading': data.{{{widget.widget_id}}}.loading,
+        }">
+        {% if widget._link is not none %}
+        <a v-if="!data.{{{widget.widget_id}}}.disabled" :href="data.{{{widget.widget_id}}}.link" target="_blank">
+            {% endif %}
+            <div class="node-content">
+                <div class="node-title" v-if="data.{{{widget.widget_id}}}.title !== null">
+                    {{data.{{{widget.widget_id}}}.title}}
                 </div>
 
-                <div class="project-node-preview-title" v-if="data.{{{widget.widget_id}}}.items_counts">
-                    {{data.{{{widget.widget_id}}}.items_counts[idx]}}
+                <div class="project-node-previews-wrapper">
+                    <div class="project-node-preview" v-for="(item, idx) in data.{{{widget.widget_id}}}.preview_urls">
+                        <div class="project-node-preview-backdrop"></div>
+                        <div v-if="item" class="project-node-preview-container">
+                            <img :src="item" />
+                        </div>
+
+                        <div class="project-node-preview-title" v-if="data.{{{widget.widget_id}}}.items_counts">
+                            {{data.{{{widget.widget_id}}}.items_counts[idx]}}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+            {% if widget._link is not none %}
+        </a>
+        {% endif %}
     </div>
 
     <!-- tooltip -->

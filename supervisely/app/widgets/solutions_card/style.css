@@ -127,8 +127,6 @@ a {
   border: 1px solid #ebebed;
   border-radius: 6px;
   box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
-  padding: 10px;
-  box-sizing: border-box;
 }
 
 .solutions-node.inline-node {
@@ -141,10 +139,10 @@ a {
   font-weight: 500;
 }
 
-.solutions-node.icon-node.clickable {
+.solutions-node.icon-node .node-content-wrapper.clickable {
   cursor: pointer;
 }
-.solutions-node.icon-node.node-loading {
+.solutions-node.icon-node .node-content-wrapper.node-loading {
   cursor: not-allowed;
 }
 .solutions-node .overlay {
@@ -158,6 +156,10 @@ a {
 }
 
 /* nodes icon */
+.solutions-node.icon-node .node-content-wrapper {
+  padding: 10px;
+  box-sizing: border-box;
+}
 
 .solutions-node.icon-node {
   background-color: #fff;
