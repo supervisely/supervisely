@@ -223,6 +223,7 @@ def log_gpu_usage(func):
     @wraps
     def wrapper(*args, **kwargs):
         try:
+            torch.cuda.reset_peak_memory_stats()
             gpu_usage = get_gpu_usage()
             allocated = gpu_usage["allocated"] / (1024**2)
             peak = gpu_usage["peak"] / (1024**2)
