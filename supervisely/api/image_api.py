@@ -925,6 +925,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links=True,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Get Images information by ID.
@@ -963,13 +964,16 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                data = {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.FILTER: filters,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                }
+                if fields is not None:
+                    data[ApiField.FIELDS] = fields
                 temp_results = self.get_list_all_pages(
                     "images.list",
-                    {
-                        ApiField.DATASET_ID: dataset_id,
-                        ApiField.FILTER: filters,
-                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    },
+                    data,
                 )
                 results.extend(temp_results)
                 if progress_cb is not None and len(temp_results) > 0:

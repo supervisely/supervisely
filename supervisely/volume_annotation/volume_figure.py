@@ -1,28 +1,30 @@
 # coding: utf-8
 from __future__ import annotations
+
 import uuid
-from typing import Union, Optional, Literal
-from numpy import ndarray
+from typing import Literal, Optional, Union
 from uuid import UUID
-from supervisely.video_annotation.video_figure import VideoFigure
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
-from supervisely.geometry.mask_3d import Mask3D
+
+from numpy import ndarray
+
+import supervisely.volume_annotation.constants as constants
+from supervisely._utils import take_with_default
+from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
-from supervisely._utils import take_with_default
-from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.geometry.geometry import Geometry
-import supervisely.volume_annotation.constants as constants
-from supervisely.volume_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
     LABELER_LOGIN,
     UPDATED_AT,
-    CREATED_AT,
-    CLASS_ID,
 )
-
+from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.mask_3d import Mask3D
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.volume_annotation.constants import ID, KEY, META, OBJECT_ID, OBJECT_KEY
+from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
@@ -529,6 +531,7 @@ class VolumeFigure(VideoFigure):
         else:
             geometry_json = data[ApiField.GEOMETRY]
         geometry = shape.from_json(geometry_json)
+        geometry.sly_id = data.get(ID, None)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
@@ -636,10 +639,15 @@ class VolumeFigure(VideoFigure):
         """
         if isinstance(geometry_data, str):
             mask_3d = Mask3D.create_from_file(geometry_data)
-        if isinstance(geometry_data, ndarray):
+        elif isinstance(geometry_data, ndarray):
             mask_3d = Mask3D(geometry_data)
-        if isinstance(geometry_data, bytes):
+        elif isinstance(geometry_data, bytes):
             mask_3d = Mask3D.from_bytes(geometry_data)
+        else:
+            raise TypeError(
+                f"geometry_data must be str, ndarray, or bytes, but got {type(geometry_data)}"
+            )
+
         return cls(
             volume_object,
             mask_3d,

@@ -9,9 +9,11 @@ import numpy as np
 import pydicom
 import SimpleITK as sitk
 import stringcase
+from trimesh import Trimesh
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
+from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
@@ -783,7 +785,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         data, header = sly.volume.convert_nifti_to_nrrd(path)
     """
 
-    import nibabel as nib # pylint: disable=import-error
+    import nibabel as nib  # pylint: disable=import-error
 
     nifti = nib.load(path)
     reordered_to_ras_nifti = nib.as_closest_canonical(nifti)
@@ -798,6 +800,7 @@ def convert_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
         "dimension": len(data.shape),
     }
     return data, header
+
 
 def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     """Convert 3D NIFTI volume to NRRD format.
@@ -830,14 +833,14 @@ def convert_3d_nifti_to_nrrd(path: str) -> Tuple[np.ndarray, dict]:
     space_directions = (direction.T * spacing[:, None]).tolist()
 
     header = {
-            "dimension": 3,
-            "space": "right-anterior-superior",
-            "sizes": list(data.shape),
-            "space directions": space_directions,
-            "endian": "little",
-            "encoding": "gzip",
-            "space origin": origin
-        }
+        "dimension": 3,
+        "space": "right-anterior-superior",
+        "sizes": list(data.shape),
+        "space directions": space_directions,
+        "endian": "little",
+        "encoding": "gzip",
+        "space origin": origin,
+    }
     return data, header
 
 
@@ -861,3 +864,96 @@ def is_nifti_file(path: str) -> bool:
         return True
     except nib.filebasedimages.ImageFileError:
         return False
+
+
+def convert_3d_geometry_to_mesh(
+    geometry: Mask3D,
+    spacing: tuple = None,
+    level: float = 0.5,
+    apply_decimation: bool = False,
+    decimation_fraction: float = 0.5,
+) -> Trimesh:
+    """
+    Converts a 3D geometry (Mask3D) to a Trimesh mesh.
+
+    :param geometry: The 3D geometry to convert.
+    :type geometry: supervisely.geometry.mask_3d.Mask3D
+    :param spacing: Voxel spacing in (x, y, z). Default is taken from geometry meta.
+    :type spacing: tuple
+    :param level: Isosurface value for marching cubes. Default is 0.5.
+    :type level: float
+    :param apply_decimation: Whether to simplify the mesh. Default is False.
+    :type apply_decimation: bool
+    :param decimation_fraction: Fraction of faces to keep if decimation is applied. Default is 0.5.
+    :type decimation_fraction: float
+    :return: The resulting Trimesh mesh.
+    :rtype: trimesh.Trimesh
+
+    :Usage example:
+
+        .. code-block:: python
+
+            mask3d = Mask3D.create_from_file("path/to/mask3d")
+            mesh = convert_3d_geometry_to_mesh(mask3d, spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True)
+    """
+    from skimage import measure
+
+    # Flip the mask along the x-axis to correct mirroring
+    mask = np.flip(geometry.data, axis=0)
+    if spacing is None:
+        try:
+            spacing = tuple(
+                float(abs(direction[i])) for i, direction in enumerate(geometry._space_directions)
+            )
+        except Exception as e:
+            logger.warning(
+                "Failed to get spacing from geometry meta. Using (1.0, 1.0, 1.0).", exc_info=1
+            )
+            spacing = (1.0, 1.0, 1.0)
+
+    # marching_cubes expects (z, y, x) order
+    verts, faces, normals, _ = measure.marching_cubes(
+        mask.astype(np.float32), level=level, spacing=spacing
+    )
+    mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
+
+    if apply_decimation and 0 < decimation_fraction < 1:
+        mesh = mesh.simplify_quadric_decimation(int(len(mesh.faces) * decimation_fraction))
+
+    return mesh
+
+
+def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
+    """
+    Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
+
+    :param geometry: The 3D geometry to be exported.
+    :type geometry: supervisely.geometry.mask_3d.Mask3D
+    :param output_path: The path to the output file. Must have a ".stl" or ".obj" extension.
+    :type output_path: str
+    :param kwargs: Additional keyword arguments for mesh generation. Supported keys:
+        - spacing (tuple): Voxel spacing in (x, y, z). By default the value will be taken from geometry meta.
+        - level (float): Isosurface value for marching cubes. Default is 0.5.
+        - apply_decimation (bool): Whether to simplify the mesh. Default is False.
+        - decimation_fraction (float): Fraction of faces to keep if decimation is applied. Default is 0.5.
+    :type kwargs: dict, optional
+    :return: None
+
+    :Usage example:
+
+        .. code-block:: python
+
+        mask3d_path = "path/to/mask3d"
+        mask3d = Mask3D.create_from_file(mask3d_path)
+
+        mask3d.export_3d_as_mesh(mask3d, "output.stl", {"spacing": (1.0, 1.0, 1.0), "level": 0.7, "apply_decimation": True})
+    """
+
+    if kwargs is None:
+        kwargs = {}
+
+    if get_file_ext(output_path).lower() not in [".stl", ".obj"]:
+        raise ValueError('File extension must be either ".stl" or ".obj"')
+
+    mesh = convert_3d_geometry_to_mesh(geometry, **kwargs)
+    mesh.export(output_path)
