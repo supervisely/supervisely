@@ -16,7 +16,6 @@
                         </div>
                     </div>
                     <img v-if="item.img" :src="item.img">
-                    <h3 v-if="item.title">{{ item.title }}</h3>
                     {% for widget_item in widget._items %}
                     {% if widget_item.content %}
                     <template v-if="idx == {{{widget_item.idx}}}">
@@ -24,6 +23,7 @@
                     </template>
                     {% endif %}
                     {% endfor %}
+                    <h3 v-if="item.title">{{ item.title }}</h3>
                 </div>
 
             </article>
@@ -40,8 +40,7 @@
                 </div>
                 <div>
                     <img :src="item.img">
-                    <h3 v-if="item.title">{{ item.title }}</h3>
-
+                    
                     {% for widget_item in widget._items %}
                     {% if widget_item.content %}
                     <template v-if="idx == {{{widget_item.idx}}}">
@@ -49,6 +48,7 @@
                     </template>
                     {% endif %}
                     {% endfor %}
+                    <h3 v-if="item.title">{{ item.title }}</h3>
                 </div>
             </article>
         </template>
