@@ -1,11 +1,12 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional, Any, Iterator
 
-from supervisely.video_annotation.video_object import VideoObject
+from typing import Any, Dict, Iterator, List, Optional
+
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_object import VideoObject
 
 
 class VideoObjectCollection(KeyIndexedCollection):
@@ -158,14 +159,15 @@ class VideoObjectCollection(KeyIndexedCollection):
         #     }
         # ]
     """
+
     item_type = VideoObject
 
     def __iter__(self) -> Iterator[VideoObject]:
         return next(self)
 
-    def to_json(self, key_id_map: Optional[KeyIdMap]=None) -> List[Dict]:
+    def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
-        Convert the VideoObjectCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoObjectCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -200,9 +202,11 @@ class VideoObjectCollection(KeyIndexedCollection):
         return [item.to_json(key_id_map) for item in self]
 
     @classmethod
-    def from_json(cls, data: List[Dict], project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap]=None) -> VideoObjectCollection:
+    def from_json(
+        cls, data: List[Dict], project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
+    ) -> VideoObjectCollection:
         """
-        Convert a list of json dicts to VideoObjectCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list of json dicts to VideoObjectCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]
@@ -237,8 +241,11 @@ class VideoObjectCollection(KeyIndexedCollection):
 
             video_obj_collection = sly.VideoObjectCollection.from_json(obj_collection_json, meta)
         """
-        objects = [cls.item_type.from_json(video_object_json, project_meta, key_id_map) for video_object_json in data]
+        objects = [
+            cls.item_type.from_json(video_object_json, project_meta, key_id_map)
+            for video_object_json in data
+        ]
         return cls(objects)
 
     def __str__(self):
-        return 'Objects:\n' + super(VideoObjectCollection, self).__str__()
+        return "Objects:\n" + super(VideoObjectCollection, self).__str__()

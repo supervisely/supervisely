@@ -151,7 +151,7 @@ class Cuboid2d(GraphNodes):
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> Cuboid2d:
         """
-        Convert a json dict to Cuboid2d. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Cuboid2d. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Cuboid2d in json format as a dict.
         :type data: Dict[str, Dict]
@@ -214,7 +214,7 @@ class Cuboid2d(GraphNodes):
 
     def to_json(self) -> Dict[str, Dict]:
         """
-        Convert the Cuboid2d to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Cuboid2d to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: Dict[str, Dict]

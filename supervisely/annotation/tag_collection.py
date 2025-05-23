@@ -140,7 +140,7 @@ class TagCollection(MultiKeyIndexedCollection):
 
     def to_json(self) -> List[Dict]:
         """
-        Convert the TagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the TagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: List of dicts in json format
         :rtype: :class:`List[dict]`
@@ -178,7 +178,7 @@ class TagCollection(MultiKeyIndexedCollection):
     @classmethod
     def from_json(cls, data: List[Dict], tag_meta_collection: TagMetaCollection) -> TagCollection:
         """
-        Convert a list with dicts in json format to TagCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list with dicts in json format to TagCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]
@@ -246,7 +246,7 @@ class TagCollection(MultiKeyIndexedCollection):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

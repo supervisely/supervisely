@@ -11,9 +11,9 @@ from supervisely._utils import take_with_default
 from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.cuboid_2d import Cuboid2d, Cuboid2dTemplate
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.graph import GraphNodes, KeypointsTemplate
-from supervisely.geometry.cuboid_2d import Cuboid2d, Cuboid2dTemplate
 from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
 from supervisely.io.json import JsonSerializable
 from supervisely.sly_logger import logger
@@ -86,7 +86,9 @@ class ObjClass(KeyObject, JsonSerializable):
             raise ValueError("sly.GraphNodes requires geometry_config to be passed to sly.ObjClass")
         elif geometry_type == Cuboid2d:
             # create cuboid2d template with predefined settings (8 vertices, 12 edges)
-            geometry_config = Cuboid2dTemplate(self._color) # ? should we create or pass the template ?
+            geometry_config = Cuboid2dTemplate(
+                self._color
+            )  # ? should we create or pass the template ?
 
         if isinstance(geometry_config, (Cuboid2dTemplate, KeypointsTemplate)):
             geometry_config = geometry_config.config
@@ -219,7 +221,7 @@ class ObjClass(KeyObject, JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the ObjClass to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the ObjClass to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -251,7 +253,9 @@ class ObjClass(KeyObject, JsonSerializable):
             ),
         }
         if self.geometry_type == Cuboid2d:
-            res[ObjClassJsonFields.GEOMETRY_CONFIG] = {} # we don't need to save cuboid2d template in json meta
+            res[ObjClassJsonFields.GEOMETRY_CONFIG] = (
+                {}
+            )  # we don't need to save cuboid2d template in json meta
         if self.sly_id is not None:
             res[ObjClassJsonFields.ID] = self.sly_id
         if self._hotkey is not None:
@@ -261,7 +265,7 @@ class ObjClass(KeyObject, JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> ObjClass:
         """
-        Convert a json dict to ObjClass. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to ObjClass. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: ObjClass in json format as a dict.
         :type data: dict

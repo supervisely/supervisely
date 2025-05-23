@@ -163,7 +163,7 @@ class VideoTagCollection(TagCollection):
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> List[Dict]:
         """
-        Convert the VideoTagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoTagCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -207,7 +207,7 @@ class VideoTagCollection(TagCollection):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> VideoTagCollection:
         """
-        Convert a list of json dicts to VideoTagCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list of json dicts to VideoTagCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]
@@ -274,7 +274,7 @@ class VideoTagCollection(TagCollection):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -306,7 +306,7 @@ class VideoTagCollection(TagCollection):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -344,7 +344,7 @@ class VideoTagCollection(TagCollection):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

@@ -1,28 +1,30 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import Optional, List, Dict
-from supervisely.project.project_meta import ProjectMeta
-from copy import deepcopy
-import uuid
+
 import json
+import uuid
+from copy import deepcopy
+from typing import Dict, List, Optional
 
 from supervisely._utils import take_with_default
-from supervisely.pointcloud_annotation.pointcloud_tag_collection import PointcloudTagCollection
 from supervisely.pointcloud_annotation.constants import (
     DESCRIPTION,
-    TAGS,
-    OBJECTS,
-    KEY,
     FIGURES,
+    KEY,
+    OBJECTS,
     POINTCLOUD_ID,
+    TAGS,
 )
-from supervisely.video_annotation.key_id_map import KeyIdMap
-
-from supervisely.video_annotation.video_annotation import VideoAnnotation
 from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
+from supervisely.pointcloud_annotation.pointcloud_tag_collection import (
+    PointcloudTagCollection,
+)
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 class PointcloudAnnotation(VideoAnnotation):
@@ -117,7 +119,7 @@ class PointcloudAnnotation(VideoAnnotation):
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -148,7 +150,7 @@ class PointcloudAnnotation(VideoAnnotation):
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -179,7 +181,7 @@ class PointcloudAnnotation(VideoAnnotation):
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -297,7 +299,7 @@ class PointcloudAnnotation(VideoAnnotation):
             import supervisely as sly
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -354,7 +356,7 @@ class PointcloudAnnotation(VideoAnnotation):
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -405,7 +407,7 @@ class PointcloudAnnotation(VideoAnnotation):
             import supervisely as sly
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
