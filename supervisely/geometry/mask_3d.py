@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import gzip
 import tempfile
+from collections import OrderedDict
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import nrrd
@@ -219,6 +220,7 @@ class Mask3D(Geometry):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        volume_header: Optional[Dict] = None,
     ):
         super().__init__(
             sly_id=sly_id,
@@ -253,6 +255,99 @@ class Mask3D(Geometry):
         self._space = None
         self._space_directions = None
 
+        if volume_header is not None:
+            self.set_space_meta_from_header(volume_header)
+
+    @property
+    def space_origin(self) -> Optional[PointVolume]:
+        """
+        Get the space origin of the Mask3D.
+
+        :return: Space origin of the Mask3D.
+        :rtype: :class:`PointVolume<PointVolume>`
+        """
+        return self._space_origin
+
+    @space_origin.getter
+    def space_origin(self) -> Optional[List[float]]:
+        """
+        Get the space origin of the Mask3D.
+
+        :return: Space origin of the Mask3D.
+        :rtype: List[float]
+        """
+        return self._space_origin.to_json()["space_origin"] if self._space_origin else None
+
+    @space_origin.setter
+    def space_origin(self, value: Union[PointVolume, List[float], np.array]):
+        """
+        Set the space origin of the Mask3D.
+
+        :param value: Space origin of the Mask3D. If provided as a list or array, it should contain 3 floats in the order [x, y, z].
+        :type value: :class:`PointVolume<PointVolume>` or List[float]
+        """
+        if isinstance(value, PointVolume):
+            self._space_origin = value
+        elif isinstance(value, list) and len(value) == 3:
+            self._space_origin = PointVolume(x=value[0], y=value[1], z=value[2])
+        elif isinstance(value, np.ndarray) and value.shape == (3,):
+            self._space_origin = PointVolume(x=value[0], y=value[1], z=value[2])
+        else:
+            raise ValueError("Space origin must be a PointVolume or a list of 3 floats.")
+
+    @property
+    def space(self) -> Optional[str]:
+        """
+        Get the space of the Mask3D.
+
+        :return: Space of the Mask3D.
+        :rtype: :class:`str`
+        """
+        return self._space
+
+    @space.setter
+    def space(self, value: str):
+        """
+        Set the space of the Mask3D.
+
+        :param value: Space of the Mask3D.
+        :type value: str
+        """
+        if not isinstance(value, str):
+            raise ValueError("Space must be a string.")
+        self._space = value
+
+    @property
+    def space_directions(self) -> Optional[List[List[float]]]:
+        """
+        Get the space directions of the Mask3D.
+
+        :return: Space directions of the Mask3D.
+        :rtype: :class:`List[List[float]]`
+        """
+        return self._space_directions
+
+    @space_directions.setter
+    def space_directions(self, value: Union[List[List[float]], np.ndarray]):
+        """
+        Set the space directions of the Mask3D.
+
+        :param value: Space directions of the Mask3D. Should be a 3x3 array-like structure.
+        :type value: List[List[float]] or np.ndarray
+        """
+        if isinstance(value, np.ndarray):
+            if value.shape != (3, 3):
+                raise ValueError("Space directions must be a 3x3 array.")
+            self._space_directions = value.tolist()
+        elif (
+            isinstance(value, list)
+            and len(value) == 3
+            and all(isinstance(row, (list, np.ndarray)) and len(row) == 3 for row in value)
+        ):
+            self._space_directions = [list(row) for row in value]
+        else:
+            raise ValueError("Space directions must be a 3x3 array or list of lists.")
+
     @staticmethod
     def geometry_name():
         """Return geometry name"""
@@ -271,13 +366,9 @@ class Mask3D(Geometry):
         mask3d_data, mask3d_header = nrrd.read(file_path)
         figure.geometry.data = mask3d_data
         try:
-            figure.geometry._space_origin = PointVolume(
-                x=mask3d_header["space origin"][0],
-                y=mask3d_header["space origin"][1],
-                z=mask3d_header["space origin"][2],
-            )
-            figure.geometry._space = mask3d_header["space"]
-            figure.geometry._space_directions = mask3d_header["space directions"]
+            figure.geometry.space_origin = mask3d_header["space origin"]
+            figure.geometry.space = mask3d_header["space"]
+            figure.geometry.space_directions = mask3d_header["space directions"]
         except KeyError as e:
             header_keys = ["'space'", "'space directions'", "'space origin'"]
             if str(e) in header_keys:
@@ -297,20 +388,13 @@ class Mask3D(Geometry):
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
         geometry = cls(data=mask3d_data)
-        try:
-            geometry._space_origin = PointVolume(
-                x=mask3d_header["space origin"][0],
-                y=mask3d_header["space origin"][1],
-                z=mask3d_header["space origin"][2],
-            )
-            geometry._space = mask3d_header["space"]
-            geometry._space_directions = mask3d_header["space directions"]
-        except KeyError as e:
+        header_keys = ["space", "space directions", "space origin"]
+        if any([value not in mask3d_header for value in header_keys]):
             header_keys = ["'space'", "'space directions'", "'space origin'"]
-            if str(e) in header_keys:
-                logger.debug(
-                    f"The Mask3D geometry created from the file '{file_path}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
-                )
+            logger.debug(
+                f"The Mask3D geometry created from the file '{file_path}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
+            )
+        geometry.set_space_meta_from_header(mask3d_header)
         return geometry
 
     @classmethod
@@ -368,12 +452,8 @@ class Mask3D(Geometry):
             GEOMETRY_TYPE: self.name(),
         }
 
-        if self._space_origin:
-            res[f"{self._impl_json_class_name()}"][f"{SPACE_ORIGIN}"] = [
-                self._space_origin.x,
-                self._space_origin.y,
-                self._space_origin.z,
-            ]
+        if self.space_origin:
+            res[f"{self._impl_json_class_name()}"][f"{SPACE_ORIGIN}"] = self.space_origin
 
         self._add_creation_info(res)
         return res
@@ -435,8 +515,7 @@ class Mask3D(Geometry):
             created_at=created_at,
         )
         if SPACE_ORIGIN in json_data[json_root_key]:
-            x, y, z = json_data[json_root_key][SPACE_ORIGIN]
-            instance._space_origin = PointVolume(x=x, y=y, z=z)
+            instance.space_origin = json_data[json_root_key][SPACE_ORIGIN]
         return instance
 
     @classmethod
@@ -619,3 +698,37 @@ class Mask3D(Geometry):
                 continue
             geometries_dict[key] = geometry_bytes
         return geometries_dict
+
+    def set_space_meta_from_header(self, header: Dict):
+        """
+        Set space, space directions, and space origin attributes from a NRRD header dictionary.
+
+        :param header: NRRD header dictionary.
+        :type header: dict
+        """
+        if "space" in header:
+            self.space = header["space"]
+        if "space directions" in header:
+            self.space_directions = header["space directions"]
+        if "space origin" in header:
+            self.space_origin = PointVolume(
+                x=header["space origin"][0],
+                y=header["space origin"][1],
+                z=header["space origin"][2],
+            )
+
+    def create_header(self) -> OrderedDict:
+        """
+        Create header for encoding Mask3D to NRRD bytes
+
+        :return: Header for NRRD file
+        :rtype: OrderedDict
+        """
+        header = OrderedDict()
+        if self.space is not None:
+            header["space"] = self.space
+        if self.space_directions is not None:
+            header["space directions"] = self.space_directions
+        if self.space_origin is not None:
+            header["space origin"] = self.space_origin
+        return header

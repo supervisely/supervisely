@@ -113,10 +113,7 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
     for class_id in unique_classes:
         if class_id == 0:
             continue
-        mask = Mask3D(data == class_id)
-        mask._space_directions = header["space directions"]
-        mask._space_origin = header["space origin"]
-        mask._space = header["space"]
+        mask = Mask3D(data == class_id, volume_header=header)
         yield mask, class_id
 
 
