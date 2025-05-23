@@ -257,7 +257,7 @@ class TrainGUI:
         self.project_info = self._api.project.get_info_by_id(self.project_id)
         if self.project_info.type is None:
             raise ValueError(f"Project with ID: '{self.project_id}' does not exist or was archived")
-        
+
         self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
 
         if self.workspace_id is None:
@@ -863,7 +863,8 @@ class TrainGUI:
                     "ONNXRuntime": True,
                     "TensorRT": True
                     },
-                }
+                },
+                "experiment_name": "my_experiment",
             }
         """
         if isinstance(app_state, str):
@@ -877,6 +878,7 @@ class TrainGUI:
         tags_settings = app_state.get("tags", [])
         model_settings = app_state["model"]
         hyperparameters_settings = app_state["hyperparameters"]
+        experiment_name = app_state.get("experiment_name", None)
 
         self._init_input(input_settings, options)
         self._init_train_val_splits(train_val_splits_settings, options)
@@ -884,6 +886,8 @@ class TrainGUI:
         self._init_tags(tags_settings, options)
         self._init_model(model_settings, options)
         self._init_hyperparameters(hyperparameters_settings, options)
+        if experiment_name is not None:
+            self.training_process.set_experiment_name(experiment_name)
 
     def _init_input(self, input_settings: Union[dict, None], options: dict) -> None:
         """
