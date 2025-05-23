@@ -237,7 +237,7 @@ class LabelBase:
 
     def to_json(self) -> Dict:
         """
-        Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Label to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -297,7 +297,7 @@ class LabelBase:
     @classmethod
     def from_json(cls, data: Dict, project_meta: ProjectMeta) -> LabelBase:
         """
-        Convert a json dict to Label. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Label. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Label in json format as a dict.
         :type data: dict
@@ -311,7 +311,7 @@ class LabelBase:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -586,7 +586,7 @@ class LabelBase:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

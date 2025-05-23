@@ -383,7 +383,7 @@ class TagMeta(KeyObject, JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -455,7 +455,7 @@ class TagMeta(KeyObject, JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> TagMeta:
         """
-        Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: TagMeta in json format as a dict.
         :type data: dict

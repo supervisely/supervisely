@@ -182,7 +182,7 @@ setup(
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     author="Supervisely",
-    author_email="support@supervise.ly",
+    author_email="support@supervisely.com",
     url="https://github.com/supervisely/supervisely",
     packages=find_packages(
         include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]

@@ -536,7 +536,7 @@ class VideoAnnotation:
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
-        Convert the VideoAnnotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoAnnotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -594,7 +594,7 @@ class VideoAnnotation:
         skip_corrupted: Optional[bool] = False,
     ) -> VideoAnnotation:
         """
-        Convert a json dict to VideoAnnotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VideoAnnotation. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
         :type data: dict
@@ -644,7 +644,9 @@ class VideoAnnotation:
 
         tags = VideoTagCollection.from_json(data[TAGS], project_meta.tag_metas, key_id_map)
         objects = VideoObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
-        frames = FrameCollection.from_json(data[FRAMES], objects, frames_count, key_id_map, skip_corrupted)
+        frames = FrameCollection.from_json(
+            data[FRAMES], objects, frames_count, key_id_map, skip_corrupted
+        )
 
         return cls(
             img_size=img_size,
@@ -677,7 +679,7 @@ class VideoAnnotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -782,7 +784,7 @@ class VideoAnnotation:
             import supervisely as sly
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

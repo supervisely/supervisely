@@ -96,7 +96,7 @@ class Node(JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> Node:
         """
-        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Node in json format as a dict.
         :type data: dict
@@ -120,7 +120,7 @@ class Node(JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -240,7 +240,7 @@ class GraphNodes(Geometry):
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> GraphNodes:
         """
-        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: GraphNodes in json format as a dict.
         :type data: dict
@@ -286,7 +286,7 @@ class GraphNodes(Geometry):
 
     def to_json(self) -> Dict[str, Dict]:
         """
-        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`

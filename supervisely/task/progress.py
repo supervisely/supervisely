@@ -41,7 +41,7 @@ class Progress:
         import supervisely as sly
         from supervisely.sly_logger import logger
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 

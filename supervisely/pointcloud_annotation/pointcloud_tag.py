@@ -1,13 +1,14 @@
 from __future__ import annotations
-from typing import Optional, Dict, Union
+
 import uuid
+from typing import Dict, Optional, Union
 
 from supervisely._utils import take_with_default
 from supervisely.annotation.tag import Tag, TagJsonFields
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.pointcloud_annotation.constants import ID, KEY
 from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.pointcloud_annotation.constants import KEY, ID
 
 
 class PointcloudTag(Tag):
@@ -195,7 +196,7 @@ class PointcloudTag(Tag):
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
         Convert the PointcloudTag to a json dict.
-        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: :class:`KeyIdMap<supervisely.video_annotation.key_id_map.KeyIdMap>`, optional
@@ -238,7 +239,7 @@ class PointcloudTag(Tag):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudTag:
         """
-        Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointcloudTag in json format as a dict.
         :type data: :class:`dict`

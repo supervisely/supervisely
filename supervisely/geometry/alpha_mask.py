@@ -205,7 +205,7 @@ class AlphaMask(Bitmap):
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -266,7 +266,7 @@ class AlphaMask(Bitmap):
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] == 4):
             mask = imdecoded[:, :, 3]  # pylint: disable=unsubscriptable-object
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] == 1):
-            mask = imdecoded[:, :, 0] # pylint: disable=unsubscriptable-object
+            mask = imdecoded[:, :, 0]  # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded
         else:
