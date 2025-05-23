@@ -3,7 +3,7 @@
 
 
 import os
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pydicom
@@ -15,6 +15,7 @@ import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+from supervisely.volume.stl_converter import matrix_from_nrrd_header
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -868,10 +869,11 @@ def is_nifti_file(path: str) -> bool:
 
 def convert_3d_geometry_to_mesh(
     geometry: Mask3D,
-    spacing: tuple = None,
-    level: float = 0.5,
-    apply_decimation: bool = False,
-    decimation_fraction: float = 0.5,
+    spacing: Optional[tuple] = None,
+    level: Optional[float] = 0.5,
+    apply_decimation: Optional[bool] = False,
+    decimation_fraction: Optional[float] = 0.5,
+    volume_meta: Optional[dict] = None,
 ) -> Trimesh:
     """
     Converts a 3D geometry (Mask3D) to a Trimesh mesh.
@@ -886,6 +888,8 @@ def convert_3d_geometry_to_mesh(
     :type apply_decimation: bool
     :param decimation_fraction: Fraction of faces to keep if decimation is applied. Default is 0.5.
     :type decimation_fraction: float
+    :param volume_meta: Metadata of the volume. Used for mesh alignment if geometry lacks specific fields. Default is None.
+    :type volume_meta: dict, optional
     :return: The resulting Trimesh mesh.
     :rtype: trimesh.Trimesh
 
@@ -898,32 +902,37 @@ def convert_3d_geometry_to_mesh(
     """
     from skimage import measure
 
-    # Flip the mask along the x-axis to correct mirroring
-    mask = np.flip(geometry.data, axis=0)
+    if volume_meta is None:
+        volume_meta = {}
+
+    space = geometry.space or volume_meta.get("space")
+    space_directions = geometry.space_directions or volume_meta.get("space directions")
+    space_origin = geometry.space_origin or volume_meta.get("space origin")
+
     if spacing is None:
-        try:
-            spacing = tuple(
-                float(abs(direction[i])) for i, direction in enumerate(geometry._space_directions)
-            )
-        except Exception as e:
-            logger.warning(
-                "Failed to get spacing from geometry meta. Using (1.0, 1.0, 1.0).", exc_info=1
-            )
-            spacing = (1.0, 1.0, 1.0)
+        spacing = (1.0, 1.0, 1.0)
 
     # marching_cubes expects (z, y, x) order
     verts, faces, normals, _ = measure.marching_cubes(
-        mask.astype(np.float32), level=level, spacing=spacing
+        geometry.data.astype(np.float32), level=level, spacing=spacing
     )
     mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
     if apply_decimation and 0 < decimation_fraction < 1:
         mesh = mesh.simplify_quadric_decimation(int(len(mesh.faces) * decimation_fraction))
 
+    if all([i is not None for i in [space, space_directions, space_origin]]):
+        header = {
+            "space": space,
+            "space directions": space_directions,
+            "space origin": space_origin,
+        }
+        align_mesh_to_volume(mesh, header)
+
     return mesh
 
 
-def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
+def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
     """
     Exports the 3D mesh representation of the object to a file in either STL or OBJ format.
 
@@ -936,7 +945,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
         - level (float): Isosurface value for marching cubes. Default is 0.5.
         - apply_decimation (bool): Whether to simplify the mesh. Default is False.
         - decimation_fraction (float): Fraction of faces to keep if decimation is applied. Default is 0.5.
-    :type kwargs: dict, optional
+        - volume_meta (dict): Metadata of the volume. Used for mesh alignment if geometry lacks specific fields. Default is None.
     :return: None
 
     :Usage example:
@@ -946,7 +955,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
         mask3d_path = "path/to/mask3d"
         mask3d = Mask3D.create_from_file(mask3d_path)
 
-        mask3d.export_3d_as_mesh(mask3d, "output.stl", {"spacing": (1.0, 1.0, 1.0), "level": 0.7, "apply_decimation": True})
+        mask3d.export_3d_as_mesh(mask3d, "output.stl", spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True})
     """
 
     if kwargs is None:
@@ -957,3 +966,27 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
 
     mesh = convert_3d_geometry_to_mesh(geometry, **kwargs)
     mesh.export(output_path)
+
+
+def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
+    """
+    Transforms the given mesh in-place using spatial information from an NRRD header.
+
+    Args:
+        mesh (Trimesh): The mesh object to be transformed. The transformation is applied in-place.
+        volume_header (dict): The NRRD header containing spatial metadata, including "space directions" and "space origin".
+
+    Returns:
+        None
+    """
+    from supervisely.geometry.constants import SPACE_ORIGIN
+    from supervisely.geometry.mask_3d import PointVolume
+
+    if isinstance(volume_header["space origin"], PointVolume):
+        volume_header["space origin"] = volume_header["space origin"].to_json()[SPACE_ORIGIN]
+    transform_mat = matrix_from_nrrd_header(volume_header)
+
+    if volume_header.get("space", "right-anterior-superior") == "right-anterior-superior":
+        # flip x and y axis
+        transform_mat = np.diag([-1, -1, 1, 1]) @ transform_mat
+    mesh.apply_transform(transform_mat)
