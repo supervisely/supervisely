@@ -899,8 +899,6 @@ def convert_3d_geometry_to_mesh(
     """
     from skimage import measure
 
-    # Flip the mask along the x-axis to correct mirroring
-    mask = np.flip(geometry.data, axis=0)
     space_directions = geometry._space_directions
     space_origin = geometry._space_origin
 
@@ -920,7 +918,7 @@ def convert_3d_geometry_to_mesh(
 
     # marching_cubes expects (z, y, x) order
     verts, faces, normals, _ = measure.marching_cubes(
-        mask.astype(np.float32), level=level, spacing=spacing
+        geometry.data.astype(np.float32), level=level, spacing=spacing
     )
     mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
@@ -984,6 +982,11 @@ def transform_mesh_from_header(mesh: Trimesh, header: dict) -> None:
     Returns:
         None
     """
+    from supervisely.geometry.mask_3d import PointVolume
+    from supervisely.geometry.constants import SPACE_ORIGIN
+
+    if isinstance(header["space origin"], PointVolume):
+        header["space origin"] = header["space origin"].to_json()[SPACE_ORIGIN]
     transform_mat = matrix_from_nrrd_header(header)
     lps2ras = np.diag([-1, -1, 1, 1])
 
