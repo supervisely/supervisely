@@ -387,14 +387,14 @@ class Mask3D(Geometry):
         :type file_path: str
         """
         mask3d_data, mask3d_header = nrrd.read(file_path)
-        geometry = cls(data=mask3d_data)
-        header_keys = ["space", "space directions", "space origin"]
-        if any([value not in mask3d_header for value in header_keys]):
+        geometry = cls(data=mask3d_data, volume_header=mask3d_header)
+
+        fields_to_check = ["space", "space_directions", "space_origin"]
+        if any([getattr(geometry, value) is None for value in fields_to_check]):
             header_keys = ["'space'", "'space directions'", "'space origin'"]
             logger.debug(
                 f"The Mask3D geometry created from the file '{file_path}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
             )
-        geometry.set_space_meta_from_header(mask3d_header)
         return geometry
 
     @classmethod
