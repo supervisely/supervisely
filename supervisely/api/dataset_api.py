@@ -122,7 +122,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         project_id = 1951
         ds = api.dataset.get_list(project_id)
@@ -146,7 +146,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         items_count=11,
                         created_at='2021-03-03T15:54:08.802Z',
                         updated_at='2021-03-16T09:31:37.063Z',
-                        reference_image_url='https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
+                        reference_image_url='https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/K/q/jf/...png'),
                         team_id=1,
                         workspace_id=2
         """
@@ -226,7 +226,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #                 items_count=6,
             #                 created_at="2021-03-02T10:04:33.973Z",
             #                 updated_at="2021-03-10T09:31:50.341Z",
-            #                 reference_image_url="http://app.supervise.ly/z6ut6j8bnaz1vj8aebbgs4-public/images/original/...jpg"),
+            #                 reference_image_url="http://app.supervisely.com/z6ut6j8bnaz1vj8aebbgs4-public/images/original/...jpg"),
             #                 DatasetInfo(id=2557,
             #                 name="kiwi",
             #                 description="",
@@ -236,7 +236,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             #                 items_count=6,
             #                 created_at="2021-03-10T09:31:33.701Z",
             #                 updated_at="2021-03-10T09:31:44.196Z",
-            #                 reference_image_url="http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
+            #                 reference_image_url="http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg")
             # ]
         """
         if filters is None:

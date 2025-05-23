@@ -461,7 +461,7 @@ class Mask3D(Geometry):
             import os
             import nrrd
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

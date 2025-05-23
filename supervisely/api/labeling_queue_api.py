@@ -61,7 +61,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         queue = api.labeling_queues.get_info_by_id(2) # api usage example
     """

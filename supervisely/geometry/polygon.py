@@ -113,7 +113,7 @@ class Polygon(VectorGeometry):
     @classmethod
     def from_json(cls, data: Dict) -> Polygon:
         """
-        Convert a json dict to Polygon. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Polygon. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Polygon in json format as a dict.
         :type data: dict
@@ -297,8 +297,8 @@ class Polygon(VectorGeometry):
     @classmethod
     def allowed_transforms(cls):
         """ """
-        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.alpha_mask import AlphaMask
+        from supervisely.geometry.any_geometry import AnyGeometry
         from supervisely.geometry.bitmap import Bitmap
         from supervisely.geometry.rectangle import Rectangle
 

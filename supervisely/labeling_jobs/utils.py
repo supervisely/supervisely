@@ -279,7 +279,7 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
 
      .. code-block:: python
 
-        address = 'https://app.supervise.ly'
+        address = 'https://app.supervisely.com'
         os.environ['SERVER_ADDRESS'] = address
         os.environ['API_TOKEN'] = 'Your Supervisely API Token'
         api = sly.Api.from_env()
@@ -288,7 +288,7 @@ def get_job_url(server_address: str, job: NamedTuple) -> str:
         from supervisely.labeling_jobs.utils import get_job_url
         job_url = get_job_url(address, job_info)
         print(job_url)
-        # Output: https://app.supervise.ly/app/images/4/8/58/54?jobId=2
+        # Output: https://app.supervisely.com/app/images/4/8/58/54?jobId=2
     """
     result = urllib.parse.urljoin(
         server_address,
@@ -322,15 +322,15 @@ def jobs_stats(server_address: str, jobs: List[NamedTuple], stats: List) -> Data
 
         job_info1 = api.labeling_job.get_info_by_id(2)
         job_info2 = api.labeling_job.get_info_by_id(3)
-        address = https://app.supervise.ly
+        address = https://app.supervisely.com
 
         from supervisely.labeling_jobs.utils import jobs_stats
         result = jobs_stats(address, [job_info1, job_info2], [1, 2])
         print(result)
         # Output:
         #    ID                                               NAME     STATUS  TOTAL  LABELED  REVIEWED  ACCEPTED  REJECTED        CREATED_AT
-        # 0   2  <a href="https://app.supervise.ly/app/images/...  completed      3        3         3         2         1  08/04/2020 15:10
-        # 1   3  <a href="https://app.supervise.ly/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
+        # 0   2  <a href="https://app.supervisely.com/app/images/...  completed      3        3         3         2         1  08/04/2020 15:10
+        # 1   3  <a href="https://app.supervisely.com/app/images/...  completed      2        2         2         2         0  08/04/2020 15:10
     """
     import pandas as pd
 
