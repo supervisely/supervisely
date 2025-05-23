@@ -1,10 +1,10 @@
 import os
+from collections import defaultdict, namedtuple
+from pathlib import Path
 from typing import Generator
 
 import nrrd
 import numpy as np
-from pathlib import Path
-from collections import defaultdict, namedtuple
 
 from supervisely import Api
 from supervisely.collection.str_enum import StrEnum
@@ -107,13 +107,16 @@ def nifti_to_nrrd(nii_file_path: str, converted_dir: str) -> str:
 def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
     """Get annotation from NIfTI 3D volume file."""
 
-    data, _ = convert_3d_nifti_to_nrrd(path)
+    data, header = convert_3d_nifti_to_nrrd(path)
     unique_classes = np.unique(data)
 
     for class_id in unique_classes:
         if class_id == 0:
             continue
         mask = Mask3D(data == class_id)
+        mask._space_directions = header["space directions"]
+        mask._space_origin = header["space origin"]
+        mask._space = header["space"]
         yield mask, class_id
 
 
