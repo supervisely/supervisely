@@ -3278,6 +3278,63 @@ class Project:
         return train_items, val_items
 
     @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> Tuple[List[ItemInfo], List[ItemInfo]]:
+        """
+        Get train and val items information from project by given train and val collections IDs.
+
+        :param project_dir: Path to project directory.
+        :type project_dir: :class:`str`
+        :param train_collections: List of train collections IDs.
+        :type train_collections: :class:`list` [ :class:`int` ]
+        :param val_collections: List of val collections IDs.
+        :type val_collections: :class:`list` [ :class:`int` ]
+        :param project_id: Project ID.
+        :type project_id: :class:`int`
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :raises: :class:`KeyError` if collection ID not found in project
+        :return: Tuple with lists of train items information and val items information
+        :rtype: :class:`list` [ :class:`ItemInfo<ItemInfo>` ], :class:`list` [ :class:`ItemInfo<ItemInfo>` ]
+        """
+        from supervisely.api.entities_collection_api import CollectionTypeFilter
+
+        project = Project(project_dir, OpenMode.READ)
+
+        ds_id_to_name = {}
+        for parents, ds_info in api.dataset.tree(project_id):
+            full_name = "/".join(parents + [ds_info.name])
+            ds_id_to_name[ds_info.id] = full_name
+
+        train_items = []
+        val_items = []
+
+        for collection_ids, items_dict in [
+            (train_collections, train_items),
+            (val_collections, val_items),
+        ]:
+            for collection_id in collection_ids:
+                collection_items = api.entities_collection.get_items(
+                    collection_id=collection_id,
+                    project_id=project_id,
+                    collection_type=CollectionTypeFilter.DEFAULT,
+                )
+                for item in collection_items:
+                    ds_name = ds_id_to_name.get(item.dataset_id)
+                    ds = project.datasets.get(ds_name)
+                    img_path, ann_path = ds.get_item_paths(item.name)
+                    info = ItemInfo(ds_name, item.name, img_path, ann_path)
+                    items_dict.append(info)
+
+        return train_items, val_items
+
+
+    @staticmethod
     def download(
         api: Api,
         project_id: int,
