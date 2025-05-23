@@ -154,3 +154,4 @@ from supervisely.app.widgets.solutions_graph.solutions_graph import SolutionsGra
 from supervisely.app.widgets.solutions_card.solutions_card import SolutionsCard
 from supervisely.app.widgets.solutions_project.solutions_project import SolutionsProject
 from supervisely.app.widgets.select_collection.select_collection import SelectCollection
+from supervisely.app.widgets.radio_card.radio_card import RadioCard
