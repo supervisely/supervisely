@@ -184,6 +184,8 @@ class Mask3D(Geometry):
     :type updated_at: str, optional
     :param created_at: Date and Time when Mask 3D was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param volume_header: NRRD header dictionary. Optional.
+    :type volume_header: dict, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
     :Usage example:
 
