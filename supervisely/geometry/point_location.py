@@ -73,7 +73,7 @@ class PointLocation(JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the PointLocation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the PointLocation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -101,7 +101,7 @@ class PointLocation(JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> PointLocation:
         """
-        Convert a json dict to PointLocation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to PointLocation. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointLocation in json format as a dict.
         :type data: dict

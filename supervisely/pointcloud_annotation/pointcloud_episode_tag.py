@@ -92,7 +92,7 @@ class PointcloudEpisodeTag(VideoTag):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudEpisodeTag:
         """
-        Convert a json dict to PointcloudEpisodeTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to PointcloudEpisodeTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointcloudEpisodeTag in json format as a dict.
         :type data: dict

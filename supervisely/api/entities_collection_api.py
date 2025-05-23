@@ -47,7 +47,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         collection = api.entities_collection.get_list(9) # api usage example
     """

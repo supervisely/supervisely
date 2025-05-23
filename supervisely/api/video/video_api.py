@@ -44,8 +44,8 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_file_ext,
     get_file_hash,
-    get_file_hash_chunked,
     get_file_hash_async,
+    get_file_hash_chunked,
     get_file_name_with_ext,
     get_file_size,
     list_files,
@@ -246,7 +246,7 @@ class VideoApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         video_id = 19371139
         video_info = api.video.get_info_by_id(video_id) # api usage example
@@ -630,7 +630,7 @@ class VideoApi(RemoveableBulkModuleApi):
             #         'streams': [],
             #         'width': 1920
             #     },
-            #     'fullStorageUrl': 'https://app.supervise.ly/h..i35vz.mp4',
+            #     'fullStorageUrl': 'https://app.supervisely.com/h..i35vz.mp4',
             #     'hash': '30/TQ1BcIOn1ykA2psRtr3lq3HF6NPmr4uQ=',
             #     'id': 19371139,
             #     'link': None,
@@ -1403,7 +1403,7 @@ class VideoApi(RemoveableBulkModuleApi):
         :type hashes: List[str]
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :Usage example:
 
          .. code-block:: python
 
