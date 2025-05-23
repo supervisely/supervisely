@@ -899,16 +899,13 @@ def convert_3d_geometry_to_mesh(
     """
     from skimage import measure
 
-
     # Flip the mask along the x-axis to correct mirroring
     mask = np.flip(geometry.data, axis=0)
     space_directions = geometry._space_directions
     space_origin = geometry._space_origin
 
     if spacing is None:
-        if space_directions is None:
-            spacing = (1.0, 1.0, 1.0)
-        else:
+        if space_directions is not None:
             try:
                 spacing = tuple(
                     float(abs(direction[i])) for i, direction in enumerate(space_directions)
@@ -918,7 +915,8 @@ def convert_3d_geometry_to_mesh(
                     "Failed to get spacing from geometry meta. Using (1.0, 1.0, 1.0).", exc_info=1
                 )
                 spacing = (1.0, 1.0, 1.0)
-    
+        else:
+            spacing = (1.0, 1.0, 1.0)
 
     # marching_cubes expects (z, y, x) order
     verts, faces, normals, _ = measure.marching_cubes(
@@ -934,8 +932,7 @@ def convert_3d_geometry_to_mesh(
             "space directions": space_directions,
             "space origin": space_origin,
         }
-        transform_matrix = matrix_from_nrrd_header(header)
-        mesh.apply_transform(transform_matrix)
+        transform_mesh_from_header(mesh, header)
 
     return mesh
 
@@ -974,3 +971,24 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, kwargs=None):
 
     mesh = convert_3d_geometry_to_mesh(geometry, **kwargs)
     mesh.export(output_path)
+
+
+def transform_mesh_from_header(mesh: Trimesh, header: dict) -> None:
+    """
+    Transforms the given mesh in-place using spatial information from an NRRD header.
+
+    Args:
+        mesh (Trimesh): The mesh object to be transformed. The transformation is applied in-place.
+        header (dict): The NRRD header containing spatial metadata, including "space directions" and "space origin".
+
+    Returns:
+        None
+    """
+    transform_mat = matrix_from_nrrd_header(header)
+    lps2ras = np.diag([-1, -1, 1, 1])
+
+    world_mat = lps2ras @ transform_mat
+    half_offset = 0.5 * np.sum(header["space directions"], axis=0)
+    world_mat[:3, 3] += half_offset
+
+    mesh.apply_transform(world_mat)
