@@ -51,7 +51,7 @@ def fliplr(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
         import supervisely as sly
         from supervisely.aug.aug import fliplr
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -93,7 +93,7 @@ def flipud(img: np.ndarray, ann: Annotation) -> Tuple[np.ndarray, Annotation]:
         import supervisely as sly
         from supervisely.aug.aug import flipud
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -151,7 +151,7 @@ def crop(
         import supervisely as sly
         from supervisely.aug.aug import crop
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -215,7 +215,7 @@ def crop_fraction(
         import supervisely as sly
         from supervisely.aug.aug import crop_fraction
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -279,7 +279,7 @@ def random_crop(
         import supervisely as sly
         from supervisely.aug.aug import random_crop
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -349,7 +349,7 @@ def random_crop_fraction(
         import supervisely as sly
         from supervisely.aug.aug import random_crop_fraction
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -468,7 +468,7 @@ def instance_crop(
         import supervisely as sly
         from supervisely.aug.aug import instance_crop
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -547,7 +547,7 @@ def resize(img: np.ndarray, ann: Annotation, size: Tuple) -> Tuple[np.ndarray, A
         import supervisely as sly
         from supervisely.aug.aug import resize
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -612,7 +612,7 @@ def scale(
         import supervisely as sly
         from supervisely.aug.aug import scale
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -675,7 +675,7 @@ def rotate(
         import supervisely as sly
         from supervisely.aug.aug import rotate
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 

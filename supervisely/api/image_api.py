@@ -290,7 +290,7 @@ class ImageInfo(NamedTuple):
             updated_at='2021-03-02T10:04:33.973Z',
             meta={},
             path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             tags=[],
             created_by='admin'
             related_data_id=None,
@@ -355,7 +355,7 @@ class ImageInfo(NamedTuple):
     path_original: str
 
     #: :class:`str`: Full storage URL to image. e.g.
-    #: "http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
+    #: "http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     full_storage_url: str
 
     #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list.
@@ -415,7 +415,7 @@ class ImageApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         image_info = api.image.get_info_by_id(image_id) # api usage example
     """
@@ -660,7 +660,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #                    updated_at='2021-03-02T10:04:33.973Z',
             #                    meta={},
             #                    path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            #                    full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            #                    full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             #                    tags=[],
             # ImageInfo(id=770916,
             #           name='IMG_1836.jpeg',
@@ -677,7 +677,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #           updated_at='2021-03-02T10:04:33.973Z',
             #           meta={},
             #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
-            #           full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
+            #           full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
             #           tags=[]
             # ]
         """
@@ -874,6 +874,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links=True,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Get Images information by ID.
@@ -912,13 +913,16 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                data = {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.FILTER: filters,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                }
+                if fields is not None:
+                    data[ApiField.FIELDS] = fields
                 temp_results = self.get_list_all_pages(
                     "images.list",
-                    {
-                        ApiField.DATASET_ID: dataset_id,
-                        ApiField.FILTER: filters,
-                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    },
+                    data,
                 )
                 results.extend(temp_results)
                 if progress_cb is not None and len(temp_results) > 0:
@@ -1218,7 +1222,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :Usage example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
 
          .. code-block:: python
 
@@ -1884,7 +1888,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #         "1": "meta_example"
             #     },
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
-            #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
+            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
             # ]
 
             # Add custom sort parameter for image
@@ -2049,7 +2053,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #         "1": "meta_example"
             #     },
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
-            #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
+            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
             # ]
 
             # Add custom sort parameter for image
@@ -3095,7 +3099,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_url = api.image.url(team_id, workspace_id, project_id, dataset_id, image_id)
             print(url)
-            # Output: https://app.supervise.ly/app/images/16087/23821/53939/254737#image-121236920
+            # Output: https://app.supervisely.com/app/images/16087/23821/53939/254737#image-121236920
         """
         result = urllib.parse.urljoin(
             self._api.server_address,

@@ -1,10 +1,11 @@
 # coding: utf-8
 
 import uuid
-from supervisely.annotation.tag import Tag, TagJsonFields
+
 from supervisely._utils import take_with_default
-from supervisely.volume_annotation.constants import KEY, ID
+from supervisely.annotation.tag import Tag, TagJsonFields
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.volume_annotation.constants import ID, KEY
 
 
 class VolumeTag(Tag):
@@ -92,14 +93,14 @@ class VolumeTag(Tag):
             meta_heart = sly.TagMeta('heart', sly.TagValueType.NONE)
             tag_heart = VolumeTag(meta_heart)
 
-            print(tag_heart.key()) 
+            print(tag_heart.key())
             # Output: 2d9cd2cd-f89c-40a9-8675-1b0773fa250d
         """
         return self._key
 
     def to_json(self, key_id_map: KeyIdMap = None):
         """
-        Convert the VolumeTag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VolumeTag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
@@ -140,7 +141,7 @@ class VolumeTag(Tag):
     @classmethod
     def from_json(cls, data: dict, tag_meta_collection, key_id_map: KeyIdMap = None):
         """
-        Convert a json dict to VolumeTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VolumeTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: VolumeTag in json format as a dict.
         :type data: dict

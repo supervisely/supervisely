@@ -180,7 +180,7 @@ class VideoTag(Tag):
 
     def to_json(self, key_id_map: Optional[KeyIdMap] = None) -> Dict:
         """
-        Convert the VideoTag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VideoTag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: Key ID Map object.
         :type key_id_map: KeyIdMap, optional
@@ -229,7 +229,7 @@ class VideoTag(Tag):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> VideoTag:
         """
-        Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VideoTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: VideoTag in json format as a dict.
         :type data: dict

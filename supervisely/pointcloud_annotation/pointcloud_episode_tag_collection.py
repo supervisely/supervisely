@@ -177,7 +177,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -224,7 +224,7 @@ class PointcloudEpisodeTagCollection(PointcloudTagCollection):
     ) -> PointcloudEpisodeTagCollection:
         """
         Convert a list with dicts in json format to :class:`PointcloudEpisodeTagCollection<PointcloudEpisodeTagCollection>`.
-        Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: :class:`List[Dict]`
