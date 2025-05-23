@@ -157,7 +157,7 @@ class Frame(KeyObject):
 
     def to_json(self, key_id_map: KeyIdMap = None) -> Dict:
         """
-        Convert the Frame to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Frame to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -221,7 +221,7 @@ class Frame(KeyObject):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> Frame:
         """
-        Convert a json dict to Frame. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Frame. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
         :type data: dict

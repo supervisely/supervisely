@@ -1,10 +1,14 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional, Iterator
+
+from typing import Dict, Iterator, List, Optional
+
+from supervisely.pointcloud_annotation.pointcloud_episode_object import (
+    PointcloudEpisodeObject,
+)
 from supervisely.pointcloud_annotation.pointcloud_object_collection import (
     PointcloudObjectCollection,
 )
-from supervisely.pointcloud_annotation.pointcloud_episode_object import PointcloudEpisodeObject
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
@@ -25,7 +29,7 @@ class PointcloudEpisodeObjectCollection(PointcloudObjectCollection):
         cls, data: List[Dict], project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
     ) -> PointcloudEpisodeObjectCollection:
         """
-        Convert a list of json dicts to PointcloudEpisodeObjectCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list of json dicts to PointcloudEpisodeObjectCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]

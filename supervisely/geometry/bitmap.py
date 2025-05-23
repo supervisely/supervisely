@@ -294,9 +294,7 @@ class Bitmap(BitmapBase):
                     self.origin.col,
                     self.origin.row,
                 )  # cont with shape (rows, ?, 2)
-            cv2.drawContours(
-                bitmap, contours, -1, color, thickness=thickness
-            )
+            cv2.drawContours(bitmap, contours, -1, color, thickness=thickness)
         # pylint: enable=(no-member, unpacking-non-sequence)
 
     @property
@@ -352,9 +350,13 @@ class Bitmap(BitmapBase):
             return np.any(np.array(img), axis=-1)
         n = np.frombuffer(z, np.uint8)
 
-        imdecoded = cv2.imdecode(n, cv2.IMREAD_UNCHANGED)  # pylint: disable=(no-member, unpacking-non-sequenc)
+        imdecoded = cv2.imdecode(
+            n, cv2.IMREAD_UNCHANGED
+        )  # pylint: disable=(no-member, unpacking-non-sequenc)
         if (len(imdecoded.shape) == 3) and (imdecoded.shape[2] >= 4):
-            mask = imdecoded[:, :, 3].astype(bool)  # 4-channel imgs # pylint: disable=unsubscriptable-object
+            mask = imdecoded[:, :, 3].astype(
+                bool
+            )  # 4-channel imgs # pylint: disable=unsubscriptable-object
         elif len(imdecoded.shape) == 2:
             mask = imdecoded.astype(bool)  # flat 2d mask
         else:
@@ -376,7 +378,7 @@ class Bitmap(BitmapBase):
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

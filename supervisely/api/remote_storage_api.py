@@ -40,7 +40,7 @@ class Provider(StrEnum):
         ):
             prefix = path.split("://")[0]
             raise ValueError(
-                f"Incorrect cloud provider '{prefix}' in path, learn more here: https://docs.supervise.ly/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support"
+                f"Incorrect cloud provider '{prefix}' in path, learn more here: https://docs.supervisely.com/enterprise-edition/advanced-tuning/s3#links-plugin-cloud-providers-support"
             )
 
 
@@ -297,7 +297,7 @@ class RemoteStorageApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 123
             available_providers = api.remote_storage.get_list_available_providers(team_id)
@@ -357,7 +357,7 @@ class RemoteStorageApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 123
             supported_providers = api.remote_storage.get_list_supported_providers(team_id)
@@ -416,7 +416,7 @@ class RemoteStorageApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
             is_exist = api.remote_storage.is_path_exist(path)
@@ -432,7 +432,7 @@ class RemoteStorageApi(ModuleApiBase):
         resp = self._api.get("remote-storage.exists", json_body)
         if resp is None:
             return False
-            
+
         resp = resp.json()
 
         if resp.get("exists"):
@@ -470,7 +470,7 @@ class RemoteStorageApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             path = "s3://bucket/lemons/ds1/img/IMG_444.jpeg"
             team_id = 123

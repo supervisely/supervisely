@@ -947,7 +947,7 @@ class Dataset(KeyObject):
             #     updated_at='2021-03-02T10:04:33.973Z',
             #     meta={},
             #     path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpeg',
-            #     full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpeg'),
+            #     full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpeg'),
             #     tags=[]
             # )
         """
@@ -987,7 +987,7 @@ class Dataset(KeyObject):
             #     updated_at='2021-03-02T10:04:33.973Z',
             #     meta={},
             #     path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpeg',
-            #     full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpeg'),
+            #     full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpeg'),
             #     tags=[]
             # )
         """
@@ -3449,7 +3449,7 @@ class Project:
         - Dict of AlphaGeometries
 
         :param api: Supervisely API address and token.
-        :type api: :class:`Api<supervise.ly.api.api.Api>`
+        :type api: :class:`Api<supervisely.api.api.Api>`
         :param project_id: Project ID to download.
         :type project_id: :class:`int`
         :param dest_dir: Destination path to local directory.
@@ -4807,7 +4807,7 @@ def download_project(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
@@ -5495,6 +5495,7 @@ def _dataset_structure_md(
 
     return "".join(result_md)
 
+
 def _dataset_descriptions_md(project_info: sly.ProjectInfo, api: sly.Api) -> str:
     """Creates a markdown string with dictionary of descriptions and custom data of datasets.
     :param project_info: Project information.
@@ -5513,13 +5514,13 @@ def _dataset_descriptions_md(project_info: sly.ProjectInfo, api: sly.Api) -> str
         full_ds_name = "/".join(parents + [dataset_info.name])
         if dataset_info.description or dataset_info.custom_data:
             data_found = True
-            result_md += f"  \"{full_ds_name}\": {{\n"
+            result_md += f'  "{full_ds_name}": {{\n'
             if dataset_info.description:
-                result_md += f"    \"description\": \"{dataset_info.description}\",\n"
+                result_md += f'    "description": "{dataset_info.description}",\n'
             if dataset_info.custom_data:
                 formated_custom_data = json.dumps(dataset_info.custom_data, indent=4)
                 formated_custom_data = formated_custom_data.replace("\n", "\n    ")
-                result_md += f"    \"custom_data\": {formated_custom_data}\n"
+                result_md += f'    "custom_data": {formated_custom_data}\n'
             result_md += "  },\n"
     result_md += "}\n```"
     if not data_found:

@@ -291,7 +291,7 @@ class ProjectMeta(JsonSerializable):
 
     def to_json(self) -> Dict:
         """
-        Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the ProjectMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -344,7 +344,7 @@ class ProjectMeta(JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> ProjectMeta:
         """
-        Convert a json dict to ProjectMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to ProjectMeta. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: ProjectMeta in json format as a dict.
         :type data: dict

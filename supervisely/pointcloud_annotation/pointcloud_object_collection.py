@@ -1,16 +1,20 @@
 # coding: utf-8
 from __future__ import annotations
-from typing import List, Dict, Optional, Iterator
-from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+
+from typing import Dict, Iterator, List, Optional
+
 from supervisely.pointcloud_annotation.pointcloud_object import PointcloudObject
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_object_collection import VideoObjectCollection
+
 
 class PointcloudObjectCollection(VideoObjectCollection):
-    '''
+    """
     Collection with :class:`PointcloudObject<supervisely.pointcloud_annotation.pointcloud_object.PointcloudObject>` instances.
     :class:`PointcloudObjectCollection<PointcloudObjectCollection>` object is immutable.
-    '''
+    """
+
     item_type = PointcloudObject
 
     def __iter__(self) -> Iterator[PointcloudObject]:
@@ -18,13 +22,10 @@ class PointcloudObjectCollection(VideoObjectCollection):
 
     @classmethod
     def from_json(
-        cls, 
-        data: List[Dict], 
-        project_meta: ProjectMeta, 
-        key_id_map: Optional[KeyIdMap]=None
+        cls, data: List[Dict], project_meta: ProjectMeta, key_id_map: Optional[KeyIdMap] = None
     ) -> PointcloudObjectCollection:
         """
-        Convert a list of json dicts to PointcloudObjectCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list of json dicts to PointcloudObjectCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]

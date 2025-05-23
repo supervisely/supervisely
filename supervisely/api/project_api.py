@@ -142,7 +142,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         project_id = 1951
         project_info = api.project.get_info_by_id(project_id)
@@ -169,7 +169,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         created_at='2020-11-17T17:44:28.158Z',
                         updated_at='2021-03-01T10:51:57.545Z',
                         type='images',
-                        reference_image_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
+                        reference_image_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/...jpg',
                         custom_data={},
                         backup_archive={},
                         team_id=2,
@@ -979,7 +979,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
             project_url = api.project.url(project_id)
             print(project_url)
-            # Output: http://supervise.ly/projects/1951/datasets
+            # Output: http://supervisely.com/projects/1951/datasets
         """
         res = f"projects/{id}/datasets"
         if is_development():
@@ -1798,7 +1798,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             response = check_imageset_backup(project_id)
             archive_url = response['imagesArchiveUrl']
