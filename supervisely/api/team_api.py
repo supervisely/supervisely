@@ -212,7 +212,9 @@ class TeamApi(ModuleNoParent, UpdateableModule):
         ModuleNoParent.__init__(self, api)
         UpdateableModule.__init__(self, api)
 
-    def get_list(self, filters: List[Dict[str, str]] = None) -> List[TeamInfo]:
+    def get_list(
+        self, filters: List[Dict[str, str]] = None, only_available: bool = True
+    ) -> List[TeamInfo]:
         """
         List of all Teams.
 
@@ -269,7 +271,8 @@ class TeamApi(ModuleNoParent, UpdateableModule):
             #                  UsageInfo(plan='free')               )
             # ]
         """
-        return self.get_list_all_pages("teams.list", {ApiField.FILTER: filters or []})
+        data = {ApiField.FILTER: filters or [], ApiField.ONLY_AVAILABLE: only_available}
+        return self.get_list_all_pages("teams.list", data)
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> TeamInfo:
         """

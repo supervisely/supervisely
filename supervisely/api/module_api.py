@@ -661,6 +661,8 @@ class ApiField:
     """"""
     COLLECTION_ID = "collectionId"
     """"""
+    ONLY_AVAILABLE = "onlyAvailable"
+    """"""
 
 
 def _get_single_item(items):
