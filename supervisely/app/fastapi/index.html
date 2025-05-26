@@ -192,8 +192,11 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       await micropip.install(["ssl"]) // needed for fastapi
       await micropip.install(["fastapi"]) // needed for sdk
 
+      console.log("Env variables:", pyodide.globals.get("os").environ);
+
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
+      console.log("Installing Python package:", "{{{ req | safe }}}");
       await micropip.install(["{{{ req | safe }}}"])
       {% endfor %}
       {% endif %}
