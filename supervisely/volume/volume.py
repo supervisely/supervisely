@@ -932,6 +932,12 @@ def convert_3d_geometry_to_mesh(
     mesh.apply_transform(np.diag([-1, -1, 1, 1]))
     if space is not None:
         convert_mesh_to_coordinate_system(mesh, space)
+
+    # Ensure the mesh is in a consistent winding order
+    # This is important for correct rendering and further processing
+    if not mesh.is_winding_consistent:
+        mesh.fix_normals()
+
     return mesh
 
 
