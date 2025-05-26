@@ -449,8 +449,8 @@ app.run"""
         # Save SDK
         with tarfile.open(app_dir / "supervisely.tar", "w") as tar:
             tar.add(
-                "supervisely",
-                arcname="supervisely",
+                "supervisely/supervisely",
+                arcname="supervisely/supervisely",
                 filter=lambda tarinfo: (
                     None
                     if "__pycache__" in tarinfo.name or tarinfo.name.endswith(".pyc")
