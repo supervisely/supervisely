@@ -969,9 +969,9 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
 def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     """
     Transforms the given mesh in-place using spatial information from an NRRD header.
-    The mesh will be tranformed to match the coordinate system defined in the header.
+    The mesh will be tranformed to match the coordinate system defined in the header and flipped on X and Y axis to match the volume.
 
-    :param mesh: The mesh object to be transformed. Expected to be in the LPS (left-posterior-superior) coordinate system. The transformation is applied in-place.
+    :param mesh: The mesh object to be transformed. The transformation is applied in-place.
     :type mesh: Trimesh
     :param volume_header: The NRRD header containing spatial metadata, including "space directions",
         "space origin", and "space". Field "space" should be in the format of
@@ -989,7 +989,7 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
 
     space = volume_header.get("space", "right-anterior-superior").lower()
 
-    # mapping from LPS to target coordinate system
+    # coordinate system mapping
     coord_system_to_transform = {
         "right-anterior-superior": np.diag([-1, -1, 1, 1]),  # RAS - flip x and y
         "left-anterior-superior": np.diag([1, -1, 1, 1]),  # LAS - flip y only
