@@ -906,12 +906,12 @@ def convert_3d_geometry_to_mesh(
     if volume_meta is None:
         volume_meta = {}
 
+    if spacing is None:
+        spacing = (1.0, 1.0, 1.0)
+
     space = geometry.space or volume_meta.get("space")
     space_directions = geometry.space_directions or volume_meta.get("space directions")
     space_origin = geometry.space_origin or volume_meta.get("space origin")
-
-    if spacing is None:
-        spacing = (1.0, 1.0, 1.0)
 
     # marching_cubes expects (z, y, x) order
     verts, faces, normals, _ = measure.marching_cubes(
@@ -959,9 +959,6 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
         mask3d.export_3d_as_mesh(mask3d, "output.stl", spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True})
     """
 
-    if kwargs is None:
-        kwargs = {}
-
     if get_file_ext(output_path).lower() not in [".stl", ".obj"]:
         raise ValueError('File extension must be either ".stl" or ".obj"')
 
@@ -974,7 +971,7 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     Transforms the given mesh in-place using spatial information from an NRRD header.
     The mesh will be tranformed to match the coordinate system defined in the header.
 
-    :param mesh: The mesh object to be transformed. The transformation is applied in-place.
+    :param mesh: The mesh object to be transformed. Expected to be in the LPS (left-posterior-superior) coordinate system. The transformation is applied in-place.
     :type mesh: Trimesh
     :param volume_header: The NRRD header containing spatial metadata, including "space directions",
         "space origin", and "space". Field "space" should be in the format of
@@ -991,8 +988,8 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     transform_mat = matrix_from_nrrd_header(volume_header)
 
     space = volume_header.get("space", "right-anterior-superior").lower()
-    # a mapping from space names to transformation matrices to transform the space of the mesh.
-    # originally, mesh is in LPS (left-posterior-superior) space
+
+    # mapping from LPS to target coordinate system
     coord_system_to_transform = {
         "right-anterior-superior": np.diag([-1, -1, 1, 1]),  # RAS - flip x and y
         "left-anterior-superior": np.diag([1, -1, 1, 1]),  # LAS - flip y only
