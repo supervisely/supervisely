@@ -209,7 +209,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
       python_code = `
-from supervisely.webpy import WebPyApplication
+from supervisely.webpy.app import WebPyApplication
 app = WebPyApplication()
 state = app.state
 if state.get("app_initializing", False) == True:
