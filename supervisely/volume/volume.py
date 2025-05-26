@@ -972,10 +972,13 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
 def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     """
     Transforms the given mesh in-place using spatial information from an NRRD header.
+    The mesh will be tranformed to match the coordinate system defined in the header.
 
     :param mesh: The mesh object to be transformed. The transformation is applied in-place.
     :type mesh: Trimesh
-    :param volume_header: The NRRD header containing spatial metadata, including "space directions" and "space origin".
+    :param volume_header: The NRRD header containing spatial metadata, including "space directions",
+        "space origin", and "space". Field "space" should be in the format of
+        "right-anterior-superior", "left-anterior-superior", etc.
     :type volume_header: dict
     :returns: None
     :rtype: None
