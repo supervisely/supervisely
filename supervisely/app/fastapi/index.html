@@ -199,7 +199,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       {% endfor %}
       {% endif %}
 
-      await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk") // temporary solution
+      await setupAndImportPythonPackage("./supervisely.tar", "supervisely") // temporary solution
       await setupAndImportPythonPackage("./src.tar", "src")
       {% if src_modules %}
       {% for module in src_modules %}
@@ -209,7 +209,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
       python_code = `
-from sly_sdk.webpy import WebPyApplication
+from supervisely.webpy import WebPyApplication
 app = WebPyApplication()
 state = app.state
 if state.get("app_initializing", False) == True:

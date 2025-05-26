@@ -224,7 +224,7 @@ def archive_application(repo: git.Repo, config, slug):
             should_remove_dir = gui_folder_path
             # if gui folder is empty, need to render it
             with cd(str(working_dir_path), add_to_path=True):
-                exec(open("sly_sdk/render.py", "r").read(), {"__name__": "__main__"})
+                exec(open("supervisely/webpy/render.py", "r").read(), {"__name__": "__main__"})
                 file_paths.extend(
                     [Path(p).absolute() for p in list_files_recursively(str(gui_folder_path))]
                 )

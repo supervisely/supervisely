@@ -1,0 +1,14 @@
+python-json-logger>=0.1.11, <3.0.0
+jsonschema>=2.6.0,<=4.20.0
+aiofiles
+httpx[http2]==0.27.2
+requests-toolbelt>=0.9.1
+tqdm>=4.62.3, <5.0.0
+python-dotenv>=0.19.2, <=1.0.0
+numpy>=1.19, <2.0.0
+pyjwt>=2.1.0,<3.0.0
+setuptools
+pandas>=1.1.3, <=2.1.4
+pillow>=5.4.1, <=10.2.0
+opencv-python>=4.6.0.66, <5.0.0.0
+PyYAML>=5.4.0
