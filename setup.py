@@ -75,10 +75,11 @@ def get_version():
 
 version = get_version()
 
-IS_WEBPY_APP = os.getenv("WEBPY_APP", "false").lower() in ["true", "1", "yes", "y"]
+# IS_WEBPY_APP = os.getenv("WEBPY_APP", "false").lower() in ["true", "1", "yes", "y"]
+# if IS_WEBPY_APP:
 
 
-if IS_WEBPY_APP:
+if "PYODIDE" in os.environ:  # running in Pyodide
     INSTALL_REQUIRES = [
         "python-json-logger>=0.1.11, <3.0.0",
         "jsonschema>=2.6.0,<=4.20.0",
