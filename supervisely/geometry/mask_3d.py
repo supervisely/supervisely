@@ -23,6 +23,8 @@ from supervisely.geometry.constants import (
     ID,
     LABELER_LOGIN,
     MASK_3D,
+    SPACE,
+    SPACE_DIRECTIONS,
     SPACE_ORIGIN,
     UPDATED_AT,
 )
@@ -457,6 +459,12 @@ class Mask3D(Geometry):
         if self.space_origin:
             res[f"{self._impl_json_class_name()}"][f"{SPACE_ORIGIN}"] = self.space_origin
 
+        if self.space:
+            res[f"{self._impl_json_class_name()}"][f"{SPACE}"] = self.space
+
+        if self.space_directions:
+            res[f"{self._impl_json_class_name()}"][f"{SPACE_DIRECTIONS}"] = self.space_directions
+
         self._add_creation_info(res)
         return res
 
@@ -508,17 +516,30 @@ class Mask3D(Geometry):
         created_at = json_data.get(CREATED_AT, None)
         sly_id = json_data.get(ID, None)
         class_id = json_data.get(CLASS_ID, None)
-        instance = cls(
+
+        header = {}
+
+        space_origin = json_data[json_root_key].get(SPACE_ORIGIN, None)
+        if space_origin is not None:
+            header["space origin"] = space_origin
+
+        space = json_data[json_root_key].get(SPACE, None)
+        if space is not None:
+            header["space"] = space
+
+        space_directions = json_data[json_root_key].get(SPACE_DIRECTIONS, None)
+        if space_directions is not None:
+            header["space directions"] = space_directions
+
+        return cls(
             data=data.astype(np.bool_),
             sly_id=sly_id,
             class_id=class_id,
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            volume_header=header,
         )
-        if SPACE_ORIGIN in json_data[json_root_key]:
-            instance.space_origin = json_data[json_root_key][SPACE_ORIGIN]
-        return instance
 
     @classmethod
     def _impl_json_class_name(cls):
