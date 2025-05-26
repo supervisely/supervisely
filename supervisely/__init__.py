@@ -263,6 +263,7 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 
 import supervisely.team_files as team_files
 import supervisely.output as output
+import supervisely.webpy as webpy
 
 # start monkey patching
 import importlib
@@ -270,7 +271,6 @@ import inspect
 from supervisely.task.progress import tqdm_sly
 import tqdm
 
-from supervisely import convert
 
 _original_tqdm = tqdm.tqdm
 
