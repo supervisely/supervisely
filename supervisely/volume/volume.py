@@ -897,8 +897,9 @@ def convert_3d_geometry_to_mesh(
 
         .. code-block:: python
 
+            volume_header = nrrd.read_header("path/to/volume.nrrd")
             mask3d = Mask3D.create_from_file("path/to/mask3d")
-            mesh = convert_3d_geometry_to_mesh(mask3d, spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True)
+            mesh = convert_3d_geometry_to_mesh(mask3d, spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True, volume_meta=volume_header)
     """
     from skimage import measure
 
@@ -972,12 +973,12 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     """
     Transforms the given mesh in-place using spatial information from an NRRD header.
 
-    Args:
-        mesh (Trimesh): The mesh object to be transformed. The transformation is applied in-place.
-        volume_header (dict): The NRRD header containing spatial metadata, including "space directions" and "space origin".
-
-    Returns:
-        None
+    :param mesh: The mesh object to be transformed. The transformation is applied in-place.
+    :type mesh: Trimesh
+    :param volume_header: The NRRD header containing spatial metadata, including "space directions" and "space origin".
+    :type volume_header: dict
+    :returns: None
+    :rtype: None
     """
     from supervisely.geometry.constants import SPACE_ORIGIN
     from supervisely.geometry.mask_3d import PointVolume
@@ -986,7 +987,19 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
         volume_header["space origin"] = volume_header["space origin"].to_json()[SPACE_ORIGIN]
     transform_mat = matrix_from_nrrd_header(volume_header)
 
-    if volume_header.get("space", "right-anterior-superior") == "right-anterior-superior":
-        # flip x and y axis
-        transform_mat = np.diag([-1, -1, 1, 1]) @ transform_mat
+    space = volume_header.get("space", "right-anterior-superior").lower()
+    # a mapping from space names to transformation matrices to transform the space of the mesh.
+    # originally, mesh is in LPS (left-posterior-superior) space
+    coord_system_to_transform = {
+        "right-anterior-superior": np.diag([-1, -1, 1, 1]),  # RAS - flip x and y
+        "left-anterior-superior": np.diag([1, -1, 1, 1]),  # LAS - flip y only
+        "right-posterior-superior": np.diag([-1, 1, 1, 1]),  # RPS - flip x only
+        "left-posterior-inferior": np.diag([1, 1, -1, 1]),  # LPI - flip z only
+        "right-anterior-inferior": np.diag([-1, -1, -1, 1]),  # RAI - flip x, y, z
+        "left-anterior-inferior": np.diag([1, -1, -1, 1]),  # LAI - flip y and z
+        "right-posterior-inferior": np.diag([-1, 1, -1, 1]),  # RPI - flip x and z
+    }
+
+    space_transform = coord_system_to_transform.get(space, np.diag([1, 1, 1, 1]))
+    transform_mat = space_transform @ transform_mat
     mesh.apply_transform(transform_mat)

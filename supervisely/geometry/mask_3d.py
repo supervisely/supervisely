@@ -260,7 +260,7 @@ class Mask3D(Geometry):
         self._space_directions = None
 
         if volume_header is not None:
-            self.set_space_meta_from_header(volume_header)
+            self.set_volume_space_meta(volume_header)
 
     @property
     def space_origin(self) -> Optional[PointVolume]:
@@ -722,7 +722,7 @@ class Mask3D(Geometry):
             geometries_dict[key] = geometry_bytes
         return geometries_dict
 
-    def set_space_meta_from_header(self, header: Dict):
+    def set_volume_space_meta(self, header: Dict):
         """
         Set space, space directions, and space origin attributes from a NRRD header dictionary.
 
