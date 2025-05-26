@@ -30,11 +30,6 @@ def render():
     if os.getcwd() not in sys.path:
         sys.path.append(os.getcwd())
 
-    # current file path
-    current_dir = Path(__file__).parent.resolve()
-    requirements_path = current_dir / "web_py_requirements.txt"
-    print("Using requirements file:", requirements_path)
-
     # import main
     module_name = Path(main_script).stem
     spec = importlib.util.spec_from_file_location(module_name, main_script)
@@ -46,7 +41,7 @@ def render():
         main_script_path=main_script,
         src_dir=src_dir,
         app_dir=gui_dir,
-        requirements_path=requirements_path,
+        requirements_path=find_requirements(src_dir),
     )
 
     return gui_dir
