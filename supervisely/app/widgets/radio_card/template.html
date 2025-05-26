@@ -1,0 +1,71 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/radio_card/style.css" />
+<div class="radio-card-group">
+    <div class="tools-row">
+        <template v-for="(item, idx) in data.{{{widget.widget_id}}}.items">
+
+            <article v-if="item.disabled" :style="{ width: `${data.{{{widget.widget_id}}}.items_width}px` }"
+                class="img-wrapper">
+                <div class="tag tag-{{idx}}" :style="{ background: item.bgColor }">
+                    <i class="zmdi" :class="item.tagIcon" />
+                    <span>{{item.tag }}</span>
+                </div>
+                <div>
+                    <div v-if=item.disabled class="disabled-overlay">
+                        <div v-if="item.disabledText" class="disabled-text-wrapper">
+                            <span>{{ item.disabledText }}</span>
+                        </div>
+                    </div>
+                    <img v-if="item.img" :src="item.img">
+                    {% for widget_item in widget._items %}
+                    {% if widget_item.content %}
+                    <template v-if="idx == {{{widget_item.idx}}}">
+                        {{{ widget_item.content}}}
+                    </template>
+                    {% endif %}
+                    {% endfor %}
+                    <h3 v-if="item.title">{{ item.title }}</h3>
+                </div>
+
+            </article>
+            <article class="img-wrapper" :style="{ width: `${data.{{{widget.widget_id}}}.items_width}px` }"
+                v-if="!item.disabled" :class="{ 'active': state.{{{widget.widget_id}}}.activeToolIdx == idx }" {% if
+                widget._changes_handled==true %}
+                @click="state.{{{widget.widget_id}}}.activeToolIdx = idx; post('/{{{widget.widget_id}}}/value_changed')"
+                {% else %} @click="state.{{{widget.widget_id}}}.activeToolIdx = idx" {% endif %}>
+
+                <div v-if=item.disabled class="disabled-overlay" />
+                <div v-if="item.tag" class="tag tag-{{idx}}" :style="{ background: item.bgColor }">
+                    <i class="zmdi" :class="item.tagIcon" />
+                    <span>{{item.tag }}</span>
+                </div>
+                <div>
+                    <img :src="item.img">
+
+                    {% for widget_item in widget._items %}
+                    {% if widget_item.content %}
+                    <template v-if="idx == {{{widget_item.idx}}}">
+                        {{{ widget_item.content}}}
+                    </template>
+                    {% endif %}
+                    {% endfor %}
+                    <h3 v-if="item.title">{{ item.title }}</h3>
+                </div>
+            </article>
+        </template>
+
+    </div>
+    <div class="desc">
+        <div class="arrow-up"
+            :style="{left: `${data.{{{widget.widget_id}}}.items_width / 2 + state.{{{widget.widget_id}}}.activeToolIdx * (data.{{{widget.widget_id}}}.items_width + 20) - 10}px`}" />
+        <div v-if="data.{{{widget.widget_id}}}.items[state.{{{widget.widget_id}}}.activeToolIdx].description"
+            v-html="data.{{{widget.widget_id}}}.items[state.{{{widget.widget_id}}}.activeToolIdx].description" />
+        {% for item in widget._items %}
+        {% if item.description_content %}
+        <div v-if="{{{item.idx}}} == state.{{{widget.widget_id}}}.activeToolIdx">
+            {{{ item.description_content }}}
+        </div>
+        {% endif %}
+        {% endfor %}
+
+    </div>
+</div>
