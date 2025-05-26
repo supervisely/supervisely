@@ -930,6 +930,11 @@ def convert_3d_geometry_to_mesh(
         }
         align_mesh_to_volume(mesh, header)
 
+    # Flip X and Y axes
+    flip_mat = np.eye(4)
+    flip_mat[0, 0] = -1
+    flip_mat[1, 1] = -1
+    mesh.apply_transform(flip_mat)
     return mesh
 
 
@@ -987,19 +992,4 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
         volume_header["space origin"] = volume_header["space origin"].to_json()[SPACE_ORIGIN]
     transform_mat = matrix_from_nrrd_header(volume_header)
 
-    space = volume_header.get("space", "right-anterior-superior").lower()
-
-    # coordinate system mapping
-    coord_system_to_transform = {
-        "right-anterior-superior": np.diag([-1, -1, 1, 1]),  # RAS - flip x and y
-        "left-anterior-superior": np.diag([1, -1, 1, 1]),  # LAS - flip y only
-        "right-posterior-superior": np.diag([-1, 1, 1, 1]),  # RPS - flip x only
-        "left-posterior-inferior": np.diag([1, 1, -1, 1]),  # LPI - flip z only
-        "right-anterior-inferior": np.diag([-1, -1, -1, 1]),  # RAI - flip x, y, z
-        "left-anterior-inferior": np.diag([1, -1, -1, 1]),  # LAI - flip y and z
-        "right-posterior-inferior": np.diag([-1, 1, -1, 1]),  # RPI - flip x and z
-    }
-
-    space_transform = coord_system_to_transform.get(space, np.diag([1, 1, 1, 1]))
-    transform_mat = space_transform @ transform_mat
     mesh.apply_transform(transform_mat)
