@@ -263,24 +263,16 @@ class Mask3D(Geometry):
             self.set_volume_space_meta(volume_header)
 
     @property
-    def space_origin(self) -> Optional[PointVolume]:
-        """
-        Get the space origin of the Mask3D.
-
-        :return: Space origin of the Mask3D.
-        :rtype: :class:`PointVolume<PointVolume>`
-        """
-        return self._space_origin
-
-    @space_origin.getter
     def space_origin(self) -> Optional[List[float]]:
         """
-        Get the space origin of the Mask3D.
+        Get the space origin of the Mask3D as a list of floats.
 
         :return: Space origin of the Mask3D.
-        :rtype: List[float]
+        :rtype: List[float] or None
         """
-        return self._space_origin.to_json()["space_origin"] if self._space_origin else None
+        if self._space_origin is not None:
+            return [self._space_origin.x, self._space_origin.y, self._space_origin.z]
+        return None
 
     @space_origin.setter
     def space_origin(self, value: Union[PointVolume, List[float], np.array]):
