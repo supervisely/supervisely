@@ -21,6 +21,7 @@ def get_config():
 
 def render():
     config = get_config()
+    print("Rendering web app with config:", config)
     src_dir = config["src_dir"]
     gui_dir = config["gui_folder_path"]
     main_script = config["main_script"]
@@ -32,6 +33,7 @@ def render():
     # current file path
     current_dir = Path(__file__).parent.resolve()
     requirements_path = current_dir / "web_py_requirements.txt"
+    print("Using requirements file:", requirements_path)
 
     # import main
     module_name = Path(main_script).stem

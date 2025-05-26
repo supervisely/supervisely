@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from supervisely.render import render
+from supervisely.webpy.render import render
 
 gui_dir = render()
 
