@@ -437,9 +437,12 @@ class WebPyApplication(metaclass=Singleton):
             f.write(
                 f"""
 try:
-    import supervisely
-except ImportError:
     import sys
+    import supervisely.supervisely as supervisely
+
+    sys.modules["supervisely"] = supervisely
+except ImportError:
+    import supervisely
 
 from {main_module} import app
 
