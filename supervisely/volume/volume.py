@@ -922,19 +922,16 @@ def convert_3d_geometry_to_mesh(
     if apply_decimation and 0 < decimation_fraction < 1:
         mesh = mesh.simplify_quadric_decimation(int(len(mesh.faces) * decimation_fraction))
 
-    if all([i is not None for i in [space, space_directions, space_origin]]):
+    if space_directions is not None and space_origin is not None:
         header = {
-            "space": space,
             "space directions": space_directions,
             "space origin": space_origin,
         }
         align_mesh_to_volume(mesh, header)
 
-    # Flip X and Y axes
-    flip_mat = np.eye(4)
-    flip_mat[0, 0] = -1
-    flip_mat[1, 1] = -1
-    mesh.apply_transform(flip_mat)
+    mesh.apply_transform(np.diag([-1, -1, 1, 1]))
+    if space is not None:
+        convert_mesh_to_coordinate_system(mesh, space)
     return mesh
 
 
@@ -974,7 +971,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
 def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     """
     Transforms the given mesh in-place using spatial information from an NRRD header.
-    The mesh will be tranformed to match the coordinate system defined in the header and flipped on X and Y axis to match the volume.
+    The mesh will be tranformed to match the coordinate system defined in the header.
 
     :param mesh: The mesh object to be transformed. The transformation is applied in-place.
     :type mesh: Trimesh
@@ -991,5 +988,32 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
     if isinstance(volume_header["space origin"], PointVolume):
         volume_header["space origin"] = volume_header["space origin"].to_json()[SPACE_ORIGIN]
     transform_mat = matrix_from_nrrd_header(volume_header)
-
     mesh.apply_transform(transform_mat)
+
+
+def convert_mesh_to_coordinate_system(mesh: Trimesh, target_space: str):
+    """
+    Convert a mesh's axes to a specified anatomical coordinate system by flipping axes.
+    Target space should be provided in the format of "right-anterior-superior", "left-anterior-superior", etc.
+    Mesh vertices are modified in-place.
+
+    :param mesh:   Trimesh object to be transformed in-place.
+    :type mesh:    trimesh.Trimesh
+    :param target_space: Desired coordinate system.
+    :type target_space: str
+    :returns:      None (mesh vertices are modified in-place).
+    :rtype:        None
+    """
+
+    coord_system_to_transform = {
+        "right-anterior-superior": np.diag([1, 1, 1, 1]),  # RAS -> RAS (identity)
+        "left-anterior-superior": np.diag([-1, 1, 1, 1]),  # RAS -> LAS (flip X)
+        "right-posterior-superior": np.diag([1, -1, 1, 1]),  # RAS -> RPS (flip Y)
+        "left-posterior-superior": np.diag([-1, -1, 1, 1]),  # RAS -> LPS (flip X, Y)
+        "right-anterior-inferior": np.diag([1, 1, -1, 1]),  # RAS -> RAI (flip Z)
+        "left-anterior-inferior": np.diag([-1, 1, -1, 1]),  # RAS -> LAI (flip X, Z)
+        "right-posterior-inferior": np.diag([1, -1, -1, 1]),  # RAS -> RPI (flip Y, Z)
+        "left-posterior-inferior": np.diag([-1, -1, -1, 1]),  # RAS -> LPI (flip X, Y, Z)
+    }
+    mat = coord_system_to_transform.get(target_space.lower(), np.diag([1, 1, 1, 1]))
+    mesh.apply_transform(mat)
