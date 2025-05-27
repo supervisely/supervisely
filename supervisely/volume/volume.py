@@ -912,10 +912,7 @@ def convert_3d_geometry_to_mesh(
     space_directions = geometry.space_directions or volume_meta.get("space directions")
     space_origin = geometry.space_origin or volume_meta.get("space origin")
 
-    # marching_cubes expects (z, y, x) order
-    verts, faces, normals, _ = measure.marching_cubes(
-        geometry.data.astype(np.float32), level=level, spacing=spacing
-    )
+    verts, faces, normals, _ = measure.marching_cubes(geometry.data, level=level, spacing=spacing)
     mesh = Trimesh(vertices=verts, faces=faces, vertex_normals=normals, process=False)
 
     if apply_decimation and 0 < decimation_fraction < 1:
@@ -927,6 +924,9 @@ def convert_3d_geometry_to_mesh(
             "space origin": space_origin,
         }
         align_mesh_to_volume(mesh, header)
+
+    # flip x and y axes to match initial mask orientation
+    mesh.apply_transform(np.diag([-1, -1, 1, 1]))
 
     mesh.fix_normals()
 
