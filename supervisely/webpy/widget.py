@@ -14,7 +14,8 @@ class BaseWidget:
         BaseWidget.widgets_counter += 1
         if widget_id is None:
             widget_id = "widget_" + str(BaseWidget.widgets_counter)
-        self.server = _MainServer()
+        self._sly_app = _MainServer()
+        self.server = self._sly_app.get_server()
         self.widget_id = widget_id
 
 
@@ -118,7 +119,7 @@ class Loading:
 
 
 class Widget(BaseWidget, Hidable, Disableable, Loading):
-    def __init__(self, widget_id: str = None):
+    def __init__(self, widget_id: str = None, *args, **kwargs):
         super().__init__(widget_id=widget_id)
         Hidable.__init__(self)
         Disableable.__init__(self)
