@@ -3,10 +3,13 @@
 import pkg_resources  # isort: skip
 import os
 
-try:
-    __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
-    __version__ = "development"
+if "PYODIDE" in os.environ:  # running in Pyodide (webpy app)
+    __version__ = "6.73.367+web.py.sdk"
+else:
+    try:
+        __version__ = pkg_resources.require("supervisely")[0].version
+    except TypeError as e:
+        __version__ = "development"
 
 from supervisely.sly_logger import (
     logger,
@@ -263,7 +266,6 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 
 import supervisely.team_files as team_files
 import supervisely.output as output
-import supervisely.webpy as webpy
 
 # start monkey patching
 import importlib
@@ -271,6 +273,7 @@ import inspect
 from supervisely.task.progress import tqdm_sly
 import tqdm
 
+from supervisely import convert
 
 _original_tqdm = tqdm.tqdm
 

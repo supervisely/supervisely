@@ -79,7 +79,7 @@ version = get_version()
 # if IS_WEBPY_APP:
 
 
-if "PYODIDE" in os.environ:  # running in Pyodide
+if "PYODIDE" in os.environ:  # running in Pyodide (webpy app)
     INSTALL_REQUIRES = [
         "python-json-logger>=0.1.11, <3.0.0",
         "jsonschema>=2.6.0,<=4.20.0",
