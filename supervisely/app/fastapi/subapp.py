@@ -15,7 +15,6 @@ import arel
 import jinja2
 import numpy as np
 import psutil
-from async_asgi_testclient import TestClient
 from fastapi import (
     Depends,
     FastAPI,
@@ -867,6 +866,7 @@ def _init(
         @app.on_event("shutdown")
         def shutdown():
             from supervisely.app.content import ContentOrigin
+            from async_asgi_testclient import TestClient
 
             ContentOrigin().stop()
             client = TestClient(app)
@@ -980,6 +980,9 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
+
+        from async_asgi_testclient import TestClient
+
         self.test_client = TestClient(self._fastapi)
 
         if not headless:

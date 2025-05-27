@@ -3,7 +3,6 @@ import shutil
 import time
 
 import cv2
-import ffmpeg
 
 import supervisely as sly
 from supervisely.io.fs import ensure_base_path

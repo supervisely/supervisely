@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import List, Union
 
 import markupsafe
-from async_asgi_testclient import TestClient
 from bs4 import BeautifulSoup
 from fastapi import FastAPI
 from jinja2 import Environment

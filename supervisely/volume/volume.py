@@ -7,7 +7,6 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import stringcase
-from trimesh import Trimesh
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
@@ -17,9 +16,14 @@ from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursivel
 
 if not running_in_webpy_app():
     from SimpleITK import Image as SitkImage  # pylint: disable=import-error
+    from trimesh import Trimesh
 else:
     class SitkImage:
         """Dummy class for SimpleITK.Image to avoid import error in webpy app."""
+        pass
+
+    class Trimesh:
+        """Dummy class for trimesh.Trimesh to avoid import error in webpy app."""
         pass
 
 
