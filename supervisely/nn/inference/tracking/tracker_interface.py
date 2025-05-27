@@ -18,6 +18,7 @@ from supervisely.geometry.helpers import deserialize_geometry
 from supervisely.geometry.point import Point
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.sly_logger import logger
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -42,6 +43,9 @@ class TrackerInterface:
 
         self.track_id = context["trackId"]
         self.video_id = context["videoId"]
+        self.frame_width = context.get("frameWidth", None)
+        self.frame_height = context.get("frameHeight", None)
+        self._video_info = None
         self.object_ids = list(context["objectIds"])
         self.figure_ids = list(context["figureIds"])
         self.direction = context["direction"]
@@ -74,6 +78,12 @@ class TrackerInterface:
                 self.stop += self.frames_count + 1
             self._load_frames_to_hot_cache()
             self._load_frames()
+
+    @property
+    def video_info(self):
+        if self._video_info is None:
+            self._video_info = self.api.video.get_info_by_id(self.video_id)
+        return self._video_info
 
     def add_object_geometries(self, geometries: List[Geometry], object_id: int, start_fig: int):
         for frame, geometry in zip(self._cur_frames_indexes[1:], geometries):
@@ -115,6 +125,17 @@ class TrackerInterface:
                 self.clear_cache()
                 return
 
+    def _crop_geometry(self, geometry: Geometry):
+        h, w = self.frame_height, self.frame_width
+        if h is None or w is None:
+            h = self.video_info.frame_height
+            w = self.video_info.frame_width
+        rect = Rectangle.from_size((h, w))
+        cropped = geometry.crop(rect)
+        if len(cropped) == 0:
+            return None
+        return cropped[0]
+
     def add_object_geometries_on_frames(
         self,
         geometries: List[Geometry],
@@ -131,6 +152,13 @@ class TrackerInterface:
         geometries_by_object = _split(geometries, object_ids, frame_indexes)
 
         for object_id, geometries_frame_indexes in geometries_by_object.items():
+            for i, (geometry, frame_index) in enumerate(geometries_frame_indexes):
+                geometries_frame_indexes[i] = (self._crop_geometry(geometry), frame_index)
+            geometries_frame_indexes = [
+                (geometry, frame_index)
+                for geometry, frame_index in geometries_frame_indexes
+                if geometry is not None
+            ]
             figures_json = [
                 {
                     ApiField.OBJECT_ID: object_id,
@@ -608,6 +636,29 @@ class TrackerInterfaceV2:
             if stopped and progress_current < progress_total:
                 logger.info("Task stopped by user.", extra=self.log_extra)
                 self.stop()
+
+    def notify_error(self, exception: Exception):
+        logger.debug(f"Notify error: {str(exception)}", extra=self.log_extra)
+        error = type(exception).__name__
+        message = str(exception)
+        if self.direct_progress:
+            self.api.vid_ann_tool.set_direct_tracking_error(
+                self.session_id,
+                self.video_id,
+                self.track_id,
+                f"{type(exception).__name__}: {str(exception)}",
+            )
+        else:
+            self.api.video.notify_tracking_error(self.track_id, error, message)
+
+    def notify_warning(self, message: str):
+        logger.debug(f"Notify warning: {message}", extra=self.log_extra)
+        if self.direct_progress:
+            self.api.vid_ann_tool.set_direct_tracking_warning(
+                self.session_id, self.video_id, self.track_id, message
+            )
+        else:
+            self.api.video.notify_tracking_warning(self.track_id, self.video_id, message)
 
     def _upload_exception_handler(self, exception: Exception):
         logger.error(

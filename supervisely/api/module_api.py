@@ -637,6 +637,30 @@ class ApiField:
     """"""
     SOURCE_BLOB = "sourceBlob"
     """"""
+    JOBS = "jobs"
+    """"""
+    LABELERS = "labelers"
+    """"""
+    REVIEWERS = "reviewers"
+    """"""
+    REVIEWER_IDS = "reviewerIds"
+    """"""
+    ENTITIES_COUNT = "entitiesCount"
+    """"""
+    ACCEPTED_COUNT = "acceptedCount"
+    """"""
+    ANNOTATED_COUNT = "annotatedCount"
+    """"""
+    IN_PROGRESS_COUNT = "inProgressCount"
+    """"""
+    PENDING_COUNT = "pendingCount"
+    """"""
+    QUEUE_META = "queueMeta"
+    """"""
+    ENTITY_IDS = "entityIds"
+    """"""
+    COLLECTION_ID = "collectionId"
+    """"""
 
 
 def _get_single_item(items):
@@ -1057,7 +1081,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1107,7 +1131,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1146,7 +1170,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1182,7 +1206,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1467,7 +1491,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1501,7 +1525,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

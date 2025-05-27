@@ -170,7 +170,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
 
     def to_json(self) -> List[Dict]:
         """
-        Convert the TagMetaCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the TagMetaCollection to a list of json dicts. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: List of dicts in json format
         :rtype: :class:`List[dict]`
@@ -207,7 +207,7 @@ class TagMetaCollection(KeyIndexedCollection, JsonSerializable):
     @classmethod
     def from_json(cls, data: List[Dict]) -> TagMetaCollection:
         """
-        Convert a list with dicts in json format to TagMetaCollection. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a list with dicts in json format to TagMetaCollection. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List with dicts in json format.
         :type data: List[dict]

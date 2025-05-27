@@ -194,6 +194,24 @@ API
 
     LabelingJobApi
 
+.. currentmodule:: supervisely.api.entities_collection_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    EntitiesCollectionApi
+
+.. currentmodule:: supervisely.api.labeling_queue_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    LabelingQueueApi
+
 .. currentmodule:: supervisely.api.module_api
 
 .. autosummary::
@@ -209,15 +227,6 @@ API
     RemoveableModuleApi
     RemoveableBulkModuleApi
     ModuleWithStatus
-
-.. currentmodule:: supervisely.api.neural_network_api
-
-.. autosummary::
-    :toctree: sdk
-    :nosignatures:
-    :template: autosummary/custom-class-template.rst
-
-    NeuralNetworkApi
 
 .. currentmodule:: supervisely.api.object_class_api
 
@@ -300,6 +309,49 @@ API
     :template: autosummary/custom-class-template.rst
 
     WorkspaceApi
+
+
+Neural Networks API
+------------
+**Neural Networks API**
+- API for working with videos in Supervisely.
+
+.. currentmodule:: supervisely.api.nn.deploy_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    DeployApi 
+
+.. currentmodule:: supervisely.api.nn.neural_network_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    NeuralNetworkApi 
+
+.. currentmodule:: supervisely.nn.model.model_api
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    ModelApi 
+
+.. currentmodule:: supervisely.nn.model.prediction
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Prediction
+
 
 Video API
 ------------
@@ -583,6 +635,16 @@ Geometry
 
     Cuboid3d
     Vector3d
+
+
+.. currentmodule:: supervisely.geometry.mask_3d
+
+.. autosummary::
+    :toctree: sdk
+    :nosignatures:
+    :template: autosummary/custom-class-template.rst
+
+    Mask3D
 
 .. currentmodule:: supervisely.geometry.geometry
 

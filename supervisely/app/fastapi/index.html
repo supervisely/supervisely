@@ -64,7 +64,7 @@
 <body style="background-color: #f4f7fe">
   <center>
     <div id="app-global-loading-icon">
-      <img src="https://app.supervise.ly/loading.gif" />
+      <img src="https://app.supervisely.com/loading.gif" />
     </div>
   </center>
   {% if __webpy_script__ %}
@@ -93,7 +93,9 @@
           {% if __app_session_info_solid__ %} {% if __app_session_info_extra_content__ %}
           class="app-session-header-solid extended-app-header" {% else %} class="app-session-header-solid" {% endif %}
           {% else %} {% if __app_session_info_extra_content__ %} class="extended-app-header" {% endif %} {% endif %}>
+          {% if __show_header__ %}
           <sly-app-header v-if="session" :session="session" :data="data" :state="state"></sly-app-header>
+          {% endif %}
           {% if __app_session_info_extra_content__ %}
           {{{__app_session_info_extra_content__}}} {% endif %}
         </div>
@@ -220,7 +222,11 @@ if state.get("app_initializing", False) == True:
       } else {
         result = fn;
       }
+      {% if events_subscribed %}
+
       subToStoreAction();
+
+      {% endif %}
     }
 
     let initPromise = null;
