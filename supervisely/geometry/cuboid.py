@@ -2,20 +2,33 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Tuple, Dict, Optional
+
+from typing import Dict, List, Optional, Tuple
+
 import cv2
 import numpy as np
-from supervisely.geometry.image_rotator import ImageRotator
-from supervisely.geometry.point_location import PointLocation
 
-
-from supervisely.geometry.constants import FACES, POINTS, LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    FACES,
+    ID,
+    LABELER_LOGIN,
+    POINTS,
+    UPDATED_AT,
+)
 from supervisely.geometry.geometry import Geometry
-from supervisely.geometry.point_location import points_to_row_col_list, row_col_list_to_points
+from supervisely.geometry.image_rotator import ImageRotator
+from supervisely.geometry.point_location import (
+    PointLocation,
+    points_to_row_col_list,
+    row_col_list_to_points,
+)
 from supervisely.geometry.rectangle import Rectangle
 
+if not hasattr(np, "bool"):
+    np.bool = np.bool_
 
-if not hasattr(np, 'bool'): np.bool = np.bool_
 
 class CuboidFace:
     """
@@ -35,6 +48,7 @@ class CuboidFace:
 
         edge = CuboidFace(0, 1, 2, 3)
     """
+
     def __init__(self, a: int, b: int, c: int, d: int):
         self._a = a
         self._b = b
@@ -43,7 +57,7 @@ class CuboidFace:
 
     def to_json(self) -> List[int]:
         """
-        Convert the CuboidFace to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the CuboidFace to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: List of integers
         :rtype: :class:`List[int, int, int, int]`
@@ -61,7 +75,7 @@ class CuboidFace:
     @classmethod
     def from_json(cls, data: List[int]) -> CuboidFace:
         """
-        Convert list of integers to CuboidFace. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert list of integers to CuboidFace. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: List of integers.
         :type data: List[int, int, int, int]
@@ -75,31 +89,29 @@ class CuboidFace:
             new_edge = CuboidFace.from_json([0, 1, 2, 3])
         """
         if len(data) != 4:
-            raise ValueError(f'CuboidFace JSON data must have exactly 4 indices, instead got {len(data)!r}.')
+            raise ValueError(
+                f"CuboidFace JSON data must have exactly 4 indices, instead got {len(data)!r}."
+            )
         return cls(data[0], data[1], data[2], data[3])
 
     @property
     def a(self):
-        """
-        """
+        """ """
         return self._a
 
     @property
     def b(self):
-        """
-        """
+        """ """
         return self._b
 
     @property
     def c(self):
-        """
-        """
+        """ """
         return self._c
 
     @property
     def d(self):
-        """
-        """
+        """ """
         return self._d
 
     def tolist(self) -> List[int]:
@@ -151,28 +163,44 @@ class Cuboid(Geometry):
         pl_nodes = (sly.PointLocation(node[0], node[1]) for node in nodes)
         figure = sly.Cuboid(pl_nodes, edges)
     """
+
     @staticmethod
     def geometry_name():
-        """
-        """
-        return 'cuboid'
+        """ """
+        return "cuboid"
 
-    def __init__(self, points: List[PointLocation], faces: List[CuboidFace], sly_id: Optional[int] = None, class_id: Optional[int] = None,
-                 labeler_login: Optional[int] = None, updated_at: Optional[str] = None, created_at: Optional[str] = None):
+    def __init__(
+        self,
+        points: List[PointLocation],
+        faces: List[CuboidFace],
+        sly_id: Optional[int] = None,
+        class_id: Optional[int] = None,
+        labeler_login: Optional[int] = None,
+        updated_at: Optional[str] = None,
+        created_at: Optional[str] = None,
+    ):
 
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
         points = list(points)
         faces = list(faces)
 
         if len(faces) != 3:
-            raise ValueError(f'A cuboid must have exactly 3 faces. Instead got {len(faces)} faces.')
+            raise ValueError(f"A cuboid must have exactly 3 faces. Instead got {len(faces)} faces.")
 
         for face in faces:
             for point_idx in (face.a, face.b, face.c, face.d):
                 if point_idx >= len(points) or point_idx < 0:
-                    raise ValueError(f'Point index is out of bounds for cuboid face. Got {len(points)!r} points, but '
-                                     f'the index is {point_idx!r}.')
+                    raise ValueError(
+                        f"Point index is out of bounds for cuboid face. Got {len(points)!r} points, but "
+                        f"the index is {point_idx!r}."
+                    )
 
         self._points = points
         self._faces = faces
@@ -199,7 +227,7 @@ class Cuboid(Geometry):
 
     def to_json(self) -> Dict:
         """
-        Convert the Cuboid to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Cuboid to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -236,7 +264,7 @@ class Cuboid(Geometry):
         """
         packed_obj = {
             POINTS: points_to_row_col_list(self._points, flip_row_col_order=True),
-            FACES: [face.to_json() for face in self._faces]
+            FACES: [face.to_json() for face in self._faces],
         }
         self._add_creation_info(packed_obj)
         return packed_obj
@@ -244,7 +272,7 @@ class Cuboid(Geometry):
     @classmethod
     def from_json(cls, data: Dict) -> Cuboid:
         """
-        Convert a json dict to Cuboid. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Cuboid. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Cuboid in json format as a dict.
         :type data: dict
@@ -278,7 +306,7 @@ class Cuboid(Geometry):
         """
         for k in [POINTS, FACES]:
             if k not in data:
-                raise ValueError(f'Field {k!r} not found in Cuboid JSON data.')
+                raise ValueError(f"Field {k!r} not found in Cuboid JSON data.")
 
         points = row_col_list_to_points(data[POINTS], flip_row_col_order=True)
         faces = [CuboidFace.from_json(face_json) for face_json in data[FACES]]
@@ -288,8 +316,15 @@ class Cuboid(Geometry):
         created_at = data.get(CREATED_AT, None)
         sly_id = data.get(ID, None)
         class_id = data.get(CLASS_ID, None)
-        return cls(points=points, faces=faces,
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            points=points,
+            faces=faces,
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     def crop(self, rect: Rectangle) -> List[Cuboid]:
         """
@@ -314,12 +349,14 @@ class Cuboid(Geometry):
             crop_figures = figure.crop(sly.Rectangle(1, 1, 1500, 1550))
         """
         is_all_nodes_inside = all(
-            rect.contains_point_location(self._points[p]) for face in self._faces for p in face.tolist())
+            rect.contains_point_location(self._points[p])
+            for face in self._faces
+            for p in face.tolist()
+        )
         return [self] if is_all_nodes_inside else []
 
     def _transform(self, transform_fn):
-        """
-        """
+        """ """
         return Cuboid(points=[transform_fn(p) for p in self.points], faces=self.faces)
 
     def rotate(self, rotator: ImageRotator) -> Cuboid:
@@ -489,8 +526,7 @@ class Cuboid(Geometry):
         return self._transform(lambda p: p.flipud(img_size))
 
     def _draw_impl(self, bitmap: np.ndarray, color, thickness=1, config=None):
-        """
-        """
+        """ """
         bmp_to_draw = np.zeros(bitmap.shape[:2], np.uint8)
         for contour in self._contours_list():
             cv2.fillPoly(bmp_to_draw, pts=[np.array(contour, dtype=np.int32)], color=1)
@@ -498,16 +534,18 @@ class Cuboid(Geometry):
         bitmap[bool_mask] = color
 
     def _draw_contour_impl(self, bitmap, color, thickness=1, config=None):
-        """
-        """
+        """ """
         contours_np_list = [np.array(contour, dtype=np.int32) for contour in self._contours_list()]
         cv2.polylines(bitmap, pts=contours_np_list, isClosed=True, color=color, thickness=thickness)
 
     def _contours_list(self):
-        """
-        """
-        return [points_to_row_col_list([self._points[idx] for idx in face.tolist()], flip_row_col_order=True)
-                for face in self._faces]
+        """ """
+        return [
+            points_to_row_col_list(
+                [self._points[idx] for idx in face.tolist()], flip_row_col_order=True
+            )
+            for face in self._faces
+        ]
 
     def to_bbox(self) -> Rectangle:
         """
@@ -530,11 +568,20 @@ class Cuboid(Geometry):
 
             rectangle = figure.to_bbox()
         """
-        points_np = np.array([[self._points[p].row, self._points[p].col]
-                              for face in self._faces for p in face.tolist()])
+        points_np = np.array(
+            [
+                [self._points[p].row, self._points[p].col]
+                for face in self._faces
+                for p in face.tolist()
+            ]
+        )
         rows, cols = points_np[:, 0], points_np[:, 1]
-        return Rectangle(top=round(min(rows).item()), left=round(min(cols).item()), bottom=round(max(rows).item()),
-                         right=round(max(cols).item()))
+        return Rectangle(
+            top=round(min(rows).item()),
+            left=round(min(cols).item()),
+            bottom=round(max(rows).item()),
+            right=round(max(cols).item()),
+        )
 
     @property
     def area(self) -> float:

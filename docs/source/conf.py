@@ -119,7 +119,7 @@ html_theme_options = {
     "icon": {
         "repo": "fontawesome/brands/github",
     },
-    "site_url": "https://supervise.ly/",
+    "site_url": "https://supervisely.com/",
     "repo_url": "https://github.com/supervisely/supervisely",
     "repo_name": "Supervisely",
     "repo_type": "github",
