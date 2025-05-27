@@ -1,3 +1,11 @@
+try:
+    import supervisely
+except ModuleNotFoundError:
+    import sys
+    import supervisely.supervisely as supervisely
+
+    sys.modules["supervisely"] = supervisely
+
 import asyncio
 import enum
 import json

@@ -210,13 +210,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
       console.log("Main Python script loaded");
       python_code = `
-try:
-    import sys
-    import supervisely.supervisely as supervisely
-    sys.modules["supervisely"] = supervisely
-except ImportError:
-    import supervisely
-from supervisely.webpy.app import WebPyApplication
+from supervisely.supervisely.webpy.app import WebPyApplication
 app = WebPyApplication()
 state = app.state
 if state.get("app_initializing", False) == True:
