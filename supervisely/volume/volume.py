@@ -495,7 +495,7 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[sitk.Image, dict]:
+def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[SitkImage, dict]:
     """
     Read DICOM series volumes with given paths.
 
