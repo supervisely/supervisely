@@ -209,7 +209,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
       python_code = `
-from supervisely.webpy.app import WebPyApplication
+from supervisely.supervisely.webpy.app import WebPyApplication
 app = WebPyApplication()
 state = app.state
 if state.get("app_initializing", False) == True:
@@ -217,6 +217,7 @@ if state.get("app_initializing", False) == True:
     state.send_changes()
 `
       const fn = pyodide.runPython(python_code);
+      console.log("WebPyApplication initialized");
       if (typeof fn === "function") {
         const newParams = params.map(p => pyodide.toPy(p));
         result = fn(...newParams);
