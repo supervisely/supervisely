@@ -11,7 +11,6 @@ from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
-import arel
 import jinja2
 import numpy as np
 from fastapi import (
@@ -694,6 +693,8 @@ def shutdown(
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
+    import arel
+
     templates = Jinja2Templates()
     gettrace = getattr(sys, "gettrace", None)
     if gettrace is None:
@@ -987,6 +988,8 @@ class Application(metaclass=Singleton):
 
         if not headless:
             if is_development() and hot_reload:
+                import arel
+
                 templates = Jinja2Templates()
                 self.hot_reload = arel.HotReload([])
                 self._fastapi.add_websocket_route(
