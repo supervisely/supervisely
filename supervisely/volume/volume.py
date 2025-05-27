@@ -6,15 +6,22 @@ import os
 from typing import List, Tuple, Union
 
 import numpy as np
-import pydicom
-import SimpleITK as sitk
 import stringcase
 from trimesh import Trimesh
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
+from supervisely._utils import running_in_webpy_app
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+
+if not running_in_webpy_app():
+    from SimpleITK import Image as SitkImage  # pylint: disable=import-error
+else:
+    class SitkImage:
+        """Dummy class for SimpleITK.Image to avoid import error in webpy app."""
+        pass
+
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -324,6 +331,7 @@ def read_dicom_tags(
     """
 
     import SimpleITK as sitk
+    import pydicom
 
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)
@@ -700,7 +708,7 @@ def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
+def read_nrrd_serie_volume(path: str) -> Tuple[SitkImage, dict]:
     """
     Read NRRD volume with given path.
 

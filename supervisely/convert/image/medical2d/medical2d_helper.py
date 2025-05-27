@@ -10,8 +10,6 @@ except (ImportError, ModuleNotFoundError):
     print("nrrd package is not installed. NRRD files will not be supported. ")
 
 import numpy as np
-import pydicom
-from pydicom import FileDataset
 from tqdm import tqdm
 
 from supervisely import image, logger, volume
@@ -78,6 +76,8 @@ def slice_nifti_file(nii_file_path: str, converted_dir: str) -> Tuple[List[str],
 def is_dicom_file(path: str) -> bool:
     """Checks if file is dicom file by given path."""
     try:
+        import pydicom
+
         pydicom.read_file(str(Path(path).resolve()), stop_before_pixels=True)
         result = True
     except Exception as ex:
@@ -128,7 +128,7 @@ def find_frame_axis(pixel_data: np.ndarray, frames: int) -> int:
     raise ValueError("Unable to recognize the frame axis for splitting a set of images")
 
 
-def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.ndarray], int]:
+def create_pixel_data_set(dcm, frame_axis: int) -> Tuple[List[np.ndarray], int]:
     if frame_axis == 0:
         pixel_array = np.transpose(dcm.pixel_array, (2, 1, 0))
     elif frame_axis == 1:
@@ -139,7 +139,7 @@ def create_pixel_data_set(dcm: FileDataset, frame_axis: int) -> Tuple[List[np.nd
     list_of_images = np.split(pixel_array, int(dcm.NumberOfFrames), axis=frame_axis)
     return list_of_images, frame_axis
 
-def convert_to_monochrome2(dcm_path: str, dcm: FileDataset) -> FileDataset:
+def convert_to_monochrome2(dcm_path: str, dcm):
     if getattr(dcm, "PhotometricInterpretation", None) == "YBR_FULL_422":
         # * Convert dicom to monochrome
         if len(dcm.pixel_array.shape) == 4 and dcm.pixel_array.shape[-1] == 3:
@@ -166,6 +166,8 @@ def convert_dcm_to_nrrd(
     image_path: str, converted_dir: str, group_tag_name: Optional[list] = None
 ) -> Tuple[List[str], List[str], List[dict], dict]:
     """Converts DICOM data to nrrd format and returns image paths and image names"""
+    import pydicom
+
     original_name = get_file_name_with_ext(image_path)
     if not dir_exists(converted_dir):
         mkdir(converted_dir)
@@ -177,7 +179,7 @@ def convert_dcm_to_nrrd(
         if dcm.file_meta.TransferSyntaxUID.is_compressed:
             dcm.decompress()
     except AttributeError:
-        logger.warn("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
+        logger.warning("Couldn't find key 'TransferSyntaxUID' in dicom's metadata.")
     dcm = convert_to_monochrome2(image_path, dcm)
 
     dcm_meta = get_dcm_meta(dcm)
@@ -289,7 +291,7 @@ def slice_nrrd_file(nrrd_file_path: str, output_dir: str) -> Tuple[List[str], Li
     return output_paths, output_names
 
 
-def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
+def get_dcm_meta(dcm) -> List[Tag]:
     """Create tags from DICOM metadata."""
     from supervisely.volume.volume import _anonymize_tags
 
@@ -329,7 +331,7 @@ def get_dcm_meta(dcm: FileDataset) -> List[Tag]:
     return dcm_tags_dict
 
 
-def get_nrrd_data(image_path: str, dcm: FileDataset):
+def get_nrrd_data(image_path: str, dcm):
 
     frame_axis = 2
     pixel_data_list = [dcm.pixel_array]
