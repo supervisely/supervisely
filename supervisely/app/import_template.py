@@ -5,7 +5,7 @@ from typing import List, Literal, Optional, Union
 import supervisely.io.env as env
 from supervisely._utils import is_development, is_production
 from supervisely.api.api import Api
-from supervisely.app import DialogWindowError, get_data_dir
+from supervisely.app import get_data_dir
 from supervisely.app.fastapi.subapp import Application
 from supervisely.app.widgets import (
     Button,
@@ -1114,6 +1114,8 @@ class Import(Application):
 
         @self.__start_button.click
         def start_import():
+            from supervisely.app import DialogWindowError
+
             try:
                 self.__step_one_btn.disable()
                 self.__step_two_btn.disable()

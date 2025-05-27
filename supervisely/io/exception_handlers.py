@@ -10,7 +10,6 @@ from requests.exceptions import HTTPError, RetryError
 from rich.console import Console
 
 from supervisely import is_development, is_community
-from supervisely.app import DialogWindowError
 from supervisely.sly_logger import EventType, logger
 
 # TODO: Add correct doc link.
@@ -73,6 +72,8 @@ class HandleException:
 
     def raise_error(self, has_ui: bool = True):
         if has_ui:
+            from supervisely.app import DialogWindowError
+
             raise DialogWindowError(self.title, self.message)
         else:
             raise self.exception.__class__(self.get_message_for_exception()) from self.exception
