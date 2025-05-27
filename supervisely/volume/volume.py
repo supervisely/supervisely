@@ -6,7 +6,6 @@ import os
 from typing import List, Tuple, Union
 
 import numpy as np
-import stringcase
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
@@ -336,6 +335,7 @@ def read_dicom_tags(
 
     import SimpleITK as sitk
     import pydicom
+    import stringcase
 
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)
