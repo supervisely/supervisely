@@ -8,7 +8,11 @@ from pathlib import Path
 from typing import List, Union
 
 import markupsafe
-from bs4 import BeautifulSoup
+try:
+    from bs4 import BeautifulSoup
+except (ImportError, ModuleNotFoundError):
+    print("BeautifulSoup is not installed.")
+
 from fastapi import FastAPI
 from jinja2 import Environment
 from varname import varname
