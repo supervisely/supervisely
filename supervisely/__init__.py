@@ -9,9 +9,7 @@ if "pyodide" in sys.modules:  # running in Pyodide (webpy app)
     __version__ = "6.73.367+web.py.sdk"
     try:
         from supervisely.sly_logger import logger
-        logger.info("Pyodide environment detected. Using webpy app logger.")
     except (ImportError, ModuleNotFoundError) as e:
-        print("Failed to import sly_logger in Pyodide environment. Reason:", repr(e))
         import supervisely.supervisely as sly
         sys.modules["supervisely"] = sly  # ensure supervisely is available in the module namespace
 else:
