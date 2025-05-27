@@ -2522,6 +2522,7 @@ class TrainApp:
             self._set_ws_progress_status("finalizing")
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
+            self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
