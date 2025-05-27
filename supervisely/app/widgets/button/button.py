@@ -7,6 +7,7 @@ from typing import Callable, Optional
 
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
+from supervisely._utils import running_in_webpy_app
 
 
 class Button(Widget):
@@ -91,7 +92,10 @@ class Button(Widget):
         self._call_on_click = call_on_click
         self._visible_by_vue_field = visible_by_vue_field
 
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        if running_in_webpy_app():
+            super().__init__(widget_id=widget_id)
+        else:
+            super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
         """Returns dictionary with widget data, which defines the appearance and behavior of the widget.

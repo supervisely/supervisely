@@ -3,6 +3,7 @@ from typing import Any, Dict, Literal, Optional
 from supervisely.app import StateJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
+from supervisely._utils import running_in_webpy_app
 
 
 class Card(Widget):
@@ -69,7 +70,10 @@ class Card(Widget):
             "contentOverflow": self._overflow,
         }
         self._lock_message = lock_message
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        if running_in_webpy_app():
+            super().__init__(widget_id=widget_id)
+        else:
+            super().__init__(widget_id=widget_id, file_path=__file__)
         self._disabled = {"disabled": False, "message": self._lock_message}
 
     def get_json_data(self) -> Dict[str, Any]:
