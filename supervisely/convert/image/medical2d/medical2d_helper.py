@@ -4,7 +4,11 @@ from os.path import basename, dirname, exists, join, normpath, pardir
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import nrrd
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 import pydicom
 from pydicom import FileDataset

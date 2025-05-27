@@ -1,5 +1,10 @@
 import os
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import math
 import supervisely
 import trimesh

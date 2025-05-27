@@ -8,7 +8,11 @@ import gzip
 import tempfile
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
-import nrrd
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 
 from supervisely import logger
