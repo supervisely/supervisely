@@ -159,6 +159,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
 extracted_path = os.path.join(extract_to, "${packageName}")
 if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
     if "supervisely" in os.listdir(extracted_path):
+        import shutil
         os.rename(extracted_path, extracted_path + "_temp")
         nested_path = os.path.join(extracted_path + "_temp", "supervisely")
         shutil.move(nested_path, extract_to)
