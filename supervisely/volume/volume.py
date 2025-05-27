@@ -7,7 +7,6 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
-import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
 from supervisely._utils import running_in_webpy_app
 from supervisely.geometry.mask_3d import Mask3D
@@ -401,6 +400,7 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
 
         encoded_volume = sly.volume.encode(volume_np, volume_meta)
     """
+    import supervisely.volume.nrrd_encoder as nrrd_encoder
 
     directions = np.array(volume_meta["directions"]).reshape(3, 3)
     directions *= volume_meta["spacing"]
