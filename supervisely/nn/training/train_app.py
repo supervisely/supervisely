@@ -1552,6 +1552,7 @@ class TrainApp:
             "evaluation_report_id": evaluation_report_id,
             "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
         }
 
@@ -1582,7 +1583,6 @@ class TrainApp:
         )
 
         # Do not include this fields to uploaded file:
-        experiment_info["primary_metric"] = primary_metric_name
         experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
 
@@ -2543,7 +2543,7 @@ class TrainApp:
                     export_weights[RuntimeType.TENSORRT] = tensorrt_path
             except Exception as e:
                 logger.error(f"Failed to export TensorRT model: {e}")
-                
+
         return export_weights
 
     def _upload_export_weights(

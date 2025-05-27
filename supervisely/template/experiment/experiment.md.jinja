@@ -2,8 +2,6 @@
 
 *Last trained: {{ experiment.date }}*
 
-[Framework poster: DEIM]
-
 ## Quick Actions
 
     [🚀 Deploy] [⚡ Predict] [📥 Download] [🔄 Finetune]
@@ -34,10 +32,10 @@
 - **Framework**: {{ experiment.framework_name }}
 - **Task**: {{ experiment.task_name }}
 - **Project**: {{ project.name }}
-- **Classes**: {{ project.classes_count }} ({{ project.class_names }})
+- **Classes**: {{ project.classes_count }} ({{ project.class_names.short_string }})
 - **Training images**: {{ project.train_size }}
 - **Validation images**: {{ project.val_size }}
-- **mAP**: 72.1 🔴🔴🔴
+- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.value }}
 
 {% if artifacts.hyperparameters %}
 <details>
@@ -89,10 +87,10 @@ See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for det
 
 These apps will help you to work with your model in the Supervisely Platform. You can use them to deploy your model, make predictions, and train a model.
 
-- [Serve {{ experiment.framework_name }}](xxx) - deploy your model in the Supervisely Platform.
-- [Train {{ experiment.framework_name }}](xxx) - train a model in the Supervisely Platform.
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/nn-image-labeling/project-dataset) - connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/apply-nn-to-videos-project) - for predictions on video project or dataset.
+- [Serve {{ experiment.framework_name }}]({{ env.server_address }}/{{ links.app.serve }}) - deploy your model in the Supervisely Platform.
+- [Train {{ experiment.framework_name }}]({{ env.server_address }}/{{ links.app.train }}) - train a model in the Supervisely Platform.
+- [Apply NN to Images]({{ env.server_address }}/{{ links.app.apply_nn_to_images }}) - connect to your model and make predictions on image project or dataset.
+- [Apply NN to Videos]({{ env.server_address }}/{{ links.app.apply_nn_to_videos }}) - for predictions on video project or dataset.
 
 ## API Integration
 
@@ -431,16 +429,16 @@ In case you develop an application that is not related to the Supervisely platfo
 
 > For more information, see [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api) and [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/local-deployment.md) documentation.
 
-{% if experiment.export %}
+{% if artifacts.onnx_checkpoint.name or artifacts.tensorrt_checkpoint.name %}
 #### Deploy ONNX/TensorRT
 
-You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT model, and provide class names in the additional `classes` parameter.  🔴🔴🔴 classes - Not Implemented yet
+You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT model, and provide class names in the additional `classes` parameter.
 
 ```python
 # Be sure you are in the root of the {{ code.local_prediction.repo_name }} repository
 from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
 
-classes = 🔴🔴🔴
+classes = {{ project.class_names.short_list }}
 
 # Deploy ONNX or TensorRT
 model = {{ code.local_prediction.serving_class }}(
@@ -460,6 +458,8 @@ predictions = model(
 
 {% endif %}
 
+{% if code.demo.pytorch.path %}
+
 ## Using Original Model
 
 In this approach you'll completely decouple your model from both the **Supervisely Platform** and **Supervisely SDK**, and you will develop your own code for inference and deployment of that particular model. It's important to understand that for each neural network or a framework, you need to set up an environment and write inference code by yourself, since each model has its own installation instructions and the way of processing inputs and outputs correctly.
@@ -472,99 +472,58 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 
 3. Use the demo script for inference:
 
-🔴🔴🔴 TODO: we don't have the demo script as a variable
-
 <details>
 <summary>Click to expand</summary>
 
+<div>
+
+<sly-iw-tabs :tabs="[
+    { name: 'pytorch', title: 'PyTorch' },\
+    {% if code.demo.onnx.path %}
+    { name: 'onnx',  title: 'ONNX'  },
+    {% endif %}
+    {% if code.demo.tensorrt.path %}
+    { name: 'tensorrt',    title: 'TensorRT'    },
+    {% endif %}
+    ]" :defaultIndex="0" :command="command" :data="data">
+
+<template #pytorch>
+
 ```python
-"""Copyright(c) 2023 lyuwenyu. All Rights Reserved.
-"""
-
-import torch
-import torch.nn as nn 
-import torchvision.transforms as T
-
-import numpy as np 
-from PIL import Image, ImageDraw
-
-from src.core import YAMLConfig
-
-
-def draw(images, labels, boxes, scores, thrh = 0.6):
-    for i, im in enumerate(images):
-        draw = ImageDraw.Draw(im)
-
-        scr = scores[i]
-        lab = labels[i][scr > thrh]
-        box = boxes[i][scr > thrh]
-        scrs = scores[i][scr > thrh]
-
-        for j,b in enumerate(box):
-            draw.rectangle(list(b), outline='red',)
-            draw.text((b[0], b[1]), text=f"{lab[j].item()} {round(scrs[j].item(),2)}", fill='blue', )
-
-        im.save(f'results_{i}.jpg')
-
-
-def main(args, ):
-    """main
-    """
-    cfg = YAMLConfig(args.config, resume=args.resume)
-
-    if args.resume:
-        checkpoint = torch.load(args.resume, map_location='cpu') 
-        if 'ema' in checkpoint:
-            state = checkpoint['ema']['module']
-        else:
-            state = checkpoint['model']
-    else:
-        raise AttributeError('Only support resume to load model.state_dict by now.')
-
-    # NOTE load train mode state -> convert to deploy mode
-    cfg.model.load_state_dict(state)
-
-    class Model(nn.Module):
-        def __init__(self, ) -> None:
-            super().__init__()
-            self.model = cfg.model.deploy()
-            self.postprocessor = cfg.postprocessor.deploy()
-            
-        def forward(self, images, orig_target_sizes):
-            outputs = self.model(images)
-            outputs = self.postprocessor(outputs, orig_target_sizes)
-            return outputs
-
-    model = Model().to(args.device)
-
-    im_pil = Image.open(args.im_file).convert('RGB')
-    w, h = im_pil.size
-    orig_size = torch.tensor([w, h])[None].to(args.device)
-
-    transforms = T.Compose([
-        T.Resize((640, 640)),
-        T.ToTensor(),
-    ])
-    im_data = transforms(im_pil)[None].to(args.device)
-
-    output = model(im_data, orig_size)
-    labels, boxes, scores = output
-
-    draw([im_pil], labels, boxes, scores)
-
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', type=str, )
-    parser.add_argument('-r', '--resume', type=str, )
-    parser.add_argument('-f', '--im-file', type=str, )
-    parser.add_argument('-d', '--device', type=str, default='cpu')
-    args = parser.parse_args()
-    main(args)
+{{ code.demo.pytorch.script | safe }}
 ```
 
+</template>
+
+{% if code.demo.onnx.path %}
+<template #onnx>
+
+```python
+{{ code.demo.onnx.script | safe }}
+```
+
+</template>
+
+{% endif %}
+
+{% if code.demo.tensorrt.path %}
+<template #tensorrt>
+
+```python
+{{ code.demo.tensorrt.script | safe }}
+```
+
+</template>
+
+{% endif %}
+
+</sly-iw-tabs>
+
+</div>
+
 </details>
+
+{% endif %}
 
 ---
 

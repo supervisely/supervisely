@@ -28,6 +28,7 @@ class ExperimentGenerator(BaseGenerator):
         serving_class: Optional[Inference] = None,
         team_id: Optional[int] = None,
         output_dir: str = "./experiment_report",
+        app_options: Optional[dict] = None,
     ):
         """Initialize experiment generator class.
 
@@ -50,6 +51,7 @@ class ExperimentGenerator(BaseGenerator):
         self.artifacts_dir = self.info["artifacts_dir"]
         self.serving_class = serving_class
         self.app_info = self._get_app_info()
+        self.app_options = app_options
 
     def _report_url(self, server_address: str, template_id: int) -> str:
         return f"{server_address}/nn/experiments/{template_id}"
@@ -77,6 +79,7 @@ class ExperimentGenerator(BaseGenerator):
 
         date = self._get_date()
         metrics = self._generate_metrics_table()
+        primary_metric = self._get_primary_metric()
         checkpoints = self._generate_checkpoints_table()
         hyperparameters = self._generate_hyperparameters_yaml()
         artifacts_dir = self.info["artifacts_dir"].rstrip("/")
@@ -86,8 +89,9 @@ class ExperimentGenerator(BaseGenerator):
 
         best_checkpoint = self._get_best_checkpoint()
         onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
-
-        sample_pred_gallery = self.get_sample_predictions_gallery()
+        sample_pred_gallery = self._get_sample_predictions_gallery()
+        pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
+        self._get_app_links()
 
         context = {
             "env": {
@@ -109,9 +113,26 @@ class ExperimentGenerator(BaseGenerator):
                 "train_size": project_train_size,
                 "val_size": project_val_size,
                 "classes_count": len(model_classes),
-                "class_names": ", ".join(model_classes),
+                "class_names": {
+                    "string": ", ".join(model_classes),
+                    "short_string": (
+                        ", ".join(model_classes[:3] + ["..."])
+                        if len(model_classes) > 3
+                        else ", ".join(model_classes)
+                    ),
+                    "list": model_classes,
+                    "short_list": (
+                        model_classes[:3] + ["..."] if len(model_classes) > 3 else model_classes
+                    ),
+                },
             },
             "links": {
+                "app": {
+                    "train": None,
+                    "serve": None,
+                    "apply_nn_to_images": "ecosystem/apps/nn-image-labeling/project-dataset",
+                    "apply_nn_to_videos": "ecosystem/apps/apply-nn-to-videos-project",
+                },
                 "training_session": {
                     "id": self.info.get("task_id"),
                     "url": (
@@ -151,6 +172,12 @@ class ExperimentGenerator(BaseGenerator):
                 "onnx_checkpoint": onnx_checkpoint,
                 "trt_checkpoint": trt_checkpoint,
             },
+            "benchmark": {
+                "id": self.info.get("evaluation_report_id"),
+                "url": self.info.get("evaluation_report_link"),
+                "metrics": self.info.get("evaluation_metrics"),
+                "primary_metric": primary_metric,
+            },
             "code": {
                 "docker": {
                     "image": docker_image,
@@ -160,6 +187,11 @@ class ExperimentGenerator(BaseGenerator):
                     "repo_name": repo_info["name"],
                     "serving_module": self.serving_class.__module__ if self.serving_class else None,
                     "serving_class": self.serving_class.__name__ if self.serving_class else None,
+                },
+                "demo": {
+                    "pytorch": pytorch_demo,
+                    "onnx": onnx_demo,
+                    "tensorrt": trt_demo,
                 },
             },
             "widgets": {
@@ -191,6 +223,31 @@ class ExperimentGenerator(BaseGenerator):
         html.append("</tbody>")
         html.append("</table>")
         return "\n".join(html)
+
+    def _get_primary_metric(self) -> dict:
+        """Get primary metric from evaluation metrics.
+
+        :returns: Primary metric info
+        :rtype: dict
+        """
+        primary_metric = {
+            "name": None,
+            "value": None,
+        }
+
+        eval_metrics = self.info.get("evaluation_metrics", {})
+        primary_metric_name = self.info.get("primary_metric")
+        primary_metric_value = eval_metrics.get(primary_metric_name)
+
+        if primary_metric_name is None or primary_metric_value is None:
+            logger.debug(f"Primary metric is not found in evaluation metrics: {eval_metrics}")
+            return primary_metric
+
+        primary_metric = {
+            "name": primary_metric_name,
+            "value": primary_metric_value,
+        }
+        return primary_metric
 
     def _generate_checkpoints_table(self) -> str:
         """Generate HTML table with checkpoint information.
@@ -389,7 +446,7 @@ class ExperimentGenerator(BaseGenerator):
             logger.warning(f"Failed to load config.json: {e}")
             return None
 
-    def get_sample_predictions_gallery(self):
+    def _get_sample_predictions_gallery(self):
         benchmark_file_info = self.api.file.get_info_by_id(self.info["evaluation_report_id"])
         evaluation_report_path = os.path.dirname(benchmark_file_info.path)
         if os.path.basename(evaluation_report_path) != "visualizations":
@@ -431,3 +488,54 @@ class ExperimentGenerator(BaseGenerator):
     </sly-iw-gallery>
     """
         return widget_html
+
+    def _get_demo_scripts(self):
+        """Get demo scripts.
+
+        :returns: Demo scripts
+        :rtype: Tuple[dict, dict, dict]
+        """
+
+        demo_pytorch_filename = "demo_pytorch.py"
+        demo_onnx_filename = "demo_onnx.py"
+        demo_tensorrt_filename = "demo_tensorrt.py"
+
+        pytorch_demo = {"path": None, "script": None}
+        onnx_demo = {"path": None, "script": None}
+        trt_demo = {"path": None, "script": None}
+
+        demo_path = self.app_options.get("demo", {}).get("path")
+        if demo_path is None:
+            logger.debug("Demo path is not found in app options")
+            return pytorch_demo, onnx_demo, trt_demo
+
+        local_demo_dir = os.path.join(os.getcwd(), demo_path)
+        if not sly_fs.dir_exists(local_demo_dir):
+            logger.debug(f"Demo directory '{local_demo_dir}' does not exist")
+            return pytorch_demo, onnx_demo, trt_demo
+
+        local_files = sly_fs.list_files(local_demo_dir)
+        for file in local_files:
+            if file.endswith(demo_pytorch_filename):
+                with open(file, "r", encoding="utf-8") as f:
+                    script = f.read()
+                pytorch_demo = {"path": file, "script": script}
+            elif file.endswith(demo_onnx_filename):
+                with open(file, "r", encoding="utf-8") as f:
+                    script = f.read()
+                onnx_demo = {"path": file, "script": script}
+            elif file.endswith(demo_tensorrt_filename):
+                with open(file, "r", encoding="utf-8") as f:
+                    script = f.read()
+                trt_demo = {"path": file, "script": script}
+
+        return pytorch_demo, onnx_demo, trt_demo
+
+    def _get_app_links(self):
+        """Get app links.
+
+        :returns: App links
+        :rtype: dict
+        """
+        app_links = {}
+        return app_links
