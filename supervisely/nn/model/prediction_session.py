@@ -1,11 +1,13 @@
 import json
 import time
 from os import PathLike
+from pathlib import Path
 from typing import Any, Dict, Iterator, List, Literal, Tuple, Union
 
 import numpy as np
 import requests
 from requests import Timeout
+from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm.auto import tqdm
 
 import supervisely.io.env as env
@@ -17,6 +19,7 @@ from supervisely.io.fs import (
     dir_exists,
     file_exists,
     get_file_ext,
+    get_file_size,
     list_files,
     list_files_recursively,
 )
@@ -374,28 +377,26 @@ class PredictionSession:
         json_body = self._get_json_body()
         return self._post(method, json=json_body).json()
 
-    def _update_progress(self, tqdm: tqdm, response: Dict[str, Any]):
+    def _update_progress(
+        self,
+        tqdm: tqdm,
+        message: str = None,
+        current: int = None,
+        total: int = None,
+        is_size: bool = False,
+    ):
         if tqdm is None:
             return
-        json_progress = response.get("progress", None)
-        if json_progress is None or json_progress.get("message") is None:
-            json_progress = response.get("preparing_progress", None)
-        if json_progress is None:
-            return
         refresh = False
-        message = json_progress.get("message", json_progress.get("status", None))
-        if message is not None and tqdm.desc not in [message, f"{message}:"]:
+        if message is not None and tqdm.desc != message:
             tqdm.set_description(message, refresh=False)
             refresh = True
-        current = json_progress.get("current", None)
         if current is not None and tqdm.n != current:
             tqdm.n = current
             refresh = True
-        total = json_progress.get("total", None)
         if total is not None and tqdm.total != total:
             tqdm.total = total
             refresh = True
-        is_size = json_progress.get("is_size", False)
         if is_size and tqdm.unit == "it":
             tqdm.unit = "iB"
             tqdm.unit_scale = True
@@ -408,6 +409,20 @@ class PredictionSession:
             refresh = True
         if refresh:
             tqdm.refresh()
+
+    def _update_progress_from_response(self, tqdm: tqdm, response: Dict[str, Any]):
+        if tqdm is None:
+            return
+        json_progress = response.get("progress", None)
+        if json_progress is None or json_progress.get("message") is None:
+            json_progress = response.get("preparing_progress", None)
+        if json_progress is None:
+            return
+        message = json_progress.get("message", json_progress.get("status", None))
+        current = json_progress.get("current", None)
+        total = json_progress.get("total", None)
+        is_size = json_progress.get("is_size", False)
+        self._update_progress(tqdm, message, current, total, is_size)
 
     def _wait_for_inference_start(
         self, delay=1, timeout=None, tqdm: tqdm = None
@@ -424,7 +439,7 @@ class PredictionSession:
                 last_stage = stage
             has_started = stage not in ["preparing", "preprocess", None]
             has_started = has_started or bool(resp.get("result")) or resp["progress"]["total"] != 1
-            self._update_progress(tqdm, resp)
+            self._update_progress_from_response(tqdm, resp)
             if not has_started:
                 time.sleep(delay)
             timeout_exceeded = timeout and time.time() - t0 > timeout
@@ -440,7 +455,7 @@ class PredictionSession:
         t0 = time.monotonic()
         while not has_results and not timeout_exceeded:
             resp = self._pop_pending_results()
-            self._update_progress(tqdm, resp)
+            self._update_progress_from_response(tqdm, resp)
             pending_results = resp["pending_results"]
             exception_json = resp["exception"]
             if exception_json:
@@ -567,14 +582,30 @@ class PredictionSession:
             state["video_id"] = videos[0]
             return self._start_inference(method, json=json_body)
         elif isinstance(videos[0], (str, PathLike)):
+            video_path = videos[0]
             files = []
             try:
                 method = "inference_video_async"
-                files = [("files", open(videos[0], "rb"))]
-                uploads = files + [("state", (None, json.dumps(state), "text/plain"))]
-                return self._start_inference(method, files=uploads)
+                files.append((Path(video_path).name, open(video_path, "rb"), "video/*"))
+                fields = {
+                    "files": files[-1],
+                    "state": json.dumps(state),
+                }
+                encoder = MultipartEncoder(fields)
+                if self.tqdm is not None:
+
+                    def _callback(monitor):
+                        self.tqdm.update(monitor.bytes_read)
+
+                    video_size = get_file_size(video_path)
+                    self._update_progress(self.tqdm, "Uploading video", 0, video_size, is_size=True)
+                    encoder = MultipartEncoderMonitor(encoder, _callback)
+
+                return self._start_inference(
+                    method, data=encoder, headers={"Content-Type": encoder.content_type}
+                )
             finally:
-                for _, f in files:
+                for _, f, _ in files:
                     f.close()
         else:
             raise ValueError(
