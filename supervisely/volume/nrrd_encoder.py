@@ -1,7 +1,6 @@
 import io
 from collections import OrderedDict
 from datetime import datetime
-from nrrd.reader import _get_field_type
 from nrrd.writer import (
     _TYPEMAP_NUMPY2NRRD,
     _NUMPY2NRRD_ENDIAN_MAP,
@@ -14,6 +13,8 @@ from nrrd.writer import (
 def encode(
     data, header=None, custom_field_map=None, compression_level=9, index_order="F"
 ):
+    from nrrd.reader import _get_field_type
+
     if header is None:
         header = {}
 
