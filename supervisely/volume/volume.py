@@ -987,3 +987,31 @@ def align_mesh_to_volume(mesh: Trimesh, volume_header: dict) -> None:
         volume_header["space origin"] = volume_header["space origin"].to_json()[SPACE_ORIGIN]
     transform_mat = matrix_from_nrrd_header(volume_header)
     mesh.apply_transform(transform_mat)
+
+
+def convert_mesh_to_coordinate_system(mesh: Trimesh, target_space: str):
+    """
+    Convert a mesh's axes to a specified anatomical coordinate system by flipping axis.
+    Target space should be provided in the format of "right-anterior-superior", "left-anterior-superior", etc.
+    Mesh vertices are modified in-place. Expects mesh to be in RAS coordinate system.
+
+    :param mesh:   Trimesh object to be transformed in-place.
+    :type mesh:    trimesh.Trimesh
+    :param target_space: Desired coordinate system.
+    :type target_space: str
+    :returns:      None (mesh vertices are modified in-place).
+    :rtype:        None
+    """
+
+    coord_system_to_transform = {
+        "right-anterior-superior": np.diag([1, 1, 1, 1]),  # RAS -> RAS (identity)
+        "left-anterior-superior": np.diag([-1, 1, 1, 1]),  # RAS -> LAS (flip X)
+        "right-posterior-superior": np.diag([1, -1, 1, 1]),  # RAS -> RPS (flip Y)
+        "left-posterior-superior": np.diag([-1, -1, 1, 1]),  # RAS -> LPS (flip X, Y)
+        "right-anterior-inferior": np.diag([1, 1, -1, 1]),  # RAS -> RAI (flip Z)
+        "left-anterior-inferior": np.diag([-1, 1, -1, 1]),  # RAS -> LAI (flip X, Z)
+        "right-posterior-inferior": np.diag([1, -1, -1, 1]),  # RAS -> RPI (flip Y, Z)
+        "left-posterior-inferior": np.diag([-1, -1, -1, 1]),  # RAS -> LPI (flip X, Y, Z)
+    }
+    mat = coord_system_to_transform.get(target_space.lower(), np.diag([1, 1, 1, 1]))
+    mesh.apply_transform(mat)

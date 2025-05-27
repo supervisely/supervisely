@@ -31,6 +31,7 @@ from supervisely.geometry.constants import (
 from supervisely.geometry.geometry import Geometry
 from supervisely.io.fs import get_file_ext, get_file_name, remove_dir
 from supervisely.io.json import JsonSerializable
+from supervisely.volume.volume import read_nrrd_serie_volume_np
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
@@ -359,18 +360,8 @@ class Mask3D(Geometry):
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
-        mask3d_data, mask3d_header = nrrd.read(file_path)
-        figure.geometry.data = mask3d_data
-        try:
-            figure.geometry.space_origin = mask3d_header["space origin"]
-            figure.geometry.space = mask3d_header["space"]
-            figure.geometry.space_directions = mask3d_header["space directions"]
-        except KeyError as e:
-            header_keys = ["'space'", "'space directions'", "'space origin'"]
-            if str(e) in header_keys:
-                logger.warning(
-                    f"The Mask3D geometry for figure ID '{get_file_name(file_path)}' doesn't contain optional space attributes that have similar names to {', '.join(header_keys)}. To set the values for these attributes, you can use information from the Volume associated with this figure object."
-                )
+        mask3d = Mask3D.create_from_file(file_path)
+        figure._set_3d_geometry(mask3d)
         path_without_filename = "/".join(file_path.split("/")[:-1])
         remove_dir(path_without_filename)
 
@@ -382,7 +373,15 @@ class Mask3D(Geometry):
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
-        mask3d_data, mask3d_header = nrrd.read(file_path)
+
+        mask3d_data, meta = read_nrrd_serie_volume_np([file_path])
+        mask3d_header = {
+            "space": "right-anterior-superior",
+            "space directions": np.array(meta.get("directions")).reshape(3, 3)
+            * np.array(meta.get("spacing"))[:, np.newaxis],
+            "space origin": meta.get("origin", None),
+        }
+
         geometry = cls(data=mask3d_data, volume_header=mask3d_header)
 
         fields_to_check = ["space", "space_directions", "space_origin"]
@@ -568,7 +567,7 @@ class Mask3D(Geometry):
             path_for_mesh = f"meshes/{figure_id}.nrrd"
             api.volume.figure.download_stl_meshes([figure_id], [path_for_mesh])
 
-            mask3d_data, _ = nrrd.read(path_for_mesh)
+            mask3d_data, _ = sly.volume.volume.read_nrrd_serie_volume_np(path_for_mesh)
             encoded_string = sly.Mask3D.data_2_base64(mask3d_data)
 
             print(encoded_string)
@@ -747,3 +746,40 @@ class Mask3D(Geometry):
         if self.space_origin is not None:
             header["space origin"] = self.space_origin
         return header
+
+    def orient_ras(self) -> None:
+        """
+        Transforms the mask data and updates spatial metadata (origin, directions, spacing)
+        to align with the RAS coordinate system using SimpleITK.
+
+        :rtype: None
+        """
+        import SimpleITK as sitk
+
+        from supervisely.volume.volume import _sitk_image_orient_ras
+
+        sitk_volume = sitk.GetImageFromArray(self.data.astype(np.uint8))
+        if self.space_origin is not None:
+            sitk_volume.SetOrigin(self.space_origin)
+        if self.space_directions is not None:
+            # Convert space directions to spacing and direction
+            space_directions = np.array(self.space_directions)
+            spacing = np.linalg.norm(space_directions, axis=1)
+            direction = space_directions / spacing[:, np.newaxis]
+            sitk_volume.SetSpacing(spacing)
+            sitk_volume.SetDirection(direction.flatten())
+
+        sitk_volume = _sitk_image_orient_ras(sitk_volume)
+
+        # Extract transformed data and update object
+        self.data = sitk.GetArrayFromImage(sitk_volume)
+        new_directions = (
+            np.array(sitk_volume.GetDirection()).reshape(3, 3)
+            * np.array(sitk_volume.GetSpacing())[:, np.newaxis]
+        )
+        new_header = {
+            "space": "right-anterior-superior",
+            "space directions": new_directions.tolist(),
+            "space origin": sitk_volume.GetOrigin(),
+        }
+        self.set_volume_space_meta(new_header)
