@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Literal, Optional, Tuple
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
@@ -91,7 +91,7 @@ class ExperimentGenerator(BaseGenerator):
         onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
         sample_pred_gallery = self._get_sample_predictions_gallery()
         pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
-        self._get_app_links()
+        train_app_slug, serve_app_slug = self._get_app_slugs()
 
         context = {
             "env": {
@@ -128,10 +128,10 @@ class ExperimentGenerator(BaseGenerator):
             },
             "links": {
                 "app": {
-                    "train": None,
-                    "serve": None,
-                    "apply_nn_to_images": "ecosystem/apps/nn-image-labeling/project-dataset",
-                    "apply_nn_to_videos": "ecosystem/apps/apply-nn-to-videos-project",
+                    "train": train_app_slug,
+                    "serve": serve_app_slug,
+                    "apply_nn_to_images": "nn-image-labeling/project-dataset",
+                    "apply_nn_to_videos": "apply-nn-to-videos-project",
                 },
                 "training_session": {
                     "id": self.info.get("task_id"),
@@ -531,11 +531,31 @@ class ExperimentGenerator(BaseGenerator):
 
         return pytorch_demo, onnx_demo, trt_demo
 
-    def _get_app_links(self):
-        """Get app links.
+    def _get_app_slugs(self):
+        """Get app slugs.
 
-        :returns: App links
-        :rtype: dict
+        :returns: App slugs
+        :rtype: Tuple[str, str]
         """
-        app_links = {}
-        return app_links
+
+        def find_serving_app_by_framework(
+            api: Api, framework: str, action: Literal["train", "serve"]
+        ):
+            modules = api.app.get_list_ecosystem_modules(
+                categories=[action, f"framework:{framework}"], categories_operation="and"
+            )
+            if len(modules) == 0:
+                return None
+            return modules[0]
+
+        train_app_info = find_serving_app_by_framework(
+            self.api, self.info["framework_name"], "train"
+        )
+        serve_app_info = find_serving_app_by_framework(
+            self.api, self.info["framework_name"], "serve"
+        )
+
+        train_app_slug = train_app_info["slug"].replace("supervisely-ecosystem/", "")
+        serve_app_slug = serve_app_info["slug"].replace("supervisely-ecosystem/", "")
+
+        return train_app_slug, serve_app_slug
