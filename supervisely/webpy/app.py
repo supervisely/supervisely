@@ -1,9 +1,11 @@
 try:
     import supervisely
+
     print("supervisely module is imported")
 except ModuleNotFoundError:
     print("falling back to import supervisely.supervisely")
     import sys
+
     import supervisely.supervisely as supervisely
 
     sys.modules["supervisely"] = supervisely
@@ -13,34 +15,12 @@ import enum
 import json
 import tarfile
 import time
-from typing import List, NamedTuple, Optional
+
 from fastapi import FastAPI
-import numpy as np
+
+from supervisely._utils import get_or_create_event_loop
+from supervisely.app.singleton import Singleton
 from supervisely.sly_logger import logger
-
-
-def get_or_create_event_loop():
-    """
-    Get the current event loop or create a new one if it doesn't exist.
-    Works for different Python versions and contexts.
-
-    :return: Event loop
-    :rtype: asyncio.AbstractEventLoop
-    """
-    import asyncio
-
-    try:
-        # Preferred method for asynchronous context (Python 3.7+)
-        return asyncio.get_running_loop()
-    except RuntimeError:
-        # If the loop is not running, get the current one or create a new one (Python 3.8 and 3.9)
-        try:
-            return asyncio.get_event_loop()
-        except RuntimeError:
-            # For Python 3.10+ or if the call occurs outside of an active loop context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop
 
 
 def await_async(coro):
@@ -49,202 +29,15 @@ def await_async(coro):
     return res
 
 
-class Singleton(type):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        local = kwargs.pop("__local__", False)
-        if local is False:
-            if cls not in cls._instances:
-                cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-            return cls._instances[cls]
-        else:
-            return super(Singleton, cls).__call__(*args, **kwargs)
-
-
 class Field(str, enum.Enum):
     STATE = "state"
     DATA = "data"
     CONTEXT = "context"
 
 
-class FigureInfo(NamedTuple):
-    id: int
-    class_id: int
-    updated_at: str
-    created_at: str
-    entity_id: int
-    object_id: int
-    project_id: int
-    dataset_id: int
-    frame_index: int
-    geometry_type: str
-    geometry: dict
-    geometry_meta: dict
-    tags: list
-    meta: dict
-    area: str
-    priority: Optional[int] = None
-    version: int = 0
-
-    def clone(self, **kwargs):
-        return self._replace(**kwargs)
-
-
-class FigureObj:
-    attr_name = {
-        "id": "id",
-        "class_id": "classId",
-        "updated_at": "updatedAt",
-        "created_at": "createdAt",
-        "object_id": "objectId",
-        "geometry_type": "_geometryType",
-        "tags": "tags",
-        "meta": "meta",
-        "area": "area",
-        "priority": "priority",
-        "version": "version",
-    }
-
-    def __init__(self, js_obj):
-        self._js_obj = js_obj
-        self._id = None
-
-    @property
-    def figure_info(self):
-        return FigureInfo(
-            id=self.id,
-            object_id=self.object_id,
-            class_id=self.class_id,
-            updated_at=self.updated_at,
-            created_at=self.created_at,
-            entity_id=None,
-            project_id=None,
-            dataset_id=None,
-            frame_index=None,
-            geometry_type=self.geometry_type,
-            geometry=self.geometry,
-            geometry_meta=None,
-            tags=self.tags,
-            meta=self.meta,
-            area=self.area,
-            priority=self.priority,
-            version=self.version,
-        )
-
-    def _get_property(self, name, default=object()):
-        js_name = self.attr_name.get(name, name)
-        if hasattr(self._js_obj, js_name):
-            return getattr(self._js_obj, js_name)
-        else:
-            if default is object():
-                raise KeyError(f"Attribute '{name}' is not found")
-            return default
-
-    def __getattr__(self, name):
-        return self._get_property(name)
-
-    @property
-    def id(self):
-        if self._id is None:
-            self._id = self._get_property("id")
-        return self._id
-
-    @property
-    def object_id(self):
-        return self._get_property("object_id", None)
-
-    @property
-    def class_id(self):
-        return self._get_property("class_id", None)
-
-    @property
-    def updated_at(self):
-        return self._get_property("updated_at", None)
-
-    @property
-    def created_at(self):
-        return self._get_property("created_at", None)
-
-    @property
-    def geometry_type(self):
-        return self._get_property("geometry_type", None)
-
-    @property
-    def geometry(self):
-        if self.geometry_type != "bitmap":
-            raise ValueError(f"Unsupported geometry type: {self.geometry_type}")
-        _, alpha = get_figure_data(self._js_obj)
-        offset = (self._js_obj._geometry._main.offset.x, self._js_obj._geometry._main.offset.y)
-        return {"data": alpha, "origin": offset}
-
-    @property
-    def geometry_version(self):
-        return self._js_obj._geometry._main.version
-
-    @property
-    def tags(self):
-        return js_to_py(self._get_property("tags", None))
-
-    @property
-    def meta(self):
-        return js_to_py(self._get_property("meta", None))
-
-    @property
-    def area(self):
-        return self._get_property("area", None)
-
-    @property
-    def priority(self):
-        return self._get_property("priority", None)
-
-    @property
-    def version(self):
-        return self._get_property("version", None)
-
-
-def get_figure_data(js_figure):
-    t = time.perf_counter()
-    img_data_obj = js_figure._geometry._main.getPixels()
-    logger.debug(f"getPixels time: {(time.perf_counter() - t) * 1000:.4f} ms")
-
-    t = time.perf_counter()
-    py_arr_data = img_data_obj.data.to_py()
-    logger.debug(f"to_py time: {(time.perf_counter() - t) * 1000:.4f} ms")
-
-    t = time.perf_counter()
-    img_data = np.array(py_arr_data, dtype=np.uint8).reshape(
-        img_data_obj.height, img_data_obj.width, 4
-    )
-    logger.debug(f"np.array time: {(time.perf_counter() - t) * 1000:.4f} ms")
-
-    rgb = img_data[:, :, :3]
-    alpha = img_data[:, :, 3]
-    return rgb, alpha
-
-
-def put_img_to_figure(js_figure, img_data: np.ndarray):
-    from js import ImageData
-    from pyodide.ffi import create_proxy
-
-    height, width = img_data.shape[:2]
-    img_data = img_data.flatten().astype(np.uint8)
-    pixels_proxy = create_proxy(img_data)
-    pixels_buf = pixels_proxy.getBuffer("u8clamped")
-    new_img_data = ImageData.new(pixels_buf.data, width, height)
-
-    try:
-        js_figure._geometry._main.setImageData(new_img_data)
-    except Exception as e:
-        raise e
-    finally:
-        pixels_proxy.destroy()
-        pixels_buf.release()
-
-
 def py_to_js(obj):
-    from pyodide.ffi import to_js
     from js import Object
+    from pyodide.ffi import to_js
 
     if isinstance(obj, dict):
         js_obj = Object()
@@ -298,7 +91,7 @@ class DataJson(_PatchableJson, metaclass=Singleton):
         super().__init__(Field.DATA, *args, **kwargs)
 
 
-class MainServer(metaclass=Singleton):
+class _MainServer(metaclass=Singleton):
     def __init__(self):
         self._server = FastAPI()
 
@@ -402,13 +195,15 @@ class WebPyApplication(metaclass=Singleton):
         import json
         import os
         from pathlib import Path
+
+        from fastapi.routing import Mount
+        from fastapi.staticfiles import StaticFiles
+
         import supervisely as sly
         from supervisely.app.content import DataJson, StateJson
-        from fastapi.staticfiles import StaticFiles
-        from fastapi.routing import Mount
 
         app_dir = Path(app_dir)
-        os.environ["IS_WEBPY_APP"] = "true" 
+        os.environ["IS_WEBPY_APP"] = "true"
         # read requirements
         if requirements_path is None:
             requirements_path = "requirements.txt"
@@ -557,7 +352,7 @@ app.run"""
             # import js
             # js.console.log(self._store.getters.as_object_map())
 
-            server = MainServer().get_server()
+            server = _MainServer().get_server()
             widget_handlers = {}
             for route in server.router.routes:
                 if isinstance(route, APIRoute):
