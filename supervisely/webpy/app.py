@@ -1,6 +1,8 @@
 try:
     import supervisely
+    print("supervisely module is imported")
 except ModuleNotFoundError:
+    print("falling back to import supervisely.supervisely")
     import sys
     import supervisely.supervisely as supervisely
 
@@ -446,7 +448,7 @@ class WebPyApplication(metaclass=Singleton):
                 f"""
 try:
     import sys
-    import supervisely.supervisely as supervisely
+    import supervisely as supervisely
 
     sys.modules["supervisely"] = supervisely
 except ImportError:

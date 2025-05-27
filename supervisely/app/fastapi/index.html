@@ -154,6 +154,15 @@ extract_to = "${extractTo}"
 os.makedirs(extract_to, exist_ok=True)
 with tarfile.open(tar_path, "r:") as tar_ref:
     tar_ref.extractall(extract_to)
+
+# if name 'supervisely' (it probably will contain redundant nested hierarchy) we need to move files
+extracted_path = os.path.join(extract_to, "${packageName}")
+if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
+    if "supervisely" in os.listdir(extracted_path):
+        os.rename(extracted_path, extracted_path + "_temp")
+        nested_path = os.path.join(extracted_path + "_temp", "supervisely")
+        shutil.move(nested_path, extract_to)
+        os.rmdir(extracted_path + "_temp")
 `;
       await pyodide.runPythonAsync(pythonCode);
 
@@ -210,7 +219,7 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
       console.log("Main Python script loaded");
       python_code = `
-from supervisely.supervisely.webpy.app import WebPyApplication
+from supervisely.webpy.app import WebPyApplication
 app = WebPyApplication()
 state = app.state
 if state.get("app_initializing", False) == True:
