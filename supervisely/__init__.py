@@ -2,8 +2,10 @@
 # isort: skip_file
 import pkg_resources  # isort: skip
 import os
+import sys
 
-if "PYODIDE" in os.environ:  # running in Pyodide (webpy app)
+if "pyodide" in sys.modules:  # running in Pyodide (webpy app)
+    print("Running Supervisely Python SDK in Pyodide environment. ")
     __version__ = "6.73.367+web.py.sdk"
 else:
     try:
