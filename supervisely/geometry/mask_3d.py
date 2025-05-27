@@ -31,7 +31,6 @@ from supervisely.geometry.constants import (
 from supervisely.geometry.geometry import Geometry
 from supervisely.io.fs import get_file_ext, get_file_name, remove_dir
 from supervisely.io.json import JsonSerializable
-from supervisely.volume.volume import read_nrrd_serie_volume_np
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
@@ -373,8 +372,9 @@ class Mask3D(Geometry):
         :param file_path: Path to nrrd file with data
         :type file_path: str
         """
+        from supervisely.volume.volume import read_nrrd_serie_volume_np
 
-        mask3d_data, meta = read_nrrd_serie_volume_np([file_path])
+        mask3d_data, meta = read_nrrd_serie_volume_np(file_path)
         direction = np.array(meta["directions"]).reshape(3, 3)
         spacing = np.array(meta["spacing"])
         space_directions = (direction.T * spacing[:, None]).tolist()
