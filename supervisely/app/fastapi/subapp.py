@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 import arel
 import jinja2
 import numpy as np
-import psutil
 from fastapi import (
     Depends,
     FastAPI,
@@ -670,6 +669,7 @@ def shutdown(
     before_shutdown_callbacks: Optional[List[Callable[[], None]]] = None,
 ):
     logger.info(f"Shutting down [pid argument = {process_id}]...")
+    import psutil
 
     if before_shutdown_callbacks is not None:
         logger.info("Found tasks to run before shutdown.")
