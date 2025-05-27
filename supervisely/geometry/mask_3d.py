@@ -375,10 +375,12 @@ class Mask3D(Geometry):
         """
 
         mask3d_data, meta = read_nrrd_serie_volume_np([file_path])
+        direction = np.array(meta["directions"]).reshape(3, 3)
+        spacing = np.array(meta["spacing"])
+        space_directions = (direction.T * spacing[:, None]).tolist()
         mask3d_header = {
             "space": "right-anterior-superior",
-            "space directions": np.array(meta.get("directions")).reshape(3, 3)
-            * np.array(meta.get("spacing"))[:, np.newaxis],
+            "space directions": space_directions,
             "space origin": meta.get("origin", None),
         }
 
