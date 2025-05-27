@@ -7,7 +7,10 @@ from datetime import datetime
 from typing import List, NamedTuple, Optional, Tuple, Union
 
 import requests
-import zstd
+try:
+    import zstd
+except (ImportError, ModuleNotFoundError):
+    zstd = None
 
 from supervisely._utils import logger
 from supervisely.api.module_api import ApiField, ModuleApiBase
@@ -454,6 +457,8 @@ class DataVersion(ModuleApiBase):
         """
         temp_dir = tempfile.mkdtemp()
         local_path = os.path.join(temp_dir, "download.tar.zst")
+        if zstd is None:
+            raise ImportError("zstd module is required for version extraction. Please install it.")
         try:
             self._api.file.download(self.project_info.team_id, path, local_path)
             with open(local_path, "rb") as zst:
@@ -503,6 +508,8 @@ class DataVersion(ModuleApiBase):
         """
         from supervisely.project.project import Project
 
+        if zstd is None:
+            raise ImportError("zstd module is required for version compression. Please install it.")
         temp_dir = tempfile.mkdtemp()
 
         data = Project.download_bin(
