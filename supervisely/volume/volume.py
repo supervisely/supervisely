@@ -742,12 +742,12 @@ def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
     return sitk_volume, meta
 
 
-def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple[np.ndarray, dict]:
+def read_nrrd_serie_volume_np(path: str) -> Tuple[np.ndarray, dict]:
     """
     Read NRRD volume with given path.
 
-    :param path: Paths to NRRD volume file.
-    :type path: List[str]
+    :param path: Path to NRRD volume file.
+    :type path: str
     :return: Volume data in NumPy array format and dictionary with metadata.
     :rtype: Tuple[np.ndarray, dict]
     :Usage example:
@@ -762,7 +762,7 @@ def read_nrrd_serie_volume_np(paths: List[str]) -> Tuple[np.ndarray, dict]:
 
     import SimpleITK as sitk
 
-    sitk_volume, meta = read_nrrd_serie_volume(paths)
+    sitk_volume, meta = read_nrrd_serie_volume(path)
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
@@ -923,7 +923,7 @@ def convert_3d_geometry_to_mesh(
         align_mesh_to_volume(mesh, header)
 
     # flip x and y axes to match initial mask orientation
-    mesh.apply_transform(np.diag([-1, -1, 1, 1]))
+    # mesh.apply_transform(np.diag([-1, -1, 1, 1]))
 
     mesh.fix_normals()
 
