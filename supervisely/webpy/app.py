@@ -62,11 +62,14 @@ class _PatchableJson(dict):
         self.__update(js_obj)
 
     def send_changes(self):
+        logger.info("starting to send changes")
         if self._linked_obj is None:
             return
 
+        logger.info("Sending changes...")
         for key, value in self.items():
             setattr(self._linked_obj, key, py_to_js(value))
+        logger.info("Changes sent successfully")
 
 
 class StateJson(_PatchableJson, metaclass=Singleton):
@@ -354,6 +357,10 @@ app.run"""
             for route in server.router.routes:
                 if isinstance(route, APIRoute):
                     widget_handlers[route.path] = route.endpoint
+
+            logger.info("Args:")
+            for arg in args:
+                logger.info(f"  {arg}")
 
             handler, handler_args = self._get_handler(
                 *args, widgets_handlers=widget_handlers, event_handlers=self.events, **kwargs

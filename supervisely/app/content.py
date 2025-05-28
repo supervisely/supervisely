@@ -250,7 +250,9 @@ class ContentOrigin(metaclass=Singleton):
 
             time.sleep(self._SLEEP_TIME)
 
+
 if running_in_webpy_app():
+    logger.info("Running in WebPy app, using corresponding DataJson and StateJson implementations.")
     from supervisely.webpy.app import DataJson as WebpyDataJson
     from supervisely.webpy.app import StateJson as WebpyStateJson
     from supervisely.webpy.app import _PatchableJson as WebpyPatchableJson
