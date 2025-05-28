@@ -456,7 +456,7 @@ def inspect_dicom_series(root_dir: str, logging: bool = True) -> dict:
     return found_series
 
 
-def _sitk_image_orient_ras(sitk_volume):
+def _sitk_image_orient_ras(sitk_volume: sitk.Image) -> sitk.Image:
     import SimpleITK as sitk
 
     if sitk_volume.GetDimension() == 4 and sitk_volume.GetSize()[3] == 1:
