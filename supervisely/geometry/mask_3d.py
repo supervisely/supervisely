@@ -9,7 +9,6 @@ import tempfile
 from collections import OrderedDict
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
-import nrrd
 import numpy as np
 
 from supervisely import logger
