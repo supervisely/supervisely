@@ -701,12 +701,12 @@ def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(paths: str) -> Tuple[sitk.Image, dict]:
+def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
     """
     Read NRRD volume with given path.
 
-    :param paths: Path to DICOM volume files.
-    :type paths: List[str]
+    :param path: Path to NRRD volume files.
+    :type path: List[str]
     :return: Volume data in SimpleITK.Image format and dictionary with metadata.
     :rtype: Tuple[SimpleITK.Image, dict]
     :Usage example:
@@ -724,7 +724,7 @@ def read_nrrd_serie_volume(paths: str) -> Tuple[sitk.Image, dict]:
     # find custom NRRD loader in gitlab supervisely_py/-/blob/feature/import-volumes/plugins/import/volumes/src/loaders/nrrd.py
     reader = sitk.ImageFileReader()
     # reader.SetImageIO("NrrdImageIO")
-    reader.SetFileName(paths)
+    reader.SetFileName(path)
     sitk_volume = reader.Execute()
 
     sitk_volume = _sitk_image_orient_ras(sitk_volume)
@@ -742,12 +742,12 @@ def read_nrrd_serie_volume(paths: str) -> Tuple[sitk.Image, dict]:
     return sitk_volume, meta
 
 
-def read_nrrd_serie_volume_np(path: str) -> Tuple[np.ndarray, dict]:
+def read_nrrd_serie_volume_np(paths: str) -> Tuple[np.ndarray, dict]:
     """
     Read NRRD volume with given path.
 
-    :param path: Path to NRRD volume file.
-    :type path: str
+    :param paths: Path to NRRD volume file.
+    :type paths: str
     :return: Volume data in NumPy array format and dictionary with metadata.
     :rtype: Tuple[np.ndarray, dict]
     :Usage example:
@@ -762,7 +762,7 @@ def read_nrrd_serie_volume_np(path: str) -> Tuple[np.ndarray, dict]:
 
     import SimpleITK as sitk
 
-    sitk_volume, meta = read_nrrd_serie_volume(path)
+    sitk_volume, meta = read_nrrd_serie_volume(paths)
     volume_np = sitk.GetArrayFromImage(sitk_volume)
     volume_np = np.transpose(volume_np, (2, 1, 0))
     return volume_np, meta
