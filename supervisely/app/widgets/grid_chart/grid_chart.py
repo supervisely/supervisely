@@ -8,7 +8,7 @@ from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.empty.empty import Empty
 from supervisely.app.widgets.line_chart.line_chart import LineChart
 from supervisely.app.widgets.line_plot.line_plot import LinePlot
-from supervisely.app.widgets.widget import Widget, generate_id
+from supervisely.app.widgets import Widget, generate_id
 from supervisely.sly_logger import logger
 
 try:
