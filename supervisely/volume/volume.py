@@ -869,10 +869,10 @@ def is_nifti_file(path: str) -> bool:
 
 def convert_3d_geometry_to_mesh(
     geometry: Mask3D,
-    spacing: Optional[tuple] = None,
-    level: Optional[float] = 0.5,
-    apply_decimation: Optional[bool] = False,
-    decimation_fraction: Optional[float] = 0.5,
+    spacing: tuple = (1.0, 1.0, 1.0),
+    level: float = 0.5,
+    apply_decimation: bool = False,
+    decimation_fraction: float = 0.5,
     volume_meta: Optional[dict] = None,
 ) -> Trimesh:
     """
@@ -880,7 +880,7 @@ def convert_3d_geometry_to_mesh(
 
     :param geometry: The 3D geometry to convert.
     :type geometry: supervisely.geometry.mask_3d.Mask3D
-    :param spacing: Voxel spacing in (x, y, z). Default is taken from geometry meta.
+    :param spacing: Voxel spacing in (x, y, z).
     :type spacing: tuple
     :param level: Isosurface value for marching cubes. Default is 0.5.
     :type level: float
@@ -905,9 +905,6 @@ def convert_3d_geometry_to_mesh(
 
     if volume_meta is None:
         volume_meta = {}
-
-    if spacing is None:
-        spacing = (1.0, 1.0, 1.0)
 
     space_directions = geometry.space_directions or volume_meta.get("space directions")
     space_origin = geometry.space_origin or volume_meta.get("space origin")
