@@ -701,12 +701,12 @@ def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
+def read_nrrd_serie_volume(paths: str) -> Tuple[sitk.Image, dict]:
     """
     Read NRRD volume with given path.
 
-    :param path: Paths to DICOM volume files.
-    :type path: List[str]
+    :param paths: Path to DICOM volume files.
+    :type paths: List[str]
     :return: Volume data in SimpleITK.Image format and dictionary with metadata.
     :rtype: Tuple[SimpleITK.Image, dict]
     :Usage example:
@@ -724,7 +724,7 @@ def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
     # find custom NRRD loader in gitlab supervisely_py/-/blob/feature/import-volumes/plugins/import/volumes/src/loaders/nrrd.py
     reader = sitk.ImageFileReader()
     # reader.SetImageIO("NrrdImageIO")
-    reader.SetFileName(path)
+    reader.SetFileName(paths)
     sitk_volume = reader.Execute()
 
     sitk_volume = _sitk_image_orient_ras(sitk_volume)
@@ -923,7 +923,7 @@ def convert_3d_geometry_to_mesh(
         align_mesh_to_volume(mesh, header)
 
     # flip x and y axes to match initial mask orientation
-    # mesh.apply_transform(np.diag([-1, -1, 1, 1]))
+    mesh.apply_transform(np.diag([-1, -1, 1, 1]))
 
     mesh.fix_normals()
 
