@@ -62,14 +62,11 @@ class _PatchableJson(dict):
         self.__update(js_obj)
 
     def send_changes(self):
-        # logger.info("starting to send changes")
         if self._linked_obj is None:
             return
 
-        # logger.info("Sending changes...")
         for key, value in self.items():
             setattr(self._linked_obj, key, py_to_js(value))
-        # logger.info("Changes sent successfully")
 
 
 class StateJson(_PatchableJson, metaclass=Singleton):
@@ -147,13 +144,6 @@ class WebPyApplication(metaclass=Singleton):
         self._data = app.data
         self._context = app.context  # ??
         # self._store = slyApp.store  # <- Labeling tool store (image, classes, objects, etc)
-
-        try:
-            js.console.log(f"WebPyApplication state: {self._state}")
-            js.console.log(f"WebPyApplication data: {self._data}")
-        except Exception as e:
-            print(f"WebPyApplication state: {self._state}")
-            print(f"WebPyApplication data: {self._data}")
 
         StateJson().link(self._state)
         DataJson().link(self._data)
@@ -345,8 +335,6 @@ app.run"""
             from fastapi.routing import APIRoute
 
             state = self.state
-            # logger.info("WebPyApplication state")
-            # logger.info(state)
             if state.get("app_initializing", False) == True:
                 state["app_initializing"] = False
                 state.send_changes()
@@ -358,9 +346,7 @@ app.run"""
             server = _WebPyMainServer().get_server()
             widget_handlers = {}
             for route in server.router.routes:
-                logger.info(f"Route type: {type(route)}")
                 if isinstance(route, APIRoute):
-                    logger.info(f"Route: {route.path} -> {route.endpoint}")
                     widget_handlers[route.path] = route.endpoint
 
             logger.info("Args:")
