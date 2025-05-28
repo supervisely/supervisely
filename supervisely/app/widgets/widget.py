@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Union
 
 import markupsafe
+
 try:
     from bs4 import BeautifulSoup
 except (ImportError, ModuleNotFoundError):
@@ -23,6 +24,7 @@ from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.jinja2 import create_env
 from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.sly_logger import logger
 
 
 class Hidable:
@@ -293,12 +295,13 @@ class DynamicWidget(Widget):
 
 
 if running_in_webpy_app():
-    from supervisely.webpy.widget import Widget as WebpyWidget
-    from supervisely.webpy.widget import Loading as WebpyLoading
-    from supervisely.webpy.widget import Hidable as WebpyHidable
-    from supervisely.webpy.widget import Disableable as WebpyDisableable
+    logger.info("Running in WebPy app, using WebpyWidget and related classes.")
     from supervisely.webpy.widget import ConditionalItem as WebpyConditionalItem
     from supervisely.webpy.widget import ConditionalWidget as WebpyConditionalWidget
+    from supervisely.webpy.widget import Disableable as WebpyDisableable
+    from supervisely.webpy.widget import Hidable as WebpyHidable
+    from supervisely.webpy.widget import Loading as WebpyLoading
+    from supervisely.webpy.widget import Widget as WebpyWidget
 
     Hidable = WebpyHidable
     Disableable = WebpyDisableable
