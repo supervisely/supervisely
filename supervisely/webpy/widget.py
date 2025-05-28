@@ -231,7 +231,7 @@ class Widget(BaseWidget, Hidable, Disableable, Loading):
 
 
 class ConditionalWidget(Widget):
-    def __init__(self, items: List[ConditionalItem], widget_id: str = None):
+    def __init__(self, items: List[ConditionalItem], widget_id: str = None, *args, **kwargs):
         self._items = items
         super().__init__(widget_id=widget_id)
 
@@ -243,7 +243,7 @@ class ConditionalWidget(Widget):
 
 
 class ConditionalItem:
-    def __init__(self, value, label: str = None, content: Widget = None) -> ConditionalItem:
+    def __init__(self, value, label: str = None, content: Widget = None, *args, **kwargs) -> ConditionalItem:
         self.value = value
         self.label = label
         if label is None:
