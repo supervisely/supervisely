@@ -188,6 +188,8 @@ class Mask3D(Geometry):
     :type created_at: str, optional
     :param volume_header: NRRD header dictionary. Optional.
     :type volume_header: dict, optional
+    :param convert_to_ras: If True, converts the mask to RAS orientation. Default is True.
+    :type convert_to_ras: bool, optional
     :raises: :class:`ValueError`, if data is not bool or no pixels set to True in data
     :Usage example:
 
@@ -225,6 +227,7 @@ class Mask3D(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
         volume_header: Optional[Dict] = None,
+        convert_to_ras: bool = True,
     ):
         super().__init__(
             sly_id=sly_id,
@@ -261,6 +264,13 @@ class Mask3D(Geometry):
 
         if volume_header is not None:
             self.set_volume_space_meta(volume_header)
+            if self.space is not None and self.space != "right-anterior-superior":
+                if convert_to_ras:
+                    self.orient_ras()
+                else:
+                    logger.debug(
+                        "Mask3D is not in RAS orientation. It is recommended to use RAS orientation for 3D masks."
+                    )
 
     @property
     def space_origin(self) -> Optional[List[float]]:
@@ -760,7 +770,7 @@ class Mask3D(Geometry):
 
         from supervisely.volume.volume import _sitk_image_orient_ras
 
-        sitk_volume = sitk.GetImageFromArray(self.data.astype(np.uint8))
+        sitk_volume = sitk.GetImageFromArray(self.data)
         if self.space_origin is not None:
             sitk_volume.SetOrigin(self.space_origin)
         if self.space_directions is not None:
@@ -775,13 +785,12 @@ class Mask3D(Geometry):
 
         # Extract transformed data and update object
         self.data = sitk.GetArrayFromImage(sitk_volume)
-        new_directions = (
-            np.array(sitk_volume.GetDirection()).reshape(3, 3)
-            * np.array(sitk_volume.GetSpacing())[:, np.newaxis]
-        )
+        new_direction = np.array(sitk_volume.GetDirection()).reshape(3, 3)
+        new_spacing = np.array(sitk_volume.GetSpacing())
+        new_space_directions = (new_direction.T * new_spacing[:, None]).tolist()
         new_header = {
             "space": "right-anterior-superior",
-            "space directions": new_directions.tolist(),
+            "space directions": new_space_directions,
             "space origin": sitk_volume.GetOrigin(),
         }
         self.set_volume_space_meta(new_header)
