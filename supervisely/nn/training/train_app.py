@@ -1549,7 +1549,7 @@ class TrainApp:
         logger.debug(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
         with self.progress_bar_main(
-            message=message, total=total_size, unit="bytes", unit_scale=True
+            message=message, total=total_size, unit="B", unit_scale=True, unit_divisor=1024
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             file_info = self._api.file.upload(
@@ -1774,8 +1774,9 @@ class TrainApp:
         with self.progress_bar_main(
             message="Uploading demo files to Team Files",
             total=total_size,
-            unit="bytes",
+            unit="B",
             unit_scale=True,
+            unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory_fast(
@@ -1888,8 +1889,9 @@ class TrainApp:
         with self.progress_bar_main(
             message="Uploading train artifacts to Team Files",
             total=total_size,
-            unit="bytes",
+            unit="B",
             unit_scale=True,
+            unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory_fast(
@@ -2223,6 +2225,16 @@ class TrainApp:
 
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
+
+            pred_error_message = (
+                "Not found any predictions. Please make sure that your model produces predictions."
+            )
+            if isinstance(e, ValueError) and str(e) == pred_error_message:
+                self.gui.training_artifacts.model_benchmark_fail_text.set(
+                    pred_error_message,
+                    "error",
+                )
+
             self._set_text_status("finalizing")
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
@@ -2710,6 +2722,7 @@ class TrainApp:
             total=size,
             unit="B",
             unit_scale=True,
+            unit_divisor=1024,
         ) as export_upload_main_pbar:
             logger.debug(f"Uploading {len(export_weights)} export weights of size {size} bytes")
             logger.debug(f"Destination paths: {file_dest_paths}")
