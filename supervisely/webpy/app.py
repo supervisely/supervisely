@@ -1,15 +1,3 @@
-try:
-    import supervisely
-
-    print("supervisely module is imported")
-except ModuleNotFoundError:
-    print("falling back to import supervisely.supervisely")
-    import sys
-
-    import supervisely.supervisely as supervisely
-
-    sys.modules["supervisely"] = supervisely
-
 import asyncio
 import enum
 import json
@@ -156,6 +144,13 @@ class WebPyApplication(metaclass=Singleton):
         self._data = app.data
         self._context = app.context  # ??
         # self._store = slyApp.store  # <- Labeling tool store (image, classes, objects, etc)
+
+        try:
+            js.console.log(f"WebPyApplication state: {self._state}")
+            js.console.log(f"WebPyApplication data: {self._data}")
+        except Exception as e:
+            print(f"WebPyApplication state: {self._state}")
+            print(f"WebPyApplication data: {self._data}")
 
         StateJson().link(self._state)
         DataJson().link(self._data)
@@ -344,6 +339,8 @@ app.run"""
             from fastapi.routing import APIRoute
 
             state = self.state
+            logger.info("WebPyApplication state")
+            logger.info(state)
             if state.get("app_initializing", False) == True:
                 state["app_initializing"] = False
                 state.send_changes()
