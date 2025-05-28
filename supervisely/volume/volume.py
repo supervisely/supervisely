@@ -953,7 +953,7 @@ def export_3d_as_mesh(geometry: Mask3D, output_path: str, **kwargs):
         mask3d_path = "path/to/mask3d"
         mask3d = Mask3D.create_from_file(mask3d_path)
 
-        mask3d.export_3d_as_mesh(mask3d, "output.stl", spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True})
+        mask3d.export_3d_as_mesh(mask3d, "output.stl", spacing=(1.0, 1.0, 1.0), level=0.7, apply_decimation=True)
     """
 
     if get_file_ext(output_path).lower() not in [".stl", ".obj"]:
