@@ -49,7 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
-    return "v6.73.356"  # ! TODO: remove hardcode before release
+    return "v6.73.367+web.py.sdk"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -76,60 +76,81 @@ def get_version():
 
 version = get_version()
 
+# IS_WEBPY_APP = os.getenv("WEBPY_APP", "false").lower() in ["true", "1", "yes", "y"]
+# if IS_WEBPY_APP:
 
-INSTALL_REQUIRES = [
-    "cachetools>=4.2.3, <=5.5.0",
-    "numpy>=1.19, <2.0.0",
-    "opencv-python>=4.6.0.66, <5.0.0.0",
-    "PTable>=0.9.2, <1.0.0",
-    "pillow>=5.4.1, <=10.2.0",
-    "protobuf>=3.19.5, <=3.20.3",
-    "python-json-logger>=0.1.11, <3.0.0",
-    "requests>=2.27.1, <3.0.0",
-    "requests-toolbelt>=0.9.1",  # , <1.0.0
-    "Shapely>=1.7.1, <=2.0.2",
-    "bidict>=0.21.2, <1.0.0",
-    "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <=1.0.0",
-    "pynrrd>=0.4.2, <1.0.0",
-    "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
-    "pydicom>=2.3.0, <3.0.0",
-    "stringcase>=1.2.0, <2.0.0",
-    "python-magic>=0.4.25, <1.0.0",
-    "trimesh>=3.11.2, <=4.5.0",
-    "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.11.3",
-    "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
-    "fastapi>=0.79.0, <=0.109.0",
-    "websockets>=10.3, <=13.1",
-    "jinja2>=3.0.3, <4.0.0",
-    "psutil>=5.9.0, <6.0.0",
-    "jsonpatch>=1.32, <2.0",
-    "MarkupSafe>=2.1.1, <3.0.0",
-    "arel>=0.2.0, <1.0.0",
-    "tqdm>=4.62.3, <5.0.0",
-    "pandas>=1.1.3, <=2.1.4",
-    "async_asgi_testclient",
-    "PyYAML>=5.4.0",
-    "distinctipy",
-    "beautifulsoup4",
-    "numerize",
-    "ffmpeg-python==0.2.0",
-    "python-multipart>=0.0.5, <=0.0.12",
-    "GitPython",
-    "giturlparse",
-    "rich",
-    "click",
-    "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.2",
-    "cacheout==0.14.1",
-    "jsonschema>=2.6.0,<=4.20.0",
-    "pyjwt>=2.1.0,<3.0.0",
-    "zstd",
-    "aiofiles",
-    "httpx[http2]==0.27.2",
-    "debugpy",
-]
+
+if "PYODIDE" in os.environ:  # running in Pyodide (webpy app)
+    INSTALL_REQUIRES = [
+        "python-json-logger>=0.1.11, <3.0.0",
+        "jsonschema>=2.6.0,<=4.20.0",
+        "aiofiles",
+        "httpx[http2]==0.27.2",
+        "requests-toolbelt>=0.9.1",
+        "tqdm>=4.62.3, <5.0.0",
+        "python-dotenv>=0.19.2, <=1.0.0",
+        "numpy>=1.19, <2.0.0",
+        "pyjwt>=2.1.0,<3.0.0",
+        "setuptools",
+        "pandas>=1.1.3, <=2.1.4",
+        "pillow>=5.4.1, <=10.2.0",
+        "opencv-python>=4.6.0.66, <5.0.0.0",
+        "PyYAML>=5.4.0",
+    ]
+else:
+    INSTALL_REQUIRES = [
+        "cachetools>=4.2.3, <=5.5.0",
+        "numpy>=1.19, <2.0.0",
+        "opencv-python>=4.6.0.66, <5.0.0.0",
+        "PTable>=0.9.2, <1.0.0",
+        "pillow>=5.4.1, <=10.2.0",
+        "protobuf>=3.19.5, <=3.20.3",
+        "python-json-logger>=0.1.11, <3.0.0",
+        "requests>=2.27.1, <3.0.0",
+        "requests-toolbelt>=0.9.1",  # , <1.0.0
+        "Shapely>=1.7.1, <=2.0.2",
+        "bidict>=0.21.2, <1.0.0",
+        "varname>=0.8.1, <1.0.0",
+        "python-dotenv>=0.19.2, <=1.0.0",
+        "pynrrd>=0.4.2, <1.0.0",
+        "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
+        "pydicom>=2.3.0, <3.0.0",
+        "stringcase>=1.2.0, <2.0.0",
+        "python-magic>=0.4.25, <1.0.0",
+        "trimesh>=3.11.2, <=4.5.0",
+        "uvicorn[standard]>=0.18.2, <1.0.0",
+        "pydantic>=1.7.4, <=2.11.3",
+        "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
+        "fastapi>=0.79.0, <=0.109.0",
+        "websockets>=10.3, <=13.1",
+        "jinja2>=3.0.3, <4.0.0",
+        "psutil>=5.9.0, <6.0.0",
+        "jsonpatch>=1.32, <2.0",
+        "MarkupSafe>=2.1.1, <3.0.0",
+        "arel>=0.2.0, <1.0.0",
+        "tqdm>=4.62.3, <5.0.0",
+        "pandas>=1.1.3, <=2.1.4",
+        "async_asgi_testclient",
+        "PyYAML>=5.4.0",
+        "distinctipy",
+        "beautifulsoup4",
+        "numerize",
+        "ffmpeg-python==0.2.0",
+        "python-multipart>=0.0.5, <=0.0.12",
+        "GitPython",
+        "giturlparse",
+        "rich",
+        "click",
+        "imutils==0.5.4",
+        "urllib3>=1.26.15, <=2.2.2",
+        "cacheout==0.14.1",
+        "jsonschema>=2.6.0,<=4.20.0",
+        "pyjwt>=2.1.0,<3.0.0",
+        "zstd",
+        "aiofiles",
+        "httpx[http2]==0.27.2",
+        "debugpy",
+    ]
 
 ALT_INSTALL_REQUIRES = {
     "opencv-python>=4.6.0.66, <5.0.0.0": [

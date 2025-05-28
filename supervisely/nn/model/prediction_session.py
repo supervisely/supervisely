@@ -173,9 +173,9 @@ class PredictionSession:
                     ext = get_file_ext(input[0])
                     if ext == "":
                         raise ValueError("File has no extension.")
-                    if ext in SUPPORTED_IMG_EXTS:
+                    if ext.lower() in SUPPORTED_IMG_EXTS:
                         self._iterator = self._predict_images(input, **kwargs)
-                    elif ext in ALLOWED_VIDEO_EXTENSIONS:
+                    elif ext.lower() in ALLOWED_VIDEO_EXTENSIONS:
                         kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
                         self._iterator = self._predict_videos(input, **kwargs)
                     else:

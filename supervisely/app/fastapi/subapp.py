@@ -11,11 +11,8 @@ from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
-import arel
 import jinja2
 import numpy as np
-import psutil
-from async_asgi_testclient import TestClient
 from fastapi import (
     Depends,
     FastAPI,
@@ -671,6 +668,7 @@ def shutdown(
     before_shutdown_callbacks: Optional[List[Callable[[], None]]] = None,
 ):
     logger.info(f"Shutting down [pid argument = {process_id}]...")
+    import psutil
 
     if before_shutdown_callbacks is not None:
         logger.info("Found tasks to run before shutdown.")
@@ -695,6 +693,8 @@ def shutdown(
 
 
 def enable_hot_reload_on_debug(app: FastAPI):
+    import arel
+
     templates = Jinja2Templates()
     gettrace = getattr(sys, "gettrace", None)
     if gettrace is None:
@@ -867,6 +867,7 @@ def _init(
         @app.on_event("shutdown")
         def shutdown():
             from supervisely.app.content import ContentOrigin
+            from async_asgi_testclient import TestClient
 
             ContentOrigin().stop()
             client = TestClient(app)
@@ -980,10 +981,15 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
+
+        from async_asgi_testclient import TestClient
+
         self.test_client = TestClient(self._fastapi)
 
         if not headless:
             if is_development() and hot_reload:
+                import arel
+
                 templates = Jinja2Templates()
                 self.hot_reload = arel.HotReload([])
                 self._fastapi.add_websocket_route(
