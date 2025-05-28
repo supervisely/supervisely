@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from jinja2 import Environment
 from varname import varname
 
-from supervisely._utils import generate_free_name, rand_str, running_in_webpy_app
+from supervisely._utils import rand_str
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.utils import run_sync
@@ -292,23 +292,6 @@ class DynamicWidget(Widget):
             _ = run_sync(client.get("/"))
 
         return wrapper
-
-
-if running_in_webpy_app():
-    logger.info("Running in WebPy app, using WebpyWidget and related classes.")
-    from supervisely.webpy.widget import ConditionalItem as WebpyConditionalItem
-    from supervisely.webpy.widget import ConditionalWidget as WebpyConditionalWidget
-    from supervisely.webpy.widget import Disableable as WebpyDisableable
-    from supervisely.webpy.widget import Hidable as WebpyHidable
-    from supervisely.webpy.widget import Loading as WebpyLoading
-    from supervisely.webpy.widget import Widget as WebpyWidget
-
-    Hidable = WebpyHidable
-    Disableable = WebpyDisableable
-    Loading = WebpyLoading
-    Widget = WebpyWidget
-    ConditionalWidget = WebpyConditionalWidget
-    ConditionalItem = WebpyConditionalItem
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
 # https://github.com/pwwang/python-varname
