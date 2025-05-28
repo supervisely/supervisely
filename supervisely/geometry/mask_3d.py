@@ -413,7 +413,7 @@ class Mask3D(Geometry):
         :return: A Mask3D geometry object.
         :rtype: Mask3D
         """
-        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        with tempfile.NamedTemporaryFile(delete=True, suffix=".nrrd") as temp_file:
             temp_file.write(geometry_bytes)
             return cls.create_from_file(temp_file.name)
 
