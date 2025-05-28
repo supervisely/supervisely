@@ -359,6 +359,7 @@ app.run"""
             widget_handlers = {}
             for route in server.router.routes:
                 if isinstance(route, APIRoute):
+                    logger.info(f"Route: {route.path} -> {route.endpoint}")
                     widget_handlers[route.path] = route.endpoint
 
             logger.info("Args:")
