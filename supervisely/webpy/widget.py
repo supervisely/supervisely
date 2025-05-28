@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import List
 
 # from supervisely.webpy.app import MainServer
-from supervisely.app.fastapi import _MainServer
-from supervisely.webpy.app import DataJson, StateJson
+# from supervisely.app.fastapi import _MainServer
+from supervisely.webpy.app import DataJson, StateJson, _WebPyMainServer
 
 
 class BaseWidget:
@@ -14,7 +14,7 @@ class BaseWidget:
         BaseWidget.widgets_counter += 1
         if widget_id is None:
             widget_id = "widget_" + str(BaseWidget.widgets_counter)
-        self._sly_app = _MainServer()
+        self._sly_app = _WebPyMainServer()
         self.server = self._sly_app.get_server()
         self.widget_id = widget_id
 
