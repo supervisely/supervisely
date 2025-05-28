@@ -62,14 +62,14 @@ class _PatchableJson(dict):
         self.__update(js_obj)
 
     def send_changes(self):
-        logger.info("starting to send changes")
+        # logger.info("starting to send changes")
         if self._linked_obj is None:
             return
 
-        logger.info("Sending changes...")
+        # logger.info("Sending changes...")
         for key, value in self.items():
             setattr(self._linked_obj, key, py_to_js(value))
-        logger.info("Changes sent successfully")
+        # logger.info("Changes sent successfully")
 
 
 class StateJson(_PatchableJson, metaclass=Singleton):
@@ -82,7 +82,7 @@ class DataJson(_PatchableJson, metaclass=Singleton):
         super().__init__(Field.DATA, *args, **kwargs)
 
 
-class _MainServer(metaclass=Singleton):
+class _WebPyMainServer(metaclass=Singleton):
     def __init__(self):
         self._server = FastAPI()
 
@@ -345,8 +345,8 @@ app.run"""
             from fastapi.routing import APIRoute
 
             state = self.state
-            logger.info("WebPyApplication state")
-            logger.info(state)
+            # logger.info("WebPyApplication state")
+            # logger.info(state)
             if state.get("app_initializing", False) == True:
                 state["app_initializing"] = False
                 state.send_changes()
@@ -355,9 +355,10 @@ app.run"""
             # import js
             # js.console.log(self._store.getters.as_object_map())
 
-            server = _MainServer().get_server()
+            server = _WebPyMainServer().get_server()
             widget_handlers = {}
             for route in server.router.routes:
+                logger.info(f"Route type: {type(route)}")
                 if isinstance(route, APIRoute):
                     logger.info(f"Route: {route.path} -> {route.endpoint}")
                     widget_handlers[route.path] = route.endpoint
