@@ -308,6 +308,7 @@ app.run"""
         handlers = kwargs.get("widgets_handlers", {})
 
         if handlers is not None and isinstance(arg, str) and arg in handlers:
+            logger.info(f"Widget handler found for {arg}")
             return handlers[arg], []
 
         handlers = kwargs.get("event_handlers", {})
@@ -333,7 +334,9 @@ app.run"""
 
         if inspect.iscoroutinefunction(f):
             loop = get_or_create_event_loop()
+            logger.info(f"Running async function: {f.__name__}")
             return loop.run_until_complete(f(*args, **kwargs))
+        logger.info(f"Running sync function: {f.__name__}")
         return f(*args, **kwargs)
 
     def run(self, *args, **kwargs):
@@ -372,6 +375,7 @@ app.run"""
                 result = self._run_handler(handler, *handler_args)
                 logger.debug("function_time: %.4f ms", time.perf_counter() - t)
                 return result
+            logger.info("No handler found, running main function")
             if self._run_f is None:
                 logger.warning("Unknown command")
             logger.debug("Prepare time: %.4f ms", time.perf_counter() - t)
