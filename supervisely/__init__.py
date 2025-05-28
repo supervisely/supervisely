@@ -1,6 +1,6 @@
 # coding: utf-8
 # isort: skip_file
-import pkg_resources  # isort: skip
+
 import os
 import sys
 
@@ -13,7 +13,10 @@ if "pyodide" in sys.modules:  # running in Pyodide (webpy app)
     #     import supervisely.supervisely as sly
     #     sys.modules["supervisely"] = sly  # ensure supervisely is available in the module namespace
 else:
+    import pkg_resources  # isort: skip
+
     try:
+
         __version__ = pkg_resources.require("supervisely")[0].version
     except TypeError as e:
         __version__ = "development"
