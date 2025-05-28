@@ -2164,14 +2164,14 @@ class TrainApp:
             if self._has_splits_selector:
                 if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
                     train_info = {
-                        "app_session_id": self.task_id,
+                        "app_session_id": self.task_id if isinstance(self.task_id, int) else None,
                         "train_dataset_ids": train_dataset_ids,
                         "train_images_ids": None,
                         "images_count": len(self._train_split),
                     }
                 else:
                     train_info = {
-                        "app_session_id": self.task_id,
+                        "app_session_id": self.task_id if isinstance(self.task_id, int) else None,
                         "train_dataset_ids": None,
                         "train_images_ids": train_images_ids,
                         "images_count": len(self._train_split),
@@ -2370,13 +2370,14 @@ class TrainApp:
             logger.debug("Tensorboard server is already running")
             return
         self._register_routes()
+
         args = [
             "tensorboard",
             "--logdir",
             self.log_dir,
             "--host=localhost",
             f"--port={self._tensorboard_port}",
-            "--load_fast=true",
+            "--load_fast=auto",
             "--reload_multifile=true",
         ]
         self._tensorboard_process = subprocess.Popen(args)
@@ -2522,6 +2523,9 @@ class TrainApp:
             self._set_ws_progress_status("finalizing")
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
+
+            # Shutdown the app after training is finished
+            self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
