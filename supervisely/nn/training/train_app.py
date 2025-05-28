@@ -2231,8 +2231,10 @@ class TrainApp:
             )
             if isinstance(e, ValueError) and str(e) == pred_error_message:
                 self.gui.training_artifacts.model_benchmark_fail_text.set(
-                    pred_error_message,
-                    "error",
+                    "Model evaluation could not be completed: No predictions were generated.\n\n"
+                    "This usually means your model needs more training time or adjustments. "
+                    "You can still use your trained model - this only affects the evaluation report.",
+                    "warning",
                 )
 
             self._set_text_status("finalizing")
