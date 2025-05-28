@@ -3709,17 +3709,21 @@ class Inference:
             )
 
         app_name = sly_env.app_name()
-        meta = WorkflowMeta(node_settings=WorkflowSettings(title=f"Serve {app_name}"))
+        if not app_name.startswith("Serve"):
+            app_name = f"Serve {app_name}"
+
+        meta = WorkflowMeta(node_settings=WorkflowSettings(title=app_name))
 
         logger.debug(
             f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}"
         )
-        if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
-            self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-        else:
-            logger.debug(
-                f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
-            )
+        if model_source == ModelSource.CUSTOM:
+            if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
+                self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+            else:
+                logger.debug(
+                    f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
+                )
 
 
 def _exclude_duplicated_predictions(
