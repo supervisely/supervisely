@@ -205,11 +205,10 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
       console.log("Installing Python package:", "{{{ req | safe }}}");
-      await micropip.install(["{{{ req | safe }}}"], keep_going=true);
+      await micropip.install(["{{{ req | safe }}}"], keep_going = true);
       {% endfor %}
       {% endif %}
 
-      await setupAndImportPythonPackage("./supervisely.tar", "supervisely") // temporary solution
       await setupAndImportPythonPackage("./src.tar", "src")
       {% if src_modules %}
       {% for module in src_modules %}
