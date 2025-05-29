@@ -884,7 +884,7 @@ class Inference:
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
 
-        # remove is_benchmark from kwargs
+        # remove is_benchmark from deploy_params
         if "is_benchmark" in deploy_params:
             deploy_params.pop("is_benchmark")
 
