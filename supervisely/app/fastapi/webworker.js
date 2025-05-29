@@ -3,6 +3,7 @@ import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodi
 let pyodideReadyPromise = loadPyodide();
 
 async function setupAndImportPythonPackage(url, packageName) {
+  const pyodide = await pyodideReadyPromise;
   const FS = pyodide.FS;
 
   const response = await fetch(url);
@@ -37,7 +38,6 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       shutil.move(nested_path, extract_to)
       os.rmdir(extracted_path + "_temp")
 `;
-  const pyodide = await pyodideReadyPromise;
   await pyodide.runPythonAsync(pythonCode);
 
   console.log(`Package ${packageName} extracted to ${extractTo}`);
