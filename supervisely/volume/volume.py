@@ -8,7 +8,6 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import pydicom
 import SimpleITK as sitk
-import stringcase
 from trimesh import Trimesh
 
 import supervisely.volume.nrrd_encoder as nrrd_encoder
@@ -325,6 +324,7 @@ def read_dicom_tags(
     """
 
     import SimpleITK as sitk
+    import stringcase
 
     reader = sitk.ImageFileReader()
     reader.SetFileName(path)

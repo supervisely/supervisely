@@ -257,7 +257,7 @@ class TrainGUI:
         self.project_info = self._api.project.get_info_by_id(self.project_id)
         if self.project_info.type is None:
             raise ValueError(f"Project with ID: '{self.project_id}' does not exist or was archived")
-        
+
         self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
 
         if self.workspace_id is None:
@@ -812,6 +812,23 @@ class TrainGUI:
                 raise ValueError("split must be 'train' or 'val'")
             if not isinstance(percent, int) or not 0 < percent < 100:
                 raise ValueError("percent must be an integer in range 1 to 99")
+        elif train_val_splits_settings.get("method") == "collections":
+            train_collections = train_val_splits_settings.get("train_collections", [])
+            val_collections = train_val_splits_settings.get("val_collections", [])
+            collection_ids = set()
+            for collection in self._api.entities_collection.get_list(self.project_id):
+                collection_ids.add(collection.id)
+            missing_collections_ids = []
+            for collection_id in train_collections + val_collections:
+                if collection_id not in collection_ids:
+                    missing_collections_ids.append(collection_id)
+            if len(missing_collections_ids) > 0:
+                missing_collections_text = ", ".join(
+                    [str(collection_id) for collection_id in missing_collections_ids]
+                )
+                raise ValueError(
+                    f"Collections with ids: {missing_collections_text} not found in the project"
+                )
         return app_state
 
     def load_from_app_state(self, app_state: Union[str, dict]) -> None:
@@ -846,7 +863,8 @@ class TrainGUI:
                     "ONNXRuntime": True,
                     "TensorRT": True
                     },
-                }
+                },
+                "experiment_name": "my_experiment",
             }
         """
         if isinstance(app_state, str):
@@ -860,6 +878,7 @@ class TrainGUI:
         tags_settings = app_state.get("tags", [])
         model_settings = app_state["model"]
         hyperparameters_settings = app_state["hyperparameters"]
+        experiment_name = app_state.get("experiment_name", None)
 
         self._init_input(input_settings, options)
         self._init_train_val_splits(train_val_splits_settings, options)
@@ -867,6 +886,8 @@ class TrainGUI:
         self._init_tags(tags_settings, options)
         self._init_model(model_settings, options)
         self._init_hyperparameters(hyperparameters_settings, options)
+        if experiment_name is not None:
+            self.training_process.set_experiment_name(experiment_name)
 
     def _init_input(self, input_settings: Union[dict, None], options: dict) -> None:
         """
@@ -934,6 +955,15 @@ class TrainGUI:
             val_datasets = train_val_splits_settings["val_datasets"]
             self.train_val_splits_selector.train_val_splits.set_datasets_splits(
                 train_datasets, val_datasets
+            )
+        elif split_method == "collections":
+            train_collections = train_val_splits_settings["train_collections"]
+            val_collections = train_val_splits_settings["val_collections"]
+            self.train_val_splits_selector.train_val_splits.set_project_id_for_collections(
+                self.project_id
+            )
+            self.train_val_splits_selector.train_val_splits.set_collections_splits(
+                train_collections, val_collections
             )
         self.train_val_splits_selector_cb()
 

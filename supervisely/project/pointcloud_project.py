@@ -726,6 +726,22 @@ class PointcloudProject(VideoProject):
         return train_items, val_items
 
     @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for PointcloudProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for PointcloudProject class now."
+        )
+
+    @staticmethod
     def download(
         api: Api,
         project_id: int,
