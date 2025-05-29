@@ -6,6 +6,7 @@ import time
 
 from fastapi import FastAPI
 
+from supervisely.io.fs import copy_file
 from supervisely._utils import get_or_create_event_loop
 from supervisely.app.singleton import Singleton
 from supervisely.sly_logger import logger
@@ -221,6 +222,13 @@ class WebPyApplication(metaclass=Singleton):
         StateJson()["app_initializing"] = True
         json.dump(StateJson(), open(app_dir / "state.json", "w"))
         json.dump(DataJson(), open(app_dir / "data.json", "w"))
+        current_dir = Path(__file__).parent.absolute()
+        old_worker_api_path = current_dir.parent / "app" / "fastapi" / "workerApi.js"
+        new_worker_api_path = app_dir / "workerApi.js"
+        copy_file(str(old_worker_api_path), str(new_worker_api_path))
+        old_web_worker_path = current_dir.parent / "app" / "fastapi" / "webworker.js"
+        new_web_worker_path = app_dir / "webworker.js"
+        copy_file(str(old_web_worker_path), str(new_web_worker_path))
 
         # generate entrypoint for script
         main_module = ".".join(main_script_path.split("/"))
