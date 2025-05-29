@@ -285,7 +285,7 @@ if state.get("app_initializing", False) == True:
     //   let result;
       const timeStart = performance.now();
 
-      const { result, error } = await window.webpyApp.asyncRun(mainScriptTxt, {context, params});
+      const { result, error } = await window.webpyApp.asyncRun(mainScriptTxt, params);
       if (result) {
           console.log("pyodideWorker result:", result);
       } else if (error) {
