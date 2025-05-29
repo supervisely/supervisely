@@ -580,7 +580,7 @@ class TrainApp:
 
         # Step 6. Upload artifacts
         self._set_text_status("uploading")
-        remote_dir, file_info = self._upload_artifacts()
+        remote_dir, session_link_file_info = self._upload_artifacts()
 
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
@@ -650,12 +650,35 @@ class TrainApp:
 
         # Step 10. Set output widgets
         self._set_text_status("reset")
-        self._set_training_output(experiment_info, remote_dir, file_info, mb_eval_report)
+        self._set_training_output(
+            experiment_info, remote_dir, session_link_file_info, mb_eval_report
+        )
         self._set_ws_progress_status("completed")
 
         # Step 11. Workflow output
         if is_production():
-            self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
+            best_checkpoint_file_info = self._get_best_checkpoint_info(experiment_info, remote_dir)
+            self._workflow_output(
+                remote_dir, best_checkpoint_file_info, mb_eval_lnk_file_info, mb_eval_report_id
+            )
+
+    def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
+        """
+        Returns the best checkpoint info.
+
+        :param experiment_info: Experiment info.
+        :type experiment_info: dict
+        :param remote_dir: Remote directory.
+        :type remote_dir: str
+        :return: Best checkpoint info.
+        :rtype: FileInfo
+        """
+        best_checkpoint_name = experiment_info.get("best_checkpoint")
+        remote_best_checkpoint_path = join(remote_dir, "checkpoints", best_checkpoint_name)
+        best_checkpoint_file_info = self._api.file.get_info_by_path(
+            self.team_id, remote_best_checkpoint_path
+        )
+        return best_checkpoint_file_info
 
     def register_inference_class(
         self, inference_class: Inference, inference_settings: Union[str, dict] = None
@@ -686,6 +709,8 @@ class TrainApp:
         """
         Returns the current state of the application.
 
+        :param experiment_info: Experiment info.
+        :type experiment_info: dict
         :return: Application state.
         :rtype: dict
         """
@@ -1909,6 +1934,7 @@ class TrainApp:
                 "state": {"slyFolder": f"{join(remote_dir, 'logs')}"}
             }
             self.gui.training_logs.tensorboard_offline_button.enable()
+
         return remote_dir, file_info
 
     def _set_training_output(
@@ -2324,7 +2350,7 @@ class TrainApp:
 
             if file_info:
                 relation_settings = WorkflowSettings(
-                    title="Train Artifacts",
+                    title="Checkpoints",
                     icon="folder",
                     icon_color="#FFA500",
                     icon_bg_color="#FFE8BE",
