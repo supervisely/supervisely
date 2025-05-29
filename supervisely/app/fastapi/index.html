@@ -110,9 +110,14 @@
   </div>
 
   <!-- Offline session styles fix -->
-  <script type="module">
-    // import { asyncRun } from "./supervisely/app/fastapi/workerApi.js";
+  <!-- import { asyncRun } from "./workerApi.js"; -->
+   <script type="module">
     import { asyncRun } from "./workerApi.js";
+    window.webpyApp = { 
+        asyncRun: asyncRun,
+     }
+   </script>
+  <script>
     let resizeCounter = 0;
     let resizeInterval = setInterval(() => {
       resizeCounter += 1;
@@ -280,7 +285,7 @@ if state.get("app_initializing", False) == True:
     //   let result;
       const timeStart = performance.now();
 
-      const { result, error } = await asyncRun(script, context);
+      const { result, error } = await window.webpyApp.asyncRun(script, context);
       if (result) {
           console.log("pyodideWorker result:", result);
       } else if (error) {
