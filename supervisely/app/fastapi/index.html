@@ -209,6 +209,7 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       {% endfor %}
       {% endif %}
 
+      await setupAndImportPythonPackage("./supervisely.tar", "supervisely") // temporary solution
       await setupAndImportPythonPackage("./src.tar", "src")
       {% if src_modules %}
       {% for module in src_modules %}
