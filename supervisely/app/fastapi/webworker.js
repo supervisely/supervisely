@@ -2,6 +2,46 @@ import { loadPyodide } from "https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodi
 
 let pyodideReadyPromise = loadPyodide();
 
+async function setupAndImportPythonPackage(url, packageName) {
+  const FS = pyodide.FS;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch TAR file: ${response.statusText}`);
+  }
+  const tarData = await response.arrayBuffer();
+
+  const tarPath = `${packageName}.tar`;
+  FS.writeFile(tarPath, new Uint8Array(tarData));
+
+  const extractTo = `./`;
+  const pythonCode = `
+import tarfile
+import sys
+import os
+
+tar_path = "${tarPath}"
+extract_to = "${extractTo}"
+
+os.makedirs(extract_to, exist_ok=True)
+with tarfile.open(tar_path, "r:") as tar_ref:
+  tar_ref.extractall(extract_to)
+
+# if name 'supervisely' (it probably will contain redundant nested hierarchy) we need to move files
+extracted_path = os.path.join(extract_to, "${packageName}")
+if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
+  if "supervisely" in os.listdir(extracted_path):
+      import shutil
+      os.rename(extracted_path, extracted_path + "_temp")
+      nested_path = os.path.join(extracted_path + "_temp", "supervisely")
+      shutil.move(nested_path, extract_to)
+      os.rmdir(extracted_path + "_temp")
+`;
+  await pyodide.runPythonAsync(pythonCode);
+
+  console.log(`Package ${packageName} extracted to ${extractTo}`);
+}
+
 self.onmessage = async (event) => {
   // make sure loading is done
   const pyodide = await pyodideReadyPromise;
