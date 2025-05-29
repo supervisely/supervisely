@@ -33,7 +33,7 @@ function requestResponse(worker, msg) {
   return promise;
 }
 
-const pyodideWorker = new Worker("./webworker.mjs", { type: "module" });
+const pyodideWorker = new Worker("./webworker.js", { type: "module" });
 
 export function asyncRun(script, context) {
   return requestResponse(pyodideWorker, {
