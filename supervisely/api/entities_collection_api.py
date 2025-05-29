@@ -237,7 +237,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         ModuleApi.__init__(self, api)
         self._api = api
 
-    def _convert_json_info(self, info: dict, skip_missing=True):
+    def _convert_json_info(self, info: dict, skip_missing=True) -> EntitiesCollectionInfo:
         """
         Differs from the original method by using skip_missing equal to True by default.
         Also unpacks 'meta' field to top level for fields in info_sequence.
