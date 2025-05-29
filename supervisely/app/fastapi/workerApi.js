@@ -35,9 +35,9 @@ function requestResponse(worker, msg) {
 
 const pyodideWorker = new Worker("./webworker.js", { type: "module" });
 
-export function asyncRun(script, context) {
+export function asyncRun(script, params) {
   return requestResponse(pyodideWorker, {
-    context,
+    params,
     python: script,
   });
 }
