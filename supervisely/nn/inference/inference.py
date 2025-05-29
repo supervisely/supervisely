@@ -878,7 +878,9 @@ class Inference:
 
         try:
             if is_production():
-                self._add_workflow_input(model_source, model_files, model_info)
+                is_benchmark = kwargs.get("is_benchmark", False)
+                if not is_benchmark:
+                    self._add_workflow_input(model_source, model_files, model_info)
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
 
