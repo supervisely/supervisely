@@ -2143,8 +2143,8 @@ class TrainApp:
                 "framework_name": self.framework_name,
                 "model_meta": model_meta.to_json(),
                 "task_type": task_type,
-                "is_benchmark": True,
             }
+            self._benchmark_params["is_benchmark"] = True
 
             logger.info(f"Deploy parameters: {self._benchmark_params}")
 

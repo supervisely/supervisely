@@ -879,7 +879,7 @@ class Inference:
         try:
             if is_production():
                 is_benchmark = kwargs.get("is_benchmark", False)
-                if not is_benchmark:
+                if is_benchmark is False:
                     self._add_workflow_input(model_source, model_files, model_info)
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
@@ -3711,7 +3711,7 @@ class Inference:
             )
 
         app_name = sly_env.app_name()
-        if not app_name.startswith("Serve"):
+        if not app_name.startswith("Serve") and not app_name.startswith("Train"):
             app_name = f"Serve {app_name}"
 
         meta = WorkflowMeta(node_settings=WorkflowSettings(title=app_name))
