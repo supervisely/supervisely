@@ -2144,7 +2144,7 @@ class TrainApp:
                 "model_meta": model_meta.to_json(),
                 "task_type": task_type,
             }
-            self._benchmark_params["is_benchmark"] = True
+            self._benchmark_params["without_workflow"] = True
 
             logger.info(f"Deploy parameters: {self._benchmark_params}")
 

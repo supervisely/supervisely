@@ -878,15 +878,15 @@ class Inference:
 
         try:
             if is_production():
-                is_benchmark = deploy_params.get("is_benchmark", False)
-                if is_benchmark is False:
+                without_workflow = deploy_params.get("without_workflow", False)
+                if without_workflow is False:
                     self._add_workflow_input(model_source, model_files, model_info)
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
 
         # remove is_benchmark from deploy_params
-        if "is_benchmark" in deploy_params:
-            deploy_params.pop("is_benchmark")
+        if "without_workflow" in deploy_params:
+            deploy_params.pop("without_workflow")
 
         self._load_model(deploy_params)
         if self._model_meta is None:
@@ -3715,9 +3715,6 @@ class Inference:
             )
 
         app_name = sly_env.app_name()
-        if not app_name.startswith("Serve") and not app_name.startswith("Train"):
-            app_name = f"Serve {app_name}"
-
         meta = WorkflowMeta(node_settings=WorkflowSettings(title=app_name))
 
         logger.debug(
