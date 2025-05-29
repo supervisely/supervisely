@@ -208,7 +208,7 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
       console.log("Installing Python package:", "{{{ req | safe }}}");
-      await micropip.install(["{{{ req | safe }}}"], keep_going = true);
+      await micropip.install(["{{{ req | safe }}}"], keep_going=true);
       {% endfor %}
       {% endif %}
 
