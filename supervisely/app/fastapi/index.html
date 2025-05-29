@@ -201,6 +201,7 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       await micropip.install(["typing_extensions == 4.8"]) // needed for fastapi
       await micropip.install(["ssl"]) // needed for fastapi
       await micropip.install(["fastapi"]) // needed for sdk
+      await micropip.install('pyodide-http') // needed to patch http requests in pyodide
 
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
@@ -220,6 +221,8 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
       console.log("Main Python script loaded");
       python_code = `
+import pyodide_http
+pyodide_http.patch_all()  # Patch all libraries
 from supervisely.webpy.app import WebPyApplication
 app = WebPyApplication()
 state = app.state
