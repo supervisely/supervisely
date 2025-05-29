@@ -878,12 +878,15 @@ class Inference:
 
         try:
             if is_production():
-                is_benchmark = kwargs.get("is_benchmark", False)
+                is_benchmark = deploy_params.get("is_benchmark", False)
                 if is_benchmark is False:
                     self._add_workflow_input(model_source, model_files, model_info)
-                    kwargs.pop("is_benchmark")
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
+
+        # remove is_benchmark from kwargs
+        if "is_benchmark" in deploy_params:
+            deploy_params.pop("is_benchmark")
 
         self._load_model(deploy_params)
         if self._model_meta is None:
@@ -3723,7 +3726,7 @@ class Inference:
         if model_source == ModelSource.CUSTOM:
             if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
                 # self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-                remote_checkpoint_dir = os.path.dirname(checkpoint_url)  # .rstrip("/") + "/"
+                remote_checkpoint_dir = os.path.dirname(checkpoint_url)
                 self.api.app.workflow.add_input_folder(remote_checkpoint_dir, meta=meta)
             else:
                 logger.debug(

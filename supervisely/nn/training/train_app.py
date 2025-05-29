@@ -2403,7 +2403,7 @@ class TrainApp:
                 logger.debug(f"Workflow Output: meta \n    {meta}")
                 # self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
 
-                remote_checkpoint_dir = dirname(file_info.path)  # .rstrip("/") + "/"
+                remote_checkpoint_dir = dirname(file_info.path)
                 self._api.app.workflow.add_output_folder(remote_checkpoint_dir, meta=meta)
             else:
                 logger.debug(
