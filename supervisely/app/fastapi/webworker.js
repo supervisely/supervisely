@@ -37,6 +37,7 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       shutil.move(nested_path, extract_to)
       os.rmdir(extracted_path + "_temp")
 `;
+  const pyodide = await pyodideReadyPromise;
   await pyodide.runPythonAsync(pythonCode);
 
   console.log(`Package ${packageName} extracted to ${extractTo}`);
