@@ -881,6 +881,7 @@ class Inference:
                 is_benchmark = kwargs.get("is_benchmark", False)
                 if is_benchmark is False:
                     self._add_workflow_input(model_source, model_files, model_info)
+                    kwargs.pop("is_benchmark")
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
 
