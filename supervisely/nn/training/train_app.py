@@ -773,6 +773,27 @@ class TrainApp:
         """
         self.gui.load_from_app_state(app_state)
 
+    def add_output_files(self, paths: List[str]) -> None:
+        """
+        Copies files or directories to the output directory, which will be uploaded to the team files upon training completion.
+        If path is a file, it will be uploaded to the root artifacts directory.
+        If path is a directory, it will be uploded to the root artifacts directory with the same directory name and structure.
+
+        :param paths: List of paths to files or directories to be copied to the output directory.
+        :type paths: List[str]
+        :return: None
+        :rtype: None
+        """
+
+        for path in paths:
+            if sly_fs.file_exists(path):
+                shutil.copyfile(path, join(self.output_dir, sly_fs.get_file_name_with_ext(path)))
+            elif sly_fs.dir_exists(path):
+                shutil.copytree(path, join(self.output_dir, basename(path)))
+            else:
+                logger.warning(f"Provided path: '{path}' does not exist. Skipping...")
+                continue
+
     # Loaders
     def _load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
         """
@@ -2254,7 +2275,6 @@ class TrainApp:
 
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
-
             pred_error_message = (
                 "Not found any predictions. Please make sure that your model produces predictions."
             )
@@ -2265,6 +2285,14 @@ class TrainApp:
                     "You can still use your trained model - this only affects the evaluation report.",
                     "warning",
                 )
+
+            lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
+                None,
+                None,
+                None,
+                {},
+                None,
+            )
 
             self._set_text_status("finalizing")
             self.progress_bar_main.hide()
