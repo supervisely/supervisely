@@ -9,7 +9,7 @@ import shutil
 import subprocess
 from datetime import datetime
 from os import getcwd, listdir, walk
-from os.path import basename, exists, expanduser, isdir, isfile, join
+from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -128,7 +128,7 @@ class TrainApp:
                 self._app_name = "custom-app"
             self.task_id = sly_env.task_id(raise_not_found=False)
             if self.task_id is None:
-                self.task_id = "debug-session"
+                self.task_id = -1
             logger.info("TrainApp is running in debug mode")
 
         self.framework_name = framework_name
@@ -1889,7 +1889,7 @@ class TrainApp:
             f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
         )
         # Clean debug directory if exists
-        if task_id == "debug-session":
+        if task_id == -1:
             if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
                 with self.progress_bar_main(
                     message=f"[Debug] Cleaning train artifacts: '{remote_artifacts_dir}/'",
@@ -2190,16 +2190,19 @@ class TrainApp:
                 raise ValueError(f"Task type: '{task_type}' is not supported for Model Benchmark")
 
             if self._has_splits_selector:
+                app_session_id = self.task_id
+                if app_session_id == -1:
+                    app_session_id = None
                 if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
                     train_info = {
-                        "app_session_id": self.task_id if isinstance(self.task_id, int) else None,
+                        "app_session_id": app_session_id,
                         "train_dataset_ids": train_dataset_ids,
                         "train_images_ids": None,
                         "images_count": len(self._train_split),
                     }
                 else:
                     train_info = {
-                        "app_session_id": self.task_id if isinstance(self.task_id, int) else None,
+                        "app_session_id": app_session_id,
                         "train_dataset_ids": None,
                         "train_images_ids": train_images_ids,
                         "images_count": len(self._train_split),
@@ -2328,6 +2331,14 @@ class TrainApp:
     ):
         """
         Adds the output data to the workflow.
+
+        :param team_files_dir: Team files directory.
+        :type team_files_dir: str
+        :param file_info: FileInfo of the best checkpoint.
+        :type file_info: FileInfo
+        :param model_benchmark_report: FileInfo of the model benchmark report link (.lnk).
+        :type model_benchmark_report: Optional[FileInfo]
+        :param model_benchmark_report_id: Model benchmark report ID.
         """
         try:
             module_id = (
@@ -2361,7 +2372,8 @@ class TrainApp:
                     relation_settings=relation_settings, node_settings=node_settings
                 )
                 logger.debug(f"Workflow Output: meta \n    {meta}")
-                self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
+                # self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
+                self._api.app.workflow.add_output_folder(dirname(file_info), meta=meta)
             else:
                 logger.debug(
                     f"File with checkpoints not found in Team Files. Cannot set workflow output."
