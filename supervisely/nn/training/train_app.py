@@ -2402,7 +2402,9 @@ class TrainApp:
                 )
                 logger.debug(f"Workflow Output: meta \n    {meta}")
                 # self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
-                self._api.app.workflow.add_output_folder(dirname(file_info), meta=meta)
+
+                remote_checkpoint_dir = dirname(file_info.path)  # .rstrip("/") + "/"
+                self._api.app.workflow.add_output_folder(remote_checkpoint_dir, meta=meta)
             else:
                 logger.debug(
                     f"File with checkpoints not found in Team Files. Cannot set workflow output."

@@ -3723,7 +3723,8 @@ class Inference:
         if model_source == ModelSource.CUSTOM:
             if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
                 # self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-                self.api.app.workflow.add_input_folder(os.path.dirname(checkpoint_url), meta=meta)
+                remote_checkpoint_dir = os.path.dirname(checkpoint_url)  # .rstrip("/") + "/"
+                self.api.app.workflow.add_input_folder(remote_checkpoint_dir, meta=meta)
             else:
                 logger.debug(
                     f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
