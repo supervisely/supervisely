@@ -110,8 +110,9 @@
   </div>
 
   <!-- Offline session styles fix -->
+  <script type="module" src="supervisely/app/fastapi/workerApi.js"></script>
   <script>
-    import { asyncRun } from "supervisely/app/fastapi/workerApi.js";
+    // import { asyncRun } from "supervisely/app/fastapi/workerApi.js";
     let resizeCounter = 0;
     let resizeInterval = setInterval(() => {
       resizeCounter += 1;
