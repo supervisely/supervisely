@@ -646,10 +646,13 @@ class Api:
         :param kwargs: Keyword arguments for the request.
         :return: Response object.
         """
-        from pyodide.http import pyfetch
         from js import console
+        console.log(f"Request URL: {kwargs['url']}")
+        console.log(f"Making async request with kwargs: {kwargs}")
+        from pyodide.http import pyfetch
 
         response = await pyfetch(**kwargs)
+        console.log(f"Response status: {response.status}")
         if response.status != 200:
             raise requests.exceptions.HTTPError(
                 f"HTTP error {response.status} for url: {kwargs['url']}"
