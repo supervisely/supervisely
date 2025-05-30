@@ -240,7 +240,8 @@ if state.get("app_initializing", False) == True:
     state["app_initializing"] = False
     state.send_changes()
 `
-      const fn = pyodide.runPython(python_code);
+      const fn = await pyodide.runPythonAsync(python_code);
+      console.log("fn", fn);
       console.log("WebPyApplication initialized");
       if (typeof fn === "function") {
         const newParams = params.map(p => pyodide.toPy(p));
