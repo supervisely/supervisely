@@ -255,42 +255,21 @@ if state.get("app_initializing", False) == True:
 
     let initPromise = null;
 
-    // async function runPythonScript(...params) {
-    //   if (initPromise) {
-    //     await initPromise;
-    //     initPromise = null;
-    //   }
-
-    //   let result;
-    //   const timeStart = performance.now();
-
-    //   const fn = pyodide.runPython(mainScriptTxt);
-    //   if (typeof fn === "function") {
-    //     const newParams = params.map(p => pyodide.toPy(p));
-    //     result = fn(...newParams);
-    //   } else {
-    //     result = fn;
-    //   }
-
-    //   const timeEnd = performance.now();
-    //   console.log("Web Python script executed in", timeEnd - timeStart, "ms");
-
-    //   return result;
-    // }
     async function runPythonScript(...params) {
       if (initPromise) {
         await initPromise;
         initPromise = null;
       }
 
-    //   let result;
+      let result;
       const timeStart = performance.now();
 
-      const { result, error } = await window.webpyApp.asyncRun(mainScriptTxt, params);
-      if (result) {
-          console.log("pyodideWorker result:", result);
-      } else if (error) {
-          console.log("pyodideWorker error:", error);
+      const fn = pyodide.runPython(mainScriptTxt);
+      if (typeof fn === "function") {
+        const newParams = params.map(p => pyodide.toPy(p));
+        result = fn(...newParams);
+      } else {
+        result = fn;
       }
 
       const timeEnd = performance.now();
@@ -298,6 +277,27 @@ if state.get("app_initializing", False) == True:
 
       return result;
     }
+    // async function runPythonScript(...params) {
+    //   if (initPromise) {
+    //     await initPromise;
+    //     initPromise = null;
+    //   }
+
+    // //   let result;
+    //   const timeStart = performance.now();
+
+    //   const { result, error } = await window.webpyApp.asyncRun(mainScriptTxt, params);
+    //   if (result) {
+    //       console.log("pyodideWorker result:", result);
+    //   } else if (error) {
+    //       console.log("pyodideWorker error:", error);
+    //   }
+
+    //   const timeEnd = performance.now();
+    //   console.log("Web Python script executed in", timeEnd - timeStart, "ms");
+
+    //   return result;
+    // }
 
     const runPythonScriptThrottled = _.throttle(runPythonScript, 50);
     {% if __webpy_script__ %}
