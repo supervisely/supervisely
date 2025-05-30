@@ -638,7 +638,7 @@ class Api:
                 f"Tried to check version compatibility between SDK and instance, but failed: {e}"
             )
 
-    async def _py_fetch(kwargs: Dict[str, Any]) -> Any:
+    async def _py_fetch(self, kwargs: Dict[str, Any]) -> Any:
         """
         Perform an asynchronous HTTP request using pyodide's pyfetch.
 
