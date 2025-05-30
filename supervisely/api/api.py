@@ -652,7 +652,7 @@ class Api:
             raise requests.exceptions.HTTPError(
                 f"HTTP error {response.status} for url: {kwargs['url']}"
             )
-        return await response.json()
+        return response
 
 
     def post(
