@@ -791,7 +791,7 @@ class Api:
                         kwargs = {
                             "url": url,
                             "method": "POST",
-                            "json": json_body,
+                            "body": json_body,
                             "headers": headers,
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
