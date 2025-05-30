@@ -46,8 +46,8 @@ import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -65,7 +65,13 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely._utils import (
+    camel_to_snake,
+    get_or_create_event_loop,
+    is_community,
+    is_development,
+    running_in_webpy_app,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     RetryableRequestException,
@@ -656,6 +662,42 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        if running_in_webpy_app():
+            loop = get_or_create_event_loop()
+            headers = {**self.headers, **self.additional_fields}
+            if type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+                headers["Content-Type"] = data.content_type
+            if stream:
+                return loop.run_until_complete(
+                    self.stream_async(
+                        method=method,
+                        method_type="POST",
+                        data=data,
+                        headers=headers,
+                        retries=retries,
+                        timeout=self.retry_sleep_sec,
+                    )
+                )
+            else:
+                webpy_kwargs = {
+                    "method": method,
+                    "headers": headers,
+                    "retries": retries,
+                    "raise_error": raise_error,
+                    "timeout": self.retry_sleep_sec,
+                }
+                if type(data) is bytes:
+                    webpy_kwargs["content"] = data
+                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+                    webpy_kwargs["content"] = data
+                else:
+                    json_body = data
+                    if type(data) is dict:
+                        json_body = {**data, **self.additional_fields}
+                    webpy_kwargs["json"] = json_body
+
+                return loop.run_until_complete(self.post_async(**webpy_kwargs))
+
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
         if retries is None:
@@ -739,6 +781,32 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        if running_in_webpy_app():
+            loop = get_or_create_event_loop()
+            headers = self.headers.copy()
+            if stream:
+                return loop.run_until_complete(
+                    self.stream_async(
+                        method=method,
+                        method_type="GET",
+                        params=params,
+                        headers=headers,
+                        retries=retries,
+                        timeout=self.retry_sleep_sec,
+                        use_public_api=use_public_api,
+                    )
+                )
+            else:
+                return loop.run_until_complete(
+                    self.get_httpx(
+                        method=method,
+                        params=params,
+                        retries=retries,
+                        use_public_api=use_public_api,
+                        timeout=self.retry_sleep_sec,
+                    )
+                )
+
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
         if retries is None:
