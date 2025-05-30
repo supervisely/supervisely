@@ -736,12 +736,13 @@ class Api:
             try:
                 if type(data) is bytes:
                     if running_in_webpy_app():
+                        headers = {**self.headers, "Content-Type": "application/json; charset=UTF-8"}
                         # if False:
                         kwargs = {
                             "url": url,
                             "method": "POST",
                             "body": data,
-                            "headers": self.headers,
+                            "headers": headers,
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
 
@@ -750,18 +751,26 @@ class Api:
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     # if False:
                     if running_in_webpy_app():
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
                         kwargs = {
                             "url": url,
                             "method": "POST",
                             "body": data,
-                            "headers": {**self.headers, "Content-Type": data.content_type},
+                            "headers": {**headers, "Content-Type": data.content_type},
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
                     else:
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
                         response = requests.post(
                             url,
                             data=data,
-                            headers={**self.headers, "Content-Type": data.content_type},
+                            headers={**headers},
                             stream=stream,
                         )
                 else:
@@ -770,11 +779,15 @@ class Api:
                         json_body = {**data, **self.additional_fields}
                     if running_in_webpy_app():
                         # if False:
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
                         kwargs = {
                             "url": url,
                             "method": "POST",
                             "json": json_body,
-                            "headers": self.headers,
+                            "headers": headers,
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
                     else:
