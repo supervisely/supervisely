@@ -652,7 +652,21 @@ class Api:
             raise requests.exceptions.HTTPError(
                 f"HTTP error {response.status} for url: {kwargs['url']}"
             )
-        return response
+        data = await response.json()
+        # return Requests Response object
+        response_obj = requests.Response()
+        response_obj.status_code = response.status
+        response_obj._content = json.dumps(data).encode("utf-8")
+        response_obj.headers = response.headers
+        response_obj.url = kwargs["url"]
+        response_obj.request = requests.Request(
+            method=kwargs.get("method", "GET"),
+            url=kwargs["url"],
+            headers=kwargs.get("headers", {}),
+            json=kwargs.get("json", None),
+            data=kwargs.get("data", None),
+        ).prepare()
+        return response_obj
 
 
     def post(
@@ -731,6 +745,7 @@ class Api:
             try:
                 if type(data) is bytes:
                     if running_in_webpy_app():
+                    # if False:
                         kwargs = {
                             "url": url,
                             "method": "POST",
@@ -742,6 +757,7 @@ class Api:
                     else:
                         response = requests.post(url, data=data, headers=self.headers, stream=stream)
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+                    # if False:
                     if running_in_webpy_app():
                         kwargs = {
                             "url": url,
@@ -762,6 +778,7 @@ class Api:
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
                     if running_in_webpy_app():
+                    # if False:
                         kwargs = {
                             "url": url,
                             "method": "POST",
@@ -876,6 +893,7 @@ class Api:
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
                 if running_in_webpy_app():
+                # if False:
                     url_with_params = requests.Request('GET', url, params=json_body).prepare().url
                     kwargs = {
                         "url": url_with_params,
