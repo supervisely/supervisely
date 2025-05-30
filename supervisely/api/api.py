@@ -652,21 +652,8 @@ class Api:
             raise requests.exceptions.HTTPError(
                 f"HTTP error {response.status} for url: {kwargs['url']}"
             )
-        data = await response.json()
-        # return Requests Response object
-        response_obj = requests.Response()
-        response_obj.status_code = response.status
-        response_obj._content = json.dumps(data).encode("utf-8")
-        response_obj.headers = response.headers
-        response_obj.url = kwargs["url"]
-        response_obj.request = requests.Request(
-            method=kwargs.get("method", "GET"),
-            url=kwargs["url"],
-            headers=kwargs.get("headers", {}),
-            json=kwargs.get("json", None),
-            data=kwargs.get("data", None),
-        ).prepare()
-        return response_obj
+        await response.json()
+        return response
 
 
     def post(
