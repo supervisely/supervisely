@@ -52,7 +52,7 @@ class ExperimentSelector(Widget):
             self._experiment_info = experiment_info
 
             task_id = experiment_info.task_id
-            if task_id == "debug-session":
+            if task_id == "debug-session" or task_id == -1:
                 pass
             elif type(task_id) is str:
                 if task_id.isdigit():
@@ -392,7 +392,7 @@ class ExperimentSelector(Widget):
                 if result:
                     task_type, model_row = result
                     if task_type is not None and model_row is not None:
-                        if model_row.task_id == "debug-session":
+                        if model_row.task_id == "debug-session" or model_row.task_id == -1:
                             self.__debug_row = (task_type, model_row)
                             continue
                         table_rows[task_type].append(model_row)
