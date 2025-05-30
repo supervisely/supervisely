@@ -646,6 +646,7 @@ class Api:
         :return: Response object.
         """
         from pyodide.http import pyfetch
+        from js import console
 
         response = await pyfetch(**kwargs)
         if response.status != 200:
@@ -653,10 +654,11 @@ class Api:
                 f"HTTP error {response.status} for url: {kwargs['url']}"
             )
         data = await response.json()
-        print(f"Response data: {data}")
-        print(f"Response status: {response.status}")
+        # print(f"Response data: {data}")
+        # print(f"Response status: {response.status}")
+        console.log(f"Response data: {data}")
+        console.log(f"Response status: {response.status}")
         return response
-
 
     def post(
         self,
@@ -734,7 +736,7 @@ class Api:
             try:
                 if type(data) is bytes:
                     if running_in_webpy_app():
-                    # if False:
+                        # if False:
                         kwargs = {
                             "url": url,
                             "method": "POST",
@@ -767,7 +769,7 @@ class Api:
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
                     if running_in_webpy_app():
-                    # if False:
+                        # if False:
                         kwargs = {
                             "url": url,
                             "method": "POST",
@@ -784,7 +786,7 @@ class Api:
                     if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                         self._check_version()
                         Api._raise_for_status(response)
-                
+
                 return response
             except requests.RequestException as exc:
                 if (
@@ -882,7 +884,7 @@ class Api:
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
                 if running_in_webpy_app():
-                # if False:
+                    # if False:
                     url_with_params = requests.Request('GET', url, params=json_body).prepare().url
                     kwargs = {
                         "url": url_with_params,
