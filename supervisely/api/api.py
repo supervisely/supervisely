@@ -71,7 +71,7 @@ from supervisely._utils import (
     is_community,
     is_development,
     running_in_webpy_app,
-    run_coroutine,
+    run_coroutine
 )
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
@@ -647,6 +647,7 @@ class Api:
         :return: Response object.
         """
         from js import console
+
         console.log(f"Request URL: {kwargs['url']}")
         console.log(f"Making async request with kwargs: {kwargs}")
         from pyodide.http import pyfetch
@@ -748,7 +749,7 @@ class Api:
                             "body": data,
                             "headers": headers,
                         }
-                        response = run_coroutine(self._py_fetch(kwargs))
+                        response = loop.run_until_complete(self._py_fetch(kwargs))
 
                     else:
                         response = requests.post(url, data=data, headers=self.headers, stream=stream)
@@ -765,7 +766,7 @@ class Api:
                             "body": data,
                             "headers": {**headers, "Content-Type": data.content_type},
                         }
-                        response = run_coroutine(self._py_fetch(kwargs))
+                        response = loop.run_until_complete(self._py_fetch(kwargs))
                     else:
                         headers = {
                             **self.headers,
@@ -793,7 +794,7 @@ class Api:
                             "json": json_body,
                             "headers": headers,
                         }
-                        response = run_coroutine(self._py_fetch(kwargs))
+                        response = loop.run_until_complete(self._py_fetch(kwargs))
                     else:
                         response = requests.post(
                             url, json=json_body, headers=self.headers, stream=stream
@@ -908,7 +909,7 @@ class Api:
                         "method": "GET",
                         "headers": self.headers,
                     }
-                    response = run_coroutine(self._py_fetch(kwargs))
+                    response = loop.run_until_complete(self._py_fetch(kwargs))
                 else:
                     response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
