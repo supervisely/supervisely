@@ -10,6 +10,7 @@ import os
 import random
 import re
 import string
+import sys
 import time
 import urllib
 from datetime import datetime
@@ -575,3 +576,12 @@ def removesuffix(string, suffix):
     if string.endswith(suffix):
         return string[: -len(suffix)]
     return string
+
+def running_in_webpy_app() -> bool:
+    """Returns True if the code is running in a webpy environment, False otherwise.
+    This is determined by checking if the 'pyodide' module is in sys.modules,
+    :return: True if running in webpy, False otherwise
+    :rtype: bool
+    """
+
+    return "pyodide" in sys.modules

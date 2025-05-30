@@ -1,19 +1,20 @@
 import io
 from collections import OrderedDict
 from datetime import datetime
-from nrrd.reader import _get_field_type
-from nrrd.writer import (
-    _TYPEMAP_NUMPY2NRRD,
-    _NUMPY2NRRD_ENDIAN_MAP,
-    _NRRD_FIELD_ORDER,
-    _format_field_value,
-    _write_data,
-)
 
 
 def encode(
     data, header=None, custom_field_map=None, compression_level=9, index_order="F"
 ):
+    from nrrd.reader import _get_field_type
+    from nrrd.writer import (
+        _TYPEMAP_NUMPY2NRRD,
+        _NUMPY2NRRD_ENDIAN_MAP,
+        _NRRD_FIELD_ORDER,
+        _format_field_value,
+        _write_data,
+    )
+
     if header is None:
         header = {}
 

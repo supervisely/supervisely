@@ -3,7 +3,12 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Union
 
 import magic
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 
 from supervisely import Annotation, batched, generate_free_name, is_development, ProjectMeta, logger, TagMeta, Tag, TagValueType

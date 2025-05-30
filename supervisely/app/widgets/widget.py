@@ -8,18 +8,23 @@ from pathlib import Path
 from typing import List, Union
 
 import markupsafe
-from async_asgi_testclient import TestClient
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+except (ImportError, ModuleNotFoundError):
+    print("BeautifulSoup is not installed.")
+
 from fastapi import FastAPI
 from jinja2 import Environment
 from varname import varname
 
-from supervisely._utils import generate_free_name, rand_str
+from supervisely._utils import rand_str
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.jinja2 import create_env
 from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.sly_logger import logger
 
 
 class Hidable:
@@ -121,6 +126,30 @@ class Loading:
         return str(soup)
 
 
+class StylesOptimizer:
+
+    def _wrap_style_html(self, widget_name, html):
+        """
+        Find link to CSS styles in the html and cut them from the html and put them context.
+        """
+        if not hasattr(self, "need_collect_styles") or self.need_collect_styles is False:
+            return html
+        soup = BeautifulSoup(html, features="html.parser")
+        styles = soup.find_all("link", rel="stylesheet")
+        if not styles:
+            return html
+        res_styles = []
+        for style in styles:
+            if style.has_attr("href"):
+                res_styles.append(style["href"])
+                style.decompose()
+
+        if res_styles:
+            JinjaWidgets().add_widget_style(widget_name, res_styles)
+
+        return str(soup)
+
+
 def generate_id(cls_name=""):
     suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
     if cls_name == "":
@@ -129,7 +158,9 @@ def generate_id(cls_name=""):
         return cls_name + "AutoId" + suffix
 
 
-class Widget(Hidable, Disableable, Loading):
+class Widget(Hidable, Disableable, Loading, StylesOptimizer):
+    need_collect_styles = True
+
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
         self._sly_app = _MainServer()
@@ -233,6 +264,7 @@ class Widget(Hidable, Disableable, Loading):
         # st = time.time()
         html = self._wrap_hide_html(self.widget_id, html)
         # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
+        html = self._wrap_style_html(type(self).__name__, html)
         return markupsafe.Markup(html)
 
     def __html__(self):
@@ -267,6 +299,7 @@ class ConditionalItem:
 
 
 class DynamicWidget(Widget):
+    need_collect_styles = False
 
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         self.reload = self.update_template_for_offline_session(self.reload)

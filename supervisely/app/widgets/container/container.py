@@ -1,6 +1,7 @@
 from typing import List, Literal, Optional
 
 from supervisely.app.widgets import Widget
+from supervisely._utils import running_in_webpy_app
 
 
 class Container(Widget):
@@ -83,7 +84,10 @@ class Container(Widget):
             self._flex_direction = "row"
             if self._fractions is None:
                 self._fractions = ["1 1 auto"] * len(self._widgets)
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        if running_in_webpy_app():
+            super().__init__(widget_id=widget_id)
+        else:
+            super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> None:
         """The Container widget does not have any data

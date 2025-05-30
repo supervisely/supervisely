@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-import psutil
-
 
 class ModelSource:
     PRETRAINED = "Pretrained models"
@@ -67,6 +65,8 @@ def _get_model_name(model_info: dict):
 
 
 def get_ram_usage():
+    import psutil
+
     memory = psutil.virtual_memory()
     return memory.used, memory.total
 

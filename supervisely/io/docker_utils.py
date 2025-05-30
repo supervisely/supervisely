@@ -5,7 +5,6 @@ import json
 from enum import Enum
 from typing import Optional
 
-from supervisely.app import DialogWindowError
 from supervisely.task.progress import Progress
 
 
@@ -75,6 +74,8 @@ def docker_pull_if_needed(docker_api, docker_image_name, policy, logger, progres
     else:
         raise RuntimeError(f"Unknown pull policy {str(policy)}")
     if not _docker_image_exists(docker_api, docker_image_name):
+        from supervisely.app import DialogWindowError
+
         raise DialogWindowError(
             title=f"Docker image {docker_image_name} not found. Agent's PULL_POLICY is {str(policy)}.",
             description=(

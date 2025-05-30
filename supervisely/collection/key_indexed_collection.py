@@ -9,9 +9,13 @@ import uuid
 from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Optional
 
-from prettytable import PrettyTable
+try:
+    from prettytable import PrettyTable
+except (ImportError, ModuleNotFoundError):
+    PrettyTable = None
 
 from supervisely._utils import take_with_default
+from supervisely.sly_logger import logger
 
 
 class DuplicateKeyError(KeyError):
@@ -497,6 +501,11 @@ class KeyIndexedCollection:
         return self.clone(new_items + self.items())
 
     def __str__(self):
+        if PrettyTable is None:
+            logger.warning(
+                "PrettyTable is not installed. String representation of KeyIndexedCollection will not be pretty printed."
+            )
+            return f"KeyIndexedCollection with {len(self)} items."
         res_table = PrettyTable()
         res_table.field_names = self.item_type.get_header_ptable()  # pylint: disable=no-member
         for item in self:

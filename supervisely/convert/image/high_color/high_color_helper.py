@@ -1,7 +1,12 @@
 import os
 
 import cv2
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 
 from supervisely._utils import generate_free_name

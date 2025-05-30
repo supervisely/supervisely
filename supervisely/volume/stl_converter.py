@@ -1,8 +1,12 @@
 import os
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import math
 import supervisely
-import trimesh
 import numpy as np
 
 from typing import List, Dict
@@ -59,6 +63,7 @@ def voxels_to_mask(mask_shape: List, voxel_to_world: np.ndarray, stl_path: str) 
     :return: Mask
     :rtype: np.ndarray
     """
+    import trimesh
 
     world_to_voxel = np.linalg.inv(voxel_to_world)
 

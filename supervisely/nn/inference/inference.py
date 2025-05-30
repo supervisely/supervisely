@@ -21,7 +21,6 @@ from urllib.request import urlopen
 
 import numpy as np
 import requests
-import uvicorn
 import yaml
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -3470,6 +3469,8 @@ class Inference:
         return deploy_params, need_download
 
     def _run_server(self):
+        import uvicorn
+
         config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()

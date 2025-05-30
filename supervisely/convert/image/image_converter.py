@@ -4,7 +4,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import magic
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
 
 import supervisely.convert.image.image_helper as image_helper
 from supervisely import (
@@ -14,7 +18,6 @@ from supervisely import (
     batched,
     generate_free_name,
     is_development,
-    logger,
 )
 from supervisely.api.api import ApiContext
 from supervisely.convert.base_converter import BaseConverter
@@ -22,6 +25,7 @@ from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
 from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
+from supervisely.sly_logger import logger
 
 
 class ImageConverter(BaseConverter):

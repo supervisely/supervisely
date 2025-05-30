@@ -6,7 +6,6 @@ import aiofiles
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger, volume
 from supervisely._utils import batched, generate_free_name
 from supervisely.api.module_api import ApiField, RemoveableBulkModuleApi
@@ -624,6 +623,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             # Output:
             # Volume uploaded as NumPy array to Supervisely with ID:18562982
         """
+        import supervisely.volume.nrrd_encoder as nrrd_encoder
 
         ext = get_file_ext(name)
         if ext != ".nrrd":

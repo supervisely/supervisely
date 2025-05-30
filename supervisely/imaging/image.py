@@ -7,7 +7,12 @@ from enum import Enum
 from typing import List, Optional, Tuple, Union
 
 import cv2
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFile, ImageFont
