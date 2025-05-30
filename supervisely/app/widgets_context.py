@@ -9,16 +9,13 @@ class JinjaWidgets(metaclass=Singleton):
         self.context["__widget_scripts__"] = {}
         self.context["__widget_styles__"] = {}
 
-    def add_widget_style(self, widget_name: str, style: str):
+    def add_widget_style(self, widget_name: str, styles: list):
         if widget_name not in self.context["__widget_styles__"]:
-            self.context["__widget_styles__"][widget_name] = style
+            self.context["__widget_styles__"][widget_name] = styles
+        else:
+            for link in styles:
+                if link not in self.context["__widget_styles__"][widget_name]:
+                    self.context["__widget_styles__"][widget_name].append(link)
 
     def get_all_styles(self):
-        return self.context["__widget_styles__"]
-
-    @property
-    def styles_str(self):
-        styles = self.get_all_styles()
-        if not styles:
-            return ""
-        return "\n".join(list(styles.values()))
+        return [l for s in self.context["__widget_styles__"].values() for l in s]

@@ -138,13 +138,14 @@ class StylesOptimizer:
         styles = soup.find_all("link", rel="stylesheet")
         if not styles:
             return html
-        styles_str = ""
+        res_styles = []
         for style in styles:
             if style.has_attr("href"):
-                styles_str += f'<link rel="stylesheet" href="{style["href"]}" />\n'
+                res_styles.append(style["href"])
                 style.decompose()
-        if styles_str:
-            JinjaWidgets().add_widget_style(widget_name, styles_str)
+
+        if res_styles:
+            JinjaWidgets().add_widget_style(widget_name, res_styles)
 
         return str(soup)
 

@@ -58,7 +58,9 @@
       position: relative;
     }
   </style>
-  {{{ widgets_styles | safe}}}
+  {% for style in widgets_styles %}
+  <link rel="stylesheet" href="{{{ style }}}" />
+  {% endfor %}
   <title>{{{app_name}}}</title>
 </head>
 
