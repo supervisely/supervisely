@@ -229,14 +229,6 @@ class WebPyApplication(metaclass=Singleton):
         with open(app_dir / "__webpy_script__.py", "w") as f:
             f.write(
                 f"""
-try:
-    import sys
-    import supervisely as supervisely
-
-    sys.modules["supervisely"] = supervisely
-except ImportError:
-    import supervisely
-
 from {main_module} import app
 
 app.run"""
