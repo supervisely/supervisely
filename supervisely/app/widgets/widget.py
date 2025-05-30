@@ -126,6 +126,29 @@ class Loading:
         return str(soup)
 
 
+class StylesOptimizer:
+
+    def _wrap_style_html(self, widget_name, html):
+        """
+        Find link to CSS styles in the html and cut them from the html and put them context.
+        """
+        if not hasattr(self, "need_collect_styles") or self.need_collect_styles is False:
+            return html
+        soup = BeautifulSoup(html, features="html.parser")
+        styles = soup.find_all("link", rel="stylesheet")
+        if not styles:
+            return html
+        styles_str = ""
+        for style in styles:
+            if style.has_attr("href"):
+                styles_str += f'<link rel="stylesheet" href="{style["href"]}" />\n'
+                style.decompose()
+        if styles_str:
+            JinjaWidgets().add_widget_style(widget_name, styles_str)
+
+        return str(soup)
+
+
 def generate_id(cls_name=""):
     suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
     if cls_name == "":
@@ -134,7 +157,9 @@ def generate_id(cls_name=""):
         return cls_name + "AutoId" + suffix
 
 
-class Widget(Hidable, Disableable, Loading):
+class Widget(Hidable, Disableable, Loading, StylesOptimizer):
+    need_collect_styles = True
+
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
         self._sly_app = _MainServer()
@@ -238,6 +263,7 @@ class Widget(Hidable, Disableable, Loading):
         # st = time.time()
         html = self._wrap_hide_html(self.widget_id, html)
         # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
+        html = self._wrap_style_html(type(self).__name__, html)
         return markupsafe.Markup(html)
 
     def __html__(self):
@@ -272,6 +298,7 @@ class ConditionalItem:
 
 
 class DynamicWidget(Widget):
+    need_collect_styles = False
 
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         self.reload = self.update_template_for_offline_session(self.reload)
@@ -292,6 +319,7 @@ class DynamicWidget(Widget):
             _ = run_sync(client.get("/"))
 
         return wrapper
+
 
 # https://stackoverflow.com/questions/18425225/getting-the-name-of-a-variable-as-a-string
 # https://github.com/pwwang/python-varname

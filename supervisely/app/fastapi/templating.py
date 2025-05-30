@@ -56,6 +56,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
             "app_name": get_name_from_env(default="Supervisely App"),
+            "widgets_styles": JinjaWidgets().styles_str
         }
 
         try:
