@@ -662,41 +662,46 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
-        if running_in_webpy_app():
-            loop = get_or_create_event_loop()
-            headers = {**self.headers, **self.additional_fields}
-            if type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                headers["Content-Type"] = data.content_type
-            if stream:
-                return loop.run_until_complete(
-                    self.stream_async(
-                        method=method,
-                        method_type="POST",
-                        data=data,
-                        headers=headers,
-                        retries=retries,
-                        timeout=self.retry_sleep_sec,
-                    )
-                )
-            else:
-                webpy_kwargs = {
-                    "method": method,
-                    "headers": headers,
-                    "retries": retries,
-                    "raise_error": raise_error,
-                    "timeout": self.retry_sleep_sec,
-                }
-                if type(data) is bytes:
-                    webpy_kwargs["content"] = data
-                elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                    webpy_kwargs["content"] = data
-                else:
-                    json_body = data
-                    if type(data) is dict:
-                        json_body = {**data, **self.additional_fields}
-                    webpy_kwargs["json"] = json_body
+        # if running_in_webpy_app():
+        #     loop = get_or_create_event_loop()
+        #     headers = {**self.headers, **self.additional_fields}
+        #     if type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+        #         headers["Content-Type"] = data.content_type
+        #     if stream:
+        #         return loop.run_until_complete(
+        #             self.stream_async(
+        #                 method=method,
+        #                 method_type="POST",
+        #                 data=data,
+        #                 headers=headers,
+        #                 retries=retries,
+        #                 timeout=self.retry_sleep_sec,
+        #             )
+        #         )
+        #     else:
+        #         webpy_kwargs = {
+        #             "method": method,
+        #             "headers": headers,
+        #             "retries": retries,
+        #             "raise_error": raise_error,
+        #             "timeout": self.retry_sleep_sec,
+        #         }
+        #         if type(data) is bytes:
+        #             webpy_kwargs["content"] = data
+        #         elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+        #             webpy_kwargs["content"] = data
+        #         else:
+        #             json_body = data
+        #             if type(data) is dict:
+        #                 json_body = {**data, **self.additional_fields}
+        #             webpy_kwargs["json"] = json_body
 
-                return loop.run_until_complete(self.post_async(**webpy_kwargs))
+        #         return loop.run_until_complete(self.post_async(**webpy_kwargs))
+
+        if running_in_webpy_app():
+            from pyodide.http import pyfetch
+
+            loop = get_or_create_event_loop()
 
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
@@ -710,21 +715,56 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                    if running_in_webpy_app():
+                        from pyodide.http import pyfetch
+
+                        loop = get_or_create_event_loop()
+                        response = loop.run_until_complete(
+                            pyfetch(
+                                url=url,
+                                method="POST",
+                                body=data,
+                                headers=self.headers,
+                            )
+                        )
+
+                    else:
+                        response = requests.post(url, data=data, headers=self.headers, stream=stream)
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                    response = requests.post(
-                        url,
-                        data=data,
-                        headers={**self.headers, "Content-Type": data.content_type},
-                        stream=stream,
-                    )
+                    if running_in_webpy_app():
+
+                        response = loop.run_until_complete(
+                            pyfetch(
+                                url=url,
+                                method="POST",
+                                body=data,
+                                headers={**self.headers, "Content-Type": data.content_type},
+                            )
+                        )
+                    else:
+                        response = requests.post(
+                            url,
+                            data=data,
+                            headers={**self.headers, "Content-Type": data.content_type},
+                            stream=stream,
+                        )
                 else:
                     json_body = data
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
-                    response = requests.post(
-                        url, json=json_body, headers=self.headers, stream=stream
-                    )
+                    if running_in_webpy_app():
+                        response = loop.run_until_complete(
+                            pyfetch(
+                                url=url,
+                                method="POST",
+                                json=json_body,
+                                headers=self.headers,
+                            )
+                        )
+                    else:
+                        response = requests.post(
+                            url, json=json_body, headers=self.headers, stream=stream
+                        )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     self._check_version()
@@ -781,31 +821,35 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        # if running_in_webpy_app():
+        #     loop = get_or_create_event_loop()
+        #     headers = self.headers.copy()
+        #     if stream:
+        #         return loop.run_until_complete(
+        #             self.stream_async(
+        #                 method=method,
+        #                 method_type="GET",
+        #                 params=params,
+        #                 headers=headers,
+        #                 retries=retries,
+        #                 timeout=self.retry_sleep_sec,
+        #                 use_public_api=use_public_api,
+        #             )
+        #         )
+        #     else:
+        #         return loop.run_until_complete(
+        #             self.get_httpx(
+        #                 method=method,
+        #                 params=params,
+        #                 retries=retries,
+        #                 use_public_api=use_public_api,
+        #                 timeout=self.retry_sleep_sec,
+        #             )
+        #         )
         if running_in_webpy_app():
+            from pyodide.http import pyfetch
+
             loop = get_or_create_event_loop()
-            headers = self.headers.copy()
-            if stream:
-                return loop.run_until_complete(
-                    self.stream_async(
-                        method=method,
-                        method_type="GET",
-                        params=params,
-                        headers=headers,
-                        retries=retries,
-                        timeout=self.retry_sleep_sec,
-                        use_public_api=use_public_api,
-                    )
-                )
-            else:
-                return loop.run_until_complete(
-                    self.get_httpx(
-                        method=method,
-                        params=params,
-                        retries=retries,
-                        use_public_api=use_public_api,
-                        timeout=self.retry_sleep_sec,
-                    )
-                )
 
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
@@ -823,7 +867,11 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                if running_in_webpy_app():
+                    url_with_params = requests.Request('GET', url, params=json_body).prepare().url
+                    response = loop.run_until_complete(pyfetch(url_with_params))
+                else:
+                    response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
