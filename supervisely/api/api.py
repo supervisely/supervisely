@@ -766,9 +766,10 @@ class Api:
                             url, json=json_body, headers=self.headers, stream=stream
                         )
 
-                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    self._check_version()
-                    Api._raise_for_status(response)
+                if not running_in_webpy_app():
+                    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                        self._check_version()
+                        Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
                 if (
@@ -873,8 +874,9 @@ class Api:
                 else:
                     response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
-                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    Api._raise_for_status(response)
+                if not running_in_webpy_app():
+                    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                        Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
                 if (
