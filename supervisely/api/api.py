@@ -71,6 +71,7 @@ from supervisely._utils import (
     is_community,
     is_development,
     running_in_webpy_app,
+    run_coroutine,
 )
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
@@ -744,7 +745,7 @@ class Api:
                             "body": data,
                             "headers": headers,
                         }
-                        response = loop.run_until_complete(self._py_fetch(kwargs))
+                        response = run_coroutine(self._py_fetch(kwargs))
 
                     else:
                         response = requests.post(url, data=data, headers=self.headers, stream=stream)
@@ -761,7 +762,7 @@ class Api:
                             "body": data,
                             "headers": {**headers, "Content-Type": data.content_type},
                         }
-                        response = loop.run_until_complete(self._py_fetch(kwargs))
+                        response = run_coroutine(self._py_fetch(kwargs))
                     else:
                         headers = {
                             **self.headers,
@@ -789,7 +790,7 @@ class Api:
                             "json": json_body,
                             "headers": headers,
                         }
-                        response = loop.run_until_complete(self._py_fetch(kwargs))
+                        response = run_coroutine(self._py_fetch(kwargs))
                     else:
                         response = requests.post(
                             url, json=json_body, headers=self.headers, stream=stream
@@ -904,7 +905,7 @@ class Api:
                         "method": "GET",
                         "headers": self.headers,
                     }
-                    response = loop.run_until_complete(self._py_fetch(kwargs))
+                    response = run_coroutine(self._py_fetch(kwargs))
                 else:
                     response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
 
