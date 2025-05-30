@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from supervisely.io.fs import copy_file
 from supervisely._utils import get_or_create_event_loop
 from supervisely.app.singleton import Singleton
+from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.sly_logger import logger
 
 
@@ -208,6 +209,7 @@ class WebPyApplication(metaclass=Singleton):
             "pyodide_requirements": reqs,
             # "events_subscribed": events,
             "events_subscribed": None,
+            "widgets_styles": JinjaWidgets().get_all_styles(),
         }
 
         # render index.html
