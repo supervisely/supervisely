@@ -746,7 +746,7 @@ class Api:
                         kwargs = {
                             "url": url,
                             "method": "POST",
-                            "body": data,
+                            "body": json.dumps(data),
                             "headers": headers,
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
@@ -763,7 +763,7 @@ class Api:
                         kwargs = {
                             "url": url,
                             "method": "POST",
-                            "body": data,
+                            "body": json.dumps(data),
                             "headers": {**headers, "Content-Type": data.content_type},
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
@@ -791,7 +791,7 @@ class Api:
                         kwargs = {
                             "url": url,
                             "method": "POST",
-                            "body": json_body,
+                            "body": json.dumps(json_body),
                             "headers": headers,
                         }
                         response = loop.run_until_complete(self._py_fetch(kwargs))
