@@ -222,9 +222,12 @@ if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
       console.log("Main Python script loaded");
       python_code = `
 import pyodide_http
+print("pyodide_http imported. doing patch_all")
 pyodide_http.patch_all()  # Patch all libraries
 from supervisely.webpy.app import WebPyApplication
+print("WebPyApplication imported")
 app = WebPyApplication()
+print("WebPyApplication created")
 state = app.state
 if state.get("app_initializing", False) == True:
     state["app_initializing"] = False

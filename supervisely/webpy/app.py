@@ -1,3 +1,4 @@
+print("inside supervisely.webpy.app")
 import asyncio
 import enum
 import json
@@ -124,6 +125,7 @@ class WebPyApplication(metaclass=Singleton):
                 return cls(figure_id)
 
     def __init__(self, layout=None):
+        print("WebPyApplication.__init__()")
         if layout is None:
             from supervisely.app.widgets import Text
 
