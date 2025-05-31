@@ -15,6 +15,7 @@ import time
 import urllib
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 from tempfile import gettempdir
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -23,7 +24,6 @@ import requests
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import env as sly_env
-from supervisely.io import fs as sly_fs
 from supervisely.sly_logger import logger
 
 random.seed(time.time())
@@ -40,9 +40,7 @@ def generate_free_name(used_names, possible_name, with_ext=False, extend_used_na
     while res_name in set(used_names):
         if with_ext is True:
             res_name = "{}_{:02d}{}".format(
-                sly_fs.get_file_name(possible_name),
-                new_suffix,
-                sly_fs.get_file_ext(possible_name),
+                Path(possible_name).stem, new_suffix, Path(possible_name).suffix
             )
         else:
             res_name = "{}_{:02d}".format(possible_name, new_suffix)
@@ -53,8 +51,8 @@ def generate_free_name(used_names, possible_name, with_ext=False, extend_used_na
 
 
 def generate_names(base_name, count):
-    name = sly_fs.get_file_name(base_name)
-    ext = sly_fs.get_file_ext(base_name)
+    name = Path(base_name).stem
+    ext = Path(base_name).suffix
 
     names = [base_name]
     for idx in range(1, count):
@@ -576,6 +574,7 @@ def removesuffix(string, suffix):
     if string.endswith(suffix):
         return string[: -len(suffix)]
     return string
+
 
 def running_in_webpy_app() -> bool:
     """Returns True if the code is running in a webpy environment, False otherwise.
