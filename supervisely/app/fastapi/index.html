@@ -245,7 +245,7 @@ if state.get("app_initializing", False) == True:
       console.log("WebPyApplication initialized");
       if (typeof fn === "function") {
         const newParams = params.map(p => pyodide.toPy(p));
-        result = fn(...newParams);
+        result = await fn(...newParams);
       } else {
         result = fn;
       }
@@ -267,10 +267,10 @@ if state.get("app_initializing", False) == True:
       let result;
       const timeStart = performance.now();
 
-      const fn = pyodide.runPython(mainScriptTxt);
+      const fn = await pyodide.runPythonAsync(mainScriptTxt);
       if (typeof fn === "function") {
         const newParams = params.map(p => pyodide.toPy(p));
-        result = fn(...newParams);
+        result = await fn(...newParams);
       } else {
         result = fn;
       }
