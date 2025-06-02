@@ -638,27 +638,27 @@ class Api:
                 f"Tried to check version compatibility between SDK and instance, but failed: {e}"
             )
 
-    def _py_fetch(self, kwargs: Dict[str, Any]) -> requests.Response:
-        """
-        Perform an HTTP request using pyodide's pyfetch.
+    # def _py_fetch(self, kwargs: Dict[str, Any]) -> requests.Response:
+    #     """
+    #     Perform an HTTP request using pyodide's pyfetch.
 
-        :param kwargs: Keyword arguments for the request.
-        :return: Response object.
-        """
-        from js import console
+    #     :param kwargs: Keyword arguments for the request.
+    #     :return: Response object.
+    #     """
+    #     from js import console
 
-        from supervisely._utils import create_http_response_from_dict
+    #     from supervisely._utils import create_http_response_from_dict
 
-        console.log(f"Request URL: {kwargs['url']}")
-        console.log(f"Making request with kwargs: {kwargs}")
-        loop = get_or_create_event_loop()
-        data, status = loop.run_until_complete(self._py_fetch_async(kwargs))
-        console.log(f"Response status: {response.status_code}")
-        response = create_http_response_from_dict(data, status, kwargs["headers"])
-        console.log(f"Response object created: {type(response)}")
-        return response
+    #     console.log(f"Request URL: {kwargs['url']}")
+    #     console.log(f"Making request with kwargs: {kwargs}")
+    #     loop = get_or_create_event_loop()
+    #     data, status = loop.run_until_complete(self._py_fetch_async(kwargs))
+    #     console.log(f"Response status: {response.status_code}")
+    #     response = create_http_response_from_dict(data, status, kwargs["headers"])
+    #     console.log(f"Response object created: {type(response)}")
+    #     return response
 
-    async def _py_fetch_async(self, kwargs: Dict[str, Any]) -> Any:
+    async def _py_fetch(self, kwargs: Dict[str, Any]) -> Any:
         """
         Perform an asynchronous HTTP request using pyodide's pyfetch.
 
@@ -682,7 +682,7 @@ class Api:
         # print(f"Response status: {response.status}")
         console.log(f"Response data: {data}")
         console.log(f"Response status: {response.status}")
-        return data, response.status
+        return response
 
     def post(
         self,
@@ -745,7 +745,10 @@ class Api:
         #         return loop.run_until_complete(self.post_async(**webpy_kwargs))
 
         if running_in_webpy_app():
-            loop = get_or_create_event_loop()
+            # loop = get_or_create_event_loop()
+            from pyodide import webloop
+
+            loop = webloop.WebLoop()
 
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
@@ -760,6 +763,7 @@ class Api:
             try:
                 if type(data) is bytes:
                     if running_in_webpy_app():
+                        # if False:
                         headers = {
                             **self.headers,
                             "Content-Type": "application/json; charset=UTF-8",
@@ -771,15 +775,15 @@ class Api:
                             "body": json.dumps(data),
                             "headers": headers,
                         }
-                        response = self._py_fetch(kwargs)
+                        response = loop.create_task(self._py_fetch(kwargs))
 
                     else:
                         response = requests.post(
                             url, data=data, headers=self.headers, stream=stream
                         )
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                    # if False:
                     if running_in_webpy_app():
+                        # if False:
                         headers = {
                             **self.headers,
                             "Content-Type": "application/json; charset=UTF-8",
@@ -790,7 +794,7 @@ class Api:
                             "body": json.dumps(data),
                             "headers": {**headers, "Content-Type": data.content_type},
                         }
-                        response = self._py_fetch(kwargs)
+                        response = loop.create_task(self._py_fetch(kwargs))
                     else:
                         headers = {
                             **self.headers,
@@ -818,7 +822,7 @@ class Api:
                             "body": json.dumps(json_body),
                             "headers": headers,
                         }
-                        response = self._py_fetch(kwargs)
+                        response = loop.create_task(self._py_fetch(kwargs))
                     else:
                         response = requests.post(
                             url, json=json_body, headers=self.headers, stream=stream
@@ -907,7 +911,10 @@ class Api:
         #             )
         #         )
         if running_in_webpy_app():
-            loop = get_or_create_event_loop()
+            # loop = get_or_create_event_loop()
+            from pyodide import webloop
+
+            loop = webloop.WebLoop()
 
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
@@ -933,7 +940,7 @@ class Api:
                         "method": "GET",
                         "headers": self.headers,
                     }
-                    response = self._py_fetch(kwargs)
+                    response = loop.create_task(self._py_fetch(kwargs))
                 else:
                     response = requests.get(
                         url, params=json_body, headers=self.headers, stream=stream
