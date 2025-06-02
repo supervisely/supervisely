@@ -602,11 +602,17 @@ def create_http_response_from_dict(data: dict, status_code: int = 200, headers: 
     Returns:
         http.client.HTTPResponse: An HTTPResponse object.
     """
-    body = json.dumps(data).encode("utf-8")
-    response = HTTPResponse(BytesIO(body))
-    response.status = status_code
+    # body = json.dumps(data).encode("utf-8")
+    # response = HTTPResponse(BytesIO(body))
+    # response.status = status_code
+    # if headers:
+    #     for key, value in headers.items():
+    #         response.headers[key] = value
+    # response.begin()
+    # return response
+    response = requests.Response()
+    response.status_code = status_code
+    response._content = json.dumps(data).encode("utf-8")
     if headers:
-        for key, value in headers.items():
-            response.headers[key] = value
-    response.begin()
+        response.headers = headers
     return response
