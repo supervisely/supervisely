@@ -17,7 +17,7 @@ from supervisely.nn.utils import RuntimeType
 from supervisely.sly_logger import logger
 
 
-def get_runtime(runtime: str):
+def get_runtime(runtime: Optional[str] = None):
     from supervisely.nn.utils import RuntimeType
 
     if runtime is None:
@@ -558,8 +558,6 @@ class DeployApi:
             agent_id=agent_id,
             module_id=module_id,
             workspace_id=workspace_id,
-            app_version="add-experiment-report",
-            is_branch=True,
             **kwargs,
         )
         ready = self._api.app.wait_until_ready_for_api_calls(
@@ -697,7 +695,7 @@ class DeployApi:
         artifacts_dir: str,
         checkpoint_name: str,
         device: str,
-        runtime: str,
+        runtime: Optional[str] = None,
         with_module: bool = True,
     ):
         from supervisely.nn.experiments import get_experiment_info_by_artifacts_dir
@@ -729,21 +727,25 @@ class DeployApi:
 
         checkpoint = None
         if checkpoint_name is not None:
-            if runtime == RuntimeType.PYTORCH:
+            if checkpoint_name.endswith(".pt") or checkpoint_name.endswith(".pth"):
                 for checkpoint_path in experiment_info.checkpoints:
                     if get_file_name_with_ext(checkpoint_path) == checkpoint_name:
                         checkpoint = get_file_name_with_ext(checkpoint_path)
                         break
-            elif runtime == RuntimeType.ONNXRUNTIME or runtime == RuntimeType.TENSORRT:
-                if runtime == RuntimeType.ONNXRUNTIME:
-                    checkpoint_path = experiment_info.export.get("ONNXRuntime")
-                    if checkpoint_path is None:
-                        raise ValueError(f"ONNXRuntime export not found in: '{artifacts_dir}'.")
-                elif runtime == RuntimeType.TENSORRT:
-                    checkpoint_path = experiment_info.export.get("TensorRT")
-                    if checkpoint_path is None:
-                        raise ValueError(f"TensorRT export not found in: '{artifacts_dir}'.")
-                checkpoint = get_file_name_with_ext(checkpoint_path)
+            elif checkpoint_name.endswith(".onnx"):
+                checkpoint_path = experiment_info.export.get("ONNXRuntime")
+                if checkpoint_path is None:
+                    raise ValueError(f"ONNXRuntime export not found in: '{artifacts_dir}'.")
+            elif checkpoint_name.endswith(".engine"):
+                checkpoint_path = experiment_info.export.get("TensorRT")
+                if checkpoint_path is None:
+                    raise ValueError(f"TensorRT export not found in: '{artifacts_dir}'.")
+            else:
+                raise ValueError(
+                    f"Unknown checkpoint format: '{checkpoint_name}'. Expected formats: '.pt', '.pth', '.onnx' or '.engine'"
+                )
+
+            checkpoint = get_file_name_with_ext(checkpoint_path)
             if checkpoint is None:
                 raise ValueError(f"Provided checkpoint '{checkpoint_name}' not found")
         else:
@@ -753,13 +755,15 @@ class DeployApi:
         model_info_dict = asdict(experiment_info)
         model_info_dict["artifacts_dir"] = artifacts_dir
         checkpoint_name = checkpoint
-        checkpoints_dir = "checkpoints" if runtime == RuntimeType.PYTORCH else "export"
+        checkpoints_dir = self._get_checkpoints_dir(checkpoint_name)
+        checkpoint_path = f"/{artifacts_dir.strip('/')}/{checkpoints_dir}/{checkpoint_name}"
+        if runtime is None:
+            runtime = self._set_auto_runtime_by_checkpoint(checkpoint_path)
+
         deploy_params = {
             "device": device,
             "model_source": ModelSource.CUSTOM,
-            "model_files": {
-                "checkpoint": f"/{artifacts_dir.strip('/')}/{checkpoints_dir}/{checkpoint_name}"
-            },
+            "model_files": {"checkpoint": checkpoint_path},
             "model_info": model_info_dict,
             "runtime": runtime,
         }
@@ -769,6 +773,16 @@ class DeployApi:
             deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
             logger.debug(f"Config file added: {experiment_info.artifacts_dir}{config}")
         return module_id, serve_app_name, deploy_params
+
+    def _set_auto_runtime_by_checkpoint(self, checkpoint_path: str) -> str:
+        if checkpoint_path.endswith(".pt") or checkpoint_path.endswith(".pth"):
+            return RuntimeType.PYTORCH
+        elif checkpoint_path.endswith(".onnx"):
+            return RuntimeType.ONNXRUNTIME
+        elif checkpoint_path.endswith(".engine"):
+            return RuntimeType.TENSORRT
+        else:
+            raise ValueError(f"Unknown checkpoint format: '{checkpoint_path}'")
 
     def wait(self, model_id, target: Literal["started", "deployed"] = "started", timeout=5 * 60):
         t = time.monotonic()
@@ -814,6 +828,14 @@ class DeployApi:
         else:
             artifacts_dir = checkpoints_dir
         return artifacts_dir, checkpoint_name
+
+    def _get_checkpoints_dir(self, checkpoint_name: str) -> str:
+        if checkpoint_name.endswith(".pt") or checkpoint_name.endswith(".pth"):
+            return "checkpoints"
+        elif checkpoint_name.endswith(".onnx") or checkpoint_name.endswith(".engine"):
+            return "export"
+        else:
+            raise ValueError(f"Unknown checkpoint format: '{checkpoint_name}'")
 
     def _get_framework_by_path(self, path: str):
         from supervisely.nn.artifacts import (
