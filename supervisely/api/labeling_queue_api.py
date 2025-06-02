@@ -352,7 +352,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
         if enable_quality_check is not None:
-            meta.update({"enableQualityCheck": enable_quality_check})
+            meta.update({"enableIntermediateReview": enable_quality_check})
 
         queue_meta = {}
         if allow_review_own_annotations is True:
