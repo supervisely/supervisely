@@ -638,9 +638,9 @@ class Api:
                 f"Tried to check version compatibility between SDK and instance, but failed: {e}"
             )
 
-    async def _py_fetch(self, kwargs: Dict[str, Any]) -> Any:
+    def _py_fetch(self, kwargs: Dict[str, Any]) -> requests.Response:
         """
-        Perform an asynchronous HTTP request using pyodide's pyfetch.
+        Perform an HTTP request using pyodide's pyfetch.
 
         :param kwargs: Keyword arguments for the request.
         :return: Response object.
@@ -648,6 +648,24 @@ class Api:
         from js import console
 
         from supervisely._utils import create_http_response_from_dict
+
+        console.log(f"Request URL: {kwargs['url']}")
+        console.log(f"Making request with kwargs: {kwargs}")
+        loop = get_or_create_event_loop()
+        data, status = loop.run_until_complete(self._py_fetch_aync(kwargs))
+        console.log(f"Response status: {response.status_code}")
+        response = create_http_response_from_dict(data, status, kwargs["headers"])
+        console.log(f"Response object created: {type(response)}")
+        return response
+
+    async def _py_fetch_aync(self, kwargs: Dict[str, Any]) -> Any:
+        """
+        Perform an asynchronous HTTP request using pyodide's pyfetch.
+
+        :param kwargs: Keyword arguments for the request.
+        :return: Response object.
+        """
+        from js import console
 
         console.log(f"Request URL: {kwargs['url']}")
         console.log(f"Making async request with kwargs: {kwargs}")
@@ -664,11 +682,7 @@ class Api:
         # print(f"Response status: {response.status}")
         console.log(f"Response data: {data}")
         console.log(f"Response status: {response.status}")
-        response = create_http_response_from_dict(
-            data=data, status_code=response.status, headers=response.headers
-        )
-        console.log(f"Response object created: {type(response)}")
-        return response
+        return data, response.status
 
     def post(
         self,
@@ -757,7 +771,7 @@ class Api:
                             "body": json.dumps(data),
                             "headers": headers,
                         }
-                        response = loop.run_until_complete(self._py_fetch(kwargs))
+                        response = self._py_fetch(kwargs)
 
                     else:
                         response = requests.post(
@@ -776,7 +790,7 @@ class Api:
                             "body": json.dumps(data),
                             "headers": {**headers, "Content-Type": data.content_type},
                         }
-                        response = loop.run_until_complete(self._py_fetch(kwargs))
+                        response = self._py_fetch(kwargs)
                     else:
                         headers = {
                             **self.headers,
@@ -804,7 +818,7 @@ class Api:
                             "body": json.dumps(json_body),
                             "headers": headers,
                         }
-                        response = loop.run_until_complete(self._py_fetch(kwargs))
+                        response = self._py_fetch(kwargs)
                     else:
                         response = requests.post(
                             url, json=json_body, headers=self.headers, stream=stream
@@ -919,7 +933,7 @@ class Api:
                         "method": "GET",
                         "headers": self.headers,
                     }
-                    response = loop.run_until_complete(self._py_fetch(kwargs))
+                    response = self._py_fetch(kwargs)
                 else:
                     response = requests.get(
                         url, params=json_body, headers=self.headers, stream=stream
