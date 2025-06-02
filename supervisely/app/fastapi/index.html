@@ -58,13 +58,13 @@
       position: relative;
     }
   </style>
-  {% for style in widgets_styles %}
-  <link rel="stylesheet" href="{{{ style }}}" />
-  {% endfor %}
   <title>{{{app_name}}}</title>
 </head>
 
 <body style="background-color: #f4f7fe">
+  {% for style in widgets_styles %}
+    <link rel="stylesheet" href="{{{ style }}}" />
+  {% endfor %}
   <center>
     <div id="app-global-loading-icon">
       <img src="https://app.supervisely.com/loading.gif" />
