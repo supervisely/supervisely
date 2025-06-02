@@ -340,6 +340,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         disable_confirm: Optional[bool] = None,
         disable_submit: Optional[bool] = None,
         toolbox_settings: Optional[Dict] = None,
+        enable_quality_check: Optional[bool] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -382,6 +383,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type disable_submit: bool, optional
         :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
         :type toolbox_settings: Dict, optional
+        :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Job.
+        :type enable_quality_check: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -499,6 +502,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             meta.update({"disableConfirm": disable_confirm})
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
+        if enable_quality_check is not None:
+            meta.update({"enableIntermediateReview": enable_quality_check})
 
         data = {
             ApiField.NAME: name,
