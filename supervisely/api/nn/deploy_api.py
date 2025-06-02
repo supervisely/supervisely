@@ -13,6 +13,7 @@ from supervisely._utils import get_valid_kwargs
 from supervisely.api.api import Api
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
+from supervisely.nn.utils import RuntimeType
 from supervisely.sly_logger import logger
 
 
@@ -554,7 +555,12 @@ class DeployApi:
             exclude=["self", "module_id", "workspace_id", "agent_id"],
         )
         task_info = self._api.task.start(
-            agent_id=agent_id, module_id=module_id, workspace_id=workspace_id, **kwargs
+            agent_id=agent_id,
+            module_id=module_id,
+            workspace_id=workspace_id,
+            app_version="add-experiment-report",
+            is_public=True,
+            **kwargs,
         )
         ready = self._api.app.wait_until_ready_for_api_calls(
             task_info["id"], _attempts, _attempt_delay_sec
@@ -723,10 +729,21 @@ class DeployApi:
 
         checkpoint = None
         if checkpoint_name is not None:
-            for checkpoint_path in experiment_info.checkpoints:
-                if get_file_name_with_ext(checkpoint_path) == checkpoint_name:
-                    checkpoint = get_file_name_with_ext(checkpoint_path)
-                    break
+            if runtime == RuntimeType.PYTORCH:
+                for checkpoint_path in experiment_info.checkpoints:
+                    if get_file_name_with_ext(checkpoint_path) == checkpoint_name:
+                        checkpoint = get_file_name_with_ext(checkpoint_path)
+                        break
+            elif runtime == RuntimeType.ONNXRUNTIME or runtime == RuntimeType.TENSORRT:
+                if runtime == RuntimeType.ONNXRUNTIME:
+                    checkpoint_path = experiment_info.export.get("ONNXRuntime")
+                    if checkpoint_path is None:
+                        raise ValueError(f"ONNXRuntime export not found in: '{artifacts_dir}'.")
+                elif runtime == RuntimeType.TENSORRT:
+                    checkpoint_path = experiment_info.export.get("TensorRT")
+                    if checkpoint_path is None:
+                        raise ValueError(f"TensorRT export not found in: '{artifacts_dir}'.")
+                checkpoint = get_file_name_with_ext(checkpoint_path)
             if checkpoint is None:
                 raise ValueError(f"Provided checkpoint '{checkpoint_name}' not found")
         else:
@@ -736,11 +753,12 @@ class DeployApi:
         model_info_dict = asdict(experiment_info)
         model_info_dict["artifacts_dir"] = artifacts_dir
         checkpoint_name = checkpoint
+        checkpoints_dir = "checkpoints" if runtime == RuntimeType.PYTORCH else "export"
         deploy_params = {
             "device": device,
             "model_source": ModelSource.CUSTOM,
             "model_files": {
-                "checkpoint": f"/{artifacts_dir.strip('/')}/checkpoints/{checkpoint_name}"
+                "checkpoint": f"/{artifacts_dir.strip('/')}/{checkpoints_dir}/{checkpoint_name}"
             },
             "model_info": model_info_dict,
             "runtime": runtime,
@@ -764,13 +782,24 @@ class DeployApi:
             raise ValueError(f"Path must start with '/'")
 
         if model.startswith("/experiments"):
-            try:
-                artifacts_dir, checkpoint_name = model.split("/checkpoints/")
-                return artifacts_dir, checkpoint_name
-            except:
-                raise ValueError(
-                    "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
-                )
+            if model.endswith(".pt") or model.endswith(".pth"):
+                try:
+                    artifacts_dir, checkpoint_name = model.split("/checkpoints/")
+                    return artifacts_dir, checkpoint_name
+                except:
+                    raise ValueError(
+                        "Bad format of checkpoint path. Expected format: '/artifacts_dir/checkpoints/checkpoint_name'"
+                    )
+            elif model.endswith(".onnx") or model.endswith(".engine"):
+                try:
+                    artifacts_dir, checkpoint_name = model.split("/export/")
+                    return artifacts_dir, checkpoint_name
+                except:
+                    raise ValueError(
+                        "Bad format of checkpoint path. Expected format: '/artifacts_dir/export/checkpoint_name'"
+                    )
+            else:
+                raise ValueError(f"Unknown model format: '{get_file_name_with_ext(model)}'")
 
         framework_cls = self._get_framework_by_path(model)
         if framework_cls is None:

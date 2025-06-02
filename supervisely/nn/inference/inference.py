@@ -657,11 +657,11 @@ class Inference:
                     export = {}
                 export_model = export.get(deploy_params["runtime"], None)
                 if export_model is not None:
-                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
-                        deploy_params["model_files"]["checkpoint"]
-                    ):
+                    checkpoint = deploy_params["model_files"]["checkpoint"]
+                    artifacts_dir = deploy_params["model_info"]["artifacts_dir"].rstrip("/")
+                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(checkpoint):
                         deploy_params["model_files"]["checkpoint"] = (
-                            deploy_params["model_info"]["artifacts_dir"] + export_model
+                            artifacts_dir + "/" + export_model
                         )
                         logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
             return self._download_custom_model(deploy_params["model_files"], log_progress)

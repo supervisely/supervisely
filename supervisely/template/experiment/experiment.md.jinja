@@ -141,16 +141,16 @@ You can deploy your model in a few lines of code. The model will be deployed in 
 <div>
 
 <sly-iw-tabs :tabs="[
-    { name: 'pytorch', title: 'PyTorch Checkpoint' },
+    { name: 'pytorch-model', title: 'PyTorch Model' },
     {% if artifacts.onnx_checkpoint.name %}
-    { name: 'onnx',  title: 'ONNX Model'  },
+    { name: 'onnx-model',  title: 'ONNX Model'  },
     {% endif %}
     {% if artifacts.trt_checkpoint.name %}
-    { name: 'tensorrt',    title: 'TensorRT Model' }
+    { name: 'tensorrt-model',    title: 'TensorRT Model' }
     {% endif %}
     ]" :defaultIndex="0" :command="command" :data="data">
 
-<template #pytorch>
+<template #pytorch-model>
 
 ```python
 import supervisely as sly
@@ -168,7 +168,7 @@ model = api.nn.deploy(
 
 {% if artifacts.onnx_checkpoint.name %}
 
-<template #onnx>
+<template #onnx-model>
 
 ```python
 import supervisely as sly
@@ -187,7 +187,7 @@ model = api.nn.deploy(
 
 {% if artifacts.trt_checkpoint.name %}
 
-<template #tensorrt>
+<template #tensorrt-model>
 
 ```python
 import supervisely as sly
@@ -429,20 +429,32 @@ In case you develop an application that is not related to the Supervisely platfo
 
 > For more information, see [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api) and [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/local-deployment.md) documentation.
 
-{% if artifacts.onnx_checkpoint.name or artifacts.tensorrt_checkpoint.name %}
+{% if artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name %}
 #### Deploy ONNX/TensorRT
 
-You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT model, and provide class names in the additional `classes` parameter.
+You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT model, 
+{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
+and [download `classes.json`]({{ artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url }}){:download="classes.json"} file from the export directory.
+{% else %}
+and provide class names in the additional `classes` parameter.
+{% endif %}
 
 ```python
 # Be sure you are in the root of the {{ code.local_prediction.repo_name }} repository
 from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
+{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
+from supervisely.io.json import load_json_file
+
+classes_path = "./{{ artifacts.experiment_dir }}/export/classes.json"
+classes = load_json_file(classes_path)
+{% else %}
 
 classes = {{ project.class_names.short_list }}
+{% endif %}
 
 # Deploy ONNX or TensorRT
 model = {{ code.local_prediction.serving_class }}(
-    model="./{{ artifacts.experiment_dir }}/{{ artifacts.onnx_checkpoint.name or artifacts.tensorrt_checkpoint.name }}",  # path to the ONNX or TensorRT model"
+    model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}",  # path to the ONNX or TensorRT model"
     device="cuda",
     classes=classes,
 )
@@ -478,16 +490,16 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 <div>
 
 <sly-iw-tabs :tabs="[
-    { name: 'pytorch', title: 'PyTorch' },\
+    { name: 'pytorch-external', title: 'PyTorch' },
     {% if code.demo.onnx.path %}
-    { name: 'onnx',  title: 'ONNX'  },
+    { name: 'onnx-external',  title: 'ONNX'  },
     {% endif %}
     {% if code.demo.tensorrt.path %}
-    { name: 'tensorrt',    title: 'TensorRT'    },
+    { name: 'tensorrt-external',    title: 'TensorRT'    },
     {% endif %}
     ]" :defaultIndex="0" :command="command" :data="data">
 
-<template #pytorch>
+<template #pytorch-external>
 
 ```python
 {{ code.demo.pytorch.script | safe }}
@@ -496,7 +508,7 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 </template>
 
 {% if code.demo.onnx.path %}
-<template #onnx>
+<template #onnx-external>
 
 ```python
 {{ code.demo.onnx.script | safe }}
@@ -507,7 +519,7 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 {% endif %}
 
 {% if code.demo.tensorrt.path %}
-<template #tensorrt>
+<template #tensorrt-external>
 
 ```python
 {{ code.demo.tensorrt.script | safe }}

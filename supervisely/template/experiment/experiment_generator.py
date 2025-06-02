@@ -363,10 +363,15 @@ class ExperimentGenerator(BaseGenerator):
             "name": None,
             "path": None,
             "url": None,
+            "classes_url": None,
         }
         if onnx_checkpoint is not None:
             onnx_checkpoint_path = os.path.join(
                 self.artifacts_dir, export.get(RuntimeType.ONNXRUNTIME)
+            )
+            classes_file = self.api.file.get_info_by_path(
+                self.team_id,
+                os.path.join(os.path.dirname(onnx_checkpoint_path), "classes.json"),
             )
             onnx_checkpoint = {
                 "name": os.path.basename(export.get(RuntimeType.ONNXRUNTIME)),
@@ -374,6 +379,7 @@ class ExperimentGenerator(BaseGenerator):
                 "url": self.api.file.get_info_by_path(
                     self.team_id, onnx_checkpoint_path
                 ).full_storage_url,
+                "classes_url": classes_file.full_storage_url if classes_file else None,
             }
         trt_checkpoint = export.get(RuntimeType.TENSORRT)
         trt_checkpoint = {
@@ -383,12 +389,17 @@ class ExperimentGenerator(BaseGenerator):
         }
         if trt_checkpoint is not None:
             trt_checkpoint_path = os.path.join(self.artifacts_dir, export.get(RuntimeType.TENSORRT))
+            classes_file = self.api.file.get_info_by_path(
+                self.team_id,
+                os.path.join(os.path.dirname(trt_checkpoint_path), "classes.json"),
+            )
             trt_checkpoint = {
                 "name": os.path.basename(export.get(RuntimeType.TENSORRT)),
                 "path": trt_checkpoint_path,
                 "url": self.api.file.get_info_by_path(
                     self.team_id, trt_checkpoint_path
                 ).full_storage_url,
+                "classes_url": classes_file.full_storage_url if classes_file else None,
             }
         return onnx_checkpoint, trt_checkpoint
 
