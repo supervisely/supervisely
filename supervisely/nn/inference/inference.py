@@ -611,9 +611,20 @@ class Inference:
             deploy_params = {}
         selected_model = None
         for model in self.pretrained_models:
-            if model["meta"]["model_name"].lower() == model_name.lower():
-                selected_model = model
-                break
+            model_meta = model.get("meta")
+            if model_meta is not None:
+                model_name = model_meta.get("model_name")
+                if model_name is not None:
+                    if model_name.lower() == model_name.lower():
+                        selected_model = model
+                        break
+                else:
+                    model_name = model.get("model_name")
+                    if model_name is not None:
+                        if model_name.lower() == model_name.lower():
+                            selected_model = model
+                            break
+
         if selected_model is None:
             raise ValueError(f"Model {model_name} not found in models.json of serving app")
         deploy_params["model_files"] = selected_model["meta"]["model_files"]
@@ -2610,7 +2621,7 @@ class Inference:
                 inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file.size)
 
                 img_bytes = b""
-                while buf := file.read(64 * 1024 * 1024):
+                while buf := file.file.read(64 * 1024 * 1024):
                     img_bytes += buf
                     inference_request.done(len(buf))
 

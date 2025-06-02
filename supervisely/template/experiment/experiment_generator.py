@@ -10,6 +10,7 @@ import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 from supervisely import logger
 from supervisely.api.api import Api
+from supervisely.api.file_api import FileInfo
 from supervisely.nn.inference import Inference
 from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
@@ -59,6 +60,21 @@ class ExperimentGenerator(BaseGenerator):
     def upload_to_artifacts(self):
         remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
         self.upload(remote_dir, team_id=self.team_id)
+
+    def get_report(self) -> FileInfo:
+        remote_report_path = os.path.join(
+            self.info["artifacts_dir"], "visualization", "template.vue"
+        )
+        experiment_report = self.api.file.get_info_by_path(self.team_id, remote_report_path)
+        if experiment_report is None:
+            raise ValueError("Generate and upload report first")
+        return experiment_report
+
+    def get_report_id(self) -> int:
+        return self.get_report().id
+
+    def get_report_link(self) -> str:
+        return self._report_url(self.api.server_address, self.get_report_id())
 
     def state(self) -> dict:
         return {}
@@ -183,8 +199,10 @@ class ExperimentGenerator(BaseGenerator):
                     "image": docker_image,
                 },
                 "local_prediction": {
-                    "repo_url": repo_info["url"],
-                    "repo_name": repo_info["name"],
+                    "repo": {
+                        "name": repo_info["name"],
+                        "url": repo_info["url"],
+                    },
                     "serving_module": self.serving_class.__module__ if self.serving_class else None,
                     "serving_class": self.serving_class.__name__ if self.serving_class else None,
                 },
@@ -273,7 +291,6 @@ class ExperimentGenerator(BaseGenerator):
         checkpoint_infos = [
             self.api.file.get_info_by_path(self.team_id, path) for path in checkpoint_paths
         ]
-
         checkpoint_sizes = [f"{info.sizeb / 1024 / 1024:.2f} MB" for info in checkpoint_infos]
         checkpoint_dl_links = [
             f"<a href='{info.full_storage_url}' download='{sly_fs.get_file_name_with_ext(info.path)}'>Download</a>"
@@ -458,7 +475,10 @@ class ExperimentGenerator(BaseGenerator):
             return None
 
     def _get_sample_predictions_gallery(self):
-        benchmark_file_info = self.api.file.get_info_by_id(self.info["evaluation_report_id"])
+        evaluation_report_id = self.info.get("evaluation_report_id")
+        if evaluation_report_id is None:
+            return None
+        benchmark_file_info = self.api.file.get_info_by_id(evaluation_report_id)
         evaluation_report_path = os.path.dirname(benchmark_file_info.path)
         if os.path.basename(evaluation_report_path) != "visualizations":
             logger.debug(

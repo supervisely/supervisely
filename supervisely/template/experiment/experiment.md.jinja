@@ -305,7 +305,7 @@ from pathlib import Path
 
 # Deploy a detector
 detector = api.nn.deploy(
-    model="rt-detrv2/RT-DETRv2-M",
+    model="{{ experiment.framework_name }}/{{ experiment.model_name }}",
     device="cuda:0",  # Use GPU for detection
 )
 
@@ -395,8 +395,8 @@ In case you develop an application that is not related to the Supervisely platfo
 2. Clone our repository
 
     ```bash
-    git clone {{ code.local_prediction.repo_url }}
-    cd {{ code.local_prediction.repo_name }}
+    git clone {{ code.local_prediction.repo.url }}
+    cd {{ code.local_prediction.repo.name }}
     ```
 
 3. Install requirements
@@ -409,7 +409,7 @@ In case you develop an application that is not related to the Supervisely platfo
 4. Run the inference code
 
     ```python
-    # Be sure you are in the root of the {{ code.local_prediction.repo_name }} repository
+    # Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
     from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
 
     # Load model
@@ -419,7 +419,7 @@ In case you develop an application that is not related to the Supervisely platfo
     )
 
     # Predict
-    predictions = model(
+    predictions = model.predict(
         # Input can accpet various formats: image paths, np.arrays, Supervisely IDs and others.
         input=["path/to/image1.jpg", "path/to/image2.jpg"],
         conf=0.5,  # confidence threshold
@@ -440,7 +440,7 @@ and provide class names in the additional `classes` parameter.
 {% endif %}
 
 ```python
-# Be sure you are in the root of the {{ code.local_prediction.repo_name }} repository
+# Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
 from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
 {% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
 from supervisely.io.json import load_json_file
@@ -456,14 +456,14 @@ classes = {{ project.class_names.short_list }}
 model = {{ code.local_prediction.serving_class }}(
     model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}",  # path to the ONNX or TensorRT model"
     device="cuda",
-    classes=classes,
 )
 
 # Predict
-predictions = model(
+predictions = model.predict(
     # Input can accpet various formats: image paths, np.arrays, Supervisely IDs and others.
     input=["path/to/image1.jpg", "path/to/image2.jpg"],
     conf=0.5,  # confidence threshold
+    classes=classes,
     # ... additional parameters (see the docs)
 )
 ```
@@ -480,7 +480,7 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 
 1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }})
 
-2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo_name }}]({{ code.local_prediction.repo_url }})
+2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo.name }}]({{ code.local_prediction.repo.url }})
 
 3. Use the demo script for inference:
 
