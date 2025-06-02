@@ -52,6 +52,8 @@ def download_image_from_context(
         return api.video.frame.download_np(
             context["video"]["video_id"], context["video"]["frame_index"]
         )
+    elif "pcd_related_image_id" in context:
+        return api.pointcloud.download_related_image(context["pcd_related_image_id"])
     else:
         raise Exception("Project type is not supported")
 
