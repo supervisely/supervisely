@@ -71,7 +71,6 @@ from supervisely._utils import (
     is_community,
     is_development,
     running_in_webpy_app,
-    run_coroutine
 )
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
@@ -648,6 +647,8 @@ class Api:
         """
         from js import console
 
+        from supervisely._utils import create_http_response_from_dict
+
         console.log(f"Request URL: {kwargs['url']}")
         console.log(f"Making async request with kwargs: {kwargs}")
         from pyodide.http import pyfetch
@@ -663,6 +664,10 @@ class Api:
         # print(f"Response status: {response.status}")
         console.log(f"Response data: {data}")
         console.log(f"Response status: {response.status}")
+        response = create_http_response_from_dict(
+            data=data, status_code=response.status, headers=response.headers
+        )
+        console.log(f"Response object created: {type(response)}")
         return response
 
     def post(
@@ -741,7 +746,10 @@ class Api:
             try:
                 if type(data) is bytes:
                     if running_in_webpy_app():
-                        headers = {**self.headers, "Content-Type": "application/json; charset=UTF-8"}
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
                         # if False:
                         kwargs = {
                             "url": url,
@@ -752,7 +760,9 @@ class Api:
                         response = loop.run_until_complete(self._py_fetch(kwargs))
 
                     else:
-                        response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                        response = requests.post(
+                            url, data=data, headers=self.headers, stream=stream
+                        )
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
                     # if False:
                     if running_in_webpy_app():
@@ -903,7 +913,7 @@ class Api:
                     json_body = {**params, **self.additional_fields}
                 if running_in_webpy_app():
                     # if False:
-                    url_with_params = requests.Request('GET', url, params=json_body).prepare().url
+                    url_with_params = requests.Request("GET", url, params=json_body).prepare().url
                     kwargs = {
                         "url": url_with_params,
                         "method": "GET",
@@ -911,7 +921,9 @@ class Api:
                     }
                     response = loop.run_until_complete(self._py_fetch(kwargs))
                 else:
-                    response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                    response = requests.get(
+                        url, params=json_body, headers=self.headers, stream=stream
+                    )
 
                 if not running_in_webpy_app():
                     if response.status_code != requests.codes.ok:  # pylint: disable=no-member

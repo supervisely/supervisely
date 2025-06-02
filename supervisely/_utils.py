@@ -15,6 +15,8 @@ import time
 import urllib
 from datetime import datetime
 from functools import wraps
+from http.client import HTTPResponse
+from io import BytesIO
 from tempfile import gettempdir
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -577,6 +579,7 @@ def removesuffix(string, suffix):
         return string[: -len(suffix)]
     return string
 
+
 def running_in_webpy_app() -> bool:
     """Returns True if the code is running in a webpy environment, False otherwise.
     This is determined by checking if the 'pyodide' module is in sys.modules,
@@ -585,3 +588,25 @@ def running_in_webpy_app() -> bool:
     """
 
     return "pyodide" in sys.modules
+
+
+def create_http_response_from_dict(data: dict, status_code: int = 200, headers: dict = None):
+    """
+    Creates a http.client.HTTPResponse object from a dictionary.
+
+    Args:
+        data (dict): The dictionary to use as the response body.
+        status_code (int): The HTTP status code of the response.
+        headers (dict): Optional headers to include in the response.
+
+    Returns:
+        http.client.HTTPResponse: An HTTPResponse object.
+    """
+    body = json.dumps(data).encode("utf-8")
+    response = HTTPResponse(BytesIO(body))
+    response.status = status_code
+    if headers:
+        for key, value in headers.items():
+            response.headers[key] = value
+    response.begin()
+    return response
