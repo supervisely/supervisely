@@ -112,6 +112,8 @@ def get_hash_from_context(context: dict):
         return "_".join(map(str, [volume_id, slice_index, plane, window_center, window_width]))
     elif "video" in context:
         return "_".join(map(str, [context["video"]["video_id"], context["video"]["frame_index"]]))
+    elif "pcd_related_image_id" in context:
+        return str(context["pcd_related_image_id"])
     else:
         raise Exception("Project type is not supported")
 
