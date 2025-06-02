@@ -17,7 +17,7 @@ js_bundle_version = "2.1.99"
 js_frontend_version = "v0.0.56"
 
 
-pyodide_version = "v0.25.0"
+pyodide_version = "v0.26.1"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
