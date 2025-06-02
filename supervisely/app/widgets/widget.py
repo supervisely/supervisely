@@ -145,8 +145,8 @@ class StylesOptimizer:
             return
         if self.need_collect_styles is False:
             return
-        if widget_name not in JinjaWidgets().context["__widget_styles__"]:
-            JinjaWidgets().context["__widget_styles__"][widget_name] = []
+        if widget_name in JinjaWidgets().context["__widget_styles__"]:
+            return  # styles already collected
         html = self._get_html()
         soup = BeautifulSoup(html, features="html.parser")
         styles = soup.find_all("link", rel="stylesheet")
