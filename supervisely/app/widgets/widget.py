@@ -128,7 +128,36 @@ class Loading:
 
 class StylesOptimizer:
 
-    def _wrap_style_html(self, widget_name, html):
+    def _get_html(self) -> str:
+        """
+        Get html from the template
+        """
+        current_dir = Path(self._file_path).parent.absolute()
+        jinja2_sly_env: Environment = create_env(current_dir)
+        html = jinja2_sly_env.get_template("template.html").render({"widget": self})
+        return html
+
+    def _collect_styles_from_html(self, widget_name):
+        """
+        Collect styles from the html and put them in context.
+        """
+        if not hasattr(self, "need_collect_styles"):
+            return
+        if self.need_collect_styles is False:
+            return
+        if widget_name not in JinjaWidgets().context["__widget_styles__"]:
+            JinjaWidgets().context["__widget_styles__"][widget_name] = []
+        html = self._get_html()
+        soup = BeautifulSoup(html, features="html.parser")
+        styles = soup.find_all("link", rel="stylesheet")
+        res_styles = []
+        for style in styles:
+            if style.has_attr("href"):
+                res_styles.append(style["href"])
+        if res_styles:
+            JinjaWidgets().add_widget_style(widget_name, res_styles)
+
+    def _wrap_style_html(self, html):
         """
         Find link to CSS styles in the html and cut them from the html and put them context.
         """
@@ -138,14 +167,9 @@ class StylesOptimizer:
         styles = soup.find_all("link", rel="stylesheet")
         if not styles:
             return html
-        res_styles = []
         for style in styles:
             if style.has_attr("href"):
-                res_styles.append(style["href"])
                 style.decompose()
-
-        if res_styles:
-            JinjaWidgets().add_widget_style(widget_name, res_styles)
 
         return str(soup)
 
@@ -168,6 +192,7 @@ class Widget(Hidable, Disableable, Loading, StylesOptimizer):
         self._file_path = file_path
         self._loading = False
         self._disabled = False
+        self._collect_styles_from_html(type(self).__name__)
 
         if (
             widget_id is not None
@@ -264,7 +289,7 @@ class Widget(Hidable, Disableable, Loading, StylesOptimizer):
         # st = time.time()
         html = self._wrap_hide_html(self.widget_id, html)
         # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
-        html = self._wrap_style_html(type(self).__name__, html)
+        html = self._wrap_style_html(html)
         return markupsafe.Markup(html)
 
     def __html__(self):
