@@ -121,6 +121,7 @@ class Button(Widget):
             "disabled": self._disabled,
             "icon": self._icon,
             "link": self._link,
+            "style": self._style,
         }
 
     def get_json_state(self) -> None:
@@ -269,6 +270,26 @@ class Button(Widget):
         :rtype: bool
         """
         return self._disabled
+    
+    @property
+    def style(self) -> Optional[str]:
+        """Returns the CSS style applied to the button.
+
+        :return: CSS style applied to the button.
+        :rtype: Optional[str]
+        """
+        return self._style
+    
+    @style.setter
+    def style(self, value: Optional[str]) -> None:
+        """Sets the CSS style to be applied to the button.
+
+        :param value: CSS style to be applied to the button.
+        :type value: Optional[str]
+        """
+        self._style = value
+        DataJson()[self.widget_id]["style"] = self._style
+        DataJson().send_changes()
 
     @disabled.setter
     def disabled(self, value: bool) -> None:
