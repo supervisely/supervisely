@@ -652,13 +652,13 @@ class Api:
         console.log(f"Request URL: {kwargs['url']}")
         console.log(f"Making request with kwargs: {kwargs}")
         loop = get_or_create_event_loop()
-        data, status = loop.run_until_complete(self._py_fetch_aync(kwargs))
+        data, status = loop.run_until_complete(self._py_fetch_async(kwargs))
         console.log(f"Response status: {response.status_code}")
         response = create_http_response_from_dict(data, status, kwargs["headers"])
         console.log(f"Response object created: {type(response)}")
         return response
 
-    async def _py_fetch_aync(self, kwargs: Dict[str, Any]) -> Any:
+    async def _py_fetch_async(self, kwargs: Dict[str, Any]) -> Any:
         """
         Perform an asynchronous HTTP request using pyodide's pyfetch.
 
