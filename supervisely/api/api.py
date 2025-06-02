@@ -666,23 +666,21 @@ class Api:
         :return: Response object.
         """
         from js import console
+        from pyodide.http import pyfetch
 
         console.log(f"Request URL: {kwargs['url']}")
         console.log(f"Making async request with kwargs: {kwargs}")
-        from pyodide.http import pyfetch
 
         response = await pyfetch(**kwargs)
         console.log(f"Response status: {response.status}")
-        if response.status != 200:
+        if not response.ok:
             raise requests.exceptions.HTTPError(
                 f"HTTP error {response.status} for url: {kwargs['url']}"
             )
-        data = await response.json()
         # print(f"Response data: {data}")
         # print(f"Response status: {response.status}")
-        console.log(f"Response data: {data}")
         console.log(f"Response status: {response.status}")
-        return response
+        return await response.json(), response.status  # type: ignore[return-value]
 
     def post(
         self,
@@ -749,6 +747,9 @@ class Api:
             from pyodide import webloop
 
             loop = webloop.WebLoop()
+            from pyodide.ffi import run_sync
+
+            from supervisely._utils import create_http_response_from_dict
 
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
@@ -775,7 +776,8 @@ class Api:
                             "body": json.dumps(data),
                             "headers": headers,
                         }
-                        response = loop.create_task(self._py_fetch(kwargs))
+                        data, status = run_sync(self._py_fetch(kwargs))
+                        response = create_http_response_from_dict(data, status, headers)
 
                     else:
                         response = requests.post(
@@ -794,7 +796,8 @@ class Api:
                             "body": json.dumps(data),
                             "headers": {**headers, "Content-Type": data.content_type},
                         }
-                        response = loop.create_task(self._py_fetch(kwargs))
+                        data, status = run_sync(self._py_fetch(kwargs))
+                        response = create_http_response_from_dict(data, status, headers)
                     else:
                         headers = {
                             **self.headers,
@@ -822,7 +825,8 @@ class Api:
                             "body": json.dumps(json_body),
                             "headers": headers,
                         }
-                        response = loop.create_task(self._py_fetch(kwargs))
+                        data, status = run_sync(self._py_fetch(kwargs))
+                        response = create_http_response_from_dict(data, status, headers)
                     else:
                         response = requests.post(
                             url, json=json_body, headers=self.headers, stream=stream
@@ -915,6 +919,8 @@ class Api:
             from pyodide import webloop
 
             loop = webloop.WebLoop()
+            from pyodide.ffi import run_sync
+            from supervisely._utils import create_http_response_from_dict
 
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
@@ -940,7 +946,8 @@ class Api:
                         "method": "GET",
                         "headers": self.headers,
                     }
-                    response = loop.create_task(self._py_fetch(kwargs))
+                    data, status = run_sync(self._py_fetch(kwargs))
+                    response = create_http_response_from_dict(data, status, self.headers)
                 else:
                     response = requests.get(
                         url, params=json_body, headers=self.headers, stream=stream
