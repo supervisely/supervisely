@@ -198,6 +198,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         hide_figure_author: Optional[bool] = False,
         allow_review_own_annotations: Optional[bool] = False,
         skip_complete_job_on_empty: Optional[bool] = False,
+        enable_quality_check: Optional[bool] = None,
     ) -> int:
         """
         Creates Labeling Queue and assigns given Users to it.
@@ -242,6 +243,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type disable_submit: bool, optional
         :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
         :type toolbox_settings: Dict, optional
+        :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Queue.
+        :type enable_quality_check: bool, optional
         :return: Labeling Queue ID in Supervisely.
         :rtype: int
         :Usage example:
@@ -348,6 +351,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             meta.update({"disableConfirm": disable_confirm})
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
+        if enable_quality_check is not None:
+            meta.update({"enableQualityCheck": enable_quality_check})
 
         queue_meta = {}
         if allow_review_own_annotations is True:
