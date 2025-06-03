@@ -105,9 +105,9 @@ class SolutionsGraph(Widget):
                     self._connections[k] = []
                 for v in vs:
                     if type(v) == str:
-                        self._connections[k].append([v, self.defualt_connection_options])
+                        self._connections[k].append([v, self.default_connection_options])
                     elif isinstance(v, list):
-                        options = self.defualt_connection_options
+                        options = self.default_connection_options
                         options.update(v[1])
                         self._connections[k].append([v[0], options])
         self._height = height
@@ -136,7 +136,7 @@ class SolutionsGraph(Widget):
         return {}
 
     @property
-    def defualt_connection_options(self) -> Dict[str, Any]:
+    def default_connection_options(self) -> Dict[str, Any]:
         if self._arrow_type == "arrow-line":
             options = {
                 "thickness": 2,
