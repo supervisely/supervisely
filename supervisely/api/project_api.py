@@ -334,6 +334,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if ApiField.IS_EMBEDDINGS_UPDATED in fields:
             fields.remove(ApiField.IS_EMBEDDINGS_UPDATED)
 
+        if "embeddingsInProgress" in fields:
+            fields.remove("embeddingsInProgress")
+
         data = {
             ApiField.WORKSPACE_ID: workspace_id,
             ApiField.FILTER: filters or [],
