@@ -27,7 +27,7 @@ class RunAppButton(Widget):
         icon_gap: Optional[int] = 5,
         available_in_offline: Optional[bool] = False,
         visible_by_vue_field: Optional[str] = "",
-        check_existing_task_cb: Optional[Callable] = "null",
+        check_existing_task_cb: Optional[str] = "null",
         widget_id: Optional[str] = None,
     ):
         """
@@ -57,8 +57,8 @@ class RunAppButton(Widget):
         :type available_in_offline: bool, optional
         :param visible_by_vue_field: Vue field that controls the button visibility. If set to "isStaticVersion", the button will be visible only in offline session.
         :type visible_by_vue_field: str, optional
-        :param check_existing_task_cb: Callback function for checking existing tasks.
-        :type check_existing_task_cb: Callable, optional
+        :param check_existing_task_cb: Sets the callback function for checking existing tasks. Function should be a string (docstring) of JavaScript code.
+        :type check_existing_task_cb: str, optional
         :param widget_id: Widget ID.
         :type widget_id: str, optional
 
@@ -121,6 +121,7 @@ class RunAppButton(Widget):
             - available_in_offline: If True, the button will be available in offline session.
         """
         return {
+            "check_existing_task_cb": self._check_existing_task_cb,
             "options": {
                 "text": self._text,
                 "button_type": self._button_type,
@@ -130,7 +131,7 @@ class RunAppButton(Widget):
                 "disabled": self._disabled,
                 "icon": self._icon,
                 "available_in_offline": self._available_in_offline,
-            }
+            },
         }
 
     def get_json_state(self) -> None:
@@ -315,3 +316,5 @@ class RunAppButton(Widget):
         :type function: str
         """
         self._check_existing_task_cb = function
+        DataJson()[self.widget_id]["check_existing_task_cb"] = self._check_existing_task_cb
+        DataJson().send_changes()
