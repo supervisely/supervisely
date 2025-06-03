@@ -661,6 +661,8 @@ class ApiField:
     """"""
     COLLECTION_ID = "collectionId"
     """"""
+    QUALITY_CHECK_USER_IDS = "qualityCheckUserIds"
+    """"""
     EMBEDDINGS_ENABLED = "embeddingsEnabled"
     """"""
     EMBEDDINGS_UPDATED_AT = "embeddingsUpdatedAt"
