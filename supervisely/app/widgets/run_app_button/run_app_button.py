@@ -298,3 +298,19 @@ class RunAppButton(Widget):
         """
         self._disabled = value
         DataJson()[self.widget_id]["options"]["disabled"] = self._disabled
+
+    def check_existing_task_cb(self, task: dict) -> bool:
+        """Checks if the task is the same as the one in the payload.
+
+        :param task: Task to be checked.
+        :type task: dict
+        """
+        # compare task with current task
+        # extract folder from task
+        # compare with folder from payload
+
+        # t = task
+        # checkTask(t) {
+        # const folder = t.meta?.params?.state?.slyFolder;
+        # if (!folder || !typeof folder === 'string') return false;
+        # return folder == state.{{{widget.widget_id}}}.payload.state.slyFolder
