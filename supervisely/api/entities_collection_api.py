@@ -535,7 +535,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             ]
         """
         items = [item.to_json() for item in items]
-        items_ids = [item[ApiField.ID] for item in items]
+        items_ids = [item[ApiField.ENTITY_ID] for item in items]
         data = {
             ApiField.COLLECTION_ID: id,
             ApiField.ENTITY_ITEMS: items,
