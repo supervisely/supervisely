@@ -54,7 +54,7 @@ def download_image_from_context(
         )
     elif "pcd_related_image_id" in context:
         if cache_load_img is not None:
-            return cache_load_img(api, context["pcd_related_image_id"])
+            return cache_load_img(api, context["pcd_related_image_id"], related=True)
         return api.pointcloud.download_related_image(context["pcd_related_image_id"])
     else:
         raise Exception("Project type is not supported")

@@ -233,14 +233,17 @@ class InferenceImageCache:
         with self._lock:
             self._cache.clear(False)
 
-    def download_image(self, api: sly.Api, image_id: int):
+    def download_image(self, api: sly.Api, image_id: int, related: bool = False):
         name = self._image_name(image_id)
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
             self._load_queue.set(name, image_id)
             api.logger.debug(f"Add image #{image_id} to cache")
-            img = api.image.download_np(image_id)
+            if not related:
+                img = api.image.download_np(image_id)
+            else:
+                img = api.pointcloud.download_related_image(image_id)
             self._add_to_cache(name, img)
             return img
 
@@ -582,9 +585,6 @@ class InferenceImageCache:
             if "dataset_id" in state:
                 self.download_images(api, state["dataset_id"], image_ids, **kwargs)
             else:
-
-                print(f"State: {state}")
-
                 for img_id in image_ids:
                     self.download_image(api, img_id)
         elif task_type is InferenceImageCache._LoadType.ImageHash:
