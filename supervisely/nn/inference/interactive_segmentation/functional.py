@@ -52,6 +52,10 @@ def download_image_from_context(
         return api.video.frame.download_np(
             context["video"]["video_id"], context["video"]["frame_index"]
         )
+    elif "pcd_related_image_id" in context:
+        if cache_load_img is not None:
+            return cache_load_img(api, context["pcd_related_image_id"], related=True)
+        return api.pointcloud.download_related_image(context["pcd_related_image_id"])
     else:
         raise Exception("Project type is not supported")
 
@@ -110,6 +114,8 @@ def get_hash_from_context(context: dict):
         return "_".join(map(str, [volume_id, slice_index, plane, window_center, window_width]))
     elif "video" in context:
         return "_".join(map(str, [context["video"]["video_id"], context["video"]["frame_index"]]))
+    elif "pcd_related_image_id" in context:
+        return str(context["pcd_related_image_id"])
     else:
         raise Exception("Project type is not supported")
 
