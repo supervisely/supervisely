@@ -242,7 +242,7 @@ class TrainGUI:
         else:
             self.task_id = sly_env.task_id(raise_not_found=False)
             if self.task_id is None:
-                self.task_id = "debug-session"
+                self.task_id = -1
 
         self.framework_name = framework_name
         self.models = models
@@ -257,7 +257,7 @@ class TrainGUI:
         self.project_info = self._api.project.get_info_by_id(self.project_id)
         if self.project_info.type is None:
             raise ValueError(f"Project with ID: '{self.project_id}' does not exist or was archived")
-        
+
         self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
 
         if self.workspace_id is None:
@@ -350,7 +350,10 @@ class TrainGUI:
             if model_name is None:
                 experiment_name = "Enter experiment name"
             else:
-                experiment_name = f"{self.task_id}_{self.project_info.name}_{model_name}"
+                if self.task_id == -1:
+                    experiment_name = f"debug_{self.project_info.name}_{model_name}"
+                else:
+                    experiment_name = f"{self.task_id}_{self.project_info.name}_{model_name}"
 
             if experiment_name == self.training_process.get_experiment_name():
                 return
