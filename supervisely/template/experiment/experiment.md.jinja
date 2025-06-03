@@ -35,33 +35,43 @@
 - **Classes**: {{ project.classes_count }} ({{ project.class_names.short_string }})
 - **Training images**: {{ project.train_size }}
 - **Validation images**: {{ project.val_size }}
+{% if benchmark.primary_metric.name %}
 - **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.value }}
+{% endif %}
 
 {% if artifacts.hyperparameters %}
 <details>
 <summary>Training hyperparameters</summary>
+
 ```yaml
 {% for hyperparameter in artifacts.hyperparameters %}
 {{ hyperparameter }}
 {% endfor %}
 ```
+
 </details>
+
 {% endif %}
 
+
+{% if links.evaluation_report.id and widgets.sample_pred_gallery %}
+
 ## Prediction Samples
-{% if widgets.sample_pred_gallery %}
 <div class="prediction-gallery">
 {{ widgets.sample_pred_gallery | safe }}
 </div>
+
 {% endif %}
 
-## Performance
 {% if artifacts.metrics_table %}
+
+## Performance
 ### 📈 Evaluation Metrics
 The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on the validation set of **{{ project.val_size }} images**. 
 
 See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
 {{ artifacts.metrics_table | safe }}
+
 {% endif %}
 
 ## Artifacts
@@ -328,6 +338,9 @@ video_ann: sly.VideoAnnotation = track(
 ---
 
 ## Advanced Usage
+
+Use your trained models in your own code, using Supervisely SDK and our API or original code from the authors.
+
 
 ## Deploy in Docker
 

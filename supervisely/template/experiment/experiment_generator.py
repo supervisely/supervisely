@@ -375,13 +375,20 @@ class ExperimentGenerator(BaseGenerator):
         """
         export = self.info.get("export", {})
 
-        onnx_checkpoint = export.get(RuntimeType.ONNXRUNTIME)
-        onnx_checkpoint = {
+        onnx_checkpoint_data = {
             "name": None,
             "path": None,
             "url": None,
             "classes_url": None,
         }
+        trt_checkpoint_data = {
+            "name": None,
+            "path": None,
+            "url": None,
+            "classes_url": None,
+        }
+
+        onnx_checkpoint = export.get(RuntimeType.ONNXRUNTIME)
         if onnx_checkpoint is not None:
             onnx_checkpoint_path = os.path.join(
                 self.artifacts_dir, export.get(RuntimeType.ONNXRUNTIME)
@@ -390,7 +397,7 @@ class ExperimentGenerator(BaseGenerator):
                 self.team_id,
                 os.path.join(os.path.dirname(onnx_checkpoint_path), "classes.json"),
             )
-            onnx_checkpoint = {
+            onnx_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.ONNXRUNTIME)),
                 "path": onnx_checkpoint_path,
                 "url": self.api.file.get_info_by_path(
@@ -399,18 +406,13 @@ class ExperimentGenerator(BaseGenerator):
                 "classes_url": classes_file.full_storage_url if classes_file else None,
             }
         trt_checkpoint = export.get(RuntimeType.TENSORRT)
-        trt_checkpoint = {
-            "name": None,
-            "path": None,
-            "url": None,
-        }
         if trt_checkpoint is not None:
             trt_checkpoint_path = os.path.join(self.artifacts_dir, export.get(RuntimeType.TENSORRT))
             classes_file = self.api.file.get_info_by_path(
                 self.team_id,
                 os.path.join(os.path.dirname(trt_checkpoint_path), "classes.json"),
             )
-            trt_checkpoint = {
+            trt_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.TENSORRT)),
                 "path": trt_checkpoint_path,
                 "url": self.api.file.get_info_by_path(
@@ -418,7 +420,7 @@ class ExperimentGenerator(BaseGenerator):
                 ).full_storage_url,
                 "classes_url": classes_file.full_storage_url if classes_file else None,
             }
-        return onnx_checkpoint, trt_checkpoint
+        return onnx_checkpoint_data, trt_checkpoint_data
 
     def _get_docker_image(self) -> str:
         """Get Docker image for model.
