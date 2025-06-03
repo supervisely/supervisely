@@ -582,6 +582,9 @@ class InferenceImageCache:
             if "dataset_id" in state:
                 self.download_images(api, state["dataset_id"], image_ids, **kwargs)
             else:
+
+                print(f"State: {state}")
+
                 for img_id in image_ids:
                     self.download_image(api, img_id)
         elif task_type is InferenceImageCache._LoadType.ImageHash:
