@@ -150,6 +150,8 @@ class SolutionsCard(Widget):
         else:
             state["tooltip_description"] = None
             state["tooltip_properties"] = []
+        state["tooltip_position"] = self._tooltip_position
+        state["show_tooltip"] = self._show_tooltip
         state["badges"] = self._prepare_badges_info()
         state["show_badges"] = self._show_badges
         return state
@@ -277,3 +279,40 @@ class SolutionsCard(Widget):
             self._badges.pop(idx)
             StateJson()[self.widget_id]["badges"] = deepcopy(self._badges)
             StateJson().send_changes()
+
+    def set_tooltip(
+        self,
+        tooltip: Optional[Tooltip] = None,
+        description: str = None,
+        content: List[Widget] = None,
+        properties: List = None,
+        tooltip_position: Optional[Literal["left", "right"]] = None,
+    ):
+        if tooltip is not None:
+            description = description or tooltip._description
+            content = content or tooltip._content
+            properties = properties or tooltip._properties
+        if description is None and content is None and properties is None:
+            raise ValueError("At least one of description, content or properties must be provided")
+        self._show_tooltip = True
+        tooltip = self.Tooltip(
+            description=description,
+            content=content,
+            properties=properties,
+        )
+        self._tooltip = tooltip
+        if tooltip_position is not None:
+            self._tooltip_position = tooltip_position
+            StateJson()[self.widget_id]["tooltip_position"] = tooltip_position
+        StateJson()[self.widget_id]["tooltip_description"] = description
+        StateJson()[self.widget_id]["tooltip_properties"] = deepcopy(properties or [])
+        StateJson()[self.widget_id]["show_tooltip"] = self._show_tooltip
+        StateJson().send_changes()
+
+    def remove_tooltip(self):
+        self._show_tooltip = False
+        self._tooltip = None
+        StateJson()[self.widget_id]["tooltip_description"] = None
+        StateJson()[self.widget_id]["tooltip_properties"] = []
+        StateJson()[self.widget_id]["show_tooltip"] = self._show_tooltip
+        StateJson().send_changes()
