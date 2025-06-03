@@ -14,7 +14,7 @@
 	:options="data.{{{widget.widget_id}}}.options"
 	:disabled="state.{{{widget.widget_id}}}.disabled"
 	:collapsed="state.{{{widget.widget_id}}}.collapsed"
-	style="width: 100%"
+	style="width: 100%; {{{widget._style}}}"
 >
 	<div>{{{widget._content}}}</div>
 	<div v-if="data.{{{widget.widget_id}}}.show_slot" slot="header">

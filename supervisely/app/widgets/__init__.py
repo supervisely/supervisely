@@ -150,3 +150,8 @@ from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThum
 from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
 from supervisely.app.widgets.bokeh.bokeh import Bokeh
 from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
+from supervisely.app.widgets.solutions_graph.solutions_graph import SolutionsGraph
+from supervisely.app.widgets.solutions_card.solutions_card import SolutionsCard
+from supervisely.app.widgets.solutions_project.solutions_project import SolutionsProject
+from supervisely.app.widgets.select_collection.select_collection import SelectCollection
+from supervisely.app.widgets.radio_card.radio_card import RadioCard

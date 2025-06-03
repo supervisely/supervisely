@@ -112,6 +112,7 @@ class FastTable(Widget):
         sort_order: Optional[Literal["asc", "desc"]] = None,
         width: Optional[str] = "auto",
         widget_id: Optional[str] = None,
+        show_header: bool = True,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -127,6 +128,7 @@ class FastTable(Widget):
         self._clickable_rows = False
         self._clickable_cells = False
         self._search_str = ""
+        self._show_header = show_header
         self._project_meta = self._unpack_project_meta(project_meta)
 
         # table_options
@@ -212,6 +214,7 @@ class FastTable(Widget):
                 "fixColumns": self._fix_columns,
             },
             "pageSize": self._page_size,
+            "showHeader": self._show_header,
         }
 
     def get_json_state(self) -> Dict[str, Any]:
@@ -468,6 +471,17 @@ class FastTable(Widget):
             DataJson()[self.widget_id]["total"] = self._rows_total
             DataJson().send_changes()
             return popped_row
+
+    def clear(self) -> None:
+        """Clears the table data."""
+        self._source_data = pd.DataFrame(columns=self._columns_first_idx)
+        self._parsed_source_data = {"data": [], "columns": []}
+        self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
+        self._parsed_active_data = {"data": [], "columns": []}
+        self._rows_total = 0
+        DataJson()[self.widget_id]["data"] = []
+        DataJson()[self.widget_id]["total"] = 0
+        DataJson().send_changes()
 
     def row_click(self, func: Callable[[ClickedRow], Any]) -> Callable[[], None]:
         """Decorator for function that handles row click event.
@@ -802,6 +816,8 @@ class FastTable(Widget):
         failed_column_idxs = []
         failed_column_idx = 0
         for column, value in zip(self._source_data.columns, row):
+            if len(self._source_data[column].values) == 0:
+                continue
             col_type = type(self._source_data[column].values[0])
             if col_type == str and not isinstance(value, str):
                 failed_column_idxs.append(

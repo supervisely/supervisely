@@ -1,0 +1,26 @@
+<link rel="stylesheet" href="./sly/css/app/widgets/solutions_graph/style.css" />
+<div>
+    <div :style="{height: data.{{{widget.widget_id}}}.height, width: data.{{{widget.widget_id}}}.width}" {% if
+        widget._show_grid %} class="sly-flow-diagram dotted-grid" {% else %} class="sly-flow-diagram" {% endif %}>
+        {% for node in widget._nodes %}
+        <div id="{{{node.key}}}" class="sly-flow-node" style="
+                    left: {{{node.x}}}px;
+                    top: {{{node.y}}}px; 
+                    width: {{{node.width}}};
+                    height: {{{node.height}}};
+                ">
+            <div class="sly-flow-node-content">
+                {{{node.content}}}
+            </div>
+            {% if node.buttons %}
+            <div class="sly-flow-node-button">
+                {% for button in node.buttons %} {{{button}}} {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <div>
+        <sly-flow-diagram :connections="data.{{{widget.widget_id}}}.connections"></sly-flow-diagram>
+    </div>
+</div>

@@ -24,7 +24,7 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from supervisely import logger
 from supervisely._utils import (
@@ -97,6 +97,9 @@ class ProjectInfo(NamedTuple):
     import_settings: dict
     version: dict
     created_by_id: int
+    embeddings_enabled: bool = False
+    is_embeddings_updated: Optional[bool] = None
+    embeddings_in_progress: Optional[bool] = None
 
     @property
     def image_preview_url(self):
@@ -144,6 +147,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         project_id = 1951
         project_info = api.project.get_info_by_id(project_id)
     """
+
+    debug_messages_sent = {"get_list_versions": False, "get_list_embeddings": False}
 
     @staticmethod
     def info_sequence():
@@ -195,6 +200,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.IMPORT_SETTINGS,
             ApiField.VERSION,
             ApiField.CREATED_BY_ID,
+            ApiField.EMBEDDINGS_ENABLED,
+            ApiField.IS_EMBEDDINGS_UPDATED,
+            ApiField.EMBEDDINGS_IN_PROGRESS,
         ]
 
     @staticmethod
@@ -216,6 +224,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         workspace_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         fields: List[str] = [],
+        with_embeddings_info: bool = False,
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -223,12 +232,18 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         *NOTE*: Version information is not available while getting list of projects.
         If you need version information, use :func:`get_info_by_id`.
 
+        *NOTE*: Embeddings information is not available while getting list of projects.
+        To receive additionally embeddings information, you need to list all the fields you want to receive:
+        `fields=[ApiField.ID, ApiField.NAME, ... other standard fields ..., ApiField.EMBEDDINGS_ENABLED, ApiField.EMBEDDINGS_UPDATED_AT]`
+
         :param workspace_id: Workspace ID in which the Projects are located.
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
-        :param fields: The list of api fields which will be returned with the response.
+        :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
         :type fields: List[str]
+        :param with_embeddings_info: If True, return Info about embeddings, e.g. `is_embeddings_updated`.
+        :type with_embeddings_info: bool, optional
 
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
         :rtype: :class: `List[ProjectInfo]`
@@ -306,25 +321,42 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+        method = "projects.list"
+
+        debug_message = "While getting list of projects, the following fields are not available: "
+
         if ApiField.VERSION in fields:
             fields.remove(ApiField.VERSION)
-            logger.debug(
-                "Project version information is not available while getting list of projects"
-            )
-        return self.get_list_all_pages(
-            "projects.list",
-            {
-                ApiField.WORKSPACE_ID: workspace_id,
-                ApiField.FILTER: filters or [],
-                ApiField.FIELDS: fields,
-            },
-        )
+            if self.debug_messages_sent.get("get_list_versions", False) is False:
+                self.debug_messages_sent["get_list_versions"] = True
+                logger.debug(debug_message + "version. ")
+
+        if ApiField.IS_EMBEDDINGS_UPDATED in fields:
+            fields.remove(ApiField.IS_EMBEDDINGS_UPDATED)
+
+        if "embeddingsInProgress" in fields:
+            fields.remove("embeddingsInProgress")
+
+        data = {
+            ApiField.WORKSPACE_ID: workspace_id,
+            ApiField.FILTER: filters or [],
+            ApiField.FIELDS: fields,
+        }
+
+        if with_embeddings_info:
+            data.update({ApiField.SHOW_EMBEDDINGS_UPDATED: True})
+        elif self.debug_messages_sent.get("get_list_embeddings", False) is False:
+            self.debug_messages_sent["get_list_embeddings"] = True
+            logger.debug(debug_message + "is_embeddings_updated. ")
+
+        return self.get_list_all_pages(method, data)
 
     def get_info_by_id(
         self,
         id: int,
         expected_type: Optional[str] = None,
-        raise_error: Optional[bool] = False,
+        raise_error: bool = False,
+        with_embeddings_info: bool = False,
     ) -> ProjectInfo:
         """
         Get Project information by ID.
@@ -335,6 +367,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type expected_type: ProjectType, optional
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
+        :param with_embeddings_info: If True, return Info about embeddings, e.g. `is_embeddings_updated`.
+        :type with_embeddings_info: bool, optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
@@ -372,7 +406,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 
         """
-        info = self._get_info_by_id(id, "projects.info")
+        fields = None
+        if with_embeddings_info:
+            fields = {ApiField.SHOW_EMBEDDINGS_UPDATED: True}
+        info = self._get_info_by_id(id, "projects.info", fields=fields)
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
@@ -1976,6 +2013,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         per_page: Optional[int] = None,
         page: Union[int, Literal["all"]] = "all",
         account_type: Optional[str] = None,
+        extra_fields: Optional[List[str]] = None,
     ) -> dict:
         """
         List all available projects from all available teams for the user that match the specified filtering criteria.
@@ -2008,6 +2046,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param account_type: (Deprecated) Type of user account
         :type account_type: str, optional
+
+        :param extra_fields: List of additional fields to be included in the response.
+        :type extra_fields: List[str], optional
 
         :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
         :rtype: dict
@@ -2101,6 +2142,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             logger.warning(
                 "The 'account_type' parameter is deprecated. The result will not be filtered by account type. To filter received ProjectInfos, you could use the 'team_id' from the ProjectInfo object to get TeamInfo and check the account type."
             )
+        if extra_fields is not None:
+            request_body[ApiField.EXTRA_FIELDS] = extra_fields
 
         first_response = self._api.post(method, request_body).json()
 
@@ -2141,3 +2184,50 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
         _convert_entities(first_response)
         return first_response
+
+    def enable_embeddings(self, id: int, silent: bool = True) -> None:
+        """
+        Enable embeddings for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
+        :type silent: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: True, ApiField.SILENT: silent},
+        )
+
+    def disable_embeddings(self, id: int, silent: bool = True) -> None:
+        """
+        Disable embeddings for the project.
+
+        :param id: Project ID
+        :type id: int
+        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
+        :type silent: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
+        )
+
+    def set_embeddings_in_progress(self, id: int, in_progress: bool) -> None:
+        """
+        Set embeddings in progress status for the project.
+        :param id: Project ID
+        :type id: int
+        :param in_progress: Status to set. If True, embeddings are in progress right now.
+        :type in_progress: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        """
+        self._api.post(
+            "projects.embeddings-in-progress.update",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress},
+        )

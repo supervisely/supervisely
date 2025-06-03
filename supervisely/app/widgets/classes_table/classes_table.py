@@ -416,6 +416,8 @@ class ClassesTable(Widget):
             checkboxes = StateJson()[self.widget_id]["checkboxes"]
             if len(checkboxes) == 0:
                 checkboxes = [False] * len(self._table_data)
+            if i >= len(checkboxes):
+                continue
             if checkboxes[i]:
                 for col in line:
                     if col["name"] == "CLASS":
