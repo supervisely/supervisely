@@ -3,7 +3,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
@@ -27,7 +27,7 @@ class RunAppButton(Widget):
         icon_gap: Optional[int] = 5,
         available_in_offline: Optional[bool] = False,
         visible_by_vue_field: Optional[str] = "",
-        check_existing_task_cb: Optional[Callable] = None,
+        check_existing_task_cb: Optional[Callable] = "null",
         widget_id: Optional[str] = None,
     ):
         """
