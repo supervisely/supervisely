@@ -1,5 +1,3 @@
-import Vue from "vue";
-
 Vue.component("sly-run-app-button", {
 	props: {
 		publicApiInstance: { type: Function },

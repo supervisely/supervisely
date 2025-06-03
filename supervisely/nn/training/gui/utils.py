@@ -136,3 +136,26 @@ def get_module_info_by_name(api: Api, app_name: str) -> Union[Dict, None]:
         if module["name"] == app_name:
             app_info = api.app.get_info(module["id"])
             return app_info
+
+
+def generate_task_check_function_js(folder: str) -> str:
+    """
+    Returns JavaScript function code for checking existing tasks.
+
+    :param run_app_btn_widget: RunAppButton widget.
+    :type run_app_btn_widget: RunAppButton
+    :return: JavaScript function code for checking existing tasks.
+    :rtype: str
+    """
+    escaped_folder = folder.replace("'", "\\'")
+    js_code = f"""function(task) {{
+        if (!task || !task.meta || !task.meta.params || !task.meta.params.state) {{
+            return false;
+        }}
+        const taskFolder = task.meta.params.state.slyFolder;
+        if (!taskFolder || typeof taskFolder !== 'string') {{
+            return false;
+        }}
+        return taskFolder === '{escaped_folder}';
+    }}"""
+    return js_code

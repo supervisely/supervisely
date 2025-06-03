@@ -36,6 +36,7 @@ class TrainingLogs:
         self.display_widgets = []
         self.app_options = app_options
         api = Api.from_env()
+        team_id = sly_env.team_id()
 
         # GUI Components
         self.validator_text = Text("")
@@ -73,6 +74,7 @@ class TrainingLogs:
             module_info = gui_utils.get_module_info_by_name(api, app_name)
             if module_info is not None:
                 self.tensorboard_offline_button = RunAppButton(
+                    team_id=team_id,
                     workspace_id=workspace_id,
                     module_id=module_info["id"],
                     payload={},
