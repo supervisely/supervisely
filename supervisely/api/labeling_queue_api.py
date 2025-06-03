@@ -199,6 +199,7 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         allow_review_own_annotations: Optional[bool] = False,
         skip_complete_job_on_empty: Optional[bool] = False,
         enable_quality_check: Optional[bool] = None,
+        quality_check_user_ids: Optional[List[int]] = None,
     ) -> int:
         """
         Creates Labeling Queue and assigns given Users to it.
@@ -211,6 +212,8 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type collection_id: int, optional
         :param user_ids: User IDs in Supervisely to assign Users as labelers to Labeling Queue.
         :type user_ids: List[int]
+        :param reviewer_ids: User IDs in Supervisely to assign Users as reviewers to Labeling Queue.
+        :type reviewer_ids: List[int]
         :param readme: Additional information about Labeling Queue.
         :type readme: str, optional
         :param description: Description of Labeling Queue.
@@ -243,8 +246,16 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type disable_submit: bool, optional
         :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
         :type toolbox_settings: Dict, optional
+        :param hide_figure_author: If True, hides the author of the figure in the labeling tool.
+        :type hide_figure_author: bool, optional
+        :param allow_review_own_annotations: If True, allows labelers to review their own annotations.
+        :type allow_review_own_annotations: bool, optional
+        :param skip_complete_job_on_empty: If True, skips completing the Labeling Queue if there are no images to label.
+        :type skip_complete_job_on_empty: bool, optional
         :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Queue.
         :type enable_quality_check: bool, optional
+        :param quality_check_user_ids: List of User IDs in Supervisely to assign Users as Quality Checkers to Labeling Queue.
+        :type quality_check_user_ids: List[int], optional
         :return: Labeling Queue ID in Supervisely.
         :rtype: int
         :Usage example:
@@ -352,6 +363,10 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
         if enable_quality_check is not None:
+            if quality_check_user_ids is None:
+                raise RuntimeError(
+                    "quality_check_user_ids must be provided if enable_quality_check is True"
+                )
             meta.update({"enableIntermediateReview": enable_quality_check})
 
         queue_meta = {}
@@ -371,6 +386,13 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
             data[ApiField.DATASET_ID] = dataset_id
         if collection_id is not None:
             data[ApiField.COLLECTION_ID] = collection_id
+        if quality_check_user_ids is not None:
+            if enable_quality_check is not True:
+                raise RuntimeError(
+                    "quality_check_user_ids can be set only if enable_quality_check is True"
+                )
+            self._check_membership(quality_check_user_ids, data[ApiField.TEAM_ID])
+            data[ApiField.QUALITY_CHECK_USER_IDS] = quality_check_user_ids
 
         if len(queue_meta) > 0:
             data[ApiField.QUEUE_META] = queue_meta
