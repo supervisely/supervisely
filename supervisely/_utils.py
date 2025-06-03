@@ -585,4 +585,4 @@ def remove_non_printable(text: str) -> str:
     :return: String with non-printable characters removed
     :rtype: str
     """
-    return "".join(char for char in text if char.isprintable()).rstrip().lstrip()
+    return "".join(char for char in text if char.isprintable()).strip()
