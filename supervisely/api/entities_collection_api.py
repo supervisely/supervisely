@@ -535,7 +535,12 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             ]
         """
         items = [item.to_json() for item in items]
-        data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_ITEMS: items}
+        items_ids = [item[ApiField.ID] for item in items]
+        data = {
+            ApiField.COLLECTION_ID: id,
+            ApiField.ENTITY_ITEMS: items,
+            ApiField.ENTITY_IDS: items_ids,
+        }
         response = self._api.post("entities-collections.items.bulk.add", data)
         response = response.json()
         if len(response["missing"]) > 0:
