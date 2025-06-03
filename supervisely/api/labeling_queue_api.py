@@ -391,7 +391,6 @@ class LabelingQueueApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 raise RuntimeError(
                     "quality_check_user_ids can be set only if enable_quality_check is True"
                 )
-            self._check_membership(quality_check_user_ids, data[ApiField.TEAM_ID])
             data[ApiField.QUALITY_CHECK_USER_IDS] = quality_check_user_ids
 
         if len(queue_meta) > 0:
