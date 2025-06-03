@@ -3,11 +3,16 @@
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 import supervisely.io.env as sly_env
 import supervisely.io.env as env
 from supervisely.sly_logger import logger
+
+if TYPE_CHECKING:
+    from supervisely.api.api import Api
+    from supervisely.nn.experiments import ExperimentInfo
+    from supervisely.nn.model.model_api import ModelAPI
 
 
 class NeuralNetworkApi:
@@ -30,7 +35,7 @@ class NeuralNetworkApi:
         workspace_id: int = None,
         agent_id: int = None,
         **kwargs,
-    ) -> "ModelAPI":
+    ) -> ModelAPI:
         """
         Deploy a pretrained model or a custom model checkpoint in Supervisely platform.
         This method will start a new Serving App in Supervisely, deploy a given model, and return a `ModelAPI` object for running predictions and managing the model.
@@ -214,7 +219,7 @@ class NeuralNetworkApi:
             )
         return result
 
-    def get_experiment_info(self, task_id: int) -> "ExperimentInfo":
+    def get_experiment_info(self, task_id: int) -> ExperimentInfo:
         """
         Returns the experiment info of a finished training task by its task_id.
 
@@ -237,7 +242,7 @@ class NeuralNetworkApi:
     def connect(
         self,
         task_id: int,
-    ) -> "ModelAPI":
+    ) -> ModelAPI:
         """
         Connect to a running Serving App by its `task_id`. This allows you to make predictions and control the model state via API.
 
