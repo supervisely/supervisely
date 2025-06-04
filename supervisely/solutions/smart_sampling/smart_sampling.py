@@ -33,7 +33,41 @@ class SmartSampling(Widget):
     ):
         """
         Smart Sampling widget for Supervisely app.
-        :param project_id: int, ID of the project to sample from
+
+        :param project_id: ID of the project to sample from
+        :type project_id: int
+        :param x: x-coordinate for the widget position
+        :type x: int
+        :param y: y-coordinate for the widget position
+        :type y: int
+        :param random_sampling: Enable random sampling strategy
+        :type random_sampling: bool
+        :param diverse_sampling: Enable diverse sampling strategy
+        :type diverse_sampling: bool
+        :param ai_search_sampling: Enable AI Search sampling strategy
+        :type ai_search_sampling: bool
+        :param team_id: ID of the team to which the project belongs
+        :type team_id: int, optional
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely_utils import resize_image_url
+
+            api = sly.Api(server_address, token)
+
+            smart_sampling = sly.solutions.SmartSampling(
+                project_id=12345,
+                x=200,
+                y=300,
+                random_sampling=True,
+                diverse_sampling=True,
+                ai_search_sampling=True,
+                team_id=11111,
+            )
+            node = smart_sampling.node  # solution node block
         """
         self.project_id = project_id
         self.api = Api.from_env()
