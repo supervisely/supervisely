@@ -821,11 +821,8 @@ class TrainGUI:
             collection_ids = set()
             for collection in self._api.entities_collection.get_list(self.project_id):
                 collection_ids.add(collection.id)
-            missing_collections_ids = []
-            for collection_id in train_collections + val_collections:
-                if collection_id not in collection_ids:
-                    missing_collections_ids.append(collection_id)
-            if len(missing_collections_ids) > 0:
+            missing_collections_ids = set(train_collections + val_collections) - collection_ids
+            if missing_collections_ids:
                 missing_collections_text = ", ".join(
                     [str(collection_id) for collection_id in missing_collections_ids]
                 )
