@@ -97,8 +97,8 @@ class ProjectInfo(NamedTuple):
     import_settings: dict
     version: dict
     created_by_id: int
-    embeddings_enabled: bool = False
-    is_embeddings_updated: Optional[bool] = None
+    embeddings_enabled: Optional[bool] = None
+    embeddings_updated_at: Optional[str] = None
     embeddings_in_progress: Optional[bool] = None
 
     @property
@@ -148,7 +148,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         project_info = api.project.get_info_by_id(project_id)
     """
 
-    debug_messages_sent = {"get_list_versions": False, "get_list_embeddings": False}
+    debug_messages_sent = {"get_list_versions": False}
 
     @staticmethod
     def info_sequence():
@@ -201,7 +201,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.VERSION,
             ApiField.CREATED_BY_ID,
             ApiField.EMBEDDINGS_ENABLED,
-            ApiField.IS_EMBEDDINGS_UPDATED,
+            ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.EMBEDDINGS_IN_PROGRESS,
         ]
 
@@ -224,7 +224,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         workspace_id: int,
         filters: Optional[List[Dict[str, str]]] = None,
         fields: List[str] = [],
-        with_embeddings_info: bool = False,
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -238,8 +237,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type filters: List[dict], optional
         :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
         :type fields: List[str]
-        :param with_embeddings_info: If True, return Info about embeddings, e.g. `is_embeddings_updated`.
-        :type with_embeddings_info: bool, optional
 
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
         :rtype: :class: `List[ProjectInfo]`
@@ -327,20 +324,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 self.debug_messages_sent["get_list_versions"] = True
                 logger.debug(debug_message + "version. ")
 
-        if ApiField.IS_EMBEDDINGS_UPDATED in fields:
-            fields.remove(ApiField.IS_EMBEDDINGS_UPDATED)
-
         data = {
             ApiField.WORKSPACE_ID: workspace_id,
             ApiField.FILTER: filters or [],
             ApiField.FIELDS: fields,
         }
-
-        if with_embeddings_info:
-            data.update({ApiField.SHOW_EMBEDDINGS_UPDATED: True})
-        elif self.debug_messages_sent.get("get_list_embeddings", False) is False:
-            self.debug_messages_sent["get_list_embeddings"] = True
-            logger.debug(debug_message + "is_embeddings_updated. ")
 
         return self.get_list_all_pages(method, data)
 
@@ -349,7 +337,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         id: int,
         expected_type: Optional[str] = None,
         raise_error: bool = False,
-        with_embeddings_info: bool = False,
     ) -> ProjectInfo:
         """
         Get Project information by ID.
@@ -360,8 +347,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type expected_type: ProjectType, optional
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
-        :param with_embeddings_info: If True, return Info about embeddings, e.g. `is_embeddings_updated`.
-        :type with_embeddings_info: bool, optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
@@ -399,10 +384,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 
         """
-        fields = None
-        if with_embeddings_info:
-            fields = {ApiField.SHOW_EMBEDDINGS_UPDATED: True}
-        info = self._get_info_by_id(id, "projects.info", fields=fields)
+        info = self._get_info_by_id(id, "projects.info")
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
@@ -921,12 +903,48 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> ProjectInfo:
         """ """
-        res = super()._convert_json_info(info, skip_missing=skip_missing)
-        if res.reference_image_url is not None:
-            res = res._replace(reference_image_url=res.reference_image_url)
-        if res.items_count is None:
-            res = res._replace(items_count=res.images_count)
-        return ProjectInfo(**res._asdict())
+
+        def _get_value(dict, field_name, skip_missing):
+            if skip_missing is True:
+                return dict.get(field_name, None)
+            else:
+                return dict[field_name]
+
+        if info is None:
+            return None
+        else:
+            field_values = []
+            for field_name in self.info_sequence():
+                if type(field_name) is str:
+                    if field_name == ApiField.ITEMS_COUNT:
+                        field_value = _get_value(info, ApiField.ITEMS_COUNT, skip_missing)
+                        if field_value is None:
+                            field_value = _get_value(info, ApiField.IMAGES_COUNT, skip_missing)
+                        field_values.append(field_value)
+                    elif field_name == ApiField.EMBEDDINGS_IN_PROGRESS:
+                        # Extract embeddingsInProgress from nested meta.embeddings structure
+                        field_value = None
+                        meta = _get_value(info, ApiField.META, skip_missing)
+                        if meta is not None:
+                            embeddings = _get_value(meta, ApiField.EMBEDDINGS, skip_missing)
+                            if embeddings is not None:
+                                field_value = _get_value(
+                                        embeddings, ApiField.EMBEDDINGS_IN_PROGRESS, skip_missing)
+                        field_values.append(field_value)
+                    else:
+                        field_values.append(_get_value(info, field_name, skip_missing))
+                elif type(field_name) is tuple:
+                    value = None
+                    for sub_name in field_name[0]:
+                        if value is None:
+                            value = _get_value(info, sub_name, skip_missing)
+                        else:
+                            value = _get_value(value, sub_name, skip_missing)
+                    field_values.append(value)
+                else:
+                    raise RuntimeError("Can not parse field {!r}".format(field_name))
+
+            return self.InfoType(*field_values)
 
     def get_stats(self, id: int) -> Dict:
         """
@@ -2223,4 +2241,41 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post(
             "projects.embeddings-in-progress.update",
             {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress},
+        )
+
+    def set_embeddings_updated_at(
+        self, id: int, timestamp: Optional[str] = None, silent: bool = True
+    ) -> None:
+        """
+        Set the timestamp when embeddings were last updated for the project.
+        If no timestamp is provided, uses the current UTC time.
+
+        :param id: Project ID
+        :type id: int
+        :param timestamp: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffffZ). If None, current UTC time is used.
+        :type timestamp: Optional[str]
+        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
+        :type silent: bool
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+
+            api = sly.Api.from_env()
+            project_id = 123
+
+            # Set current time as embeddings update timestamp
+            api.project.set_embeddings_updated_at(project_id)
+
+            # Set specific timestamp
+            api.project.set_embeddings_updated_at(project_id, "2025-06-01T10:30:45.123456Z")
+        """
+        if timestamp is None:
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+        self._api.post(
+            "projects.editInfo",
+            {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp, ApiField.SILENT: silent},
         )
