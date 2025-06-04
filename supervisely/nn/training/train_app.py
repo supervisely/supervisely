@@ -9,7 +9,8 @@ import shutil
 import subprocess
 from datetime import datetime
 from os import getcwd, listdir, walk
-from os.path import basename, exists, expanduser, isdir, isfile, join
+from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
+from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -57,6 +58,7 @@ from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
+from supervisely.nn.training.gui.utils import generate_task_check_function_js
 from supervisely.nn.training.loggers import setup_train_logger, train_logger
 from supervisely.nn.utils import ModelSource, _get_model_name
 from supervisely.output import set_directory
@@ -128,7 +130,7 @@ class TrainApp:
                 self._app_name = "custom-app"
             self.task_id = sly_env.task_id(raise_not_found=False)
             if self.task_id is None:
-                self.task_id = "debug-session"
+                self.task_id = -1
             logger.info("TrainApp is running in debug mode")
 
         self.framework_name = framework_name
@@ -206,15 +208,40 @@ class TrainApp:
         def _train_from_api(response: Response, request: Request):
             try:
                 state = request.state.state
+                wait = state.get("wait", True)
                 app_state = state["app_state"]
                 self.gui.load_from_app_state(app_state)
 
-                self._wrapped_start_training()
+                if wait:
+                    self._wrapped_start_training()
+                else:
+                    import threading
+
+                    training_thread = threading.Thread(
+                        target=self._wrapped_start_training,
+                        daemon=True,
+                    )
+                    training_thread.start()
+                    return {"result": "model training started"}
 
                 return {"result": "model was successfully trained"}
             except Exception as e:
                 self.gui.training_process.start_button.loading = False
                 raise e
+
+        # # Get training status
+        # @self._server.post("/train_status")
+        # def _train_status(response: Response, request: Request):
+        #     """Returns the current training status."""
+        #     status = self.gui.training_process.validator_text.get_value()
+        #     if status == "Training is in progress...":
+        #         try:
+        #             total_epochs = self.progress_bar_main.total
+        #             current_epoch = self.progress_bar_main.current
+        #             status += f" (Epoch {current_epoch}/{total_epochs})"
+        #         except Exception:
+        #             pass
+        #     return {"status": status}
 
     def _register_routes(self):
         """
@@ -580,7 +607,7 @@ class TrainApp:
 
         # Step 6. Upload artifacts
         self._set_text_status("uploading")
-        remote_dir, file_info = self._upload_artifacts()
+        remote_dir, session_link_file_info = self._upload_artifacts()
 
         # Step 7. [Optional] Run Model Benchmark
         mb_eval_lnk_file_info, mb_eval_report = None, None
@@ -650,12 +677,35 @@ class TrainApp:
 
         # Step 10. Set output widgets
         self._set_text_status("reset")
-        self._set_training_output(experiment_info, remote_dir, file_info, mb_eval_report)
+        self._set_training_output(
+            experiment_info, remote_dir, session_link_file_info, mb_eval_report
+        )
         self._set_ws_progress_status("completed")
 
         # Step 11. Workflow output
         if is_production():
-            self._workflow_output(remote_dir, file_info, mb_eval_lnk_file_info, mb_eval_report_id)
+            best_checkpoint_file_info = self._get_best_checkpoint_info(experiment_info, remote_dir)
+            self._workflow_output(
+                remote_dir, best_checkpoint_file_info, mb_eval_lnk_file_info, mb_eval_report_id
+            )
+
+    def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
+        """
+        Returns the best checkpoint info.
+
+        :param experiment_info: Experiment info.
+        :type experiment_info: dict
+        :param remote_dir: Remote directory.
+        :type remote_dir: str
+        :return: Best checkpoint info.
+        :rtype: FileInfo
+        """
+        best_checkpoint_name = experiment_info.get("best_checkpoint")
+        remote_best_checkpoint_path = join(remote_dir, "checkpoints", best_checkpoint_name)
+        best_checkpoint_file_info = self._api.file.get_info_by_path(
+            self.team_id, remote_best_checkpoint_path
+        )
+        return best_checkpoint_file_info
 
     def register_inference_class(
         self, inference_class: Inference, inference_settings: Union[str, dict] = None
@@ -686,6 +736,8 @@ class TrainApp:
         """
         Returns the current state of the application.
 
+        :param experiment_info: Experiment info.
+        :type experiment_info: dict
         :return: Application state.
         :rtype: dict
         """
@@ -747,6 +799,27 @@ class TrainApp:
             }
         """
         self.gui.load_from_app_state(app_state)
+
+    def add_output_files(self, paths: List[str]) -> None:
+        """
+        Copies files or directories to the output directory, which will be uploaded to the team files upon training completion.
+        If path is a file, it will be uploaded to the root artifacts directory.
+        If path is a directory, it will be uploded to the root artifacts directory with the same directory name and structure.
+
+        :param paths: List of paths to files or directories to be copied to the output directory.
+        :type paths: List[str]
+        :return: None
+        :rtype: None
+        """
+
+        for path in paths:
+            if sly_fs.file_exists(path):
+                shutil.copyfile(path, join(self.output_dir, sly_fs.get_file_name_with_ext(path)))
+            elif sly_fs.dir_exists(path):
+                shutil.copytree(path, join(self.output_dir, basename(path)))
+            else:
+                logger.warning(f"Provided path: '{path}' does not exist. Skipping...")
+                continue
 
     # Loaders
     def _load_models(self, models: Union[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
@@ -1549,7 +1622,7 @@ class TrainApp:
         logger.debug(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
         with self.progress_bar_main(
-            message=message, total=total_size, unit="bytes", unit_scale=True
+            message=message, total=total_size, unit="B", unit_scale=True, unit_divisor=1024
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             file_info = self._api.file.upload(
@@ -1774,8 +1847,9 @@ class TrainApp:
         with self.progress_bar_main(
             message="Uploading demo files to Team Files",
             total=total_size,
-            unit="bytes",
+            unit="B",
             unit_scale=True,
+            unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory_fast(
@@ -1821,6 +1895,13 @@ class TrainApp:
                     "val_datasets": self.gui.train_val_splits_selector.train_val_splits.get_val_dataset_ids(),
                 }
             )
+        elif split_method == "Based on collections":
+            train_val_splits.update(
+                {
+                    "train_collections": self.gui.train_val_splits_selector.get_train_collection_ids(),
+                    "val_collections": self.gui.train_val_splits_selector.get_val_collection_ids(),
+                }
+            )
         return train_val_splits
 
     def _get_model_config_for_app_state(self, experiment_info: Dict = None) -> Dict:
@@ -1863,7 +1944,7 @@ class TrainApp:
             f"Uploading artifacts directory: '{self.output_dir}' to Supervisely Team Files directory '{remote_artifacts_dir}'"
         )
         # Clean debug directory if exists
-        if task_id == "debug-session":
+        if task_id == -1:
             if self._api.file.dir_exists(self.team_id, f"{remote_artifacts_dir}/", True):
                 with self.progress_bar_main(
                     message=f"[Debug] Cleaning train artifacts: '{remote_artifacts_dir}/'",
@@ -1888,8 +1969,9 @@ class TrainApp:
         with self.progress_bar_main(
             message="Uploading train artifacts to Team Files",
             total=total_size,
-            unit="bytes",
+            unit="B",
             unit_scale=True,
+            unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             remote_dir = self._api.file.upload_directory_fast(
@@ -1901,12 +1983,17 @@ class TrainApp:
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
+
         # Set offline tensorboard button payload
         if is_production():
-            self.gui.training_logs.tensorboard_offline_button.payload = {
-                "state": {"slyFolder": f"{join(remote_dir, 'logs')}"}
-            }
+            remote_log_dir = join(remote_dir, "logs")
+            tb_btn_payload = {"state": {"slyFolder": remote_log_dir}}
+            self.gui.training_logs.tensorboard_offline_button.payload = tb_btn_payload
+            self.gui.training_logs.tensorboard_offline_button.set_check_existing_task_cb(
+                generate_task_check_function_js(remote_log_dir)
+            )
             self.gui.training_logs.tensorboard_offline_button.enable()
+
         return remote_dir, file_info
 
     def _set_training_output(
@@ -2055,7 +2142,7 @@ class TrainApp:
         ]
         task_type = experiment_info["task_type"]
         if task_type not in supported_task_types:
-            logger.warn(
+            logger.warning(
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
@@ -2095,6 +2182,7 @@ class TrainApp:
                 "model_meta": model_meta.to_json(),
                 "task_type": task_type,
             }
+            self._benchmark_params["without_workflow"] = True
 
             logger.info(f"Deploy parameters: {self._benchmark_params}")
 
@@ -2162,16 +2250,19 @@ class TrainApp:
                 raise ValueError(f"Task type: '{task_type}' is not supported for Model Benchmark")
 
             if self._has_splits_selector:
+                app_session_id = self.task_id
+                if app_session_id == -1:
+                    app_session_id = None
                 if self.gui.train_val_splits_selector.get_split_method() == "Based on datasets":
                     train_info = {
-                        "app_session_id": self.task_id,
+                        "app_session_id": app_session_id,
                         "train_dataset_ids": train_dataset_ids,
                         "train_images_ids": None,
                         "images_count": len(self._train_split),
                     }
                 else:
                     train_info = {
-                        "app_session_id": self.task_id,
+                        "app_session_id": app_session_id,
                         "train_dataset_ids": None,
                         "train_images_ids": train_images_ids,
                         "images_count": len(self._train_split),
@@ -2223,6 +2314,25 @@ class TrainApp:
 
         except Exception as e:
             logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
+            pred_error_message = (
+                "Not found any predictions. Please make sure that your model produces predictions."
+            )
+            if isinstance(e, ValueError) and str(e) == pred_error_message:
+                self.gui.training_artifacts.model_benchmark_fail_text.set(
+                    "The Model Evaluation report cannot be generated: The model is not making predictions. "
+                    "This indicates that your model may not have trained successfully or is underfitted. "
+                    "You can try increasing the number of epochs or adjusting the hyperparameters more carefully.",
+                    "warning",
+                )
+
+            lnk_file_info, report, report_id, eval_metrics, primary_metric_name = (
+                None,
+                None,
+                None,
+                {},
+                None,
+            )
+
             self._set_text_status("finalizing")
             self.progress_bar_main.hide()
             self.progress_bar_secondary.hide()
@@ -2288,6 +2398,14 @@ class TrainApp:
     ):
         """
         Adds the output data to the workflow.
+
+        :param team_files_dir: Team files directory.
+        :type team_files_dir: str
+        :param file_info: FileInfo of the best checkpoint.
+        :type file_info: FileInfo
+        :param model_benchmark_report: FileInfo of the model benchmark report link (.lnk).
+        :type model_benchmark_report: Optional[FileInfo]
+        :param model_benchmark_report_id: Model benchmark report ID.
         """
         try:
             module_id = (
@@ -2310,7 +2428,7 @@ class TrainApp:
 
             if file_info:
                 relation_settings = WorkflowSettings(
-                    title="Train Artifacts",
+                    title="Checkpoints",
                     icon="folder",
                     icon_color="#FFA500",
                     icon_bg_color="#FFE8BE",
@@ -2321,7 +2439,10 @@ class TrainApp:
                     relation_settings=relation_settings, node_settings=node_settings
                 )
                 logger.debug(f"Workflow Output: meta \n    {meta}")
-                self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
+                # self._api.app.workflow.add_output_file(file_info, model_weight=True, meta=meta)
+
+                remote_checkpoint_dir = dirname(file_info.path)
+                self._api.app.workflow.add_output_folder(remote_checkpoint_dir, meta=meta)
             else:
                 logger.debug(
                     f"File with checkpoints not found in Team Files. Cannot set workflow output."
@@ -2370,13 +2491,14 @@ class TrainApp:
             logger.debug("Tensorboard server is already running")
             return
         self._register_routes()
+
         args = [
             "tensorboard",
             "--logdir",
             self.log_dir,
             "--host=localhost",
             f"--port={self._tensorboard_port}",
-            "--load_fast=true",
+            "--load_fast=auto",
             "--reload_multifile=true",
         ]
         self._tensorboard_process = subprocess.Popen(args)
@@ -2522,6 +2644,13 @@ class TrainApp:
             self._set_ws_progress_status("finalizing")
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
+
+            # Shutdown the app after training is finished
+
+            self.gui.training_logs.tensorboard_button.hide()
+            self.gui.training_logs.tensorboard_offline_button.show()
+            sleep(1)  # wait for the button to be shown
+            self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
@@ -2706,6 +2835,7 @@ class TrainApp:
             total=size,
             unit="B",
             unit_scale=True,
+            unit_divisor=1024,
         ) as export_upload_main_pbar:
             logger.debug(f"Uploading {len(export_weights)} export weights of size {size} bytes")
             logger.debug(f"Destination paths: {file_dest_paths}")

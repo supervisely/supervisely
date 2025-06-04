@@ -575,3 +575,14 @@ def removesuffix(string, suffix):
     if string.endswith(suffix):
         return string[: -len(suffix)]
     return string
+
+
+def remove_non_printable(text: str) -> str:
+    """Remove non-printable characters from a string.
+
+    :param text: Input string
+    :type text: str
+    :return: String with non-printable characters removed
+    :rtype: str
+    """
+    return "".join(char for char in text if char.isprintable()).strip()

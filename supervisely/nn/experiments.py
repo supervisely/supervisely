@@ -207,7 +207,8 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
                 f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
             )
             return None
-        return ExperimentInfo(**{k: v for k, v in response_json.items() if k in required_fields})
+        all_fields = required_fields | optional_fields
+        return ExperimentInfo(**{k: v for k, v in response_json.items() if k in all_fields})
     except requests.exceptions.RequestException as e:
         logger.debug(f"Request failed for '{experiment_path}': {e}")
     except JSONDecodeError as e:

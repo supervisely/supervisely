@@ -611,9 +611,20 @@ class Inference:
             deploy_params = {}
         selected_model = None
         for model in self.pretrained_models:
-            if model["meta"]["model_name"].lower() == model_name.lower():
-                selected_model = model
-                break
+            model_meta = model.get("meta")
+            if model_meta is not None:
+                model_name = model_meta.get("model_name")
+                if model_name is not None:
+                    if model_name.lower() == model_name.lower():
+                        selected_model = model
+                        break
+                else:
+                    model_name = model.get("model_name")
+                    if model_name is not None:
+                        if model_name.lower() == model_name.lower():
+                            selected_model = model
+                            break
+
         if selected_model is None:
             raise ValueError(f"Model {model_name} not found in models.json of serving app")
         deploy_params["model_files"] = selected_model["meta"]["model_files"]
@@ -657,11 +668,11 @@ class Inference:
                     export = {}
                 export_model = export.get(deploy_params["runtime"], None)
                 if export_model is not None:
-                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
-                        deploy_params["model_files"]["checkpoint"]
-                    ):
+                    checkpoint = deploy_params["model_files"]["checkpoint"]
+                    artifacts_dir = deploy_params["model_info"]["artifacts_dir"].rstrip("/")
+                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(checkpoint):
                         deploy_params["model_files"]["checkpoint"] = (
-                            deploy_params["model_info"]["artifacts_dir"] + export_model
+                            artifacts_dir + "/" + export_model
                         )
                         logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
             return self._download_custom_model(deploy_params["model_files"], log_progress)
@@ -878,9 +889,15 @@ class Inference:
 
         try:
             if is_production():
-                self._add_workflow_input(model_source, model_files, model_info)
+                without_workflow = deploy_params.get("without_workflow", False)
+                if without_workflow is False:
+                    self._add_workflow_input(model_source, model_files, model_info)
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
+
+        # remove is_benchmark from deploy_params
+        if "without_workflow" in deploy_params:
+            deploy_params.pop("without_workflow")
 
         self._load_model(deploy_params)
         if self._model_meta is None:
@@ -2604,7 +2621,7 @@ class Inference:
                 inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file.size)
 
                 img_bytes = b""
-                while buf := file.read(64 * 1024 * 1024):
+                while buf := file.file.read(64 * 1024 * 1024):
                     img_bytes += buf
                     inference_request.done(len(buf))
 
@@ -3709,17 +3726,20 @@ class Inference:
             )
 
         app_name = sly_env.app_name()
-        meta = WorkflowMeta(node_settings=WorkflowSettings(title=f"Serve {app_name}"))
+        meta = WorkflowMeta(node_settings=WorkflowSettings(title=app_name))
 
         logger.debug(
             f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}"
         )
-        if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
-            self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-        else:
-            logger.debug(
-                f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
-            )
+        if model_source == ModelSource.CUSTOM:
+            if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
+                # self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+                remote_checkpoint_dir = os.path.dirname(checkpoint_url)
+                self.api.app.workflow.add_input_folder(remote_checkpoint_dir, meta=meta)
+            else:
+                logger.debug(
+                    f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
+                )
 
 
 def _exclude_duplicated_predictions(
