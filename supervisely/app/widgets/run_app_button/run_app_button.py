@@ -3,7 +3,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from typing import Callable, Optional
+from typing import Optional
 
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
