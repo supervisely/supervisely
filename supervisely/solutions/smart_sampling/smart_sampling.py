@@ -56,7 +56,7 @@ class SmartSampling(Widget):
 
         super().__init__(widget_id=widget_id, file_path=__file__)
         self.diff_num = self.get_differences_count()
-        self.set_differences_count(self.diff_num)
+        self.save_differences_count(self.diff_num)
 
         # callback to be called when sampling ends (e.g., copy images or mark as sampled)
         self._sampling_end_callback = None
@@ -124,143 +124,6 @@ class SmartSampling(Widget):
         """
 
         return {}
-
-    def set_differences_count(self, count: int):
-        """
-        Set the differences count in the DataJson.
-        :param count: int, number of differences
-        """
-        if count < 0:
-            raise ValueError("Differences count cannot be negative.")
-        self.diff_num = count
-        StateJson()[self.widget_id]["differences_count"] = self.diff_num
-        StateJson().send_changes()
-
-    def get_differences_count(self) -> int:
-        src_datasets = self.api.dataset.get_list(self.project_id, recursive=True)
-        sampled_items = self.get_sampled_images()
-
-        total_differences = 0
-        for ds_info in src_datasets:
-            total_differences += ds_info.items_count
-            total_differences -= len(sampled_items.get(ds_info.id, []))
-
-        self.set_differences_count(total_differences)
-        return total_differences
-
-    def get_sampled_images_full(self) -> dict:
-        """
-        Get sampled images from the DataJson.
-        :return: dict with sampled images
-        """
-        return DataJson()[self.widget_id].get("sampled_images", {})
-
-    def get_sampled_images(self) -> Dict[int, List[int]]:
-        """
-        Get sampled images from the DataJson.
-        :return: dict with dataset ID as key and list of ImageInfo as value
-        """
-        sampled_images = self.get_sampled_images_full()
-        if not sampled_images:
-            return {}
-
-        images = {}
-        for _, items in sampled_images.items():
-            for ds_id, item_ids in items.items():
-                if ds_id not in images:
-                    images[ds_id] = []
-                images[ds_id].extend(item_ids)
-
-        return images
-
-    def add_sampled_images(self, sampling_task: str, images: Dict[int, List[ImageInfo]]):
-        """
-        Add sampled images to the DataJson.
-        :param sampling_task: ID of the sampling task
-        :type sampling_task: int
-        :param images: dict with dataset ID as key and list of ImageInfo as value
-        :type images: Dict[int, List[ImageInfo]]
-        """
-        if "sampled_images" not in DataJson()[self.widget_id]:
-            DataJson()[self.widget_id]["sampled_images"] = {}
-        flattened_images = {}
-        for ds_id, img_list in images.items():
-            flattened_images[ds_id] = [img.id for img in img_list]
-        DataJson()[self.widget_id]["sampled_images"][sampling_task] = flattened_images
-        DataJson().send_changes()
-
-    def get_sampling_tasks(self) -> List[dict]:
-        """
-        Get the sampling history from the DataJson.
-        :return: list of dictionaries with sampling history
-        """
-        return DataJson()[self.widget_id].get("sampling_history", [])
-
-    def add_samling_task(self, task_details: dict):
-        """
-        Add a sampling task_details to the DataJson.
-        :param task_details: dict with sampling task details
-        """
-        if "sampling_history" not in DataJson()[self.widget_id]:
-            DataJson()[self.widget_id]["sampling_history"] = []
-        if not isinstance(task_details, dict):
-            raise TypeError("Task must be a dictionary.")
-
-        for key in ["mode", "status", "timestamp", "items_count", "sampling_id", "settings"]:
-            if key not in task_details:
-                raise ValueError(f"Sampling History Item must contain '{key}' key.")
-
-        DataJson()[self.widget_id]["sampling_history"].append(task_details)
-        DataJson().send_changes()
-
-    def get_sample_settings(self) -> SamplingSettings:
-        """
-        Get the sample settings from the UI.
-        :return: dict with sample settings
-        """
-        mode = self._sampling_tabs.get_active_tab()
-        data = {"mode": mode}
-        if mode == "Random" and self._has_random_sampling:
-            data["sample_size"] = self._random_input.get_value()
-        elif mode == "Diverse" and self._has_diverse_sampling:
-            data["sample_size"] = self._diverse_input.get_value()
-            data["diversity_mode"] = "centroids"
-        elif mode == "AI Search" and self._has_ai_search_sampling:
-            data["prompt"] = self._ai_search_input.get_value()
-            data["limit"] = self._ai_search_limit_input.get_value()
-            data["threshold"] = self._ai_search_thrs_input.get_value()
-        self.save_sample_settings(data)
-        return data
-
-    def save_sample_settings(self, settings: dict):
-        """
-        Set the sample settings in the UI.
-        :param settings: dict with sample settings
-        """
-        if not isinstance(settings, dict):
-            raise TypeError("Settings must be a dictionary.")
-        if "mode" not in settings:
-            raise ValueError("Settings must contain 'mode' key.")
-
-        validate_keys = {
-            "Random": ["sample_size"],
-            "Diverse": ["sample_size"],
-            "AI Search": ["prompt", "limit", "threshold"],
-        }
-
-        if settings["mode"] not in validate_keys:
-            raise ValueError(
-                f"Invalid mode: {settings['mode']}. Must be one of {list(validate_keys.keys())}."
-            )
-        for key in validate_keys[settings["mode"]]:
-            if key not in settings:
-                raise ValueError(
-                    f"Settings for mode '{settings['mode']}' must contain '{key}' key."
-                )
-
-        StateJson()[self.widget_id]["sampling_settings"] = settings
-        StateJson().send_changes()
-        # self.update_sampling_widgets()
 
     def _create_settings_modal(self) -> Widget:
         self._preview_btn = w.Button("Preview", icon="zmdi zmdi-eye", plain=True)
@@ -569,20 +432,162 @@ class SmartSampling(Widget):
         self._create_automate_modal()
         self._create_card()
 
-    @staticmethod
-    def _get_interval_period(sec):
-        if sec is None:
-            return None, None
-        if sec // 60 < 60:
-            period = "min"
-            interval = sec // 60
-        elif sec // 3600 < 24:
-            period = "h"
-            interval = sec // 3600
+    def get_differences_count(self) -> int:
+        src_datasets = self.api.dataset.get_list(self.project_id, recursive=True)
+        sampled_items = self.get_sampled_images()
+
+        total_differences = 0
+        for ds_info in src_datasets:
+            total_differences += ds_info.items_count
+            total_differences -= len(sampled_items.get(ds_info.id, []))
+
+        self.save_differences_count(total_differences)
+        return total_differences
+
+    def save_differences_count(self, count: int):
+        """
+        Set the differences count in the DataJson.
+        :param count: int, number of differences
+        """
+        if count < 0:
+            raise ValueError("Differences count cannot be negative.")
+        self.diff_num = count
+        StateJson()[self.widget_id]["differences_count"] = self.diff_num
+        StateJson().send_changes()
+
+    def _get_sampled_images(self) -> dict:
+        """
+        Get sampled images from the DataJson.
+        :return: dict with sampled images
+        """
+        return DataJson()[self.widget_id].get("sampled_images", {})
+
+    def get_sampled_images(self) -> Dict[int, List[int]]:
+        """
+        Get sampled images from the DataJson.
+        :return: dict with dataset ID as key and list of ImageInfo as value
+        """
+        sampled_images = self._get_sampled_images()
+        if not sampled_images:
+            return {}
+
+        images = {}
+        for _, items in sampled_images.items():
+            for ds_id, item_ids in items.items():
+                if ds_id not in images:
+                    images[ds_id] = []
+                images[ds_id].extend(item_ids)
+
+        return images
+
+    def save_sampled_images(self, sampling_task: str, images: Dict[int, List[ImageInfo]]):
+        """
+        Add sampled images to the DataJson.
+        :param sampling_task: ID of the sampling task
+        :type sampling_task: int
+        :param images: dict with dataset ID as key and list of ImageInfo as value
+        :type images: Dict[int, List[ImageInfo]]
+        """
+        if "sampled_images" not in DataJson()[self.widget_id]:
+            DataJson()[self.widget_id]["sampled_images"] = {}
+        flattened_images = {}
+        for ds_id, img_list in images.items():
+            flattened_images[ds_id] = [img.id for img in img_list]
+        DataJson()[self.widget_id]["sampled_images"][sampling_task] = flattened_images
+        DataJson().send_changes()
+
+    def get_sampling_tasks(self) -> List[dict]:
+        """
+        Get the sampling history from the DataJson.
+        :return: list of dictionaries with sampling history
+        """
+        return DataJson()[self.widget_id].get("sampling_history", [])
+
+    def add_sampling_task(self, task_details: dict):
+        """
+        Add a sampling task_details to the DataJson.
+        :param task_details: dict with sampling task details
+        """
+        if "sampling_history" not in DataJson()[self.widget_id]:
+            DataJson()[self.widget_id]["sampling_history"] = []
+        if not isinstance(task_details, dict):
+            raise TypeError("Task must be a dictionary.")
+
+        for key in ["mode", "status", "timestamp", "items_count", "sampling_id", "settings"]:
+            if key not in task_details:
+                raise ValueError(f"Sampling History Item must contain '{key}' key.")
+
+        DataJson()[self.widget_id]["sampling_history"].append(task_details)
+        DataJson().send_changes()
+
+    def get_sample_settings(self) -> SamplingSettings:
+        """
+        Get the sample settings from the UI.
+        :return: dict with sample settings
+        """
+        mode = self._sampling_tabs.get_active_tab()
+        data = {"mode": mode}
+        if mode == "Random" and self._has_random_sampling:
+            data["sample_size"] = self._random_input.get_value()
+        elif mode == "Diverse" and self._has_diverse_sampling:
+            data["sample_size"] = self._diverse_input.get_value()
+            data["diversity_mode"] = "centroids"
+        elif mode == "AI Search" and self._has_ai_search_sampling:
+            data["prompt"] = self._ai_search_input.get_value()
+            data["limit"] = self._ai_search_limit_input.get_value()
+            data["threshold"] = self._ai_search_thrs_input.get_value()
+        self.save_sample_settings(data)
+        return data
+
+    def save_sample_settings(self, settings: dict):
+        """
+        Set the sample settings in the UI.
+        :param settings: dict with sample settings
+        """
+        if not isinstance(settings, dict):
+            raise TypeError("Settings must be a dictionary.")
+        if "mode" not in settings:
+            raise ValueError("Settings must contain 'mode' key.")
+
+        validate_keys = {
+            "Random": ["sample_size"],
+            "Diverse": ["sample_size"],
+            "AI Search": ["prompt", "limit", "threshold"],
+        }
+
+        if settings["mode"] not in validate_keys:
+            raise ValueError(
+                f"Invalid mode: {settings['mode']}. Must be one of {list(validate_keys.keys())}."
+            )
+        for key in validate_keys[settings["mode"]]:
+            if key not in settings:
+                raise ValueError(
+                    f"Settings for mode '{settings['mode']}' must contain '{key}' key."
+                )
+
+        StateJson()[self.widget_id]["sampling_settings"] = settings
+        StateJson().send_changes()
+        # self.update_sampling_widgets()
+
+    def get_automation_details(self):
+        enabled = self._automate_checkbox.is_checked()
+        period = self._automate_period_select.get_value()
+        interval = self._automate_input.get_value()
+
+        if not enabled:
+            return False, None, None, None
+
+        if period == "h":
+            sec = interval * 60 * 60
+        elif period == "d":
+            sec = interval * 60 * 60 * 24
         else:
-            period = "d"
-            interval = sec // 86400
-        return period, interval
+            sec = interval * 60
+        if sec == 0:
+            return False, None, None, None
+        period, interval = self._get_interval_period(sec)
+        self.save_automation_details(enabled, sec)
+        return enabled, period, interval, sec
 
     def save_automation_details(self, enabled: bool, sec: int):
         """
@@ -612,26 +617,6 @@ class SmartSampling(Widget):
         }
         StateJson().send_changes()
 
-    def get_automation_details(self):
-        enabled = self._automate_checkbox.is_checked()
-        period = self._automate_period_select.get_value()
-        interval = self._automate_input.get_value()
-
-        if not enabled:
-            return False, None, None, None
-
-        if period == "h":
-            sec = interval * 60 * 60
-        elif period == "d":
-            sec = interval * 60 * 60 * 24
-        else:
-            sec = interval * 60
-        if sec == 0:
-            return False, None, None, None
-        period, interval = self._get_interval_period(sec)
-        self.save_automation_details(enabled, sec)
-        return enabled, period, interval, sec
-
     def show_automation_info(self, enabled, sec):
         period, interval = self._get_interval_period(sec)
         if enabled is True:
@@ -641,7 +626,7 @@ class SmartSampling(Widget):
             self.card.hide_automation_badge()
             self.card.remove_property_by_key("Run every")
 
-    def set_automation_details(self, enabled, sec):
+    def update_automation_widgets(self, enabled, sec):
         if enabled:
             self._automate_checkbox.check()
         else:
@@ -702,6 +687,21 @@ class SmartSampling(Widget):
         else:
             self.card.update_badge_by_key("Difference:", str(diff), "info")
         self.card.update_property("Difference:", str(diff))
+
+    @staticmethod
+    def _get_interval_period(sec):
+        if sec is None:
+            return None, None
+        if sec // 60 < 60:
+            period = "min"
+            interval = sec // 60
+        elif sec // 3600 < 24:
+            period = "h"
+            interval = sec // 3600
+        else:
+            period = "d"
+            interval = sec // 86400
+        return period, interval
 
     def sample(
         self, dst_project_id: int, settings: Optional[SamplingSettings] = None
@@ -821,6 +821,6 @@ class SmartSampling(Widget):
             "status": status,
         }
 
-        self.add_samling_task(history_item)
+        self.add_sampling_task(history_item)
         if items is not None:
-            self.add_sampled_images(sampling_id, items)
+            self.save_sampled_images(sampling_id, items)
