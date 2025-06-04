@@ -2613,6 +2613,9 @@ class TrainApp:
             self.gui.training_process.start_button.loading = False
 
             # Shutdown the app after training is finished
+
+            self.gui.training_logs.tensorboard_button.hide()
+            self.gui.training_logs.tensorboard_offline_button.show()
             self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
