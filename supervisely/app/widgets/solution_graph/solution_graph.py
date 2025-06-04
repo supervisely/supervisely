@@ -4,7 +4,7 @@ from supervisely.app.widgets import Widget
 from supervisely.app.widgets_context import JinjaWidgets
 
 
-class SolutionsGraph(Widget):
+class SolutionGraph(Widget):
     """
     A widget for displaying a flow diagram with nodes and connections.
 
@@ -18,16 +18,16 @@ class SolutionsGraph(Widget):
     import supervisely_lib as sly
     import supervisely.app.widgets as w
 
-    node_1 = w.SolutionsGraph.Node(
+    node_1 = w.SolutionGraph.Node(
         x=50, y=50, content=w.Card(content=w.Text("This flow processes images using AI."))
     )
 
-    node_2 = w.SolutionsGraph.Node(
+    node_2 = w.SolutionGraph.Node(
         x=200, y=200, content=w.Card("Node 2", content=w.Text("This flow processes images using AI."))
     )
 
     btn = w.Button("Start", button_size="mini")
-    node_3 = w.SolutionsGraph.Node(x=20, y=500, content=btn)
+    node_3 = w.SolutionGraph.Node(x=20, y=500, content=btn)
 
 
     nodes = [node_1, node_2, node_3]
@@ -35,7 +35,7 @@ class SolutionsGraph(Widget):
         node_1.widget_id: [node_2.widget_id, node_3.widget_id],
         node_2.widget_id: [node_3.widget_id],
     }
-    flow_diagram = w.SolutionsGraph(nodes=nodes, connections=connections)
+    flow_diagram = w.SolutionGraph(nodes=nodes, connections=connections)
 
     layout = w.Container([flow_diagram])
     app = sly.Application(layout=layout)
@@ -121,7 +121,7 @@ class SolutionsGraph(Widget):
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "1"] = arrow_line
         leader_line = "https://cdn.jsdelivr.net/npm/leader-line@1.0.7/leader-line.min.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__ + "2"] = leader_line
-        script_path = "./sly/css/app/widgets/solutions_graph/script.js"
+        script_path = "./sly/css/app/widgets/solution_graph/script.js"
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
     def get_json_data(self):

@@ -1,13 +1,14 @@
 from copy import deepcopy
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
-from supervisely.api.api import Api
-from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson, StateJson
 from supervisely.app.widgets import Widget
 
 
-class SolutionsProject(Widget):
+class SolutionCard(Widget):
+
+    class Routes:
+        CLICK = "solution_card_clicked_cb"
 
     class Badge:
 
@@ -16,6 +17,7 @@ class SolutionsProject(Widget):
             label: str,
             on_hover: str = None,
             badge_type: Literal["info", "success", "warning", "error"] = "info",
+            plain: bool = False,
         ):
             self._label = label
             self._on_hover = on_hover
@@ -24,6 +26,7 @@ class SolutionsProject(Widget):
                     "badge_type must be one of ['info', 'success', 'warning', 'error']"
                 )
             self._badge_type = badge_type
+            self._plain = plain
 
     class Tooltip:
 
@@ -40,61 +43,28 @@ class SolutionsProject(Widget):
     def __init__(
         self,
         title: Optional[str] = None,
-        preview_url: Union[Optional[str], List[str]] = None,
-        project_id: Optional[int] = None,
-        items_count: Union[Optional[int], List[int]] = None,
-        items_type: Optional[str] = "images",
-        width: Optional[Union[str, int]] = None,
         tooltip: Optional[Tooltip] = None,
+        content: Optional[List[Widget]] = None,
         badges: List[Badge] = None,
         tooltip_position: Literal["left", "right"] = "left",
+        link: Optional[str] = None,
+        width: Optional[Union[str, int]] = None,
         widget_id: Optional[str] = None,
+        show_loading: Optional[bool] = True,
     ):
-        self._api = Api.from_env()
-        if isinstance(items_count, int):
-            items_count = [items_count]
-        self._items_count = items_count
-        self._items_type = items_type
-        self._preview_url = preview_url
-        # if project_id is None and preview_url is None:
-        #     raise ValueError("Either project_id or preview_url must be provided")
-        if preview_url is not None:
-            if isinstance(preview_url, str):
-                preview_url = [preview_url]
-            self._preview_url = preview_url
-        if project_id is not None and self._preview_url is None:
-            project = self._api.project.get_info_by_id(project_id)
-            self._preview_url = [project.image_preview_url]
-            self._items_count = [project.items_count]
-
-        if self._items_count is not None:
-            self._items_count = [f"{count} {self._items_type}" for count in self._items_count]
-
-            if len(self._items_count) != len(self._preview_url):
-                raise ValueError(
-                    f"Length of preview_url ({len(self._preview_url)}) must be equal to length of items_count ({len(self._items_count)})"
-                )
-
         self._title = title
         if isinstance(width, int):
             width = f"{width}px"
-
-        if self._items_count is not None and len(self._items_count) > 1 and width is None:
-            width = "270px"
-
         self._width = width or "100%"
         self._tooltip = tooltip
         self._show_tooltip = tooltip is not None
         self._badges = badges or []
         self._show_badges = len(self._badges) > 0
         self._tooltip_position = tooltip_position
-
-        # not implemented yet
         self._click_handled = False
-        self._show_loading = False
-        self._link = None
-        self._content = None
-
+        self._show_loading = show_loading
+        self._link = link
+        self._content = content
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
@@ -107,13 +77,56 @@ class SolutionsProject(Widget):
         self._tooltip._properties = StateJson()[self.widget_id]["tooltip_properties"]
         return self._tooltip._properties
 
+    @property
+    def link(self) -> Optional[str]:
+        return self._link
+
+    @link.setter
+    def link(self, value: str):
+        if not isinstance(value, str):
+            raise TypeError("Link must be a string")
+        self._link = value
+        DataJson()[self.widget_id]["link"] = value
+        DataJson().send_changes()
+
+    def click(self, func: Callable[[], None]) -> Callable[[], None]:
+        """Decorator that allows to handle card click. Decorated function
+        will be called on card click.
+
+        :param func: Function to be called on card click.
+        :type func: Callable
+        :return: Decorated function.
+        :rtype: Callable
+        """
+        route_path = self.get_route_path(SolutionCard.Routes.CLICK)
+        server = self._sly_app.get_server()
+        self._click_handled = True
+        DataJson()[self.widget_id]["clickable"] = True
+        DataJson().send_changes()
+
+        @server.post(route_path)
+        def _click():
+            if self.loading:
+                return
+            if self._show_loading:
+                self.loading = True
+            try:
+                func()
+            except Exception as e:
+                if self._show_loading and self.loading:
+                    self.loading = False
+                raise e
+            if self._show_loading:
+                self.loading = False
+
+        return _click
+
     def get_json_data(self) -> Dict[str, Any]:
         return {
             "title": self._title,
             "width": self._width,
-            "preview_urls": self._preview_url,
-            "items_counts": self._items_count,
-            "clickable": False,
+            "clickable": self._click_handled or self._link is not None,
+            "link": self._link,
         }
 
     def _prepare_badges_info(self):
@@ -124,6 +137,7 @@ class SolutionsProject(Widget):
                     "label": badge._label,
                     "on_hover": badge._on_hover,
                     "badge_type": badge._badge_type,
+                    "plain": badge._plain,
                 }
                 info.append(badge_data)
         return info
@@ -136,51 +150,28 @@ class SolutionsProject(Widget):
         else:
             state["tooltip_description"] = None
             state["tooltip_properties"] = []
+        state["tooltip_position"] = self._tooltip_position
+        state["show_tooltip"] = self._show_tooltip
         state["badges"] = self._prepare_badges_info()
         state["show_badges"] = self._show_badges
         return state
-
-    def update_preview_url(self, preview_url: Union[str, List[str]]):
-        if isinstance(preview_url, str):
-            preview_url = [preview_url]
-        self._preview_url = preview_url
-        DataJson()[self.widget_id]["preview_urls"] = self._preview_url
-        DataJson().send_changes()
-
-    def update_items_count(self, items_count: Union[int, str, List[Union[int, str]]]):
-        if isinstance(items_count, int):
-            items_count = [f"{items_count} {self._items_type}"]
-        if isinstance(items_count, str):
-            items_count = [items_count]
-        if isinstance(items_count, list):
-            for i in range(len(items_count)):
-                if isinstance(items_count[i], int):
-                    items_count[i] = f"{items_count[i]} {self._items_type}"
-                # elif not isinstance(items_count[i], str):
-                #     raise TypeError(
-                #         f"items_count[{i}] must be either int or str, but got {type(items_count[i])}"
-                #     )
-
-        self._items_count = items_count
-        DataJson()[self.widget_id]["items_counts"] = self._items_count
-        DataJson().send_changes()
 
     def add_property(
         self,
         key: str,
         value: str,
-        is_link: Optional[bool] = None,
+        link: Optional[bool] = None,
         highlight: Optional[bool] = None,
     ):
-        if is_link is None:
-            is_link = False
+        if link is None:
+            link = False
         if highlight is None:
             highlight = False
         self._tooltip._properties.append(
             {
                 "key": key,
                 "value": value,
-                "is_link": is_link,
+                "link": link,
                 "highlight": highlight,
             }
         )
@@ -188,7 +179,7 @@ class SolutionsProject(Widget):
         StateJson().send_changes()
 
     def update_property(
-        self, key: str, value: str, is_link: Optional[bool] = None, highlight: Optional[bool] = None
+        self, key: str, value: str, link: Optional[bool] = None, highlight: Optional[bool] = None
     ):
         for prop in self._tooltip._properties:
             if prop["key"] == key:
@@ -196,10 +187,26 @@ class SolutionsProject(Widget):
         else:
             raise KeyError(f"Property with key {key} not found")
         prop["value"] = value
-        if is_link is not None:
-            prop["is_link"] = is_link
+        if link is not None:
+            prop["link"] = link
         if highlight is not None:
             prop["highlight"] = highlight
+        StateJson()[self.widget_id]["tooltip_properties"] = deepcopy(self._tooltip._properties)
+        StateJson().send_changes()
+
+    def remove_property_by_key(self, key: str):
+        found = False
+        for idx, prop in enumerate(self._tooltip._properties):
+            if prop["key"] == key:
+                found = True
+                break
+        if found:
+            self.remove_property(idx)
+
+    def remove_property(self, idx: str):
+        if idx < 0 or idx >= len(self._tooltip._properties):
+            raise IndexError("Property index out of range")
+        self._tooltip._properties.pop(idx)
         StateJson()[self.widget_id]["tooltip_properties"] = deepcopy(self._tooltip._properties)
         StateJson().send_changes()
 
@@ -209,14 +216,22 @@ class SolutionsProject(Widget):
                 "label": badge._label,
                 "on_hover": badge._on_hover,
                 "badge_type": badge._badge_type,
+                "plain": badge._plain,
             }
         )
         self._show_badges = True
-        StateJson()[self.widget_id]["show_badges"] = self._show_badges
         self._badges = StateJson()[self.widget_id]["badges"]
+        StateJson()[self.widget_id]["show_badges"] = self._show_badges
         StateJson().send_changes()
 
-    def update_badge(self, idx: int, label: str, on_hover: str = None, badge_type: str = None):
+    def update_badge(
+        self,
+        idx: int,
+        label: str,
+        on_hover: str = None,
+        badge_type: str = None,
+        plain: bool = None,
+    ):
         if idx < 0 or idx >= len(self._badges):
             raise IndexError("Badge index out of range")
 
@@ -225,6 +240,7 @@ class SolutionsProject(Widget):
             "label": label,
             "on_hover": self._badges[idx]["on_hover"],
             "badge_type": self._badges[idx]["badge_type"],
+            "plain": self._badges[idx]["plain"],
         }
         if on_hover is not None:
             badge_data["on_hover"] = on_hover
@@ -264,9 +280,39 @@ class SolutionsProject(Widget):
             StateJson()[self.widget_id]["badges"] = deepcopy(self._badges)
             StateJson().send_changes()
 
-    def set_project(self, project: ProjectInfo) -> None:
-        self._preview_url = [project.image_preview_url]
-        self._items_count = [f"{project.items_count or 0} {self._items_type}"]
-        DataJson()[self.widget_id]["preview_urls"] = self._preview_url
-        DataJson()[self.widget_id]["items_counts"] = self._items_count
-        DataJson().send_changes()
+    def set_tooltip(
+        self,
+        tooltip: Optional[Tooltip] = None,
+        description: str = None,
+        content: List[Widget] = None,
+        properties: List = None,
+        tooltip_position: Optional[Literal["left", "right"]] = None,
+    ):
+        if tooltip is not None:
+            description = description or tooltip._description
+            content = content or tooltip._content
+            properties = properties or tooltip._properties
+        if description is None and content is None and properties is None:
+            raise ValueError("At least one of description, content or properties must be provided")
+        self._show_tooltip = True
+        tooltip = self.Tooltip(
+            description=description,
+            content=content,
+            properties=properties,
+        )
+        self._tooltip = tooltip
+        if tooltip_position is not None:
+            self._tooltip_position = tooltip_position
+            StateJson()[self.widget_id]["tooltip_position"] = tooltip_position
+        StateJson()[self.widget_id]["tooltip_description"] = description
+        StateJson()[self.widget_id]["tooltip_properties"] = deepcopy(properties or [])
+        StateJson()[self.widget_id]["show_tooltip"] = self._show_tooltip
+        StateJson().send_changes()
+
+    def remove_tooltip(self):
+        self._show_tooltip = False
+        self._tooltip = None
+        StateJson()[self.widget_id]["tooltip_description"] = None
+        StateJson()[self.widget_id]["tooltip_properties"] = []
+        StateJson()[self.widget_id]["show_tooltip"] = self._show_tooltip
+        StateJson().send_changes()

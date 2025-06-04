@@ -15,7 +15,7 @@ from supervisely.api.entities_collection_api import (
 from supervisely.api.image_api import ImageInfo
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
-from supervisely.solutions.constants import EMBEDDINGS_GENERATOR_SLUG
+from supervisely.solution.constants import EMBEDDINGS_GENERATOR_SLUG
 
 
 class SamplingSettings(TypedDict, total=False):
