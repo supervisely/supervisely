@@ -661,6 +661,8 @@ class ApiField:
     """"""
     COLLECTION_ID = "collectionId"
     """"""
+    QUALITY_CHECK_USER_IDS = "qualityCheckUserIds"
+    """"""
 
 
 def _get_single_item(items):
