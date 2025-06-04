@@ -409,7 +409,7 @@ class SelectCollection(Widget):
             :param project_id: The ID of the selected project.
             :type project_id: int
             """
-            self._select_collection.set(self._read_collection(project_id))
+            self._select_collection.set(self._read_collections(project_id))
             self._project_id = project_id
 
             if (
