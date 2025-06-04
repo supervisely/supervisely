@@ -22,6 +22,8 @@ class RandomSplitsTable(Widget):
             {"name": "val", "type": "primary"},
             {"name": "total", "type": "gray"},
         ]
+        if items_count is None:
+            items_count = 0
         self._items_count = items_count
         train_count = int(items_count / 100 * start_train_percent)
         self._count = {"total": items_count, "train": train_count, "val": items_count - train_count}

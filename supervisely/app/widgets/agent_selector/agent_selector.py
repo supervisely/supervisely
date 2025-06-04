@@ -49,6 +49,12 @@ class AgentSelector(Widget):
 
     def get_value(self) -> int:
         return StateJson()[self.widget_id]["agentId"]
+    
+    def set_value(self, agent_id: int) -> None:
+        if not isinstance(agent_id, int):
+            raise TypeError("Agent ID must be an integer.")
+        StateJson()[self.widget_id]["agentId"] = agent_id
+        StateJson().send_changes()
 
     def value_changed(self, func):
         route_path = self.get_route_path(AgentSelector.Routes.VALUE_CHANGED)
