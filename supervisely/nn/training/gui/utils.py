@@ -148,7 +148,7 @@ def generate_task_check_function_js(folder: str) -> str:
     :rtype: str
     """
     escaped_folder = folder.replace("'", "\\'")
-    js_code = f"""function(task) {{
+    js_code = f"""
         if (!task || !task.meta || !task.meta.params || !task.meta.params.state) {{
             return false;
         }}
@@ -157,5 +157,5 @@ def generate_task_check_function_js(folder: str) -> str:
             return false;
         }}
         return taskFolder === '{escaped_folder}';
-    }}"""
+    """
     return js_code
