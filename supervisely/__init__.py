@@ -271,7 +271,7 @@ from supervisely.task.progress import tqdm_sly
 import tqdm
 
 from supervisely import convert
-from supervisely import solutions
+from supervisely import solution
 
 _original_tqdm = tqdm.tqdm
 

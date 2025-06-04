@@ -10,8 +10,8 @@ from supervisely.api.image_api import ImageInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.sly_logger import logger
-from supervisely.solutions.components.card import Card
-from supervisely.solutions.smart_sampling.functions import (
+from supervisely.solution.components.card import Card
+from supervisely.solution.smart_sampling.functions import (
     SamplingMode,
     SamplingSettings,
     copy_to_new_project,

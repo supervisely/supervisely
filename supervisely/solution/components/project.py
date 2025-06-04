@@ -9,7 +9,7 @@ from supervisely.app.widgets import (
     SolutionProject,
     Widget,
 )
-from supervisely.solutions.components.card import Card
+from supervisely.solution.components.card import Card
 
 
 class ProjectNode(Card):
