@@ -4,16 +4,16 @@ from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import (
     Button,
-    SolutionsCard,
-    SolutionsGraph,
-    SolutionsProject,
+    SolutionCard,
+    SolutionGraph,
+    SolutionProject,
     Widget,
 )
 from supervisely.solutions.components.card import Card
 
 
 class ProjectNode(Card):
-    card_cls = SolutionsProject
+    card_cls = SolutionProject
 
     def __init__(
         self,
@@ -75,19 +75,19 @@ class ProjectNode(Card):
         if self.is_training:
             items_count, preview_url = [0, 0], [None, None]
 
-        self.card = SolutionsProject(
+        self.card = SolutionProject(
             title=self.title,
             preview_url=preview_url,
             items_count=items_count,
             project_id=self.project.id,
             width=270 if self.is_training else 180,
-            tooltip=SolutionsCard.Tooltip(
+            tooltip=SolutionCard.Tooltip(
                 description=description,
                 content=tooltip_widgets,
             ),
             tooltip_position=tooltip_position,
         )
-        self._node = SolutionsGraph.Node(x=x, y=y, content=self.card)
+        self._node = SolutionGraph.Node(x=x, y=y, content=self.card)
 
     def _get_preview_details(self, ids: List[int]):
         preview_urls = []

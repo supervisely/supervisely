@@ -1,10 +1,10 @@
 from typing import Dict, List, Literal, Optional
 
-from supervisely.app.widgets import Button, SolutionsCard, SolutionsGraph, Widget
+from supervisely.app.widgets import Button, SolutionCard, SolutionGraph, Widget
 
 
 class Card:
-    card_cls = SolutionsCard
+    card_cls = SolutionCard
 
     def __init__(
         self,
@@ -31,12 +31,12 @@ class Card:
                     widget.plain = True
                     widget.button_type = "text"
         if tooltip_widgets is not None or description is not None or properties is not None:
-            tooltip = SolutionsCard.Tooltip(
+            tooltip = SolutionCard.Tooltip(
                 description=description,
                 content=tooltip_widgets,
                 properties=properties,
             )
-        self.card = SolutionsCard(
+        self.card = SolutionCard(
             title=title,
             content=content,
             tooltip=tooltip,
@@ -45,7 +45,7 @@ class Card:
             width=width,
         )
 
-        self._node = SolutionsGraph.Node(x=self.x, y=self.y, content=self.card)
+        self._node = SolutionGraph.Node(x=self.x, y=self.y, content=self.card)
 
     @property
     def node(self):
