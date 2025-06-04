@@ -10,6 +10,7 @@ import subprocess
 from datetime import datetime
 from os import getcwd, listdir, walk
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
+from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -2616,6 +2617,7 @@ class TrainApp:
 
             self.gui.training_logs.tensorboard_button.hide()
             self.gui.training_logs.tensorboard_offline_button.show()
+            sleep(1)  # wait for the button to be shown
             self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"

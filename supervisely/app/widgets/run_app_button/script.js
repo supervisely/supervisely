@@ -29,7 +29,7 @@ Vue.component("sly-run-app-button", {
 						try {
 							checkExistingTaskCb = new Function(
 								"task",
-								`return ${this.checkExistingTaskCb}`
+								this.checkExistingTaskCb
 							);
 						} catch (err) {
 							console.log("Error parsing checkExistingTaskCb string:", err);
