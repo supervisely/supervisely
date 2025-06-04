@@ -83,9 +83,10 @@ class TrainingLogs:
                     plain=True,
                     icon="zmdi zmdi-chart",
                     available_in_offline=True,
-                    visible_by_vue_field="isStaticVersion",
+                    visible_by_vue_field=None,
                 )
                 self.tensorboard_offline_button.disable()
+                self.tensorboard_offline_button.hide()
                 self.display_widgets.extend([self.tensorboard_offline_button])
             else:
                 logger.warning(
