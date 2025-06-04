@@ -142,8 +142,8 @@ def generate_task_check_function_js(folder: str) -> str:
     """
     Returns JavaScript function code for checking existing tasks.
 
-    :param run_app_btn_widget: RunAppButton widget.
-    :type run_app_btn_widget: RunAppButton
+    :param folder: Remote folder to check.
+    :type folder: str
     :return: JavaScript function code for checking existing tasks.
     :rtype: str
     """
