@@ -36,6 +36,7 @@ from supervisely.io.fs import (
 )
 from supervisely.pointcloud.pointcloud import is_valid_format
 from supervisely.sly_logger import logger
+from supervisely.imaging import image as sly_image
 
 
 class PointcloudInfo(NamedTuple):
@@ -420,7 +421,7 @@ class PointcloudApi(RemoveableBulkModuleApi):
             convert_json_info_cb=lambda x: x,
         )
 
-    def download_related_image(self, id: int, path: str) -> Response:
+    def download_related_image(self, id: int, path: str = None) -> Response:
         """
         Download a related context image from Supervisely to local directory by image id.
 
@@ -454,11 +455,16 @@ class PointcloudApi(RemoveableBulkModuleApi):
             {ApiField.ID: id},
             stream=True,
         )
-        ensure_base_path(path)
-        with open(path, "wb") as fd:
-            for chunk in response.iter_content(chunk_size=1024 * 1024):
-                fd.write(chunk)
-        return response
+
+        if path:
+            ensure_base_path(path)
+            with open(path, "wb") as fd:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    fd.write(chunk)
+            return response
+        else:
+            related_image = sly_image.read_bytes(response.content, False)
+            return related_image
 
     # @TODO: copypaste from video_api
     def upload_hash(
