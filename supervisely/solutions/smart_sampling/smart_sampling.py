@@ -46,28 +46,56 @@ class SmartSampling(Widget):
         self._has_ai_search_sampling = ai_search_sampling
         self.total_num = self.project.items_count
 
-        # common widgets
+        # Initialize widgets
         self._total_text = None
         self._total_num_text = None
         self._diff_text = None
         self._diff_num_text = None
         self._sampling_text = None
-        # self._preview_cont = None
+
+        # Initialize UI containers
+        self._settings_modal = None
+        self._tasks_modal = None
+        self._automation_modal = None
+        self._card = None
+        self._settings_btn = None
+        self._automate_ok_btn = None
+        self._run_sample_btn = None
+
+        # Initialize UI for sampling tabs
+        self._sampling_tabs = None
+        self._random_input = None
+        self._diverse_input = None
+        self._ai_search_input = None
+        self._ai_search_limit_input = None
+        self._ai_search_thrs_input = None
+
+        # Initialize automation UI
+        self._automate_checkbox = None
+        self._automate_input = None
+        self._automate_period_select = None
+
+        # Initialize preview UI
+        self._preview_btn = None
+        self._preview_gallery = None
+        self._preview_collapse = None
+        self._preview_cont = None
+
+        # Initialize tasks table
+        self._tasks_table = None
 
         super().__init__(widget_id=widget_id, file_path=__file__)
         self.diff_num = self.get_differences_count()
         self.save_differences_count(self.diff_num)
 
-        # callback to be called when sampling ends (e.g., copy images or mark as sampled)
+        # callback to be called when sampling ends
         self._sampling_end_callback = None
         self._create_layout()
 
+    # UI PROPERTIES
     @property
     def tasks_modal(self) -> w.Dialog:
-        """
-        Get the tasks modal dialog.
-        :return: w.Dialog instance
-        """
+        """Get the tasks modal dialog."""
         return self._tasks_modal
 
     @property
@@ -105,6 +133,7 @@ class SmartSampling(Widget):
         """Get the run sample button"""
         return self._run_sample_btn
 
+    # STATE and DATA
     def get_json_state(self) -> dict:
         """State of the Sampling block will be used in the Solution app GUI.
         Possible keys:
@@ -122,9 +151,9 @@ class SmartSampling(Widget):
         - "sampling_history": list of dicts with sampling tasks details
         - "sampled_images": dict with sampled images
         """
-
         return {}
 
+    # UI CREATION METHODS
     def _create_settings_modal(self) -> Widget:
         self._preview_btn = w.Button("Preview", icon="zmdi zmdi-eye", plain=True)
         self._preview_gallery = w.GridGallery(columns_number=3)
@@ -343,7 +372,7 @@ class SmartSampling(Widget):
         )
 
         @self._automate_checkbox.value_changed
-        def on_automate_checkbox_change(is_checked):
+        def on_automate_checkbox_change(is_checked: bool) -> None:
             if is_checked:
                 self._automate_input.enable()
                 self._automate_period_select.enable()
@@ -432,6 +461,7 @@ class SmartSampling(Widget):
         self._create_automate_modal()
         self._create_card()
 
+    # METHODS FOR DATA MANAGEMENT
     def get_differences_count(self) -> int:
         src_datasets = self.api.dataset.get_list(self.project_id, recursive=True)
         sampled_items = self.get_sampled_images()
