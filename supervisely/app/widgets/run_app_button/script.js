@@ -25,6 +25,7 @@ Vue.component("sly-run-app-button", {
 							: null;
 
 					if (typeof this.checkExistingTaskCb === "string") {
+						console.log("checkExistingTaskCb", this.checkExistingTaskCb);
 						try {
 							checkExistingTaskCb = new Function(
 								"task",
@@ -35,6 +36,7 @@ Vue.component("sly-run-app-button", {
 						}
 					}
 
+					console.log("Before check checkExistingTaskCb", checkExistingTaskCb);
 					if (checkExistingTaskCb) {
 						const allEntities = await this.publicApiInstance
 							.post("apps.list", {
@@ -53,6 +55,7 @@ Vue.component("sly-run-app-button", {
 
 						if (existTasks.length) {
 							const foundTask = existTasks.find((t) => checkExistingTaskCb(t));
+							console.log("foundTask", foundTask);
 
 							if (foundTask) {
 								window.open(
