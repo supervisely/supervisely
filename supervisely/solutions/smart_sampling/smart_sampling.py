@@ -28,6 +28,7 @@ class SmartSampling(Widget):
         random_sampling: bool = True,
         diverse_sampling: bool = False,
         ai_search_sampling: bool = False,
+        team_id: int = None,
         widget_id: str = None,
     ):
         """
@@ -39,14 +40,11 @@ class SmartSampling(Widget):
         self._x = x
         self._y = y
         self.project = self.api.project.get_info_by_id(project_id)
-        # self.content = self._create_content()
-        self._random_sampling = random_sampling
-        self._diverse_sampling = diverse_sampling
-        self._ai_search_sampling = ai_search_sampling
-
+        self.team_id = team_id or self.project.team_id
+        self._has_random_sampling = random_sampling
+        self._has_diverse_sampling = diverse_sampling
+        self._has_ai_search_sampling = ai_search_sampling
         self.total_num = self.project.items_count
-        self.diff_num = self.get_differences_count()
-        self.set_differences_count(self.diff_num)
 
         # common widgets
         self._total_text = None
@@ -56,11 +54,13 @@ class SmartSampling(Widget):
         self._sampling_text = None
         # self._preview_cont = None
 
+        super().__init__(widget_id=widget_id, file_path=__file__)
+        self.diff_num = self.get_differences_count()
+        self.set_differences_count(self.diff_num)
+
         # callback to be called when sampling ends (e.g., copy images or mark as sampled)
         self._sampling_end_callback = None
-
         self._create_layout()
-        super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property
     def tasks_modal(self) -> w.Dialog:
@@ -93,12 +93,17 @@ class SmartSampling(Widget):
     @property
     def settings_btn(self) -> w.Button:
         """Get the settings button"""
-        return self._sampling_setup_btn
+        return self._settings_btn
 
     @property
     def automate_btn(self) -> w.Button:
         """Get the automate OK button"""
         return self._automate_ok_btn
+
+    @property
+    def run_sample_btn(self) -> w.Button:
+        """Get the run sample button"""
+        return self._run_sample_btn
 
     def get_json_state(self) -> dict:
         """State of the Sampling block will be used in the Solution app GUI.
@@ -138,17 +143,35 @@ class SmartSampling(Widget):
         total_differences = 0
         for ds_info in src_datasets:
             total_differences += ds_info.items_count
-            total_differences -= len(sampled_items.get(str(ds_info.id), []))
+            total_differences -= len(sampled_items.get(ds_info.id, []))
 
         self.set_differences_count(total_differences)
         return total_differences
 
-    def get_sampled_images(self) -> dict:
+    def get_sampled_images_full(self) -> dict:
         """
         Get sampled images from the DataJson.
         :return: dict with sampled images
         """
         return DataJson()[self.widget_id].get("sampled_images", {})
+
+    def get_sampled_images(self) -> Dict[int, List[int]]:
+        """
+        Get sampled images from the DataJson.
+        :return: dict with dataset ID as key and list of ImageInfo as value
+        """
+        sampled_images = self.get_sampled_images_full()
+        if not sampled_images:
+            return {}
+
+        images = {}
+        for _, items in sampled_images.items():
+            for ds_id, item_ids in items.items():
+                if ds_id not in images:
+                    images[ds_id] = []
+                images[ds_id].extend(item_ids)
+
+        return images
 
     def add_sampled_images(self, sampling_task: str, images: Dict[int, List[ImageInfo]]):
         """
@@ -197,12 +220,12 @@ class SmartSampling(Widget):
         """
         mode = self._sampling_tabs.get_active_tab()
         data = {"mode": mode}
-        if mode == "Random":
+        if mode == "Random" and self._has_random_sampling:
             data["sample_size"] = self._random_input.get_value()
-        elif mode == "Diverse":
+        elif mode == "Diverse" and self._has_diverse_sampling:
             data["sample_size"] = self._diverse_input.get_value()
             data["diversity_mode"] = "centroids"
-        elif mode == "AI Search":
+        elif mode == "AI Search" and self._has_ai_search_sampling:
             data["prompt"] = self._ai_search_input.get_value()
             data["limit"] = self._ai_search_limit_input.get_value()
             data["threshold"] = self._ai_search_thrs_input.get_value()
@@ -257,7 +280,7 @@ class SmartSampling(Widget):
 
         tabs = []
         # random sampling
-        if self._random_sampling:
+        if self._has_random_sampling:
             random_text_info = w.Text(
                 "<strong>Random sampling</strong> is a simple way to select a random subset of images from the input project. <br> <strong>Note:</strong> The sampling is performed only on the images which were not copied to the labeling project yet.",
             )
@@ -281,7 +304,7 @@ class SmartSampling(Widget):
             tabs.append(random_tab_cont)
 
         # diverse sampling
-        if self._diverse_sampling:
+        if self._has_diverse_sampling:
             diverse_text_info = w.Text(
                 "<strong>Diversity sampling strategy:</strong> Sampling most diverse images using k-means clustering. By default, embeddings are computed using the OpenAI CLIP model. <br> <strong>Note:</strong> The sampling is performed only on the images which were not copied to the labeling project yet.",
             )
@@ -304,7 +327,7 @@ class SmartSampling(Widget):
             tabs.append(diverse_tab_cont)
 
         # AI Search sampling
-        if self._ai_search_sampling:
+        if self._has_ai_search_sampling:
             ai_search_info = w.Text(
                 "Sampling images from the project using <strong>AI Search</strong> by user-defined prompt to find the most suitable images. <br> <strong>Note:</strong> The sampling is performed only on the images which were not copied to the labeling project yet.",
             )
@@ -371,13 +394,27 @@ class SmartSampling(Widget):
         :return: FastTable instance
         """
         sampling_table_columns = [
+            "#",
             "Mode",
-            "Status",
             "Date and Time",
             "Items Count",
+            "Settings",
+            "Status",
+        ]
+        columns_options = [
+            {},
+            {"postfix": "mode", "tooltip": "Sampling mode used for this task"},
+            {"tooltip": "description text"},
+            {"postfix": "images", "tooltip": "Number of sampled images"},
+            {"tooltip": "Settings used for sampling"},
+            {},
         ]
         self._tasks_table = w.FastTable(
-            columns=sampling_table_columns, sort_column_idx=0, fixed_columns=1, sort_order="desc"
+            columns=sampling_table_columns,
+            sort_column_idx=0,
+            fixed_columns=1,
+            sort_order="asc",
+            columns_options=columns_options,
         )
         self._tasks_table.hide()
         self._tasks_modal = w.Dialog(content=w.Container([self._tasks_table]))
@@ -385,12 +422,15 @@ class SmartSampling(Widget):
     def _get_tasks_data(self) -> List[List[str]]:
         sampling_history = self.get_sampling_tasks()
         rows = []
-        for history_item in sampling_history:
+        for idx, history_item in enumerate(sampling_history, start=1):
+            settings = history_item.get("settings")
             row = [
+                idx,
                 history_item.get("mode"),
-                history_item.get("status"),
                 history_item.get("timestamp"),
                 history_item.get("items_count"),
+                str(settings) if settings else "-",
+                history_item.get("status"),
             ]
             rows.append(row)
         return rows
@@ -529,6 +569,7 @@ class SmartSampling(Widget):
         self._create_automate_modal()
         self._create_card()
 
+    @staticmethod
     def _get_interval_period(sec):
         if sec is None:
             return None, None
@@ -553,13 +594,16 @@ class SmartSampling(Widget):
         """
         if not isinstance(enabled, bool):
             raise TypeError("Enabled must be a boolean.")
+        if "automation_details" not in StateJson()[self.widget_id]:
+            StateJson()[self.widget_id]["automation_details"] = {}
+        if not enabled:
+            StateJson()[self.widget_id]["automation_details"] = {}
+            StateJson().send_changes()
+            return
+
         if not isinstance(sec, int) or sec <= 0:
             raise ValueError("Seconds must be a positive integer.")
         period, interval = self._get_interval_period(sec)
-
-        if "automation_details" not in StateJson()[self.widget_id]:
-            StateJson()[self.widget_id]["automation_details"] = {}
-
         StateJson()[self.widget_id]["automation_details"] = {
             "enabled": enabled,
             "period": period,
@@ -574,7 +618,7 @@ class SmartSampling(Widget):
         interval = self._automate_input.get_value()
 
         if not enabled:
-            return None, None, None, None
+            return False, None, None, None
 
         if period == "h":
             sec = interval * 60 * 60
@@ -583,14 +627,14 @@ class SmartSampling(Widget):
         else:
             sec = interval * 60
         if sec == 0:
-            return None, None, None, None
-
+            return False, None, None, None
+        period, interval = self._get_interval_period(sec)
         self.save_automation_details(enabled, sec)
         return enabled, period, interval, sec
 
     def show_automation_info(self, enabled, sec):
         period, interval = self._get_interval_period(sec)
-        if enabled is not None:
+        if enabled is True:
             self.card.show_automation_badge()
             self.card.update_property("Run every", f"{interval} {period}", highlight=True)
         else:
@@ -633,17 +677,20 @@ class SmartSampling(Widget):
         if mode == SamplingMode.AI_SEARCH.value:
             value = min(sampling_settings.get("limit", max_value), diff)
         self._sampling_text.text = f" of {diff} images"
-        self._random_input.min = min_value
-        self._random_input.max = max_value
-        self._random_input.value = value
-        self._diverse_input.min = min_value
-        self._diverse_input.max = max_value
-        self._diverse_input.value = value
-        self._ai_search_input.set_value(sampling_settings.get("prompt", ""))
-        self._ai_search_limit_input.value = value
-        self._ai_search_limit_input.min = min_value
-        self._ai_search_limit_input.max = max_value
-        self._ai_search_thrs_input.value = sampling_settings.get("threshold", 0.05)
+        if self._has_random_sampling:
+            self._random_input.min = min_value
+            self._random_input.max = max_value
+            self._random_input.value = value
+        if self._has_diverse_sampling:
+            self._diverse_input.min = min_value
+            self._diverse_input.max = max_value
+            self._diverse_input.value = value
+        if self._has_ai_search_sampling:
+            self._ai_search_input.set_value(sampling_settings.get("prompt", ""))
+            self._ai_search_limit_input.value = value
+            self._ai_search_limit_input.min = min_value
+            self._ai_search_limit_input.max = max_value
+            self._ai_search_thrs_input.value = sampling_settings.get("threshold", 0.05)
         self._sampling_tabs.set_active_tab(mode)
 
         text = f"Run sampling ({mode} {value} of {diff})"
@@ -678,7 +725,7 @@ class SmartSampling(Widget):
 
         except Exception as e:
             logger.error(f"Error during sampling: {e}")
-            self._add_record_to_history(
+            self.add_record_to_history(
                 status="error",
                 total_items=0,
                 items=None,
@@ -705,13 +752,13 @@ class SmartSampling(Widget):
         """
 
         try:
-            _, _, images_count = copy_to_new_project(
+            src, dst, images_count = copy_to_new_project(
                 api=self.api,
                 src_project_id=self.project_id,
                 dst_project_id=dst_project_id,
                 images=images,
             )
-            return images_count
+            return src, dst, images_count
         except Exception as e:
             logger.error(f"Error during copying to new project: {e}")
 
@@ -726,7 +773,7 @@ class SmartSampling(Widget):
         if sampled_images is None:
             return None
 
-        images_count = self.copy_to_new_project(dst_project_id, sampled_images)
+        src, dst, images_count = self.copy_to_new_project(dst_project_id, sampled_images)
         if images_count is None:
             return None
 
@@ -737,7 +784,7 @@ class SmartSampling(Widget):
             settings=settings,
             items=sampled_images,
         )
-        return images_count
+        return src, dst, images_count
 
     def add_record_to_history(
         self,
