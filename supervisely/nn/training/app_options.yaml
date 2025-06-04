@@ -43,6 +43,7 @@ train_val_splits_selector:
     - Random
     - Based on tags
     - Based on datasets
+    - Based on collections
 
 model_selector:
   enabled: true

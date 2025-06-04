@@ -208,15 +208,40 @@ class TrainApp:
         def _train_from_api(response: Response, request: Request):
             try:
                 state = request.state.state
+                wait = state.get("wait", True)
                 app_state = state["app_state"]
                 self.gui.load_from_app_state(app_state)
 
-                self._wrapped_start_training()
+                if wait:
+                    self._wrapped_start_training()
+                else:
+                    import threading
+
+                    training_thread = threading.Thread(
+                        target=self._wrapped_start_training,
+                        daemon=True,
+                    )
+                    training_thread.start()
+                    return {"result": "model training started"}
 
                 return {"result": "model was successfully trained"}
             except Exception as e:
                 self.gui.training_process.start_button.loading = False
                 raise e
+
+        # # Get training status
+        # @self._server.post("/train_status")
+        # def _train_status(response: Response, request: Request):
+        #     """Returns the current training status."""
+        #     status = self.gui.training_process.validator_text.get_value()
+        #     if status == "Training is in progress...":
+        #         try:
+        #             total_epochs = self.progress_bar_main.total
+        #             current_epoch = self.progress_bar_main.current
+        #             status += f" (Epoch {current_epoch}/{total_epochs})"
+        #         except Exception:
+        #             pass
+        #     return {"status": status}
 
     def _register_routes(self):
         """
@@ -1870,6 +1895,13 @@ class TrainApp:
                     "val_datasets": self.gui.train_val_splits_selector.train_val_splits.get_val_dataset_ids(),
                 }
             )
+        elif split_method == "Based on collections":
+            train_val_splits.update(
+                {
+                    "train_collections": self.gui.train_val_splits_selector.get_train_collection_ids(),
+                    "val_collections": self.gui.train_val_splits_selector.get_val_collection_ids(),
+                }
+            )
         return train_val_splits
 
     def _get_model_config_for_app_state(self, experiment_info: Dict = None) -> Dict:
@@ -2110,7 +2142,7 @@ class TrainApp:
         ]
         task_type = experiment_info["task_type"]
         if task_type not in supported_task_types:
-            logger.warn(
+            logger.warning(
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
