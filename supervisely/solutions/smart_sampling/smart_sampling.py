@@ -28,7 +28,6 @@ class SmartSampling(Widget):
         random_sampling: bool = True,
         diverse_sampling: bool = False,
         ai_search_sampling: bool = False,
-        team_id: int = None,
         widget_id: str = None,
     ):
         """
@@ -46,8 +45,6 @@ class SmartSampling(Widget):
         :type diverse_sampling: bool
         :param ai_search_sampling: Enable AI Search sampling strategy
         :type ai_search_sampling: bool
-        :param team_id: ID of the team to which the project belongs
-        :type team_id: int, optional
 
         :Usage example:
 
@@ -65,7 +62,6 @@ class SmartSampling(Widget):
                 random_sampling=True,
                 diverse_sampling=True,
                 ai_search_sampling=True,
-                team_id=11111,
             )
             node = smart_sampling.node  # solution node block
         """
@@ -74,7 +70,7 @@ class SmartSampling(Widget):
         self._x = x
         self._y = y
         self.project = self.api.project.get_info_by_id(project_id)
-        self.team_id = team_id or self.project.team_id
+        self.team_id = self.project.team_id
         self._has_random_sampling = random_sampling
         self._has_diverse_sampling = diverse_sampling
         self._has_ai_search_sampling = ai_search_sampling
