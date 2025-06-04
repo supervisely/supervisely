@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="./sly/css/app/widgets/solutions_card/style.css" />
+<link rel="stylesheet" href="./sly/css/app/widgets/solution_card/style.css" />
 <div class="solutions-node icon-node" :style="{width: data.{{{widget.widget_id}}}.width}">
     <div class="node-badges-row" v-if="state.{{{widget.widget_id}}}.show_badges">
         <div v-for="item in state.{{{widget.widget_id}}}.badges">
@@ -25,7 +25,7 @@
 
     <div v-if="data.{{{widget.widget_id}}}.disabled" class="wrapper disabled"></div>
 
-    <div {% if widget._click_handled %} @click="post('/{{{widget.widget_id}}}/solutions_card_clicked_cb')" {% endif %}
+    <div {% if widget._click_handled %} @click="post('/{{{widget.widget_id}}}/solution_card_clicked_cb')" {% endif %}
         class="node-content-wrapper" :class="{
             'clickable': data.{{{widget.widget_id}}}.clickable,
             'node-loading': data.{{{widget.widget_id}}}.loading,
