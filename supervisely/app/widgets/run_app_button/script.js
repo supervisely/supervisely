@@ -19,32 +19,48 @@ Vue.component("sly-run-app-button", {
 				this.loading = true;
 
 				if (this.checkExistingTaskCb) {
-					const allEntities = await this.publicApiInstance
-						.post("apps.list", {
-							withShared: true,
-							onlyRunning: true,
-							groupId: this.groupId,
-							filter: [
-								{ field: "moduleId", operator: "=", value: this.moduleId },
-							],
-						})
-						.then((res) => res.data?.entities || []);
+					let checkExistingTaskCb =
+						typeof this.checkExistingTaskCb === "function"
+							? this.checkExistingTaskCb
+							: null;
 
-					const existTasks = allEntities.flatMap(
-						(entity) => entity.tasks || []
-					);
+					if (typeof this.checkExistingTaskCb === "string") {
+						try {
+							checkExistingTaskCb = new Function(
+								"task",
+								`return ${this.checkExistingTaskCb}`
+							);
+						} catch (err) {
+							console.log("Error parsing checkExistingTaskCb string:", err);
+						}
+					}
 
-					if (existTasks.length) {
-						const foundTask = existTasks.find((t) =>
-							this.checkExistingTaskCb(t)
+					if (checkExistingTaskCb) {
+						const allEntities = await this.publicApiInstance
+							.post("apps.list", {
+								withShared: true,
+								onlyRunning: true,
+								groupId: this.groupId,
+								filter: [
+									{ field: "moduleId", operator: "=", value: this.moduleId },
+								],
+							})
+							.then((res) => res.data?.entities || []);
+
+						const existTasks = allEntities.flatMap(
+							(entity) => entity.tasks || []
 						);
 
-						if (foundTask) {
-							window.open(
-								`/apps/${foundTask.meta.app.id}/sessions/${foundTask.id}`,
-								"_blank"
-							);
-							return;
+						if (existTasks.length) {
+							const foundTask = existTasks.find((t) => checkExistingTaskCb(t));
+
+							if (foundTask) {
+								window.open(
+									`/apps/${foundTask.meta.app.id}/sessions/${foundTask.id}`,
+									"_blank"
+								);
+								return;
+							}
 						}
 					}
 				}
