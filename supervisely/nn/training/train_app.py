@@ -652,26 +652,30 @@ class TrainApp:
         self._upload_demo_files(remote_dir)
 
         # Step 10. Generate experiment report
-        # experiment = ExperimentGenerator(
-        #     api=self._api,
-        #     experiment_info=experiment_info,
-        #     hyperparameters=self.hyperparameters_yaml,
-        #     model_meta=model_meta,
-        #     serving_class=self._inference_class,
-        #     team_id=self.team_id,
-        #     output_dir=join(self.work_dir, "experiment_report"),
-        #     app_options=self._app_options,
-        # )
-        # experiment.generate()
-        # # @TODO: add report thumbnail to GUI
-        # # @TODO: add report to workflow output
-        # experiment.upload_to_artifacts()
-        # experiment_report = experiment.get_report()
+        experiment = ExperimentGenerator(
+            api=self._api,
+            experiment_info=experiment_info,
+            hyperparameters=self.hyperparameters_yaml,
+            model_meta=model_meta,
+            serving_class=self._inference_class,
+            team_id=self.team_id,
+            output_dir=join(self.work_dir, "experiment_report"),
+            app_options=self._app_options,
+        )
+        experiment.generate()
+        # @TODO: add report thumbnail to GUI
+        # @TODO: add report to workflow output
+        experiment.upload_to_artifacts()
+        experiment_link_file_info = experiment.get_report()
 
         # Step 11. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(
-            experiment_info, remote_dir, session_link_file_info, mb_eval_report
+            experiment_info,
+            remote_dir,
+            experiment_link_file_info,
+            mb_eval_report,
+            # experiment_info, remote_dir, session_link_file_info, mb_eval_report
         )
         self._set_ws_progress_status("completed")
 

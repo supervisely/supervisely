@@ -64,7 +64,10 @@ class TrainingArtifacts:
         self.display_widgets.extend([self.validator_text])
 
         # Outputs
-        self.artifacts_thumbnail = FolderThumbnail()
+        # self.artifacts_thumbnail = FolderThumbnail()
+        self.artifacts_thumbnail = ReportThumbnail(
+            title="Experiment Report", color="#5fa8ff", bg_color="#e6f3ff"
+        )
         self.artifacts_thumbnail.hide()
 
         self.artifacts_field = Field(
