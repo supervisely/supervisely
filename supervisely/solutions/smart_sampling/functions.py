@@ -158,7 +158,7 @@ def sample(
     # Filter out already sampled images
     filtered_diffs = {}
     for ds_id, imgs in diffs.items():
-        ignore_ids = {img for img in sampled_images.get(str(ds_id), [])}
+        ignore_ids = {img for img in sampled_images.get(ds_id, [])}
         filtered_diffs[ds_id] = [img for img in imgs if img.id not in ignore_ids]
 
     total_diffs = sum(len(imgs) for imgs in filtered_diffs.values())
