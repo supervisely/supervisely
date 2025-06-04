@@ -10,6 +10,7 @@ import subprocess
 from datetime import datetime
 from os import getcwd, listdir, walk
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
+from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -57,6 +58,7 @@ from supervisely.nn.inference import RuntimeType, SessionJSON
 from supervisely.nn.inference.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
+from supervisely.nn.training.gui.utils import generate_task_check_function_js
 from supervisely.nn.training.loggers import setup_train_logger, train_logger
 from supervisely.nn.utils import ModelSource, _get_model_name
 from supervisely.output import set_directory
@@ -1967,11 +1969,15 @@ class TrainApp:
             self.progress_bar_main.hide()
 
         file_info = self._api.file.get_info_by_path(self.team_id, join(remote_dir, "open_app.lnk"))
+
         # Set offline tensorboard button payload
         if is_production():
-            self.gui.training_logs.tensorboard_offline_button.payload = {
-                "state": {"slyFolder": f"{join(remote_dir, 'logs')}"}
-            }
+            remote_log_dir = join(remote_dir, "logs")
+            tb_btn_payload = {"state": {"slyFolder": remote_log_dir}}
+            self.gui.training_logs.tensorboard_offline_button.payload = tb_btn_payload
+            self.gui.training_logs.tensorboard_offline_button.set_check_existing_task_cb(
+                generate_task_check_function_js(remote_log_dir)
+            )
             self.gui.training_logs.tensorboard_offline_button.enable()
 
         return remote_dir, file_info
@@ -2628,6 +2634,10 @@ class TrainApp:
             self.gui.training_process.start_button.loading = False
 
             # Shutdown the app after training is finished
+
+            self.gui.training_logs.tensorboard_button.hide()
+            self.gui.training_logs.tensorboard_offline_button.show()
+            sleep(1)  # wait for the button to be shown
             self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"

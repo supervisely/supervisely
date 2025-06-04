@@ -13,6 +13,7 @@ from supervisely.app.widgets_context import JinjaWidgets
 class RunAppButton(Widget):
     def __init__(
         self,
+        team_id: int,
         workspace_id: int,
         module_id: int,
         payload: dict = None,
@@ -26,11 +27,14 @@ class RunAppButton(Widget):
         icon_gap: Optional[int] = 5,
         available_in_offline: Optional[bool] = False,
         visible_by_vue_field: Optional[str] = "",
+        check_existing_task_cb: Optional[str] = "null",
         widget_id: Optional[str] = None,
     ):
         """
         Button the runs an app on Supervisely instance.
 
+        :param team_id: Team ID.
+        :type team_id: int
         :param workspace_id: Workspace ID.
         :type workspace_id: int
         :param module_id: Module ID.
@@ -53,6 +57,8 @@ class RunAppButton(Widget):
         :type available_in_offline: bool, optional
         :param visible_by_vue_field: Vue field that controls the button visibility. If set to "isStaticVersion", the button will be visible only in offline session.
         :type visible_by_vue_field: str, optional
+        :param check_existing_task_cb: Sets the callback function for checking existing tasks. Function should be a string (docstring) of JavaScript code.
+        :type check_existing_task_cb: str, optional
         :param widget_id: Widget ID.
         :type widget_id: str, optional
 
@@ -88,12 +94,13 @@ class RunAppButton(Widget):
 
         self._available_in_offline = available_in_offline
         self._visible_by_vue_field = visible_by_vue_field
-
         self._loading = False
         self._disabled = False
+        self._team_id = team_id
         self._workspace_id = workspace_id
         self._module_id = module_id
         self._payload = payload
+        self._check_existing_task_cb = check_existing_task_cb
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -114,6 +121,7 @@ class RunAppButton(Widget):
             - available_in_offline: If True, the button will be available in offline session.
         """
         return {
+            "check_existing_task_cb": self._check_existing_task_cb,
             "options": {
                 "text": self._text,
                 "button_type": self._button_type,
@@ -123,12 +131,13 @@ class RunAppButton(Widget):
                 "disabled": self._disabled,
                 "icon": self._icon,
                 "available_in_offline": self._available_in_offline,
-            }
+            },
         }
 
     def get_json_state(self) -> None:
         """Button widget doesn't have state, so this method returns None."""
         return {
+            "team_id": self._team_id,
             "workspace_id": self._workspace_id,
             "module_id": self._module_id,
             "payload": self._payload,
@@ -298,3 +307,14 @@ class RunAppButton(Widget):
         """
         self._disabled = value
         DataJson()[self.widget_id]["options"]["disabled"] = self._disabled
+
+    def set_check_existing_task_cb(self, function: str) -> None:
+        """Sets the callback function for checking existing tasks.
+        Function should be a string (docstring) of JavaScript code.
+
+        :param function: Callback function for checking existing tasks.
+        :type function: str
+        """
+        self._check_existing_task_cb = function
+        DataJson()[self.widget_id]["check_existing_task_cb"] = self._check_existing_task_cb
+        DataJson().send_changes()
