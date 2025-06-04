@@ -274,7 +274,7 @@ class TrainValSplitsSelector:
             if len(train_collection_id) == 0 or len(val_collection_id) == 0:
                 self.validator_text.set("Collections are not selected", status="error")
                 return False
-            if train_collection_id == val_collection_id:
+            if set(train_collection_id) == set(val_collection_id):
                 self.validator_text.set(
                     text=f"Same collections are selected for both train and val splits. {ensure_text} {warning_text}",
                     status="warning",
