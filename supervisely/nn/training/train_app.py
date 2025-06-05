@@ -70,6 +70,7 @@ from supervisely.project.download import (
     get_dataset_path,
     is_cached,
 )
+from supervisely.template.experiment.experiment_generator import ExperimentGenerator
 
 
 class TrainApp:
@@ -675,14 +676,35 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-        # Step 10. Set output widgets
+        # Step 10. Generate experiment report
+        experiment = ExperimentGenerator(
+            api=self._api,
+            experiment_info=experiment_info,
+            hyperparameters=self.hyperparameters_yaml,
+            model_meta=model_meta,
+            serving_class=self._inference_class,
+            team_id=self.team_id,
+            output_dir=join(self.work_dir, "experiment_report"),
+            app_options=self._app_options,
+        )
+        experiment.generate()
+        # @TODO: add report thumbnail to GUI
+        # @TODO: add report to workflow output
+        experiment.upload_to_artifacts()
+        experiment_link_file_info = experiment.get_report()
+
+        # Step 11. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(
-            experiment_info, remote_dir, session_link_file_info, mb_eval_report
+            experiment_info,
+            remote_dir,
+            experiment_link_file_info,
+            mb_eval_report,
+            # experiment_info, remote_dir, session_link_file_info, mb_eval_report
         )
         self._set_ws_progress_status("completed")
 
-        # Step 11. Workflow output
+        # Step 12. Workflow output
         if is_production():
             best_checkpoint_file_info = self._get_best_checkpoint_info(experiment_info, remote_dir)
             self._workflow_output(
@@ -1743,6 +1765,7 @@ class TrainApp:
             "evaluation_report_id": evaluation_report_id,
             "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
         }
 
@@ -1778,7 +1801,6 @@ class TrainApp:
         )
 
         # Do not include this fields to uploaded file:
-        experiment_info["primary_metric"] = primary_metric_name
         experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
 
@@ -2001,7 +2023,7 @@ class TrainApp:
         experiment_info: dict,
         remote_dir: str,
         file_info: FileInfo,
-        mb_eval_report=None,
+        mb_eval_report: Optional[FileInfo] = None,
     ) -> None:
         """
         Sets the training output in the GUI.
@@ -2016,8 +2038,10 @@ class TrainApp:
         if is_production():
             self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
+        # Set artifacts thumbnail to GUI
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
+        # Set experiment report thumbnail to GUI
         self.gui.training_artifacts.artifacts_field.show()
         # ---------------------------- #
 
@@ -2722,6 +2746,7 @@ class TrainApp:
             "export_onnx",
             "export_trt",
             "convert_gt_project",
+            "experiment_report",
         ],
     ):
 
@@ -2757,6 +2782,8 @@ class TrainApp:
             self.gui.training_process.validator_text.set("Generating training metadata...", "info")
         elif status == "convert_gt_project":
             self.gui.training_process.validator_text.set("Converting GT project...", "info")
+        elif status == "experiment_report":
+            self.gui.training_process.validator_text.set("Generating experiment report...", "info")
 
     def _set_ws_progress_status(
         self,
