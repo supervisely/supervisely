@@ -1,12 +1,25 @@
 # coding: utf-8
 # isort: skip_file
-import pkg_resources  # isort: skip
-import os
 
-try:
-    __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
-    __version__ = "development"
+import os
+import sys
+
+if "pyodide" in sys.modules:  # running in Pyodide (webpy app)
+    print("Running Supervisely Python SDK in Pyodide environment. ")
+    __version__ = "6.73.367+web.py.sdk"
+    # try:
+    #     from supervisely.sly_logger import logger
+    # except (ImportError, ModuleNotFoundError) as e:
+    #     import supervisely.supervisely as sly
+    #     sys.modules["supervisely"] = sly  # ensure supervisely is available in the module namespace
+else:
+    import pkg_resources  # isort: skip
+
+    try:
+
+        __version__ = pkg_resources.require("supervisely")[0].version
+    except TypeError as e:
+        __version__ = "development"
 
 from supervisely.sly_logger import (
     logger,

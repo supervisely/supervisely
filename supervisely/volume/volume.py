@@ -6,14 +6,24 @@ import os
 from typing import List, Tuple, Union
 
 import numpy as np
-import pydicom
-import SimpleITK as sitk
-from trimesh import Trimesh
 
-import supervisely.volume.nrrd_encoder as nrrd_encoder
 from supervisely import logger
+from supervisely._utils import running_in_webpy_app
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursively
+
+if not running_in_webpy_app():
+    from SimpleITK import Image as SitkImage  # pylint: disable=import-error
+    from trimesh import Trimesh
+else:
+    class SitkImage:
+        """Dummy class for SimpleITK.Image to avoid import error in webpy app."""
+        pass
+
+    class Trimesh:
+        """Dummy class for trimesh.Trimesh to avoid import error in webpy app."""
+        pass
+
 
 # Do NOT use directly for extension validation. Use is_valid_ext() /  has_valid_ext() below instead.
 ALLOWED_VOLUME_EXTENSIONS = [".nrrd", ".dcm"]
@@ -323,6 +333,7 @@ def read_dicom_tags(
     """
 
     import SimpleITK as sitk
+    import pydicom
     import stringcase
 
     reader = sitk.ImageFileReader()
@@ -389,6 +400,7 @@ def encode(volume_np: np.ndarray, volume_meta: dict) -> bytes:
 
         encoded_volume = sly.volume.encode(volume_np, volume_meta)
     """
+    import supervisely.volume.nrrd_encoder as nrrd_encoder
 
     directions = np.array(volume_meta["directions"]).reshape(3, 3)
     directions *= volume_meta["spacing"]
@@ -483,7 +495,7 @@ def _sitk_image_orient_ras(sitk_volume):
     return sitk_volume
 
 
-def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[sitk.Image, dict]:
+def read_dicom_serie_volume(paths: List[str], anonymize: bool = True) -> Tuple[SitkImage, dict]:
     """
     Read DICOM series volumes with given paths.
 
@@ -700,7 +712,7 @@ def inspect_nrrd_series(root_dir: str, logging: bool = True) -> List[str]:
     return nrrd_paths
 
 
-def read_nrrd_serie_volume(path: str) -> Tuple[sitk.Image, dict]:
+def read_nrrd_serie_volume(path: str) -> Tuple[SitkImage, dict]:
     """
     Read NRRD volume with given path.
 

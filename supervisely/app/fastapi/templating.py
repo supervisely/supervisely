@@ -17,7 +17,7 @@ js_bundle_version = "2.1.99"
 js_frontend_version = "v0.0.56"
 
 
-pyodide_version = "v0.25.0"
+pyodide_version = "v0.26.1"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
@@ -56,6 +56,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             "js_bundle_version": js_bundle_version,
             "js_frontend_version": js_frontend_version,
             "app_name": get_name_from_env(default="Supervisely App"),
+            "widgets_styles": JinjaWidgets().get_all_styles(),
         }
 
         try:
@@ -79,6 +80,7 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             "js_frontend_version": js_frontend_version,
             "pyodide_version": pyodide_version,
             "app_name": get_name_from_env(default="Supervisely App"),
+            "widgets_styles": JinjaWidgets().get_all_styles(),
         }
         template: jinja2.Template = self.get_template(name)
         return template.render(context_with_widgets)

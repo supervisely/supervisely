@@ -1,7 +1,11 @@
 import os
 from typing import Generator
 
-import nrrd
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 from pathlib import Path
 from collections import defaultdict, namedtuple

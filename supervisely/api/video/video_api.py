@@ -21,7 +21,12 @@ from typing import (
 )
 
 import aiofiles
-from numerize.numerize import numerize
+
+try:
+    from numerize.numerize import numerize
+except (ImportError, ModuleNotFoundError):
+    numerize = None
+
 from requests import Response
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
@@ -204,7 +209,12 @@ class VideoInfo(NamedTuple):
         :return: Number of frames in the video represented in string format.
         :rtype: :class:`str`
         """
-
+        if numerize is None:
+            logger.warning(
+                "Package 'numerize' is not installed. "
+                "Install it to use the 'frames_count_compact' property."
+            )
+            return str(self.frames_count)
         return numerize(self.frames_count)
 
     @property

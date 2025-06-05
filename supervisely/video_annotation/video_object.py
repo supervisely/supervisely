@@ -5,8 +5,6 @@ from __future__ import annotations
 import uuid
 from typing import Dict, List, Optional
 
-from bidict import bidict
-
 from supervisely._utils import take_with_default
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.obj_class import ObjClass

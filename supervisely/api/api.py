@@ -46,8 +46,8 @@ import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -65,7 +65,13 @@ import supervisely.api.video_annotation_tool_api as video_annotation_tool_api
 import supervisely.api.volume.volume_api as volume_api
 import supervisely.api.workspace_api as workspace_api
 import supervisely.io.env as sly_env
-from supervisely._utils import camel_to_snake, is_community, is_development
+from supervisely._utils import (
+    camel_to_snake,
+    get_or_create_event_loop,
+    is_community,
+    is_development,
+    running_in_webpy_app,
+)
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
     RetryableRequestException,
@@ -632,6 +638,50 @@ class Api:
                 f"Tried to check version compatibility between SDK and instance, but failed: {e}"
             )
 
+    # def _py_fetch(self, kwargs: Dict[str, Any]) -> requests.Response:
+    #     """
+    #     Perform an HTTP request using pyodide's pyfetch.
+
+    #     :param kwargs: Keyword arguments for the request.
+    #     :return: Response object.
+    #     """
+    #     from js import console
+
+    #     from supervisely._utils import create_http_response_from_dict
+
+    #     console.log(f"Request URL: {kwargs['url']}")
+    #     console.log(f"Making request with kwargs: {kwargs}")
+    #     loop = get_or_create_event_loop()
+    #     data, status = loop.run_until_complete(self._py_fetch_async(kwargs))
+    #     console.log(f"Response status: {response.status_code}")
+    #     response = create_http_response_from_dict(data, status, kwargs["headers"])
+    #     console.log(f"Response object created: {type(response)}")
+    #     return response
+
+    async def _py_fetch(self, kwargs: Dict[str, Any]) -> Any:
+        """
+        Perform an asynchronous HTTP request using pyodide's pyfetch.
+
+        :param kwargs: Keyword arguments for the request.
+        :return: Response object.
+        """
+        from js import console
+        from pyodide.http import pyfetch
+
+        console.log(f"Request URL: {kwargs['url']}")
+        console.log(f"Making async request with kwargs: {kwargs}")
+
+        response = await pyfetch(**kwargs)
+        console.log(f"Response status: {response.status}")
+        if not response.ok:
+            raise requests.exceptions.HTTPError(
+                f"HTTP error {response.status} for url: {kwargs['url']}"
+            )
+        # print(f"Response data: {data}")
+        # print(f"Response status: {response.status}")
+        console.log(f"Response status: {response.status}")
+        return await response.json(), response.status  # type: ignore[return-value]
+
     def post(
         self,
         method: str,
@@ -656,6 +706,51 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        # if running_in_webpy_app():
+        #     loop = get_or_create_event_loop()
+        #     headers = {**self.headers, **self.additional_fields}
+        #     if type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+        #         headers["Content-Type"] = data.content_type
+        #     if stream:
+        #         return loop.run_until_complete(
+        #             self.stream_async(
+        #                 method=method,
+        #                 method_type="POST",
+        #                 data=data,
+        #                 headers=headers,
+        #                 retries=retries,
+        #                 timeout=self.retry_sleep_sec,
+        #             )
+        #         )
+        #     else:
+        #         webpy_kwargs = {
+        #             "method": method,
+        #             "headers": headers,
+        #             "retries": retries,
+        #             "raise_error": raise_error,
+        #             "timeout": self.retry_sleep_sec,
+        #         }
+        #         if type(data) is bytes:
+        #             webpy_kwargs["content"] = data
+        #         elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
+        #             webpy_kwargs["content"] = data
+        #         else:
+        #             json_body = data
+        #             if type(data) is dict:
+        #                 json_body = {**data, **self.additional_fields}
+        #             webpy_kwargs["json"] = json_body
+
+        #         return loop.run_until_complete(self.post_async(**webpy_kwargs))
+
+        if running_in_webpy_app():
+            # loop = get_or_create_event_loop()
+            from pyodide import webloop
+
+            loop = webloop.WebLoop()
+            from pyodide.ffi import run_sync
+
+            from supervisely._utils import create_http_response_from_dict
+
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
         if retries is None:
@@ -668,25 +763,80 @@ class Api:
             response = None
             try:
                 if type(data) is bytes:
-                    response = requests.post(url, data=data, headers=self.headers, stream=stream)
+                    if running_in_webpy_app():
+                        # if False:
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
+                        # if False:
+                        kwargs = {
+                            "url": url,
+                            "method": "POST",
+                            "body": json.dumps(data),
+                            "headers": headers,
+                        }
+                        data, status = run_sync(self._py_fetch(kwargs))
+                        response = create_http_response_from_dict(data, status, headers)
+
+                    else:
+                        response = requests.post(
+                            url, data=data, headers=self.headers, stream=stream
+                        )
                 elif type(data) is MultipartEncoderMonitor or type(data) is MultipartEncoder:
-                    response = requests.post(
-                        url,
-                        data=data,
-                        headers={**self.headers, "Content-Type": data.content_type},
-                        stream=stream,
-                    )
+                    if running_in_webpy_app():
+                        # if False:
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
+                        kwargs = {
+                            "url": url,
+                            "method": "POST",
+                            "body": json.dumps(data),
+                            "headers": {**headers, "Content-Type": data.content_type},
+                        }
+                        data, status = run_sync(self._py_fetch(kwargs))
+                        response = create_http_response_from_dict(data, status, headers)
+                    else:
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
+                        response = requests.post(
+                            url,
+                            data=data,
+                            headers={**headers},
+                            stream=stream,
+                        )
                 else:
                     json_body = data
                     if type(data) is dict:
                         json_body = {**data, **self.additional_fields}
-                    response = requests.post(
-                        url, json=json_body, headers=self.headers, stream=stream
-                    )
+                    if running_in_webpy_app():
+                        # if False:
+                        headers = {
+                            **self.headers,
+                            "Content-Type": "application/json; charset=UTF-8",
+                        }
+                        kwargs = {
+                            "url": url,
+                            "method": "POST",
+                            "body": json.dumps(json_body),
+                            "headers": headers,
+                        }
+                        data, status = run_sync(self._py_fetch(kwargs))
+                        response = create_http_response_from_dict(data, status, headers)
+                    else:
+                        response = requests.post(
+                            url, json=json_body, headers=self.headers, stream=stream
+                        )
 
-                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    self._check_version()
-                    Api._raise_for_status(response)
+                if not running_in_webpy_app():
+                    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                        self._check_version()
+                        Api._raise_for_status(response)
+
                 return response
             except requests.RequestException as exc:
                 if (
@@ -739,6 +889,39 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
+        # if running_in_webpy_app():
+        #     loop = get_or_create_event_loop()
+        #     headers = self.headers.copy()
+        #     if stream:
+        #         return loop.run_until_complete(
+        #             self.stream_async(
+        #                 method=method,
+        #                 method_type="GET",
+        #                 params=params,
+        #                 headers=headers,
+        #                 retries=retries,
+        #                 timeout=self.retry_sleep_sec,
+        #                 use_public_api=use_public_api,
+        #             )
+        #         )
+        #     else:
+        #         return loop.run_until_complete(
+        #             self.get_httpx(
+        #                 method=method,
+        #                 params=params,
+        #                 retries=retries,
+        #                 use_public_api=use_public_api,
+        #                 timeout=self.retry_sleep_sec,
+        #             )
+        #         )
+        if running_in_webpy_app():
+            # loop = get_or_create_event_loop()
+            from pyodide import webloop
+
+            loop = webloop.WebLoop()
+            from pyodide.ffi import run_sync
+            from supervisely._utils import create_http_response_from_dict
+
         if not self._skip_https_redirect_check:
             self._check_https_redirect()
         if retries is None:
@@ -755,10 +938,24 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                if running_in_webpy_app():
+                    # if False:
+                    url_with_params = requests.Request("GET", url, params=json_body).prepare().url
+                    kwargs = {
+                        "url": url_with_params,
+                        "method": "GET",
+                        "headers": self.headers,
+                    }
+                    data, status = run_sync(self._py_fetch(kwargs))
+                    response = create_http_response_from_dict(data, status, self.headers)
+                else:
+                    response = requests.get(
+                        url, params=json_body, headers=self.headers, stream=stream
+                    )
 
-                if response.status_code != requests.codes.ok:  # pylint: disable=no-member
-                    Api._raise_for_status(response)
+                if not running_in_webpy_app():
+                    if response.status_code != requests.codes.ok:  # pylint: disable=no-member
+                        Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
                 if (

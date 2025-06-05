@@ -1,7 +1,6 @@
 import os
 import uuid
 from pathlib import Path
-from urllib3.util import parse_url
 from typing import List, Optional, Tuple
 
 import supervisely as sly
@@ -154,11 +153,13 @@ class ImagePairSequence(Widget):
         StateJson().send_changes()
 
     def _check_paths(self, paths):
+        from urllib3.util import parse_url
+
         for path in paths:
             parsed_path = parse_url(path)
             if parsed_path.scheme not in (None, "http", "https"):
                 raise ValueError(f"Invalid path or url to image: {path}")
-            
+
     def _prepare_annotations(self, anns):
         new_anns = []
         for ann in anns:

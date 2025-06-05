@@ -49,7 +49,7 @@ def get_release_commit(tag: str):
 
 
 def get_version():
-    return "v6.73.356"  # ! TODO: remove hardcode before release
+    return "v6.73.367+web.py.sdk"
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
@@ -75,7 +75,6 @@ def get_version():
 
 
 version = get_version()
-
 
 INSTALL_REQUIRES = [
     "cachetools>=4.2.3, <=5.5.0",

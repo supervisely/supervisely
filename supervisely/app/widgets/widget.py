@@ -8,18 +8,23 @@ from pathlib import Path
 from typing import List, Union
 
 import markupsafe
-from async_asgi_testclient import TestClient
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+except (ImportError, ModuleNotFoundError):
+    print("BeautifulSoup is not installed.")
+
 from fastapi import FastAPI
 from jinja2 import Environment
 from varname import varname
 
-from supervisely._utils import generate_free_name, rand_str
+from supervisely._utils import rand_str
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.jinja2 import create_env
 from supervisely.app.widgets_context import JinjaWidgets
+from supervisely.sly_logger import logger
 
 
 class Hidable:
@@ -121,6 +126,54 @@ class Loading:
         return str(soup)
 
 
+class StylesOptimizer:
+
+    def _get_html(self) -> str:
+        """
+        Get html from the template
+        """
+        current_dir = Path(self._file_path).parent.absolute()
+        jinja2_sly_env: Environment = create_env(current_dir)
+        html = jinja2_sly_env.get_template("template.html").render({"widget": self})
+        return html
+
+    def _collect_styles_from_html(self, widget_name):
+        """
+        Collect styles from the html and put them in context.
+        """
+        if not hasattr(self, "need_collect_styles"):
+            return
+        if self.need_collect_styles is False:
+            return
+        if widget_name in JinjaWidgets().context["__widget_styles__"]:
+            return  # styles already collected
+        html = self._get_html()
+        soup = BeautifulSoup(html, features="html.parser")
+        styles = soup.find_all("link", rel="stylesheet")
+        res_styles = []
+        for style in styles:
+            if style.has_attr("href"):
+                res_styles.append(style["href"])
+        if res_styles:
+            JinjaWidgets().add_widget_style(widget_name, res_styles)
+
+    def _wrap_style_html(self, html):
+        """
+        Find link to CSS styles in the html and cut them from the html and put them context.
+        """
+        if not hasattr(self, "need_collect_styles") or self.need_collect_styles is False:
+            return html
+        soup = BeautifulSoup(html, features="html.parser")
+        styles = soup.find_all("link", rel="stylesheet")
+        if not styles:
+            return html
+        for style in styles:
+            if style.has_attr("href"):
+                style.decompose()
+
+        return str(soup)
+
+
 def generate_id(cls_name=""):
     suffix = rand_str(5)  # uuid.uuid4().hex # uuid.uuid4().hex[10]
     if cls_name == "":
@@ -129,7 +182,9 @@ def generate_id(cls_name=""):
         return cls_name + "AutoId" + suffix
 
 
-class Widget(Hidable, Disableable, Loading):
+class Widget(Hidable, Disableable, Loading, StylesOptimizer):
+    need_collect_styles = True
+
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         super().__init__()
         self._sly_app = _MainServer()
@@ -137,6 +192,7 @@ class Widget(Hidable, Disableable, Loading):
         self._file_path = file_path
         self._loading = False
         self._disabled = False
+        self._collect_styles_from_html(type(self).__name__)
 
         if (
             widget_id is not None
@@ -233,6 +289,7 @@ class Widget(Hidable, Disableable, Loading):
         # st = time.time()
         html = self._wrap_hide_html(self.widget_id, html)
         # print("---> time (_wrap_hide_html): ", time.time() - st, " seconds")
+        html = self._wrap_style_html(html)
         return markupsafe.Markup(html)
 
     def __html__(self):
@@ -267,6 +324,7 @@ class ConditionalItem:
 
 
 class DynamicWidget(Widget):
+    need_collect_styles = False
 
     def __init__(self, widget_id: str = None, file_path: str = __file__):
         self.reload = self.update_template_for_offline_session(self.reload)

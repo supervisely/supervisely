@@ -1,5 +1,15 @@
-from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem, DynamicWidget
-from supervisely.app.widgets.widget import Widget, generate_id
+from supervisely._utils import running_in_webpy_app
+
+from supervisely.app.widgets.widget import generate_id, DynamicWidget
+
+if running_in_webpy_app():
+    print("Running in WebPy app. Using WebPy widgets.")
+    from supervisely.webpy.widget import ConditionalWidget, ConditionalItem
+    from supervisely.webpy.widget import Widget, Hidable, Disableable, Loading
+else:
+    from supervisely.app.widgets.widget import ConditionalWidget, ConditionalItem, DynamicWidget
+    from supervisely.app.widgets.widget import Widget
+
 from supervisely.app.widgets.radio_table.radio_table import RadioTable
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
 from supervisely.app.widgets.done_label.done_label import DoneLabel

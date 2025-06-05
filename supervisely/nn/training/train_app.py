@@ -206,10 +206,21 @@ class TrainApp:
         def _train_from_api(response: Response, request: Request):
             try:
                 state = request.state.state
+                wait = state.get("wait", True)
                 app_state = state["app_state"]
                 self.gui.load_from_app_state(app_state)
 
-                self._wrapped_start_training()
+                if wait:
+                    self._wrapped_start_training()
+                else:
+                    import threading
+
+                    training_thread = threading.Thread(
+                        target=self._wrapped_start_training,
+                        daemon=True,
+                    )
+                    training_thread.start()
+                    return {"result": "model training started"}
 
                 return {"result": "model was successfully trained"}
             except Exception as e:

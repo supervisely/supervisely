@@ -3,7 +3,12 @@ from collections import defaultdict, namedtuple
 from typing import Dict, List
 
 import cv2
-import nrrd
+
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
+
 import numpy as np
 
 from supervisely import is_development, logger, ProjectMeta

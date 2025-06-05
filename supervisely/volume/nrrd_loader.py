@@ -9,10 +9,12 @@ References
 .. [NRRD2] https://github.com/mhe/pynrrd (20180212).
 """
 
-import nrrd
-import numpy as np
+try:
+    import nrrd
+except (ImportError, ModuleNotFoundError):
+    print("nrrd package is not installed. NRRD files will not be supported. ")
 
-from loaders.volume import Volume  # pylint: disable=import-error
+import numpy as np
 
 
 def open_image(path, verbose=True):
@@ -54,6 +56,8 @@ def open_image(path, verbose=True):
     mat = __matrix_from(hdr)  # Voxels to world coordinates
 
     # Create new ``Volume`` instance
+    from loaders.volume import Volume  # pylint: disable=import-error
+
     volume = Volume(
         src_voxel_data=voxel_data,
         src_transformation=mat,

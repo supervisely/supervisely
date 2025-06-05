@@ -62,6 +62,9 @@
 </head>
 
 <body style="background-color: #f4f7fe">
+  {% for style in widgets_styles %}
+    <link rel="stylesheet" href="{{{ style }}}" />
+  {% endfor %}
   <center>
     <div id="app-global-loading-icon">
       <img src="https://app.supervisely.com/loading.gif" />
@@ -110,6 +113,13 @@
   </div>
 
   <!-- Offline session styles fix -->
+  <!-- import { asyncRun } from "./workerApi.js"; -->
+   <script type="module">
+    import { asyncRun } from "./workerApi.js";
+    window.webpyApp = { 
+        asyncRun: asyncRun,
+     }
+   </script>
   <script>
     let resizeCounter = 0;
     let resizeInterval = setInterval(() => {
@@ -154,6 +164,16 @@ extract_to = "${extractTo}"
 os.makedirs(extract_to, exist_ok=True)
 with tarfile.open(tar_path, "r:") as tar_ref:
     tar_ref.extractall(extract_to)
+
+# if name 'supervisely' (it probably will contain redundant nested hierarchy) we need to move files
+extracted_path = os.path.join(extract_to, "${packageName}")
+if "${packageName}" == "supervisely" and os.path.exists(extracted_path):
+    if "supervisely" in os.listdir(extracted_path):
+        import shutil
+        os.rename(extracted_path, extracted_path + "_temp")
+        nested_path = os.path.join(extracted_path + "_temp", "supervisely")
+        shutil.move(nested_path, extract_to)
+        os.rmdir(extracted_path + "_temp")
 `;
       await pyodide.runPythonAsync(pythonCode);
 
@@ -191,14 +211,16 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       await micropip.install(["typing_extensions == 4.8"]) // needed for fastapi
       await micropip.install(["ssl"]) // needed for fastapi
       await micropip.install(["fastapi"]) // needed for sdk
+      await micropip.install('pyodide-http') // needed to patch http requests in pyodide
 
       {% if pyodide_requirements %}
       {% for req in pyodide_requirements %}
-      await micropip.install(["{{{ req | safe }}}"])
+      console.log("Installing Python package:", "{{{ req | safe }}}");
+      await micropip.install(["{{{ req | safe }}}"], keep_going=true);
       {% endfor %}
       {% endif %}
 
-      await setupAndImportPythonPackage("./sly_sdk.tar", "sly_sdk") // temporary solution
+      await setupAndImportPythonPackage("./supervisely.tar", "supervisely") // temporary solution
       await setupAndImportPythonPackage("./src.tar", "src")
       {% if src_modules %}
       {% for module in src_modules %}
@@ -207,18 +229,23 @@ with tarfile.open(tar_path, "r:") as tar_ref:
       {% endif %}
 
       mainScriptTxt = await fetch("./{{{ __webpy_script__ }}}").then((response) => response.text());
+      console.log("Main Python script loaded");
       python_code = `
-from sly_sdk.webpy import WebPyApplication
+import pyodide_http
+pyodide_http.patch_all()  # Patch all libraries
+from supervisely.webpy.app import WebPyApplication
 app = WebPyApplication()
 state = app.state
 if state.get("app_initializing", False) == True:
     state["app_initializing"] = False
     state.send_changes()
 `
-      const fn = pyodide.runPython(python_code);
+      const fn = await pyodide.runPythonAsync(python_code);
+      console.log("fn", fn);
+      console.log("WebPyApplication initialized");
       if (typeof fn === "function") {
         const newParams = params.map(p => pyodide.toPy(p));
-        result = fn(...newParams);
+        result = await fn(...newParams);
       } else {
         result = fn;
       }
@@ -240,10 +267,10 @@ if state.get("app_initializing", False) == True:
       let result;
       const timeStart = performance.now();
 
-      const fn = pyodide.runPython(mainScriptTxt);
+      const fn = await pyodide.runPythonAsync(mainScriptTxt);
       if (typeof fn === "function") {
         const newParams = params.map(p => pyodide.toPy(p));
-        result = fn(...newParams);
+        result = await fn(...newParams);
       } else {
         result = fn;
       }
@@ -253,6 +280,27 @@ if state.get("app_initializing", False) == True:
 
       return result;
     }
+    // async function runPythonScript(...params) {
+    //   if (initPromise) {
+    //     await initPromise;
+    //     initPromise = null;
+    //   }
+
+    // //   let result;
+    //   const timeStart = performance.now();
+
+    //   const { result, error } = await window.webpyApp.asyncRun(mainScriptTxt, params);
+    //   if (result) {
+    //       console.log("pyodideWorker result:", result);
+    //   } else if (error) {
+    //       console.log("pyodideWorker error:", error);
+    //   }
+
+    //   const timeEnd = performance.now();
+    //   console.log("Web Python script executed in", timeEnd - timeStart, "ms");
+
+    //   return result;
+    // }
 
     const runPythonScriptThrottled = _.throttle(runPythonScript, 50);
     {% if __webpy_script__ %}

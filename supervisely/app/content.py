@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 import jsonpatch
 from fastapi import Request
 
-from supervisely._utils import is_production
+from supervisely._utils import is_production, running_in_webpy_app
 from supervisely.api.api import Api
 from supervisely.app.fastapi import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
@@ -24,7 +24,8 @@ from supervisely.io import env as sly_env
 from supervisely.io.fs import dir_exists, mkdir
 from supervisely.sly_logger import logger
 
-_pool = ThreadPoolExecutor()
+if not running_in_webpy_app():
+    _pool = ThreadPoolExecutor()
 
 
 @contextlib.asynccontextmanager
@@ -248,3 +249,14 @@ class ContentOrigin(metaclass=Singleton):
                 return
 
             time.sleep(self._SLEEP_TIME)
+
+
+if running_in_webpy_app():
+    logger.info("Running in WebPy app, using corresponding DataJson and StateJson implementations.")
+    from supervisely.webpy.app import DataJson as WebpyDataJson
+    from supervisely.webpy.app import StateJson as WebpyStateJson
+    from supervisely.webpy.app import _PatchableJson as WebpyPatchableJson
+
+    DataJson = WebpyDataJson
+    StateJson = WebpyStateJson
+    _PatchableJson = WebpyPatchableJson

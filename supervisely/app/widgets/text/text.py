@@ -1,6 +1,7 @@
 from typing import Optional
 from supervisely.app import DataJson
 from supervisely.app.widgets import Widget
+from supervisely._utils import running_in_webpy_app
 
 try:
     from typing import Literal
@@ -53,7 +54,10 @@ class Text(Widget):
         self._icon_color = None
         self._text_color = None
         self._font_size = f"{font_size}px"
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        if running_in_webpy_app():
+            super().__init__(widget_id=widget_id)
+        else:
+            super().__init__(widget_id=widget_id, file_path=__file__)
         self.set(text, status)
         if color is not None:
             self.color = color
