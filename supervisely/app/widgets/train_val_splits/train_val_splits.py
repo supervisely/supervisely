@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import supervisely as sly
@@ -17,6 +18,7 @@ from supervisely.app.widgets import (
 from supervisely.app.widgets.random_splits_table.random_splits_table import (
     RandomSplitsTable,
 )
+from supervisely.app.widgets.select_collection.select_collection import SelectCollection
 from supervisely.app.widgets.select_dataset_tree.select_dataset_tree import (
     SelectDatasetTree,
 )
@@ -41,28 +43,27 @@ class TrainValSplits(Widget):
         tags_splits: Optional[bool] = True,
         datasets_splits: Optional[bool] = True,
         widget_id: Optional[int] = None,
+        collections_splits: Optional[bool] = False,
     ):
         self._project_id = project_id
         self._project_fs = project_fs
 
-        if project_fs is not None and project_id is not None:
-            raise ValueError(
-                "You can not provide both project_id and project_fs parameters to TrainValSplits widget."
-            )
-        if project_fs is None and project_id is None:
-            raise ValueError(
-                "You should provide at least one of: project_id or project_fs parameters to TrainValSplits widget."
-            )
-
         self._project_info = None
+        self._project_type = None
+        self._project_class = None
+        self._api = None
         if project_id is not None:
             self._api = Api()
             self._project_info = self._api.project.get_info_by_id(
                 self._project_id, raise_error=True
             )
 
-        self._project_type = project_fs.type if project_id is None else self._project_info.type
-        self._project_class = get_project_class(self._project_type)
+        if project_fs is not None:
+            self._project_type = project_fs.type
+        elif self._project_info is not None:
+            self._project_type = self._project_info.type
+        if self._project_type is not None:
+            self._project_class = get_project_class(self._project_type)
 
         self._random_splits_table: RandomSplitsTable = None
         self._train_tag_select: SelectTagMeta = None
@@ -70,6 +71,8 @@ class TrainValSplits(Widget):
         self._untagged_select: SelectString = None
         self._train_ds_select: Union[SelectDatasetTree, SelectString] = None
         self._val_ds_select: Union[SelectDatasetTree, SelectString] = None
+        self._train_collections_select: SelectCollection = None
+        self._val_collections_select: SelectCollection = None
         self._split_methods = []
 
         contents = []
@@ -80,12 +83,18 @@ class TrainValSplits(Widget):
             contents.append(self._get_random_content())
         if tags_splits:
             self._split_methods.append("Based on item tags")
-            tabs_descriptions.append(f"{self._project_type.capitalize()} should have assigned train or val tag")
+            tabs_descriptions.append(
+                f"{self._project_type.capitalize()} should have assigned train or val tag"
+            )
             contents.append(self._get_tags_content())
         if datasets_splits:
             self._split_methods.append("Based on datasets")
             tabs_descriptions.append("Select one or several datasets for every split")
             contents.append(self._get_datasets_content())
+        if collections_splits:
+            self._split_methods.append("Based on collections")
+            tabs_descriptions.append("Select one or several collections for every split")
+            contents.append(self._get_collections_content())
         if not self._split_methods:
             raise ValueError(
                 "Any of split methods [random_splits, tags_splits, datasets_splits] must be specified in TrainValSplits."
@@ -216,6 +225,32 @@ class TrainValSplits(Widget):
             widgets=[notification_box, train_field, val_field], direction="vertical", gap=5
         )
 
+    def _get_collections_content(self):
+        notification_box = NotificationBox(
+            title="Notice: How to make equal splits",
+            description="Choose the same collection(s) for train/validation to make splits equal. Can be used for debug and for tiny projects",
+            box_type="info",
+        )
+
+        self._train_collections_select = SelectCollection(multiselect=True, compact=True)
+        self._val_collections_select = SelectCollection(multiselect=True, compact=True)
+        if self._project_id is not None:
+            self._train_collections_select.set_project_id(self._project_id)
+            self._val_collections_select.set_project_id(self._project_id)
+        train_field = Field(
+            self._train_collections_select,
+            title="Train collection(s)",
+            description="all images in selected collection(s) are considered as training set",
+        )
+        val_field = Field(
+            self._val_collections_select,
+            title="Validation collection(s)",
+            description="all images in selected collection(s) are considered as validation set",
+        )
+        return Container(
+            widgets=[notification_box, train_field, val_field], direction="vertical", gap=5
+        )
+
     def get_json_data(self):
         return {}
 
@@ -223,6 +258,8 @@ class TrainValSplits(Widget):
         return {}
 
     def get_splits(self) -> Tuple[List[ItemInfo], List[ItemInfo]]:
+        if self._project_id is None and self._project_fs is None:
+            raise ValueError("Both project_id and project_fs are None.")
         split_method = self._content.get_active_tab()
         tmp_project_dir = None
         train_set, val_set = [], []
@@ -276,18 +313,35 @@ class TrainValSplits(Widget):
             train_set, val_set = self._project_class.get_train_val_splits_by_dataset(
                 project_dir, train_ds_names, val_ds_names
             )
+        elif split_method == "Based on collections":
+            if self._project_id is None:
+                raise ValueError(
+                    "You can not use collections_splits parameter without project_id parameter."
+                )
+            train_collections = self._train_collections_select.get_selected_ids()
+            val_collections = self._val_collections_select.get_selected_ids()
+
+            train_set, val_set = self._project_class.get_train_val_splits_by_collections(
+                project_dir,
+                train_collections,
+                val_collections,
+                self._project_id,
+                self._api,
+            )
 
         if tmp_project_dir is not None:
             remove_dir(tmp_project_dir)
         return train_set, val_set
 
-    def set_split_method(self, split_method: Literal["random", "tags", "datasets"]):
+    def set_split_method(self, split_method: Literal["random", "tags", "datasets", "collections"]):
         if split_method == "random":
             split_method = "Random"
         elif split_method == "tags":
             split_method = "Based on item tags"
         elif split_method == "datasets":
             split_method = "Based on datasets"
+        elif split_method == "collections":
+            split_method = "Based on collections"
         self._content.set_active_tab(split_method)
         StateJson().send_changes()
         DataJson().send_changes()
@@ -337,6 +391,42 @@ class TrainValSplits(Widget):
     def get_val_dataset_ids(self) -> List[int]:
         return self._val_ds_select.get_selected_ids()
 
+    def set_project_id_for_collections(self, project_id: int):
+        if not isinstance(project_id, int):
+            raise ValueError("Project ID must be an integer.")
+        self._project_id = project_id
+        self._project_type = None
+        if self._api is None:
+            self._api = Api()
+        self._project_info = self._api.project.get_info_by_id(self._project_id, raise_error=True)
+        self._project_type = self._project_info.type
+        self._project_class = get_project_class(self._project_type)
+        if not self._train_collections_select or not self._val_collections_select:
+            raise ValueError("Collections select widgets are not initialized.")
+        self._train_collections_select.set_project_id(project_id)
+        self._val_collections_select.set_project_id(project_id)
+
+    def get_train_collections_ids(self) -> List[int]:
+        return self._train_collections_select.get_selected_ids() or []
+
+    def get_val_collections_ids(self) -> List[int]:
+        return self._val_collections_select.get_selected_ids() or []
+
+    def set_collections_splits(self, train_collections: List[int], val_collections: List[int]):
+        self._content.set_active_tab("Based on collections")
+        self.set_collections_splits_by_ids("train", train_collections)
+        self.set_collections_splits_by_ids("val", val_collections)
+
+    def set_collections_splits_by_ids(
+        self, split: Literal["train", "val"], collection_ids: List[int]
+    ):
+        if split == "train":
+            self._train_collections_select.set_collections(collection_ids)
+        elif split == "val":
+            self._val_collections_select.set_collections(collection_ids)
+        else:
+            raise ValueError("Split value must be 'train' or 'val'")
+
     def get_untagged_action(self) -> str:
         return self._untagged_select.get_value()
 
@@ -355,6 +445,10 @@ class TrainValSplits(Widget):
         if self._val_ds_select is not None:
             self._val_ds_select.disable()
         self._disabled = True
+        if self._train_collections_select is not None:
+            self._train_collections_select.disable()
+        if self._val_collections_select is not None:
+            self._val_collections_select.disable()
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
 
@@ -373,5 +467,9 @@ class TrainValSplits(Widget):
         if self._val_ds_select is not None:
             self._val_ds_select.enable()
         self._disabled = False
+        if self._train_collections_select is not None:
+            self._train_collections_select.enable()
+        if self._val_collections_select is not None:
+            self._val_collections_select.enable()
         DataJson()[self.widget_id]["disabled"] = self._disabled
         DataJson().send_changes()
