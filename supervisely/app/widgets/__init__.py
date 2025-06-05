@@ -151,3 +151,6 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import Expe
 from supervisely.app.widgets.bokeh.bokeh import Bokeh
 from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
 from supervisely.app.widgets.select_collection.select_collection import SelectCollection
+from supervisely.app.widgets.solution_graph.solution_graph import SolutionGraph
+from supervisely.app.widgets.solution_card.solution_card import SolutionCard
+from supervisely.app.widgets.solution_project.solution_project import SolutionProject
