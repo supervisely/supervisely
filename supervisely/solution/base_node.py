@@ -129,7 +129,15 @@ class BaseSolutionNode(Widget):
             self._node = SolutionGraph.Node(x=self.x, y=self.y, content=self.card)
         return self._node
 
-    def update_state(self, update_dict: Dict[str, Any]) -> None:
+    @property
+    def state(self) -> Any:
+        return StateJson()[self.widget_id]
+    
+    @property
+    def data(self) -> Any:
+        return DataJson()[self.widget_id]
+
+    def update_in_state(self, update_dict: Dict[str, Any]) -> None:
         """Update the node's state with new values"""
         StateJson()[self.widget_id].update(update_dict)
         StateJson().send_changes()
@@ -146,7 +154,7 @@ class BaseSolutionNode(Widget):
         StateJson()[self.widget_id][key].append(value)
         StateJson().send_changes()
 
-    def update_data(self, update_dict: Dict[str, Any]) -> None:
+    def update_in_data(self, update_dict: Dict[str, Any]) -> None:
         """Update the node's data with new values"""
         DataJson()[self.widget_id].update(update_dict)
         DataJson().send_changes()
