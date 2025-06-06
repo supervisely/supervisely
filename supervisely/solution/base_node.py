@@ -1,9 +1,234 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, TypeVar, Union
 
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import SolutionCard, SolutionGraph, SolutionProject, Widget
+from supervisely.app.widgets import (
+    Button,
+    SolutionCard,
+    SolutionGraph,
+    SolutionProject,
+    Text,
+    Widget,
+)
 from supervisely.solution.scheduler import TasksScheduler
+
+T = TypeVar("T", bound=Widget)
+
+
+# SolugionGraph.Node - only for x, y
+# SolutionCard / SolutionProject - has specific GUI and properties (should be used as content)
+# Schedulable - for scheduling tasks (in solution blocks)
+# ?? where to put state management methods? inside SolutionWidget? (it will be incapsulated in cloud_import.gui but not in the block itself)
+
+
+# class Schedulable:
+#     """Mixin class for schedulable nodes.
+#     This class provides a scheduler instance that can be used to schedule tasks.
+#     """
+
+#     def __init__(self):
+#         """Initialize the Schedulable mixin."""
+#         self._scheduler = TasksScheduler()
+
+#     @property
+#     def scheduler(self) -> TasksScheduler:
+#         """Returns the scheduler instance."""
+#         return self._scheduler
+
+#     def add_job(
+#         self,
+#         job_id: str,
+#         func: Callable,
+#         sec: int,
+#         replace_existing: bool = True,
+#         args: Optional[List[Any]] = None,  # (var, )
+#     ) -> None:
+#         """Add a job to the scheduler with the specified parameters."""
+#         return self._scheduler.add_job(job_id, func, sec, replace_existing, args)
+
+#     def remove_job(self, job_id: str) -> bool:
+#         """Remove a scheduled job using the provided scheduler."""
+#         return self._scheduler.remove_job(job_id)
+
+#     def is_job_scheduled(self, job_id: str) -> bool:
+#         """Check if a job is scheduled using the provided scheduler."""
+#         return self._scheduler.is_job_scheduled(job_id)
+
+
+# class SolutionWidget:
+#     def __new__(cls, content: T) -> T:
+#         content.update_state = cls._update_state
+#         return content
+
+#     @staticmethod
+#     def _update_state(state: dict) -> None:
+#         print(state)
+
+
+# class SolutionNode(SolutionGraph.Node):
+#     pass
+# class SolutionNode:
+#     def __new__(cls, content: T, x: int = 0, y: int = 0) -> T:
+#         content = super().__new__(cls, content)
+
+#         content.x = x
+#         content.y = y
+#         content.node = SolutionGraph.Node(x=x, y=y, content=content)
+
+#         # content.scheduler = TasksScheduler()
+#         return content
+
+# SolutionGraph + SolutionGraph.Node
+# SolutionCard
+# SolutionProject
+
+
+# only SolutionCard/SolutionProject can be used as content
+class SolutionCardNode(SolutionGraph.Node):
+    def __init__(self, content: T, x: int = 0, y: int = 0):
+        self.content = content
+        self.content.x = x
+        self.content.y = y
+
+    def __new__(cls, content: T, x: int = 0, y: int = 0) -> T:
+        if not isinstance(content, (SolutionCard, SolutionProject)):
+            raise TypeError("Content must be one of SolutionCard or SolutionProject")
+        return super().__new__(cls, content, x, y)
+
+    def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
+        for prop in self.content.tooltip_properties:
+            if prop["key"] == key:
+                self.content.update_property(key, value, link, highlight)
+                return
+        self.content.add_property(key, value, link, highlight)
+
+    def remove_property_by_key(self, key: str):
+        self.content.remove_property_by_key(key)
+
+    def update_badge(
+        self,
+        idx: int,
+        label: str,
+        on_hover: str = None,
+        badge_type: Literal["info", "success", "warning", "error"] = "info",
+    ):
+        self.content.update_badge(idx, label, on_hover, badge_type)
+
+    def update_badge_by_key(
+        self,
+        key: str,
+        label: str,
+        badge_type: Literal["info", "success", "warning", "error"] = None,
+        new_key: str = None,
+    ):
+        for idx, prop in enumerate(self.content.badges):
+            if prop["on_hover"] == key:
+                self.content.update_badge(idx, label, new_key, badge_type)
+                return
+        self.content.add_badge(
+            self.card_cls.Badge(
+                label=label,
+                on_hover=new_key or key,
+                badge_type=badge_type or "info",
+            )
+        )
+
+    def add_badge(self, badge):
+        self.content.add_badge(badge)
+
+    def remove_badge(self, idx: int):
+        self.content.remove_badge(idx)
+
+    def remove_badge_by_key(self, key: str):
+        self.content.remove_badge_by_key(key)
+
+    def update_automation_badge(self, enable: bool) -> None:
+        for idx, prop in enumerate(self.content.badges):
+            if prop["on_hover"] == "Automation":
+                if enable:
+                    pass  # already enabled
+                else:
+                    self.content.remove_badge(idx)
+                return
+
+        if enable:  # if not found
+            self.content.add_badge(
+                SolutionCard.Badge(
+                    label="⚡",
+                    on_hover="Automation",
+                    badge_type="warning",
+                    plain=True,
+                )
+            )
+
+    def show_automation_badge(self) -> None:
+        self.update_automation_badge(True)
+
+    def hide_automation_badge(self) -> None:
+        self.update_automation_badge(False)
+
+
+# only SolutionProject can be used as content
+class SolutionProjectNode(SolutionCardNode):
+    def __new__(cls, content: T, x: int = 0, y: int = 0) -> T:
+        if not isinstance(content, SolutionProject):
+            raise TypeError("Content must be an instance of SolutionProject")
+        return super().__new__(cls, content, x, y)
+
+    def update_preview(self, imgs: List[str], counts: List[int]):
+        self.content.update_preview_url(imgs)
+        self.content.update_items_count(counts)
+
+    def update(
+        self,
+        project: ProjectInfo = None,
+        new_items_count: int = None,
+        urls: List[Union[int, str, None]] = None,
+        counts: List[Union[int, None]] = None,
+    ):
+        if project is not None:
+            self.project = project
+        if new_items_count is not None:
+            self.update_property(key="Last update", value=f"+{new_items_count}")
+            self.update_property(key="Total", value=f"{self.project.items_count} images")
+            self.update_badge_by_key(key="Last update:", label=f"+{new_items_count}")
+
+        if self.is_training and urls is not None and counts is not None:
+            self.update_preview(urls, counts)
+        else:
+            self.update_preview(
+                [self.project.image_preview_url],
+                [self.project.items_count],
+            )
+
+
+# # some block implementation (for example, cloud import)
+class CloudImportGUI(Widget):
+    def __init__(self, project_id: str, widget_id: Optional[str] = None):
+        self.project_id = project_id
+        self.btn = Button("Import from Cloud")
+        self.on_import_callback = None
+        super().__init__(widget_id=widget_id, file_path=__file__)
+
+        @self.btn.click
+        def on_import_click():
+            self.run()
+
+    def run(self):
+        task_id = self.run_app()
+        DataJson()[self.widget_id]["task_id"].append(task_id)
+        DataJson().send_changes()
+
+
+class SolutionCloudImport:
+    def __init__(self, project_id: str, x: int, y: int):
+        self.project_id = project_id
+        self.gui = CloudImportGUI(project_id)
+        self.node = SolutionCardNode(content=self.gui, x=x, y=y)
+
+
+# # usage example
+# cloud_import = SolutionCloudImport()
 
 
 class BaseSolutionNode(Widget):
@@ -35,7 +260,7 @@ class BaseSolutionNode(Widget):
         if self.card is None:
             raise ValueError("Card content is not initialized.")
 
-    def _create_widgets(self) -> None:
+    def _create_gui(self) -> None:
         """Creates the main widget for the node.
 
         Example:
@@ -132,10 +357,18 @@ class BaseSolutionNode(Widget):
     @property
     def state(self) -> Any:
         return StateJson()[self.widget_id]
-    
+
+    def send_state_changes(self) -> None:
+        """Send changes to the state JSON."""
+        StateJson().send_changes()
+
     @property
     def data(self) -> Any:
         return DataJson()[self.widget_id]
+
+    def send_data_changes(self) -> None:
+        """Send changes to the data JSON."""
+        DataJson().send_changes()
 
     def update_in_state(self, update_dict: Dict[str, Any]) -> None:
         """Update the node's state with new values"""
@@ -217,6 +450,9 @@ class BaseSolutionNode(Widget):
 
     def remove_badge_by_key(self, key: str):
         self.card.remove_badge_by_key(key)
+
+
+# card_cls = SolutionGraph.Node
 
 
 class SolutionNode(BaseSolutionNode):
