@@ -129,10 +129,20 @@ class CloudImport(SolutionNode):
         self.logs_modal = Dialog(title="Task logs", content=self.logs)
 
         self.tasks_btn = Button(
-            "Import tasks history", icon="zmdi zmdi-view-list-alt", button_size="mini"
+            "Import tasks history",
+            icon="zmdi zmdi-view-list-alt",
+            button_size="mini",
+            plain=True,
+            button_type="text",
         )
         self.tasks_modal = Dialog(title="Import tasks history", content=self.tasks_table)
-        self.automate_btn = Button("Automate", icon="zmdi zmdi-flash-auto", button_size="mini")
+        self.automate_btn = Button(
+            "Automate",
+            icon="zmdi zmdi-flash-auto",
+            button_size="mini",
+            plain=True,
+            button_type="text",
+        )
 
         @self.tasks_btn.click
         def _show_tasks():
@@ -169,7 +179,7 @@ class CloudImport(SolutionNode):
         self.card = self.card_cls(
             title="Import from Cloud",
             tooltip=tooltip,
-            width=200,
+            width=250,
         )
 
         @self.card.click
