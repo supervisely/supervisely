@@ -191,6 +191,11 @@ def sample_video(
         context=context,
     )
 
+    if progress is not None:
+        progress.set(0, len(frame_indices), report=False)
+        progress.message = f"Sampling video {video_info.name} [{video_info.id}]"
+        progress.refresh()
+
     with VideoFrameReader(video_path, frame_indices) as reader:
         for batch in batched(zip(reader, frame_indices)):
             frames, indices = zip(*batch)
