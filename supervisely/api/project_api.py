@@ -903,48 +903,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def _convert_json_info(self, info: dict, skip_missing=True) -> ProjectInfo:
         """ """
-
-        def _get_value(dict, field_name, skip_missing):
-            if skip_missing is True:
-                return dict.get(field_name, None)
-            else:
-                return dict[field_name]
-
-        if info is None:
-            return None
-        else:
-            field_values = []
-            for field_name in self.info_sequence():
-                if type(field_name) is str:
-                    if field_name == ApiField.ITEMS_COUNT:
-                        field_value = _get_value(info, ApiField.ITEMS_COUNT, skip_missing)
-                        if field_value is None:
-                            field_value = _get_value(info, ApiField.IMAGES_COUNT, skip_missing)
-                        field_values.append(field_value)
-                    elif field_name == ApiField.EMBEDDINGS_IN_PROGRESS:
-                        # Extract embeddingsInProgress from nested meta.embeddings structure
-                        field_value = None
-                        meta = _get_value(info, ApiField.META, skip_missing)
-                        if meta is not None:
-                            embeddings = _get_value(meta, ApiField.EMBEDDINGS, skip_missing)
-                            if embeddings is not None:
-                                field_value = _get_value(
-                                        embeddings, ApiField.EMBEDDINGS_IN_PROGRESS, skip_missing)
-                        field_values.append(field_value)
-                    else:
-                        field_values.append(_get_value(info, field_name, skip_missing))
-                elif type(field_name) is tuple:
-                    value = None
-                    for sub_name in field_name[0]:
-                        if value is None:
-                            value = _get_value(info, sub_name, skip_missing)
-                        else:
-                            value = _get_value(value, sub_name, skip_missing)
-                    field_values.append(value)
-                else:
-                    raise RuntimeError("Can not parse field {!r}".format(field_name))
-
-            return self.InfoType(*field_values)
+        res = super()._convert_json_info(info, skip_missing=skip_missing)
+        if res.items_count is None:
+            res = res._replace(items_count=res.images_count)
+        return ProjectInfo(**res._asdict())
 
     def get_stats(self, id: int) -> Dict:
         """
