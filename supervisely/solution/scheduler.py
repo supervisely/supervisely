@@ -1,4 +1,7 @@
-class TasksScheduler:
+from supervisely.app.singleton import Singleton
+
+
+class TasksScheduler(metaclass=Singleton):
     """
     This class is used to schedule tasks using APScheduler.
     It provides methods to add, remove, and modify scheduled tasks.
