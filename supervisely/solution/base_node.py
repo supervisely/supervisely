@@ -263,7 +263,7 @@ class SolutionProjectNode(BaseSolutionNode):
 
     def _get_preview_details(self, ids: List[int]):
         preview_urls = []
-        image_infos = self._api.image.get_info_by_id_batch(ids)
+        image_infos = self.api.image.get_info_by_id_batch(ids)
         for image in image_infos:
             preview_urls.append(image.preview_url)
         return preview_urls
