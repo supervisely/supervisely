@@ -44,7 +44,7 @@ from supervisely import (
 )
 from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
-from supervisely.app import get_synced_data_dir
+from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
@@ -2602,9 +2602,8 @@ class TrainApp:
         except Exception as e:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
         try:
             self._set_text_status("preparing")
@@ -2613,9 +2612,8 @@ class TrainApp:
         except Exception as e:
             message = f"Error occurred during data preparation. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
         try:
             self._set_text_status("training")
@@ -2629,15 +2627,13 @@ class TrainApp:
                 "Please check input data and hyperparameters."
             )
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
             return
         except Exception as e:
             message = f"Error occurred during training. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
         try:
             self._set_text_status("finalizing")
@@ -2645,18 +2641,17 @@ class TrainApp:
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
 
-            # Shutdown the app after training is finished
+            if is_production() and self.gui.training_logs.tensorboard_offline_button is not None:
+                self.gui.training_logs.tensorboard_button.hide()
+                self.gui.training_logs.tensorboard_offline_button.show()
 
-            self.gui.training_logs.tensorboard_button.hide()
-            self.gui.training_logs.tensorboard_offline_button.show()
-            sleep(1)  # wait for the button to be shown
+            sleep(1)
             self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
     def _show_error(self, message: str, e=None):
         if e is not None:
@@ -2667,6 +2662,7 @@ class TrainApp:
         self.gui.training_process.validator_text.show()
         self.gui.training_process.start_button.loading = False
         self._restore_train_widgets_state_on_error()
+        show_dialog(title="Error", description=message, status="error")
 
     def _set_train_widgets_state_on_start(self):
         self.gui.disable_select_buttons()
