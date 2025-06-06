@@ -1,47 +1,126 @@
-# {{ experiment.name }}
+# 🔬 {{ experiment.name }}
 
 *Last trained: {{ experiment.date }}*
 
-## Quick Actions
+---
 
-    [🚀 Deploy] [⚡ Predict] [📥 Download] [🔄 Finetune]
+<div class="experiment-header-layout">
+<div class="key-info-section">
 
-🔴🔴🔴 Можно сделать эти кнопки как Cards (https://docs.gitbook.com/creating-content/blocks/cards)
-
-### Table of Contents
-
-- [Experiment Overview](#experiment-overview)
-- [Performance](#performance)
-- [Artifacts](#artifacts)
-- [Supervisely Apps](#supervisely-apps)
-- [API Integration](#api-integration)
-- [Deploy in Docker](#predict-in-docker)
-- [Deploy outside of Supervisely](#predict-locally)
-- [Using Original Model](#using-original-model)
-
-## Experiment Overview
-
-- [🎓 Training Session]({{ links.training_session.url }}){:target="_blank"}
-- [📊 Evaluation Report]({{ links.evaluation_report.url }}){:target="_blank"}
-- [📈 TensorBoard Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
-- [📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
-
-### Training Details:
-
-- **Model**: {{ experiment.model_name }}
-- **Framework**: {{ experiment.framework_name }}
-- **Task**: {{ experiment.task_name }}
-- **Project**: {{ project.name }}
-- **Classes**: {{ project.classes_count }} ({{ project.class_names.short_string }})
-- **Training images**: {{ project.train_size }}
-- **Validation images**: {{ project.val_size }}
-{% if benchmark.primary_metric.name %}
-- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.value }}
+{% if benchmark.primary_metric.value > 0.9 %}
+<div class="status-indicator success">
+<strong>🟢 Excellent Results!</strong> Your model is ready for deployment
+</div>
+{% elif benchmark.primary_metric.value > 0.8 %}
+<div class="status-indicator good">
+<strong>🟡 Good Results</strong> Model can be improved
+</div>
+{% else %}
+<div class="status-indicator warning">
+<strong>🟠 Optimization Required</strong> Additional tuning recommended
+</div>
 {% endif %}
+
+{% if benchmark.primary_metric.name %}
+<h3>🎯 Primary Metric</h3>
+<div class="metric-display">
+<strong>{{ benchmark.primary_metric.name }}: {{ "%.3f"|format(benchmark.primary_metric.value) }}</strong>
+</div>
+<div class="metric-status">
+{% if benchmark.primary_metric.value > 0.95 %}
+<em>🏆 Outstanding Performance</em>
+{% elif benchmark.primary_metric.value > 0.9 %}
+<em>✅ Excellent Performance</em>
+{% elif benchmark.primary_metric.value > 0.8 %}
+<em>👍 Good Performance</em>
+{% else %}
+<em>⚠️ Needs Improvement</em>
+{% endif %}
+</div>
+{% endif %}
+
+<div class="info-grid-layout">
+<div class="main-info-column">
+
+<table class="info-table">
+<tr><td><strong>🤖 Model</strong></td><td>{{ experiment.model_name }}</td></tr>
+<tr><td><strong>🔧 Framework</strong></td><td>{{ experiment.framework_name }}</td></tr>
+<tr><td><strong>🎯 Task</strong></td><td>{{ experiment.task_name }}</td></tr>
+<tr><td><strong>🏷️ Classes</strong></td><td>{{ project.classes_count }} classes</td></tr>
+<tr><td><strong>📚 Training</strong></td><td>{{ project.train_size }} images</td></tr>
+<tr><td><strong>🔍 Validation</strong></td><td>{{ project.val_size }} images</td></tr>
+</table>
+
+</div>
+</div>
+
+</div>
+
+<div class="quick-actions-section">
+
+{# <h2>🚀 Quick Actions</h2> #}
+
+<div class="action-buttons">
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}" class="action-button primary">
+    <div class="button-icon">🚀</div>
+    <div class="button-content">
+      <div class="button-title">Deploy</div>
+      <div class="button-description">Deploy to Supervisely</div>
+    </div>
+  </a>
+  
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}" class="action-button secondary">
+    <div class="button-icon">⚡</div>
+    <div class="button-content">
+      <div class="button-title">Apply</div>
+      <div class="button-description">Apply model to Supervisely project</div>
+    </div>
+  </a>
+  
+  <a href="{{ artifacts.best_checkpoint.url }}" class="action-button secondary" download>
+    <div class="button-icon">📥</div>
+    <div class="button-content">
+      <div class="button-title">Download</div>
+      <div class="button-description">Best checkpoint</div>
+    </div>
+  </a>
+  
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}" class="action-button tertiary">
+    <div class="button-icon">🔄</div>
+    <div class="button-content">
+      <div class="button-title">Fine-tune</div>
+      <div class="button-description">Continue training</div>
+    </div>
+  </a>
+  
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}" class="action-button secondary">
+    <div class="button-icon">🎯</div>
+    <div class="button-content">
+      <div class="button-title">Train Again</div>
+      <div class="button-description">Start new training with the same data and hyperparameters</div>
+    </div>
+  </a>
+</div>
+
+</div>
+</div>
+
+---
+
+## 📋 Detailed Information
+
+### 🔗 Quick Links
+
+| Resource | Link |
+|----------|------|
+| 🎓 Training Session | [Open]({{ links.training_session.url }}) |
+| 📊 Evaluation Report | [View]({{ links.evaluation_report.url }}) |
+| 📈 TensorBoard Logs | [Analyze]({{ links.tensorboard_logs.url }}) |
+| 📂 Team Files | [Browse]({{ links.team_files.url }}) |
 
 {% if artifacts.hyperparameters %}
 <details>
-<summary>Training hyperparameters</summary>
+<summary><strong>⚙️ Training Hyperparameters</strong></summary>
 
 ```yaml
 {% for hyperparameter in artifacts.hyperparameters %}
@@ -50,314 +129,297 @@
 ```
 
 </details>
-
 {% endif %}
 
+---
 
 {% if links.evaluation_report.id and widgets.sample_pred_gallery %}
 
-## Prediction Samples
+## 🎨 Prediction Samples
 <div class="prediction-gallery">
 {{ widgets.sample_pred_gallery | safe }}
 </div>
 
 {% endif %}
 
+---
+
+## 📈 Performance
+
 {% if artifacts.metrics_table %}
+### 🎯 Evaluation Metrics
 
-## Performance
-### 📈 Evaluation Metrics
-The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on the validation set of **{{ project.val_size }} images**. 
+The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on a validation set of **{{ project.val_size }} images**.
 
-See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
 {{ artifacts.metrics_table | safe }}
 
+{% if links.evaluation_report.url %}
+> 📊 [View Full Evaluation Report]({{ links.evaluation_report.url }}) for detailed analysis and visualizations
 {% endif %}
 
-## Artifacts
-
-[📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
-
-- 🎯 Best checkpoint: **{{ artifacts.best_checkpoint.name }}** ([download]({{ artifacts.best_checkpoint.url }}){:download="{{ artifacts.best_checkpoint.name }}"})
-{% if artifacts.onnx_checkpoint.name %}
-- 📦 ONNX export: **{{ artifacts.onnx_checkpoint.name }}** ([download]({{ artifacts.onnx_checkpoint.url }}){:download="{{ artifacts.onnx_checkpoint.name }}"})
 {% endif %}
-{% if artifacts.trt_checkpoint.name %}
-- 📦 TensorRT export: **{{ artifacts.trt_checkpoint.name }}** ([download]({{ artifacts.trt_checkpoint.url }}){:download="{{ artifacts.trt_checkpoint.name }}"})
-{% endif %}
-
-{% if artifacts.checkpoints_table %}
-<details>
-<summary>📋 All Checkpoints</summary>
-{{ artifacts.checkpoints_table }}
-</details>
-{% endif %}
-
-## Supervisely Apps
-
-These apps will help you to work with your model in the Supervisely Platform. You can use them to deploy your model, make predictions, and train a model.
-
-- [Serve {{ experiment.framework_name }}]({{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}){:target="_blank"} - deploy your model in the Supervisely Platform.
-- [Train {{ experiment.framework_name }}]({{ env.server_address }}/ecosystem/apps/{{ links.app.train }}){:target="_blank"} - train a model in the Supervisely Platform.
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}){:target="_blank"} - connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_videos }}){:target="_blank"} - for predictions on video project or dataset.
-
-## API Integration
-
-You can use **Supervisely API** to deploy your model in the Platform and make predictions in your own code. This is a great way to integrate the model into your application.
-
-### Quickstart with API
-
-This is a quick guide to get you started with the Supervisely API.
-
-1. Install Supervisely:
-
-    ```bash
-    pip install supervisely
-    ```
-
-2. Authentication. Provide your **API token** and the **Server address** into environment variables. For example, you can pass them in the terminal before running the script:
-
-    ```bash
-    export API_TOKEN="your_api_token"
-    export SERVER_ADDRESS="https://app.supervisely.com"  # or your own server URL for Enterprise Edition
-    ```
-
-    If you need help with authentication, check the [Basics of Authentication](https://developer.supervisely.com/getting-started/basics-of-authentication) tutorial.
-
-3. The following code snippet demonstrates how to deploy a model and make predictions using the Supervisely API.
-
-    ```python
-    import supervisely as sly
-
-    # 1. Authenticate with Supervisely API
-    api = sly.Api()  # Make sure you've set your credentials in environment variables.
-
-    # 2. Deploy the model
-    model = api.nn.deploy(
-        model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
-        device="cuda:0",  # or "cpu"
-    )
-    # 3. Predict
-    predictions = model.predict(
-        input=["image1.jpg", "image2.jpg"],  # can also be numpy arrays, PIL images, URLs or a directory
-    )
-    ```
-
-## Deploy via API
-
-You can deploy your model in a few lines of code. The model will be deployed in the Supervisely Platform, and you can use it for predictions.
-
-<div>
-
-<sly-iw-tabs :tabs="[
-    { name: 'pytorch-model', title: 'PyTorch Model' },
-    {% if artifacts.onnx_checkpoint.name %}
-    { name: 'onnx-model',  title: 'ONNX Model'  },
-    {% endif %}
-    {% if artifacts.trt_checkpoint.name %}
-    { name: 'tensorrt-model',    title: 'TensorRT Model' }
-    {% endif %}
-    ]" :defaultIndex="0" :command="command" :data="data">
-
-<template #pytorch-model>
-
-```python
-import supervisely as sly
-
-api = sly.Api()
-
-# Deploy PyTorch checkpoint
-model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
-    device="cuda:0",  # or "cpu"
-)
-```
-
-</template>
-
-{% if artifacts.onnx_checkpoint.name %}
-
-<template #onnx-model>
-
-```python
-import supervisely as sly
-
-api = sly.Api()
-
-# Deploy ONNX checkpoint
-model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.onnx_checkpoint.name }}",
-    device="cuda:0",  # or "cpu"
-)
-```
-{% endif %}
-
-</template>
-
-{% if artifacts.trt_checkpoint.name %}
-
-<template #tensorrt-model>
-
-```python
-import supervisely as sly
-
-api = sly.Api()
-
-# Deploy TensorRT checkpoint
-model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.trt_checkpoint.name }}",
-    device="cuda:0",  # or "cpu"
-)
-```
-{% endif %}
-
-</template>
-
-</sly-iw-tabs>
-
-</div>
-
-> For more information, see [Model API](https://docs.supervisely.com/neural-networks/overview-1/model-api) documentation.
-
-### Predict via API
-
-You can use the deployed model to make predictions on images, videos, or directories. First, connect to a deployed model, then you can make predictions.
-
-<div>
-
-<sly-iw-tabs :tabs="[
-    { name: 'local', title: 'Local Images' },
-    { name: 'image_ids',  title: 'Image IDs'  },
-    { name: 'dataset',    title: 'Dataset'    },
-    { name: 'project',    title: 'Project'    },
-    { name: 'video',      title: 'Video'      }
-    ]" :defaultIndex="0" :command="command" :data="data">
-
-<template #local>
-
-```python
-# Predict local images
-predictions = model.predict(
-    input="image.jpg"  # can also be a directory, np.array, PIL.Image, URL or a list of them
-)
-```
-
-</template>
-
-<template #image_ids>
-
-```python
-# Predict images in Supervisely
-prediction = model.predict(
-    image_ids=[123, 124]  # Image ids in Supervisely
-)
-```
-
-</template>
-
-<template #dataset>
-
-```python
-# Predict dataset
-prediction = model.predict(
-    dataset_id=12,  # Dataset id in Supervisely
-)
-```
-
-</template>
-
-<template #project>
-
-```python
-# Predict project
-prediction = model.predict(
-    project_id=21,  # Project id in Supervisely
-)
-```
-
-</template>
-
-<template #video>
-
-```python
-# Predict video
-predictions = model.predict(
-    video_id=123,  # Video id in Supervisely
-)
-```
-
-</template>
-
-</sly-iw-tabs>
-
-</div>
-
-> For more information, see [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api).
-
-## Tracking Objects in Video
-
-You can track objects in video using `boxmot` library. [BoxMot](https://github.com/mikel-brostrom/boxmot) is a third-party library that implements lightweight neural networks for tracking-by-detection task (when the tracking is performed on the objects predicted by a separate detector). For `boxmot` models you can use even CPU device.
-
-First, install [BoxMot](https://github.com/mikel-brostrom/boxmot):
-
-```bash
-pip install boxmot
-```
-
-Supervisely SDK has the `track()` method from `supervisely.nn.tracking` which allows you to apply `boxmot` models together with a detector in a single line of code. This method takes two arguments: a `boxmot` tracker, and a `PredictionSession` of a detector. It returns a `sly.VideoAnnotation` with the tracked objects.
-
-```python
-import supervisely as sly
-from supervisely.nn.tracking import track
-import boxmot
-from pathlib import Path
-
-# Deploy a detector
-detector = api.nn.deploy(
-    model="{{ experiment.framework_name }}/{{ experiment.model_name }}",
-    device="cuda:0",  # Use GPU for detection
-)
-
-# Load BoxMot tracker
-tracker = boxmot.BotSort(
-    reid_weights=Path('osnet_x0_25_msmt17.pt'),
-    device="cpu",  # Use CPU for tracking
-)
-
-# Track objects in a single line
-video_ann: sly.VideoAnnotation = track(
-    video_id=42,
-    detector=detector,
-    tracker=tracker,
-)
-```
-
-> For more information, see the section [Tracking Objects in Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video).
 
 ---
 
-## Advanced Usage
+## 📦 Model Artifacts
 
-Use your trained models in your own code, using Supervisely SDK and our API or original code from the authors.
+### 🎯 Main Files
+
+| Type | File | Action |
+|------|------|--------|
+| 🏆 **Best Checkpoint** | `{{ artifacts.best_checkpoint.name }}` | [📥 Download]({{ artifacts.best_checkpoint.url }}) |
+{% if artifacts.onnx_checkpoint.name %}
+| 📦 **ONNX Export** | `{{ artifacts.onnx_checkpoint.name }}` | [📥 Download]({{ artifacts.onnx_checkpoint.url }}) |
+{% endif %}
+{% if artifacts.trt_checkpoint.name %}
+| ⚡ **TensorRT Export** | `{{ artifacts.trt_checkpoint.name }}` | [📥 Download]({{ artifacts.trt_checkpoint.url }}) |
+{% endif %}
+
+[📂 Open all files in Team Files]({{ links.team_files.url }})
+
+{% if artifacts.checkpoints_table %}
+<details>
+<summary><strong>📋 All Checkpoints</strong></summary>
+
+{{ artifacts.checkpoints_table | safe }}
+
+</details>
+{% endif %}
+
+---
+
+## 🚀 Deployment
+
+### 🌟 Recommended Methods
+
+<div>
+
+<sly-iw-tabs :tabs="[
+    { name: 'supervisely', title: '🌐 Supervisely Platform' },
+    { name: 'api', title: '🔌 API Integration' },
+    { name: 'docker', title: '🐋 Docker' },
+    { name: 'local', title: '💻 Local' }
+]" :defaultIndex="0">
+
+<template #supervisely>
+
+{# <h2>🌐 Deploy to Supervisely</h2> #}
+
+<p><strong>Recommended approach</strong> - simple one-click deployment</p>
+
+<h3>Advantages:</h3>
+
+<ul>
+<li>✅ One-click deployment</li>
+<li>✅ Auto-scaling</li>
+<li>✅ Built-in monitoring</li>
+<li>✅ API ready</li>
+<li>✅ Ecosystem integration</li>
+</ul>
+
+<h3>Supervisely Apps</h3>
+
+<table>
+<thead>
+<tr><th>Application</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}">🚀 Serve {{ experiment.framework_name }}</a></td><td>Deploy model</td></tr>
+<tr><td><a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}">🎯 Apply NN to Images</a></td><td>Image predictions</td></tr>
+<tr><td><a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_videos }}">🎬 Apply NN to Videos</a></td><td>Video predictions</td></tr>
+<tr><td><a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}">🔄 Train {{ experiment.framework_name }}</a></td><td>Continue training</td></tr>
+</tbody>
+</table>
+
+</template>
+
+<template #api>
+
+{# <h2>🔌 API Integration</h2> #}
+
+<h3>Quick Start</h3>
+
+<ol>
+<li><strong>Install Supervisely:</strong>
+
+   ```bash
+   pip install supervisely
+   ```
+
+</li>
+
+   ```bash
+   export API_TOKEN="your_api_token"
+   export SERVER_ADDRESS="{{ env.server_address }}"
+   ```
+
+<pre><code class="language-bash">export API_TOKEN="your_api_token"
+export SERVER_ADDRESS="{{ env.server_address }}"</code></pre>
+
+</li>
+
+<li><strong>Deploy and Predict:</strong></li>
+</ol>
+
+<sly-iw-tabs :tabs="[
+    { name: 'pytorch-api', title: '🔥 PyTorch' },
+    {% if artifacts.onnx_checkpoint.name %}
+    { name: 'onnx-api', title: '📦 ONNX' },
+    {% endif %}
+    {% if artifacts.trt_checkpoint.name %}
+    { name: 'tensorrt-api', title: '⚡ TensorRT' }
+    {% endif %}
+]" :defaultIndex="0">
+
+<template #pytorch-api>
+
+```python
+import supervisely as sly
+
+# Authentication
+api = sly.Api()
+
+# Deploy PyTorch model
+model = api.nn.deploy(
+    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    device="cuda:0"
+)
+
+# Predict
+predictions = model.predict(
+    input=["image1.jpg", "image2.jpg"]
+)
+```
+
+</template>
+
+{% if artifacts.onnx_checkpoint.name %}
+<template #onnx-api>
+
+```python
+import supervisely as sly
+
+api = sly.Api()
+
+# Deploy ONNX model
+model = api.nn.deploy(
+    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.onnx_checkpoint.name }}",
+    device="cuda:0"
+)
+
+# Predict
+predictions = model.predict(input=["image.jpg"])
+```
+
+</template>
+{% endif %}
+
+{% if artifacts.trt_checkpoint.name %}
+<template #tensorrt-api>
+
+```python
+import supervisely as sly
+
+api = sly.Api()
+
+# Deploy TensorRT model
+model = api.nn.deploy(
+    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.trt_checkpoint.name }}",
+    device="cuda:0"
+)
+
+# Predict
+predictions = model.predict(input=["image.jpg"])
+```
+
+</template>
+{% endif %}
+
+</sly-iw-tabs>
+
+<h3>Prediction Options</h3>
+
+<sly-iw-tabs :tabs="[
+    { name: 'local-files', title: '📁 Local Files' },
+    { name: 'supervisely-images', title: '🖼️ Supervisely Images' },
+    { name: 'datasets', title: '📊 Datasets' },
+    { name: 'projects', title: '📂 Projects' }
+]" :defaultIndex="0">
+
+<template #local-files>
+
+```python
+# Local images
+predictions = model.predict(input="image.jpg")
+
+# Directory with images
+predictions = model.predict(input="/path/to/images/")
+
+# List of images
+predictions = model.predict(input=["img1.jpg", "img2.jpg"])
+```
+
+</template>
+
+<template #supervisely-images>
+
+```python
+# By image IDs
+predictions = model.predict(image_ids=[123, 124, 125])
+
+# Single image
+predictions = model.predict(image_ids=123)
+```
+
+</template>
+
+<template #datasets>
+
+```python
+# Entire dataset
+predictions = model.predict(dataset_id=42)
+```
+
+</template>
+
+<template #projects>
+
+```python
+# Entire project
+predictions = model.predict(project_id=21)
+```
+
+</template>
+
+</sly-iw-tabs>
 
 
-## Deploy in Docker
+<blockquote><p>📚 <a href="https://docs.supervisely.com/neural-networks/overview-1/model-api">Detailed API Documentation</a></p></blockquote>
 
-You can deploy the model in a 🐋 Docker Container with a single `docker run` command. Download a checkpoint, pull the docker image for the corresponding model's framework, and run the `docker run` command with addtional arguments.
+</template>
 
-1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }})
+<template #docker>
 
-2. Pull the Docker image
+{# <h2>🐋 Docker Deployment</h2> #}
 
-    ```bash
-    docker pull {{ code.docker.image }}
-    ```
+<h3>Step-by-Step Guide</h3>
 
-3. Run the Docker container
+<ol>
+<li><strong>Download checkpoint:</strong><br>
+<a href="{{ links.team_files.url }}">📥 Open in Team Files</a></li>
 
-    ```bash
-    docker run \
+<li><strong>Pull Docker image:</strong>
+
+   ```bash
+   docker pull {{ code.docker.image }}
+   ```
+
+</li>
+
+<li><strong>Run container:</strong>
+
+```bash
+docker run \
     --runtime=nvidia \
     -v "./{{ artifacts.experiment_dir }}:/model" \
     -p 8000:8000 \
@@ -365,154 +427,193 @@ You can deploy the model in a 🐋 Docker Container with a single `docker run` c
     deploy \
     --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
     --device "cuda:0"
-    ```
+```
 
-4. Connect and run the inference:
+</li>
 
-    ```python
-    from supervisely.nn import ModelAPI
+<li><strong>Connect and use:</strong>
 
-    # No need to authenticate for local deployment
-    model = ModelAPI(
-        url="http://localhost:8000",  # URL of a running model's server in Docker container
-    )
+```python
+from supervisely.nn import ModelAPI
 
-    # Predict
-    predictions = model.predict(
-        input=["image1.jpg", "image2.jpg"],  # can also be numpy arrays, PIL images, URLs or a directory
-    )
-    ```
+# Connect to local server
+model = ModelAPI(url="http://localhost:8000")
 
-Alternatively, you can use `docker run` with the `predict` action to make predictions in a single command. This is a quick way to run inference on your local images, videos, or directories.
+# Predict
+predictions = model.predict(
+    input=["image1.jpg", "image2.jpg"]
+)
+```
+
+</li>
+</ol>
+
+<h3>Quick Prediction</h3>
 
 ```bash
 docker run \
-  --runtime=nvidia \
-  -v "./{{ artifacts.experiment_dir }}:/model" \
-  -p 8000:8000 \
-  {{ code.docker.image }} \
-  predict \
-  "./image.jpg" \  # Put your image/video/directory here
-  --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
-  --device "cuda:0"
+--runtime=nvidia \
+-v "./{{ artifacts.experiment_dir }}:/model" \
+{{ code.docker.image }} \
+predict \
+"./image.jpg" \
+--model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
+--device "cuda:0"
 ```
 
-> For more information, see [Deploy in Docker Container](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container) documentation.
+</template>
 
-## Deploy outside of Supervisely
+<template #local>
 
-In case you develop an application that is not related to the Supervisely platform, you can use our implementation of the model in your own code. This will allow you to use the model in your own codebase, and you can deploy it in any way you want.
+{# <h2>💻 Local Deployment</h2> #}
 
-1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }})
+<h3>Using Supervisely SDK</h3>
 
-2. Clone our repository
+<ol>
+<li><strong>Download checkpoint:</strong><br>
+<a href="{{ links.team_files.url }}">📥 Team Files</a></li>
 
-    ```bash
-    git clone {{ code.local_prediction.repo.url }}
-    cd {{ code.local_prediction.repo.name }}
-    ```
+<li><strong>Clone repository:</strong>
 
-3. Install requirements
+```bash
+git clone {{ code.local_prediction.repo.url }}
+cd {{ code.local_prediction.repo.name }}
+```
+   
+</li>
 
-    ```bash
-    pip install -r dev_requirements.txt
-    pip install supervisely
-    ```
+<li><strong>Install dependencies:</strong>
 
-4. Run the inference code
+```bash
+pip install -r dev_requirements.txt
+pip install supervisely
+```
 
-    ```python
-    # Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
-    from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
+</li>
 
-    # Load model
-    model = {{ code.local_prediction.serving_class }}(
-        model="./{{ artifacts.experiment_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",  # path to the checkpoint you've downloaded
-        device="cuda",  # or "cuda:1", "cpu"
-    )
-
-    # Predict
-    predictions = model.predict(
-        # Input can accpet various formats: image paths, np.arrays, Supervisely IDs and others.
-        input=["path/to/image1.jpg", "path/to/image2.jpg"],
-        conf=0.5,  # confidence threshold
-        # ... additional parameters (see the docs)
-    )
-    ```
-
-> For more information, see [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api) and [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/local-deployment.md) documentation.
-
-{% if artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name %}
-#### Deploy ONNX/TensorRT
-
-You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT model, 
-{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
-and [download `classes.json`]({{ artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url }}){:download="classes.json"} file from the export directory.
-{% else %}
-and provide class names in the additional `classes` parameter.
-{% endif %}
+<li><strong>Run inference:</strong>
 
 ```python
-# Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
 from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
-{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
-from supervisely.io.json import load_json_file
 
-classes_path = "./{{ artifacts.experiment_dir }}/export/classes.json"
-classes = load_json_file(classes_path)
-{% else %}
-
-classes = {{ project.class_names.short_list }}
-{% endif %}
-
-# Deploy ONNX or TensorRT
+# Load model
 model = {{ code.local_prediction.serving_class }}(
-    model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}",  # path to the ONNX or TensorRT model"
-    device="cuda",
+    model="./{{ artifacts.experiment_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    device="cuda"
 )
 
 # Predict
 predictions = model.predict(
-    # Input can accpet various formats: image paths, np.arrays, Supervisely IDs and others.
     input=["path/to/image1.jpg", "path/to/image2.jpg"],
-    conf=0.5,  # confidence threshold
-    classes=classes,
-    # ... additional parameters (see the docs)
+    conf=0.5
 )
 ```
 
+</li>
+</ol>
+
+{% if artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name %}
+<h3>Using ONNX/TensorRT</h3>
+
+```python
+from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
+{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
+from supervisely.io.json import load_json_file
+
+classes = load_json_file("./{{ artifacts.experiment_dir }}/export/classes.json")
+{% else %}
+classes = {{ project.class_names.short_list }}
 {% endif %}
 
+# Load ONNX/TensorRT model
+model = {{ code.local_prediction.serving_class }}(
+    model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}",
+    device="cuda"
+)
+
+# Predict
+predictions = model.predict(
+    input=["image1.jpg", "image2.jpg"],
+    conf=0.5,
+    classes=classes
+)
+```
+{% endif %}
+
+</template>
+
+</sly-iw-tabs>
+
+</div>
+
+{% if experiment.task_type == "object_detection" %}
+
+---
+
+## 🎬 Object Tracking in Video
+
+Extend detection capabilities to object tracking in video using **BoxMot**.
+
+### Installation and Usage
+
+```bash
+pip install boxmot
+```
+
+```python
+import supervisely as sly
+from supervisely.nn.tracking import track
+import boxmot
+
+# Deploy detector
+detector = api.nn.deploy(
+    model="{{ experiment.framework_name }}/{{ experiment.model_name }}",
+    device="cuda:0"
+)
+
+# Configure tracker
+tracker = boxmot.BotSort(device="cpu")
+
+# Track objects
+video_ann = track(
+    video_id=42,
+    detector=detector,
+    tracker=tracker
+)
+```
+
+> 📚 [Learn more about tracking](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video)
+
+{% endif %}
+
+---
+
 {% if code.demo.pytorch.path %}
+## 🔬 Using Original Model
 
-## Using Original Model
+For full control over the inference process, you can use the original model implementation without Supervisely SDK.
 
-In this approach you'll completely decouple your model from both the **Supervisely Platform** and **Supervisely SDK**, and you will develop your own code for inference and deployment of that particular model. It's important to understand that for each neural network or a framework, you need to set up an environment and write inference code by yourself, since each model has its own installation instructions and the way of processing inputs and outputs correctly.
+### Environment Setup
 
-We provide a basic instructions and a demo script of how to load {{ experiment.framework_name }} and get predictions using the original code from the authors.
+1. [📥 Download checkpoint]({{ links.team_files.url }})
+2. Follow instructions from [{{ code.local_prediction.repo.name }}]({{ code.local_prediction.repo.url }})
 
-1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }})
-
-2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo.name }}]({{ code.local_prediction.repo.url }})
-
-3. Use the demo script for inference:
+### Demo Scripts
 
 <details>
-<summary>Click to expand</summary>
-
-<div>
+<summary><strong>🐍 View Code</strong></summary>
 
 <sly-iw-tabs :tabs="[
-    { name: 'pytorch-external', title: 'PyTorch' },
+    { name: 'pytorch-demo', title: '🔥 PyTorch' },
     {% if code.demo.onnx.path %}
-    { name: 'onnx-external',  title: 'ONNX'  },
+    { name: 'onnx-demo', title: '📦 ONNX' },
     {% endif %}
     {% if code.demo.tensorrt.path %}
-    { name: 'tensorrt-external',    title: 'TensorRT'    },
+    { name: 'tensorrt-demo', title: '⚡ TensorRT' }
     {% endif %}
-    ]" :defaultIndex="0" :command="command" :data="data">
+]" :defaultIndex="0">
 
-<template #pytorch-external>
+<template #pytorch-demo>
 
 ```python
 {{ code.demo.pytorch.script | safe }}
@@ -521,35 +622,27 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 </template>
 
 {% if code.demo.onnx.path %}
-<template #onnx-external>
+<template #onnx-demo>
 
 ```python
 {{ code.demo.onnx.script | safe }}
 ```
 
 </template>
-
 {% endif %}
 
 {% if code.demo.tensorrt.path %}
-<template #tensorrt-external>
+<template #tensorrt-demo>
 
 ```python
 {{ code.demo.tensorrt.script | safe }}
 ```
 
 </template>
-
 {% endif %}
 
 </sly-iw-tabs>
 
-</div>
-
 </details>
 
 {% endif %}
-
----
-
-[❌ Remove permamently button]

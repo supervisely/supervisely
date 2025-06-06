@@ -230,15 +230,25 @@ class ExperimentGenerator(BaseGenerator):
             return None
 
         html = ['<table class="metrics-table">']
-        html.append("<thead><tr><th>Metrics</th><th>Values</th></tr></thead>")
-        html.append("<tbody>")
 
-        for metric_name, metric_value in metrics.items():
+        # Generate header row with metric names
+        header_cells = []
+        for metric_name in metrics.keys():
+            metric_name = metric_name.replace("_", " ")
+            metric_name = metric_name.replace("-", " ")
+            header_cells.append(f"<th>{metric_name}</th>")
+        html.append(f"<thead><tr>{''.join(header_cells)}</tr></thead>")
+
+        # Generate value row
+        html.append("<tbody>")
+        value_cells = []
+        for metric_value in metrics.values():
             if isinstance(metric_value, float):
                 metric_value = f"{metric_value:.4f}"
-            html.append(f"<tr><td>{metric_name}</td><td>{metric_value}</td></tr>")
-
+            value_cells.append(f"<td>{metric_value}</td>")
+        html.append(f"<tr>{''.join(value_cells)}</tr>")
         html.append("</tbody>")
+
         html.append("</table>")
         return "\n".join(html)
 
