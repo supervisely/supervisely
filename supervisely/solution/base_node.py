@@ -12,85 +12,51 @@ from supervisely.app.widgets import (
 )
 from supervisely.solution.scheduler import TasksScheduler
 
-T = TypeVar("T", bound=Widget)
+T = TypeVar("T")
 
 
-# SolugionGraph.Node - only for x, y
-# SolutionCard / SolutionProject - has specific GUI and properties (should be used as content)
-# Schedulable - for scheduling tasks (in solution blocks)
-# ?? where to put state management methods? inside SolutionWidget? (it will be incapsulated in cloud_import.gui but not in the block itself)
+class SolutionElement(Widget):
+    def __init__(self, *args, **kwargs):
+        """Base class for all solution elements.
+
+        This class is used to create a common interface for all solution elements.
+        It can be extended to create specific solution elements with their own properties and methods.
+        """
+        widget_id = kwargs.get("widget_id", None)
+        if not hasattr(self, "widget_id"):
+            self.widget_id = widget_id
+        if self.widget_id is None:
+            Widget.__init__(self)
+
+    def get_json_data(self) -> Dict:
+        return {}
+
+    def get_json_state(self) -> Dict:
+        return {}
+
+    def save_to_state(self, data: Dict) -> None:
+        """Save data to the state JSON."""
+        if not isinstance(data, dict):
+            raise TypeError("data must be a dictionary")
+        if self.widget_id not in DataJson():
+            DataJson()[self.widget_id] = {}
+        DataJson()[self.widget_id].update(data)
+        DataJson().send_changes()
 
 
-# class Schedulable:
-#     """Mixin class for schedulable nodes.
-#     This class provides a scheduler instance that can be used to schedule tasks.
-#     """
-
-#     def __init__(self):
-#         """Initialize the Schedulable mixin."""
-#         self._scheduler = TasksScheduler()
-
-#     @property
-#     def scheduler(self) -> TasksScheduler:
-#         """Returns the scheduler instance."""
-#         return self._scheduler
-
-#     def add_job(
-#         self,
-#         job_id: str,
-#         func: Callable,
-#         sec: int,
-#         replace_existing: bool = True,
-#         args: Optional[List[Any]] = None,  # (var, )
-#     ) -> None:
-#         """Add a job to the scheduler with the specified parameters."""
-#         return self._scheduler.add_job(job_id, func, sec, replace_existing, args)
-
-#     def remove_job(self, job_id: str) -> bool:
-#         """Remove a scheduled job using the provided scheduler."""
-#         return self._scheduler.remove_job(job_id)
-
-#     def is_job_scheduled(self, job_id: str) -> bool:
-#         """Check if a job is scheduled using the provided scheduler."""
-#         return self._scheduler.is_job_scheduled(job_id)
-
-
-# class SolutionWidget:
-#     def __new__(cls, content: T) -> T:
-#         content.update_state = cls._update_state
-#         return content
-
-#     @staticmethod
-#     def _update_state(state: dict) -> None:
-#         print(state)
-
-
-# class SolutionNode(SolutionGraph.Node):
-#     pass
-# class SolutionNode:
-#     def __new__(cls, content: T, x: int = 0, y: int = 0) -> T:
-#         content = super().__new__(cls, content)
-
-#         content.x = x
-#         content.y = y
-#         content.node = SolutionGraph.Node(x=x, y=y, content=content)
-
-#         # content.scheduler = TasksScheduler()
-#         return content
-
-# SolutionGraph + SolutionGraph.Node
-# SolutionCard
-# SolutionProject
+class Automation:
+    def __init__(self):
+        self.scheduler = TasksScheduler()
 
 
 # only SolutionCard/SolutionProject can be used as content
 class SolutionCardNode(SolutionGraph.Node):
-    def __init__(self, content: T, x: int = 0, y: int = 0):
+    def __init__(self, content: Widget, x: int = 0, y: int = 0):
         self.content = content
         self.content.x = x
         self.content.y = y
 
-    def __new__(cls, content: T, x: int = 0, y: int = 0) -> T:
+    def __new__(cls, content: Widget, x: int = 0, y: int = 0) -> Widget:
         if not isinstance(content, (SolutionCard, SolutionProject)):
             raise TypeError("Content must be one of SolutionCard or SolutionProject")
         return super().__new__(cls, content, x, y)
@@ -170,7 +136,7 @@ class SolutionCardNode(SolutionGraph.Node):
 
 # only SolutionProject can be used as content
 class SolutionProjectNode(SolutionCardNode):
-    def __new__(cls, content: T, x: int = 0, y: int = 0) -> T:
+    def __new__(cls, content: Widget, x: int = 0, y: int = 0) -> Widget:
         if not isinstance(content, SolutionProject):
             raise TypeError("Content must be an instance of SolutionProject")
         return super().__new__(cls, content, x, y)
@@ -200,35 +166,6 @@ class SolutionProjectNode(SolutionCardNode):
                 [self.project.image_preview_url],
                 [self.project.items_count],
             )
-
-
-# # some block implementation (for example, cloud import)
-class CloudImportGUI(Widget):
-    def __init__(self, project_id: str, widget_id: Optional[str] = None):
-        self.project_id = project_id
-        self.btn = Button("Import from Cloud")
-        self.on_import_callback = None
-        super().__init__(widget_id=widget_id, file_path=__file__)
-
-        @self.btn.click
-        def on_import_click():
-            self.run()
-
-    def run(self):
-        task_id = self.run_app()
-        DataJson()[self.widget_id]["task_id"].append(task_id)
-        DataJson().send_changes()
-
-
-class SolutionCloudImport:
-    def __init__(self, project_id: str, x: int, y: int):
-        self.project_id = project_id
-        self.gui = CloudImportGUI(project_id)
-        self.node = SolutionCardNode(content=self.gui, x=x, y=y)
-
-
-# # usage example
-# cloud_import = SolutionCloudImport()
 
 
 class BaseSolutionNode(Widget):

@@ -154,3 +154,4 @@ from supervisely.app.widgets.select_collection.select_collection import SelectCo
 from supervisely.app.widgets.solution_graph.solution_graph import SolutionGraph
 from supervisely.app.widgets.solution_card.solution_card import SolutionCard
 from supervisely.app.widgets.solution_project.solution_project import SolutionProject
+from supervisely.app.widgets.cloud_import.cloud_import import CloudImport

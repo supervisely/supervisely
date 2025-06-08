@@ -21,12 +21,26 @@ class TasksScheduler(metaclass=Singleton):
         self.jobs = {}
         self.scheduler.start()
 
-    def add_job(self, job_id, func, sec, replace_existing=True, args=None):
+    def add_job(
+        self,
+        func,
+        interval,
+        job_id=None,
+        replace_existing=True,
+        *args,
+        **kwargs,
+    ):
         """Add a new scheduled job"""
         job = self.scheduler.add_job(
-            func, "interval", args=args, seconds=sec, id=job_id, replace_existing=replace_existing
+            func,
+            "interval",
+            args=args,
+            kwargs=kwargs,
+            seconds=interval,
+            job_id=job_id,
+            replace_existing=replace_existing,
         )
-        self.jobs[job_id] = job
+        self.jobs[job.id] = job
         return job
 
     def remove_job(self, job_id):

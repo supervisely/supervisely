@@ -256,6 +256,25 @@ class SolutionCard(Widget):
 
         StateJson().send_changes()
 
+    def update_badge_by_key(
+        self,
+        key: str,
+        label: str,
+        badge_type: Literal["info", "success", "warning", "error"] = None,
+        new_key: str = None,
+    ):
+        for idx, prop in enumerate(self.badges):
+            if prop["on_hover"] == key:
+                self.update_badge(idx, label, new_key, badge_type)
+                return
+        self.add_badge(
+            self.Badge(
+                label=label,
+                on_hover=new_key or key,
+                badge_type=badge_type or "info",
+            )
+        )
+
     def remove_badge(self, idx: int):
         if idx < 0 or idx >= len(self._badges):
             raise IndexError("Badge index out of range")

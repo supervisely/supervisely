@@ -131,12 +131,13 @@ def generate_id(cls_name=""):
 
 class Widget(Hidable, Disableable, Loading):
     def __init__(self, widget_id: str = None, file_path: str = __file__):
-        super().__init__()
+        Hidable.__init__(self)
+        Disableable.__init__(self)
+        Loading.__init__(self)
+
         self._sly_app = _MainServer()
         self.widget_id = widget_id
         self._file_path = file_path
-        self._loading = False
-        self._disabled = False
 
         if (
             widget_id is not None

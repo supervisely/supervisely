@@ -47,7 +47,6 @@ class SolutionGraph(Widget):
             x: int = 0,
             y: int = 0,
             content: Widget = None,
-            buttons: List[Widget] = None,
             width: Optional[Union[str, int]] = None,
             height: Optional[Union[str, int]] = None,
             show_border: bool = False,
@@ -58,7 +57,6 @@ class SolutionGraph(Widget):
             self.x = x
             self.y = y
             self.content = content
-            self.buttons = buttons or []
             if width is not None:
                 width = f"{width}px" if isinstance(width, int) else width
             self.width = width

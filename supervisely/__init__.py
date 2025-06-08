@@ -5,7 +5,7 @@ import os
 
 try:
     __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
+except Exception as e:
     __version__ = "development"
 
 from supervisely.sly_logger import (
