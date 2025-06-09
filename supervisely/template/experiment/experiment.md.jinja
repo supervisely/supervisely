@@ -1,42 +1,235 @@
-# {{ experiment.name }}
+<div class="experiment-header-layout">
+<div class="key-info-section">
 
-*Last trained: {{ experiment.date }}*
+<!-- Status indicator -->
+<div class="experiment-status">
+<div class="status-indicator status-completed">
+<span class="status-text">{{ experiment.name }}</span>
+</div>
+<div class="experiment-date">{{ experiment.date }}</div>
+</div>
 
-## Quick Actions
+<div class="info-grid-layout">
+<div class="main-info-column">
 
-    [🚀 Deploy] [⚡ Predict] [📥 Download] [🔄 Finetune]
+<!-- Info Cards Grid -->
+<div class="info-cards-grid">
+<div class="info-card highlighted">
+<span class="info-card-icon">🤖</span>
+<div class="info-card-value model-name">{{ experiment.model_name }}</div>
+<div class="info-card-label">Model</div>
+</div>
+<div class="info-card">
+<span class="info-card-icon">🔧</span>
+<div class="info-card-value">{{ experiment.framework_name }}</div>
+<div class="info-card-label">Framework</div>
+</div>
+<div class="info-card">
+<span class="info-card-icon">🎯</span>
+<div class="info-card-value task-type">{{ experiment.task_name }}</div>
+<div class="info-card-label">Task</div>
+</div>
+<div class="info-card">
+<span class="info-card-icon">📁</span>
+<div class="info-card-value">
+<a href="{{ project.link }}" target="_blank" class="project-link">{{ project.name }}</a>
+</div>
+<div class="info-card-label">Project</div>
+</div>
+<div class="info-card">
+<span class="info-card-icon">🏷️</span>
+<div class="info-card-value">{{ project.classes_count }} classes</div>
+<div class="info-card-label">Classes</div>
+</div>
+<div class="info-card">
+<span class="info-card-icon">📊</span>
+<div class="info-card-value">{{ project.train_size }} train / {{ project.val_size }} val</div>
+<div class="info-card-label">Split</div>
+</div>
+</div>
 
-🔴🔴🔴 Можно сделать эти кнопки как Cards (https://docs.gitbook.com/creating-content/blocks/cards)
+<!-- Artifacts Section -->
+<div class="artifacts-section">
+<h4>📦 Model Artifacts</h4>
+<div class="artifact-links">
+<a href="{{ artifacts.best_checkpoint.url }}" class="artifact-link" download="{{ artifacts.best_checkpoint.name }}">
+<span class="artifact-icon">🎯</span>
+<span class="artifact-text">{{ artifacts.best_checkpoint.name }}</span>
+<span class="artifact-size">{{ artifacts.best_checkpoint.size }}</span>
+</a>
+{% if artifacts.onnx_checkpoint.name %}
+<a href="{{ artifacts.onnx_checkpoint.url }}" class="artifact-link" download="{{ artifacts.onnx_checkpoint.name }}">
+<span class="artifact-icon">📦</span>
+<span class="artifact-text">{{ artifacts.onnx_checkpoint.name }}</span>
+<span class="artifact-size">{{ artifacts.onnx_checkpoint.size }}</span>
+</a>
+{% endif %}
+{% if artifacts.trt_checkpoint.name %}
+<a href="{{ artifacts.trt_checkpoint.url }}" class="artifact-link" download="{{ artifacts.trt_checkpoint.name }}">
+<span class="artifact-icon">⚡</span>
+<span class="artifact-text">{{ artifacts.trt_checkpoint.name }}</span>
+<span class="artifact-size">{{ artifacts.trt_checkpoint.size }}</span>
+</a>
+{% endif %}
+</div>
+</div>
 
-### Table of Contents
+<!-- Technical Details Section -->
+<div class="tech-details-section">
+<h4>⚙️ Technical Details</h4>
+<div class="tech-details-grid">
+<div class="tech-detail-item">
+<div class="tech-detail-value">{{ experiment.device if experiment.device else "N/A" }}</div>
+<div class="tech-detail-label">Device</div>
+</div>
+<div class="tech-detail-item">
+<div class="tech-detail-value">{{ experiment.training_duration if experiment.training_duration else "N/A" }}</div>
+<div class="tech-detail-label">Training Time</div>
+</div>
+</div>
+</div>
 
-- [Experiment Overview](#experiment-overview)
-- [Performance](#performance)
-- [Artifacts](#artifacts)
-- [Supervisely Apps](#supervisely-apps)
-- [API Integration](#api-integration)
-- [Deploy in Docker](#predict-in-docker)
-- [Deploy outside of Supervisely](#predict-locally)
-- [Using Original Model](#using-original-model)
+<!-- Integrated Quick Access Links -->
+<div class="integrated-quick-access">
+<h4>🔗 Quick Access</h4>
+<div class="integrated-quick-links">
+<a href="{{ links.training_session.url }}" target="_blank" class="integrated-quick-link">
+<span class="integrated-quick-icon">🎓</span>
+<span class="integrated-quick-text">Training Session</span>
+</a>
+<a href="{{ links.evaluation_report.url }}" target="_blank" class="integrated-quick-link">
+<span class="integrated-quick-icon">📊</span>
+<span class="integrated-quick-text">Evaluation Report</span>
+</a>
+<a href="{{ links.tensorboard_logs.url }}" target="_blank" class="integrated-quick-link">
+<span class="integrated-quick-icon">📈</span>
+<span class="integrated-quick-text">TensorBoard Logs</span>
+</a>
+<a href="{{ links.team_files.url }}" target="_blank" class="integrated-quick-link">
+<span class="integrated-quick-icon">📂</span>
+<span class="integrated-quick-text">All Files</span>
+</a>
+</div>
+</div>
 
-## Experiment Overview
+</div>
+</div>
+</div>
 
-- [🎓 Training Session]({{ links.training_session.url }}){:target="_blank"}
-- [📊 Evaluation Report]({{ links.evaluation_report.url }}){:target="_blank"}
-- [📈 TensorBoard Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
-- [📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
-
-### Training Details:
-
-- **Model**: {{ experiment.model_name }}
-- **Framework**: {{ experiment.framework_name }}
-- **Task**: {{ experiment.task_name }}
-- **Project**: {{ project.name }}
-- **Classes**: {{ project.classes_count }} ({{ project.class_names.short_string }})
-- **Training images**: {{ project.train_size }}
-- **Validation images**: {{ project.val_size }}
+<!-- Separate metrics highlights section -->
 {% if benchmark.primary_metric.name %}
-- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.value }}
+<div class="metrics-highlight-section">
+
+<div class="experiment-status">
+<div class="status-indicator status-completed">
+<span class="status-text">Metrics</span>
+</div>
+</div>
+
+{% if benchmark.primary_metric.name %}
+{% set primary_value = benchmark.primary_metric.value %}
+{% if primary_value >= 0.9 %}
+{% set color_class = "excellent" %}
+{% elif primary_value >= 0.7 %}
+{% set color_class = "good" %}
+{% elif primary_value >= 0.5 %}
+{% set color_class = "average" %}
+{% else %}
+{% set color_class = "poor" %}
+{% endif %}
+<div class="metric-card primary {{ color_class }}">
+<div class="metric-value">{{ "%.1f"|format(benchmark.primary_metric.value * 100) }}%</div>
+<div class="metric-label">{{ benchmark.primary_metric.name }}</div>
+<div class="metric-subtitle">Primary Metric</div>
+</div>
+{% endif %}
+
+
+{% if benchmark.display_metrics %}
+{% for metric_name, metric_value in benchmark.display_metrics %}
+<div class="metric-card">
+<div class="metric-value">
+{% if metric_value is number and metric_value <= 1 %}
+{{ "%.1f"|format(metric_value * 100) }}%
+{% else %}
+{{ "%.3f"|format(metric_value) }}
+{% endif %}
+</div>
+<div class="metric-label">{{ metric_name.replace('_', ' ').title() }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+</div>
+{% endif %}
+
+
+<div class="quick-actions-section">
+
+<div class="experiment-status">
+<div class="status-indicator status-completed">
+<span class="status-text">Actions</span>
+</div>
+</div>
+
+<div class="action-buttons">
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}" class="action-button primary">
+    <div class="button-icon">🚀</div>
+    <div class="button-content">
+      <div class="button-title">Deploy</div>
+      <div class="button-description">Deploy to Supervisely</div>
+    </div>
+  </a>
+  
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}" class="action-button secondary">
+    <div class="button-icon">⚡</div>
+    <div class="button-content">
+      <div class="button-title">Apply</div>
+      <div class="button-description">Apply model to Supervisely project</div>
+    </div>
+  </a>
+  
+  <a href="{{ artifacts.best_checkpoint.url }}" class="action-button secondary" download>
+    <div class="button-icon">📥</div>
+    <div class="button-content">
+      <div class="button-title">Download</div>
+      <div class="button-description">Best checkpoint</div>
+    </div>
+  </a>
+  
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}" class="action-button tertiary">
+    <div class="button-icon">🔄</div>
+    <div class="button-content">
+      <div class="button-title">Fine-tune</div>
+      <div class="button-description">Continue training</div>
+    </div>
+  </a>
+  
+  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}" class="action-button secondary">
+    <div class="button-icon">🎯</div>
+    <div class="button-content">
+      <div class="button-title">Train Again</div>
+      <div class="button-description">Start new training with the same data and hyperparameters</div>
+    </div>
+  </a>
+
+</div>
+</div>
+
+</div>
+</div>
+
+## 🔬 Experiment Results
+
+{% if project.class_names.list %}
+<div class="classes-overview">
+<h3>📋 Trained Classes</h3>
+<div class="class-tags">
+{% for class_name in project.class_names.list %}
+<span class="class-tag">{{ class_name }}</span>
+{% endfor %}
+</div>
+</div>
 {% endif %}
 
 {% if artifacts.hyperparameters %}
@@ -65,11 +258,11 @@
 
 {% if artifacts.metrics_table %}
 
-## Performance
-### 📈 Evaluation Metrics
+## 📊 Performance
+
 The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on the validation set of **{{ project.val_size }} images**. 
 
-See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
+See the full [Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
 {{ artifacts.metrics_table | safe }}
 
 {% endif %}
@@ -93,60 +286,51 @@ See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for det
 </details>
 {% endif %}
 
-## Supervisely Apps
+## 🚀 Quick Start with Your Model
 
-These apps will help you to work with your model in the Supervisely Platform. You can use them to deploy your model, make predictions, and train a model.
+### 🔧 Platform Integration
 
-- [Serve {{ experiment.framework_name }}]({{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}){:target="_blank"} - deploy your model in the Supervisely Platform.
-- [Train {{ experiment.framework_name }}]({{ env.server_address }}/ecosystem/apps/{{ links.app.train }}){:target="_blank"} - train a model in the Supervisely Platform.
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}){:target="_blank"} - connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_videos }}){:target="_blank"} - for predictions on video project or dataset.
+- [**Serve {{ experiment.framework_name }}**]({{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}){:target="_blank"} - Deploy your model in Supervisely
+- [**Apply to Images**]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}){:target="_blank"} - Run predictions on image projects  
+- [**Apply to Videos**]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_videos }}){:target="_blank"} - Run predictions on video projects
+- [**Train Again**]({{ env.server_address }}/ecosystem/apps/{{ links.app.train }}){:target="_blank"} - Start new training session
 
-## API Integration
+## 💻 Developer Integration
 
-You can use **Supervisely API** to deploy your model in the Platform and make predictions in your own code. This is a great way to integrate the model into your application.
+<details>
+<summary><strong>📋 API Quickstart</strong> - Deploy and use your model programmatically</summary>
 
-### Quickstart with API
+You can use **Supervisely API** to deploy your model and make predictions in your own code.
 
-This is a quick guide to get you started with the Supervisely API.
+### Setup
+```bash
+pip install supervisely
+export API_TOKEN="your_api_token"
+export SERVER_ADDRESS="https://app.supervisely.com"
+```
 
-1. Install Supervisely:
+### Quick Example
+```python
+import supervisely as sly
 
-    ```bash
-    pip install supervisely
-    ```
+api = sly.Api()
 
-2. Authentication. Provide your **API token** and the **Server address** into environment variables. For example, you can pass them in the terminal before running the script:
+# Deploy the model
+model = api.nn.deploy(
+    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    device="cuda:0",
+)
 
-    ```bash
-    export API_TOKEN="your_api_token"
-    export SERVER_ADDRESS="https://app.supervisely.com"  # or your own server URL for Enterprise Edition
-    ```
+# Predict
+predictions = model.predict(input=["image1.jpg", "image2.jpg"])
+```
 
-    If you need help with authentication, check the [Basics of Authentication](https://developer.supervisely.com/getting-started/basics-of-authentication) tutorial.
+</details>
 
-3. The following code snippet demonstrates how to deploy a model and make predictions using the Supervisely API.
+<details>
+<summary><strong>🚀 Deploy via API</strong> - Advanced deployment options</summary>
 
-    ```python
-    import supervisely as sly
-
-    # 1. Authenticate with Supervisely API
-    api = sly.Api()  # Make sure you've set your credentials in environment variables.
-
-    # 2. Deploy the model
-    model = api.nn.deploy(
-        model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
-        device="cuda:0",  # or "cpu"
-    )
-    # 3. Predict
-    predictions = model.predict(
-        input=["image1.jpg", "image2.jpg"],  # can also be numpy arrays, PIL images, URLs or a directory
-    )
-    ```
-
-## Deploy via API
-
-You can deploy your model in a few lines of code. The model will be deployed in the Supervisely Platform, and you can use it for predictions.
+Deploy your model programmatically with different runtime options.
 
 <div>
 
@@ -218,9 +402,10 @@ model = api.nn.deploy(
 
 </div>
 
-> For more information, see [Model API](https://docs.supervisely.com/neural-networks/overview-1/model-api) documentation.
+</details>
 
-### Predict via API
+<details>
+<summary><strong>🔮 Predict via API</strong> - Make predictions on different data sources</summary>
 
 You can use the deployed model to make predictions on images, videos, or directories. First, connect to a deployed model, then you can make predictions.
 
@@ -293,9 +478,10 @@ predictions = model.predict(
 
 </div>
 
-> For more information, see [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api).
+</details>
 
-## Tracking Objects in Video
+<details>
+<summary><strong>🎬 Video Object Tracking</strong> - Track objects across video frames</summary>
 
 You can track objects in video using `boxmot` library. [BoxMot](https://github.com/mikel-brostrom/boxmot) is a third-party library that implements lightweight neural networks for tracking-by-detection task (when the tracking is performed on the objects predicted by a separate detector). For `boxmot` models you can use even CPU device.
 
@@ -333,11 +519,12 @@ video_ann: sly.VideoAnnotation = track(
 )
 ```
 
-> For more information, see the section [Tracking Objects in Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video).
+</details>
 
 ---
 
-## Advanced Usage
+<details>
+<summary><strong>⚙️ Advanced Usage</strong> - Local deployment and Docker options</summary>
 
 Use your trained models in your own code, using Supervisely SDK and our API or original code from the authors.
 
@@ -550,6 +737,6 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 
 {% endif %}
 
----
+</details>
 
-[❌ Remove permamently button]
+---
