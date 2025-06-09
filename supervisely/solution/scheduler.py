@@ -1,4 +1,5 @@
 from supervisely.app.singleton import Singleton
+from supervisely.sly_logger import logger
 
 
 class TasksScheduler(metaclass=Singleton):
@@ -41,6 +42,7 @@ class TasksScheduler(metaclass=Singleton):
             replace_existing=replace_existing,
         )
         self.jobs[job.id] = job
+        logger.info(f"[SCHEDULER]: Job '{job.id}' scheduled with interval {interval} seconds.")
         return job
 
     def remove_job(self, job_id):
@@ -48,6 +50,7 @@ class TasksScheduler(metaclass=Singleton):
         if job_id in self.jobs:
             self.scheduler.remove_job(job_id)
             del self.jobs[job_id]
+            logger.info(f"[SCHEDULER]: Job '{job_id}' removed.")
             return True
         return False
 
