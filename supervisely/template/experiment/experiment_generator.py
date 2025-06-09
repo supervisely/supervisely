@@ -97,6 +97,7 @@ class ExperimentGenerator(BaseGenerator):
         training_duration = self._get_training_duration()
         metrics = self._generate_metrics_table()
         primary_metric = self._get_primary_metric()
+        display_metrics = self._get_display_metrics(primary_metric)
         checkpoints = self._generate_checkpoints_table()
         hyperparameters = self._generate_hyperparameters_yaml()
         artifacts_dir = self.info["artifacts_dir"].rstrip("/")
@@ -109,6 +110,7 @@ class ExperimentGenerator(BaseGenerator):
         sample_pred_gallery = self._get_sample_predictions_gallery()
         pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
         train_app_slug, serve_app_slug = self._get_app_slugs()
+        agent_info = self._get_agent_info()
 
         context = {
             "env": {
@@ -124,6 +126,7 @@ class ExperimentGenerator(BaseGenerator):
                 "training_duration": training_duration,
                 "artifacts_dir": artifacts_dir,
                 "export": self.info.get("export"),
+                "agent": agent_info,
             },
             "project": {
                 "name": project_info.name if project_info else "",
@@ -196,7 +199,7 @@ class ExperimentGenerator(BaseGenerator):
                 "url": self.info.get("evaluation_report_link"),
                 "metrics": self.info.get("evaluation_metrics"),
                 "primary_metric": primary_metric,
-                "display_metrics": self._get_display_metrics(primary_metric),
+                "display_metrics": display_metrics,
             },
             "code": {
                 "docker": {
@@ -265,6 +268,7 @@ class ExperimentGenerator(BaseGenerator):
         primary_metric = {
             "name": None,
             "value": None,
+            "rounded_value": None,
         }
 
         eval_metrics = self.info.get("evaluation_metrics", {})
@@ -278,11 +282,12 @@ class ExperimentGenerator(BaseGenerator):
         primary_metric = {
             "name": primary_metric_name,
             "value": primary_metric_value,
+            "rounded_value": round(primary_metric_value, 4),
         }
         return primary_metric
 
     def _get_display_metrics(self, primary_metric: dict) -> list:
-        """Get first 8 metrics for display (excluding primary metric).
+        """Get first 5 metrics for display (excluding primary metric).
 
         :param primary_metric: Primary metric info
         :type primary_metric: dict
@@ -299,7 +304,7 @@ class ExperimentGenerator(BaseGenerator):
         for metric_name, metric_value in eval_metrics.items():
             if metric_name != primary_metric_name:
                 display_metrics.append((metric_name, metric_value))
-                if len(display_metrics) >= 8:
+                if len(display_metrics) >= 5:
                     break
 
         return display_metrics
@@ -663,3 +668,17 @@ class ExperimentGenerator(BaseGenerator):
         serve_app_slug = serve_app_info["slug"].replace("supervisely-ecosystem/", "")
 
         return train_app_slug, serve_app_slug
+
+    def _get_agent_info(self) -> str:
+        agent_info = {
+            "name": None,
+            "id": None,
+            "link": None,
+        }
+
+        task_info = self.api.task.get_info_by_id(self.info["task_id"])
+        if task_info is not None:
+            agent_info["name"] = task_info["agentName"]
+            agent_info["id"] = task_info["agentId"]
+            agent_info["link"] = f"{self.api.server_address}/nodes/{agent_info['id']}/info"
+        return agent_info

@@ -1,91 +1,4 @@
-# {{ experiment.name }}
 
-*Last trained: {{ experiment.date }}*
-
-<div class="experiment-header-layout">
-<div class="key-info-section">
-
-<div class="info-grid-layout">
-<div class="main-info-column">
-
-<h3>Quick Info</h3>
-
-{# <table class="info-table">
-<tr><td><strong>🤖 Model</strong></td><td>{{ experiment.model_name }}</td></tr>
-<tr><td><strong>🔧 Framework</strong></td><td>{{ experiment.framework_name }}</td></tr>
-<tr><td><strong>🎯 Task</strong></td><td>{{ experiment.task_name }}</td></tr>
-<tr><td><strong>🏷️ Classes</strong></td><td>{{ project.classes_count }} classes</td></tr>
-<tr><td><strong>📚 Training</strong></td><td>{{ project.train_size }} images</td></tr>
-<tr><td><strong>🔍 Validation</strong></td><td>{{ project.val_size }} images</td></tr>
-</table> #}
-
-<ul class="info-list">
-<li><strong>Model</strong>: {{ experiment.model_name }}</li>
-<li><strong>Framework</strong>: {{ experiment.framework_name }}</li>
-<li><strong>Task</strong>: {{ experiment.task_name }}</li>
-<li><strong>Classes</strong>: {{ project.classes_count }} ({{ project.class_names.short_string }})</li>
-<li><strong>Training</strong>: {{ project.train_size }} images</li>
-<li><strong>Validation</strong>: {{ project.val_size }} images</li>
-<li><strong>Device</strong>: {{ experiment.device }}</li>
-<li><strong>Duration</strong>: {{ experiment.training_duration }}</li>
-{% if benchmark.primary_metric.name %}
-<li><strong>{{ benchmark.primary_metric.name }}</strong>: {{ benchmark.primary_metric.value }}</li>
-{% endif %}
-</ul>
-
-</div>
-</div>
-
-</div>
-
-<div class="quick-actions-section">
-
-{# <h2>🚀 Quick Actions</h2> #}
-
-<div class="action-buttons">
-  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.serve }}" class="action-button primary">
-    <div class="button-icon">🚀</div>
-    <div class="button-content">
-      <div class="button-title">Deploy</div>
-      <div class="button-description">Deploy to Supervisely</div>
-    </div>
-  </a>
-  
-  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images }}" class="action-button secondary">
-    <div class="button-icon">⚡</div>
-    <div class="button-content">
-      <div class="button-title">Apply</div>
-      <div class="button-description">Apply model to Supervisely project</div>
-    </div>
-  </a>
-  
-  <a href="{{ artifacts.best_checkpoint.url }}" class="action-button secondary" download>
-    <div class="button-icon">📥</div>
-    <div class="button-content">
-      <div class="button-title">Download</div>
-      <div class="button-description">Best checkpoint</div>
-    </div>
-  </a>
-  
-  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}" class="action-button tertiary">
-    <div class="button-icon">🔄</div>
-    <div class="button-content">
-      <div class="button-title">Fine-tune</div>
-      <div class="button-description">Continue training</div>
-    </div>
-  </a>
-  
-  <a href="{{ env.server_address }}/ecosystem/apps/{{ links.app.train }}" class="action-button secondary">
-    <div class="button-icon">🎯</div>
-    <div class="button-content">
-      <div class="button-title">Train Again</div>
-      <div class="button-description">Start new training with the same data and hyperparameters</div>
-    </div>
-  </a>
-</div>
-
-</div>
-</div>
 
 ### Table of Contents
 
@@ -101,8 +14,10 @@
 ## Experiment Overview
 
 - [🎓 Training Session]({{ links.training_session.url }}){:target="_blank"}
+{% if links.evaluation_report.id %}
 - [📊 Evaluation Report]({{ links.evaluation_report.url }}){:target="_blank"}
-- [📈 TensorBoard Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
+{% endif %}
+- [📈 Training Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
 - [📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
 
 ### Training Details:
@@ -115,7 +30,7 @@
 - **Training images**: {{ project.train_size }}
 - **Validation images**: {{ project.val_size }}
 {% if benchmark.primary_metric.name %}
-- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.value }}
+- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.rounded_value }}
 {% endif %}
 
 {% if artifacts.hyperparameters %}
@@ -148,8 +63,16 @@
 ### 📈 Evaluation Metrics
 The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on the validation set of **{{ project.val_size }} images**. 
 
+{% if links.evaluation_report.id %}
 See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
+{% endif %}
 {{ artifacts.metrics_table | safe }}
+
+{% else %}
+
+## Performance
+### 📈 Evaluation Metrics
+No evaluation metrics available for this experiment. The model training was completed successfully, but no evaluation was performed.
 
 {% endif %}
 
