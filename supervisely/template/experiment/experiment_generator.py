@@ -94,6 +94,7 @@ class ExperimentGenerator(BaseGenerator):
         model_classes = [cls.name for cls in self.model_meta.obj_classes]
 
         date = self._get_date()
+        training_duration = self._get_training_duration()
         metrics = self._generate_metrics_table()
         primary_metric = self._get_primary_metric()
         checkpoints = self._generate_checkpoints_table()
@@ -117,8 +118,10 @@ class ExperimentGenerator(BaseGenerator):
                 "name": exp_name,
                 "model_name": model_name,
                 "task_name": task_type,
+                "device": self.info.get("device", "NVIDIA RTX 4090"),
                 "framework_name": framework_name,
                 "date": date,
+                "training_duration": training_duration,
                 "artifacts_dir": artifacts_dir,
                 "export": self.info.get("export"),
             },
@@ -193,6 +196,7 @@ class ExperimentGenerator(BaseGenerator):
                 "url": self.info.get("evaluation_report_link"),
                 "metrics": self.info.get("evaluation_metrics"),
                 "primary_metric": primary_metric,
+                "display_metrics": self._get_display_metrics(primary_metric),
             },
             "code": {
                 "docker": {
@@ -230,15 +234,25 @@ class ExperimentGenerator(BaseGenerator):
             return None
 
         html = ['<table class="metrics-table">']
-        html.append("<thead><tr><th>Metrics</th><th>Values</th></tr></thead>")
-        html.append("<tbody>")
 
-        for metric_name, metric_value in metrics.items():
+        # Generate header row with metric names
+        header_cells = []
+        for metric_name in metrics.keys():
+            metric_name = metric_name.replace("_", " ")
+            metric_name = metric_name.replace("-", " ")
+            header_cells.append(f"<th>{metric_name}</th>")
+        html.append(f"<thead><tr>{''.join(header_cells)}</tr></thead>")
+
+        # Generate value row
+        html.append("<tbody>")
+        value_cells = []
+        for metric_value in metrics.values():
             if isinstance(metric_value, float):
                 metric_value = f"{metric_value:.4f}"
-            html.append(f"<tr><td>{metric_name}</td><td>{metric_value}</td></tr>")
-
+            value_cells.append(f"<td>{metric_value}</td>")
+        html.append(f"<tr>{''.join(value_cells)}</tr>")
         html.append("</tbody>")
+
         html.append("</table>")
         return "\n".join(html)
 
@@ -266,6 +280,29 @@ class ExperimentGenerator(BaseGenerator):
             "value": primary_metric_value,
         }
         return primary_metric
+
+    def _get_display_metrics(self, primary_metric: dict) -> list:
+        """Get first 8 metrics for display (excluding primary metric).
+
+        :param primary_metric: Primary metric info
+        :type primary_metric: dict
+        :returns: List of tuples (metric_name, metric_value) for display
+        :rtype: list
+        """
+        eval_metrics = self.info.get("evaluation_metrics", {})
+        if not eval_metrics:
+            return []
+
+        primary_metric_name = primary_metric.get("name")
+        display_metrics = []
+
+        for metric_name, metric_value in eval_metrics.items():
+            if metric_name != primary_metric_name:
+                display_metrics.append((metric_name, metric_value))
+                if len(display_metrics) >= 8:
+                    break
+
+        return display_metrics
 
     def _generate_checkpoints_table(self) -> str:
         """Generate HTML table with checkpoint information.
@@ -298,7 +335,7 @@ class ExperimentGenerator(BaseGenerator):
         ]
 
         html = ['<table class="checkpoints-table">']
-        html.append("<thead><tr><th>Checkpoints</th><th>Size</th><th>Download</th></tr></thead>")
+        html.append("<thead><tr><th>Checkpoints</th><th>Size</th><th> </th></tr></thead>")
         html.append("<tbody>")
         for checkpoint, size, dl_link in zip(checkpoints, checkpoint_sizes, checkpoint_dl_links):
             if isinstance(checkpoint, str):
@@ -349,6 +386,38 @@ class ExperimentGenerator(BaseGenerator):
                 pass
         return date
 
+    def _get_training_duration(self) -> str:
+        """Calculate training duration from task info.
+
+        :returns: Formatted duration string
+        :rtype: str
+        """
+        try:
+            task_id = self.info.get("task_id")
+            if not task_id:
+                return "N/A"
+
+            task_info = self.api.task.get_info_by_id(task_id)
+            if task_info is not None:
+                start_time = datetime.strptime(task_info["startedAt"], "%Y-%m-%dT%H:%M:%S.%fZ")
+                experiment_info_path = os.path.join(self.artifacts_dir, "experiment_info.json")
+                experiment_info = self.api.file.get_info_by_path(self.team_id, experiment_info_path)
+                end_time = datetime.strptime(experiment_info.created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+                duration = end_time - start_time
+
+                hours = duration.seconds // 3600
+                minutes = (duration.seconds % 3600) // 60
+
+                if duration.days > 0:
+                    return f"{duration.days}d {hours}h {minutes}m"
+                elif hours > 0:
+                    return f"{hours}h {minutes}m"
+                else:
+                    return f"{minutes}m"
+            return "N/A"
+        except Exception:
+            return "N/A"
+
     def _get_best_checkpoint(self) -> dict:
         """Get best checkpoint filename.
 
@@ -358,12 +427,12 @@ class ExperimentGenerator(BaseGenerator):
         best_checkpoint_path = os.path.join(
             self.artifacts_dir, "checkpoints", self.info["best_checkpoint"]
         )
+        best_checkpoint_info = self.api.file.get_info_by_path(self.team_id, best_checkpoint_path)
         best_checkpoint = {
             "name": self.info["best_checkpoint"],
             "path": best_checkpoint_path,
-            "url": self.api.file.get_info_by_path(
-                self.team_id, best_checkpoint_path
-            ).full_storage_url,
+            "url": best_checkpoint_info.full_storage_url,
+            "size": f"{best_checkpoint_info.sizeb / 1024 / 1024:.1f} MB",
         }
         return best_checkpoint
 
@@ -378,12 +447,14 @@ class ExperimentGenerator(BaseGenerator):
         onnx_checkpoint_data = {
             "name": None,
             "path": None,
+            "size": None,
             "url": None,
             "classes_url": None,
         }
         trt_checkpoint_data = {
             "name": None,
             "path": None,
+            "size": None,
             "url": None,
             "classes_url": None,
         }
@@ -397,12 +468,12 @@ class ExperimentGenerator(BaseGenerator):
                 self.team_id,
                 os.path.join(os.path.dirname(onnx_checkpoint_path), "classes.json"),
             )
+            onnx_file_info = self.api.file.get_info_by_path(self.team_id, onnx_checkpoint_path)
             onnx_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.ONNXRUNTIME)),
                 "path": onnx_checkpoint_path,
-                "url": self.api.file.get_info_by_path(
-                    self.team_id, onnx_checkpoint_path
-                ).full_storage_url,
+                "size": f"{onnx_file_info.sizeb / 1024 / 1024:.1f} MB",
+                "url": onnx_file_info.full_storage_url,
                 "classes_url": classes_file.full_storage_url if classes_file else None,
             }
         trt_checkpoint = export.get(RuntimeType.TENSORRT)
@@ -412,12 +483,12 @@ class ExperimentGenerator(BaseGenerator):
                 self.team_id,
                 os.path.join(os.path.dirname(trt_checkpoint_path), "classes.json"),
             )
+            trt_file_info = self.api.file.get_info_by_path(self.team_id, trt_checkpoint_path)
             trt_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.TENSORRT)),
                 "path": trt_checkpoint_path,
-                "url": self.api.file.get_info_by_path(
-                    self.team_id, trt_checkpoint_path
-                ).full_storage_url,
+                "size": f"{trt_file_info.sizeb / 1024 / 1024:.1f} MB",
+                "url": trt_file_info.full_storage_url,
                 "classes_url": classes_file.full_storage_url if classes_file else None,
             }
         return onnx_checkpoint_data, trt_checkpoint_data
