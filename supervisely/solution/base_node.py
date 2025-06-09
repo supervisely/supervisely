@@ -135,7 +135,7 @@ class SolutionProjectNode(SolutionCardNode):
     ) -> SolutionGraph.Node:
         if not isinstance(content, SolutionProject):
             raise TypeError("Content must be an instance of SolutionProject")
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, content, x, y, *args, **kwargs)
 
     def update_preview(self, imgs: List[str], counts: List[int]):
         self.content.update_preview_url(imgs)
