@@ -1,6 +1,6 @@
-from supervisely.app.widgets import Widget
 from typing import Dict, List
 
+from supervisely.app.widgets import Widget
 
 """
 <div 
@@ -20,11 +20,13 @@ class Flexbox(Widget):
         widgets: List[Widget],
         gap: int = 10,
         center_content: bool = False,
+        vertical_alignment: str = "top",
         widget_id: str = None,
     ):
         self._widgets = widgets
         self._gap = gap
         self._center_content = center_content
+        self._vertical_alignment = vertical_alignment
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
