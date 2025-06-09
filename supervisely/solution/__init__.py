@@ -3,4 +3,5 @@ from supervisely.solution.components.labeling_queue import LabelingQueue
 from supervisely.solution.components.manual_import import ManualImport
 from supervisely.solution.components.move_labeled import MoveLabeled
 from supervisely.solution.components.project import ProjectNode
+from supervisely.solution.components.train_val_split import TrainValSplit
 from supervisely.solution.graph_builder import SolutionGraphBuilder
