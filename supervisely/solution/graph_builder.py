@@ -1,8 +1,8 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Literal, Union
 
-from supervisely.app.widgets.solution_graph.solution_graph import SolutionGraph
-from supervisely.solution.base_node import SolutionNode, BaseSolutionNode
+from supervisely.app.widgets import Container, SolutionGraph
+from supervisely.solution.base_node import SolutionElement
 
 
 class SolutionGraphBuilder:
@@ -22,25 +22,32 @@ class SolutionGraphBuilder:
         # Initialize node and edge storage
         self.nodes: Dict[str, SolutionGraph.Node] = {}
         self.edges: List[Dict[str, Any]] = defaultdict(list)
+        self.modals: List = []
 
     def add_node(
         self,
-        node: Union[BaseSolutionNode, SolutionGraph.Node],
+        node: Union[SolutionElement, SolutionGraph.Node],
     ) -> None:
         """
         Add a node to the graph.
         """
-        if isinstance(node, BaseSolutionNode):
+        if not isinstance(node, (SolutionElement, SolutionGraph.Node)):
+            raise TypeError("node must be an instance of SolutionElement or SolutionGraph.Node")
+        if isinstance(node, SolutionElement):
+            if hasattr(node, "modals") and node.modals:
+                self.modals.extend(node.modals)
+            if not hasattr(node, "node"):
+                raise ValueError(
+                    "SolutionElement must have a 'node' attribute of type SolutionGraph.Node"
+                )
             node = node.node
-        if not isinstance(node, SolutionGraph.Node):
-            raise TypeError("node must be an instance of SolutionGraph.Node")
 
         self.nodes[node.key] = node
 
     def add_edge(
         self,
-        source: Union[BaseSolutionNode, SolutionGraph.Node, str],
-        target: Union[BaseSolutionNode, SolutionGraph.Node, str],
+        source: Union[SolutionElement, SolutionGraph.Node, str],
+        target: Union[SolutionElement, SolutionGraph.Node, str],
         start_sockert: Literal["top", "bottom", "left", "right"] = "bottom",
         end_socket: Literal["top", "bottom", "left", "right"] = "top",
         path: Literal["straight", "grid", "arc", "magnet", "fluid"] = "straight",
@@ -58,13 +65,21 @@ class SolutionGraphBuilder:
         """
         Add an edge to the graph.
         """
-        if isinstance(source, BaseSolutionNode):
-            source = source.node.key
-        if isinstance(target, BaseSolutionNode):
-            target = target.node.key
-        if isinstance(source, SolutionGraph.Node):
+        if isinstance(source, (SolutionElement, SolutionGraph.Node)):
+            if isinstance(source, SolutionElement):
+                if not hasattr(source, "node"):
+                    raise ValueError(
+                        "SolutionElement must have a 'node' attribute of type SolutionGraph.Node"
+                    )
+                source = source.node
             source = source.key
-        if isinstance(target, SolutionGraph.Node):
+        if isinstance(target, (SolutionElement, SolutionGraph.Node)):
+            if isinstance(target, SolutionElement):
+                if not hasattr(target, "node"):
+                    raise ValueError(
+                        "SolutionElement must have a 'node' attribute of type SolutionGraph.Node"
+                    )
+                target = target.node
             target = target.key
 
         if source not in self.nodes or target not in self.nodes:
@@ -107,4 +122,4 @@ class SolutionGraphBuilder:
             width=self.width,
             show_grid=True,
         )
-        return self.graph
+        return Container([self.graph, *self.modals])
