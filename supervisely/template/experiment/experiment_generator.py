@@ -237,6 +237,29 @@ class ExperimentGenerator(BaseGenerator):
             return None
 
         html = ['<table class="metrics-table">']
+        html.append("<thead><tr><th>Metrics</th><th>Values</th></tr></thead>")
+        html.append("<tbody>")
+
+        for metric_name, metric_value in metrics.items():
+            if isinstance(metric_value, float):
+                metric_value = f"{metric_value:.4f}"
+            html.append(f"<tr><td>{metric_name}</td><td>{metric_value}</td></tr>")
+
+        html.append("</tbody>")
+        html.append("</table>")
+        return "\n".join(html)
+
+    def _generate_metrics_table_horizontal(self) -> str:
+        """Generate HTML table with evaluation metrics.
+
+        :returns: HTML string with metrics table
+        :rtype: str
+        """
+        metrics = self.info.get("evaluation_metrics", {})
+        if not metrics:
+            return None
+
+        html = ['<table class="metrics-table">']
 
         # Generate header row with metric names
         header_cells = []
