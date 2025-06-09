@@ -18,17 +18,17 @@ from supervisely.app.widgets import (
     TaskLogs,
     Text,
 )
-from supervisely.solution.base_node import Automation, SolutionElement
+from supervisely.solution.base_node import Automation, SolutionElement, SolutionCardNode
 from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 
 class CloudImportAuto(Automation):
     def __init__(self, func: Callable):
         super().__init__()
+        self.apply_btn = Button("Apply", plain=True)
         self.widget = self._create_widget()
         self.job_id = self.widget.widget_id
         self.func = func
-        self.apply_btn = Button("Apply", plain=True)
 
     def apply(self):
         sec, path, interval, period = self.get_automation_details()
@@ -123,17 +123,17 @@ class SolutionsCloudImport(SolutionElement):
         self.main_widget = CloudImport(project_id=project_id)
         self.automation = CloudImportAuto(self.main_widget.run)
         self.card = self._create_card()
+        self.sync_modal = self._create_automation_modal()
         w, h = (
             None,
             None,
         )  # TODO: width and height are properties of the SolutionCard, but not used in the original code
-        self.node = SolutionGraph.Node(x=x, y=y, content=self.card, width=w, height=h)
+        self.node = SolutionCardNode(x=x, y=y, content=self.card)
 
         @self.card.click
         def show_run_modal():
             self.run_modal.show()
 
-        self.sync_modal = self._create_automation_modal()
         self.modals = [self.tasks_modal, self.sync_modal, self.logs_modal, self.run_modal]
 
         super().__init__()
@@ -276,7 +276,7 @@ class SolutionsCloudImport(SolutionElement):
 
     def update_automation_details(self) -> Tuple[int, str, int, str]:
         sec, path, interval, period = self.automation.get_automation_details()
-        self.sync_modal.hide()
+        # self.sync_modal.hide()
         if path is not None:
             if self.card is not None:
                 self.card.update_property(
