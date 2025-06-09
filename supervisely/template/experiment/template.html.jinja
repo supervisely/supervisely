@@ -30,24 +30,9 @@
         scroll-margin-top: 20px;
         padding-top: 10px;
         }
-        .experiment-body .overview-info-block {
-        background: #f4f7fb;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        }
-        .experiment-body .width-fit-content {
-        width: fit-content;
-        }
+
         .experiment-body .main-content {
         flex-grow: 1;
-        }
-
-        .experiment-body .buttons-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 20px;
         }
 
         .experiment-body table {
@@ -64,80 +49,134 @@
         .experiment-body table th {
         background-color: #f4f7fb;
         }
-        .experiment-body .metrics-table,
-        .experiment-body .checkpoints-table {
+
+        html {
+        scroll-behavior: smooth;
+        }
+
+        .experiment-body .info-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        border-radius: 6px;
-        overflow: hidden;
-        }
-        .experiment-body .metrics-table th,
-        .experiment-body .checkpoints-table th {
-        background-color: #f4f7fb;
-        font-weight: 600;
-        color: #333;
-        padding: 12px 15px;
-        text-align: left;
-        border-bottom: 2px solid #e0e0e0;
-        }
-        .experiment-body .metrics-table td,
-        .experiment-body .checkpoints-table td {
-        padding: 10px 15px;
-        border-bottom: 1px solid #e9ecef;
-        }
-        .experiment-body .metrics-table tr:hover,
-        .experiment-body .checkpoints-table tr:hover {
-        background-color: #f8f9fa;
+        font-size: 14px;
         }
 
-        .experiment-body .links-list,
-        .experiment-body .overview-list,
-        .experiment-body .buttons-list {
-        list-style-type: none;
-        padding: 0;
-        margin: 0 0 20px 0;
+        .experiment-body .info-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid #e2e8f0;
         }
-        .experiment-body .links-list li,
-        .experiment-body .overview-list li,
-        .experiment-body .buttons-list li {
-        margin-bottom: 8px;
-        position: relative;
-        padding-left: 8px;
+
+        .experiment-body .info-table td:first-child {
+        width: 40%;
+        color: #374151;
+        }
+
+        .experiment-body .info-table td:last-child {
+        color: #6b7280;
+        }
+
+        .experiment-body .quick-actions-section {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        height: 100%;
         display: flex;
-        align-items: flex-start;
-        }
-        .experiment-body .links-list li:before,
-        .experiment-body .buttons-list li:before {
-        content: "•";
-        color: #1890ff;
-        display: inline-block;
-        width: 15px;
-        margin-right: 10px;
-        }
-        .experiment-body .overview-list li:before {
-        content: "";
-        display: none;
-        }
-        .experiment-body .link-icon,
-        .experiment-body .button-icon {
-        margin-right: 8px;
-        }
-        .experiment-body .overview-list .label {
-        font-weight: 600;
-        margin-right: 8px;
-        min-width: 120px;
-        display: inline-block;
+        flex-direction: column;
         }
 
-        /* Code */
-        .experiment-body .code-block {
-        background-color: #f5f5f5;
+        .experiment-body .quick-actions-section h2 {
+        margin: 0 0 16px 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a202c;
+        }
+
+        .experiment-body .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex-grow: 1;
+        justify-content: flex-start;
+        }
+
+        .experiment-body .action-button {
+        display: flex;
+        align-items: center;
+        padding: 12px 14px;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        gap: 12px;
+        }
+
+        .experiment-body .action-button.primary {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .experiment-body .action-button.primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .experiment-body .action-button.secondary {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        }
+
+        .experiment-body .action-button.secondary:hover {
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .experiment-body .action-button.tertiary {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        border: 1px solid #fde68a;
+        }
+
+        .experiment-body .action-button.tertiary:hover {
+        background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+        }
+
+        .experiment-body .button-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.1);
         border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 20px;
-        overflow-x: auto;
+        }
+
+        .experiment-body .action-button.secondary .button-icon,
+        .experiment-body .action-button.tertiary .button-icon {
+        background: rgba(0,0,0,0.05);
+        }
+
+        .experiment-body .button-content {
+        flex: 1;
+        text-align: left;
+        }
+
+        .experiment-body .button-title {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 2px;
+        }
+
+        .experiment-body .button-description {
+        font-size: 12px;
+        opacity: 0.8;
         }
 
         .experiment-body details {
@@ -162,8 +201,76 @@
         margin-bottom: 0;
         }
 
-        html {
-        scroll-behavior: smooth;
+        /* Experiment Header Layout */
+        .experiment-header-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 350px !important;
+        grid-template-rows: auto !important;
+        gap: 30px !important;
+        margin-bottom: 30px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        }
+
+        .experiment-body .experiment-header-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 350px !important;
+        grid-template-rows: auto !important;
+        gap: 30px !important;
+        margin-bottom: 30px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        }
+
+        /* Ensure child elements don't override grid behavior */
+        .experiment-header-layout > .key-info-section {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        }
+
+        .experiment-header-layout > .quick-actions-section {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        }
+
+        /* Inner grid layout for key-info-section */
+        .info-grid-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 25px !important;
+        width: 100% !important;
+        }
+
+        .main-info-column {
+        grid-column: 1 !important;
+        }
+
+        .experiment-body .key-info-section {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .experiment-body .key-info-section h2 {
+        margin: 0 0 16px 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a202c;
+        }
+
+        .experiment-body .key-info-section h3 {
+        margin: 20px 0 8px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #374151;
+        }
+
+        .prediction-gallery {
+        margin-bottom: 20px;
         }
     </sly-style>
 

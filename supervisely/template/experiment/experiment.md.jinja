@@ -20,14 +20,16 @@
 </table> #}
 
 <ul class="info-list">
-<li><strong>🤖 Model</strong>: {{ experiment.model_name }}</li>
-<li><strong>🔧 Framework</strong>: {{ experiment.framework_name }}</li>
-<li><strong>🎯 Task</strong>: {{ experiment.task_name }}</li>
-<li><strong>🏷️ Classes</strong>: {{ project.classes_count }} ({{ project.class_names.short_string }})</li>
-<li><strong>📚 Training</strong>: {{ project.train_size }} images</li>
-<li><strong>🔍 Validation</strong>: {{ project.val_size }} images</li>
+<li><strong>Model</strong>: {{ experiment.model_name }}</li>
+<li><strong>Framework</strong>: {{ experiment.framework_name }}</li>
+<li><strong>Task</strong>: {{ experiment.task_name }}</li>
+<li><strong>Classes</strong>: {{ project.classes_count }} ({{ project.class_names.short_string }})</li>
+<li><strong>Training</strong>: {{ project.train_size }} images</li>
+<li><strong>Validation</strong>: {{ project.val_size }} images</li>
+<li><strong>Device</strong>: {{ experiment.device }}</li>
+<li><strong>Duration</strong>: {{ experiment.training_duration }}</li>
 {% if benchmark.primary_metric.name %}
-<li><strong>🎯 {{ benchmark.primary_metric.name }}</strong>: {{ benchmark.primary_metric.value }}</li>
+<li><strong>{{ benchmark.primary_metric.name }}</strong>: {{ benchmark.primary_metric.value }}</li>
 {% endif %}
 </ul>
 
