@@ -85,6 +85,9 @@ class SolutionGraphBuilder:
         if source not in self.nodes or target not in self.nodes:
             raise ValueError("Both source and target nodes must be added before creating an edge.")
 
+        if dash is True:
+            dash = {"len": 8, "gap": 8}
+
         edge = [
             target,
             {
