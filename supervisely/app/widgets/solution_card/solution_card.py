@@ -185,7 +185,8 @@ class SolutionCard(Widget):
             if prop["key"] == key:
                 break
         else:
-            raise KeyError(f"Property with key {key} not found")
+            self.add_property(key, value, link, highlight)
+            return
         prop["value"] = value
         if link is not None:
             prop["link"] = link
@@ -250,6 +251,8 @@ class SolutionCard(Widget):
                     "badge_type must be one of ['info', 'success', 'warning', 'error']"
                 )
             badge_data["badge_type"] = badge_type
+        if plain is not None:
+            badge_data["plain"] = plain
 
         StateJson()[self.widget_id]["badges"][idx] = badge_data
         self._badges = StateJson()[self.widget_id]["badges"]
@@ -262,16 +265,18 @@ class SolutionCard(Widget):
         label: str,
         badge_type: Literal["info", "success", "warning", "error"] = None,
         new_key: str = None,
+        plain: Optional[bool] = None,
     ):
         for idx, prop in enumerate(self.badges):
             if prop["on_hover"] == key:
-                self.update_badge(idx, label, new_key, badge_type)
+                self.update_badge(idx, label, new_key, badge_type, plain)
                 return
         self.add_badge(
             self.Badge(
                 label=label,
                 on_hover=new_key or key,
                 badge_type=badge_type or "info",
+                plain=plain if plain is not None else False,
             )
         )
 

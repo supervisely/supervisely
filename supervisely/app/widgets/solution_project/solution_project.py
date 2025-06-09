@@ -16,6 +16,7 @@ class SolutionProject(Widget):
             label: str,
             on_hover: str = None,
             badge_type: Literal["info", "success", "warning", "error"] = "info",
+            plain: bool = False,
         ):
             self._label = label
             self._on_hover = on_hover
@@ -24,6 +25,7 @@ class SolutionProject(Widget):
                     "badge_type must be one of ['info', 'success', 'warning', 'error']"
                 )
             self._badge_type = badge_type
+            self._plain = plain
 
     class Tooltip:
 
@@ -124,6 +126,7 @@ class SolutionProject(Widget):
                     "label": badge._label,
                     "on_hover": badge._on_hover,
                     "badge_type": badge._badge_type,
+                    "plain": badge._plain,
                 }
                 info.append(badge_data)
         return info
@@ -209,6 +212,7 @@ class SolutionProject(Widget):
                 "label": badge._label,
                 "on_hover": badge._on_hover,
                 "badge_type": badge._badge_type,
+                "plain": badge._plain,
             }
         )
         self._show_badges = True
@@ -216,7 +220,14 @@ class SolutionProject(Widget):
         self._badges = StateJson()[self.widget_id]["badges"]
         StateJson().send_changes()
 
-    def update_badge(self, idx: int, label: str, on_hover: str = None, badge_type: str = None):
+    def update_badge(
+        self,
+        idx: int,
+        label: str,
+        on_hover: str = None,
+        badge_type: str = None,
+        plain: bool = None,
+    ):
         if idx < 0 or idx >= len(self._badges):
             raise IndexError("Badge index out of range")
 
@@ -225,6 +236,7 @@ class SolutionProject(Widget):
             "label": label,
             "on_hover": self._badges[idx]["on_hover"],
             "badge_type": self._badges[idx]["badge_type"],
+            "plain": self._badges[idx]["plain"],
         }
         if on_hover is not None:
             badge_data["on_hover"] = on_hover
@@ -234,6 +246,8 @@ class SolutionProject(Widget):
                     "badge_type must be one of ['info', 'success', 'warning', 'error']"
                 )
             badge_data["badge_type"] = badge_type
+        if plain is not None:
+            badge_data["plain"] = plain
 
         StateJson()[self.widget_id]["badges"][idx] = badge_data
         self._badges = StateJson()[self.widget_id]["badges"]
@@ -270,3 +284,24 @@ class SolutionProject(Widget):
         DataJson()[self.widget_id]["preview_urls"] = self._preview_url
         DataJson()[self.widget_id]["items_counts"] = self._items_count
         DataJson().send_changes()
+
+    def update_badge_by_key(
+        self,
+        key: str,
+        label: str,
+        badge_type: Literal["info", "success", "warning", "error"] = None,
+        new_key: str = None,
+        plain: Optional[bool] = None,
+    ):
+        for idx, prop in enumerate(self.badges):
+            if prop["on_hover"] == key:
+                self.update_badge(idx, label, new_key, badge_type, plain)
+                return
+        self.add_badge(
+            self.Badge(
+                label=label,
+                on_hover=new_key or key,
+                badge_type=badge_type or "info",
+                plain=plain if plain is not None else False,
+            )
+        )
