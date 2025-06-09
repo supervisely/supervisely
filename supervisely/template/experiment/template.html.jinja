@@ -30,24 +30,9 @@
         scroll-margin-top: 20px;
         padding-top: 10px;
         }
-        .experiment-body .overview-info-block {
-        background: #f4f7fb;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        }
-        .experiment-body .width-fit-content {
-        width: fit-content;
-        }
+
         .experiment-body .main-content {
         flex-grow: 1;
-        }
-
-        .experiment-body .buttons-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-bottom: 20px;
         }
 
         .experiment-body table {
@@ -64,512 +49,9 @@
         .experiment-body table th {
         background-color: #f4f7fb;
         }
-        .experiment-body .metrics-table,
-        .experiment-body .checkpoints-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-        border-radius: 6px;
-        overflow: hidden;
-        }
-        .experiment-body .metrics-table th,
-        .experiment-body .checkpoints-table th {
-        background-color: #f4f7fb;
-        font-weight: 600;
-        color: #333;
-        padding: 12px 15px;
-        text-align: left;
-        border-bottom: 2px solid #e0e0e0;
-        }
-        .experiment-body .metrics-table td,
-        .experiment-body .checkpoints-table td {
-        padding: 10px 15px;
-        border-bottom: 1px solid #e9ecef;
-        }
-        .experiment-body .metrics-table tr:hover,
-        .experiment-body .checkpoints-table tr:hover {
-        background-color: #f8f9fa;
-        }
-
-        .experiment-body .links-list,
-        .experiment-body .overview-list,
-        .experiment-body .buttons-list {
-        list-style-type: none;
-        padding: 0;
-        margin: 0 0 20px 0;
-        }
-        .experiment-body .links-list li,
-        .experiment-body .overview-list li,
-        .experiment-body .buttons-list li {
-        margin-bottom: 8px;
-        position: relative;
-        padding-left: 8px;
-        display: flex;
-        align-items: flex-start;
-        }
-        .experiment-body .links-list li:before,
-        .experiment-body .buttons-list li:before {
-        content: "•";
-        color: #1890ff;
-        display: inline-block;
-        width: 15px;
-        margin-right: 10px;
-        }
-        .experiment-body .overview-list li:before {
-        content: "";
-        display: none;
-        }
-        .experiment-body .link-icon,
-        .experiment-body .button-icon {
-        margin-right: 8px;
-        }
-        .experiment-body .overview-list .label {
-        font-weight: 600;
-        margin-right: 8px;
-        min-width: 120px;
-        display: inline-block;
-        }
-
-        /* Code */
-        .experiment-body .code-block {
-        background-color: #f5f5f5;
-        border-radius: 6px;
-        padding: 15px;
-        margin-bottom: 20px;
-        overflow-x: auto;
-        }
-
-        .experiment-body details {
-        border-radius: 6px;
-        overflow: hidden;
-        margin-bottom: 20px;
-        }
-        .experiment-body details summary {
-        padding: 12px 15px;
-        background-color: #f4f7fb;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: background-color 0.2s;
-        }
-        .experiment-body details summary:hover {
-        background-color: #e6edf7;
-        }
-        .experiment-body details[open] summary {
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
-        margin-bottom: 0;
-        }
 
         html {
         scroll-behavior: smooth;
-        }
-
-        /* New Experiment Components Styles */
-        .experiment-header {
-        margin-bottom: 30px;
-        }
-
-        .header-cards {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
-        }
-
-        .status-card, .actions-card, .info-card {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .status-card h3, .actions-card h3, .info-card h3 {
-        margin: 0 0 15px 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #1a202c;
-        }
-
-        .metric-item {
-        margin-bottom: 10px;
-        }
-
-        .metric-value {
-        color: #059669;
-        font-weight: 600;
-        }
-
-        .status-indicator {
-        margin: 0 0 16px 0;
-        padding: 10px 14px;
-        border-radius: 6px;
-        font-size: 14px;
-        }
-
-        .status-indicator.success {
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #047857;
-        }
-
-        .status-indicator.good {
-        background: #fffbeb;
-        border: 1px solid #fcd34d;
-        color: #92400e;
-        }
-
-        .status-indicator.warning {
-        background: #fef2f2;
-        border: 1px solid #fca5a5;
-        color: #dc2626;
-        }
-
-        .metric-display {
-        font-size: 16px;
-        margin-bottom: 4px;
-        }
-
-        .metric-status {
-        font-size: 13px;
-        margin-bottom: 16px;
-        opacity: 0.8;
-        }
-
-        .info-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-        }
-
-        .info-table td {
-        padding: 6px 8px;
-        border-bottom: 1px solid #e2e8f0;
-        }
-
-        .info-table td:first-child {
-        width: 40%;
-        color: #374151;
-        }
-
-        .info-table td:last-child {
-        color: #6b7280;
-        }
-
-        .quick-actions-section {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        }
-
-        .quick-actions-section h2 {
-        margin: 0 0 16px 0;
-        font-size: 20px;
-        font-weight: 600;
-        color: #1a202c;
-        }
-
-        .action-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        flex-grow: 1;
-        justify-content: flex-start;
-        }
-
-        .action-button {
-        display: flex;
-        align-items: center;
-        padding: 12px 14px;
-        border-radius: 8px;
-        text-decoration: none;
-        transition: all 0.2s ease;
-        border: 1px solid transparent;
-        gap: 12px;
-        }
-
-        .action-button.primary {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-        }
-
-        .action-button.primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-        }
-
-        .action-button.secondary {
-        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-        color: #475569;
-        border: 1px solid #e2e8f0;
-        }
-
-        .action-button.secondary:hover {
-        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .action-button.tertiary {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        color: #92400e;
-        border: 1px solid #fde68a;
-        }
-
-        .action-button.tertiary:hover {
-        background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
-        }
-
-        .button-icon {
-        font-size: 20px;
-        flex-shrink: 0;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255,255,255,0.1);
-        border-radius: 6px;
-        }
-
-        .action-button.secondary .button-icon,
-        .action-button.tertiary .button-icon {
-        background: rgba(0,0,0,0.05);
-        }
-
-        .button-content {
-        flex: 1;
-        text-align: left;
-        }
-
-        .button-title {
-        font-size: 15px;
-        font-weight: 600;
-        margin-bottom: 2px;
-        }
-
-        .button-description {
-        font-size: 12px;
-        opacity: 0.8;
-        }
-
-        .button-time {
-        font-size: 11px;
-        opacity: 0.7;
-        font-weight: 500;
-        }
-
-        .action-button.primary .button-time {
-        color: rgba(255,255,255,0.9);
-        }
-
-        /* Additional styles for other components */
-        .collapsible {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 20px;
-        }
-
-        .collapsible summary {
-        background: #f8fafc;
-        padding: 15px;
-        cursor: pointer;
-        font-weight: 600;
-        border: none;
-        outline: none;
-        }
-
-        .collapsible summary:hover {
-        background: #f1f5f9;
-        }
-
-        .yaml-code {
-        background: #1a202c;
-        color: #e2e8f0;
-        padding: 20px;
-        margin: 0;
-        overflow-x: auto;
-        font-family: 'Courier New', monospace;
-        font-size: 14px;
-        line-height: 1.5;
-        }
-
-        /* Action links */
-        .action-link {
-        margin-top: 15px;
-        }
-
-        .btn-link {
-        display: inline-block;
-        padding: 8px 16px;
-        background: #3b82f6;
-        color: white;
-        text-decoration: none;
-        border-radius: 6px;
-        font-weight: 500;
-        transition: background 0.2s;
-        }
-
-        .btn-link:hover {
-        background: #2563eb;
-        }
-
-        /* New Experiment Header Layout */
-        .experiment-header-layout {
-        display: grid !important;
-        grid-template-columns: 1fr 350px !important;
-        grid-template-rows: auto !important;
-        gap: 30px !important;
-        margin-bottom: 30px !important;
-        align-items: stretch !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        }
-
-        .experiment-body .experiment-header-layout {
-        display: grid !important;
-        grid-template-columns: 1fr 350px !important;
-        grid-template-rows: auto !important;
-        gap: 30px !important;
-        margin-bottom: 30px !important;
-        align-items: stretch !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        }
-
-        /* Ensure child elements don't override grid behavior */
-        .experiment-header-layout > .key-info-section {
-        grid-column: 1 !important;
-        grid-row: 1 !important;
-        }
-
-        .experiment-header-layout > .quick-actions-section {
-        grid-column: 2 !important;
-        grid-row: 1 !important;
-        }
-
-        /* Inner grid layout for key-info-section */
-        .info-grid-layout {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr !important;
-        gap: 25px !important;
-        width: 100% !important;
-        }
-
-        .main-info-column {
-        grid-column: 1 !important;
-        }
-
-        .links-column {
-        grid-column: 2 !important;
-        }
-
-        .links-column h3 {
-        margin: 0 0 12px 0 !important;
-        font-size: 16px !important;
-        font-weight: 600 !important;
-        color: #374151 !important;
-        }
-
-        .links-table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-        font-size: 14px !important;
-        }
-
-        .links-table td {
-        padding: 6px 8px !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-        }
-
-        .links-table td:first-child {
-        color: #374151 !important;
-        width: 60% !important;
-        }
-
-        .links-table td:last-child {
-        color: #6b7280 !important;
-        text-align: right !important;
-        }
-
-        .links-table a {
-        color: #3b82f6 !important;
-        text-decoration: none !important;
-        font-weight: 500 !important;
-        }
-
-        .links-table a:hover {
-        color: #1d4ed8 !important;
-        text-decoration: underline !important;
-        }
-
-        .experiment-body .key-info-section {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .experiment-body .key-info-section h2 {
-        margin: 0 0 16px 0;
-        font-size: 20px;
-        font-weight: 600;
-        color: #1a202c;
-        }
-
-        .experiment-body .key-info-section h3 {
-        margin: 20px 0 8px 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #374151;
-        }
-
-        .experiment-body .status-indicator {
-        margin: 0 0 16px 0;
-        padding: 10px 14px;
-        border-radius: 6px;
-        font-size: 14px;
-        }
-
-        .experiment-body .status-indicator.success {
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #047857;
-        }
-
-        .experiment-body .status-indicator.good {
-        background: #fffbeb;
-        border: 1px solid #fcd34d;
-        color: #92400e;
-        }
-
-        .experiment-body .status-indicator.warning {
-        background: #fef2f2;
-        border: 1px solid #fca5a5;
-        color: #dc2626;
-        }
-
-        .experiment-body .metric-display {
-        font-size: 16px;
-        margin-bottom: 4px;
-        }
-
-        .experiment-body .metric-status {
-        font-size: 13px;
-        margin-bottom: 16px;
-        opacity: 0.8;
         }
 
         .experiment-body .info-table {
@@ -697,14 +179,98 @@
         opacity: 0.8;
         }
 
-        .experiment-body .button-time {
-        font-size: 11px;
-        opacity: 0.7;
-        font-weight: 500;
+        .experiment-body details {
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 20px;
+        }
+        .experiment-body details summary {
+        padding: 12px 15px;
+        background-color: #f4f7fb;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background-color 0.2s;
+        }
+        .experiment-body details summary:hover {
+        background-color: #e6edf7;
+        }
+        .experiment-body details[open] summary {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        margin-bottom: 0;
         }
 
-        .experiment-body .action-button.primary .button-time {
-        color: rgba(255,255,255,0.9);
+        /* Experiment Header Layout */
+        .experiment-header-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 350px !important;
+        grid-template-rows: auto !important;
+        gap: 30px !important;
+        margin-bottom: 30px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        }
+
+        .experiment-body .experiment-header-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 350px !important;
+        grid-template-rows: auto !important;
+        gap: 30px !important;
+        margin-bottom: 30px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        }
+
+        /* Ensure child elements don't override grid behavior */
+        .experiment-header-layout > .key-info-section {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        }
+
+        .experiment-header-layout > .quick-actions-section {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        }
+
+        /* Inner grid layout for key-info-section */
+        .info-grid-layout {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 25px !important;
+        width: 100% !important;
+        }
+
+        .main-info-column {
+        grid-column: 1 !important;
+        }
+
+        .experiment-body .key-info-section {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .experiment-body .key-info-section h2 {
+        margin: 0 0 16px 0;
+        font-size: 20px;
+        font-weight: 600;
+        color: #1a202c;
+        }
+
+        .experiment-body .key-info-section h3 {
+        margin: 20px 0 8px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #374151;
+        }
+
+        .prediction-gallery {
+        margin-bottom: 20px;
         }
     </sly-style>
 

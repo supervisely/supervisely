@@ -7,49 +7,31 @@
 <div class="experiment-header-layout">
 <div class="key-info-section">
 
-{% if benchmark.primary_metric.value > 0.9 %}
-<div class="status-indicator success">
-<strong>🟢 Excellent Results!</strong> Your model is ready for deployment
-</div>
-{% elif benchmark.primary_metric.value > 0.8 %}
-<div class="status-indicator good">
-<strong>🟡 Good Results</strong> Model can be improved
-</div>
-{% else %}
-<div class="status-indicator warning">
-<strong>🟠 Optimization Required</strong> Additional tuning recommended
-</div>
-{% endif %}
-
-{% if benchmark.primary_metric.name %}
-<h3>🎯 Primary Metric</h3>
-<div class="metric-display">
-<strong>{{ benchmark.primary_metric.name }}: {{ "%.3f"|format(benchmark.primary_metric.value) }}</strong>
-</div>
-<div class="metric-status">
-{% if benchmark.primary_metric.value > 0.95 %}
-<em>🏆 Outstanding Performance</em>
-{% elif benchmark.primary_metric.value > 0.9 %}
-<em>✅ Excellent Performance</em>
-{% elif benchmark.primary_metric.value > 0.8 %}
-<em>👍 Good Performance</em>
-{% else %}
-<em>⚠️ Needs Improvement</em>
-{% endif %}
-</div>
-{% endif %}
-
 <div class="info-grid-layout">
 <div class="main-info-column">
 
-<table class="info-table">
+<h3>Quick Info</h3>
+
+{# <table class="info-table">
 <tr><td><strong>🤖 Model</strong></td><td>{{ experiment.model_name }}</td></tr>
 <tr><td><strong>🔧 Framework</strong></td><td>{{ experiment.framework_name }}</td></tr>
 <tr><td><strong>🎯 Task</strong></td><td>{{ experiment.task_name }}</td></tr>
 <tr><td><strong>🏷️ Classes</strong></td><td>{{ project.classes_count }} classes</td></tr>
 <tr><td><strong>📚 Training</strong></td><td>{{ project.train_size }} images</td></tr>
 <tr><td><strong>🔍 Validation</strong></td><td>{{ project.val_size }} images</td></tr>
-</table>
+</table> #}
+
+<ul class="info-list">
+<li><strong>🤖 Model</strong>: {{ experiment.model_name }}</li>
+<li><strong>🔧 Framework</strong>: {{ experiment.framework_name }}</li>
+<li><strong>🎯 Task</strong>: {{ experiment.task_name }}</li>
+<li><strong>🏷️ Classes</strong>: {{ project.classes_count }} ({{ project.class_names.short_string }})</li>
+<li><strong>📚 Training</strong>: {{ project.train_size }} images</li>
+<li><strong>🔍 Validation</strong>: {{ project.val_size }} images</li>
+{% if benchmark.primary_metric.name %}
+<li><strong>🎯 {{ benchmark.primary_metric.name }}</strong>: {{ benchmark.primary_metric.value }}</li>
+{% endif %}
+</ul>
 
 </div>
 </div>
@@ -242,16 +224,11 @@ The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on a valid
 <ol>
 <li><strong>Install Supervisely:</strong>
 
-   ```bash
-   pip install supervisely
-   ```
+<pre><code class="language-bash">pip install supervisely</code></pre>
 
 </li>
 
-   ```bash
-   export API_TOKEN="your_api_token"
-   export SERVER_ADDRESS="{{ env.server_address }}"
-   ```
+<li><strong>Authentication:</strong>
 
 <pre><code class="language-bash">export API_TOKEN="your_api_token"
 export SERVER_ADDRESS="{{ env.server_address }}"</code></pre>
@@ -273,8 +250,7 @@ export SERVER_ADDRESS="{{ env.server_address }}"</code></pre>
 
 <template #pytorch-api>
 
-```python
-import supervisely as sly
+<pre><code class="language-python">import supervisely as sly
 
 # Authentication
 api = sly.Api()
@@ -288,16 +264,14 @@ model = api.nn.deploy(
 # Predict
 predictions = model.predict(
     input=["image1.jpg", "image2.jpg"]
-)
-```
+)</code></pre>
 
 </template>
 
 {% if artifacts.onnx_checkpoint.name %}
 <template #onnx-api>
 
-```python
-import supervisely as sly
+<pre><code class="language-python">import supervisely as sly
 
 api = sly.Api()
 
@@ -308,8 +282,7 @@ model = api.nn.deploy(
 )
 
 # Predict
-predictions = model.predict(input=["image.jpg"])
-```
+predictions = model.predict(input=["image.jpg"])</code></pre>
 
 </template>
 {% endif %}
@@ -317,8 +290,7 @@ predictions = model.predict(input=["image.jpg"])
 {% if artifacts.trt_checkpoint.name %}
 <template #tensorrt-api>
 
-```python
-import supervisely as sly
+<pre><code class="language-python">import supervisely as sly
 
 api = sly.Api()
 
@@ -329,8 +301,7 @@ model = api.nn.deploy(
 )
 
 # Predict
-predictions = model.predict(input=["image.jpg"])
-```
+predictions = model.predict(input=["image.jpg"])</code></pre>
 
 </template>
 {% endif %}
@@ -348,46 +319,38 @@ predictions = model.predict(input=["image.jpg"])
 
 <template #local-files>
 
-```python
-# Local images
+<pre><code class="language-python"># Local images
 predictions = model.predict(input="image.jpg")
 
 # Directory with images
 predictions = model.predict(input="/path/to/images/")
 
 # List of images
-predictions = model.predict(input=["img1.jpg", "img2.jpg"])
-```
+predictions = model.predict(input=["img1.jpg", "img2.jpg"])</code></pre>
 
 </template>
 
 <template #supervisely-images>
 
-```python
-# By image IDs
+<pre><code class="language-python"># By image IDs
 predictions = model.predict(image_ids=[123, 124, 125])
 
 # Single image
-predictions = model.predict(image_ids=123)
-```
+predictions = model.predict(image_ids=123)</code></pre>
 
 </template>
 
 <template #datasets>
 
-```python
-# Entire dataset
-predictions = model.predict(dataset_id=42)
-```
+<pre><code class="language-python"># Entire dataset
+predictions = model.predict(dataset_id=42)</code></pre>
 
 </template>
 
 <template #projects>
 
-```python
-# Entire project
-predictions = model.predict(project_id=21)
-```
+<pre><code class="language-python"># Entire project
+predictions = model.predict(project_id=21)</code></pre>
 
 </template>
 
@@ -410,31 +373,26 @@ predictions = model.predict(project_id=21)
 
 <li><strong>Pull Docker image:</strong>
 
-   ```bash
-   docker pull {{ code.docker.image }}
-   ```
+<pre><code class="language-bash">docker pull {{ code.docker.image }}</code></pre>
 
 </li>
 
 <li><strong>Run container:</strong>
 
-```bash
-docker run \
+<pre><code class="language-bash">docker run \
     --runtime=nvidia \
     -v "./{{ artifacts.experiment_dir }}:/model" \
     -p 8000:8000 \
     {{ code.docker.image }} \
     deploy \
     --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
-    --device "cuda:0"
-```
+    --device "cuda:0"</code></pre>
 
 </li>
 
 <li><strong>Connect and use:</strong>
 
-```python
-from supervisely.nn import ModelAPI
+<pre><code class="language-python">from supervisely.nn import ModelAPI
 
 # Connect to local server
 model = ModelAPI(url="http://localhost:8000")
@@ -442,24 +400,21 @@ model = ModelAPI(url="http://localhost:8000")
 # Predict
 predictions = model.predict(
     input=["image1.jpg", "image2.jpg"]
-)
-```
+)</code></pre>
 
 </li>
 </ol>
 
 <h3>Quick Prediction</h3>
 
-```bash
-docker run \
+<pre><code class="language-bash">docker run \
 --runtime=nvidia \
 -v "./{{ artifacts.experiment_dir }}:/model" \
 {{ code.docker.image }} \
 predict \
 "./image.jpg" \
 --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
---device "cuda:0"
-```
+--device "cuda:0"</code></pre>
 
 </template>
 
