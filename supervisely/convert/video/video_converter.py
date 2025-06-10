@@ -158,7 +158,9 @@ class VideoConverter(BaseConverter):
                     file_progress = Progress(
                         "Uploading videos", total_size, ext_logger=logger, is_size=True
                     )
-                    size_progress_cb = file_progress.iters_done_report
+                    size_progress_cb = lambda m: file_progress.set_current_value(
+                        file_progress.current + m
+                    )
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
