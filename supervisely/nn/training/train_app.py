@@ -2680,12 +2680,13 @@ class TrainApp:
                 self.gui.training_logs.tensorboard_offline_button.show()
 
             sleep(1)
-            self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
             raise e
+        finally:
+            self.app.shutdown()
 
     def _show_error(self, message: str, e=None):
         if e is not None:
