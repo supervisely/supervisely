@@ -156,7 +156,7 @@ class VideoConverter(BaseConverter):
                         "Some videos are larger than 20 MB, showing upload progress by file size."
                     )
                     file_progress = Progress(
-                        "Uploading videos...", total_size, ext_logger=logger, is_size=True
+                        "Uploading videos", total_size, ext_logger=logger, is_size=True
                     )
                     size_progress_cb = file_progress.iters_done_report
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
