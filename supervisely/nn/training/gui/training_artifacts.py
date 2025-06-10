@@ -66,7 +66,10 @@ class TrainingArtifacts:
         # Outputs
         # self.artifacts_thumbnail = FolderThumbnail()
         self.artifacts_thumbnail = ReportThumbnail(
-            title="Experiment Report", color="#5fa8ff", bg_color="#e6f3ff"
+            title="Experiment Report",
+            color="#5fa8ff",
+            bg_color="#e6f3ff",
+            report_type="experiment",
         )
         self.artifacts_thumbnail.hide()
 
