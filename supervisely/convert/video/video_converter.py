@@ -144,13 +144,16 @@ class VideoConverter(BaseConverter):
         if log_progress:
             progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
             if not self.upload_as_links:
-                file_sizes = [get_file_size(item.path) for item in self._items]
-                has_large_files = any(
-                    [self._check_video_file_size(file_size) for file_size in file_sizes]
-                )
+                total_size = 0
+                for item in self._items:
+                    file_size = get_file_size(item.path)
+                    if file_size > (20 << 20):  # 20 MB
+                        has_large_files = True
+                    total_size += file_size
+
                 if has_large_files:
-                    upload_progress = []
-                    size_progress_cb = self._get_video_upload_progress(upload_progress)
+                    progress = Progress("Uploading videos...", total_size, is_size=True)
+                    size_progress_cb = progress.set_current_value
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
 
         for batch in batched(self._items, batch_size=batch_size):
@@ -291,22 +294,3 @@ class VideoConverter(BaseConverter):
                 f"{output_path}",
             ]
         )
-
-    def _check_video_file_size(self, file_size):
-        return file_size > 20 * 1024 * 1024  # 20 MB
-
-    def _get_video_upload_progress(self, upload_progress):
-        upload_progress = []
-
-        def _print_progress(monitor, upload_progress):
-            if len(upload_progress) == 0:
-                upload_progress.append(
-                    Progress(
-                        message="Upload videos...",
-                        ext_logger=logger,
-                        is_size=True,
-                    )
-                )
-            upload_progress[0].set_current_value(monitor)
-
-        return lambda m: _print_progress(m, upload_progress)
