@@ -1,5 +1,5 @@
 # coding: utf-8
-"""deploy and connect to to running inference apps"""
+"""deploy and connect to running serving apps"""
 
 from __future__ import annotations
 
