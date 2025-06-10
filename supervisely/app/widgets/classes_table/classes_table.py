@@ -412,8 +412,8 @@ class ClassesTable(Widget):
         :rtype: List[str]
         """
         classes = []
+        checkboxes = StateJson()[self.widget_id]["checkboxes"]
         for i, line in enumerate(self._table_data):
-            checkboxes = StateJson()[self.widget_id]["checkboxes"]
             if len(checkboxes) == 0:
                 checkboxes = [False] * len(self._table_data)
             if i >= len(checkboxes):
