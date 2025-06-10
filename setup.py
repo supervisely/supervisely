@@ -192,6 +192,7 @@ setup(
     package_data={
         "": [
             "*.html",
+            "*.jinja",
             "*.css",
             "*.js",
             "*.md",
