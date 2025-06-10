@@ -9,15 +9,28 @@
 - **Task**: {{ experiment.task_name }}
 - **Project**: [{{ project.name }}]({{ project.link }}){:target="_blank"}
 - **Classes**: {{ project.classes_count }} ({{ project.class_names.short_string }})
-- **Training images**: {{ project.train_size }}
-- **Validation images**: {{ project.val_size }}
+- **Training {{ project.type }}**: {{ project.train_size }}
+- **Validation {{ project.type }}**: {{ project.val_size }}
+- **Device**: {{ experiment.device }}
+- **Training duration**: 🕒 {{ experiment.training_duration }}
 {% if benchmark.primary_metric.name %}
 - **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.rounded_value }}
 {% endif %}
 
+{% if project.class_names.list %}
+<div class="classes-overview">
+    <h3>All Classes</h3>
+    <div class="class-tags">
+        {% for class_name in project.class_names.list %}
+        <span class="class-tag">{{ class_name }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if artifacts.hyperparameters %}
 <details>
-    <summary>Training hyperparameters</summary>
+    <summary>Training Hyperparameters</summary>
 
     ```yaml
     {% for hyperparameter in artifacts.hyperparameters %}
