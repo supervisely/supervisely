@@ -7,10 +7,10 @@ training workflows in a Supervisely application.
 
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from os import getcwd, listdir, walk
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
-from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -46,6 +46,7 @@ from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
+from supervisely.decorators.profile import timeit
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
     InstanceSegmentationEvaluator,
@@ -529,7 +530,7 @@ class TrainApp:
         """
 
         def decorator(func):
-            self._train_func = func
+            self._train_func = timeit(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
             return func
 
@@ -2653,6 +2654,7 @@ class TrainApp:
             self._set_text_status("training")
             if self._app_options.get("train_logger", None) is None:
                 self._set_ws_progress_status("training")
+
             experiment_info = self._train_func()
         except ZeroDivisionError as e:
             message = (
@@ -2679,7 +2681,7 @@ class TrainApp:
                 self.gui.training_logs.tensorboard_button.hide()
                 self.gui.training_logs.tensorboard_offline_button.show()
 
-            sleep(1)
+            time.sleep(1)
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)

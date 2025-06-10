@@ -8,24 +8,15 @@
 - **Framework**: {{ experiment.framework_name }}
 - **Task**: {{ experiment.task_name }}
 - **Project**: [{{ project.name }}]({{ project.link }}){:target="_blank"}
-- **Classes**: {{ project.classes_count }} ({{ project.class_names.short_string }})
+- **Classes**: ({{ project.classes_count }}) {% for class_name in project.class_names.list %} <span class="class-tag">{{
+    class_name }}</span> {% endfor %}
+
 - **Training {{ project.type }}**: {{ project.train_size }}
 - **Validation {{ project.type }}**: {{ project.val_size }}
 - **Device**: {{ experiment.device }}
-- **Training duration**: 🕒 {{ experiment.training_duration }}
+- **Training duration**: {{ experiment.training_duration }}
 {% if benchmark.primary_metric.name %}
 - **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.rounded_value }}
-{% endif %}
-
-{% if project.class_names.list %}
-<div class="classes-overview">
-    <h3>All Classes</h3>
-    <div class="class-tags">
-        {% for class_name in project.class_names.list %}
-        <span class="class-tag">{{ class_name }}</span>
-        {% endfor %}
-    </div>
-</div>
 {% endif %}
 
 {% if artifacts.hyperparameters %}
@@ -41,15 +32,6 @@
 </details>
 
 {% endif %}
-
-## Quick Links (will be moved to sidebar)
-
-- [🎓 Training Session]({{ links.training_session.url }}){:target="_blank"}
-{% if links.evaluation_report.id %}
-- [📊 Evaluation Report]({{ links.evaluation_report.url }}){:target="_blank"}
-{% endif %}
-- [📈 Training Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
-- [📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
 
 {% if links.evaluation_report.id and widgets.sample_pred_gallery %}
 

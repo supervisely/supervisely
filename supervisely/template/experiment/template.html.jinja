@@ -41,6 +41,7 @@
         }
         .experiment-body .main-content {
         flex-grow: 1;
+        margin-right: 20px;
         }
 
         .experiment-body .buttons-container {
@@ -177,11 +178,28 @@
         .class-tag {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         color: #0369a1;
-        padding: 6px 12px;
+        padding: 2px 8px;
         border-radius: 16px;
         font-size: 13px;
         font-weight: 500;
         border: 1px solid #0ea5e9;
+        }
+
+        /* Sidebar styles */
+        .experiment-sidebar {
+        position: sticky;
+        top: 30px;
+        width: 300px;
+        height: 100vh;
+        background: #fff;
+        padding: 0 20px 20px;
+        border-left: 1px solid #ccc;
+        border-right: 1px solid #ccc;
+        flex-shrink: 0;
+        }
+
+        .experiment-main-wrapper {
+        display: flex;
         }
 
         html {
@@ -189,19 +207,18 @@
         }
     </sly-style>
 
-    <!-- Sidebar navigation -->
-    <sly-iw-sidebar
-        :options="{ height: 'calc(100vh - 130px)', clearMainPanelPaddings: true, leftSided: false, disableResize: true, sidebarWidth: 300 }">
-        <div slot="sidebar">
-            {% autosidebar %}
-        </div>
-
+    <div class="experiment-main-wrapper">
         <!-- Main content -->
-        <div class="main-content markdown-body">
-            {% markdown %}
-            {% include "experiment.html.jinja" %}
-            {% endmarkdown %}
+        <div class="experiment-main-content">
+            <div class="main-content markdown-body">
+                {% markdown %}
+                {% include "experiment.html.jinja" %}
+                {% endmarkdown %}
+            </div>
         </div>
-    </sly-iw-sidebar>
-
+        <!-- Sidebar -->
+        <div class="experiment-sidebar">
+            {% include "sidebar.html.jinja" %}
+        </div>
+    </div>
 </div>

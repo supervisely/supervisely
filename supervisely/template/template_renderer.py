@@ -18,7 +18,7 @@ class TemplateRenderer:
 
     def __init__(
         self,
-        generate_sidebar: bool = True,
+        generate_sidebar: bool = False,
         jinja_options: Optional[Dict[str, Any]] = None,
         jinja_extensions: Optional[list] = None,
     ):
