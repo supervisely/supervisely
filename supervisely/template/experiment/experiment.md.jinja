@@ -8,6 +8,8 @@
 
 🔴🔴🔴 Можно сделать эти кнопки как Cards (https://docs.gitbook.com/creating-content/blocks/cards)
 
+
+
 ### Table of Contents
 
 - [Experiment Overview](#experiment-overview)
@@ -22,8 +24,10 @@
 ## Experiment Overview
 
 - [🎓 Training Session]({{ links.training_session.url }}){:target="_blank"}
+{% if links.evaluation_report.id %}
 - [📊 Evaluation Report]({{ links.evaluation_report.url }}){:target="_blank"}
-- [📈 TensorBoard Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
+{% endif %}
+- [📈 Training Logs]({{ links.tensorboard_logs.url }}){:target="_blank"}
 - [📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
 
 ### Training Details:
@@ -36,7 +40,7 @@
 - **Training images**: {{ project.train_size }}
 - **Validation images**: {{ project.val_size }}
 {% if benchmark.primary_metric.name %}
-- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.value }}
+- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.rounded_value }}
 {% endif %}
 
 {% if artifacts.hyperparameters %}
@@ -71,6 +75,12 @@ The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on the val
 
 See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
 {{ artifacts.metrics_table | safe }}
+
+{% else %}
+
+## Performance
+### 📈 Evaluation Metrics
+No evaluation metrics available for this experiment. The model training was completed successfully, but no evaluation was performed.
 
 {% endif %}
 
@@ -148,20 +158,9 @@ This is a quick guide to get you started with the Supervisely API.
 
 You can deploy your model in a few lines of code. The model will be deployed in the Supervisely Platform, and you can use it for predictions.
 
-<div>
+{% tabs %}
 
-<sly-iw-tabs :tabs="[
-    { name: 'pytorch-model', title: 'PyTorch Model' },
-    {% if artifacts.onnx_checkpoint.name %}
-    { name: 'onnx-model',  title: 'ONNX Model'  },
-    {% endif %}
-    {% if artifacts.trt_checkpoint.name %}
-    { name: 'tensorrt-model',    title: 'TensorRT Model' }
-    {% endif %}
-    ]" :defaultIndex="0" :command="command" :data="data">
-
-<template #pytorch-model>
-
+{% tab title="PyTorch Model" %}
 ```python
 import supervisely as sly
 
@@ -173,13 +172,10 @@ model = api.nn.deploy(
     device="cuda:0",  # or "cpu"
 )
 ```
-
-</template>
+{% endtab %}
 
 {% if artifacts.onnx_checkpoint.name %}
-
-<template #onnx-model>
-
+{% tab title="ONNX Model" %}
 ```python
 import supervisely as sly
 
@@ -191,14 +187,11 @@ model = api.nn.deploy(
     device="cuda:0",  # or "cpu"
 )
 ```
+{% endtab %}
 {% endif %}
 
-</template>
-
 {% if artifacts.trt_checkpoint.name %}
-
-<template #tensorrt-model>
-
+{% tab title="TensorRT Model" %}
 ```python
 import supervisely as sly
 
@@ -210,13 +203,10 @@ model = api.nn.deploy(
     device="cuda:0",  # or "cpu"
 )
 ```
+{% endtab %}
 {% endif %}
 
-</template>
-
-</sly-iw-tabs>
-
-</div>
+{% endtabs %}
 
 > For more information, see [Model API](https://docs.supervisely.com/neural-networks/overview-1/model-api) documentation.
 
@@ -224,74 +214,54 @@ model = api.nn.deploy(
 
 You can use the deployed model to make predictions on images, videos, or directories. First, connect to a deployed model, then you can make predictions.
 
-<div>
+{% tabs %}
 
-<sly-iw-tabs :tabs="[
-    { name: 'local', title: 'Local Images' },
-    { name: 'image_ids',  title: 'Image IDs'  },
-    { name: 'dataset',    title: 'Dataset'    },
-    { name: 'project',    title: 'Project'    },
-    { name: 'video',      title: 'Video'      }
-    ]" :defaultIndex="0" :command="command" :data="data">
-
-<template #local>
-
+{% tab title="Local Images" %}
 ```python
 # Predict local images
 predictions = model.predict(
     input="image.jpg"  # can also be a directory, np.array, PIL.Image, URL or a list of them
 )
 ```
+{% endtab %}
 
-</template>
-
-<template #image_ids>
-
+{% tab title="Image IDs" %}
 ```python
 # Predict images in Supervisely
 prediction = model.predict(
     image_ids=[123, 124]  # Image ids in Supervisely
 )
 ```
+{% endtab %}
 
-</template>
-
-<template #dataset>
-
+{% tab title="Dataset" %}
 ```python
 # Predict dataset
 prediction = model.predict(
     dataset_id=12,  # Dataset id in Supervisely
 )
 ```
+{% endtab %}
 
-</template>
-
-<template #project>
-
+{% tab title="Project" %}
 ```python
 # Predict project
 prediction = model.predict(
     project_id=21,  # Project id in Supervisely
 )
 ```
+{% endtab %}
 
-</template>
-
-<template #video>
-
+{% tab title="Video" %}
 ```python
 # Predict video
 predictions = model.predict(
     video_id=123,  # Video id in Supervisely
 )
 ```
+{% endtab %}
 
-</template>
-
-</sly-iw-tabs>
-
-</div>
+{% endtabs %}
 
 > For more information, see [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api).
 
@@ -500,56 +470,32 @@ We provide a basic instructions and a demo script of how to load {{ experiment.f
 <details>
 <summary>Click to expand</summary>
 
-<div>
+{% tabs %}
 
-<sly-iw-tabs :tabs="[
-    { name: 'pytorch-external', title: 'PyTorch' },
-    {% if code.demo.onnx.path %}
-    { name: 'onnx-external',  title: 'ONNX'  },
-    {% endif %}
-    {% if code.demo.tensorrt.path %}
-    { name: 'tensorrt-external',    title: 'TensorRT'    },
-    {% endif %}
-    ]" :defaultIndex="0" :command="command" :data="data">
-
-<template #pytorch-external>
-
+{% tab title="PyTorch" %}
 ```python
 {{ code.demo.pytorch.script | safe }}
 ```
-
-</template>
+{% endtab%}
 
 {% if code.demo.onnx.path %}
-<template #onnx-external>
-
+{% tab title="ONNX" %}
 ```python
 {{ code.demo.onnx.script | safe }}
 ```
-
-</template>
-
+{% endtab%}
 {% endif %}
 
 {% if code.demo.tensorrt.path %}
-<template #tensorrt-external>
-
+{% tab title="TensorRT" %}
 ```python
 {{ code.demo.tensorrt.script | safe }}
 ```
-
-</template>
-
+{% endtab%}
 {% endif %}
 
-</sly-iw-tabs>
-
-</div>
+{% endtabs%}
 
 </details>
 
 {% endif %}
-
----
-
-[❌ Remove permamently button]

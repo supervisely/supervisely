@@ -652,21 +652,7 @@ class TrainApp:
         self._upload_demo_files(remote_dir)
 
         # Step 10. Generate experiment report
-        experiment = ExperimentGenerator(
-            api=self._api,
-            experiment_info=experiment_info,
-            hyperparameters=self.hyperparameters_yaml,
-            model_meta=model_meta,
-            serving_class=self._inference_class,
-            team_id=self.team_id,
-            output_dir=join(self.work_dir, "experiment_report"),
-            app_options=self._app_options,
-        )
-        experiment.generate()
-        # @TODO: add report thumbnail to GUI
-        # @TODO: add report to workflow output
-        experiment.upload_to_artifacts()
-        experiment_link_file_info = experiment.get_report()
+        experiment_link_file_info = self._generate_experiment_report(experiment_info, model_meta)
 
         # Step 11. Set output widgets
         self._set_text_status("reset")
@@ -675,7 +661,6 @@ class TrainApp:
             remote_dir,
             experiment_link_file_info,
             mb_eval_report,
-            # experiment_info, remote_dir, session_link_file_info, mb_eval_report
         )
         self._set_ws_progress_status("completed")
 
@@ -1742,6 +1727,7 @@ class TrainApp:
             "evaluation_metrics": eval_metrics,
             "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
+            "device": self.gui.training_process.get_device_name(),
         }
 
         if self._has_splits_selector:
@@ -1778,6 +1764,30 @@ class TrainApp:
         # Do not include this fields to uploaded file:
         experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
+
+    def _generate_experiment_report(
+        self, experiment_info: dict, model_meta: ProjectMeta
+    ) -> FileInfo:
+        """
+        Generates and uploads the experiment report to the output directory.
+        """
+        # @TODO: add report thumbnail to GUI
+        # @TODO: add report to workflow output
+        experiment = ExperimentGenerator(
+            api=self._api,
+            experiment_info=experiment_info,
+            hyperparameters=self.hyperparameters_yaml,
+            model_meta=model_meta,
+            serving_class=self._inference_class,
+            team_id=self.team_id,
+            output_dir=join(self.work_dir, "experiment_report"),
+            app_options=self._app_options,
+        )
+        experiment.generate()
+
+        experiment.upload_to_artifacts()
+        file_info = experiment.get_report()
+        return file_info
 
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
         """
