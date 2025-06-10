@@ -46,7 +46,7 @@ class SamplingSettings:
     COPY_ANNOTATIONS = "copy_annotations"
 
 
-def get_frame_indices(frames_count, start, end, step, only_annotated, video_annotation):
+def _get_frame_indices(frames_count, start, end, step, only_annotated, video_annotation):
     frame_indices = list(range(start, end if end is not None else frames_count))
     if only_annotated:
         annotated_frames = set()
@@ -59,7 +59,7 @@ def get_frame_indices(frames_count, start, end, step, only_annotated, video_anno
     return frame_indices
 
 
-def frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Annotation:
+def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Annotation:
     labels = []
     for figure in frame.figures:
         tags = []
@@ -78,18 +78,18 @@ def frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Anno
     return Annotation(video_annotation.img_size, labels=labels, img_tags=TagCollection(img_tags))
 
 
-def upload_annotations(api: Api, image_ids, frame_indices, video_annotation: VideoAnnotation):
+def _upload_annotations(api: Api, image_ids, frame_indices, video_annotation: VideoAnnotation):
     img_ids = []
     anns = []
     for image_id, frame_index in zip(image_ids, frame_indices):
         frame = video_annotation.frames.get(frame_index, None)
         if frame is not None:
             img_ids.append(image_id)
-            anns.append(frame_to_annotation(frame, video_annotation))
+            anns.append(_frame_to_annotation(frame, video_annotation))
     api.annotation.upload_anns(image_ids, anns=anns)
 
 
-def upload_frames(
+def _upload_frames(
     api: Api,
     frames: List[np.ndarray],
     indices: List[int],
@@ -129,7 +129,7 @@ def upload_frames(
         )
 
         if copy_annotations:
-            upload_annotations(api, image_ids, indices, video_annotation)
+            _upload_annotations(api, image_ids, indices, video_annotation)
 
         for image_info, (_, i) in zip(uploaded, to_upload):
             image_ids[i] = image_info.id
@@ -184,11 +184,11 @@ def sample_video(
     video_path = f"/tmp/{video_info.name}"
     api.video.download_path(video_info.id, video_path, progress_cb=progress_cb)
 
-    frame_indices = get_frame_indices(
+    frame_indices = _get_frame_indices(
         video_info.frames_count, start_frame, end_frame, step, only_annotated, video_annotation
     )
 
-    dst_dataset_info = get_or_create_dst_dataset(
+    dst_dataset_info = _get_or_create_dst_dataset(
         api=api,
         src_info=video_info,
         dst_parent_info=dst_parent_info,
@@ -213,7 +213,7 @@ def sample_video(
                 if resize:
                     cv2.resize(frame, [*resize, frame.shape[2]], interpolation=cv2.INTER_LINEAR)
 
-            image_ids = upload_frames(
+            image_ids = _upload_frames(
                 api=api,
                 frames=frames,
                 indices=indices,
@@ -228,7 +228,7 @@ def sample_video(
                 progress.update(len(image_ids))
 
 
-def get_or_create_dst_dataset(
+def _get_or_create_dst_dataset(
     api: Api,
     src_info: Union[DatasetInfo, VideoInfo],
     dst_parent_info: Union[ProjectInfo, DatasetInfo],
@@ -288,20 +288,20 @@ def get_or_create_dst_dataset(
             src_project_info = api.project.get_info_by_id(src_info.project_id)
         sample_info = {
             "is_sample": True,
-            "source_project_id": src_info.project_id,
-            "source_project_name": src_project_info.name,
+            "video_project_id": src_info.project_id,
+            "video_project_name": src_project_info.name,
         }
     sample_info.update(
         {
-            "source_dataset_id": src_dataset_info.id,
-            "source_dataset_name": src_dataset_info.name,
+            "video_dataset_id": src_dataset_info.id,
+            "video_dataset_name": src_dataset_info.name,
         }
     )
     if isinstance(src_info, VideoInfo):
         sample_info.update(
             {
-                "source_video_id": src_info.id,
-                "source_video_name": src_info.name,
+                "video_id": src_info.id,
+                "video_name": src_info.name,
             }
         )
     api.dataset.update_custom_data(
@@ -330,7 +330,7 @@ def sample_video_dataset(
     if src_dataset_info is None:
         src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
         context.dataset_info[src_dataset_id] = src_dataset_info
-    dst_dataset = get_or_create_dst_dataset(
+    dst_dataset = _get_or_create_dst_dataset(
         api=api,
         src_info=src_dataset_info,
         dst_parent_info=dst_parent_info,
@@ -371,15 +371,7 @@ def sample_video_dataset(
         )
 
 
-def is_sample_project(src_project: ProjectInfo, project: ProjectInfo):
-    if project.custom_data is None:
-        return False
-    if project.custom_data.get("sample_project", False) is False:
-        return False
-    return project.custom_data.get("source_project_id", None) == src_project.id
-
-
-def get_or_create_dst_project(
+def _get_or_create_dst_project(
     api: Api,
     src_project_id: int,
     dst_project_id: Union[int, None] = None,
@@ -400,8 +392,8 @@ def get_or_create_dst_project(
         sample_info.update(
             {
                 "is_sample": True,
-                "source_project_id": src_project_id,
-                "source_project_name": src_project_info.name,
+                "video_project_id": src_project_id,
+                "video_project_name": src_project_info.name,
             }
         )
         dst_project = api.project.create(
@@ -439,10 +431,10 @@ def sample_video_project(
 
     sample_info = {
         "is_sample": True,
-        "source_project_id": src_project_info.id,
-        "source_project_name": src_project_info.name,
+        "video_project_id": src_project_info.id,
+        "video_project_name": src_project_info.name,
     }
-    dst_project_info = get_or_create_dst_project(
+    dst_project_info = _get_or_create_dst_project(
         api, project_id, dst_project_id, sample_info, context
     )
 
