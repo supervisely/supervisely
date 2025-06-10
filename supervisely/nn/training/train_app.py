@@ -44,7 +44,7 @@ from supervisely import (
 )
 from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
-from supervisely.app import get_synced_data_dir
+from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
@@ -209,15 +209,40 @@ class TrainApp:
         def _train_from_api(response: Response, request: Request):
             try:
                 state = request.state.state
+                wait = state.get("wait", True)
                 app_state = state["app_state"]
                 self.gui.load_from_app_state(app_state)
 
-                self._wrapped_start_training()
+                if wait:
+                    self._wrapped_start_training()
+                else:
+                    import threading
+
+                    training_thread = threading.Thread(
+                        target=self._wrapped_start_training,
+                        daemon=True,
+                    )
+                    training_thread.start()
+                    return {"result": "model training started"}
 
                 return {"result": "model was successfully trained"}
             except Exception as e:
                 self.gui.training_process.start_button.loading = False
                 raise e
+
+        # # Get training status
+        # @self._server.post("/train_status")
+        # def _train_status(response: Response, request: Request):
+        #     """Returns the current training status."""
+        #     status = self.gui.training_process.validator_text.get_value()
+        #     if status == "Training is in progress...":
+        #         try:
+        #             total_epochs = self.progress_bar_main.total
+        #             current_epoch = self.progress_bar_main.current
+        #             status += f" (Epoch {current_epoch}/{total_epochs})"
+        #         except Exception:
+        #             pass
+        #     return {"status": status}
 
     def _register_routes(self):
         """
@@ -1902,6 +1927,13 @@ class TrainApp:
                     "val_datasets": self.gui.train_val_splits_selector.train_val_splits.get_val_dataset_ids(),
                 }
             )
+        elif split_method == "Based on collections":
+            train_val_splits.update(
+                {
+                    "train_collections": self.gui.train_val_splits_selector.get_train_collection_ids(),
+                    "val_collections": self.gui.train_val_splits_selector.get_val_collection_ids(),
+                }
+            )
         return train_val_splits
 
     def _get_model_config_for_app_state(self, experiment_info: Dict = None) -> Dict:
@@ -2144,7 +2176,7 @@ class TrainApp:
         ]
         task_type = experiment_info["task_type"]
         if task_type not in supported_task_types:
-            logger.warn(
+            logger.warning(
                 f"Task type: '{task_type}' is not supported for Model Benchmark. "
                 f"Supported tasks: {', '.join(task_type)}"
             )
@@ -2604,9 +2636,8 @@ class TrainApp:
         except Exception as e:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
         try:
             self._set_text_status("preparing")
@@ -2615,9 +2646,8 @@ class TrainApp:
         except Exception as e:
             message = f"Error occurred during data preparation. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
         try:
             self._set_text_status("training")
@@ -2631,15 +2661,13 @@ class TrainApp:
                 "Please check input data and hyperparameters."
             )
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
             return
         except Exception as e:
             message = f"Error occurred during training. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
         try:
             self._set_text_status("finalizing")
@@ -2647,18 +2675,17 @@ class TrainApp:
             self._finalize(experiment_info)
             self.gui.training_process.start_button.loading = False
 
-            # Shutdown the app after training is finished
+            if is_production() and self.gui.training_logs.tensorboard_offline_button is not None:
+                self.gui.training_logs.tensorboard_button.hide()
+                self.gui.training_logs.tensorboard_offline_button.show()
 
-            self.gui.training_logs.tensorboard_button.hide()
-            self.gui.training_logs.tensorboard_offline_button.show()
-            sleep(1)  # wait for the button to be shown
+            sleep(1)
             self.app.shutdown()
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
-            self._restore_train_widgets_state_on_error()
             self._set_ws_progress_status("reset")
-            return
+            raise e
 
     def _show_error(self, message: str, e=None):
         if e is not None:
@@ -2669,6 +2696,7 @@ class TrainApp:
         self.gui.training_process.validator_text.show()
         self.gui.training_process.start_button.loading = False
         self._restore_train_widgets_state_on_error()
+        show_dialog(title="Error", description=message, status="error")
 
     def _set_train_widgets_state_on_start(self):
         self.gui.disable_select_buttons()
