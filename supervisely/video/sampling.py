@@ -176,7 +176,7 @@ def sample_video(
         progress.unit = "B"
         progress.unit_scale = True
         progress.unit_divisor = 1024
-        progress.message = f"Downloading video {video_info.name} [{video_info.id}]"
+        progress.message = f"Downloading {video_info.name} [{video_info.id}]"
         progress.desc = progress.message
         progress.refresh()
         progress_cb = progress.update
@@ -201,7 +201,7 @@ def sample_video(
         progress.unit = "it"
         progress.unit_scale = False
         progress.unit_divisor = 1000
-        progress.message = f"Sampling video {video_info.name} [{video_info.id}]"
+        progress.message = f"Processing {video_info.name} [{video_info.id}]"
         progress.desc = progress.message
         progress.miniters = 1
         progress.refresh()
