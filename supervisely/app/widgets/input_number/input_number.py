@@ -19,6 +19,7 @@ class InputNumber(Widget):
         controls: bool = True,
         debounce: int = 300,
         precision: int = 0,
+        width: int = None,
         widget_id: str = None,
     ):
         self._value = value
@@ -29,6 +30,7 @@ class InputNumber(Widget):
         self._controls = controls
         self._debounce = debounce
         self._precision = precision
+        self._width = width
         self._changes_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)

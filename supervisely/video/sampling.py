@@ -3,7 +3,7 @@ from typing import Dict, List, Union
 import cv2
 import numpy as np
 
-from supervisely._utils import batched
+from supervisely._utils import batched_iter
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
@@ -17,6 +17,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.task.progress import tqdm_sly
 from supervisely.video.video import VideoFrameReader
 from supervisely.video_annotation.frame import Frame
+from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
@@ -107,7 +108,7 @@ def upload_frames(
 
     name_to_info = {image.name: image for image in existing_images}
 
-    image_ids = [] * len(frames)
+    image_ids = [None] * len(frames)
     to_upload = []
     for i, index in enumerate(indices):
         image_name = f"frame_{index}.jpg"
@@ -118,11 +119,13 @@ def upload_frames(
 
     if to_upload:
         frames = [frames[i] for _, i in to_upload]
+        names = [name for name, _ in to_upload]
+        metas = [{**sample_info, "frame_index": i} for _, i in to_upload]
         uploaded = api.image.upload_nps(
             dataset_id=dataset_id,
-            names=[name for name, _ in to_upload],
+            names=names,
             imgs=frames,
-            metas=[{**sample_info, "frame_index": index}],
+            metas=metas,
         )
 
         if copy_annotations:
@@ -163,16 +166,18 @@ def sample_video(
     project_meta = context.project_meta[project_id]
 
     video_annotation = VideoAnnotation.from_json(
-        api.video.annotation.download(video_info.id), project_meta
+        api.video.annotation.download(video_info.id), project_meta, key_id_map=KeyIdMap()
     )
 
     progress_cb = None
     if progress is not None:
         size = int(video_info.file_meta["size"])
-        progress.set(0, size, report=False)
+        progress.reset(size)
         progress.unit = "B"
-        progress.unit_scale = 1024
+        progress.unit_scale = True
+        progress.unit_divisor = 1024
         progress.message = f"Downloading video {video_info.name} [{video_info.id}]"
+        progress.desc = progress.message
         progress.refresh()
         progress_cb = progress.update
 
@@ -192,12 +197,17 @@ def sample_video(
     )
 
     if progress is not None:
-        progress.set(0, len(frame_indices), report=False)
+        progress.reset(len(frame_indices))
+        progress.unit = "it"
+        progress.unit_scale = False
+        progress.unit_divisor = 1000
         progress.message = f"Sampling video {video_info.name} [{video_info.id}]"
+        progress.desc = progress.message
+        progress.miniters = 1
         progress.refresh()
 
     with VideoFrameReader(video_path, frame_indices) as reader:
-        for batch in batched(zip(reader, frame_indices)):
+        for batch in batched_iter(zip(reader, frame_indices), 10):
             frames, indices = zip(*batch)
             for frame in frames:
                 if resize:
@@ -310,13 +320,19 @@ def sample_video_dataset(
     settings: Dict,
     sample_info: Dict = None,
     context: ApiContext = None,
+    items_progress_cb: tqdm_sly = None,
+    video_progress: tqdm_sly = None,
 ):
     if context is None:
         context = ApiContext()
 
+    src_dataset_info = context.dataset_info.get(src_dataset_id, None)
+    if src_dataset_info is None:
+        src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+        context.dataset_info[src_dataset_id] = src_dataset_info
     dst_dataset = get_or_create_dst_dataset(
         api=api,
-        src_info=src_dataset_id,
+        src_info=src_dataset_info,
         dst_parent_info=dst_parent_info,
         sample_info=sample_info,
         context=context,
@@ -331,7 +347,10 @@ def sample_video_dataset(
             settings=settings,
             sample_info=sample_info.copy(),
             context=context,
+            progress=video_progress,
         )
+        if items_progress_cb is not None:
+            items_progress_cb()
 
     if src_dataset_id not in context.children_datasets:
         if src_dataset_id not in context.dataset_info:
@@ -406,6 +425,8 @@ def sample_video_project(
     settings: Dict,
     dst_project_id: Union[int, None] = None,
     context: ApiContext = None,
+    items_progress_cb: tqdm_sly = None,
+    video_progress: tqdm_sly = None,
 ):
     # TODO: Return
     if context is None:
@@ -422,7 +443,7 @@ def sample_video_project(
         "source_project_name": src_project_info.name,
     }
     dst_project_info = get_or_create_dst_project(
-        api, project_id, sample_info, dst_project_id, context
+        api, project_id, dst_project_id, sample_info, context
     )
 
     # non recursive. Nested datasets are handled by sample_video_dataset
@@ -439,4 +460,8 @@ def sample_video_project(
             settings=settings,
             sample_info=sample_info,
             context=context,
+            items_progress_cb=items_progress_cb,
+            video_progress=video_progress,
         )
+
+    return dst_project_info
