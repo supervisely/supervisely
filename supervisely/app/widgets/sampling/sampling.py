@@ -1,3 +1,5 @@
+from typing import List
+
 from supervisely.api.api import Api
 from supervisely.app.widgets import Progress
 from supervisely.app.widgets.button.button import Button
@@ -10,6 +12,7 @@ from supervisely.app.widgets.notification_box.notification_box import Notificati
 from supervisely.app.widgets.one_of.one_of import OneOf
 from supervisely.app.widgets.project_thumbnail.project_thumbnail import ProjectThumbnail
 from supervisely.app.widgets.radio_group.radio_group import RadioGroup
+from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.app.widgets.select_project.select_project import SelectProject
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -21,19 +24,20 @@ class Sampling(Widget):
     def __init__(
         self,
         project_id: int = None,
-        project_selectable: bool = True,
+        input_selectable: bool = True,
+        datasets_ids: List[int] = None,
         output_project_id: int = None,
         output_project_selectable: bool = True,
         widget_id: str = None,
         file_path: str = None,
     ):
         super().__init__(widget_id, file_path)
-        if not project_selectable and project_id is None:
+        if not input_selectable and project_id is None:
             raise ValueError(
                 "Either 'project_id' must be provided or 'project_selectable' must be True."
             )
-        if project_id is None and not project_selectable:
-            project_selectable = True
+        if project_id is None and not input_selectable:
+            input_selectable = True
         if not output_project_selectable and output_project_id is None:
             raise ValueError(
                 "Either 'output_project_id' must be provided or 'output_project_selectable' must be True."
@@ -42,24 +46,30 @@ class Sampling(Widget):
             output_project_selectable = True
         self._api = Api()
         self.project_id = project_id
-        self.project_selectable = project_selectable
+        self.project_selectable = input_selectable
+        self.datasets_ids = datasets_ids
         self.output_project_id = output_project_id
         self.output_project_selectable = output_project_selectable
         self._init_gui()
 
     def _init_input_gui(self):
-        self.project_select = SelectProject(
-            default_id=self.project_id, allowed_types=[ProjectType.VIDEOS], size="mini"
+        self.input_datasets_select = SelectDataset(
+            default_id=self.datasets_ids,
+            project_id=self.project_id,
+            allowed_project_types=[ProjectType.VIDEOS],
+            size="mini",
+            multiselect=True,
+            select_all_datasets=self.datasets_ids is None,
         )
         self.project_preview = ProjectThumbnail()
         self.project_preview.hide()
         if not self.project_selectable:
-            self.project_select.hide()
+            self.input_datasets_select.hide()
             project_info = self._api.project.get_info_by_id(self.project_id)
             self.project_preview.set(project_info)
             self.project_preview.show()
         self.input_project_container = Container(
-            widgets=[self.project_select, self.project_preview],
+            widgets=[self.input_datasets_select, self.project_preview],
             style="padding-left: 21px; padding-top: 10px;",
         )
         self.input_field = Container(
@@ -262,20 +272,40 @@ class Sampling(Widget):
         self.error_notification.hide()
         self.result_project_preview_field.hide()
         try:
-            project_info = self._api.project.get_info_by_id(self.project_select.get_selected_id())
+            project_id = self.input_datasets_select.get_selected_project_id()
+            datasets_ids = self.input_datasets_select.get_selected_ids()
+            all_ds_infos = self._api.dataset.get_list(project_id)
+            parents = {
+                ds.id: ds.parent_id if ds.parent_id is not None else ds.project_id
+                for ds in all_ds_infos
+            }
+            datasets_infos = [ds for ds in all_ds_infos if ds.id in datasets_ids]
+            total_items = sum(ds.items_count for ds in datasets_infos)
+            project_info = self._api.project.get_info_by_id(project_id)
+
             if project_info.type != str(ProjectType.VIDEOS):
                 raise ValueError(
-                    f"Project with ID {self.project_select.get_selected_id()} is not a video project."
+                    f"Project with ID {self.input_datasets_select.get_selected_id()} is not a video project."
                 )
             frames_pbar = self.frames_progress()
             with self.items_progress(
                 message=f"Videos progress...",
-                total=project_info.items_count,
+                total=total_items,
             ) as pbar:
                 self.progress_container.show()
+                for dataset_info in datasets_infos:
+                    sample_video_dataset(
+                        api=self._api,
+                        dataset_id=dataset_info.id,
+                        settings=self._get_settings(),
+                        dst_parent_info=parents,
+                        items_progress_cb=pbar.update,
+                        video_progress=frames_pbar,
+                    )
+                dst_project_info = self._api.project.get_info_by_id(self._get_dst_project_id())
                 dst_project_info = sample_video_project(
                     api=self._api,
-                    project_id=self.project_select.get_selected_id(),
+                    project_id=project_id,
                     settings=self._get_settings(),
                     dst_project_id=self._get_dst_project_id(),
                     items_progress_cb=pbar.update,

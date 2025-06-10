@@ -320,16 +320,27 @@ def sample_video_dataset(
     settings: Dict,
     sample_info: Dict = None,
     context: ApiContext = None,
+    datasets_ids_whitelist: List[int] = None,
     items_progress_cb: tqdm_sly = None,
     video_progress: tqdm_sly = None,
 ):
     if context is None:
         context = ApiContext()
 
+    if not (
+        datasets_ids_whitelist is None
+        or src_dataset_id in datasets_ids_whitelist  # this dataset should be sampled
+        or _has_children_datasets(
+            api, src_dataset_id, context=context, children_ids=datasets_ids_whitelist
+        )  # has children datasets that should be sampled
+    ):
+        return None
+
     src_dataset_info = context.dataset_info.get(src_dataset_id, None)
     if src_dataset_info is None:
         src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
         context.dataset_info[src_dataset_id] = src_dataset_info
+
     dst_dataset = _get_or_create_dst_dataset(
         api=api,
         src_info=src_dataset_info,
@@ -338,19 +349,20 @@ def sample_video_dataset(
         context=context,
     )
 
-    video_infos = api.video.get_list(src_dataset_id)
-    for video_info in video_infos:
-        sample_video(
-            api=api,
-            video_id=video_info.id,
-            dst_dataset_info=dst_dataset,
-            settings=settings,
-            sample_info=sample_info.copy(),
-            context=context,
-            progress=video_progress,
-        )
-        if items_progress_cb is not None:
-            items_progress_cb()
+    if datasets_ids_whitelist is None or src_dataset_id in datasets_ids_whitelist:
+        video_infos = api.video.get_list(src_dataset_id)
+        for video_info in video_infos:
+            sample_video(
+                api=api,
+                video_id=video_info.id,
+                dst_dataset_info=dst_dataset,
+                settings=settings,
+                sample_info=sample_info.copy(),
+                context=context,
+                progress=video_progress,
+            )
+            if items_progress_cb is not None:
+                items_progress_cb()
 
     if src_dataset_id not in context.children_datasets:
         if src_dataset_id not in context.dataset_info:
@@ -366,9 +378,11 @@ def sample_video_dataset(
             src_dataset_id=dataset.id,
             dst_parent_info=dst_dataset,
             settings=settings,
+            datasets_ids_whitelist=datasets_ids_whitelist,
             sample_info=sample_info,
             context=context,
         )
+    return dst_dataset
 
 
 def _get_or_create_dst_project(
@@ -411,16 +425,37 @@ def _get_or_create_dst_project(
     return dst_project
 
 
+def _has_children_datasets(
+    api: Api, dataset_id: int, context: ApiContext = None, children_ids: List[int] = None
+) -> bool:
+    if context is None:
+        context = ApiContext()
+
+    if dataset_id not in context.children_datasets:
+        context.children_datasets[dataset_id] = api.dataset.get_list(dataset_id)
+
+    if children_ids is None:
+        return len(context.children_datasets[dataset_id]) > 0
+    for child_dataset in context.children_datasets[dataset_id]:
+        if child_dataset.id in children_ids:
+            return True
+        if _has_children_datasets(
+            api, child_dataset.id, context=context, children_ids=children_ids
+        ):
+            return True
+    return False
+
+
 def sample_video_project(
     api: Api,
     project_id: int,
     settings: Dict,
     dst_project_id: Union[int, None] = None,
+    datasets_ids: List[int] = None,
     context: ApiContext = None,
     items_progress_cb: tqdm_sly = None,
     video_progress: tqdm_sly = None,
 ):
-    # TODO: Return
     if context is None:
         context = ApiContext()
 
@@ -452,6 +487,7 @@ def sample_video_project(
             settings=settings,
             sample_info=sample_info,
             context=context,
+            datasets_ids_whitelist=datasets_ids,
             items_progress_cb=items_progress_cb,
             video_progress=video_progress,
         )
