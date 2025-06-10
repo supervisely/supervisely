@@ -20,8 +20,6 @@ from supervisely.template.base_generator import BaseGenerator
 # @TODO: Partly supports unreleased apps
 class ExperimentGenerator(BaseGenerator):
 
-    TEMPLATE = "experiment.html.jinja"
-
     def __init__(
         self,
         api: Api,
