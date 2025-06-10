@@ -230,3 +230,4 @@ def move_structured_images(
     api.image.remove_batch(all_src_ids)
     logger.info(f"Removed {len(all_src_ids)} images from source project {src_project_id}")
     return src, dst, total_moved
+

@@ -2,10 +2,10 @@ from typing import Callable, Optional, Tuple
 
 from supervisely._utils import abs_url, logger
 from supervisely.api.api import Api
+from supervisely.app.widgets import CloudImport as CloudImportWidget
 from supervisely.app.widgets import (
     Button,
     Checkbox,
-    CloudImport,
     Container,
     Dialog,
     Empty,
@@ -14,7 +14,6 @@ from supervisely.app.widgets import (
     InputNumber,
     Select,
     SolutionCard,
-    SolutionGraph,
     TaskLogs,
     Text,
 )
@@ -116,11 +115,11 @@ class CloudImportAuto(Automation):
             self.interval_input.value = interval
 
 
-class SolutionsCloudImport(SolutionElement):
+class CloudImport(SolutionElement):
     def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0):
         self.api = api
         self.project_id = project_id
-        self.main_widget = CloudImport(project_id=project_id)
+        self.main_widget = CloudImportWidget(project_id=project_id)
         self.automation = CloudImportAuto(self.main_widget.run)
         self.card = self._create_card()
         self.sync_modal = self._create_automation_modal()

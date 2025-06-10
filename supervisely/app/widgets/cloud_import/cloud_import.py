@@ -52,11 +52,11 @@ class CloudImport(Widget):
         self.agent_select = AgentSelector(self.project.team_id, compact=True)
         self.run_btn = Button("Run", plain=True)
         run_btn_cont = Container([self.run_btn], style="align-items: flex-end")
-        self.content = Container([text, self.path_input, run_btn_cont])
+        self.content = Container([text, self.path_input, self.agent_select, run_btn_cont])
 
-        @self.run_btn.click
-        def _on_run_btn_click():
-            self.run()
+        # @self.run_btn.click
+        # def _on_run_btn_click():
+        #     self.run()
 
     def to_html(self):
         return self.content.to_html()
