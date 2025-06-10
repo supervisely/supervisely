@@ -93,6 +93,7 @@ class ExperimentGenerator(BaseGenerator):
         project_train_size = self.info["train_size"]
         project_val_size = self.info["val_size"]
         model_classes = [cls.name for cls in self.model_meta.obj_classes]
+        class_names = self._get_class_names(model_classes)
 
         date = self._get_date()
         training_duration = self._get_training_duration()
@@ -137,18 +138,7 @@ class ExperimentGenerator(BaseGenerator):
                 "train_size": project_train_size,
                 "val_size": project_val_size,
                 "classes_count": len(model_classes),
-                "class_names": {
-                    "string": ", ".join(model_classes),
-                    "short_string": (
-                        ", ".join(model_classes[:3] + ["..."])
-                        if len(model_classes) > 3
-                        else ", ".join(model_classes)
-                    ),
-                    "list": model_classes,
-                    "short_list": (
-                        model_classes[:3] + ["..."] if len(model_classes) > 3 else model_classes
-                    ),
-                },
+                "class_names": class_names,
             },
             "links": {
                 "app": {
@@ -728,3 +718,23 @@ class ExperimentGenerator(BaseGenerator):
             agent_info["id"] = task_info["agentId"]
             agent_info["link"] = f"{self.api.server_address}/nodes/{agent_info['id']}/info"
         return agent_info
+
+    def _get_class_names(self, model_classes: list) -> dict:
+        """Get class names from model meta.
+
+        :returns: List of class names
+        :rtype: list
+        """
+
+        return {
+            "string": ", ".join(model_classes),
+            "short_string": (
+                ", ".join(model_classes[:5] + ["..."])
+                if len(model_classes) > 5
+                else ", ".join(model_classes)
+            ),
+            "list": model_classes,
+            "short_list": (
+                model_classes[:3] + ["..."] if len(model_classes) > 3 else model_classes
+            ),
+        }
