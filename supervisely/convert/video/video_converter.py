@@ -156,10 +156,9 @@ class VideoConverter(BaseConverter):
                     logger.debug(
                         "Some videos are larger than 20 MB, showing upload progress by file size."
                     )
-                    file_progress = Progress(
-                        "Uploading videos", total_size, ext_logger=logger, is_size=True
+                    _, size_progress_cb = self.get_progress(
+                        total_size, "Uploading videos...", is_size=True
                     )
-                    size_progress_cb = file_progress.iters_done_report
                 else:
                     progress, progress_cb = self.get_progress(
                         self.items_count, "Uploading videos..."
