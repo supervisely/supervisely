@@ -38,7 +38,7 @@ class TasksScheduler(metaclass=Singleton):
             args=args,
             kwargs=kwargs,
             seconds=interval,
-            job_id=job_id,
+            id=job_id,
             replace_existing=replace_existing,
         )
         self.jobs[job.id] = job
@@ -63,6 +63,7 @@ class TasksScheduler(metaclass=Singleton):
 
     def shutdown(self):
         """Shutdown the scheduler"""
+        logger.info("[SCHEDULER]: Shutting down the scheduler.")
         self.scheduler.shutdown()
 
     def is_job_scheduled(self, job_id) -> bool:
