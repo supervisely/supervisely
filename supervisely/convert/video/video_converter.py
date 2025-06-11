@@ -159,9 +159,7 @@ class VideoConverter(BaseConverter):
                     file_progress = Progress(
                         "Uploading videos", total_size, ext_logger=logger, is_size=True
                     )
-                    size_progress_cb = lambda m: file_progress.set_current_value(
-                        file_progress.current + m
-                    )
+                    size_progress_cb = file_progress.iters_done_report
                 else:
                     progress, progress_cb = self.get_progress(
                         self.items_count, "Uploading videos..."
@@ -202,7 +200,7 @@ class VideoConverter(BaseConverter):
                     item_names,
                     item_paths,
                     progress_cb=progress_cb if log_progress else None,
-                    item_progress=(size_progress_cb if log_progress and has_large_files else None),
+                    item_progress=size_progress_cb,
                 )
             vid_ids = [vid_info.id for vid_info in vid_infos]
 
