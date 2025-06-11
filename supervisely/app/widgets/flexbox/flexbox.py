@@ -21,9 +21,7 @@ class Flexbox(Widget):
         gap: int = 10,
         center_content: bool = False,
         widget_id: str = None,
-        vertical_alignment: Literal[
-            "flex-start", "flex-end", "center", "stretch", "baseline"
-        ] = None,
+        vertical_alignment: Literal["start", "end", "center", "stretch", "baseline"] = None,
     ):
         self._widgets = widgets
         self._gap = gap
