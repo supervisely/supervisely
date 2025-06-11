@@ -142,8 +142,9 @@ class VideoConverter(BaseConverter):
         size_progress_cb = None
         progress_cb, progress, ann_progress, ann_progress_cb = None, None, None, None
         if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
-            if not self.upload_as_links:
+            if self.upload_as_links:
+                progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
+            else:
                 total_size = 0
                 for item in self._items:
                     file_size = get_file_size(item.path)
@@ -160,6 +161,10 @@ class VideoConverter(BaseConverter):
                     )
                     size_progress_cb = lambda m: file_progress.set_current_value(
                         file_progress.current + m
+                    )
+                else:
+                    progress, progress_cb = self.get_progress(
+                        self.items_count, "Uploading videos..."
                     )
         batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
 
