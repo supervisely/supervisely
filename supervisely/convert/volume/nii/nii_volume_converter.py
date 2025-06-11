@@ -172,7 +172,7 @@ class NiiConverter(VolumeConverter):
                 if self._upload_as_links:
                     remote_path = self.remote_files_map.get(item.path)
                     if remote_path is not None:
-                        item.custom_data = {"remote_path": remote_path}
+                        item.custom_data["remote_path"] = remote_path
 
                 item.path = helper.nifti_to_nrrd(item.path, converted_dir)
                 ext = get_file_ext(item.path)
