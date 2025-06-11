@@ -1,5 +1,6 @@
 from supervisely.solution.components.cloud_import import CloudImport
 from supervisely.solution.components.labeling_queue import LabelingQueue
+from supervisely.solution.components.link_node import LinkNode
 from supervisely.solution.components.manual_import import ManualImport
 from supervisely.solution.components.move_labeled import MoveLabeled
 from supervisely.solution.components.project import ProjectNode
