@@ -1,6 +1,7 @@
 from typing import List
 
 from supervisely.api.api import Api
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.app.widgets import Progress
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.checkbox.checkbox import Checkbox
@@ -28,6 +29,7 @@ class Sampling(Widget):
         datasets_ids: List[int] = None,
         output_project_id: int = None,
         output_project_selectable: bool = True,
+        widgth: int = 370,
         widget_id: str = None,
         file_path: str = None,
     ):
@@ -50,6 +52,14 @@ class Sampling(Widget):
         self.datasets_ids = datasets_ids
         self.output_project_id = output_project_id
         self.output_project_selectable = output_project_selectable
+        self.widgth = widgth
+        self.project_info = (
+            self._api.project.get_info_by_id(self.project_id) if self.project_id else None
+        )
+        self.all_datasets = (
+            self._api.dataset.get_list(self.project_id, recursive=True) if self.project_id else []
+        )
+        self.items_count = self._count_items(self.all_datasets, datasets_ids, with_children=True)
         self._init_gui()
 
     def _init_input_gui(self):
@@ -68,8 +78,16 @@ class Sampling(Widget):
             project_info = self._api.project.get_info_by_id(self.project_id)
             self.project_preview.set(project_info)
             self.project_preview.show()
+        self.nested_datasets_checkbox = Checkbox(
+            "Include nested datasets",
+            checked=True,
+        )
         self.input_project_container = Container(
-            widgets=[self.input_datasets_select, self.project_preview],
+            widgets=[
+                self.input_datasets_select,
+                self.nested_datasets_checkbox,
+                self.project_preview,
+            ],
             style="padding-left: 21px; padding-top: 10px;",
         )
         self.input_field = Container(
@@ -143,6 +161,114 @@ class Sampling(Widget):
             gap=0,
         )
 
+    def _datasets_to_process(
+        self, all_datasets: List[DatasetInfo], datasets_ids: List[int], with_children: bool
+    ) -> List[DatasetInfo]:
+        if datasets_ids is None:
+            return all_datasets.copy()
+        datasets = []
+        for ds in [ds for ds in all_datasets if ds.id in datasets_ids]:
+            datasets.append(ds)
+            if with_children:
+                children = [child for child in all_datasets if child.parent_id == ds.id]
+                if children:
+                    datasets.extend(
+                        self._datasets_to_process(
+                            all_datasets, [child.id for child in children], True
+                        )
+                    )
+        return datasets
+
+    def _count_items(
+        self, all_datasets: List[DatasetInfo], datasets_ids: List[int], with_children: bool
+    ) -> int:
+        return sum(
+            ds.items_count
+            for ds in self._datasets_to_process(
+                all_datasets, datasets_ids, with_children=with_children
+            )
+        )
+
+    def _selected_text(self, datasets_ids: List[int] = None, with_children: bool = True) -> str:
+        red = "#FF6458;"
+        blue = "rgb(0, 154, 255);"
+        datasets = self._datasets_to_process(
+            self.all_datasets, datasets_ids, with_children=with_children
+        )
+        color = blue if self.items_count > 0 else red
+        ds_num = len(datasets)
+        return f'Selected <b style="color: {color};">{ds_num}</b> dataset{"s" if ds_num % 10 != 1 else ""} with <b style="color: {color};">{self.items_count}</b> videos'
+
+    def _update_preview(self):
+        with_children = self.nested_datasets_checkbox.is_checked()
+        self.selected_items_text.text = self._selected_text(
+            self.datasets_ids, with_children=with_children
+        )
+        if self.items_count > 0:
+            self.run_button.enable()
+        else:
+            self.run_button.disable()
+
+    def _datasets_changed(self, datasets_ids: List[int]):
+        self.preview_container.loading = True
+        self.datasets_ids = datasets_ids
+        project_id = self.input_datasets_select.get_selected_project_id()
+        with_children = self.nested_datasets_checkbox.is_checked()
+        if self.project_id != project_id:
+            if project_id is None:
+                self.project_id = None
+                self.project_info = None
+                self.all_datasets = []
+            else:
+                self.project_id = project_id
+                self._api.project.get_info_by_id(project_id)
+                self.all_datasets = self._api.dataset.get_list(project_id, recursive=True)
+        self.items_count = self._count_items(
+            self.all_datasets, datasets_ids, with_children=with_children
+        )
+        self._update_preview()
+        self.preview_container.loading = False
+
+    def _init_peview_gui(self):
+        self.selected_items_text = Text("", font_size=13)
+        self.run_button = Button("Run", icon="zmdi zmdi-play", button_size="mini")
+        self.run_button.disable()
+
+        self.preview_text = Text(
+            '<i class="zmdi zmdi-eye" style="padding-right: 10px; color: rgb(0, 154, 255);"></i><b style="font-size: 14px">Preview</b>',
+            font_size=13,
+        )
+        self.preview_field = Container(
+            widgets=[
+                self.preview_text,
+                Container(widgets=[self.selected_items_text], style="padding-left: 21px;"),
+            ],
+            style="padding-top: 10px;",
+        )
+        self.run_button_container = Container(
+            widgets=[self.run_button],
+            direction="horizontal",
+            overflow="wrap",
+            style="display: flex; justify-content: flex-end;",
+            widgets_style="display: flex; flex: none;",
+        )
+        self.preview_container = Container(
+            widgets=[self.preview_field, self.run_button_container],
+        )
+        self._update_preview()
+
+        @self.input_datasets_select.value_changed
+        def on_input_datasets_select_change(datasets_ids: List[int]):
+            self._datasets_changed(datasets_ids)
+
+        @self.nested_datasets_checkbox.value_changed
+        def on_nested_datasets_checkbox_change(is_checked: bool):
+            self._datasets_changed(self.input_datasets_select.get_selected_ids())
+
+        @self.run_button.click
+        def on_run_button_click():
+            self.run()
+
     def _init_output_gui(self):
         self.output_project_select = SelectProject(
             default_id=self.output_project_id, allowed_types=[ProjectType.IMAGES], size="mini"
@@ -174,7 +300,7 @@ class Sampling(Widget):
             project_info = self._api.project.get_info_by_id(self.output_project_id)
             self.output_project_preview.set(project_info)
             self.output_project_preview.show()
-        elif self.output_project_id is not None:
+        if self.output_project_id is not None:
             self.output_mode_radio.set_value("merge")
 
         self.output_field = Container(
@@ -220,31 +346,19 @@ class Sampling(Widget):
         self._init_input_gui()
         self._init_settings_gui()
         self._init_output_gui()
+        self._init_peview_gui()
         self._init_progress_gui()
-
-        self.run_button = Button("Run", icon="zmdi zmdi-play", button_size="mini")
-        self.run_button_container = Container(
-            widgets=[self.run_button],
-            direction="horizontal",
-            overflow="wrap",
-            style="display: flex; justify-content: flex-end;",
-            widgets_style="display: flex; flex: none;",
-        )
 
         self.content = Container(
             widgets=[
                 self.input_field,
                 self.settings_field,
                 self.output_field,
-                self.run_button_container,
+                self.preview_container,
                 self.result_container,
             ],
-            style="width: 370px;",
+            style=f"width: {self.widgth}px;",
         )
-
-        @self.run_button.click
-        def on_run_button_click():
-            self.run()
 
     def _get_settings(self) -> dict:
         settings = {
@@ -274,14 +388,15 @@ class Sampling(Widget):
         try:
             project_id = self.input_datasets_select.get_selected_project_id()
             datasets_ids = self.input_datasets_select.get_selected_ids()
-            all_ds_infos = self._api.dataset.get_list(project_id)
-            parents = {
-                ds.id: ds.parent_id if ds.parent_id is not None else ds.project_id
-                for ds in all_ds_infos
-            }
-            datasets_infos = [ds for ds in all_ds_infos if ds.id in datasets_ids]
-            total_items = sum(ds.items_count for ds in datasets_infos)
-            project_info = self._api.project.get_info_by_id(project_id)
+            with_children = self.nested_datasets_checkbox.is_checked()
+            selected_datasets_with_children = self._datasets_to_process(
+                all_datasets=self.all_datasets,
+                datasets_ids=datasets_ids,
+                with_children=with_children,
+            )
+            total_items = sum(ds.items_count for ds in selected_datasets_with_children)
+            datasets_ids = [ds.id for ds in selected_datasets_with_children]
+            project_info = self.project_info
 
             if project_info.type != str(ProjectType.VIDEOS):
                 raise ValueError(
@@ -293,21 +408,12 @@ class Sampling(Widget):
                 total=total_items,
             ) as pbar:
                 self.progress_container.show()
-                for dataset_info in datasets_infos:
-                    sample_video_dataset(
-                        api=self._api,
-                        dataset_id=dataset_info.id,
-                        settings=self._get_settings(),
-                        dst_parent_info=parents,
-                        items_progress_cb=pbar.update,
-                        video_progress=frames_pbar,
-                    )
-                dst_project_info = self._api.project.get_info_by_id(self._get_dst_project_id())
                 dst_project_info = sample_video_project(
                     api=self._api,
                     project_id=project_id,
                     settings=self._get_settings(),
                     dst_project_id=self._get_dst_project_id(),
+                    datasets_ids=datasets_ids,
                     items_progress_cb=pbar.update,
                     video_progress=frames_pbar,
                 )
@@ -317,8 +423,12 @@ class Sampling(Widget):
             raise e
         else:
             if self.output_project_selectable:
+                dst_project_info = self._api.project.get_info_by_id(dst_project_info.id)
                 self.result_project_preview.set(dst_project_info)
                 self.result_project_preview_field.show()
+            else:
+                dst_project_info = self._api.project.get_info_by_id(self.output_project_id)
+                self.output_project_preview.set(dst_project_info)
         finally:
             self.progress_container.hide()
 

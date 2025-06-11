@@ -8,6 +8,7 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
+from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.image_api import ImageInfo
@@ -60,6 +61,11 @@ def _get_frame_indices(frames_count, start, end, step, only_annotated, video_ann
 
 
 def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Annotation:
+    video_object_tag_meta = TagMeta(
+        "object_id",
+        value_type=TagValueType.ANY_NUMBER,
+        applicable_to=TagApplicableTo.OBJECTS_ONLY,
+    )
     labels = []
     for figure in frame.figures:
         tags = []
@@ -69,6 +75,7 @@ def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Ann
         for tag in video_object.tags:
             if tag.frame_range is None or tag.frame_range[0] <= frame.index <= tag.frame_range[1]:
                 tags.append(Tag(tag.meta, tag.value, labeler_login=tag.labeler_login))
+        tags.append(Tag(video_object_tag_meta, video_object.class_id))
         label = Label(geometry, obj_class, TagCollection(tags))
         labels.append(label)
     img_tags = []
@@ -381,6 +388,8 @@ def sample_video_dataset(
             datasets_ids_whitelist=datasets_ids_whitelist,
             sample_info=sample_info,
             context=context,
+            items_progress_cb=items_progress_cb,
+            video_progress=video_progress,
         )
     return dst_dataset
 
@@ -431,8 +440,13 @@ def _has_children_datasets(
     if context is None:
         context = ApiContext()
 
+    if dataset_id not in context.dataset_info:
+        context.dataset_info[dataset_id] = api.dataset.get_info_by_id(dataset_id)
+    dataset_info = context.dataset_info[dataset_id]
     if dataset_id not in context.children_datasets:
-        context.children_datasets[dataset_id] = api.dataset.get_list(dataset_id)
+        context.children_datasets[dataset_id] = api.dataset.get_list(
+            project_id=dataset_info.project_id, parent_id=dataset_id
+        )
 
     if children_ids is None:
         return len(context.children_datasets[dataset_id]) > 0
@@ -475,7 +489,9 @@ def sample_video_project(
 
     # non recursive. Nested datasets are handled by sample_video_dataset
     if project_id not in context.children_datasets:
-        context.children_datasets[project_id] = api.dataset.get_list(project_id)
+        datasets = api.dataset.get_list(project_id)
+        context.children_datasets[project_id] = datasets
+
     dataset_infos = context.children_datasets[project_id]
     for dataset_info in dataset_infos:
         context.dataset_info[dataset_info.id] = dataset_info
