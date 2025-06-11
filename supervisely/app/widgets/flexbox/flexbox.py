@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 from supervisely.app.widgets import Widget
 
@@ -20,8 +20,10 @@ class Flexbox(Widget):
         widgets: List[Widget],
         gap: int = 10,
         center_content: bool = False,
-        vertical_alignment: str = "top",
         widget_id: str = None,
+        vertical_alignment: Literal[
+            "flex-start", "flex-end", "center", "stretch", "baseline"
+        ] = None,
     ):
         self._widgets = widgets
         self._gap = gap
