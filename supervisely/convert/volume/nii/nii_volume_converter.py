@@ -169,10 +169,10 @@ class NiiConverter(VolumeConverter):
             item_paths = []
 
             for item in batch:
-                # if self._upload_as_links:
-                #     remote_path = self.remote_files_map.get(item.path)
-                #     if remote_path is not None:
-                #         item.custom_data = {"remote_path": remote_path}
+                if self._upload_as_links:
+                    remote_path = self.remote_files_map.get(item.path)
+                    if remote_path is not None:
+                        item.custom_data = {"remote_path": remote_path}
 
                 item.path = helper.nifti_to_nrrd(item.path, converted_dir)
                 ext = get_file_ext(item.path)
@@ -195,8 +195,8 @@ class NiiConverter(VolumeConverter):
                     leave=True if progress_cb is None else False,
                     position=1,
                 )
-                # if item.custom_data is not None:
-                #     volume_meta.update(item.custom_data)
+                if item.custom_data is not None:
+                    volume_meta.update(item.custom_data)
                 api.volume.upload_np(dataset_id, item.name, volume_np, volume_meta, progress_nrrd)
                 info = api.volume.get_info_by_name(dataset_id, item.name)
                 item.volume_meta = info.meta
