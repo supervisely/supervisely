@@ -15,7 +15,7 @@ class ManualImport(SolutionElement):
 
     APP_SLUG = "supervisely-ecosystem/main-import"
 
-    def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0):
+    def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
         """
         Initialize the Manual Import GUI widget.
 
@@ -28,7 +28,7 @@ class ManualImport(SolutionElement):
         self.modals = [self.logs_modal, self.tasks_modal]
         self._tasks = []
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def logs(self) -> TaskLogs:

@@ -166,6 +166,8 @@ class MoveLabeled(SolutionElement):
         dst_project_id: int,
         x: int = 0,
         y: int = 0,
+        *args,
+        **kwargs,
     ):
         self.api = api
         self.src_project_id = src_project_id
@@ -177,7 +179,7 @@ class MoveLabeled(SolutionElement):
         self.automation_modal = self._create_automation_modal()
         self.modals = [self.automation_modal]
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def pull_btn(self):

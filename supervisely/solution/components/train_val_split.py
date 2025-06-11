@@ -84,7 +84,7 @@ class TrainValSplit(SolutionElement):
     It is used to move labeled data from one location to another.
     """
 
-    def __init__(self, x: int, y: int, project_id: Optional[int] = None):
+    def __init__(self, x: int, y: int, project_id: Optional[int] = None, *args, **kwargs):
         """
         Initialize the TrainValSplit node.
 
@@ -97,7 +97,7 @@ class TrainValSplit(SolutionElement):
         self.split_settings = SplitSettings()
         self.node = SolutionCardNode(content=self.gui.card, x=x, y=y)
         self.modals = [self.gui.modal]
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
         @self.gui.ok_btn.click
         def save_split_settings():

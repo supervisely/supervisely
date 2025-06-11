@@ -89,6 +89,8 @@ class ProjectNode(SolutionElement):
         is_training: bool = False,
         x: int = 0,
         y: int = 0,
+        *args,
+        **kwargs,
     ):
         """
         Initialize the Project node.
@@ -118,7 +120,7 @@ class ProjectNode(SolutionElement):
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
         self.modals = []
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def get_json_data(self) -> dict:
         """

@@ -216,6 +216,8 @@ class LabelingQueue(SolutionElement):
         queue_id: int,
         x: int = 0,
         y: int = 0,
+        *args,
+        **kwargs,
     ):
         """
         Initialize the LabelingQueue node.
@@ -241,7 +243,7 @@ class LabelingQueue(SolutionElement):
 
         self._setup_handlers()
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def _setup_handlers(self):
         """Setup handlers for buttons and other interactive elements"""

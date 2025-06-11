@@ -772,6 +772,8 @@ class SmartSampling(SolutionElement):
         dst_project: int,
         x: int,
         y: int,
+        *args,
+        **kwargs,
     ):
         """
         Smart Sampling widget for Supervisely app.
@@ -794,6 +796,8 @@ class SmartSampling(SolutionElement):
 
         self.modals = [self.tasks_modal, self.main_modal, self.automation_modal]
         self.update_sampling_widgets()
+
+        super().__init__(*args, **kwargs)
 
     # UI PROPERTIES
     @property

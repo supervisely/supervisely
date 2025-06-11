@@ -116,7 +116,7 @@ class CloudImportAuto(Automation):
 
 
 class CloudImport(SolutionElement):
-    def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0):
+    def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
         self.api = api
         self.project_id = project_id
         self.main_widget = CloudImportWidget(project_id=project_id)
@@ -135,7 +135,7 @@ class CloudImport(SolutionElement):
 
         self.modals = [self.tasks_modal, self.sync_modal, self.logs_modal, self.run_modal]
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def logs(self):
