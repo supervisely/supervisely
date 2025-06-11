@@ -135,11 +135,11 @@ def _upload_frames(
             metas=metas,
         )
 
-        if copy_annotations:
-            _upload_annotations(api, image_ids, indices, video_annotation)
-
         for image_info, (_, i) in zip(uploaded, to_upload):
             image_ids[i] = image_info.id
+
+    if copy_annotations:
+        _upload_annotations(api, image_ids, indices, video_annotation)
 
     return image_ids
 
