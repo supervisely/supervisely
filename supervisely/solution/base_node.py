@@ -25,8 +25,7 @@ class SolutionElement(Widget):
         widget_id = kwargs.get("widget_id", None)
         if not hasattr(self, "widget_id"):
             self.widget_id = widget_id
-        if self.widget_id is None:
-            Widget.__init__(self)
+        Widget.__init__(self, widget_id=self.widget_id)
 
     def get_json_data(self) -> Dict:
         return {}
@@ -57,6 +56,14 @@ class SolutionCardNode(SolutionGraph.Node):
         if not isinstance(content, (SolutionCard, SolutionProject)):
             raise TypeError("Content must be one of SolutionCard or SolutionProject")
         return super().__new__(cls, *args, **kwargs)
+
+    def disable(self):
+        self.content.disable()
+        super().disable()
+
+    def enable(self):
+        self.content.enable()
+        super().enable()
 
     def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
         for prop in self.content.tooltip_properties:
