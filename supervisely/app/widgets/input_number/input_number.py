@@ -19,8 +19,8 @@ class InputNumber(Widget):
         controls: bool = True,
         debounce: int = 300,
         precision: int = 0,
-        width: int = None,
         widget_id: str = None,
+        width: int = None,
     ):
         self._value = value
         self._min = min
