@@ -101,45 +101,59 @@
 
     <div>
         <div class="experiment-sidebar-section">
-            <h3>Action</h3>
+            <h3>🚀 Actions</h3>
         </div>
         <hr class="experiment-divider">
-        <nav class="experiment-sidebar-nav">
-            <a href="#"><span class="icon">📈</span> Open TensorBoard</a>
-            {% if links.evaluation_report.id %}
-            <a href="#"><span class="icon">📊</span> Evaluation Report</a>
-            {% endif %}
-            <a href="#"><span class="icon">🎓</span> Open Train App</a>
-            <a href="#"><span class="icon">📂</span> Team Files Artifacts</a>
-        </nav>
+        <div class="experiment-sidebar-section">
+            <h3>🔗 Links</h3>
+            <nav class="experiment-sidebar-nav">
+                <a href="{{ links.app.training_session }}" target="_blank"><span class="icon">🎓</span> Open Train App
+                    <i class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                <a href="{{ links.tensorboard_logs.url }}" target="_blank"><span class="icon">📈</span> Training Logs <i
+                        class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                <a href="{{ links.team_files.url }}" target="_blank"><span class="icon">📂</span> Team Files Artifacts
+                    <i class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                {% if links.evaluation_report.id %}
+                <a href="{{ links.evaluation_report.url }}" target="_blank"><span class="icon">📊</span> Evaluation
+                    Report <i class="zmdi zmdi-arrow-right-top" style="margin-left: 5px"></i></a>
+                {% endif %}
+            </nav>
+        </div>
 
         <div class="experiment-sidebar-section">
-            <h3>Checkpoints</h3>
+            <h3>🏆 Checkpoints</h3>
             <ul class="experiment-checkpoints-list">
-                <li><strong>PyTorch:</strong> <a href="#">best.pt</a> (163.9 MB)</li>
-                <li><strong>ONNX:</strong> <a href="#">best.onnx</a> (125.2 MB)</li>
+                <li><strong>🔥 PyTorch:</strong> <a href="{{ artifacts.best_checkpoint.url }}"
+                        download="{{ artifacts.best_checkpoint.name}}">{{ artifacts.best_checkpoint.name }}</a> ({{
+                    artifacts.best_checkpoint.size }})</li>
+                {% if artifacts.onnx_checkpoint.name %}
+                <li><strong>📦 ONNX:</strong> <a href="{{ artifacts.onnx_checkpoint.url }}"
+                        download="{{ artifacts.onnx_checkpoint.name}}">{{ artifacts.onnx_checkpoint.name }}</a> ({{
+                    artifacts.onnx_checkpoint.size }})</li>
+                {% endif %}
+                {% if artifacts.trt_checkpoint.name %}
+                <li><strong>⚡ TensorRT:</strong> <a href="{{ artifacts.trt_checkpoint.url }}"
+                        download="{{ artifacts.trt_checkpoint.name}}">{{ artifacts.trt_checkpoint.name }}</a> ({{
+                    artifacts.trt_checkpoint.size }})</li>
+                {% endif %}
             </ul>
         </div>
 
+        {% if links.evaluation_report.id %}
         <div class="experiment-sidebar-section">
-            <h3>Evaluation</h3>
+            <h3>📊 Evaluation</h3>
 
+            {% for metric in benchmark.display_metrics %}
             <div class="experiment-metric">
-                <span class="experiment-label">mAP</span>
-                <span class="experiment-value">0.623</span>
+                <span class="experiment-label">{{ metric.name }}</span>
+                <span class="experiment-value">{{ metric.value }}</span>
                 <div class="experiment-progress-bar">
-                    <div class="experiment-progress" style="width:62.3%"></div>
+                    <div class="experiment-progress" style="width: {{ metric.percent_value }}%"></div>
                 </div>
             </div>
-
-            <div class="experiment-metric">
-                <span class="experiment-label">AP75</span>
-                <span class="experiment-value">0.762</span>
-                <div class="experiment-progress-bar">
-                    <div class="experiment-progress" style="width:76.2%"></div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
         <hr class="experiment-divider">
+        {% endif %}
     </div>
 </div>

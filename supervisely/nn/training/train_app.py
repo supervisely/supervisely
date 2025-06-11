@@ -46,7 +46,7 @@ from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
-from supervisely.decorators.profile import timeit
+from supervisely.decorators.profile import timeit_with_result
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
     InstanceSegmentationEvaluator,
@@ -530,7 +530,7 @@ class TrainApp:
         """
 
         def decorator(func):
-            self._train_func = timeit(func)
+            self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
             return func
 
@@ -2638,6 +2638,7 @@ class TrainApp:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            self.app.shutdown()
             raise e
 
         try:
@@ -2656,6 +2657,7 @@ class TrainApp:
                 self._set_ws_progress_status("training")
 
             experiment_info = self._train_func()
+            experiment_info["training_duration"] = self._train_func.elapsed
         except ZeroDivisionError as e:
             message = (
                 "'ZeroDivisionError' occurred during training. "

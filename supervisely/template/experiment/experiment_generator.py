@@ -12,6 +12,7 @@ from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
 from supervisely.nn.inference import Inference
+from supervisely.nn.task_type import TaskType
 from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
 from supervisely.template.base_generator import BaseGenerator
@@ -80,10 +81,10 @@ class ExperimentGenerator(BaseGenerator):
         return {}
 
     def context(self) -> dict:
-        exp_name = self.info["experiment_name"]
-        model_name = self.info["model_name"]
-        task_type = self.info["task_type"]
-        framework_name = self.info["framework_name"]
+        exp_name = self.info.get("experiment_name", "N/A")
+        model_name = self.info.get("model_name", "N/A")
+        task_type = self.info.get("task_type", "N/A")
+        framework_name = self.info.get("framework_name", "N/A")
         device = self.info.get("device", "N/A")
 
         project_id = self.info["project_id"]
@@ -96,10 +97,10 @@ class ExperimentGenerator(BaseGenerator):
         class_names = self._get_class_names(model_classes)
 
         date = self._get_date()
-        training_duration = self._get_training_duration()
+        training_duration = self.info.get("training_duration", "N/A")
         metrics = self._generate_metrics_table()
         primary_metric = self._get_primary_metric()
-        display_metrics = self._get_display_metrics(primary_metric)
+        display_metrics = self._get_display_metrics(task_type)
         checkpoints = self._generate_checkpoints_table()
         hyperparameters = self._generate_hyperparameters_yaml()
         artifacts_dir = self.info["artifacts_dir"].rstrip("/")
@@ -226,6 +227,8 @@ class ExperimentGenerator(BaseGenerator):
         html.append("<tbody>")
 
         for metric_name, metric_value in metrics.items():
+            metric_name = metric_name.replace("_", " ")
+            metric_name = metric_name.replace("-", " ")
             if isinstance(metric_value, float):
                 metric_value = f"{metric_value:.4f}"
             html.append(f"<tr><td>{metric_name}</td><td>{metric_value}</td></tr>")
@@ -294,7 +297,7 @@ class ExperimentGenerator(BaseGenerator):
         }
         return primary_metric
 
-    def _get_display_metrics(self, primary_metric: dict) -> list:
+    def _get_display_metrics(self, task_type: str) -> list:
         """Get first 5 metrics for display (excluding primary metric).
 
         :param primary_metric: Primary metric info
@@ -302,18 +305,27 @@ class ExperimentGenerator(BaseGenerator):
         :returns: List of tuples (metric_name, metric_value) for display
         :rtype: list
         """
+        display_metrics = []
         eval_metrics = self.info.get("evaluation_metrics", {})
         if not eval_metrics:
-            return []
+            return display_metrics
 
-        primary_metric_name = primary_metric.get("name")
-        display_metrics = []
+        main_metrics = []
+        if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
+            main_metrics = ["mAP", "AP75", "AP50", "precision", "recall"]
+        elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+            main_metrics = ["mIoU", "mPixel", "mPrecision", "mRecall", "mF1"]
+        else:
+            raise NotImplementedError(f"Task type '{task_type}' is not supported")
 
-        for metric_name, metric_value in eval_metrics.items():
-            if metric_name != primary_metric_name:
-                display_metrics.append((metric_name, metric_value))
-                if len(display_metrics) >= 5:
-                    break
+        for metric_name in main_metrics:
+            if metric_name in eval_metrics:
+                metric_value = eval_metrics[metric_name]
+                value = round(metric_value, 3)
+                percent_value = round(metric_value * 100, 3)
+                display_metrics.append(
+                    {"name": metric_name, "value": value, "percent_value": percent_value}
+                )
 
         return display_metrics
 
@@ -421,38 +433,6 @@ class ExperimentGenerator(BaseGenerator):
             except ValueError:
                 pass
         return date
-
-    def _get_training_duration(self) -> str:
-        """Calculate training duration from task info.
-
-        :returns: Formatted duration string
-        :rtype: str
-        """
-        try:
-            task_id = self.info.get("task_id", None)
-            if task_id is None or task_id == -1:
-                return "N/A"
-
-            task_info = self.api.task.get_info_by_id(task_id)
-            if task_info is not None:
-                start_time = datetime.strptime(task_info["startedAt"], "%Y-%m-%dT%H:%M:%S.%fZ")
-                experiment_info_path = os.path.join(self.artifacts_dir, "experiment_info.json")
-                experiment_info = self.api.file.get_info_by_path(self.team_id, experiment_info_path)
-                end_time = datetime.strptime(experiment_info.created_at, "%Y-%m-%dT%H:%M:%S.%fZ")
-                duration = end_time - start_time
-
-                hours = duration.seconds // 3600
-                minutes = (duration.seconds % 3600) // 60
-
-                if duration.days > 0:
-                    return f"{duration.days}d {hours}h {minutes}m"
-                elif hours > 0:
-                    return f"{hours}h {minutes}m"
-                else:
-                    return f"{minutes}m"
-            return "N/A"
-        except Exception:
-            return "N/A"
 
     def _get_best_checkpoint(self) -> dict:
         """Get best checkpoint filename.
