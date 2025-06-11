@@ -285,7 +285,7 @@ class SmartSamplingGUI(Widget):
             urls = [img.full_storage_url for img in infos]
 
             # ai_metas = [img.ai_search_meta for img in infos]
-            ai_metas = [{} for img in infos]
+            ai_metas = [None for img in infos]
             self.preview_gallery.clean_up()
 
             for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
@@ -520,14 +520,13 @@ class SmartSamplingGUI(Widget):
 
     def _copy_to_new_project(
         self,
-        dst_project_id: int,
         images: Dict[int, List[ImageInfo]],
     ) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
         try:
             src, dst, images_count = copy_structured_images(
                 api=self.api,
                 src_project_id=self.project_id,
-                dst_project_id=dst_project_id,
+                dst_project_id=self.dst_project_id,
                 images=images,
             )
             return src, dst, images_count
@@ -627,7 +626,7 @@ class SmartSamplingGUI(Widget):
             return None
 
         src, dst, images_count = self._copy_to_new_project(sampled_images)
-        if images_count is None:
+        if images_count is None or images_count == 0:
             return None
 
         self._add_record_to_history(
@@ -676,7 +675,8 @@ class SmartSamplingAutomation(Automation):
         self.job_id = self.widget.widget_id
         self.func = func
 
-    def apply(self):
+    def apply(self, func: Optional[Callable] = None):
+        self.func = func or self.func
         enabled, _, _, sec = self.get_automation_details()
         if not enabled:
             if self.scheduler.is_job_scheduled(self.job_id):
@@ -797,6 +797,11 @@ class SmartSampling(SolutionElement):
         self.modals = [self.tasks_modal, self.main_modal, self.automation_modal]
         self.update_sampling_widgets()
 
+        @self.main_widget.save_settings_btn.click
+        def on_save_settings_click():
+            self.main_modal.hide()
+            self.update_sampling_widgets()
+
         super().__init__(*args, **kwargs)
 
     # UI PROPERTIES
@@ -833,9 +838,15 @@ class SmartSampling(SolutionElement):
         """Get the run sample button"""
         return self.main_widget.run_btn
 
-    def apply_automation(self) -> None:
-        self.update_automation_widgets()
-        self.automation.apply()
+    @property
+    def automation_btn(self) -> Button:
+        """Get the apply annotations button"""
+        return self.automation.apply_btn
+
+    def apply_automation(self, func: Optional[Callable] = None):
+        enabled, _, _, sec = self.automation.get_automation_details()
+        self.show_automation_info(enabled, sec)
+        self.automation.apply(func)
 
     # UI CREATION METHODS
     def _create_main_modal(self) -> Widget:
@@ -899,7 +910,7 @@ class SmartSampling(SolutionElement):
         Create a modal dialog for automating sampling.
         :return: Dialog instance
         """
-        self.automation.apply_btn.click(self.update_automation_widgets())
+        # self.automation.apply_btn.click(self.update_automation_widgets())
         return Dialog(title="Automate Sampling", size="tiny", content=self.automation.widget)
 
     def _create_tooltip(self) -> SolutionCard.Tooltip:
@@ -922,7 +933,7 @@ class SmartSampling(SolutionElement):
         @sampling_tasks_modal_btn.click
         def on_sampling_tasks_modal_btn_click():
             self.tasks_modal.show()
-            # self.tasks_table.clear()
+            self.tasks_table.clear()
             rows = self._get_tasks_data()
             for row in rows:
                 self.tasks_table.insert_row(row)
@@ -982,3 +993,17 @@ class SmartSampling(SolutionElement):
         else:
             self.card.update_badge_by_key("Difference:", str(diff), "info")
         self.card.update_property("Difference:", str(diff))
+
+        sampling_settings = sampling_settings or self.main_widget.get_sample_settings()
+        mode = sampling_settings.get("mode", SamplingMode.RANDOM.value)
+        self.card.update_property("mode", mode)
+        if mode in [SamplingMode.RANDOM.value, SamplingMode.DIVERSE.value]:
+            sample_size = sampling_settings.get("sample_size", 0)
+            self.card.update_property("Sample size", str(sample_size))
+        elif mode == SamplingMode.AI_SEARCH.value:
+            prompt = sampling_settings.get("prompt", "")
+            limit = sampling_settings.get("limit", 0)
+            threshold = sampling_settings.get("threshold", 0.05)
+            self.card.update_property("Prompt", prompt)
+            self.card.update_property("Limit", str(limit))
+            self.card.update_property("Threshold", f"{threshold:.2f}")

@@ -61,8 +61,9 @@ class CloudImport(Widget):
     def to_html(self):
         return self.content.to_html()
 
-    def run(self) -> int:
-        path = self.path_input.get_value().strip()
+    def run(self, path: Optional[str] = None) -> int:
+        if path is None:
+            path = self.path_input.get_value().strip()
         agent_id = self.agent_select.get_value()
         return self._run(path, agent_id)
 

@@ -2,10 +2,9 @@ from typing import Callable, Optional, Tuple
 
 from supervisely._utils import abs_url, logger
 from supervisely.api.api import Api
+from supervisely.app.widgets import Button, Checkbox
 from supervisely.app.widgets import CloudImport as CloudImportWidget
 from supervisely.app.widgets import (
-    Button,
-    Checkbox,
     Container,
     Dialog,
     Empty,
@@ -17,7 +16,7 @@ from supervisely.app.widgets import (
     TaskLogs,
     Text,
 )
-from supervisely.solution.base_node import Automation, SolutionElement, SolutionCardNode
+from supervisely.solution.base_node import Automation, SolutionCardNode, SolutionElement
 from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 
@@ -29,15 +28,14 @@ class CloudImportAuto(Automation):
         self.job_id = self.widget.widget_id
         self.func = func
 
-    def apply(self):
+    def apply(self, func: Optional[Callable] = None) -> None:
+        self.func = func or self.func
         sec, path, interval, period = self.get_automation_details()
         if sec is None or path is None:
             if self.scheduler.is_job_scheduled(self.job_id):
                 self.scheduler.remove_job(self.job_id)
         else:
-            self.scheduler.add_job(
-                self.func, interval=sec, job_id=self.job_id, replace_existing=True
-            )
+            self.scheduler.add_job(self.func, sec, self.job_id, True, path)
 
     def _create_widget(self):
         description = Text(
@@ -175,6 +173,10 @@ class CloudImport(SolutionElement):
             )
         return self._run_modal
 
+    @property
+    def automation_btn(self):
+        return self.automation.apply_btn
+
     def _create_tasks_modal(self, tasks_table: FastTable):
         return Dialog(title="Import tasks history", content=tasks_table)
 
@@ -202,6 +204,7 @@ class CloudImport(SolutionElement):
 
         @btn.click
         def _show_tasks_dialog():
+            self.tasks_table.clear()
             for row in self.main_widget._get_table_data():
                 self.tasks_table.insert_row(row)
             self.tasks_modal.show()
@@ -209,7 +212,7 @@ class CloudImport(SolutionElement):
         return btn
 
     def _create_automation_modal(self):
-        self.automation.apply_btn.click(self.update_automation_details())
+        # self.automation.apply_btn.click(self.update_automation_details())
 
         return Dialog(
             title="Automate Synchronization",
@@ -232,13 +235,21 @@ class CloudImport(SolutionElement):
 
         return btn
 
+    @property
+    def automation_modal(self):
+        return self.sync_modal
+
+    @property
+    def automation_button(self):
+        if not hasattr(self, "_automation_button"):
+            self._automation_button = self._create_automation_button()
+
+        return self._automation_button
+
     def _create_tooltip(self):
         return SolutionCard.Tooltip(
             description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
-            content=[
-                self._create_tasks_button(),
-                self._create_automation_button(),
-            ],
+            content=[self._create_tasks_button(), self.automation_button],
         )
 
     def _create_card(self) -> SolutionCard:
@@ -269,8 +280,9 @@ class CloudImport(SolutionElement):
                 return items_count, self.project.image_preview_url
         return None, None
 
-    def apply_automation(self) -> None:
-        self.automation.apply()
+    def apply_automation(self, func: Optional[Callable] = None) -> None:
+        self.sync_modal.hide()
+        self.automation.apply(func)
         self.update_automation_details()
 
     def update_automation_details(self) -> Tuple[int, str, int, str]:

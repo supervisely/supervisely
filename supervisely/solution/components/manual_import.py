@@ -132,7 +132,7 @@ class ManualImport(SolutionElement):
 
         @btn.click
         def _show_tasks():
-            # self.tasks_table.clear()
+            self.tasks_table.clear()
             for row in self._get_table_data():
                 self.tasks_table.insert_row(row)
             self.tasks_modal.show()

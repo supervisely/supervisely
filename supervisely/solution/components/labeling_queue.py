@@ -14,6 +14,7 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
+from supervisely.labeling_jobs.utils import Status
 from supervisely.solution.base_node import Automation, SolutionCardNode, SolutionElement
 from supervisely.solution.scheduler import TasksScheduler
 
@@ -179,10 +180,14 @@ class LabelingQueueRefresh(Automation):
     Automation for refreshing labeling queue information periodically
     """
 
-    def __init__(self, queue_id: int):
+    def __init__(self, queue_id: int, func: Optional[Callable[[], None]] = None):
         super().__init__()
         self.job_id = f"refresh_labeling_queue_{queue_id}"
         self.queue_id = queue_id
+        self.func = func
+
+    def apply(self, sec: int) -> None:
+        self.scheduler.add_job(self.func, interval=sec, job_id=self.job_id, replace_existing=True)
 
     def schedule_refresh(self, func: Callable[[], None], interval_sec: int = 5) -> None:
         """
@@ -212,8 +217,8 @@ class LabelingQueue(SolutionElement):
     def __init__(
         self,
         api: Api,
-        project_id: int,
         queue_id: int,
+        collection_id: int,
         x: int = 0,
         y: int = 0,
         *args,
@@ -229,19 +234,18 @@ class LabelingQueue(SolutionElement):
         :param queue_id: ID of the labeling queue.
         """
         self.api = api
-        self.project_id = project_id
-        self.project = self.api.project.get_info_by_id(project_id)
-        self.workspace_id = self.project.workspace_id
-        self.team_id = self.project.team_id
         self.queue_id = queue_id
+        self.collection_id = collection_id
         self._labeled_images = []
 
         self.gui = LabelingQueueGUI(queue_id=self.queue_id)
-        self.automation = LabelingQueueRefresh(queue_id=self.queue_id)
+        self.automation = LabelingQueueRefresh(queue_id=self.queue_id, func=self.refresh_info)
         self.node = SolutionCardNode(content=self.gui.card, x=x, y=y)
         self.modals = [self.gui.add_user_modal]
 
         self._setup_handlers()
+        self._callbacks: List[Callable[[], None]] = []
+        self.apply_automation(sec=30)
 
         super().__init__(*args, **kwargs)
 
@@ -268,7 +272,7 @@ class LabelingQueue(SolutionElement):
 
     def get_json_data(self) -> dict:
         return {
-            "projectId": self.project_id,
+            # "projectId": self.project_id,
             "queueId": self.queue_id,
             "labeledImages": self._labeled_images,
         }
@@ -292,14 +296,93 @@ class LabelingQueue(SolutionElement):
         """Update number of finished images"""
         self.gui.update_finished(num)
 
-    def schedule_refresh(self, func: Callable[[], None], interval_sec: int = 5) -> None:
+    def apply_automation(self, sec: int) -> None:
         """
-        Schedule a job to refresh labeling queue info.
+        Apply the automation function to the MoveLabeled node.
         """
-        self.automation.schedule_refresh(func, interval_sec)
+        self.automation.apply(sec=sec)
 
     def unschedule_refresh(self) -> None:
         """
         Unschedule the job that refreshes labeling queue info.
         """
         self.automation.unschedule_refresh()
+
+    def get_labeling_stats(self):
+        logger.info("Checking labeling queue info...")
+
+        pending, annotating, reviewing, rejected, finished = 0, 0, 0, 0, 0
+        queue_info = self.api.labeling_queue.get_info_by_id(self.queue_id)
+        jobs = [self.api.labeling_job.get_info_by_id(job_id) for job_id in queue_info.jobs]
+        completed = queue_info.status == Status.COMPLETED
+        completed = completed or all(j.status == Status.COMPLETED for j in jobs)
+        if completed:
+            raise RuntimeError(
+                f"Something went wrong: "
+                f"Labeling queue {self.queue_id} is completed while it should be in progress."
+            )
+
+        finished += queue_info.accepted_count
+        reviewing = self.api.labeling_queue.get_entities_count_by_status(self.queue_id, "done")
+        annotating = queue_info.in_progress_count
+        pending += queue_info.pending_count
+        for job in jobs:
+            for entity in job.entities:
+                if entity["reviewStatus"] == "rejected":
+                    rejected += 1
+
+        logger.info(
+            f"Labeling queue info: {self.queue_id}:\n"
+            f"Pending: {pending}\n"
+            f"Annotating: {annotating}\n"
+            f"Reviewing: {reviewing}\n"
+            f"Finished: {finished}\n"
+            f"Rejected: {rejected}"
+        )
+
+        return pending, annotating, reviewing, finished, rejected
+
+    def get_labeled_images_count(self) -> int:
+        _, _, _, _, finished = self.get_labeling_stats()
+        return finished
+
+    def refresh_info(self):
+        """
+        Refresh the labeling queue info and update the GUI.
+        """
+        try:
+            pending, annotating, reviewing, rejected, finished = self.get_labeling_stats()
+            self.update_pending(pending)
+            self.update_annotation(annotating)
+            self.update_review(reviewing)
+            self.update_finished(finished)
+            for callback in self._callbacks:
+                callback()
+        except RuntimeError as e:
+            logger.error(str(e))
+            self.unschedule_refresh()
+            raise e
+        except Exception as e:
+            logger.error(f"Failed to refresh labeling queue info: {str(e)}")
+
+    def set_callback(self, func: Callable[[], None]) -> None:
+        """
+        Set a callback function to be called after refreshing the labeling queue info.
+        :param callback: Function to call after refreshing.
+        """
+        self._callbacks.append(func)
+
+    def get_new_accepted_images(self) -> List[int]:
+        """Get all labeled images from labeling queue with status accepted"""
+
+        if not self.queue_id or not self.collection_id:
+            return []
+
+        resp = self.api.labeling_queue.get_entities_all_pages(
+            self.queue_id,
+            self.collection_id,
+            status="accepted",
+            filter_by=None,
+        )
+
+        return [entity["id"] for entity in resp["images"]]

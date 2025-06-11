@@ -239,38 +239,20 @@ class MoveLabeled(SolutionElement):
 
         return btn
 
+    def apply_automation(self, func: Callable[[], None], *args) -> None:
+        """
+        Apply the automation function to the MoveLabeled node.
+        """
+        self.automation.apply(func, *args)
+        self.update_automation_details()
+
     def _create_automation_modal(self):
-        self.automation.apply_btn.click(self.update_automation_details())
+        # self.automation.apply_btn.click(self.update_automation_details())
         return Dialog(
             title="Automate",
             size="tiny",
             content=self.automation.widget,
         )
-
-    # def on_automate_btn_click(self, func: Callable[[], None]) -> Callable[[], None]:
-    #     """
-    #     Decorator for the automation button click event.
-    #     """
-
-    #     def _decorator() -> Callable[[], None]:
-
-    #         @self.automation.apply_btn.click
-    #         def _on_automate_click():
-    #             self.gui.automate_modal.hide()
-    #             enabled, _, _, min_batch, sec = self.get_automation_details()
-
-    #             self.update_automation_properties(enabled, sec, min_batch)
-    #             self.unschedule_automation()
-    #             if not enabled:
-    #                 logger.info("Automate checkbox is not checked. Removing background task.")
-    #                 self.gui.card.hide_automation_badge()
-    #                 return
-
-    #             func()
-
-    #         # return on_automate_click
-
-    #     return _decorator
 
     def update_automation_details(self) -> Tuple[int, str, int, str]:
         enabled, _, _, min_batch, sec = self.automation.get_automation_details()
@@ -282,14 +264,14 @@ class MoveLabeled(SolutionElement):
             else:
                 self.node.hide_automation_badge()
 
-    # def move_labeled_data(self, image_ids: Dict[int, List[ImageInfo]]):
-    #     src, dst, total_moved = move_structured_images(
-    #         self.api,
-    #         self.src_project_id,
-    #         self.dst_project_id,
-    #         images=image_ids,
-    #     )
-    #     return src, dst, total_moved
+    def run(self, image_ids: Dict[int, List[ImageInfo]]):
+        src, dst, total_moved = move_structured_images(
+            self.api,
+            self.src_project_id,
+            self.dst_project_id,
+            images=image_ids,
+        )
+        return src, dst, total_moved
 
     def update_automation_properties(self, enabled, sec, min_batch=None):
         period, interval = get_interval_period(sec)

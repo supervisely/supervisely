@@ -1,11 +1,51 @@
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Button, SolutionProject
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import SolutionElement, SolutionProjectNode
+from supervisely.solution.base_node import (
+    Automation,
+    SolutionElement,
+    SolutionProjectNode,
+)
+
+
+class ProjectRefresh(Automation):
+    """
+    Automation for refreshing labeling queue information periodically
+    """
+
+    def __init__(self, project_id: int, func: Optional[Callable[[], None]] = None):
+        super().__init__()
+        self.job_id = f"refresh_project_{project_id}"
+        self.project_id = project_id
+        self.func = func
+
+    def apply(self, sec: int, *args) -> None:
+        self.scheduler.add_job(
+            self.func, interval=sec, job_id=self.job_id, replace_existing=True, *args
+        )
+
+    def schedule_refresh(self, func: Callable[[], None], interval_sec: int = 5) -> None:
+        """
+        Schedule a job to refresh labeling queue info.
+        """
+        self.scheduler.add_job(
+            func, interval=interval_sec, job_id=self.job_id, replace_existing=True
+        )
+        logger.info(
+            f"Scheduled refresh for labeling queue {self.project_id} every {interval_sec} seconds"
+        )
+
+    def unschedule_refresh(self) -> None:
+        """
+        Unschedule the job that refreshes labeling queue info.
+        """
+        if self.scheduler.is_job_scheduled(self.job_id):
+            self.scheduler.remove_job(self.job_id)
+            logger.info(f"Unscheduled refresh for labeling queue {self.project_id}")
 
 
 class ProjectGUI:
@@ -31,6 +71,8 @@ class ProjectGUI:
             items_count, preview_url = [self.project.items_count or 0], [
                 self.project.image_preview_url
             ]
+            if preview_url[0] == abs_url("/"):
+                preview_url[0] = None
 
         return SolutionProject(
             title=self.title,
@@ -111,6 +153,7 @@ class ProjectNode(SolutionElement):
         self.description = description
         self.is_training = is_training
 
+        self.automation = ProjectRefresh(project_id=self.project_id, func=self.update)
         self.gui = ProjectGUI(
             title=self.title,
             project=self.project,
@@ -119,6 +162,7 @@ class ProjectNode(SolutionElement):
 
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
         self.modals = []
+        self.apply_automation(sec=30)
 
         super().__init__(*args, **kwargs)
 
@@ -148,8 +192,8 @@ class ProjectNode(SolutionElement):
 
         if new_items_count is not None:
             self.node.update_property(key="Last update", value=f"+{new_items_count}")
-            self.node.update_property(key="Total", value=f"{self.project.items_count} images")
             self.node.update_badge_by_key(key="Last update:", label=f"+{new_items_count}")
+        self.node.update_property(key="Total", value=f"{self.project.items_count} images")
 
         # Update preview
         if self.is_training:
@@ -216,3 +260,11 @@ class ProjectNode(SolutionElement):
             return self.api.image.get_preview_url(image.id, self.project_id)
 
         return None
+
+    def apply_automation(self, sec: int, *args) -> None:
+        """
+        Apply the automation to refresh the project node periodically.
+
+        :param sec: Interval in seconds for refreshing the project node
+        """
+        self.automation.apply(sec, *args)
