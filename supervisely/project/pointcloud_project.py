@@ -1131,8 +1131,6 @@ def download_pointcloud_project(
                         dump_json_file(rimage_info, path_json)
 
                         try:
-
-
                             if rimage_id in batch_rimg_figures:
                                 rimg_figures = batch_rimg_figures[rimage_id]
                                 rimg_figures_json = []
@@ -1143,17 +1141,9 @@ def download_pointcloud_project(
                                             key_id_map.get_object_key(fig_json[ApiField.OBJECT_ID])
                                         )
                                         fig_json.pop(ApiField.OBJECT_ID, None)
-                                # def _put_object_key(fig: Dict, key_id_map: KeyIdMap) -> Dict:
-                                #     if ApiField.OBJECT_ID in fig:
-                                #         fig[OBJECT_KEY] = str(
-                                #             key_id_map.get_object_key(fig[ApiField.OBJECT_ID])
-                                #         )
-                                #         fig.pop(ApiField.OBJECT_ID, None)
-                                #     return fig
-                                # rimg_figures_json = [
-                                #     _put_object_key(fig.to_json(), key_id_map)
-                                #     for fig in rimg_figures
-                                # ]
+                                        rimg_figures_json.append(fig_json)
+                                    else:
+                                        raise RuntimeError(f"Figure {fig} has no object id")
 
                                 dump_json_file(rimg_figures_json, path_figures)
                         except Exception as e:
