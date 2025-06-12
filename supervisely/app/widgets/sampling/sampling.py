@@ -31,7 +31,7 @@ class Sampling(Widget):
         output_project_selectable: bool = True,
         widgth: int = 370,
         widget_id: str = None,
-        file_path: str = None,
+        file_path: str = __file__,
     ):
         super().__init__(widget_id, file_path)
         if not input_selectable and project_id is None:
