@@ -26,6 +26,9 @@ VIDEO_OBJECT_TAG_META = TagMeta(
     value_type=TagValueType.ANY_NUMBER,
     applicable_to=TagApplicableTo.OBJECTS_ONLY,
 )
+AUTO_TRACKED_TAG_META = TagMeta(
+    "auto-tracked", TagValueType.NONE, applicable_to=TagApplicableTo.OBJECTS_ONLY
+)
 
 
 class ApiContext:
@@ -78,6 +81,8 @@ def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Ann
             if tag.frame_range is None or tag.frame_range[0] <= frame.index <= tag.frame_range[1]:
                 tags.append(Tag(tag.meta, tag.value, labeler_login=tag.labeler_login))
         tags.append(Tag(VIDEO_OBJECT_TAG_META, video_object.class_id))
+        if figure.track_id is not None:
+            tags.append(Tag(AUTO_TRACKED_TAG_META, None, labeler_login=video_object.labeler_login))
         label = Label(geometry, obj_class, TagCollection(tags))
         labels.append(label)
     img_tags = []
@@ -409,6 +414,8 @@ def _update_meta(
     dst_project_meta.merge(src_project_meta)
     if dst_project_meta.get_tag_meta(VIDEO_OBJECT_TAG_META.name) is None:
         dst_project_meta.add_tag_meta(VIDEO_OBJECT_TAG_META)
+    if dst_project_meta.get_tag_meta(AUTO_TRACKED_TAG_META.name) is None:
+        dst_project_meta.add_tag_meta(AUTO_TRACKED_TAG_META)
 
     if dst_project_meta != src_project_meta:
         api.project.update_meta(dst_project_id, dst_project_meta.to_json())
