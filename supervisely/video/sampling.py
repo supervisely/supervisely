@@ -86,12 +86,10 @@ def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Ann
 
 
 def _upload_annotations(api: Api, image_ids, frame_indices, video_annotation: VideoAnnotation):
-    img_ids = []
     anns = []
     for image_id, frame_index in zip(image_ids, frame_indices):
         frame = video_annotation.frames.get(frame_index, None)
         if frame is not None:
-            img_ids.append(image_id)
             anns.append(_frame_to_annotation(frame, video_annotation))
     api.annotation.upload_anns(image_ids, anns=anns)
 
