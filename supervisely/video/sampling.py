@@ -21,6 +21,12 @@ from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
+VIDEO_OBJECT_TAG_META = TagMeta(
+    "object_id",
+    value_type=TagValueType.ANY_NUMBER,
+    applicable_to=TagApplicableTo.OBJECTS_ONLY,
+)
+
 
 class ApiContext:
     def __init__(self):
@@ -61,11 +67,7 @@ def _get_frame_indices(frames_count, start, end, step, only_annotated, video_ann
 
 
 def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Annotation:
-    video_object_tag_meta = TagMeta(
-        "object_id",
-        value_type=TagValueType.ANY_NUMBER,
-        applicable_to=TagApplicableTo.OBJECTS_ONLY,
-    )
+
     labels = []
     for figure in frame.figures:
         tags = []
@@ -75,7 +77,7 @@ def _frame_to_annotation(frame: Frame, video_annotation: VideoAnnotation) -> Ann
         for tag in video_object.tags:
             if tag.frame_range is None or tag.frame_range[0] <= frame.index <= tag.frame_range[1]:
                 tags.append(Tag(tag.meta, tag.value, labeler_login=tag.labeler_login))
-        tags.append(Tag(video_object_tag_meta, video_object.class_id))
+        tags.append(Tag(VIDEO_OBJECT_TAG_META, video_object.class_id))
         label = Label(geometry, obj_class, TagCollection(tags))
         labels.append(label)
     img_tags = []
@@ -394,6 +396,25 @@ def sample_video_dataset(
     return dst_dataset
 
 
+def _update_meta(
+    api: Api, src_project_meta: ProjectMeta, dst_project_id: int, context: ApiContext = None
+):
+    if context is None:
+        context = ApiContext()
+    if dst_project_id not in context.project_meta:
+        context.project_meta[dst_project_id] = ProjectMeta.from_json(
+            api.project.get_meta(dst_project_id)
+        )
+    dst_project_meta = context.project_meta[dst_project_id]
+    dst_project_meta.merge(src_project_meta)
+    if dst_project_meta.get_tag_meta(VIDEO_OBJECT_TAG_META.name) is None:
+        dst_project_meta.add_tag_meta(VIDEO_OBJECT_TAG_META)
+
+    if dst_project_meta != src_project_meta:
+        api.project.update_meta(dst_project_id, dst_project_meta.to_json())
+        context.project_meta[dst_project_id] = dst_project_meta
+
+
 def _get_or_create_dst_project(
     api: Api,
     src_project_id: int,
@@ -431,6 +452,12 @@ def _get_or_create_dst_project(
         dst_project = api.project.get_info_by_id(dst_project_id)
     if context is not None:
         context.project_info[dst_project.id] = dst_project
+    if src_project_id not in context.project_meta:
+        context.project_meta[src_project_id] = ProjectMeta.from_json(
+            api.project.get_meta(src_project_id)
+        )
+    src_project_meta = context.project_meta[src_project_id]
+    _update_meta(api, src_project_meta, dst_project_id, context=context)
     return dst_project
 
 
