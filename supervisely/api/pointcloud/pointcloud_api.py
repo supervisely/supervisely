@@ -421,6 +421,14 @@ class PointcloudApi(RemoveableBulkModuleApi):
             convert_json_info_cb=lambda x: x,
         )
 
+    def get_list_related_images_batch(self, dataset_id: int, ids: List[int]) -> List:
+        filters = [{"field": ApiField.ENTITY_ID, "operator": "in", "value": ids}]
+        return self.get_list_all_pages(
+            "point-clouds.images.list",
+            {ApiField.DATASET_ID: dataset_id, ApiField.FILTER: filters},
+            convert_json_info_cb=lambda x: x,
+        )
+
     def download_related_image(self, id: int, path: str = None) -> Response:
         """
         Download a related context image from Supervisely to local directory by image id.

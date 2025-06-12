@@ -6,6 +6,7 @@ import random
 import shutil
 from collections import namedtuple
 from typing import Callable, Dict, List, NamedTuple, Optional, Tuple, Union
+from uuid import UUID
 
 import numpy as np
 from tqdm import tqdm
@@ -30,6 +31,7 @@ from supervisely.io.fs import (
     touch,
 )
 from supervisely.io.json import dump_json_file, load_json_file
+from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
 from supervisely.project.project import Dataset, OpenMode
 from supervisely.project.project import read_single_project as read_project_wrapper
@@ -499,6 +501,31 @@ class PointcloudDataset(VideoDataset):
 
     def get_pointcloud_info_path(self, item_name: str) -> str:
         return self.get_item_info_path(item_name)
+
+    def get_related_image_figures(self, item_name: str, img_name: str) -> List[Dict]:
+        """
+        Get figures from related image with given name.
+
+        :param item_name: Name of the item in the dataset.
+        :type item_name: str
+        :param img_name: Related image name.
+        :type img_name: str
+        :return: List of figures from related image.
+        :rtype: List[Dict]
+        :raises: :class:`RuntimeError` if item not found in the project
+        """
+        results = []
+        path = self.get_related_images_path(item_name)
+        if dir_exists(path):
+            files = list_files(path, sly_image.SUPPORTED_IMG_EXTS)
+            for file in files:
+                if get_file_name_with_ext(file) != img_name:
+                    continue
+                fig_path = os.path.join(path, get_file_name_with_ext(file) + ".figures.json")
+                if file_exists(fig_path):
+                    figs = load_json_file(fig_path)
+                    results.append(figs)
+        return results
 
 
 class PointcloudProject(VideoProject):
@@ -989,6 +1016,23 @@ def download_pointcloud_project(
             pointcloud_names = [pointcloud_info.name for pointcloud_info in batch]
 
             ann_jsons = api.pointcloud.annotation.download_bulk(dataset.id, pointcloud_ids)
+            if download_related_images:
+                try:
+                    rimgs = api.pointcloud.get_list_related_images_batch(dataset.id, pointcloud_ids)
+                    rimg_ids = [rimg[ApiField.ID] for rimg in rimgs]
+                    batch_rimg_figures = api.image.figure.download(
+                        dataset_id=dataset.id, image_ids=rimg_ids
+                    )
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING",
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "pointcloud_ids": pointcloud_ids,
+                        },
+                    )
+                    raise e
 
             for pointcloud_id, pointcloud_name, pointcloud_info, ann_json in zip(
                 pointcloud_ids, pointcloud_names, batch, ann_jsons
@@ -1014,6 +1058,25 @@ def download_pointcloud_project(
                         raise e
                 else:
                     touch(pointcloud_file_path)
+
+                pointcloud_file_path = pointcloud_file_path if download_items else None
+                pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
+                try:
+                    pointcloud_ann = PointcloudAnnotation.from_json(
+                        ann_json, project_fs.meta, key_id_map
+                    )
+                except Exception as e:
+                    logger.info(
+                        "INFO FOR DEBUGGING",
+                        extra={
+                            "project_id": project_id,
+                            "dataset_id": dataset.id,
+                            "pointcloud_id": pointcloud_id,
+                            "pointcloud_name": pointcloud_name,
+                            "ann_json": ann_json,
+                        },
+                    )
+                    raise e
 
                 if download_related_images:
                     related_images_path = dataset_fs.get_related_images_path(pointcloud_name)
@@ -1048,6 +1111,7 @@ def download_pointcloud_project(
 
                         path_img = os.path.join(related_images_path, name)
                         path_json = os.path.join(related_images_path, name + ".json")
+                        path_figures = os.path.join(related_images_path, name + ".figures.json")
 
                         try:
                             api.pointcloud.download_related_image(rimage_id, path_img)
@@ -1066,24 +1130,46 @@ def download_pointcloud_project(
                             raise e
                         dump_json_file(rimage_info, path_json)
 
-                pointcloud_file_path = pointcloud_file_path if download_items else None
-                pointcloud_info = pointcloud_info._asdict() if download_pointclouds_info else None
-                try:
-                    pointcloud_ann = PointcloudAnnotation.from_json(
-                        ann_json, project_fs.meta, key_id_map
-                    )
-                except Exception as e:
-                    logger.info(
-                        "INFO FOR DEBUGGING",
-                        extra={
-                            "project_id": project_id,
-                            "dataset_id": dataset.id,
-                            "pointcloud_id": pointcloud_id,
-                            "pointcloud_name": pointcloud_name,
-                            "ann_json": ann_json,
-                        },
-                    )
-                    raise e
+                        try:
+
+
+                            if rimage_id in batch_rimg_figures:
+                                rimg_figures = batch_rimg_figures[rimage_id]
+                                rimg_figures_json = []
+                                for fig in rimg_figures:
+                                    fig_json = fig.to_json()
+                                    if ApiField.OBJECT_ID in fig_json:
+                                        fig_json[OBJECT_KEY] = str(
+                                            key_id_map.get_object_key(fig_json[ApiField.OBJECT_ID])
+                                        )
+                                        fig_json.pop(ApiField.OBJECT_ID, None)
+                                # def _put_object_key(fig: Dict, key_id_map: KeyIdMap) -> Dict:
+                                #     if ApiField.OBJECT_ID in fig:
+                                #         fig[OBJECT_KEY] = str(
+                                #             key_id_map.get_object_key(fig[ApiField.OBJECT_ID])
+                                #         )
+                                #         fig.pop(ApiField.OBJECT_ID, None)
+                                #     return fig
+                                # rimg_figures_json = [
+                                #     _put_object_key(fig.to_json(), key_id_map)
+                                #     for fig in rimg_figures
+                                # ]
+
+                                dump_json_file(rimg_figures_json, path_figures)
+                        except Exception as e:
+                            logger.info(
+                                "INFO FOR DEBUGGING",
+                                extra={
+                                    "project_id": project_id,
+                                    "dataset_id": dataset.id,
+                                    "pointcloud_id": pointcloud_id,
+                                    "pointcloud_name": pointcloud_name,
+                                    "rimage_id": rimage_id,
+                                    "path_figures": path_figures,
+                                },
+                            )
+                            raise e
+
                 try:
                     dataset_fs.add_item_file(
                         pointcloud_name,
@@ -1206,6 +1292,7 @@ def upload_pointcloud_project(
             if len(related_items) != 0:
                 rimg_infos = []
                 camera_names = []
+                rimg_figures = {}
                 for img_ind, (img_path, meta_json) in enumerate(related_items):
                     try:
                         img = api.pointcloud.upload_related_image(img_path)
@@ -1233,9 +1320,26 @@ def upload_pointcloud_project(
                             ApiField.META: meta_json[ApiField.META],
                         }
                     )
+                    img_name = meta_json[ApiField.NAME]
+                    fig_json_path = os.path.join(related_images_dir, img_name + ".figures.json")
+                    if os.path.exists(fig_json_path):
+                        try:
+                            rimg_figures[img] = load_json_file(fig_json_path)
+                        except Exception as e:
+                            logger.info(
+                                "INFO FOR DEBUGGING",
+                                extra={
+                                    "project_id": project.id,
+                                    "dataset_id": dataset.id,
+                                    "pointcloud_id": pointcloud.id,
+                                    "pointcloud_name": pointcloud.name,
+                                    "fig_json_path": fig_json_path,
+                                },
+                            )
+                            raise e
 
                 try:
-                    api.pointcloud.add_related_images(rimg_infos, camera_names)
+                    uploaded_rimgs = api.pointcloud.add_related_images(rimg_infos, camera_names)
                 except Exception as e:
                     logger.info(
                         "INFO FOR DEBUGGING",
@@ -1249,6 +1353,46 @@ def upload_pointcloud_project(
                         },
                     )
                     raise e
+
+                # upload figures
+                if len(rimg_figures) > 0:
+                    try:
+                        # ! temp code (we need IDs of uploaded related images)
+                        uploaded_rimg = api.pointcloud.get_list_related_images(pointcloud.id)
+                        hash_to_ids = {
+                            rimg[ApiField.HASH]: rimg[ApiField.ID] for rimg in uploaded_rimg
+                        }
+                        # remove this when API will return IDs of uploaded related images
+                        # ! temp code end
+                        for img_hash, figs_json in rimg_figures.items():
+                            if img_hash in hash_to_ids:
+                                img_id = hash_to_ids[img_hash]
+                                for fig in figs_json:
+                                    fig[ApiField.ENTITY_ID] = img_id
+                                    fig[ApiField.DATASET_ID] = dataset.id
+                                    fig[ApiField.PROJECT_ID] = project.id
+                                    fig[ApiField.OBJECT_ID] = key_id_map.get_object_id(
+                                        UUID(fig[OBJECT_KEY])
+                                    )
+
+                        api.image.figure.create_bulk(
+                            figures_json=[fig for figs in rimg_figures.values() for fig in figs],
+                            dataset_id=dataset.id,
+                        )
+
+                    except Exception as e:
+                        logger.info(
+                            "INFO FOR DEBUGGING",
+                            extra={
+                                "project_id": project.id,
+                                "dataset_id": dataset.id,
+                                "pointcloud_id": pointcloud.id,
+                                "pointcloud_name": pointcloud.name,
+                                "rimg_figures": rimg_figures,
+                            },
+                        )
+                        raise e
+
             if ds_progress:
                 ds_progress(1)
 
