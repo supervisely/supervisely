@@ -3,7 +3,6 @@ import re
 import textwrap
 
 import markdown
-from jinja2 import nodes
 from jinja2.ext import Extension
 from jinja2.nodes import CallBlock
 
@@ -103,11 +102,13 @@ class TabExtension(Extension):
         )
 
     def _render_tab(self, title: str, caller):
-        content = caller()
+        raw_content = caller()
+        # content_html = self.environment.markdowner.convert(raw_content)
+
         buf = getattr(self.environment, "_tab_buffer", None)
         if buf is not None:
-            buf.append((title, content))
-        # Nothing is rendered immediately – the outer `tabs` block will output final HTML
+            buf.append((title, raw_content))
+            # buf.append((title, content_html))
         return ""
 
 

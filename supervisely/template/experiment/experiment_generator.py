@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional, Tuple
+from typing import Dict, Literal, Optional, Tuple
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
@@ -713,7 +713,7 @@ class ExperimentGenerator(BaseGenerator):
                 if len(model_classes) > 5
                 else ", ".join(model_classes)
             ),
-            "list": model_classes,
+            "list": model_classes + model_classes + model_classes + model_classes + model_classes + model_classes,
             "short_list": (
                 model_classes[:3] + ["..."] if len(model_classes) > 3 else model_classes
             ),

@@ -134,12 +134,13 @@ api = sly.Api() # Make sure you've set your credentials in environment variables
 
 # 2. Deploy the model
 model = api.nn.deploy(
-model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    device="cuda:0", # or "cpu"
 )
+
 # 3. Predict
 predictions = model.predict(
-input=["image1.jpg", "image2.jpg"], # can also be numpy arrays, PIL images, URLs or a directory
+    input=["image1.jpg", "image2.jpg"], # can also be numpy arrays, PIL images, URLs or a directory
 )
 ```
 
@@ -151,6 +152,7 @@ use it for predictions.
 {% tabs %}
 
 {% tab title="PyTorch Model" %}
+
 ```python
 import supervisely as sly
 
@@ -158,14 +160,16 @@ api = sly.Api()
 
 # Deploy PyTorch checkpoint
 model = api.nn.deploy(
-model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    device="cuda:0", # or "cpu"
 )
 ```
+
 {% endtab %}
 
 {% if artifacts.onnx_checkpoint.name %}
 {% tab title="ONNX Model" %}
+
 ```python
 import supervisely as sly
 
@@ -173,15 +177,17 @@ api = sly.Api()
 
 # Deploy ONNX checkpoint
 model = api.nn.deploy(
-model="{{ experiment.artifacts_dir }}/export/{{ artifacts.onnx_checkpoint.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.onnx_checkpoint.name }}",
+    device="cuda:0", # or "cpu"
 )
 ```
+
 {% endtab %}
 {% endif %}
 
 {% if artifacts.trt_checkpoint.name %}
 {% tab title="TensorRT Model" %}
+
 ```python
 import supervisely as sly
 
@@ -189,15 +195,15 @@ api = sly.Api()
 
 # Deploy TensorRT checkpoint
 model = api.nn.deploy(
-model="{{ experiment.artifacts_dir }}/export/{{ artifacts.trt_checkpoint.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.trt_checkpoint.name }}",
+    device="cuda:0", # or "cpu"
 )
 ```
+
 {% endtab %}
 {% endif %}
 
 {% endtabs %}
-
 
 > For more information, see [Model
 API](https://docs.supervisely.com/neural-networks/overview-1/model-api){:target="_blank"}
@@ -211,52 +217,53 @@ model, then you can make predictions.
 {% tabs %}
 
 {% tab title="Local Images" %}
+
 ```python
 # Predict local images
 predictions = model.predict(
-input="image.jpg" # can also be a directory, np.array, PIL.Image, URL or a list of them
+    input="image.jpg", # Can also be a directory, np.array, PIL.Image, URL or a list of them
 )
 ```
+
 {% endtab %}
 
 {% tab title="Image IDs" %}
+
 ```python
 # Predict images in Supervisely
-prediction = model.predict(
-image_ids=[123, 124] # Image ids in Supervisely
-)
+predictions = model.predict(image_ids=[123, 124] # Image IDs in Supervisely)
 ```
+
 {% endtab %}
 
 {% tab title="Dataset" %}
+
 ```python
 # Predict dataset
-prediction = model.predict(
-dataset_id=12, # Dataset id in Supervisely
-)
+predictions = model.predict(dataset_id=12 # Dataset ID in Supervisely)
 ```
+
 {% endtab %}
 
 {% tab title="Project" %}
+
 ```python
 # Predict project
-prediction = model.predict(
-project_id=21, # Project id in Supervisely
-)
+predictions = model.predict(project_id=21 # Project ID in Supervisely)
 ```
+
 {% endtab %}
 
 {% tab title="Video" %}
+
 ```python
 # Predict video
-predictions = model.predict(
-video_id=123, # Video id in Supervisely
-)
+predictions = model.predict(video_id=123 # Video ID in Supervisely)
 ```
+
 {% endtab %}
 
 {% endtabs %}
-
 
 > For more information, see [Prediction
 API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"}.
@@ -286,24 +293,23 @@ from pathlib import Path
 
 # Deploy a detector
 detector = api.nn.deploy(
-model="{{ experiment.framework_name }}/{{ experiment.model_name }}",
-device="cuda:0", # Use GPU for detection
+    model="{{ experiment.framework_name }}/{{ experiment.model_name }}",
+    device="cuda:0", # Use GPU for detection
 )
 
 # Load BoxMot tracker
 tracker = boxmot.BotSort(
-reid_weights=Path('osnet_x0_25_msmt17.pt'),
-device="cpu", # Use CPU for tracking
+    reid_weights=Path('osnet_x0_25_msmt17.pt'),
+    device="cpu", # Use CPU for tracking
 )
 
 # Track objects in a single line
 video_ann: sly.VideoAnnotation = track(
-video_id=42,
-detector=detector,
-tracker=tracker,
+    video_id=42,
+    detector=detector,
+    tracker=tracker,
 )
 ```
-
 
 > For more information, see the section [Tracking Objects in
 Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video){:target="_blank"}.
@@ -332,13 +338,13 @@ docker pull {{ code.docker.image }}
 
 ```bash
 docker run \
---runtime=nvidia \
--v "./{{ artifacts.experiment_dir }}:/model" \
--p 8000:8000 \
-{{ code.docker.image }} \
-deploy \
---model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
---device "cuda:0"
+    --runtime=nvidia \
+    -v "./{{ artifacts.experiment_dir }}:/model" \
+    -p 8000:8000 \
+    {{ code.docker.image }} \
+    deploy \
+    --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
+    --device "cuda:0"
 ```
 
 4. Connect and run the inference:
@@ -348,12 +354,12 @@ from supervisely.nn import ModelAPI
 
 # No need to authenticate for local deployment
 model = ModelAPI(
-url="http://localhost:8000", # URL of a running model's server in Docker container
+    url="http://localhost:8000" # URL of a running model's server in Docker container
 )
 
 # Predict
 predictions = model.predict(
-input=["image1.jpg", "image2.jpg"], # can also be numpy arrays, PIL images, URLs or a directory
+    input=["image1.jpg", "image2.jpg"] # Can also be numpy arrays, PIL images, URLs or a directory
 )
 ```
 
@@ -362,16 +368,15 @@ quick way to run inference on your local images, videos, or directories.
 
 ```bash
 docker run \
---runtime=nvidia \
--v "./{{ artifacts.experiment_dir }}:/model" \
--p 8000:8000 \
-{{ code.docker.image }} \
-predict \
-"./image.jpg" \ # Put your image/video/directory here
---model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
---device "cuda:0"
+    --runtime=nvidia \
+    -v "./{{ artifacts.experiment_dir }}:/model" \
+    -p 8000:8000 \
+    {{ code.docker.image }} \
+    predict \
+    "./image.jpg" \ # Put your image/video/directory here
+    --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
+    --device "cuda:0"
 ```
-
 
 > For more information, see [Deploy in Docker
 Container](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container){:target="_blank"}
@@ -407,20 +412,18 @@ from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.
 
 # Load model
 model = {{ code.local_prediction.serving_class }}(
-model="./{{ artifacts.experiment_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}", # path to the checkpoint
-you've downloaded
-device="cuda", # or "cuda:1", "cpu"
+    model="./{{ artifacts.experiment_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}", # path to the checkpoint you've downloaded
+    device="cuda", # or "cuda:1", "cpu"
 )
 
 # Predict
 predictions = model.predict(
-# Input can accpet various formats: image paths, np.arrays, Supervisely IDs and others.
-input=["path/to/image1.jpg", "path/to/image2.jpg"],
-conf=0.5, # confidence threshold
-# ... additional parameters (see the docs)
+    # 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
+    input=["path/to/image1.jpg", "path/to/image2.jpg"],
+    conf=0.5, # confidence threshold
+    # ... additional parameters (see the docs)
 )
 ```
-
 
 > For more information, see [Prediction
 API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"} and
@@ -454,18 +457,18 @@ classes = {{ project.class_names.short_list }}
 
 # Deploy ONNX or TensorRT
 model = {{ code.local_prediction.serving_class }}(
-model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}", #
-path to the ONNX or TensorRT model"
-device="cuda",
+    # Path to the ONNX or TensorRT model
+    model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}",
+    device="cuda",
 )
 
 # Predict
 predictions = model.predict(
-# Input can accpet various formats: image paths, np.arrays, Supervisely IDs and others.
-input=["path/to/image1.jpg", "path/to/image2.jpg"],
-conf=0.5, # confidence threshold
-classes=classes,
-# ... additional parameters (see the docs)
+    # 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
+    input=["path/to/image1.jpg", "path/to/image2.jpg"],
+    conf=0.5, # confidence threshold
+    classes=classes,
+    # ... additional parameters (see the docs)
 )
 ```
 
@@ -491,33 +494,47 @@ code.local_prediction.repo.url }}){:target="_blank"}
 3. Use the demo script for inference:
 
 <details>
-    <summary>Click to expand</summary>
+<summary><strong>🐍 View Code</strong></summary>
 
-    {% tabs %}
-
-    {% tab title="PyTorch" %}
-    ```python
-    {{ code.demo.pytorch.script | safe }}
-    ```
-    {% endtab%}
-
+<sly-iw-tabs :tabs="[
+    { name: 'pytorch-demo', title: '🔥 PyTorch' },
     {% if code.demo.onnx.path %}
-    {% tab title="ONNX" %}
-    ```python
-    {{ code.demo.onnx.script | safe }}
-    ```
-    {% endtab%}
+    { name: 'onnx-demo', title: '📦 ONNX' },
     {% endif %}
-
     {% if code.demo.tensorrt.path %}
-    {% tab title="TensorRT" %}
-    ```python
-    {{ code.demo.tensorrt.script | safe }}
-    ```
-    {% endtab%}
+    { name: 'tensorrt-demo', title: '⚡ TensorRT' }
     {% endif %}
+]" :defaultIndex="0">
 
-    {% endtabs%}
+<template #pytorch-demo>
+
+```python
+{{ code.demo.pytorch.script | safe }}
+```
+
+</template>
+
+{% if code.demo.onnx.path %}
+<template #onnx-demo>
+
+```python
+{{ code.demo.onnx.script | safe }}
+```
+
+</template>
+{% endif %}
+
+{% if code.demo.tensorrt.path %}
+<template #tensorrt-demo>
+
+```python
+{{ code.demo.tensorrt.script | safe }}
+```
+
+</template>
+{% endif %}
+
+</sly-iw-tabs>
 
 </details>
 
