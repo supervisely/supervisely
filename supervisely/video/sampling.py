@@ -104,6 +104,8 @@ def _upload_frames(
     copy_annotations: bool = False,
     video_annotation: VideoAnnotation = None,
 ) -> List[int]:
+    if sample_info is None:
+        sample_info = {}
     if context is not None:
         if dataset_id not in context.children_items:
             context.children_items[dataset_id] = api.image.get_list(dataset_id)
