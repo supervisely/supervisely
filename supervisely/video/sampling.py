@@ -464,7 +464,7 @@ def _get_or_create_dst_project(
             api.project.get_meta(src_project_id)
         )
     src_project_meta = context.project_meta[src_project_id]
-    _update_meta(api, src_project_meta, dst_project_id, context=context)
+    _update_meta(api, src_project_meta, dst_project.id, context=context)
     return dst_project
 
 
