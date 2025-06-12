@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple, Union
 
 from supervisely.api.api import Api
 from supervisely.api.dataset_api import DatasetInfo
@@ -431,6 +431,106 @@ class Sampling(Widget):
                 self.output_project_preview.set(dst_project_info)
         finally:
             self.progress_container.hide()
+
+    @property
+    def selected_project_id(self) -> int:
+        if not self.project_selectable:
+            return self.project_id
+        return self.input_datasets_select.get_selected_project_id()
+
+    @selected_project_id.setter
+    def selected_project_id(self, value: int):
+        if not self.project_selectable:
+            raise ValueError("Project is not selectable.")
+        self.input_datasets_select.set_project_id(value)
+        self._datasets_changed(self.input_datasets_select.get_selected_ids())
+
+    @property
+    def selected_all_datasets(self) -> bool:
+        return self.input_datasets_select._all_datasets_checkbox.is_checked()
+
+    @selected_all_datasets.setter
+    def selected_all_datasets(self, value: bool):
+        if value:
+            self.input_datasets_select._all_datasets_checkbox.check()
+        else:
+            self.input_datasets_select._all_datasets_checkbox.uncheck()
+        self._datasets_changed(self.input_datasets_select.get_selected_ids())
+
+    @property
+    def include_nested_datasets(self) -> bool:
+        return self.nested_datasets_checkbox.is_checked()
+
+    @include_nested_datasets.setter
+    def include_nested_datasets(self, value: bool):
+        if value:
+            self.nested_datasets_checkbox.check()
+        else:
+            self.nested_datasets_checkbox.uncheck()
+        self._datasets_changed(self.input_datasets_select.get_selected_ids())
+
+    @property
+    def step(self) -> int:
+        return self.step_input.get_value()
+
+    @step.setter
+    def step(self, value: int):
+        self.step_input.value = value
+
+    @property
+    def only_annotated(self) -> bool:
+        return self.only_annotated_checkbox.is_checked()
+
+    @only_annotated.setter
+    def only_annotated(self, value: bool):
+        if value:
+            self.only_annotated_checkbox.check()
+        else:
+            self.only_annotated_checkbox.uncheck()
+
+    @property
+    def resize(self) -> Union[Tuple[int, int], None]:
+        if self.resize_checkbox.is_checked():
+            return (self.resize_input_h.get_value(), self.resize_input_w.get_value())
+        return None
+
+    @resize.setter
+    def resize(self, value: Union[Tuple[int, int], None]):
+        if value is None:
+            self.resize_checkbox.uncheck()
+        else:
+            self.resize_checkbox.check()
+            self.resize_input_h.value = value[0]
+            self.resize_input_w.value = value[1]
+
+    @property
+    def copy_annotations(self) -> bool:
+        return self.copy_annotations_checkbox.is_checked()
+
+    @copy_annotations.setter
+    def copy_annotations(self, value: bool):
+        if value:
+            self.copy_annotations_checkbox.check()
+        else:
+            self.copy_annotations_checkbox.uncheck()
+
+    @property
+    def selected_output_project_id(self) -> int:
+        if not self.output_project_selectable:
+            return self.output_project_id
+        if self.output_mode_radio.get_value() == "create":
+            return None
+        return self.output_project_select.get_selected_id()
+
+    @selected_output_project_id.setter
+    def selected_output_project_id(self, value: int):
+        if not self.output_project_selectable:
+            raise ValueError("Output project is not selectable.")
+        self.output_project_select.set_project_id(value)
+        if value is not None:
+            self.output_mode_radio.set_value("merge")
+        else:
+            self.output_mode_radio.set_value("create")
 
     def get_json_data(self) -> dict:
         return {}

@@ -138,11 +138,18 @@ class SelectDataset(Widget):
 
     def set_project_id(self, id: int):
         self._project_id = id
-        if self._compact is True:
-            DataJson()[self.widget_id]["projectId"] = self._project_id
-            DataJson().send_changes()
+        self._project_selector.set_project_id(self._project_id)
+
+    def set_select_all_datasets(self, is_checked: bool):
+        if self._multiselect is False:
+            raise ValueError(
+                "Multiselect is disabled. Use another method 'set_dataset_id' instead of 'set_select_all_datasets'"
+            )
+        if is_checked:
+            self._all_datasets_checkbox.check()
         else:
-            StateJson()[self.widget_id]["projectId"] = self._project_id
+            self._all_datasets_checkbox.uncheck()
+            StateJson()[self.widget_id]["datasets"] = []
             StateJson().send_changes()
 
     def set_dataset_id(self, id: int):
@@ -202,6 +209,7 @@ class SelectDataset(Widget):
                 _process()
 
         if self._compact is False:
+
             @self._project_selector.value_changed
             def _update_datasets(project_id):
                 if self._multiselect is True:
@@ -217,7 +225,7 @@ class SelectDataset(Widget):
                 self._cb_called = True
                 _process()
 
-        @server.post(route_path)    
+        @server.post(route_path)
         def _click():
             if self._cb_called is False or self._multiselect is False:
                 _process()
