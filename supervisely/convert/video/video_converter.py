@@ -1,5 +1,7 @@
 import os
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from queue import Queue
 from typing import Dict, Optional, Tuple, Union
 
 import cv2
@@ -126,25 +128,12 @@ class VideoConverter(BaseConverter):
         videos_in_dataset = api.video.get_list(dataset_id, force_metadata_for_links=False)
         existing_names = {video_info.name for video_info in videos_in_dataset}
 
-        # check video codecs, mimetypes and convert if needed
-        convert_progress, convert_progress_cb = self.get_progress(
-            self.items_count, "Preparing videos..."
-        )
-        for item in self._items:
-            item_name, item_path = self.convert_to_mp4_if_needed(item.path)
-            item.name = item_name
-            item.path = item_path
-            convert_progress_cb(1)
-        if is_development():
-            convert_progress.close()
-
         has_large_files = False
         size_progress_cb = None
         progress_cb, progress, ann_progress, ann_progress_cb = None, None, None, None
         if log_progress:
-            if self.upload_as_links:
-                progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
-            else:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading videos...")
+            if not self.upload_as_links:
                 total_size = 0
                 for item in self._items:
                     file_size = get_file_size(item.path)
@@ -159,59 +148,97 @@ class VideoConverter(BaseConverter):
                     _, size_progress_cb = self.get_progress(
                         total_size, "Uploading videos...", is_size=True
                     )
-                else:
-                    progress, progress_cb = self.get_progress(
-                        self.items_count, "Uploading videos..."
+        _batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
+
+        transcoded_queue = Queue()
+
+        video_infos, video_ids, anns = [], [], []
+        figures_cnt = 0
+
+        def transcode_video(item):
+            item_name, item_path = self.convert_to_mp4_if_needed(item.path)
+            item.name = item_name
+            item.path = item_path
+            transcoded_queue.put(item)
+
+        def upload_videos_loop():
+            while True:
+                batch = []
+                item_names = []
+                item_paths = []
+                for _ in range(_batch_size):
+                    item = transcoded_queue.get(timeout=60)
+                    if item is None:
+                        return
+                    batch.append(item)
+                if not batch:
+                    break
+
+                for item in batch:
+                    item.name = generate_free_name(
+                        existing_names, item.name, with_ext=True, extend_used_names=True
                     )
-        batch_size = 1 if has_large_files and not self.upload_as_links else batch_size
+                    item_paths.append(item.path)
+                    item_names.append(item.name)
 
-        for batch in batched(self._items, batch_size=batch_size):
-            item_names = []
-            item_paths = []
-            anns = []
-            figures_cnt = 0
-            for item in batch:
-                item.name = generate_free_name(
-                    existing_names, item.name, with_ext=True, extend_used_names=True
+                    ann = None
+                    if not self.upload_as_links or self.supports_links:
+                        ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
+                        if ann is not None:
+                            figures_cnt += len(ann.figures)
+                    anns.append(ann)
+
+                if self.upload_as_links:
+                    vid_infos = api.video.upload_links(
+                        dataset_id,
+                        item_paths,
+                        item_names,
+                        skip_download=True,
+                        progress_cb=progress_cb if log_progress else None,
+                        force_metadata_for_links=False,
+                    )
+                else:
+                    vid_infos = api.video.upload_paths(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        progress_cb=progress_cb if log_progress else None,
+                        item_progress=size_progress_cb,
+                    )
+                video_infos.extend(vid_infos)
+                video_ids.extend([vid_info.id for vid_info in vid_infos])
+
+        max_concurrent_transcodes = 4 if not has_large_files else 2
+        with ThreadPoolExecutor(
+            max_workers=max_concurrent_transcodes
+        ) as transcode_executor, ThreadPoolExecutor(max_workers=1) as upload_executor:
+
+            upload_executor.submit(upload_videos_loop)
+            futures = []
+            for item in self._items:
+                futures.append(transcode_executor.submit(transcode_video, item))
+
+            for future in as_completed(futures):
+                future.result()
+
+            transcoded_queue.put(None)
+
+        if log_progress and has_large_files and figures_cnt > 0:
+            ann_progress, ann_progress_cb = self.get_progress(
+                figures_cnt, "Uploading annotations..."
+            )
+
+        for vid_id, ann, item, info in zip(video_ids, anns, self._items, video_infos):
+            if self.upload_as_links and not self.supports_links:
+                raise ValueError(
+                    "Annotations cannot be uploaded for links. "
+                    "Please set `upload_as_links=False` or use a different converter."
                 )
-                item_paths.append(item.path)
-                item_names.append(item.name)
 
-                ann = None
-                if not self.upload_as_links or self.supports_links:
-                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                    if ann is not None:
-                        figures_cnt += len(ann.figures)
-                anns.append(ann)
+            if ann is None:
+                ann = VideoAnnotation((info.frame_height, info.frame_width), info.frames_count)
 
-            if self.upload_as_links:
-                vid_infos = api.video.upload_links(
-                    dataset_id,
-                    item_paths,
-                    item_names,
-                    skip_download=True,
-                    progress_cb=progress_cb if log_progress else None,
-                    force_metadata_for_links=False,
-                )
-            else:
-                vid_infos = api.video.upload_paths(
-                    dataset_id,
-                    item_names,
-                    item_paths,
-                    progress_cb=progress_cb if log_progress else None,
-                    item_progress=size_progress_cb,
-                )
-            vid_ids = [vid_info.id for vid_info in vid_infos]
-
-            if log_progress and has_large_files and figures_cnt > 0:
-                ann_progress, ann_progress_cb = self.get_progress(
-                    figures_cnt, "Uploading annotations..."
-                )
-
-            for vid, ann, item, info in zip(vid_ids, anns, batch, vid_infos):
-                if ann is None:
-                    ann = VideoAnnotation((info.frame_height, info.frame_width), info.frames_count)
-                api.video.annotation.append(vid, ann, progress_cb=ann_progress_cb)
+            api.video.annotation.append(vid_id, ann, progress_cb=ann_progress_cb)
 
         if log_progress and is_development():
             if progress is not None:
