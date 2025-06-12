@@ -458,6 +458,14 @@ class Sampling(Widget):
         self._datasets_changed(self.input_datasets_select.get_selected_ids())
 
     @property
+    def selected_datasets_ids(self) -> List[int]:
+        return self.input_datasets_select.get_selected_ids()
+
+    @selected_datasets_ids.setter
+    def selected_datasets_ids(self, value: List[int]):
+        self.input_datasets_select.set_dataset_ids(value)
+
+    @property
     def include_nested_datasets(self) -> bool:
         return self.nested_datasets_checkbox.is_checked()
 
