@@ -264,4 +264,6 @@ class SelectDataset(Widget):
             info = self._api.dataset.get_info_by_id(self._default_id[0], raise_error=True)
         elif isinstance(self._default_id, int):
             info = self._api.dataset.get_info_by_id(self._default_id, raise_error=True)
+        else:
+            return
         self._project_id = info.project_id
