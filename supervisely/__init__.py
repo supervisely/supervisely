@@ -133,6 +133,7 @@ from supervisely.cli import _handle_creds_error_to_console
 from supervisely._utils import (
     rand_str,
     batched,
+    batched_iter,
     get_bytes_hash,
     generate_names,
     ENTERPRISE,
