@@ -454,7 +454,7 @@ def _get_or_create_dst_project(
         )
         dst_project = api.project.create(
             src_project_info.workspace_id,
-            src_project_info.name,
+            f"{src_project_info.name}(images)",
             description=f"Sample project made from project #{src_project_info.id}",
             change_name_if_conflict=True,
         )
