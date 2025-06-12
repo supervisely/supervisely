@@ -713,7 +713,7 @@ class ExperimentGenerator(BaseGenerator):
                 if len(model_classes) > 5
                 else ", ".join(model_classes)
             ),
-            "list": model_classes + model_classes + model_classes + model_classes + model_classes + model_classes,
+            "list": model_classes,
             "short_list": (
                 model_classes[:3] + ["..."] if len(model_classes) > 3 else model_classes
             ),
