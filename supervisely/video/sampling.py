@@ -104,6 +104,8 @@ def _upload_annotations(api: Api, image_ids, frame_indices, video_annotation: Vi
 def _upload_frames(
     api: Api,
     frames: List[np.ndarray],
+    video_name: str,
+    video_frames_count: int,
     indices: List[int],
     dataset_id: int,
     sample_info: Dict = None,
@@ -125,7 +127,8 @@ def _upload_frames(
     image_ids = [None] * len(frames)
     to_upload = []
     for i, index in enumerate(indices):
-        image_name = f"frame_{index}.jpg"
+        digits = len(str(video_frames_count))
+        image_name = f"{video_name}_frame_{str(index).zfill(digits)}.png"
         if image_name in name_to_info:
             image_ids[i] = name_to_info[image_name].id
         else:
@@ -230,6 +233,8 @@ def sample_video(
             image_ids = _upload_frames(
                 api=api,
                 frames=frames,
+                video_name=video_info.name,
+                video_frames_count=video_info.frames_count,
                 indices=indices,
                 dataset_id=dst_dataset_info.id,
                 sample_info=sample_info,
