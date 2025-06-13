@@ -4,6 +4,7 @@
   style="width: {{{widget._width}}}"
   :content="data.{{{widget.widget_id}}}.table_data"
   :options="data.{{{widget.widget_id}}}.table_options"
+  :sort="state.{{{widget.widget_id}}}.sort"
   {%
   if
   widget._click_handled
@@ -11,12 +12,11 @@
   :value="state.{{{widget.widget_id}}}.selected_row"
   @input="state.{{{widget.widget_id}}}.selected_row = $event; 
           post('/{{{widget.widget_id}}}/cell_clicked_cb')"
+  @update:sort="state.{{{widget.widget_id}}}.sort = $event;
+                post('/{{{widget.widget_id}}}/update_sort_cb')"
   {%
   endif
   %}
-  :sort="state.{{{widget.widget_id}}}.sort"
-  @update:sort="state.{{{widget.widget_id}}}.sort = $event;
-                post('/{{{widget.widget_id}}}/update_sort_cb')"
 >
 </sly-table>
 <div v-if="data.{{{widget.widget_id}}}.table_data.data.length === 0">

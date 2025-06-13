@@ -808,7 +808,8 @@ def handle_exception(exception: Exception) -> Union[HandleException, None]:
         for frame in stack[::-1]:
             if re.match(pattern, frame.line):
                 return handler(exception, stack)
-        if isinstance(exception.args[0], str) and re.match(pattern, exception.args[0]):
+        arg = next(iter(exception.args), None)
+        if isinstance(arg, str) and re.match(pattern, arg):
             return handler(exception, stack)
         if isinstance(exception, HTTPError):
             msg = exception.response.text

@@ -3,9 +3,9 @@
 # docs
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-from supervisely.api.entity_annotation.figure_api import FigureApi
+from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.geometry import Geometry
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -148,3 +148,23 @@ class VideoFigureApi(FigureApi):
                 ApiField.GEOMETRY: geometry.to_json(),
             },
         )
+
+    def download(
+        self, dataset_id: int, video_ids: List[int] = None, skip_geometry: bool = False, **kwargs
+    ) -> Dict[int, List[FigureInfo]]:
+        """
+        Method returns a dictionary with pairs of video ID and list of FigureInfo for the given dataset ID. Can be filtered by video IDs.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param video_ids: Specify the list of video IDs within the given dataset ID. If video_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
+        :type video_ids: List[int], optional
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
+        :type skip_geometry: bool
+
+        :return: A dictionary where keys are video IDs and values are lists of figures.
+        :rtype: :class: `Dict[int, List[FigureInfo]]`
+        """
+        if kwargs.get("image_ids", False) is not False:
+            video_ids = kwargs["image_ids"]  # backward compatibility
+        return super().download(dataset_id, video_ids, skip_geometry)

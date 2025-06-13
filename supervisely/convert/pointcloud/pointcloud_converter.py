@@ -1,5 +1,8 @@
-from typing import Optional, Tuple
+import imghdr
+import os
+from typing import List, Optional, Set, Tuple
 
+import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import (
     Api,
     PointcloudAnnotation,
@@ -10,8 +13,10 @@ from supervisely import (
 )
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
+from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
+from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
 
 class PointcloudConverter(BaseConverter):
@@ -134,3 +139,49 @@ class PointcloudConverter(BaseConverter):
             if is_development():
                 progress.close()
         logger.info(f"Dataset ID:{dataset_id} has been successfully uploaded.")
+
+    def _collect_items_if_format_not_detected(self) -> Tuple[List[Item], bool, Set[str]]:
+        only_modality_items = True
+        unsupported_exts = set()
+        pcd_list, rimg_dict, rimg_ann_dict = [], {}, {}
+        used_img_ext = set()
+        for root, _, files in os.walk(self._input_data):
+            for file in files:
+                full_path = os.path.join(root, file)
+                if file in ["key_id_map.json", "meta.json"]:
+                    continue
+
+                ext = get_file_ext(full_path)
+                if ext == ".json":
+                    dir_name = os.path.basename(root)
+                    parent_dir_name = os.path.basename(os.path.dirname(root))
+                    if any(
+                        p.replace("_", " ") in ["images", "related images", "photo context"]
+                        for p in [dir_name, parent_dir_name]
+                    ) or dir_name.endswith("_pcd"):
+                        rimg_ann_dict[file] = full_path
+                elif imghdr.what(full_path):
+                    rimg_dict[file] = full_path
+                    if ext not in used_img_ext:
+                        used_img_ext.add(ext)
+                elif ext.lower() in self.allowed_exts:
+                    try:
+                        validate_pcd_ext(ext)
+                        pcd_list.append(full_path)
+                    except:
+                        pass
+                else:
+                    only_modality_items = False
+                    unsupported_exts.add(ext)
+
+        # create Items
+        items = []
+        for pcd_path in pcd_list:
+            item = self.Item(pcd_path)
+            rimg, rimg_ann = helpers.find_related_items(
+                item.name, used_img_ext, rimg_dict, rimg_ann_dict
+            )
+            if rimg is not None and rimg_ann is not None:
+                item.set_related_images((rimg, rimg_ann))
+            items.append(item)
+        return items, only_modality_items, unsupported_exts

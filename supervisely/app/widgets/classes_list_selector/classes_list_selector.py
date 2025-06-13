@@ -5,8 +5,9 @@ from supervisely.app import StateJson
 from supervisely.app.widgets import Button, NotificationBox, Widget, generate_id
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.alpha_mask import AlphaMask
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
-from supervisely.geometry.cuboid import Cuboid
+from supervisely.geometry.cuboid_2d import Cuboid2d
 from supervisely.geometry.cuboid_3d import Cuboid3d
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.mask_3d import Mask3D
@@ -22,10 +23,11 @@ type_to_shape_text = {
     AnyGeometry: "any shape",
     Rectangle: "rectangle",
     Polygon: "polygon",
+    AlphaMask: "alpha mask",
     Bitmap: "bitmap (mask)",
     Polyline: "polyline",
     Point: "point",
-    Cuboid: "cuboid",  #
+    Cuboid2d: "cuboid 2d",  #
     Cuboid3d: "cuboid 3d",
     Pointcloud: "pointcloud",  #  # "zmdi zmdi-border-clear"
     MultichannelBitmap: "n-channel mask",  # "zmdi zmdi-collection-item"
@@ -58,15 +60,12 @@ class ClassesListSelector(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self):
-        return {
-            "classes": [
-                {
-                    **cls.to_json(),
-                    "shape_text": type_to_shape_text.get(cls.geometry_type).upper(),
-                }
-                for cls in self._classes
-            ]
-        }
+        classes_list = []
+        for cls in self._classes:
+            shape_text = type_to_shape_text.get(cls.geometry_type)
+            class_dict = {**cls.to_json(), "shape_text": shape_text.upper() if shape_text else ""}
+            classes_list.append(class_dict)
+        return {"classes": classes_list}
 
     def get_json_state(self):
         return {"selected": [False for _ in self._classes]}

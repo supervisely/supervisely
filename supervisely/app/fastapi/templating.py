@@ -11,10 +11,13 @@ from supervisely.app.singleton import Singleton
 from supervisely.app.widgets_context import JinjaWidgets
 
 # https://github.com/supervisely/js-bundle
-js_bundle_version = "2.1.94"
+js_bundle_version = "2.1.99"
 
 # https://github.com/supervisely-ecosystem/supervisely-app-frontend-js
-js_frontend_version = "v0.0.50"
+js_frontend_version = "v0.0.56"
+
+
+pyodide_version = "v0.25.0"
 
 
 class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
@@ -65,3 +68,17 @@ class Jinja2Templates(_fastapi_Jinja2Templates, metaclass=Singleton):
             return super().TemplateResponse(
                 name, context_with_widgets, status_code, headers, media_type, background
             )
+
+    def render(self, name: str, context: dict) -> str:
+        from supervisely.app.fastapi.subapp import get_name_from_env
+
+        context_with_widgets = {
+            **context,
+            **JinjaWidgets().context,
+            "js_bundle_version": js_bundle_version,
+            "js_frontend_version": js_frontend_version,
+            "pyodide_version": pyodide_version,
+            "app_name": get_name_from_env(default="Supervisely App"),
+        }
+        template: jinja2.Template = self.get_template(name)
+        return template.render(context_with_widgets)

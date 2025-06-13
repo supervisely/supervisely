@@ -69,6 +69,7 @@ class ClassesTable(Widget):
         selectable: Optional[bool] = True,
         disabled: Optional[bool] = False,
         widget_id: Optional[str] = None,
+        dataset_ids: Optional[List[int]] = None,
     ):
         if project_id is not None and project_fs is not None:
             raise ValueError(
@@ -103,6 +104,7 @@ class ClassesTable(Widget):
             project_meta = project_fs.meta
 
         self._project_meta = project_meta
+        self._dataset_ids = dataset_ids
         if project_meta is not None:
             self._update_meta(project_meta=project_meta)
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -151,11 +153,25 @@ class ClassesTable(Widget):
 
             class_items = {}
             for item in stats["images"]["objectClasses"]:
-                class_items[item["objectClass"]["name"]] = item["total"]
+                if self._dataset_ids is not None:
+                    items_count = 0
+                    for cls_dataset_stats in item["datasets"]:
+                        if cls_dataset_stats["id"] in self._dataset_ids:
+                            items_count += cls_dataset_stats["count"]
+                    class_items[item["objectClass"]["name"]] = items_count
+                else:
+                    class_items[item["objectClass"]["name"]] = item["total"]
 
             class_objects = {}
             for item in stats["objects"]["items"]:
-                class_objects[item["objectClass"]["name"]] = item["total"]
+                if self._dataset_ids is not None:
+                    items_count = 0
+                    for cls_dataset_stats in item["datasets"]:
+                        if cls_dataset_stats["id"] in self._dataset_ids:
+                            items_count += cls_dataset_stats["count"]
+                    class_objects[item["objectClass"]["name"]] = items_count
+                else:
+                    class_objects[item["objectClass"]["name"]] = item["total"]
             for obj_class in data_to_show:
                 obj_class["itemsCount"] = class_items[obj_class["title"]]
                 obj_class["objectsCount"] = class_objects[obj_class["title"]]
@@ -267,15 +283,21 @@ class ClassesTable(Widget):
         StateJson().send_changes()
         self.loading = False
 
-    def read_project_from_id(self, project_id: int) -> None:
+    def read_project_from_id(
+        self, project_id: int, dataset_ids: Optional[List[int]] = None
+    ) -> None:
         """Read remote project by id and update table data.
 
         :param project_id: Project id from which classes will be taken.
         :type project_id: int
+        :param dataset_ids: List of dataset ids to filter classes.
+        :type dataset_ids: Optional[List[int]]
         """
         self.loading = True
         self._project_fs = None
         self._project_id = project_id
+        if dataset_ids is not None:
+            self._dataset_ids = dataset_ids
         if self._api is None:
             self._api = sly.Api()
         project_meta = sly.ProjectMeta.from_json(self._api.project.get_meta(project_id))
@@ -390,10 +412,12 @@ class ClassesTable(Widget):
         :rtype: List[str]
         """
         classes = []
+        checkboxes = StateJson()[self.widget_id]["checkboxes"]
         for i, line in enumerate(self._table_data):
-            checkboxes = StateJson()[self.widget_id]["checkboxes"]
             if len(checkboxes) == 0:
                 checkboxes = [False] * len(self._table_data)
+            if i >= len(checkboxes):
+                continue
             if checkboxes[i]:
                 for col in line:
                     if col["name"] == "CLASS":
@@ -449,3 +473,15 @@ class ClassesTable(Widget):
         StateJson()[self.widget_id]["global_checkbox"] = self._global_checkbox
         StateJson()[self.widget_id]["checkboxes"] = self._checkboxes
         StateJson().send_changes()
+
+    def set_dataset_ids(self, dataset_ids: List[int]) -> None:
+        """Sets dataset ids to filter classes.
+
+        :param dataset_ids: List of dataset ids to filter classes.
+        :type dataset_ids: List[int]
+        """
+        selected_classes = self.get_selected_classes()
+        self._dataset_ids = dataset_ids
+        self._update_meta(self._project_meta)
+        self.update_data()
+        self.select_classes(selected_classes)

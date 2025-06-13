@@ -37,6 +37,7 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
         self._items = []
         meta = ProjectMeta()
         warnings = defaultdict(list)
+        item_names = set()
         for ann_path in ann_paths:
             try:
                 with coco_helper.HiddenCocoPrints():
@@ -74,11 +75,18 @@ class FastCOCOConverter(COCOConverter, ImageConverter):
                 coco_ann = coco_anns[image_id]
                 if len(coco_ann) == 0 or coco_ann is None or image_name is None:
                     continue
+                if image_name in item_names:
+                    # * Block to handle the case when there are mixed annotations: caption and segmentations for the same images
+                    item = next(item for item in self._items if item.name == image_name)
+                    if item.shape == (height, width):
+                        item.ann_data.extend(coco_ann)
+                        continue
                 item = self.Item(image_name) if image_url is None else self.Item(image_url)
                 item.name = image_name
                 item.ann_data = coco_ann
                 item.set_shape((height, width))
                 self._items.append(item)
+                item_names.add(image_name)
                 detected_ann_cnt += len(coco_ann)
 
         self._meta = meta

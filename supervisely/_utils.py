@@ -1,8 +1,10 @@
 # coding: utf-8
 
+import asyncio
 import base64
 import copy
 import hashlib
+import inspect
 import json
 import os
 import random
@@ -13,9 +15,10 @@ import urllib
 from datetime import datetime
 from functools import wraps
 from tempfile import gettempdir
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
+import requests
 from requests.utils import DEFAULT_CA_BUNDLE_PATH
 
 from supervisely.io import env as sly_env
@@ -81,9 +84,29 @@ def take_with_default(v, default):
     return v if v is not None else default
 
 
+def find_value_by_keys(d: Dict, keys: List[str], default=object()):
+    for key in keys:
+        if key in d:
+            return d[key]
+    if default is object():
+        raise KeyError(f"None of the keys {keys} are in the dictionary.")
+    return default
+
+
 def batched(seq, batch_size=50):
     for i in range(0, len(seq), batch_size):
         yield seq[i : i + batch_size]
+
+
+def batched_iter(iterable, batch_size=50):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
 
 
 def get_bytes_hash(bytes):
@@ -315,6 +338,15 @@ def get_readable_datetime(value: str) -> str:
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def get_unix_timestamp() -> int:
+    """Return the current Unix timestamp.
+
+    :return: Current Unix timestamp.
+    :rtype: int
+    """
+    return int(time.time())
+
+
 def get_certificates_list(path: str = DEFAULT_CA_BUNDLE_PATH) -> List[str]:
     with open(path, "r", encoding="ascii") as f:
         content = f.read().strip()
@@ -382,3 +414,186 @@ def add_callback(func, callback):
         return res
 
     return wrapper
+
+
+def compare_dicts(
+    template: Dict[Any, Any], data: Dict[Any, Any], strict: bool = True
+) -> Tuple[List[str], List[str]]:
+    """Compare two dictionaries recursively (by keys only) and return lists of missing and extra fields.
+    If strict is True, the keys of the template and data dictionaries must match exactly.
+    Otherwise, the data dictionary may contain additional keys that are not in the template dictionary.
+
+    :param template: The template dictionary.
+    :type template: Dict[Any, Any]
+    :param data: The data dictionary.
+    :type data: Dict[Any, Any]
+    :param strict: If True, the keys of the template and data dictionaries must match exactly.
+    :type strict: bool, optional
+    :return: A tuple containing a list of missing fields and a list of extra fields.
+    :rtype: Tuple[List[str], List[str]]
+    """
+    missing_fields = []
+    extra_fields = []
+
+    if not isinstance(template, dict) or not isinstance(data, dict):
+        return missing_fields, extra_fields
+
+    if strict:
+        template_keys = set(template.keys())
+        data_keys = set(data.keys())
+
+        missing_fields = list(template_keys - data_keys)
+        extra_fields = list(data_keys - template_keys)
+
+        for key in template_keys & data_keys:
+            sub_missing, sub_extra = compare_dicts(template[key], data[key], strict)
+            missing_fields.extend([f"{key}.{m}" for m in sub_missing])
+            extra_fields.extend([f"{key}.{e}" for e in sub_extra])
+    else:
+        for key in template:
+            if key not in data:
+                missing_fields.append(key)
+            else:
+                sub_missing, sub_extra = compare_dicts(template[key], data[key], strict)
+                missing_fields.extend([f"{key}.{m}" for m in sub_missing])
+                extra_fields.extend([f"{key}.{e}" for e in sub_extra])
+
+    return missing_fields, extra_fields
+
+
+def get_or_create_event_loop() -> asyncio.AbstractEventLoop:
+    """
+    Get the current event loop or create a new one if it doesn't exist.
+    Works for different Python versions and contexts.
+
+    :return: Event loop
+    :rtype: asyncio.AbstractEventLoop
+    """
+    try:
+        # Preferred method for asynchronous context (Python 3.7+)
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        # If the loop is not running, get the current one or create a new one (Python 3.8 and 3.9)
+        try:
+            return asyncio.get_event_loop()
+        except RuntimeError:
+            # For Python 3.10+ or if the call occurs outside of an active loop context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            return loop
+
+
+def run_coroutine(coroutine):
+    """
+    Runs an asynchronous coroutine in a synchronous context and waits for its result.
+
+    This function checks if an event loop is already running:
+    - If a loop is running, it schedules the coroutine using `asyncio.run_coroutine_threadsafe()`
+      and waits for the result.
+    - If no loop is running, it creates one and executes the coroutine with `run_until_complete()`.
+
+    This ensures compatibility with both synchronous and asynchronous environments
+    without creating unnecessary event loops.
+
+    ⚠️ Note: This method is preferable when working with `asyncio` objects like `Semaphore`,
+    since it avoids issues with mismatched event loops.
+
+    :param coro: Asynchronous function.
+    :type coro: Coroutine
+    :return: Result of the asynchronous function.
+    :rtype: Any
+
+    :Usage example:
+
+    .. code-block:: python
+
+            from supervisely._utils import run_coroutine
+
+            async def async_function():
+                await asyncio.sleep(1)
+                return "Hello, World!"
+
+            coroutine = async_function()
+            result = run_coroutine(coroutine)
+            print(result)
+            # Output: Hello, World!
+    """
+
+    loop = get_or_create_event_loop()
+
+    if loop.is_running():
+        future = asyncio.run_coroutine_threadsafe(coroutine, loop=loop)
+        return future.result()
+    else:
+        return loop.run_until_complete(coroutine)
+
+
+def get_filename_from_headers(url):
+    try:
+        response = requests.head(url, allow_redirects=True)
+        if response.status_code >= 400 or "Content-Disposition" not in response.headers:
+            response = requests.get(url, stream=True)
+        content_disposition = response.headers.get("Content-Disposition")
+        if content_disposition:
+            filename = re.findall('filename="?([^"]+)"?', content_disposition)
+            if filename:
+                return filename[0]
+        filename = url.split("/")[-1] or "downloaded_file"
+        return filename
+    except Exception as e:
+        print(f"Error retrieving file name from headers: {e}")
+        return None
+
+
+def get_valid_kwargs(kwargs, func, exclude=None):
+    signature = inspect.signature(func)
+    valid_kwargs = {}
+    for key, value in kwargs.items():
+        if exclude is not None and key in exclude:
+            continue
+        if key in signature.parameters:
+            valid_kwargs[key] = value
+    return valid_kwargs
+
+
+def removesuffix(string, suffix):
+    """
+    Returns the string without the specified suffix if the string ends with that suffix.
+    Otherwise returns the original string.
+    Uses for Python versions < 3.9.
+
+    :param string: The original string.
+    :type string: str
+    :param suffix: The suffix to remove.
+    :type suffix: str
+    :return: The string without the suffix or the original string.
+    :rtype: str
+
+    :Usage example:
+    .. code-block:: python
+
+        from supervisely._utils import removesuffix
+
+        original_string = "example.txt"
+        suffix_to_remove = ".txt"
+
+        result = removesuffix(original_string, suffix_to_remove)
+        print(result)
+
+        # Output: example
+
+    """
+    if string.endswith(suffix):
+        return string[: -len(suffix)]
+    return string
+
+
+def remove_non_printable(text: str) -> str:
+    """Remove non-printable characters from a string.
+
+    :param text: Input string
+    :type text: str
+    :return: String with non-printable characters removed
+    :rtype: str
+    """
+    return "".join(char for char in text if char.isprintable()).strip()

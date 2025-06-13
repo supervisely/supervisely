@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
-import os
+import time
+from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
-from supervisely._utils import take_with_default
+from typing_extensions import Literal
+
+from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 
@@ -14,6 +17,10 @@ from supervisely.api.task_api import TaskApi
 STATE = "state"
 DATA = "data"
 TEMPLATE = "template"
+
+from functools import wraps
+
+from pkg_resources import parse_version
 
 from supervisely import env, logger
 from supervisely.api.dataset_api import DatasetInfo
@@ -104,6 +111,62 @@ _context_menu_targets = {
         "key": "nothing",
     },
 }
+
+# Used to check if the instance is compatible with the workflow features
+# and to avoid multiple requests to the API.
+# Consists of the instance version and the result of the check for each necessary version during the session.
+# Example: {"instance_version": "6.10.1", "6.9.31": True}
+_workflow_compatibility_version_cache = {}
+
+
+def check_workflow_compatibility(api, min_instance_version: str) -> bool:
+    """Check if the instance is compatible with the workflow features.
+    If the instance is not compatible, the user will be notified about it.
+
+    :param api: Supervisely API object
+    :type api: supervisely.api.api.Api
+    :param min_instance_version: Minimum version of the instance that supports workflow features
+    :type min_instance_version: str
+    :return: True if the instance is compatible, False otherwise
+    :rtype: bool
+    """
+
+    global _workflow_compatibility_version_cache
+    try:
+        if min_instance_version in _workflow_compatibility_version_cache:
+            return _workflow_compatibility_version_cache[min_instance_version]
+
+        instance_version = _workflow_compatibility_version_cache.setdefault(
+            "instance_version", api.instance_version
+        )
+
+        if instance_version == "unknown":
+            # to check again on the next call
+            del _workflow_compatibility_version_cache["instance_version"]
+            logger.info(
+                "Can not check compatibility with Supervisely instance. "
+                "Workflow features will be disabled."
+            )
+            return False
+
+        is_compatible = parse_version(instance_version) >= parse_version(min_instance_version)
+        _workflow_compatibility_version_cache[min_instance_version] = is_compatible
+
+        if not is_compatible:
+            message = f"Supervisely instance version '{instance_version}' does not support the following workflow features."
+            if not is_community():
+                message += f" To enable them, please update your instance to version '{min_instance_version}' or higher."
+
+            logger.info(message)
+
+        return is_compatible
+
+    except Exception as e:
+        logger.error(
+            "Can not check compatibility with Supervisely instance. "
+            f"Workflow features will be disabled. Error: {repr(e)}"
+        )
+        return False
 
 
 class AppInfo(NamedTuple):
@@ -303,6 +366,112 @@ class SessionInfo(NamedTuple):
         return info
 
 
+@dataclass
+class WorkflowSettings:
+    """Used to customize the appearance and behavior of the workflow node.
+
+    :param title: Title of the node. It is displayed in the node header.
+                  Title is formatted with the `<h4>` tag.
+    :type title: Optional[str]
+    :param icon: Icon of the node. It is displayed in the node body.
+                 The icon name should be from the Material Design Icons set.
+                 Do not include the 'zmdi-' prefix.
+    :type icon: Optional[str]
+    :param icon_color: Color of the icon in hexadecimal format.
+    :type icon_color: Optional[str]
+    :param icon_bg_color: Background color of the icon in hexadecimal format.
+    :type icon_bg_color: Optional[str]
+    :param url: URL to be opened when the user clicks on it. Must start with a slash and be relative to the instance.
+    :type url: Optional[str]
+    :param url_title: Title of the URL.
+    :type url_title: Optional[str]
+    :param description: Description of the node. It is displayed under the title line.
+                        It's not recommended to use it for long texts.
+                        Description is formatted with the `<small>` tag and used to clarify specific information.
+    :type description: Optional[str]
+    """
+
+    title: Optional[str] = None
+    icon: Optional[str] = None
+    icon_color: Optional[str] = None
+    icon_bg_color: Optional[str] = None
+    url: Optional[str] = None
+    url_title: Optional[str] = None
+    description: Optional[str] = None
+
+    def __post_init__(self):
+        if (self.url and not self.url_title) or (not self.url and self.url_title):
+            logger.info(
+                "Workflow Warning: both 'url' and 'url_title' must be set together in WorkflowSettings. "
+                "Setting MainLink to default."
+            )
+            self.url = None
+            self.url_title = None
+        if not all([self.icon, self.icon_color, self.icon_bg_color]) and any(
+            [self.icon, self.icon_color, self.icon_bg_color]
+        ):
+            logger.info(
+                "Workflow Warning: all three parameters 'icon', 'icon_color', and 'icon_bg_color' must be set together in WorkflowSettings. "
+                "Setting Icon to default."
+            )
+            self.icon = None
+            self.icon_color = None
+            self.icon_bg_color = None
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        result = {}
+        if self.title is not None:
+            result["title"] = f"<h4>{self.title}</h4>"
+        if self.description is not None:
+            result["description"] = f"<small>{self.description}</small>"
+        if self.icon is not None and self.icon_color is not None and self.icon_bg_color is not None:
+            result["icon"] = {}
+            result["icon"]["icon"] = f"zmdi-{self.icon}"
+            result["icon"]["color"] = self.icon_color
+            result["icon"]["backgroundColor"] = self.icon_bg_color
+        if self.url is not None and self.url_title is not None:
+            result["mainLink"] = {}
+            result["mainLink"]["url"] = self.url
+            result["mainLink"]["title"] = self.url_title
+        return result
+
+
+@dataclass
+class WorkflowMeta:
+    """Used to customize the appearance of the workflow main and/or relation node.
+
+    :param relation_settings: customizes the appearance of the relation node - inputs and outputs
+    :type relation_settings: Optional[WorkflowSettings]
+    :param node_settings: customizes the appearance of the main node - the task itself
+    :type node_settings: Optional[WorkflowSettings]
+    """
+
+    relation_settings: Optional[WorkflowSettings] = None
+    node_settings: Optional[WorkflowSettings] = None
+
+    def __post_init__(self):
+        if not (self.relation_settings or self.node_settings):
+            logger.info(
+                "Workflow Warning: at least one of 'relation_settings' or 'node_settings' must be specified in WorkflowMeta. "
+                "Customization will not be applied."
+            )
+
+    @property
+    def as_dict(self) -> Dict[str, Any]:
+        result = {}
+        if self.relation_settings is not None:
+            result["customRelationSettings"] = self.relation_settings.as_dict
+        if self.node_settings is not None:
+            result["customNodeSettings"] = self.node_settings.as_dict
+        return result if result != {} else None
+
+    @classmethod
+    def create_as_dict(cls, **kwargs) -> Dict[str, Any]:
+        instance = cls(**kwargs)
+        return instance.as_dict
+
+
 class AppApi(TaskApi):
     """AppApi"""
 
@@ -314,10 +483,14 @@ class AppApi(TaskApi):
         A task can also be used as an input or output element.
         For example, an inference task takes a deployed model and a project as inputs, and the output is a new state of the project.
         This functionality uses versioning optionally.
-        """
 
-        def __init__(self, api):
-            self._api = api
+        If instances are not compatible with the workflow features, the functionality will be disabled.
+
+        :param api: Supervisely API object
+        :type api: supervisely.api.api.Api
+        :param min_instance_version: Minimum version of the instance that supports workflow features
+        :type min_instance_version: str
+        """
 
         __custom_meta_schema = {
             "type": "object",
@@ -336,6 +509,7 @@ class AppApi(TaskApi):
                             "additionalProperties": False,
                         },
                         "title": {"type": "string"},  # html
+                        "description": {"type": "string"},  # html
                         "mainLink": {
                             "type": "object",
                             "properties": {"url": {"type": "string"}, "title": {"type": "string"}},
@@ -357,12 +531,77 @@ class AppApi(TaskApi):
             ],
         }
 
+        def __init__(self, api):
+            self._api = api
+            # minimum instance version that supports workflow features
+            self._min_instance_version = "6.9.31"
+            # for development purposes
+            self._enabled = True
+            if is_development():
+                self._enabled = False
+            self.__last_warning_time = None
+
+        def enable(self):
+            """Enable the workflow functionality."""
+            self._enabled = True
+            logger.info("Workflow is enabled.")
+
+        def disable(self):
+            """Disable the workflow functionality."""
+            self._enabled = False
+            logger.info("Workflow is disabled.")
+
+        def is_enabled(self) -> bool:
+            """Check if the workflow functionality is enabled."""
+            logger.debug(f"Workflow check: is {'enabled' if self._enabled else 'disabled'}.")
+            return self._enabled
+
+        # pylint: disable=no-self-argument
+        def check_instance_compatibility(min_instance_version: Optional[str] = None):
+            """Decorator to check instance compatibility with workflow features.
+            If the instance is not compatible, the function will not be executed.
+
+            :param min_instance_version: Determine the minimum instance version that accepts the workflow method.
+            If not specified, the minimum version will be "6.9.31".
+            :type min_instance_version: Optional[str]
+            """
+
+            def decorator(func):
+                @wraps(func)
+                def wrapper(self, *args, **kwargs):
+                    version_to_check = (
+                        min_instance_version
+                        if min_instance_version is not None
+                        else self._min_instance_version
+                    )
+                    if not self.is_enabled():
+                        if (
+                            self.__last_warning_time is None
+                            or time.monotonic() - self.__last_warning_time > 60
+                        ):
+                            self.__last_warning_time = time.monotonic()
+                            logger.warning(
+                                "Workflow is disabled. "
+                                "To enable it, use `api.app.workflow.enable()`."
+                            )
+                        return
+                    if not check_workflow_compatibility(self._api, version_to_check):
+                        logger.info(f"Workflow method `{func.__name__}` is disabled.")
+                        return
+                    return func(self, *args, **kwargs)
+
+                return wrapper
+
+            return decorator
+
+        # pylint: enable=no-self-argument
+
         def _add_edge(
             self,
             data: dict,
             transaction_type: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input or output to a workflow node.
@@ -374,7 +613,7 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: dict
             """
@@ -397,6 +636,8 @@ class AppApi(TaskApi):
                 data_id = data.get("data_id") if data_type != "app_session" else node_id
                 data_meta = data.get("meta", {})
                 if meta is not None:
+                    if isinstance(meta, WorkflowMeta):
+                        meta = meta.as_dict
                     if validate_json(meta, self.__custom_meta_schema):
                         data_meta.update(meta)
                     else:
@@ -419,50 +660,36 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_project(
             self,
             project: Optional[Union[int, ProjectInfo]] = None,
             version_id: Optional[int] = None,
             version_num: Optional[int] = None,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "project" to the workflow node.
             The project version can be specified to indicate that the project version was used especially for this task.
             Arguments project and version_id are mutually exclusive. If both are specified, version_id will be used.
-            Argument version_num can be used only with project.
+            Argument version_num can only be used in conjunction with the project.
             This type is used to show that the application has used the specified project.
+            Customization of the project node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
             :type project: Optional[Union[int, ProjectInfo]]
             :param version_id: Version ID of the project.
             :type version_id: Optional[int]
-            :param version_num: Version number of the project. Can be used only with project.
+            :param version_num: Version number of the project. This argument can only be used in conjunction with the project.
             :type version_num: Optional[int]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 if project is None and version_id is None and version_num is None:
@@ -498,41 +725,27 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_dataset(
             self,
             dataset: Union[int, DatasetInfo],
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "dataset" to the workflow node.
             This type is used to show that the application has used the specified dataset.
+            Customization of the dataset node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
             :type dataset: Union[int, DatasetInfo]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "dataset"
@@ -547,44 +760,28 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_file(
             self,
             file: Union[int, FileInfo, str],
-            model_weight=False,
+            model_weight: bool = False,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "file" to the workflow node.
             This type is used to show that the application has used the specified file.
 
-            :param file: File ID, FileInfo object or file path int Team Files.
+            :param file: File ID, FileInfo object or file path in team Files.
             :type file: Union[int, FileInfo, str]
             :param model_weight: Flag to indicate if the file is a model weight.
             :type model_weight: bool
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data = {}
@@ -611,11 +808,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_folder(
             self,
             path: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "folder" to the workflow node.
@@ -627,26 +825,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 from pathlib import Path
@@ -667,11 +848,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_input_task(
             self,
             input_task_id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add input type "task" to the workflow node.
@@ -682,26 +864,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "task"
@@ -714,17 +879,56 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        # pylint: disable=redundant-keyword-arg
+        @check_instance_compatibility(
+            min_instance_version="6.11.11"
+        )  # Min instance version that accepts this method
+        def add_input_job(
+            self,
+            id: int,
+            task_id: Optional[int] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
+        ) -> dict:
+            """
+            Add input type "job" to the workflow node. Job is a Labeling Job.
+            This type indicates that the application has utilized a labeling job during its operation.
+
+            :param id: Labeling Job ID.
+            :type id: int
+            :param task_id: Task ID. If not specified, the task ID will be determined automatically.
+            :type task_id: Optional[int]
+            :param meta: Additional data for node customization.
+            :type meta: Optional[Union[WorkflowMeta, dict]]
+            :return: Response from the API.
+            :rtype: :class:`dict`
+            """
+            try:
+                data_type = "job"
+                data = {"data_type": data_type, "data_id": id}
+                return self._add_edge(data, "input", task_id, meta)
+            except Exception:
+                logger.error(
+                    "Failed to add input job node to the workflow "
+                    "(this error will not interrupt other code execution)."
+                )
+                return {}
+
+        # pylint: enable=redundant-keyword-arg
+
+        @check_instance_compatibility()
         def add_output_project(
             self,
             project: Union[int, ProjectInfo],
             version_id: Optional[int] = None,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "project" to the workflow node.
             The project version can be specified with "version" argument to indicate that the project version was created especially as result of this task.
             This type is used to show that the application has created a project with the result of its work.
+            Customization of the project node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param project: Project ID or ProjectInfo object.
             :type project: Union[int, ProjectInfo]
@@ -733,26 +937,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 if project is None and version_id is None:
@@ -778,41 +965,27 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_dataset(
             self,
             dataset: Union[int, DatasetInfo],
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "dataset" to the workflow node.
             This type is used to show that the application has created a dataset with the result of its work.
+            Customization of the dataset node is not supported and will be ignored.
+            You can only customize the main node with this method.
 
             :param dataset: Dataset ID or DatasetInfo object.
             :type dataset: Union[int, DatasetInfo]
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "dataset"
@@ -827,12 +1000,13 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_file(
             self,
             file: Union[int, FileInfo],
             model_weight=False,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "file" to the workflow node.
@@ -845,26 +1019,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "file"
@@ -881,11 +1038,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_folder(
             self,
             path: str,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "folder" to the workflow node.
@@ -897,26 +1055,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 from pathlib import Path
@@ -937,10 +1078,11 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_app(
             self,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "app_session" to the workflow node.
@@ -949,26 +1091,9 @@ class AppApi(TaskApi):
             :param task_id: App Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "app_session"
@@ -981,11 +1106,12 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        @check_instance_compatibility()
         def add_output_task(
             self,
             output_task_id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "task" to the workflow node.
@@ -996,26 +1122,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID of the node. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "task"
@@ -1028,11 +1137,15 @@ class AppApi(TaskApi):
                 )
                 return {}
 
+        # pylint: disable=redundant-keyword-arg
+        @check_instance_compatibility(
+            min_instance_version="6.11.11"
+        )  # Min instance version that accepts this method
         def add_output_job(
             self,
             id: int,
             task_id: Optional[int] = None,
-            meta: Optional[dict] = None,
+            meta: Optional[Union[WorkflowMeta, dict]] = None,
         ) -> dict:
             """
             Add output type "job" to the workflow node. Job is a Labeling Job.
@@ -1043,26 +1156,9 @@ class AppApi(TaskApi):
             :param task_id: Task ID. If not specified, the task ID will be determined automatically.
             :type task_id: Optional[int]
             :param meta: Additional data for node customization.
-            :type meta: Optional[dict]
+            :type meta: Optional[Union[WorkflowMeta, dict]]
             :return: Response from the API.
             :rtype: :class:`dict`
-            :meta example:
-
-             .. code-block:: json
-                {
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "icon-name",
-                            "color": "#000000",
-                            "backgroundColor": "#FFFFFF"
-                        },
-                        "title": "Custom title",
-                        "mainLink": {
-                            "url": "/ecosystem",
-                            "title": "Link title"
-                        }
-                    }
-                }
             """
             try:
                 data_type = "job"
@@ -1074,6 +1170,8 @@ class AppApi(TaskApi):
                     "(this error will not interrupt other code execution)."
                 )
                 return {}
+
+        # pylint: enable=redundant-keyword-arg
 
     def __init__(self, api):
         super().__init__(api)
@@ -1116,17 +1214,80 @@ class AppApi(TaskApi):
 
     def get_list(
         self,
-        team_id,
-        filter=None,
-        context=None,
-        repository_key=None,
-        show_disabled=False,
-        integrated_into=None,
-        session_tags=None,
-        only_running=False,
-        with_shared=True,
+        team_id: int,
+        filter: Optional[List[dict]] = None,
+        context: Optional[List[str]] = None,
+        repository_key: Optional[str] = None,
+        show_disabled: bool = False,
+        integrated_into: Optional[List[str]] = None,
+        session_tags: Optional[List[str]] = None,
+        only_running: bool = False,
+        with_shared: bool = True,
+        force_all_sessions: bool = True,
     ) -> List[AppInfo]:
-        """get_list"""
+        """
+        Get list of applications for the specified team.
+
+        :param team_id: team id
+        :type team_id: int
+        :param filter: list of filters
+        :type filter: Optional[List[dict]]
+        :param context: list of application contexts
+        :type context: Optional[List[str]]
+        :param repository_key: repository key
+        :type repository_key: Optional[str]
+        :param show_disabled: show disabled applications
+        :type show_disabled: bool
+        :param integrated_into: destination of the application.
+                    Available values: "panel", "files", "standalone", "data_commander",
+                                    "image_annotation_tool", "video_annotation_tool",
+                                    "dicom_annotation_tool", "pointcloud_annotation_tool"
+        :type integrated_into: Optional[List[str]]
+        :param session_tags: list of session tags
+        :type session_tags: Optional[List[str]]
+        :param only_running: show only running applications (status is one of "queued"/"consumed"/"started"/"deployed")
+        :type only_running: bool
+        :param with_shared: include shared applications
+        :type with_shared: bool
+        :param force_all_sessions: force to get all sessions (tasks) for each application.
+                                Works only if only_running is False.
+                                Note that it can be a long operation.
+        :type force_all_sessions: bool
+
+        :return: list of applications
+        :rtype: List[AppInfo]
+
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_id = 447
+
+            # Get list of all applications (including all tasks in `tasks` field)
+            apps = api.app.get_list(team_id=team_id)
+
+            # Get list of all applications (only running tasks included in `tasks` field)
+            apps = api.app.get_list(team_id=team_id, force_all_sessions=False)
+
+            # Get list of only running applications
+            apps = api.app.get_list(team_id=team_id, only_running=True)
+
+            # Get list of applications with specific filters
+            filter = [{"field": "moduleId", "operator": "=", "value": 428}]
+            apps = api.app.get_list(team_id=team_id, filter=filter)
+        """
+
+        if only_running is True:
+            # no need to get all sessions if only running sessions are requested
+            # (`force_all_sessions` has higher priority than only_running)
+            force_all_sessions = False
 
         return self.get_list_all_pages(
             method="apps.list",
@@ -1144,6 +1305,7 @@ class AppApi(TaskApi):
                 "onlyRunning": only_running,
                 "showDisabled": show_disabled,
                 "withShared": with_shared,
+                "forceAllSessions": force_all_sessions,
             },
         )
 
@@ -1286,7 +1448,7 @@ class AppApi(TaskApi):
         return response.json()
 
     def get_ecosystem_module_info(
-        self, module_id: int, version: Optional[str] = None
+        self, module_id: int = None, version: Optional[str] = None, slug: Optional[str] = None
     ) -> ModuleInfo:
         """Returns ModuleInfo object by module id and version.
 
@@ -1294,6 +1456,10 @@ class AppApi(TaskApi):
         :type module_id: int
         :param version: version of the module, e.g. "v1.0.0"
         :type version: Optional[str]
+        :param slug: slug of the module, e.g. "supervisely-ecosystem/export-to-supervisely-format"
+        :type slug: Optional[str]
+        :raises ValueError: if both module_id and slug are None
+        :raises ValueError: if both module_id and slug are provided
         :return: ModuleInfo object
         :rtype: ModuleInfo
         :Usage example:
@@ -1313,7 +1479,13 @@ class AppApi(TaskApi):
             module_id = 81
             module_info = api.app.get_ecosystem_module_info(module_id)
         """
-        data = {ApiField.ID: module_id}
+        if module_id is None and slug is None:
+            raise ValueError("Either module_id or slug must be provided")
+        if module_id is not None:
+            data = {ApiField.ID: module_id}
+        else:
+            data = {ApiField.SLUG: slug}
+
         if version is not None:
             data[ApiField.VERSION] = version
         response = self._api.post("ecosystem.info", data)
@@ -1362,10 +1534,21 @@ class AppApi(TaskApi):
             )
         return modules[0]["id"]
 
-    def get_list_ecosystem_modules(self):
+    def get_list_ecosystem_modules(
+        self,
+        search: Optional[str] = None,
+        categories: Optional[List[str]] = None,
+        categories_operation: Literal["or", "and"] = "or",
+    ):
+        data = {}
+        if search is not None:
+            data["search"] = search
+        if categories is not None:
+            data["categories"] = categories
+            data["categoriesOperation"] = categories_operation
         modules = self.get_list_all_pages(
             method="ecosystem.list",
-            data={},
+            data=data,
             convert_json_info_cb=lambda x: x,
         )
         if len(modules) == 0:
@@ -1383,49 +1566,105 @@ class AppApi(TaskApi):
 
     def get_sessions(
         self,
-        team_id,
-        module_id,
-        # only_running=False,
-        show_disabled=False,
-        session_name=None,
-        statuses: List[TaskApi.Status] = None,
+        team_id: int,
+        module_id: int,
+        show_disabled: bool = False,
+        session_name: Optional[str] = None,
+        statuses: Optional[List[TaskApi.Status]] = None,
+        with_shared: bool = False,
     ) -> List[SessionInfo]:
-        infos_json = self.get_list_all_pages(
-            method="apps.list",
-            data={
-                "teamId": team_id,
-                "filter": [{"field": "moduleId", "operator": "=", "value": module_id}],
-                # "onlyRunning": only_running,
-                "showDisabled": show_disabled,
-            },
-            convert_json_info_cb=lambda x: x,
-            # validate_total=False,
+        """
+        Get list of sessions (tasks) for the specified team and module.
+
+        :param team_id: team id
+        :type team_id: int
+        :param module_id: application module id
+        :type module_id: int
+        :param show_disabled: show disabled applications
+        :type show_disabled: bool
+        :param session_name: session name to filter sessions
+        :type session_name: Optional[str]
+        :param statuses: list of statuses to filter sessions
+        :type statuses: Optional[List[TaskApi.Status]]
+        :param with_shared: include shared application sessions
+        :type with_shared: bool
+
+        :return: list of sessions
+        :rtype: List[SessionInfo]
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            team_id = 447
+            module_id = 428
+
+            # Get list of all sessions for the specified team and module ID
+            sessions = api.app.get_sessions(team_id, module_id)
+
+            # Get list of sessions with specific statuses
+            from supervisely.api.task_api import TaskApi
+
+            statuses = [TaskApi.Status.STARTED]
+            sessions = api.app.get_sessions(team_id, module_id, statuses=statuses)
+        """
+
+        infos_json = self.get_list(
+            team_id,
+            filter=[
+                {
+                    ApiField.FIELD: ApiField.MODULE_ID,
+                    ApiField.OPERATOR: "=",
+                    ApiField.VALUE: module_id,
+                }
+            ],
+            with_shared=with_shared,
+            only_running=False,
+            force_all_sessions=False,
         )
-        if len(infos_json) == 0:
-            # raise KeyError(f"App [module_id = {module_id}] not found in team {team_id}")
-            return []
-        if len(infos_json) > 1:
+        if len(infos_json) > 1 and with_shared is False:
             raise KeyError(
                 f"Apps list in team is broken: app [module_id = {module_id}] added to team {team_id} multiple times"
             )
-        dev_tasks = []
-        sessions = infos_json[0]["tasks"]
-
-        str_statuses = []
-        if statuses is not None:
-            for s in statuses:
-                str_statuses.append(str(s))
-
+        sessions = []
+        for app in infos_json:
+            data = {
+                ApiField.TEAM_ID: team_id,
+                ApiField.APP_ID: app.id,
+                # ApiField.ONLY_RUNNING: False,
+                ApiField.SHOW_DISABLED: show_disabled,
+                ApiField.WITH_SHARED: with_shared,
+                ApiField.SORT: ApiField.STARTED_AT,
+                ApiField.SORT_ORDER: "desc",
+            }
+            if statuses is not None:
+                data[ApiField.FILTER] = [
+                    {
+                        ApiField.FIELD: ApiField.STATUS,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: [str(s) for s in statuses],
+                    }
+                ]
+            sessions.extend(
+                self.get_list_all_pages(
+                    method="apps.tasks.list",
+                    data=data,
+                    convert_json_info_cb=lambda x: x,
+                )
+            )
+        session_infos = []
         for session in sessions:
-            to_add = True
             if session_name is not None and session["meta"]["name"] != session_name:
-                to_add = False
-            if statuses is not None and session["status"] not in str_statuses:
-                to_add = False
-            if to_add is True:
-                session["moduleId"] = module_id
-                dev_tasks.append(SessionInfo.from_json(session))
-        return dev_tasks
+                continue
+            session["moduleId"] = module_id
+            session_infos.append(SessionInfo.from_json(session))
+        return session_infos
 
     def start(
         self,
@@ -1545,7 +1784,19 @@ class AppApi(TaskApi):
             else:
                 is_ready = True
                 break
+        if is_ready:
+            logger.info("App is ready for API calls")
+        else:
+            logger.info("App is not ready for API calls after all attempts")
         return is_ready
+
+    def find_module_id_by_app_name(self, app_name):
+        modules = self._api.app.get_list_ecosystem_modules(search=app_name)
+        if len(modules) == 0:
+            raise ValueError(f"No serving apps found for app name {app_name}")
+        if len(modules) > 1:
+            raise ValueError(f"Multiple serving apps found for app name {app_name}")
+        return modules[0]["id"]
 
 
 # info about app in team

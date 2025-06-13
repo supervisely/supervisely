@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 import uuid
-from typing import Optional, Dict, Union, Tuple
+from typing import Dict, Optional, Tuple, Union
+
+from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -57,6 +60,30 @@ class PointcloudEpisodeTag(VideoTag):
         # Output: ValueError: Tag car color can not have value yellow
     """
 
+    _SUPPORT_UNFINISHED_TAGS = False
+
+    def __init__(
+        self,
+        meta,
+        value=None,
+        frame_range=None,
+        key=None,
+        sly_id=None,
+        labeler_login=None,
+        updated_at=None,
+        created_at=None,
+    ):
+        super().__init__(
+            meta,
+            value,
+            frame_range,
+            key,
+            sly_id,
+            labeler_login,
+            updated_at,
+            created_at,
+        )
+
     @classmethod
     def from_json(
         cls,
@@ -65,7 +92,7 @@ class PointcloudEpisodeTag(VideoTag):
         key_id_map: Optional[KeyIdMap] = None,
     ) -> PointcloudEpisodeTag:
         """
-        Convert a json dict to PointcloudEpisodeTag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to PointcloudEpisodeTag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: PointcloudEpisodeTag in json format as a dict.
         :type data: dict
@@ -95,7 +122,18 @@ class PointcloudEpisodeTag(VideoTag):
             tag_car_color = sly.PointcloudEpisodeTag.from_json(tag_car_color_json, meta_car_collection)
         """
 
-        return super().from_json(data, tag_meta_collection, key_id_map=key_id_map)
+        temp = super(PointcloudEpisodeTag, cls).from_json(data, tag_meta_collection, key_id_map)
+
+        return cls(
+            meta=temp.meta,
+            value=temp.value,
+            frame_range=temp.frame_range,
+            key=temp.key(),
+            sly_id=temp.sly_id,
+            labeler_login=temp.labeler_login,
+            updated_at=temp.updated_at,
+            created_at=temp.created_at,
+        )
 
     def __eq__(self, other: PointcloudEpisodeTag) -> bool:
         return super().__eq__(other)
@@ -154,13 +192,13 @@ class PointcloudEpisodeTag(VideoTag):
             # }
         """
 
-        return super().clone(
-            meta=meta,
-            value=value,
-            frame_range=frame_range,
-            key=key,
-            sly_id=sly_id,
-            labeler_login=labeler_login,
-            updated_at=updated_at,
-            created_at=created_at,
+        return self.__class__(
+            meta=take_with_default(meta, self.meta),
+            value=take_with_default(value, self.value),
+            frame_range=take_with_default(frame_range, self.frame_range),
+            key=take_with_default(key, self.key()),
+            sly_id=take_with_default(sly_id, self.sly_id),
+            labeler_login=take_with_default(labeler_login, self.labeler_login),
+            updated_at=take_with_default(updated_at, self.updated_at),
+            created_at=take_with_default(created_at, self.created_at),
         )

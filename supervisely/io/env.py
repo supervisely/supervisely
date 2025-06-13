@@ -50,7 +50,7 @@ def _parse_from_env(
     # env not found
     if raise_not_found is True:
         raise KeyError(
-            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervise.ly/getting-started/environment-variables"
+            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervisely.com/getting-started/environment-variables"
         )
 
     return default
@@ -537,5 +537,52 @@ def mininum_instance_version_for_sdk() -> str:
         name="sdk_minimum_instance_version",
         keys=["MINIMUM_INSTANCE_VERSION_FOR_SDK"],
         postprocess_fn=lambda x: x,
+        raise_not_found=False,
+    )
+
+
+def semaphore_size() -> int:
+    """Returns semaphore size from environment variable using following
+        - SUPERVISELY_ASYNC_SEMAPHORE
+
+    :return: semaphore size
+    :rtype: int
+    """
+    return _parse_from_env(
+        name="semaphore_size",
+        keys=["SUPERVISELY_ASYNC_SEMAPHORE"],
+        postprocess_fn=lambda x: int(x),
+        raise_not_found=False,
+    )
+
+
+def supervisely_server_path_prefix() -> str:
+    """Returns routes prefix from environment variable using following
+        - SUPERVISELY_SERVER_PATH_PREFIX
+
+    :return: routes prefix
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="supervisely_server_path_prefix",
+        keys=["SUPERVISELY_SERVER_PATH_PREFIX"],
+        postprocess_fn=lambda x: x,
+        default="",
+        raise_not_found=False,
+    )
+
+
+def supervisely_skip_https_user_helper_check() -> bool:
+    """Returns decision to skip `_check_https_redirect` for API from environment variable using following
+        - SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"
+
+    :return: decision to skip `_check_https_redirect` for API
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="supervisely_skip_https_user_helper_check",
+        keys=["SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"],
+        postprocess_fn=flag_from_env,
+        default=False,
         raise_not_found=False,
     )

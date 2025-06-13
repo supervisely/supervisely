@@ -1,0 +1,50 @@
+# All available options for the training app
+
+# Add selector for selecting cuda device
+device_selector: false
+
+# Add options to run model benchmark after training
+model_benchmark: false
+
+# Export model
+export_onnx_supported: false
+export_tensorrt_supported: false
+
+# How to use models outside of the Supervisely platform
+# demo:
+#   branch: "main"
+#   path: "supervisely_integration/demo"
+
+# Enable this option when using supervisely train logger
+# train_logger: "tensorboard"
+
+# Show logs in UI during training
+show_logs_in_gui: true
+
+# [Beta] Collapse GUI cards on selection
+collapsable: false
+
+# Automatically convert classes according to model CV task for model benchmark
+# works only with model_benchmark: true
+auto_convert_classes: false
+
+# if false, use all classes from project meta
+classes_selector: 
+  enabled: true
+
+# if false, use all tags from project meta
+tags_selector:
+  enabled: false
+
+# if false, skip train/val splits step
+train_val_splits_selector: 
+  enabled: true
+  methods:
+    - Random
+    - Based on tags
+    - Based on datasets
+    - Based on collections
+
+model_selector:
+  enabled: true
+  show_custom: true

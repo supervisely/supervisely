@@ -1,21 +1,25 @@
 import json
-import os
 import shutil
+import tempfile
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from enum import Enum
 from logging import Logger
 from pathlib import Path
 from threading import Lock, Thread
-from time import sleep
-from typing import Any, Callable, Generator, List, Optional, Tuple, Union
+from typing import Any, BinaryIO, Callable, Generator, List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
 from cacheout import Cache as CacheOut
-from cachetools import Cache, LRUCache, TTLCache, _Link
+from cachetools import Cache, LRUCache, TTLCache
 from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 
 import supervisely as sly
+import supervisely.io.env as env
+from supervisely._utils import batched
 from supervisely.io.fs import silent_remove
+from supervisely.video.video import VideoFrameReader
 
 
 class PersistentImageLRUCache(LRUCache):
@@ -65,6 +69,27 @@ class PersistentImageTTLCache(TTLCache):
         super().__init__(maxsize, ttl)
         self._base_dir = filepath
 
+    def pop(self, *args, **kwargs):
+        try:
+            super().pop(*args, **kwargs)
+        except Exception:
+            sly.logger.warn("Cache data corrupted. Cleaning the cache...", exc_info=True)
+
+            def _delitem(self, key):
+                try:
+                    size = self._Cache__size.pop(key)
+                except:
+                    size = 0
+                self._Cache__data.pop(key, None)
+                self._Cache__currsize -= size
+
+            shutil.rmtree(self._base_dir, ignore_errors=True)
+            for key in self.keys():
+                try:
+                    super().__delitem__(key, cache_delitem=_delitem)
+                except:
+                    pass
+
     def __delitem__(self, key: Any) -> None:
         self.__del_file(key)
         return super().__delitem__(key)
@@ -82,7 +107,10 @@ class PersistentImageTTLCache(TTLCache):
             # pylint: disable=no-member
             link = self._TTLCache__getlink(key)
             # pylint: disable=no-member
-            link.expire = self._TTLCache__timer() + self._TTLCache__ttl
+            if hasattr(link, "expire"):
+                link.expire = self.timer() + self._TTLCache__ttl
+            else:
+                link.expires = self.timer() + self._TTLCache__ttl
         except KeyError:
             return
 
@@ -114,16 +142,26 @@ class PersistentImageTTLCache(TTLCache):
         if rm_base_folder:
             shutil.rmtree(self._base_dir)
 
-    def save_image(self, key, image: np.ndarray) -> None:
+    def save_image(self, key, image: Union[np.ndarray, BinaryIO, bytes], ext=".png") -> None:
         if not self._base_dir.exists():
             self._base_dir.mkdir()
 
-        filepath = self._base_dir / f"{str(key)}.png"
+        if ext is None or ext == "":
+            ext = ".png"
+
+        filepath = self._base_dir / Path(key).with_suffix(ext)
         self[key] = filepath
 
         if filepath.exists():
             sly.logger.debug(f"Rewrite image {str(filepath)}")
-        sly.image.write(str(filepath), image)
+        if isinstance(image, np.ndarray):
+            sly.image.write(str(filepath), image)
+        elif isinstance(image, bytes):
+            with open(filepath, "wb") as f:
+                f.write(image)
+        else:
+            with open(filepath, "wb") as f:
+                shutil.copyfileobj(image, f)
 
     def get_image_path(self, key: Any) -> Path:
         return self[key]
@@ -131,21 +169,34 @@ class PersistentImageTTLCache(TTLCache):
     def get_image(self, key: Any):
         return sly.image.read(str(self[key]))
 
-    def save_video(self, video_id: int, src_video_path: str) -> None:
-        video_path = self._base_dir / f"video_{video_id}.{src_video_path.split('.')[-1]}"
-        self[video_id] = video_path
-        if src_video_path != str(video_path):
-            shutil.move(src_video_path, str(video_path))
-        sly.logger.debug(f"Saved video to {video_path}")
+    def save_video(self, key: Any, source: Union[str, Path, BinaryIO]) -> None:
+        ext = ""
+        if isinstance(source, Path):
+            ext = source.suffix
+        elif isinstance(source, str):
+            ext = Path(source).suffix
+        video_path = self._base_dir / f"video_{key}{ext}"
+        self[key] = video_path
 
-    def get_video_path(self, video_id: int) -> Path:
-        return self[video_id]
+        if isinstance(source, (str, Path)):
+            if str(source) != str(video_path):
+                shutil.move(source, str(video_path))
+        else:
+            with open(video_path, "wb") as f:
+                shutil.copyfileobj(source, f)
+        sly.logger.debug(f"Video #{key} saved to {video_path}", extra={"video_id": key})
+
+    def get_video_path(self, key: Any) -> Path:
+        return self[key]
 
     def save_project_meta(self, key, value):
         self[key] = value
 
     def get_project_meta(self, project_meta_name):
         return self[project_meta_name]
+
+    def copy_to(self, name, path):
+        shutil.copyfile(str(self[name]), path)
 
 
 class InferenceImageCache:
@@ -160,13 +211,16 @@ class InferenceImageCache:
         maxsize: int,
         ttl: int,
         is_persistent: bool = True,
-        base_folder: str = sly.env.smart_cache_container_dir(),
+        base_folder: str = env.smart_cache_container_dir(),
+        log_progress: bool = False,
     ) -> None:
         self.is_persistent = is_persistent
         self._maxsize = maxsize
         self._ttl = ttl
         self._lock = Lock()
-        self._load_queue = CacheOut(10 * 60)
+        self._load_queue = CacheOut(ttl=10 * 60)
+        self.log_progress = log_progress
+        self._download_executor = ThreadPoolExecutor(max_workers=5)
 
         if is_persistent:
             self._data_dir = Path(base_folder)
@@ -179,14 +233,17 @@ class InferenceImageCache:
         with self._lock:
             self._cache.clear(False)
 
-    def download_image(self, api: sly.Api, image_id: int):
+    def download_image(self, api: sly.Api, image_id: int, related: bool = False):
         name = self._image_name(image_id)
         self._wait_if_in_queue(name, api.logger)
 
         if name not in self._cache:
             self._load_queue.set(name, image_id)
             api.logger.debug(f"Add image #{image_id} to cache")
-            img = api.image.download_np(image_id)
+            if not related:
+                img = api.image.download_np(image_id)
+            else:
+                img = api.pointcloud.download_related_image(image_id)
             self._add_to_cache(name, img)
             return img
 
@@ -234,25 +291,18 @@ class InferenceImageCache:
             return_images,
         )
 
+    def _read_frames_from_cached_video_iter(self, video_id, frame_indexes):
+        video_path = self._cache.get_video_path(video_id)
+        with VideoFrameReader(video_path, frame_indexes) as reader:
+            for frame in reader.iterate_frames():
+                yield frame
+
     def _read_frames_from_cached_video(
         self, video_id: int, frame_indexes: List[int]
     ) -> List[np.ndarray]:
-        video_path = self._cache.get_video_path(video_id)
-        if video_path is None or not video_path.exists():
-            raise KeyError(f"Video {video_id} not found in cache")
-        cap = cv2.VideoCapture(str(video_path))
-        frames = []
-        prev_idx = -1
-        for frame_index in frame_indexes:
-            if frame_index != prev_idx + 1:
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-            ret, frame = cap.read()
-            if not ret:
-                raise KeyError(f"Frame {frame_index} not found in video {video_id}")
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-            prev_idx = frame_index
-        cap.release()
-        return frames
+        return [
+            frame for frame in self._read_frames_from_cached_video_iter(video_id, frame_indexes)
+        ]
 
     def get_frame_from_cache(self, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
@@ -264,6 +314,33 @@ class InferenceImageCache:
         if frame is None:
             raise KeyError(f"Frame {frame_index} not found in video {video_id}")
 
+    def get_video_frames_count(self, key):
+        """
+        Returns number of frames in the video
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video frames count can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).frames_count()
+
+    def get_video_frame_size(self, key):
+        """
+        Returns height and width of the video frame. (h, w)
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video frame size can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).frame_size()
+
+    def get_video_fps(self, key):
+        """
+        Returns fps of the video
+        """
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            raise ValueError("Video fps can be obtained only for persistent cache")
+        video_path = self._cache.get_video_path(key)
+        return VideoFrameReader(video_path).fps()
+
     def get_frames_from_cache(self, video_id: int, frame_indexes: List[int]) -> List[np.ndarray]:
         if isinstance(self._cache, PersistentImageTTLCache) and video_id in self._cache:
             return self._read_frames_from_cached_video(video_id, frame_indexes)
@@ -271,6 +348,22 @@ class InferenceImageCache:
             return [
                 self.get_frame_from_cache(video_id, frame_index) for frame_index in frame_indexes
             ]
+
+    def frames_loader(
+        self, api: sly.Api, video_id: int, frame_indexes: List[int]
+    ) -> Generator[np.ndarray, None, None]:
+        if not isinstance(self._cache, PersistentImageTTLCache):
+            for frame_index in frame_indexes:
+                yield self.download_frame(api, video_id, frame_index)
+            return
+        self.run_cache_task_manually(api, None, video_id=video_id)
+        for i, frame_index in enumerate(frame_indexes):
+            if video_id in self._cache:
+                break
+            yield self.download_frame(api, video_id, frame_index)
+        if i < len(frame_indexes):
+            for frame in self._read_frames_from_cached_video_iter(video_id, frame_indexes[i:]):
+                yield frame
 
     def download_frame(self, api: sly.Api, video_id: int, frame_index: int) -> np.ndarray:
         name = self._frame_name(video_id, frame_index)
@@ -302,23 +395,32 @@ class InferenceImageCache:
     ) -> List[np.ndarray]:
         return_images = kwargs.get("return_images", True)
         redownload_video = kwargs.get("redownload_video", False)
+        progress_cb = kwargs.get("progress_cb", None)
 
         if video_id in self._cache:
             try:
-                return self.get_frames_from_cache(video_id, frame_indexes)
+                frames = self.get_frames_from_cache(video_id, frame_indexes)
+                if progress_cb is not None:
+                    progress_cb(len(frame_indexes))
+                if return_images:
+                    return frames
             except:
                 sly.logger.warning(
                     f"Frames {frame_indexes} not found in video {video_id}", exc_info=True
                 )
-                Thread(
-                    target=self.download_video,
-                    args=(api, video_id),
-                    kwargs={"return_images": False},
-                ).start()
+                self._download_executor.submit(
+                    self.download_video,
+                    api,
+                    video_id,
+                    **{**kwargs, "return_images": False},
+                )
         elif redownload_video:
-            Thread(
-                target=self.download_video, args=(api, video_id), kwargs={"return_images": False}
-            ).start()
+            self._download_executor.submit(
+                self.download_video,
+                api,
+                video_id,
+                **{**kwargs, "return_images": False},
+            )
 
         def name_constuctor(frame_index: int):
             return self._frame_name(video_id, frame_index)
@@ -332,33 +434,56 @@ class InferenceImageCache:
             load_generator,
             api.logger,
             return_images,
+            progress_cb=progress_cb,
+            video_id=video_id,
         )
 
-    def add_video_to_cache(self, video_id: int, video_path: Path) -> None:
+    def add_video_to_cache_by_io(self, video_id: int, video_io: BinaryIO) -> None:
+        if isinstance(self._cache, PersistentImageTTLCache):
+            with self._lock:
+                self._cache.save_video(video_id, source=video_io)
+
+    def add_video_to_cache(self, video_id: int, source: Union[str, Path, BinaryIO]) -> None:
         """
         Adds video to cache.
         """
         if isinstance(self._cache, PersistentImageTTLCache):
             with self._lock:
-                self._cache.save_video(video_id, str(video_path))
+                self._cache.save_video(video_id, source)
                 self._load_queue.delete(video_id)
+            sly.logger.debug(f"Video #{video_id} added to cache", extra={"video_id": video_id})
         else:
-            cap = cv2.VideoCapture(str(video_path))
-            frame_index = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            while cap.isOpened():
-                while self._frame_name(video_id, frame_index) in self._cache:
-                    frame_index += 1
-                if frame_index >= total_frames:
-                    break
-                cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                frame = np.array(frame)
-                self.add_frame_to_cache(frame, video_id, frame_index)
-                frame_index = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-            cap.release()
+            tmp_source = None
+            if not isinstance(source, (str, Path)):
+                with tempfile.NamedTemporaryFile(delete=False) as f:
+                    shutil.copyfileobj(source, f)
+                    tmp_source = f.name
+                    source = tmp_source
+            try:
+                with VideoFrameReader(source) as reader:
+                    for frame_index, frame in enumerate(reader):
+                        self.add_frame_to_cache(frame, video_id, frame_index)
+            finally:
+                if tmp_source is not None:
+                    silent_remove(tmp_source)
+
+    def add_image_to_cache(
+        self, key: str, image: Union[np.ndarray, BinaryIO, bytes], ext=None
+    ) -> np.ndarray:
+        """
+        Adds image to cache.
+        """
+        with self._lock:
+            self._cache.save_image(key, image, ext)
+            self._load_queue.delete(key)
+            sly.logger.debug(f"Image {key} added to cache", extra={"image_id": key})
+            return self._cache.get_image(key)
+
+    def get_image_path(self, key) -> str:
+        return str(self._cache.get_image_path(key))
+
+    def get_video_path(self, key) -> str:
+        return str(self._cache.get_video_path(key))
 
     def download_video(self, api: sly.Api, video_id: int, **kwargs) -> None:
         """
@@ -367,17 +492,59 @@ class InferenceImageCache:
         """
         return_images = kwargs.get("return_images", True)
         progress_cb = kwargs.get("progress_cb", None)
+        video_info = kwargs.get("video_info", None)
+        if video_info is None:
+            video_info = api.video.get_info_by_id(video_id)
 
-        video_info = api.video.get_info_by_id(video_id)
         self._wait_if_in_queue(video_id, api.logger)
         if not video_id in self._cache:
+            download_time = time.monotonic()
             self._load_queue.set(video_id, video_id)
-            sly.logger.debug("Downloading video #%s", video_id)
-            temp_video_path = Path("/tmp/smart_cache").joinpath(
-                f"_{sly.rand_str(6)}_" + video_info.name
-            )
-            api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
-            self.add_video_to_cache(video_id, temp_video_path)
+            try:
+                sly.logger.debug("Downloading video #%s", video_id)
+                if progress_cb is None and self.log_progress:
+                    size = video_info.file_meta.get("size", None)
+                    if size is None:
+                        size = "unknown"
+                    else:
+                        size = int(size)
+
+                    prog_n = 0
+                    prog_t = time.monotonic()
+
+                    def _progress_cb(n):
+                        nonlocal prog_n
+                        nonlocal prog_t
+                        prog_n += n
+                        cur_t = time.monotonic()
+                        if cur_t - prog_t > 3 or (isinstance(size, int) and prog_n >= size):
+                            prog_t = cur_t
+                            percent_str = ""
+                            if isinstance(size, int):
+                                percent_str = f" ({(prog_n*100) // size}%)"
+                            prog_str = (
+                                f"{(prog_n / 1000000):.2f}/{(size / 1000000):.2f} MB{percent_str}"
+                            )
+                            sly.logger.debug(
+                                "Downloading video #%s: %s",
+                                video_id,
+                                prog_str,
+                            )
+
+                    progress_cb = _progress_cb
+                temp_video_path = Path("/tmp/smart_cache").joinpath(
+                    f"_{sly.rand_str(6)}_" + video_info.name
+                )
+                api.video.download_path(video_id, temp_video_path, progress_cb=progress_cb)
+                self.add_video_to_cache(video_id, temp_video_path)
+                download_time = time.monotonic() - download_time
+                api.logger.debug(
+                    f"Video #{video_id} downloaded to cache in {download_time:.2f} sec",
+                    extra={"video_id": video_id, "download_time": download_time},
+                )
+            except Exception as e:
+                self._load_queue.delete(video_id)
+                raise e
         if return_images:
             return self.get_frames_from_cache(video_id, list(range(video_info.frames_count)))
 
@@ -507,8 +674,7 @@ class InferenceImageCache:
             state["video_id"] = video_id
             state["frame_ranges"] = list_of_ids_ranges_or_hashes
 
-        thread = Thread(target=self.cache_task, kwargs={"api": api, "state": state})
-        thread.start()
+        self._download_executor.submit(self.cache_task, api=api, state=state)
 
     def set_project_meta(self, project_id, project_meta):
         pr_meta_name = self._project_meta_name(project_id)
@@ -594,7 +760,9 @@ class InferenceImageCache:
         return f"frame_{video_id}_{frame_index}"
 
     def _video_name(self, video_id: int, video_name: str) -> str:
-        return f"video_{video_id}.{video_name.split('.')[-1]}"
+        ext = Path(video_name).suffix
+        name = f"video_{video_id}{ext}"
+        return name
 
     def _project_meta_name(self, project_id: int) -> str:
         return f"project_meta_{project_id}"
@@ -609,34 +777,65 @@ class InferenceImageCache:
         ],
         logger: Logger,
         return_images: bool = True,
+        progress_cb=None,
+        video_id=None,
     ) -> Optional[List[np.ndarray]]:
-        indexes_to_load = []
         pos_by_name = {}
         all_frames = [None for _ in range(len(indexes))]
 
-        for pos, hash_or_id in enumerate(indexes):
-            name = name_cunstructor(hash_or_id)
-            self._wait_if_in_queue(name, logger)
+        def get_one_image(item):
+            pos, index = item
+            if video_id in self._cache:
+                return pos, self.get_frame_from_cache(video_id, index)
+            return pos, self._cache.get_image(name_cunstructor(index))
 
-            if name not in self._cache:
-                self._load_queue.set(name, hash_or_id)
-                indexes_to_load.append(hash_or_id)
-                pos_by_name[name] = pos
-            elif return_images is True:
-                all_frames[pos] = self._cache.get_image(name)
+        position = 0
+        batch_size = 4
+        for batch in batched(indexes, batch_size):
+            indexes_to_load = []
+            items = []
+            for hash_or_id in batch:
+                name = name_cunstructor(hash_or_id)
+                self._wait_if_in_queue(name, logger)
 
-        if len(indexes_to_load) > 0:
-            for id_or_hash, image in load_generator(indexes_to_load):
-                name = name_cunstructor(id_or_hash)
-                self._add_to_cache(name, image)
+                if name not in self._cache and video_id not in self._cache:
+                    self._load_queue.set(name, hash_or_id)
+                    indexes_to_load.append(hash_or_id)
+                    pos_by_name[name] = position
+                elif return_images is True:
+                    items.append((position, hash_or_id))
+                position += 1
 
-                if return_images:
-                    pos = pos_by_name[name]
-                    all_frames[pos] = image
+            if len(items) > 0:
+                with ThreadPoolExecutor(min(64, len(items))) as executor:
+                    for pos, image in executor.map(get_one_image, items):
+                        all_frames[pos] = image
+                        if progress_cb is not None:
+                            progress_cb()
 
-        logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
-        logger.debug(f"Images/Frames added to cache: {indexes_to_load}")
-        logger.debug(f"Images/Frames found in cache: {set(indexes).difference(indexes_to_load)}")
+            download_time = time.monotonic()
+            if len(indexes_to_load) > 0:
+                for id_or_hash, image in load_generator(indexes_to_load):
+                    name = name_cunstructor(id_or_hash)
+                    self._add_to_cache(name, image)
+
+                    if return_images:
+                        pos = pos_by_name[name]
+                        all_frames[pos] = image
+                        if progress_cb is not None:
+                            progress_cb()
+            download_time = time.monotonic() - download_time
+
+            # logger.debug(f"All stored files: {sorted(os.listdir(self.tmp_path))}")
+            if indexes_to_load:
+                indexes_to_load = list(indexes_to_load)
+                logger.debug(
+                    f"Images/Frames added to cache: {indexes_to_load} in {download_time:.2f} sec",
+                    extra={"indexes": indexes_to_load, "download_time": download_time},
+                )
+            found = set(batch).difference(indexes_to_load)
+            if found:
+                logger.debug(f"Images/Frames found in cache: {list(found)}")
 
         if return_images:
             return all_frames
@@ -647,6 +846,41 @@ class InferenceImageCache:
             logger.debug(f"Waiting for other task to load {name}")
 
         while name in self._load_queue:
-            # TODO: sleep if slowdown
-            sleep(0.1)
+            # TODO: time.sleep if slowdown
+            time.sleep(0.1)
             continue
+
+    def download_frames_to_paths(self, api, video_id, frame_indexes, paths, progress_cb=None):
+        def _download_frame(frame_index):
+            self.download_frame(api, video_id, frame_index)
+            name = self._frame_name(video_id, frame_index)
+            return frame_index, name
+
+        def _download_and_save(this_frame_indexes, this_paths):
+            if video_id in self._cache:
+                for path, frame in zip(
+                    this_paths,
+                    self._read_frames_from_cached_video_iter(video_id, this_frame_indexes),
+                ):
+                    sly.image.write(path, frame)
+                    if progress_cb is not None:
+                        progress_cb()
+                return
+
+            futures = []
+            frame_index_to_path = {}
+            for frame_index, path in zip(this_frame_indexes[:5], this_paths[:5]):
+                frame_index_to_path[frame_index] = path
+                futures.append(self._download_executor.submit(_download_frame, frame_index))
+            for future in as_completed(futures):
+                frame_index, name = future.result()
+                path = frame_index_to_path[frame_index]
+                self._cache.copy_to(name, path)
+                if progress_cb is not None:
+                    progress_cb()
+            if len(this_frame_indexes) > 5:
+                _download_and_save(this_frame_indexes[5:], this_paths[5:])
+
+        # optimization for frame read from video file
+        frame_indexes, paths = zip(*sorted(zip(frame_indexes, paths), key=lambda x: x[0]))
+        _download_and_save(frame_indexes, paths)

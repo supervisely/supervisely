@@ -2,7 +2,6 @@
 import os
 import re
 import tempfile
-from collections import OrderedDict
 from typing import Dict, List
 from uuid import UUID
 
@@ -11,7 +10,7 @@ from requests_toolbelt import MultipartDecoder, MultipartEncoder
 
 import supervisely.volume_annotation.constants as constants
 from supervisely._utils import batched
-from supervisely.api.entity_annotation.figure_api import FigureApi
+from supervisely.api.entity_annotation.figure_api import FigureApi, FigureInfo
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.mask_3d import Mask3D
@@ -470,7 +469,7 @@ class VolumeFigureApi(FigureApi):
                 for figure in figures:
                     if figure.key() == key:
                         geometry_data = figure.geometry.data
-                        header = self._create_header_for_geometry(figure.geometry)
+                        header = figure.geometry.create_header()
                         geometry_bytes = encode(geometry_data.astype(uint8), header)
                         self.upload_sf_geometries([key], {key: geometry_bytes}, key_id_map)
 
@@ -625,15 +624,22 @@ class VolumeFigureApi(FigureApi):
             geometry = Mask3D.create_from_file(figure_path)
             spatial_figure._set_3d_geometry(geometry)
 
-    def _create_header_for_geometry(self, geometry: Mask3D) -> OrderedDict:
+    def download(
+        self, dataset_id: int, volume_ids: List[int] = None, skip_geometry: bool = False, **kwargs
+    ) -> Dict[int, List[FigureInfo]]:
         """
-        Create header for encoding Mask3D to NRRD bytes
+        Method returns a dictionary with pairs of volume ID and list of FigureInfo for the given dataset ID. Can be filtered by volume IDs.
+
+        :param dataset_id: Dataset ID in Supervisely.
+        :type dataset_id: int
+        :param volume_ids: Specify the list of volume IDs within the given dataset ID. If volume_ids is None, the method returns all possible pairs of images with figures. Note: Consider using `sly.batched()` to ensure that no figures are lost in the response.
+        :type volume_ids: List[int], optional
+        :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
+        :type skip_geometry: bool
+
+        :return: A dictionary where keys are volume IDs and values are lists of figures.
+        :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
-        header = OrderedDict()
-        if geometry._space is not None:
-            header["space"] = geometry._space
-        if geometry._space_directions is not None:
-            header["space directions"] = geometry._space_directions
-        if geometry._space_origin is not None:
-            header["space origin"] = geometry._space_origin.to_json()["space_origin"]
-        return header
+        if kwargs.get("image_ids", False) is not False:
+            volume_ids = kwargs["image_ids"]  # backward compatibility
+        return super().download(dataset_id, volume_ids, skip_geometry)

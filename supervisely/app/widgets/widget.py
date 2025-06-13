@@ -143,7 +143,7 @@ class Widget(Hidable, Disableable, Loading):
             and JinjaWidgets().auto_widget_id is True
             and ("autoId" in widget_id or "AutoId" in widget_id)
         ):
-            # regenerate id with class name at the beggining
+            # regenerate id with class name at the beginning
             self.widget_id = generate_id(type(self).__name__)
 
         if widget_id is None:

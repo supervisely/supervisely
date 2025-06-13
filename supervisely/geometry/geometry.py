@@ -1,26 +1,38 @@
 # coding: utf-8
-
-from copy import deepcopy
-from typing import List, Tuple
-
-import numpy as np
-from supervisely.io.json import JsonSerializable
-from supervisely.geometry.constants import (
-    ANY_SHAPE,
-    LABELER_LOGIN,
-    UPDATED_AT,
-    CREATED_AT,
-    ID,
-    CLASS_ID,
-)
-from supervisely import logger
+from __future__ import annotations
 
 import warnings
+from copy import deepcopy
+from math import ceil, floor
+from typing import TYPE_CHECKING, Dict, List, Tuple
+
+import numpy as np
+
+from supervisely import logger
+from supervisely.geometry.constants import (
+    ANY_SHAPE,
+    BITMAP,
+    CLASS_ID,
+    CREATED_AT,
+    EXTERIOR,
+    ID,
+    INTERIOR,
+    LABELER_LOGIN,
+    LOC,
+    NODES,
+    ORIGIN,
+    POINTS,
+    UPDATED_AT,
+)
+from supervisely.io.json import JsonSerializable
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 if not hasattr(np, "bool"):
     np.bool = np.bool_
+
+if TYPE_CHECKING:
+    from supervisely.geometry.rectangle import Rectangle
 
 
 # @TODO: use properties instead of field if it makes sense
@@ -28,7 +40,12 @@ class Geometry(JsonSerializable):
     """ """
 
     def __init__(
-        self, sly_id=None, class_id=None, labeler_login=None, updated_at=None, created_at=None
+        self,
+        sly_id=None,
+        class_id=None,
+        labeler_login=None,
+        updated_at=None,
+        created_at=None,
     ):
         self.sly_id = sly_id
         self.labeler_login = labeler_login
@@ -201,7 +218,7 @@ class Geometry(JsonSerializable):
         """
         raise NotImplementedError()
 
-    def to_bbox(self):
+    def to_bbox(self) -> Rectangle:
         """
         :return: Rectangle
         """
@@ -248,9 +265,13 @@ class Geometry(JsonSerializable):
 
         from supervisely.geometry.alpha_mask import AlphaMask
         from supervisely.geometry.bitmap import Bitmap
-        from supervisely.geometry.rectangle import Rectangle
+        from supervisely.geometry.helpers import (
+            geometry_to_alpha_mask,
+            geometry_to_bitmap,
+            geometry_to_polygon,
+        )
         from supervisely.geometry.polygon import Polygon
-        from supervisely.geometry.helpers import geometry_to_bitmap, geometry_to_polygon, geometry_to_alpha_mask
+        from supervisely.geometry.rectangle import Rectangle
 
         res = []
         if new_geometry == Bitmap:
@@ -269,3 +290,144 @@ class Geometry(JsonSerializable):
                 )
             )
         return res
+
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:
+        """
+        Convert geometry from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
+
+        This method should be reimplemented in subclasses if needed.
+
+        Point order: [x, y]
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Json data with geometry config.
+        :type data: :class:`dict`
+        :param image_size: Image size in pixels (height, width).
+        :type image_size: List[int]
+        :return: Json data with coordinates converted to pixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+        height, width = image_size[:2]
+
+        # Point, Polygon, Polyline. Rectangle have its own implementation
+        if data.get(POINTS) is not None:
+            exterior = data[POINTS][EXTERIOR]
+            interior = data[POINTS][INTERIOR]
+            for point in exterior:
+                point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+            for coords in interior:
+                for point in coords:
+                    point[0] = floor(point[0]) - 1 if point[0] == width else floor(point[0])
+                    point[1] = floor(point[1]) - 1 if point[1] == height else floor(point[1])
+            data[POINTS][EXTERIOR] = exterior
+            data[POINTS][INTERIOR] = interior
+
+        # Bitmap and AlphaMask
+        if data.get(BITMAP) is not None:
+            origin = data[BITMAP][ORIGIN]
+            data[BITMAP][ORIGIN] = [floor(origin[0]), floor(origin[1])]
+
+        # GraphNodes and Cuboid
+        if data.get(NODES) is not None:
+            nodes = data[NODES]
+            for node_key in nodes:
+                nodes[node_key][LOC] = [
+                    (
+                        floor(nodes[node_key][LOC][0]) - 1
+                        if nodes[node_key][LOC][0] == width
+                        else floor(nodes[node_key][LOC][0])
+                    ),
+                    (
+                        floor(nodes[node_key][LOC][1]) - 1
+                        if nodes[node_key][LOC][1] == height
+                        else floor(nodes[node_key][LOC][1])
+                    ),
+                ]
+            data[NODES] = nodes
+        return data
+
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+        This method should be reimplemented in subclasses if needed.
+
+        Point order: [x, y]
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Json data with geometry config.
+        :type data: :class:`dict`
+        :return: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+
+        # Point, Polygon, Polyline. Rectangle have its own implementation
+        if data.get(POINTS) is not None:
+            exterior = data[POINTS][EXTERIOR]
+            interior = data[POINTS][INTERIOR]
+            for point in exterior:
+                point[0] = point[0] + 0.5
+                point[1] = point[1] + 0.5
+            for coords in interior:
+                for point in coords:
+                    point[0] = point[0] + 0.5
+                    point[1] = point[1] + 0.5
+            data[POINTS][EXTERIOR] = exterior
+            data[POINTS][INTERIOR] = interior
+
+        # Bitmap and AlphaMask
+        if data.get(BITMAP) is not None:
+            origin = data[BITMAP][ORIGIN]
+            data[BITMAP][ORIGIN] = [floor(origin[0]), floor(origin[1])]
+
+        # GraphNodes and Cuboid
+        if data.get(NODES) is not None:
+            nodes = data[NODES]
+            for node_key in nodes:
+                nodes[node_key][LOC] = [
+                    floor(nodes[node_key][LOC][0]) + 0.5,
+                    floor(nodes[node_key][LOC][1]) + 0.5,
+                ]
+            data[NODES] = nodes
+        return data
+
+    # def _to_pixel_coordinate_system(self):
+    #     """
+    #     This method should be implemented in subclasses.
+
+    #     Convert geometry from subpixel precision to pixel precision by subtracting a subpixel offset from the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     :return: New instance of Geometry object in pixel coordinates system
+    #     :rtype: :class:`Geometry<Geometry>`
+    #     """
+    #     return self
+
+    # def _to_subpixel_coordinate_system(self):
+    #     """
+    #     This method should be implemented in subclasses.
+
+    #     Convert geometry from pixel precision to subpixel precision by adding a subpixel offset to the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     :return: New instance of Geometry object in subpixel coordinates system
+    #     :rtype: :class:`Geometry<Geometry>`
+    #     """
+    #     return self

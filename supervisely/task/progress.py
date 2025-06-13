@@ -5,7 +5,7 @@ import inspect
 import math
 import re
 from functools import partial, wraps
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 from tqdm import tqdm
 
@@ -41,7 +41,7 @@ class Progress:
         import supervisely as sly
         from supervisely.sly_logger import logger
 
-        address = 'https://app.supervise.ly/'
+        address = 'https://app.supervisely.com/'
         token = 'Your Supervisely API Token'
         api = sly.Api(address, token)
 
@@ -79,6 +79,8 @@ class Progress:
         is_size: Optional[bool] = False,
         need_info_log: Optional[bool] = False,
         min_report_percent: Optional[int] = 1,
+        log_extra: Optional[Dict[str, str]] = None,
+        update_task_progress: Optional[bool] = True,
     ):
         self.is_size = is_size
         self.message = message
@@ -94,6 +96,8 @@ class Progress:
         self.logger = logger if ext_logger is None else ext_logger
         self.report_every = max(1, math.ceil((total_cnt or 0) / 100 * min_report_percent))
         self.need_info_log = need_info_log
+        self.log_extra = log_extra
+        self.update_task_progress = update_task_progress
 
         mb5 = 5 * 1024 * 1024
         if self.is_size and self.is_total_unknown:
@@ -169,9 +173,15 @@ class Progress:
             extra["current_label"] = self.current_label
             extra["total_label"] = self.total_label
 
-        self.logger.info("progress", extra=extra)
+        if self.log_extra:
+            extra.update(self.log_extra)
+
+        if self.update_task_progress:
+            self.logger.info("progress", extra=extra)
         if self.need_info_log is True:
-            self.logger.info(f"{self.message} [{self.current_label} / {self.total_label}]")
+            self.logger.info(
+                f"{self.message} [{self.current_label} / {self.total_label}]", extra=self.log_extra
+            )
 
     def need_report(self) -> bool:
         if (
@@ -424,20 +434,22 @@ class tqdm_sly(tqdm, Progress):
             self.offset = 0  # to prevent overfilling of tqdm in console
         else:
             for k, v in {
-                "disable": False,  # do not disable for now
+                "disable": True,
                 "delay": 0,  # sec init delay
                 "mininterval": 3,  # sec between reports
                 "miniters": 0,
-                "file": SlyWrapFile(),
+                # "file": SlyWrapFile(),
             }.items():
                 kwargs_tqdm.setdefault(k, v)
+
+            desc = args[1] if len(args) > 1 else kwargs.get("desc", "Processing")
+            logger.info("%s ...", desc)
 
             tqdm.__init__(
                 self,
                 *args,
                 **kwargs_tqdm,
             )
-            self.disable = True  # now disable tqdm logging
 
             kwargs = self._handle_args_and_kwargs_prod(args, kwargs)
             Progress.__init__(
@@ -559,7 +571,7 @@ class tqdm_sly(tqdm, Progress):
                 kwargs_tqdm["unit_scale"] = True
         return kwargs_tqdm
 
-    def _handle_args_and_kwargs_prod(self, args: tuple, kwargs: dict):
+    def _handle_args_and_kwargs_prod(self, args: tuple, kwargs: dict) -> Dict[str, str]:
         # pop and convert every possible (and relevant) kwarg from tqdm
         # mention that tqdm is a prior parent class
         if len(args) < 2:  # i.e. 'desc' not set as a positional argument

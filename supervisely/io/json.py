@@ -3,6 +3,7 @@ import json
 import os
 from typing import Dict, Optional
 
+import aiofiles
 import jsonschema
 
 
@@ -230,3 +231,31 @@ def validate_json(data: Dict, schema: Dict, raise_error: bool = False) -> bool:
         if raise_error:
             raise ValueError("JSON data is invalid. See error message for more details.") from err
         return False
+
+
+async def dump_json_file_async(data: Dict, filename: str, indent: Optional[int] = 4) -> None:
+    """
+    Write given data in json format in file with given name asynchronously.
+
+    :param data: Data in json format as a dict.
+    :type data: dict
+    :param filename: Target file path to write data.
+    :type filename: str
+    :param indent: Json array elements and object members will be pretty-printed with that indent level.
+    :type indent: int, optional
+    :returns: None
+    :rtype: :class:`NoneType`
+    :Usage example:
+
+     .. code-block:: python
+
+        import supervisely as sly
+        from supervisely._utils import run_coroutine
+
+        data = {1: 'example'}
+
+        coroutine = sly.json.dump_json_file_async(data, '/home/admin/work/projects/examples/1.json')
+        run_coroutine(coroutine)
+    """
+    async with aiofiles.open(filename, "w") as fout:
+        await fout.write(json.dumps(data, indent=indent))

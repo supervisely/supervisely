@@ -1359,6 +1359,22 @@ def get_labeling_tool_url(
     return res
 
 
+def get_new_labeling_tool_url(dataset_id: int, image_id: int) -> str:
+    """Return a URL to the image in the new Image Labeling Toolbox (v2).
+
+    :param dataset_id: Dataset ID.
+    :type dataset_id: int
+    :param image_id: Image ID.
+    :type image_id: int
+    :return: URL to the image in the new Image Labeling Toolbox (v2).
+    :rtype: str
+    """
+    res = f"/app/images2/?datasetId={dataset_id}&imageId={image_id}"
+    if is_development():
+        res = abs_url(res)
+    return res
+
+
 def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling tool") -> str:
     """Returns html link to labeling tool for given image.
 
@@ -1370,3 +1386,17 @@ def get_labeling_tool_link(url: str, name: Optional[str] = "open in labeling too
     :rtype: str
     """
     return f'<a href="{url}" rel="noopener noreferrer" target="_blank">{name}<i class="zmdi zmdi-open-in-new" style="margin-left: 5px"></i></a>'
+
+
+def get_size_from_bytes(data: bytes) -> Tuple[int, int]:
+    """
+    Get size of image from bytes.
+
+    :param data: Bytes of image.
+    :type data: bytes
+    :return: Height and width of image
+    :rtype: :class:`Tuple[int, int]`
+    """
+    image = PILImage.open(io.BytesIO(data))
+    width, height = image.size
+    return width, height

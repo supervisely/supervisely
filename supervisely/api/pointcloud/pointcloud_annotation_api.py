@@ -1,8 +1,12 @@
 # coding: utf-8
 
 # docs
-from typing import Dict, List, NamedTuple, Optional
+import asyncio
+from typing import Callable, Dict, List, Optional, Union
 
+from tqdm import tqdm
+
+from supervisely._utils import batched
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
 from supervisely.pointcloud_annotation.pointcloud_annotation import PointcloudAnnotation
@@ -34,7 +38,7 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         pointcloud_id = 19618685
         ann_info = api.pointcloud.annotation.download(src_pointcloud_id)
@@ -174,3 +178,92 @@ class PointcloudAnnotationAPI(EntityAnnotationAPI):
             ann.figures,
             key_id_map,
         )
+
+    async def download_async(
+        self,
+        pointcloud_id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> Dict:
+        """
+        Download information about PointcloudAnnotation by Point Cloud ID from API asynchronously.
+
+        :param pointcloud_id: Point Cloud ID in Supervisely.
+        :type pointcloud_id: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Progress callback to track download progress.
+        :type progress_cb: Union[tqdm, Callable], optional
+        :return: Information about PointcloudAnnotation in json format
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pointcloud_id = 198702499
+            loop = sly.utils.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.pointcloud.annotation.download_async(pointcloud_id))
+        """
+        return await self.download_bulk_async(
+            pointcloud_ids=[pointcloud_id],
+            semaphore=semaphore,
+            progress_cb=progress_cb,
+        )
+
+    async def download_bulk_async(
+        self,
+        pointcloud_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[Dict]:
+        """
+        Download information about PointcloudAnnotation in bulk by Point Cloud IDs from API asynchronously.
+
+        :param pointcloud_ids: Point Cloud IDs in Supervisely.
+        :type pointcloud_ids: List[int]
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param progress_cb: Progress callback to track download progress.
+        :type progress_cb: Union[tqdm, Callable], optional
+        :return: Information about PointcloudAnnotations in json format
+        :rtype: :class:`list`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            pointcloud_ids = [198702499, 198702500, 198702501]
+            loop = sly.utils.get_or_create_event_loop()
+            ann_infos = loop.run_until_complete(api.pointcloud.annotation.download_bulk_async(pointcloud_ids))
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def fetch_with_semaphore(batch):
+            async with semaphore:
+                json_data = {self._entity_ids_str: batch}
+                response = await self._api.post_async(
+                    self._method_download_bulk,
+                    json=json_data,
+                )
+                if progress_cb is not None:
+                    progress_cb(len(batch))
+                return response.json()
+
+        tasks = [fetch_with_semaphore(batch) for batch in batched(pointcloud_ids)]
+        responses = await asyncio.gather(*tasks)
+        json_response = [item for response in responses for item in response]
+        return json_response

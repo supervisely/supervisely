@@ -1,0 +1,10 @@
+# Intersection over Union threshold that will be used for object matching.
+# It mostly affects visualizations, such as Outcome Counts, Confusion Matrix, and image previews.
+iou_threshold: 0.5
+
+# Confidence threshold.
+# Set 'auto' to calculate the optimal confidence threshold.
+confidence_threshold: auto
+
+# Maximum number of detections per image.
+max_detections: 100

@@ -4,8 +4,8 @@ from supervisely.api.api import Api
 from supervisely import generate_free_name, logger, ProjectMeta
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
+from supervisely.convert.volume.dicom import dicom_helper as h
 from supervisely.volume.volume import inspect_dicom_series, get_extension, read_dicom_serie_volume
-
 
 class DICOMConverter(VolumeConverter):
     class Item(VolumeConverter.Item):
@@ -60,6 +60,9 @@ class DICOMConverter(VolumeConverter):
                     f"Can not recognize file extension {item_path}, serie will be skipped"
                 )
                 continue
+
+            for dicom_path in dicom_paths:
+                h.convert_to_monochrome2(dicom_path)
             _, meta = read_dicom_serie_volume(dicom_paths, anonymize=True)
             item = self.Item(serie_id=dicom_id, item_paths=dicom_paths, volume_meta=meta)
             self._items.append(item)

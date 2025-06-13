@@ -112,6 +112,7 @@ class FastTable(Widget):
         sort_order: Optional[Literal["asc", "desc"]] = None,
         width: Optional[str] = "auto",
         widget_id: Optional[str] = None,
+        show_header: bool = True,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -127,6 +128,7 @@ class FastTable(Widget):
         self._clickable_rows = False
         self._clickable_cells = False
         self._search_str = ""
+        self._show_header = show_header
         self._project_meta = self._unpack_project_meta(project_meta)
 
         # table_options
@@ -168,6 +170,11 @@ class FastTable(Widget):
             search_value = StateJson()[self.widget_id]["search"]
             self._filtered_data = self.search(search_value)
             self._rows_total = len(self._filtered_data)
+
+            if self._rows_total > 0 and self._active_page == 0: # if previous filtered data was empty
+                self._active_page = 1
+                StateJson()[self.widget_id]["page"] = self._active_page
+
             self._sorted_data = self._sort_table_data(self._filtered_data)
             self._sliced_data = self._slice_table_data(
                 self._sorted_data, actual_page=self._active_page
@@ -176,6 +183,7 @@ class FastTable(Widget):
             DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
             DataJson()[self.widget_id]["total"] = self._rows_total
             DataJson().send_changes()
+            StateJson().send_changes()
 
     def get_json_data(self) -> Dict[str, Any]:
         """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
@@ -206,6 +214,7 @@ class FastTable(Widget):
                 "fixColumns": self._fix_columns,
             },
             "pageSize": self._page_size,
+            "showHeader": self._show_header,
         }
 
     def get_json_state(self) -> Dict[str, Any]:
@@ -322,10 +331,14 @@ class FastTable(Widget):
         self._sorted_data = self._sort_table_data(self._source_data)
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["total"] = len(self._source_data)
         DataJson().send_changes()
+        self._active_page = 1
+        StateJson()[self.widget_id]["page"] = self._active_page
+        StateJson().send_changes()
         self.clear_selection()
 
     def to_json(self, active_page: Optional[bool] = False) -> Dict[str, Any]:
@@ -339,7 +352,7 @@ class FastTable(Widget):
         if active_page is True:
             temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
         else:
-            temp_parsed_data = self._parsed_source_data
+            temp_parsed_data = [d["items"] for d in self._parsed_source_data["data"]]
         widget_data = {}
         widget_data["data"] = temp_parsed_data
         widget_data["columns"] = DataJson()[self.widget_id]["columns"]
@@ -362,7 +375,7 @@ class FastTable(Widget):
         if active_page is True:
             temp_parsed_data = [d["items"] for d in self._parsed_active_data["data"]]
         else:
-            temp_parsed_data = self._parsed_source_data
+            temp_parsed_data = [d["items"] for d in self._parsed_source_data["data"]]
         packed_data = pd.DataFrame(data=temp_parsed_data, columns=self._columns_first_idx)
         return packed_data
 
@@ -458,6 +471,17 @@ class FastTable(Widget):
             DataJson()[self.widget_id]["total"] = self._rows_total
             DataJson().send_changes()
             return popped_row
+
+    def clear(self) -> None:
+        """Clears the table data."""
+        self._source_data = pd.DataFrame(columns=self._columns_first_idx)
+        self._parsed_source_data = {"data": [], "columns": []}
+        self._sliced_data = pd.DataFrame(columns=self._columns_first_idx)
+        self._parsed_active_data = {"data": [], "columns": []}
+        self._rows_total = 0
+        DataJson()[self.widget_id]["data"] = []
+        DataJson()[self.widget_id]["total"] = 0
+        DataJson().send_changes()
 
     def row_click(self, func: Callable[[ClickedRow], Any]) -> Callable[[], None]:
         """Decorator for function that handles row click event.
@@ -792,7 +816,9 @@ class FastTable(Widget):
         failed_column_idxs = []
         failed_column_idx = 0
         for column, value in zip(self._source_data.columns, row):
-            col_type = type(self._source_data[column][0])
+            if len(self._source_data[column].values) == 0:
+                continue
+            col_type = type(self._source_data[column].values[0])
             if col_type == str and not isinstance(value, str):
                 failed_column_idxs.append(
                     {
@@ -814,3 +840,36 @@ class FastTable(Widget):
             raise TypeError(
                 f"Row contains values of types that do not match the data types in the columns: {failed_column_idxs}"
             )
+
+    def update_cell_value(self, row: int, column: int, value: Any) -> None:
+        """Updates the value of the cell in the table.
+
+        :param row: Index of the row
+        :type row: int
+        :param column: Index of the column
+        :type column: int
+        :param value: New value
+        :type value: Any
+        """
+
+        self._source_data.iat[row, column] = value
+        self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
+        self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
+        self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
+        self._validate_sort_attrs()
+        self._filtered_data = self.search(self._search_str)
+        self._rows_total = len(self._filtered_data)
+        self._sorted_data = self._sort_table_data(self._filtered_data)
+
+        increment = 0 if self._rows_total % self._page_size == 0 else 1
+        max_page = self._rows_total // self._page_size + increment
+        if self._active_page > max_page: # active page is out of range (in case of the filtered data)
+            self._active_page = max_page
+            StateJson()[self.widget_id]["page"] = self._active_page
+
+        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
+        StateJson().send_changes()

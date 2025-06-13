@@ -2,14 +2,14 @@
 
 # TODO: check that wireguard-tools is installed
 
-# ./sly-net.sh up XXX https://app.supervise.ly .
+# ./sly-net.sh up XXX https://app.supervisely.com .
 # ./sly-net.sh <up|down> <token> <server_address> <config and keys folder>
 
 set -u
 set -e
 set -o pipefail
 FOLDER="${4:-.}"
-SLY_NET_SERVER="${3:-https://app.supervise.ly}"
+SLY_NET_SERVER="${3:-https://app.supervisely.com}"
 cd "$FOLDER"
 cat <<EOT > wg0.conf
 [Interface]

@@ -40,6 +40,8 @@ class Button(Widget):
     :type style: Optional[str]
     :param call_on_click: Function to be called on button click.
     :type call_on_click: Optional[str]
+    :param icon_color: Color of the icon.
+    :type icon_color: Optional[str]
 
     :Usage example:
     .. code-block:: python
@@ -67,6 +69,8 @@ class Button(Widget):
         emit_on_click: Optional[str] = None,
         style: Optional[str] = None,
         call_on_click: Optional[str] = None,
+        visible_by_vue_field: Optional[str] = "",
+        icon_color: Optional[str] = None,
     ):
         self._widget_routes = {}
 
@@ -79,7 +83,10 @@ class Button(Widget):
         if icon is None:
             self._icon = ""
         else:
-            self._icon = f'<i class="{icon}" style="margin-right: {icon_gap}px"></i>'
+            icon_style = f"margin-right: {icon_gap}px"
+            if icon_color is not None:
+                icon_style += f"; color: {icon_color}"
+            self._icon = f'<i class="{icon}" style="{icon_style}"></i>'
 
         self._loading = False
         self._disabled = False
@@ -88,6 +95,7 @@ class Button(Widget):
         self._emit_on_click = emit_on_click
         self._style = style
         self._call_on_click = call_on_click
+        self._visible_by_vue_field = visible_by_vue_field
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -113,11 +121,12 @@ class Button(Widget):
             "disabled": self._disabled,
             "icon": self._icon,
             "link": self._link,
+            "style": self._style,
         }
 
     def get_json_state(self) -> None:
         """Button widget doesn't have state, so this method returns None."""
-        return None
+        return {"visible_by_vue_field": self._visible_by_vue_field}
 
     @property
     def text(self) -> str:
@@ -261,6 +270,26 @@ class Button(Widget):
         :rtype: bool
         """
         return self._disabled
+    
+    @property
+    def style(self) -> Optional[str]:
+        """Returns the CSS style applied to the button.
+
+        :return: CSS style applied to the button.
+        :rtype: Optional[str]
+        """
+        return self._style
+    
+    @style.setter
+    def style(self, value: Optional[str]) -> None:
+        """Sets the CSS style to be applied to the button.
+
+        :param value: CSS style to be applied to the button.
+        :type value: Optional[str]
+        """
+        self._style = value
+        DataJson()[self.widget_id]["style"] = self._style
+        DataJson().send_changes()
 
     @disabled.setter
     def disabled(self, value: bool) -> None:

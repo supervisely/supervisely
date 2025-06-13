@@ -25,6 +25,8 @@ class COCOConverter(ImageConverter):
         super().__init__(input_data, labeling_interface, upload_as_links, remote_files_map)
 
         self._coco_categories = []
+        self._supports_links = True
+        self._force_shape_for_links = self.upload_as_links
 
     def __str__(self) -> str:
         return AvailableImageConverters.COCO
@@ -56,6 +58,8 @@ class COCOConverter(ImageConverter):
     def validate_format(self) -> bool:
         from pycocotools.coco import COCO  # pylint: disable=import-error
 
+        if self.upload_as_links:
+            self._download_remote_ann_files()
         detected_ann_cnt = 0
         images_list, ann_paths = [], []
         for root, _, files in os.walk(self._input_data):
@@ -145,7 +149,8 @@ class COCOConverter(ImageConverter):
         if item.ann_data is None:
             return Annotation.from_img_path(item.path)
         else:
-            item.set_shape()
+            if not self.upload_as_links:
+                item.set_shape()
             ann = coco_helper.create_supervisely_annotation(
                 item,
                 meta,

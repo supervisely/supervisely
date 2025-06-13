@@ -1,16 +1,17 @@
 # coding: utf-8
 
+import asyncio
 import os
 import re
-from typing import Callable, List, Literal, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from tqdm import tqdm
 
+from supervisely._utils import batched
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.api.entity_annotation.entity_annotation_api import EntityAnnotationAPI
 from supervisely.api.module_api import ApiField
-from supervisely.collection.key_indexed_collection import DuplicateKeyError
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import (
@@ -58,7 +59,7 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         volume_id = 19581134
         ann_info = api.volume.annotation.download(volume_id)
@@ -128,7 +129,9 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         volume_info = self._api.volume.get_info_by_id(volume_id)
         return self._download(volume_info.dataset_id, volume_id)
 
-    def append(self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None):
+    def append(
+        self, volume_id: int, ann: VolumeAnnotation, key_id_map: KeyIdMap = None, volume_info=None
+    ):
         """
         Loads VolumeAnnotation to a given volume ID in the API.
 
@@ -159,13 +162,14 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
         else:
             figures = ann.figures
 
-        info = self._api.volume.get_info_by_id(volume_id)
+        if volume_info is None:
+            volume_info = self._api.volume.get_info_by_id(volume_id)
         self._append(
             self._api.volume.tag,
             self._api.volume.object,
             self._api.volume.figure,
-            info.project_id,
-            info.dataset_id,
+            volume_info.project_id,
+            volume_info.dataset_id,
             volume_id,
             ann.tags,
             ann.objects,
@@ -453,3 +457,102 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
                         nrrd_paths.remove(nrrd_path)
                         keep_nrrd_paths.remove(nrrd_path)
         return stl_paths, nrrd_paths, keep_nrrd_paths
+
+    async def download_async(
+        self,
+        volume_id: int,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        integer_coords: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> Dict:
+        """
+        Download information about VolumeAnnotation by volume ID from API asynchronously.
+
+        :param volume_id: Volume ID in Supervisely.
+        :type volume_id: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
+        :type integer_coords: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: Information about VolumeAnnotation in json format
+        :rtype: :class:`dict`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_id = 198702499
+            loop = sly.utils.get_or_create_event_loop()
+            ann_info = loop.run_until_complete(api.volume.annotation.download_async(volume_id))
+        """
+        return await self.download_bulk_async(
+            volume_ids=[volume_id],
+            semaphore=semaphore,
+            integer_coords=integer_coords,
+            progress_cb=progress_cb,
+        )
+
+    async def download_bulk_async(
+        self,
+        volume_ids: List[int],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        integer_coords: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+    ) -> List[Dict]:
+        """
+        Download information about VolumeAnnotation in bulk by volume IDs from API asynchronously.
+
+        :param volume_ids: List of Volume IDs in Supervisely. All volumes must be from the same dataset.
+        :type volume_ids: int
+        :param semaphore: Semaphore to limit the number of parallel downloads.
+        :type semaphore: asyncio.Semaphore, optional
+        :param integer_coords: If True, returns coordinates as integers for objects. If False, returns as floats.
+        :type integer_coords: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :return: Information about VolumeAnnotations in json format
+        :rtype: :class:`list`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_ids = [198702499, 198702500, 198702501]
+            loop = sly.utils.get_or_create_event_loop()
+            ann_infos = loop.run_until_complete(api.volume.annotation.download_bulk_async(volume_ids))
+        """
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def fetch_with_semaphore(batch):
+            async with semaphore:
+                json_data = {
+                    self._entity_ids_str: batch,
+                    ApiField.INTEGER_COORDS: integer_coords,
+                }
+                response = await self._api.post_async(
+                    self._method_download_bulk,
+                    json=json_data,
+                )
+                if progress_cb is not None:
+                    progress_cb(len(batch))
+                return response.json()
+
+        tasks = [fetch_with_semaphore(batch) for batch in batched(volume_ids)]
+        responses = await asyncio.gather(*tasks)
+        json_response = [item for response in responses for item in response]
+        return json_response

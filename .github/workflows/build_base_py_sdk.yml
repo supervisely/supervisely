@@ -25,7 +25,7 @@ jobs:
           docker-images: false
           swap-storage: true
       - name: Build and Push Docker Image
-        uses: mr-smithers-excellent/docker-build-push@v5
+        uses: mr-smithers-excellent/docker-build-push@v6
         with:
           image: supervisely/base-py-sdk
           tags: ${{ github.event.inputs.tag_version }}

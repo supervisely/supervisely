@@ -45,6 +45,7 @@ from supervisely.app.widgets.select_project.select_project import SelectProject
 from supervisely.app.widgets.select_dataset.select_dataset import SelectDataset
 from supervisely.app.widgets.select_item.select_item import SelectItem
 from supervisely.app.widgets.select_app_session.select_app_session import SelectAppSession
+from supervisely.app.widgets.select_cuda.select_cuda import SelectCudaDevice
 from supervisely.app.widgets.identity.identity import Identity
 from supervisely.app.widgets.dataset_thumbnail.dataset_thumbnail import DatasetThumbnail
 from supervisely.app.widgets.select_tag_meta.select_tag_meta import SelectTagMeta
@@ -144,3 +145,10 @@ from supervisely.app.widgets.tags_table.tags_table import TagsTable
 from supervisely.app.widgets.checkbox_field.checkbox_field import CheckboxField
 from supervisely.app.widgets.tree_select.tree_select import TreeSelect
 from supervisely.app.widgets.select_dataset_tree.select_dataset_tree import SelectDatasetTree
+from supervisely.app.widgets.grid_gallery_v2.grid_gallery_v2 import GridGalleryV2
+from supervisely.app.widgets.report_thumbnail.report_thumbnail import ReportThumbnail
+from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
+from supervisely.app.widgets.bokeh.bokeh import Bokeh
+from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
+from supervisely.app.widgets.select_collection.select_collection import SelectCollection
+from supervisely.app.widgets.sampling.sampling import Sampling

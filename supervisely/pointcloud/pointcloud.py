@@ -225,7 +225,7 @@ def get_labeling_tool_url(dataset_id: int, pointcloud_id: int):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
@@ -233,7 +233,7 @@ def get_labeling_tool_url(dataset_id: int, pointcloud_id: int):
 
         print(url)
         # Output:
-        # https://dev.supervise.ly/app/point-clouds/?datasetId=55875&pointCloudId=19373403
+        # https://app.supervisely.com/app/point-clouds/?datasetId=55875&pointCloudId=19373403
     """
 
     res = f"/app/point-clouds/?datasetId={dataset_id}&pointCloudId={pointcloud_id}"
@@ -268,7 +268,7 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         pointcloud_id = 19373403
         pcd_info = api.pointcloud.get_info_by_id(pointcloud_id)
@@ -280,7 +280,7 @@ def get_labeling_tool_link(url, name="open in labeling tool"):
         print(link)
         # Output:
         # <a
-        #     href="https://dev.supervise.ly/app/point-clouds/?datasetId=55875&pointCloudId=19373403"
+        #     href="https://app.supervisely.com/app/point-clouds/?datasetId=55875&pointCloudId=19373403"
         #     rel="noopener noreferrer"
         #     target="_blank"
         # >

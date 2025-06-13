@@ -30,6 +30,8 @@ from supervisely.task.progress import Progress, tqdm_sly
 from supervisely.video_annotation.frame import Frame
 from supervisely.video_annotation.key_id_map import KeyIdMap
 
+KITTI_ITEM_DIR_NAME = "velodyne"
+
 
 class EpisodeItemPaths(NamedTuple):
     #: :class:`str`: Full pointcloud file path of item
@@ -153,9 +155,10 @@ class PointcloudEpisodeDataset(PointcloudDataset):
 
     def _read(self):
         if not dir_exists(self.item_dir):
-            raise NotADirectoryError(
-                f"Cannot read dataset {self.name}: {self.item_dir} directory not found"
-            )
+            message = f"Cannot read dataset '{self.name}': '{self.item_dir}' directory not found"
+            if dir_exists(os.path.join(self.directory, KITTI_ITEM_DIR_NAME)):
+                message = f"Cannot read dataset '{self.name}'. The item directory '{KITTI_ITEM_DIR_NAME}' was found. This appears to be a KITTI dataset and will be skipped."
+            raise NotADirectoryError(message)
 
         try:
             item_paths = sorted(list_files(self.item_dir, filter_fn=self._has_valid_ext))
@@ -493,6 +496,22 @@ class PointcloudEpisodeProject(PointcloudProject):
         return train_items, val_items
 
     @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for PointcloudEpisodeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for PointcloudEpisodeProject class now."
+        )
+
+    @staticmethod
     def download(
         api: Api,
         project_id: int,
@@ -504,6 +523,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         batch_size: Optional[int] = 10,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> None:
         """
         Download pointcloud episodes project from Supervisely to the given directory.
@@ -626,6 +646,12 @@ class PointcloudEpisodeProject(PointcloudProject):
             progress_cb=progress_cb,
         )
 
+    @staticmethod
+    async def download_async(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for PointcloudEpisodeProject class now."
+        )
+
 
 def download_pointcloud_episode_project(
     api: Api,
@@ -685,7 +711,7 @@ def download_pointcloud_episode_project(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 

@@ -31,7 +31,7 @@ class ObjectClassApi(ModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         project_id = 1951
         obj_class_infos = api.object_class.get_list(project_id)
@@ -201,3 +201,78 @@ class ObjectClassApi(ModuleApi):
     #     response = self._api.post('videos.tags.bulk.add', {ApiField.VIDEO_ID: video_id, ApiField.TAGS: tags_json})
     #     ids = [obj[ApiField.ID] for obj in response.json()]
     #     return ids
+
+    def update(
+        self,
+        id: int,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        hotkey: Optional[str] = None,
+        shape: Optional[str] = None,
+        color: Optional[str] = None,
+        settings: Optional[dict] = None,
+    ) -> NamedTuple:
+        """
+        Update the class with the given ID on the server.
+        Returned object contains updated information about the class except settings.
+
+        :param id: ID of the class to update.
+        :type id: int
+        :param name: New name of the class.
+        :type name: str, optional
+        :param description: New description of the class.
+        :type description: str, optional
+        :param hotkey: New hotkey of the class (e.g., "K").
+        :type hotkey: str, optional
+        :param shape: New shape of the class.
+        :type shape: str, optional
+        :param color: New color of the class in HEX format (e.g., #FFFFFF).
+        :type color: str, optional
+        :param settings: New settings of the class.
+                        Do not pass "availableShapes" for shape other than "any".
+                        Do not pass "availableShapes" that does not contain the current shape.
+        :type settings: dict, optional
+
+        :return: Updated class information
+        :rtype: :class:`ObjectClassInfo<ObjectClassInfo>`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            obj_class_info = api.object_class.update(
+                id=22309,
+                shape='any',
+                settings={
+                    "availableShapes": [
+                        "bitmap",
+                        "polygon",
+                    ],
+                },
+            )
+        """
+        if all(arg is None for arg in [name, description, hotkey, shape, color, settings]):
+            raise ValueError(
+                f"To update the class with ID: {id}, you must specify at least one parameter to update; all are currently None"
+            )
+
+        data = {ApiField.ID: id}
+        if name is not None:
+            data[ApiField.NAME] = name
+        if description is not None:
+            data[ApiField.DESCRIPTION] = description
+        if hotkey is not None:
+            data[ApiField.HOTKEY] = hotkey
+        if shape is not None:
+            data[ApiField.SHAPE] = shape
+        if color is not None:
+            data[ApiField.COLOR] = color
+        if settings is not None:
+            data[ApiField.SETTINGS] = settings
+
+        response = self._api.post("advanced.object_classes.editInfo", data)
+        return self._convert_json_info(response.json(), skip_missing=True)

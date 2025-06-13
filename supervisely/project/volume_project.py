@@ -33,7 +33,9 @@ VolumeItemPaths = namedtuple("VolumeItemPaths", ["volume_path", "ann_path"])
 class VolumeDataset(VideoDataset):
     item_dir_name = "volume"
     interpolation_dir = "interpolation"
+    interpolation_dir_name = interpolation_dir
     mask_dir = "mask"
+    mask_dir_name = mask_dir
     annotation_class = VolumeAnnotation
     item_module = sly_volume
     paths_tuple = VolumeItemPaths
@@ -147,6 +149,7 @@ class VolumeProject(VideoProject):
         download_volumes: Optional[bool] = True,
         log_progress: bool = False,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> None:
         """
         Download volume project from Supervisely to the given directory.
@@ -297,6 +300,28 @@ class VolumeProject(VideoProject):
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VolumeProject class now."
         )
 
+    @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for VolumeProject class now."
+        )
+
+    @staticmethod
+    async def download_async(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for VolumeProject class now."
+        )
+
 
 def download_volume_project(
     api: Api,
@@ -344,7 +369,7 @@ def download_volume_project(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 

@@ -48,7 +48,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
             return False
 
     def validate_format(self) -> bool:
-        ann_or_rimg_detected = False
+        sly_ann_detected = False
         ann_path = None
         pcd_dict = {}
         frames_pcd_map = None
@@ -71,11 +71,17 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                     continue
 
                 ext = get_file_ext(full_path)
+                recognized_ext = imghdr.what(full_path)
                 if file in JUNK_FILES:
                     continue
-                elif ext in self.ann_ext:
+                elif ext == self.ann_ext:
                     rimg_json_dict[file] = full_path
-                elif imghdr.what(full_path):
+                elif recognized_ext:
+                    if ext.lower() == ".pcd":
+                        logger.warning(
+                            f"File '{file}' has been recognized as '.{recognized_ext}' format. Skipping."
+                        )
+                        continue
                     rimg_dict[file] = full_path
                     if ext not in used_img_ext:
                         used_img_ext.append(ext)
@@ -88,6 +94,7 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
 
         if self._meta is not None:
             meta = self._meta
+            sly_ann_detected = True
         else:
             meta = ProjectMeta()
         if ann_path is not None:
@@ -95,7 +102,10 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                 meta = self.generate_meta_from_annotation(ann_path, meta)
             is_valid = self.validate_ann_file(ann_path, meta)
             if is_valid:
-                ann_or_rimg_detected = True
+                sly_ann_detected = True
+
+        if not sly_ann_detected:
+            return False
 
         self._items = []
         updated_frames_pcd_map = {}
@@ -118,18 +128,15 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                         if rimg_ann_name in rimg_json_dict:
                             rimg_ann_path = rimg_json_dict[rimg_ann_name]
                             item.set_related_images((rimg_path, rimg_ann_path))
-                            ann_or_rimg_detected = True
                 self._items.append(item)
             else:
-                logger.warn(f"Pointcloud file {pcd_name} not found. Skipping frame.")
+                logger.warning(f"Pointcloud file {pcd_name} not found. Skipping frame.")
                 continue
         self._frame_pointcloud_map = updated_frames_pcd_map
         self._frame_count = len(self._frame_pointcloud_map)
 
         self._meta = meta
-        if self._frame_pointcloud_map is not None and len(self._items) > 0:
-            ann_or_rimg_detected = True
-        return ann_or_rimg_detected
+        return sly_ann_detected
 
     def to_supervisely(
         self,

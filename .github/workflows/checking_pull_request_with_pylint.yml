@@ -1,13 +1,45 @@
 name: Checking modified files in PR with pylint
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
+  import-SDK-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+      
+      - name: Import
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+          python -c "import supervisely"
+      
+      - name: Set status to failure
+        if: failure()
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -f state=failure \
+            -f context="Import SDK Check" \
+            -f description="The import of supervisely failed" \
+            -f target_url="${{ github.event.pull_request.html_url }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   pylint:
     runs-on: ubuntu-latest
+    needs: import-SDK-check
     env:
       ISSUES_URL: "https://api.github.com/repos/supervisely/issues/issues"
       PROJECT_NUMBER: "2"
@@ -19,40 +51,64 @@ jobs:
       ORG_PROJECT_ID: ""
       ORG_LOGIN: "supervisely"
       ERRORS_DETECTED: false
+      GH_TOKEN: ${{ github.token }}
     steps:
+
+      
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           token: ${{ secrets.PYLINT_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Fetch master branch
+        run: git fetch origin master
+
+      - name: Get merge base
+        id: merge-base
+        run: |
+          echo "BASE=$(git merge-base origin/master HEAD)" >> $GITHUB_ENV
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          git diff --name-only ${{ env.BASE }} HEAD > changed_files.txt
+          cat changed_files.txt
+        
+      - name: Echo changed files
+        run: |
+          while IFS= read -r changed_file; do
+            echo "File modified in PR: ${changed_file}"
+          done < changed_files.txt
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.8
-
+          
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install pylint
           pip install .[extras,sdk-nn-plugins,aug]
 
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v42
-      - run: |
-          for changed_file in ${{ steps.changed-files.outputs.all_changed_and_modified_files }}; do
-            echo "File modified in PR: ${changed_file}"
-          done
+      # - name: Get changed files
+      #   id: changed-files
+      #   uses: tj-actions/changed-files@v45
+      # - run: |
+      #     for changed_file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+      #       echo "File modified in PR: ${changed_file}"
+      #     done
 
       - name: Run check with pylint
         run: |
           python_files=()
-          for changed_file in ${{ steps.changed-files.outputs.all_changed_and_modified_files }}; do
+          while IFS= read -r changed_file; do
             if [[ $changed_file == *.py ]] && [ -f "$changed_file" ]; then
               python_files+=("$changed_file")
             fi
-          done
+          done < changed_files.txt
           if [ "${#python_files[@]}" -gt 0 ]; then
             pylint_output=$(pylint --ignore=tests "${python_files[@]}" --generated-members=cv2.*,signal.*,zstd.*) || true
             if [[ $pylint_output == *"E"* ]] || [[ $pylint_output == *"F"* ]]; then
@@ -67,6 +123,16 @@ jobs:
             echo "File checked: $file"
           done
         id: pylint
+      
+      - name: Install GitHub CLI
+        run: |
+          (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+          && sudo mkdir -p -m 755 /etc/apt/keyrings \
+          && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+          && sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
 
       - name: Fail if pylint errors detected
         if: ${{ env.ERRORS_DETECTED == 'true' }}
@@ -76,6 +142,26 @@ jobs:
           echo "RESULT=failure" >> $GITHUB_ENV
           exit 1
 
+      - name: Set status to success
+        if: success()
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -f state=success \
+            -f context="Checking modified files in PR with pylint" \
+            -f description="Pylint checks passed" \
+            -f target_url="${{ github.event.pull_request.html_url }}"       
+
+      - name: Set status to failure
+        if: failure()
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/statuses/${{ github.sha }} \
+            -f state=failure \
+            -f context="Checking modified files in PR with pylint" \
+            -f description="Pylint checks failed" \
+            -f target_url="${{ github.event.pull_request.html_url }}"
+            
     # - name: Create GitHub issue
     #   run: |
     #     if [[ "${{ env.ERRORS_DETECTED }}" == "true" ]]; then

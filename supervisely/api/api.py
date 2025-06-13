@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import datetime
 import gc
 import glob
@@ -11,9 +12,21 @@ import os
 import shutil
 from logging import Logger
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import (
+    Any,
+    AsyncGenerator,
+    AsyncIterable,
+    Dict,
+    Generator,
+    Iterable,
+    Literal,
+    Mapping,
+    Optional,
+    Union,
+)
 from urllib.parse import urljoin, urlparse
 
+import httpx
 import jwt
 import requests
 from dotenv import get_key, load_dotenv, set_key
@@ -30,8 +43,11 @@ import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
 import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
+import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.neural_network_api as neural_network_api
+import supervisely.api.nn.neural_network_api as neural_network_api
+import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -52,7 +68,9 @@ import supervisely.io.env as sly_env
 from supervisely._utils import camel_to_snake, is_community, is_development
 from supervisely.api.module_api import ApiField
 from supervisely.io.network_exceptions import (
+    RetryableRequestException,
     process_requests_exception,
+    process_requests_exception_async,
     process_unhandled_request,
 )
 from supervisely.project.project_meta import ProjectMeta
@@ -275,6 +293,8 @@ class Api:
         # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
     """
 
+    _checked_servers = set()
+
     def __init__(
         self,
         server_address: str = None,
@@ -286,6 +306,8 @@ class Api:
         api_server_address: str = None,
         check_instance_version: Union[bool, str] = False,
     ):
+        self.logger = external_logger or logger
+
         if server_address is None and token is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
             token = os.environ.get(API_TOKEN, None)
@@ -294,10 +316,7 @@ class Api:
             raise ValueError(
                 "SERVER_ADDRESS env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
             )
-        if token is None:
-            raise ValueError(
-                "API_TOKEN env variable is undefined, https://developer.supervisely.com/getting-started/basics-of-authentication"
-            )
+
         self.server_address = Api.normalize_server_address(server_address)
 
         self._api_server_address = None
@@ -312,11 +331,10 @@ class Api:
         if retry_sleep_sec is None:
             retry_sleep_sec = int(os.getenv(SUPERVISELY_PUBLIC_API_RETRY_SLEEP_SEC, "1"))
 
-        if len(token) != 128:
-            raise ValueError("Invalid token {!r}: length != 128".format(token))
-
         self.token = token
-        self.headers = {"x-api-key": token}
+        self.headers = {}
+        if token is not None:
+            self.headers["x-api-key"] = token
         self.task_id = os.getenv(SUPERVISELY_TASK_ID)
         if self.task_id is not None and ignore_task_id is False:
             self.headers["x-task-id"] = self.task_id
@@ -327,7 +345,7 @@ class Api:
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
         self.project = project_api.ProjectApi(self)
-        self.model = neural_network_api.NeuralNetworkApi(self)
+        self.nn = neural_network_api.NeuralNetworkApi(self)
         self.task = task_api.TaskApi(self)
         self.dataset = dataset_api.DatasetApi(self)
         self.image = image_api.ImageApi(self)
@@ -337,6 +355,7 @@ class Api:
         self.role = role_api.RoleApi(self)
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
+        self.labeling_queue = labeling_queue_api.LabelingQueueApi(self)
         self.video = video_api.VideoApi(self)
         # self.project_class = project_class_api.ProjectClassApi(self)
         self.object_class = object_class_api.ObjectClassApi(self)
@@ -353,16 +372,32 @@ class Api:
         self.remote_storage = remote_storage_api.RemoteStorageApi(self)
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
+        self.issues = issues_api.IssuesApi(self)
+        self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
-        self.logger = external_logger or logger
-
-        self._require_https_redirect_check = not self.server_address.startswith("https://")
+        skip_from_env = sly_env.supervisely_skip_https_user_helper_check()
+        self._skip_https_redirect_check = (
+            skip_from_env or self.server_address in Api._checked_servers
+        )
+        self.logger.trace(
+            f"Skip HTTPS redirect check on API init: {self._skip_https_redirect_check}. ENV: {skip_from_env}. Checked servers: {Api._checked_servers}"
+        )
+        self._require_https_redirect_check = (
+            False
+            if self._skip_https_redirect_check
+            else not self.server_address.startswith("https://")
+        )
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
+
+        self.async_httpx_client: httpx.AsyncClient = None
+        self.httpx_client: httpx.Client = None
+        self._semaphore = None
+        self._instance_version = None
 
     @classmethod
     def normalize_server_address(cls, server_address: str) -> str:
@@ -498,11 +533,14 @@ class Api:
                 # '6.9.13'
         """
         try:
-            version = self.post("instance.version", {}).json().get(ApiField.VERSION)
+            if self._instance_version is None:
+                self._instance_version = (
+                    self.post("instance.version", {}).json().get(ApiField.VERSION)
+                )
         except Exception as e:
             logger.warning(f"Failed to get instance version from server: {e}")
-            version = "unknown"
-        return version
+            self._instance_version = "unknown"
+        return self._instance_version
 
     def is_version_supported(self, version: Optional[str] = None) -> Union[bool, None]:
         """Check if the given version is lower or equal to the current Supervisely instance version.
@@ -618,7 +656,8 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
-        self._check_https_redirect()
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
@@ -650,6 +689,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 if raise_error:
                     raise exc
                 else:
@@ -692,7 +739,8 @@ class Api:
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
-        self._check_https_redirect()
+        if not self._skip_https_redirect_check:
+            self._check_https_redirect()
         if retries is None:
             retries = self.retry_count
 
@@ -713,6 +761,14 @@ class Api:
                     Api._raise_for_status(response)
                 return response
             except requests.RequestException as exc:
+                if (
+                    isinstance(exc, requests.exceptions.HTTPError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
                 process_requests_exception(
                     self.logger,
                     exc,
@@ -728,7 +784,7 @@ class Api:
                 process_unhandled_request(self.logger, exc)
 
     @staticmethod
-    def _raise_for_status(response):
+    def _raise_for_status(response: requests.Response):
         """
         Raise error and show message with error code if given response can not connect to server.
         :param response: Request class object
@@ -760,6 +816,49 @@ class Api:
 
         if http_error_msg:
             raise requests.exceptions.HTTPError(http_error_msg, response=response)
+
+    @staticmethod
+    def _raise_for_status_httpx(response: httpx.Response):
+        """
+        Raise error and show message with error code if given response can not connect to server.
+        :param response: Response class object
+        """
+        http_error_msg = ""
+
+        if hasattr(response, "reason_phrase"):
+            reason = response.reason_phrase
+        else:
+            reason = "Can't get reason"
+
+        def decode_response_content(response: httpx.Response):
+            try:
+                return response.content.decode("utf-8")
+            except Exception as e:
+                if hasattr(response, "is_stream_consumed"):
+                    return f"Stream is consumed. {e}"
+                else:
+                    return f"Can't decode response content: {e}"
+
+        if 400 <= response.status_code < 500:
+            http_error_msg = "%s Client Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                decode_response_content(response),
+            )
+
+        elif 500 <= response.status_code < 600:
+            http_error_msg = "%s Server Error: %s for url: %s (%s)" % (
+                response.status_code,
+                reason,
+                response.url,
+                decode_response_content(response),
+            )
+
+        if http_error_msg:
+            raise httpx.HTTPStatusError(
+                message=http_error_msg, response=response, request=response.request
+            )
 
     @staticmethod
     def parse_error(
@@ -804,20 +903,35 @@ class Api:
         return self.headers.pop(key)
 
     def _check_https_redirect(self):
+        """
+        Check if HTTP server should be redirected to HTTPS.
+        If the server has already been checked before (for any instance of this class),
+        skip the check to avoid redundant network requests.
+        """
         if self._require_https_redirect_check is True:
-            response = requests.get(self.server_address, allow_redirects=False)
-            if (300 <= response.status_code < 400) or (
-                response.headers.get("Location", "").startswith("https://")
-            ):
+            if self.server_address in Api._checked_servers:
+                self._require_https_redirect_check = False
+                return
+
+            try:
+                response = requests.get(
+                    self.server_address.replace("http://", "https://"),
+                    allow_redirects=False,
+                    timeout=(5, 15),
+                )
+                response.raise_for_status()
                 self.server_address = self.server_address.replace("http://", "https://")
                 msg = (
                     "You're using HTTP server address while the server requires HTTPS. "
                     "Supervisely automatically changed the server address to HTTPS for you. "
                     f"Consider updating your server address to {self.server_address}"
                 )
-                self.logger.warn(msg)
-
-            self._require_https_redirect_check = False
+                self.logger.warning(msg)
+            except:
+                pass
+            finally:
+                Api._checked_servers.add(self.server_address)
+                self._require_https_redirect_check = False
 
     @classmethod
     def from_credentials(
@@ -920,3 +1034,670 @@ class Api:
             return self._api_server_address
 
         return f"{self.server_address}/public/api"
+
+    def post_httpx(
+        self,
+        method: str,
+        json: Dict = None,
+        content: Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
+        files: Union[Mapping] = None,
+        params: Union[str, bytes] = None,
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 60,
+    ) -> httpx.Response:
+        """
+        Performs POST request to server with given parameters using httpx.
+
+        :param method: Method name.
+        :type method: str
+        :param json: Dictionary to send in the body of request.
+        :type json: dict, optional
+        :param content: Bytes with data content or dictionary with params.
+        :type content: bytes or dict, optional
+        :param files: Files to send in the body of request.
+        :type files: dict, optional
+        :param params: URL query parameters.
+        :type params: str, bytes, optional
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :type raise_error: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Response object
+        :rtype: :class:`httpx.Response`
+        """
+        self._set_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"POST {url}")
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = self.httpx_client.post(
+                    url,
+                    content=content,
+                    files=files,
+                    json=json,
+                    params=params,
+                    headers=headers,
+                    timeout=timeout,
+                )
+                if response.status_code != httpx.codes.OK:
+                    self._check_version()
+                    Api._raise_for_status_httpx(response)
+                return response
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
+                if raise_error:
+                    raise exc
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.RequestError(
+            f"Retry limit exceeded ({url})",
+            request=getattr(response, "request", None),
+        )
+
+    def get_httpx(
+        self,
+        method: str,
+        params: httpx._types.QueryParamTypes,
+        retries: Optional[int] = None,
+        use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 60,
+    ) -> httpx.Response:
+        """
+        Performs GET request to server with given parameters.
+
+        :param method: Method name.
+        :type method: str
+        :param params: URL query parameters.
+        :type params: httpx._types.QueryParamTypes
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param use_public_api: Define if public API should be used. Default is True.
+        :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Response object
+        :rtype: :class:`Response<Response>`
+        """
+        self._set_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if use_public_api is False:
+            url = os.path.join(self.server_address, method)
+        logger.trace(f"GET {url}")
+
+        if isinstance(params, Dict):
+            request_params = {**params, **self.additional_fields}
+        else:
+            request_params = params
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = self.httpx_client.get(
+                    url,
+                    params=request_params,
+                    headers=self.headers,
+                    timeout=timeout,
+                )
+                if response.status_code != httpx.codes.OK:
+                    Api._raise_for_status_httpx(response)
+                return response
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
+                process_requests_exception(
+                    self.logger,
+                    exc,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                    response=response,
+                    retry_info={"retry_idx": retry_idx + 2, "retry_limit": retries},
+                )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+
+    def stream(
+        self,
+        method: str,
+        method_type: Literal["GET", "POST"],
+        data: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        chunk_size: int = 8192,
+        use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 60,
+    ) -> Generator:
+        """
+        Performs streaming GET or POST request to server with given parameters.
+        Multipart is not supported.
+
+        :param method: Method name for the request.
+        :type method: str
+        :param method_type: Request type ('GET' or 'POST').
+        :type method_type: str
+        :param data: Bytes with data content or dictionary with params.
+        :type data: bytes or dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of retry attempts.
+        :type retries: int, optional
+        :param range_start: Start byte position for streaming.
+        :type range_start: int, optional
+        :param range_end: End byte position for streaming.
+        :type range_end: int, optional
+        :param raise_error: If True, raise raw error if the request fails.
+        :type raise_error: bool, optional
+        :param chunk_size: Size of the chunks to stream.
+        :type chunk_size: int, optional
+        :param use_public_api: Define if public API should be used.
+        :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Generator object.
+        :rtype: :class:`Generator`
+        """
+        self._set_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if not use_public_api:
+            url = os.path.join(self.server_address, method)
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        logger.trace(f"{method_type} {url}")
+
+        if isinstance(data, (bytes, Generator)):
+            content = data
+            json_body = None
+            params = None
+        elif isinstance(data, Dict):
+            json_body = {**data, **self.additional_fields}
+            content = None
+            params = None
+        else:
+            params = data
+            content = None
+            json_body = None
+
+        if range_start is not None or range_end is not None:
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Setting Range header: {headers['Range']}")
+
+        for retry_idx in range(retries):
+            total_streamed = 0
+            try:
+                if method_type == "POST":
+                    response = self.httpx_client.stream(
+                        method_type,
+                        url,
+                        content=content,
+                        json=json_body,
+                        params=params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+
+                elif method_type == "GET":
+                    response = self.httpx_client.stream(
+                        method_type,
+                        url,
+                        params=json_body or params,
+                        headers=headers,
+                        timeout=timeout,
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Unsupported method type: {method_type}. Supported types: 'GET', 'POST'"
+                    )
+
+                with response as resp:
+                    expected_size = int(resp.headers.get("content-length", 0))
+                    if resp.status_code not in [
+                        httpx.codes.OK,
+                        httpx.codes.PARTIAL_CONTENT,
+                    ]:
+                        self._check_version()
+                        Api._raise_for_status_httpx(resp)
+
+                    hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    try:
+                        for chunk in resp.iter_raw(chunk_size):
+                            yield chunk, hhash
+                            total_streamed += len(chunk)
+                    except Exception as e:
+                        raise RetryableRequestException(repr(e))
+
+                    if expected_size != 0 and total_streamed != expected_size:
+                        raise ValueError(
+                            f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
+                        )
+                    logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    return
+            except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
+                if (
+                    isinstance(e, httpx.HTTPStatusError)
+                    and resp.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
+                retry_range_start = total_streamed + (range_start or 0)
+                if total_streamed != 0:
+                    retry_range_start += 1
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                if raise_error:
+                    raise e
+                else:
+                    process_requests_exception(
+                        self.logger,
+                        e,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=locals().get("resp"),
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as e:
+                process_unhandled_request(self.logger, e)
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})",
+            request=resp.request if locals().get("resp") else None,
+        )
+
+    async def post_async(
+        self,
+        method: str,
+        json: Dict = None,
+        content: Union[str, bytes, Iterable[bytes], AsyncIterable[bytes]] = None,
+        files: Union[Mapping] = None,
+        params: Union[str, bytes] = None,
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        raise_error: Optional[bool] = False,
+        timeout: httpx._types.TimeoutTypes = 60,
+    ) -> httpx.Response:
+        """
+        Performs POST request to server with given parameters using httpx.
+
+        :param method: Method name.
+        :type method: str
+        :param json: Dictionary to send in the body of request.
+        :type json: dict, optional
+        :param content: Bytes with data content or dictionary with params.
+        :type content: bytes or dict, optional
+        :param files: Files to send in the body of request.
+        :type files: dict, optional
+        :param params: URL query parameters.
+        :type params: str, bytes, optional
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of attempts to connect to the server.
+        :type retries: int, optional
+        :param raise_error: Define, if you'd like to raise error if connection is failed.
+        :type raise_error: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Response object
+        :rtype: :class:`httpx.Response`
+        """
+        self._set_async_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        logger.trace(f"POST {url}")
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        for retry_idx in range(retries):
+            response = None
+            try:
+                response = await self.async_httpx_client.post(
+                    url,
+                    content=content,
+                    files=files,
+                    json=json,
+                    params=params,
+                    headers=headers,
+                    timeout=timeout,
+                )
+                if response.status_code != httpx.codes.OK:
+                    self._check_version()
+                    Api._raise_for_status_httpx(response)
+                return response
+            except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                if (
+                    isinstance(exc, httpx.HTTPStatusError)
+                    and response.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
+                if raise_error:
+                    raise exc
+                else:
+                    await process_requests_exception_async(
+                        self.logger,
+                        exc,
+                        method,
+                        url,
+                        verbose=True,
+                        swallow_exc=True,
+                        sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                        response=response,
+                        retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                    )
+            except Exception as exc:
+                process_unhandled_request(self.logger, exc)
+        raise httpx.RequestError(
+            f"Retry limit exceeded ({url})",
+            request=getattr(response, "request", None),
+        )
+
+    async def stream_async(
+        self,
+        method: str,
+        method_type: Literal["GET", "POST"],
+        data: Union[bytes, Dict],
+        headers: Optional[Dict[str, str]] = None,
+        retries: Optional[int] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        chunk_size: int = 8192,
+        use_public_api: Optional[bool] = True,
+        timeout: httpx._types.TimeoutTypes = 60,
+        **kwargs,
+    ) -> AsyncGenerator:
+        """
+        Performs asynchronous streaming GET or POST request to server with given parameters.
+        Yield chunks of data and hash of the whole content to check integrity of the data stream.
+
+        :param method: Method name for the request.
+        :type method: str
+        :param method_type: Request type ('GET' or 'POST').
+        :type method_type: str
+        :param data: Bytes with data content or dictionary with params.
+        :type data: bytes or dict
+        :param headers: Custom headers to include in the request.
+        :type headers: dict, optional
+        :param retries: The number of retry attempts.
+        :type retries: int, optional
+        :param range_start: Start byte position for streaming.
+        :type range_start: int, optional
+        :param range_end: End byte position for streaming.
+        :type range_end: int, optional
+        :param chunk_size: Size of the chunk to read from the stream. Default is 8192.
+        :type chunk_size: int, optional
+        :param use_public_api: Define if public API should be used.
+        :type use_public_api: bool, optional
+        :param timeout: Overall timeout for the request.
+        :type timeout: float, optional
+        :return: Async generator object.
+        :rtype: :class:`AsyncGenerator`
+        """
+        self._set_async_client()
+
+        if retries is None:
+            retries = self.retry_count
+
+        url = self.api_server_address + "/v3/" + method
+        if not use_public_api:
+            url = os.path.join(self.server_address, method)
+        logger.trace(f"{method_type} {url}")
+
+        if headers is None:
+            headers = self.headers.copy()
+        else:
+            headers = {**self.headers, **headers}
+
+        params = kwargs.get("params", None)
+        if "content" in kwargs or "json_body" in kwargs:
+            content = kwargs.get("content", None)
+            json_body = kwargs.get("json_body", None)
+        else:
+            if isinstance(data, (bytes, Generator)):
+                content = data
+                json_body = None
+            elif isinstance(data, Dict):
+                json_body = {**data, **self.additional_fields}
+                content = None
+            else:
+                raise ValueError("Data should be either bytes or dict")
+
+        if range_start is not None or range_end is not None:
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Setting Range header: {headers['Range']}")
+
+        for retry_idx in range(retries):
+            total_streamed = 0
+            try:
+                if method_type == "POST":
+                    response = self.async_httpx_client.stream(
+                        method_type,
+                        url,
+                        content=content,
+                        json=json_body,
+                        headers=headers,
+                        timeout=timeout,
+                        params=params,
+                    )
+                elif method_type == "GET":
+                    response = self.async_httpx_client.stream(
+                        method_type,
+                        url,
+                        content=content,
+                        json=json_body,
+                        headers=headers,
+                        timeout=timeout,
+                        params=params,
+                    )
+                else:
+                    raise NotImplementedError(
+                        f"Unsupported method type: {method_type}. Supported types: 'GET', 'POST'"
+                    )
+
+                async with response as resp:
+                    expected_size = int(resp.headers.get("content-length", 0))
+                    if resp.status_code not in [
+                        httpx.codes.OK,
+                        httpx.codes.PARTIAL_CONTENT,
+                    ]:
+                        self._check_version()
+                        Api._raise_for_status_httpx(resp)
+
+                    # received hash of the content to check integrity of the data stream
+                    hhash = resp.headers.get("x-content-checksum-sha256", None)
+                    try:
+                        async for chunk in resp.aiter_raw(chunk_size):
+                            yield chunk, hhash
+                            total_streamed += len(chunk)
+                    except Exception as e:
+                        raise RetryableRequestException(repr(e))
+
+                    if expected_size != 0 and total_streamed != expected_size:
+                        raise ValueError(
+                            f"Streamed size does not match the expected: {total_streamed} != {expected_size}"
+                        )
+                    logger.trace(f"Streamed size: {total_streamed}, expected size: {expected_size}")
+                    return
+            except (httpx.RequestError, httpx.HTTPStatusError, RetryableRequestException) as e:
+                if (
+                    isinstance(e, httpx.HTTPStatusError)
+                    and resp.status_code == 400
+                    and self.token is None
+                ):
+                    self.logger.warning(
+                        "API_TOKEN env variable is undefined. See more: https://developer.supervisely.com/getting-started/basics-of-authentication"
+                    )
+                retry_range_start = total_streamed + (range_start or 0)
+                if total_streamed != 0:
+                    retry_range_start += 1
+                headers["Range"] = f"bytes={retry_range_start}-{range_end or ''}"
+                logger.debug(f"Setting Range header {headers['Range']} for retry")
+                await process_requests_exception_async(
+                    self.logger,
+                    e,
+                    method,
+                    url,
+                    verbose=True,
+                    swallow_exc=True,
+                    sleep_sec=min(self.retry_sleep_sec * (2**retry_idx), 60),
+                    response=locals().get("resp"),
+                    retry_info={"retry_idx": retry_idx + 1, "retry_limit": retries},
+                )
+            except Exception as e:
+                process_unhandled_request(self.logger, e)
+        raise httpx.RequestError(
+            message=f"Retry limit exceeded ({url})",
+            request=resp.request if locals().get("resp") else None,
+        )
+
+    def _set_async_client(self):
+        """
+        Set async httpx client with HTTP/2 if it is not set yet.
+        """
+        if self.async_httpx_client is None:
+            self.async_httpx_client = httpx.AsyncClient(http2=True)
+
+    def _set_client(self):
+        """
+        Set sync httpx client with HTTP/2 if it is not set yet.
+        """
+        if self.httpx_client is None:
+            self.httpx_client = httpx.Client(http2=True)
+
+    def get_default_semaphore(self) -> asyncio.Semaphore:
+        """
+        Get default global API semaphore for async requests.
+        If the semaphore is not set, it will be initialized.
+
+        During initialization, the semaphore size will be set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
+        If the environment variable is not set, the default value will be set based on the server address.
+        Depending on the server address, the semaphore size will be set to 10 for HTTPS and 5 for HTTP.
+
+        :return: Semaphore object.
+        :rtype: :class:`asyncio.Semaphore`
+        """
+        if self._semaphore is None:
+            self._initialize_semaphore()
+        return self._semaphore
+
+    def _initialize_semaphore(self):
+        """
+        Initialize the semaphore for async requests.
+
+        If the environment variable SUPERVISELY_ASYNC_SEMAPHORE is set, create a semaphore with the given value.
+
+        Otherwise, create a semaphore with a default value:
+
+            - If server supports HTTPS, create a semaphore with value 10.
+            - If server supports HTTP, create a semaphore with value 5.
+        """
+        semaphore_size = sly_env.semaphore_size()
+        if semaphore_size is not None:
+            self._semaphore = asyncio.Semaphore(semaphore_size)
+            logger.debug(
+                f"Setting global API semaphore size to {semaphore_size} from environment variable"
+            )
+        else:
+            if not self._skip_https_redirect_check:
+                self._check_https_redirect()
+            if self.server_address.startswith("https://"):
+                size = 10
+                if "app.supervise" in self.server_address:
+                    size = 7
+                logger.debug(f"Setting global API semaphore size to {size} for HTTPS")
+            else:
+                size = 5
+                logger.debug(f"Setting global API semaphore size to {size} for HTTP")
+            self._semaphore = asyncio.Semaphore(size)
+
+    def set_semaphore_size(self, size: int = None):
+        """
+        Set the global API semaphore with the given size. Will replace the existing semaphore.
+        If the size is not set, will set from the environment variable SUPERVISELY_ASYNC_SEMAPHORE.
+        If the environment variable is not set, will set the default value.
+
+        :param size: Size of the semaphore.
+        :type size: int, optional
+        """
+        if size is not None:
+            self._semaphore = asyncio.Semaphore(size)
+        else:
+            self._initialize_semaphore()
+
+    @property
+    def semaphore(self) -> asyncio.Semaphore:
+        """
+        Get the global API semaphore for async requests.
+
+        :return: Semaphore object.
+        :rtype: :class:`asyncio.Semaphore`
+        """
+        return self._semaphore

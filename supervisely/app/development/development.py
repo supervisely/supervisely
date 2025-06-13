@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 
 import requests
 
+import supervisely.io.env as sly_env
+from supervisely._utils import is_development
 from supervisely.api.api import Api
 from supervisely.io.fs import mkdir
 from supervisely.sly_logger import logger
@@ -154,11 +156,12 @@ def supervisely_vpn_network(
 
 
 def create_debug_task(
-    team_id: int, port: int = 8000, update_status: bool = False
+    team_id: int = None, port: int = 8000, update_status: bool = True
 ) -> Dict[str, Any]:
     """Gets or creates a debug task for the current user.
 
-    :param team_id: The ID of the team to create the task in.
+    :param team_id: The ID of the team to create the task in, if not provided, the function
+        will try to obtain it from environment variables. Default is None.
     :type team_id: int
     :param port: The port to redirect the requests to. Default is 8000.
     :type port: int
@@ -167,6 +170,14 @@ def create_debug_task(
     :return: The task details.
     :rtype: Dict[str, Any]
     """
+    team_id = team_id or sly_env.team_id()
+    if not team_id:
+        raise ValueError(
+            "Team ID is not provided and cannot be obtained from environment variables."
+            "The debug task cannot be created. Please provide the team ID as an argument "
+            "or set the TEAM_ID environment variable."
+        )
+
     api = Api()
     me = api.user.get_my_info()
     session_name = me.login + "-development"
@@ -200,4 +211,87 @@ def create_debug_task(
     if update_status:
         logger.info(f"Task status will be updated to STARTED for task with ID: {task['id']}")
         api.task.update_status(task["id"], api.task.Status.STARTED)
+
     return task
+
+
+def enable_advanced_debug(
+    team_id: int = None,
+    port: int = 8000,
+    update_status: bool = True,
+    vpn_action: Literal["up", "down"] = "up",
+    vpn_raise_on_error: bool = True,
+    only_for_development: bool = True,
+) -> Optional[int]:
+    """Enables advanced debugging for the app.
+    At first, it establishes a WireGuard VPN connection to the Supervisely network.
+    And then creates a debug task to redirect requests to the local machine.
+
+    Please, ensure that the Team ID was provided, or set as TEAM_ID environment variable.
+    All other parameters can be omitted if using the default instance settings.
+
+    :param team_id: The ID of the team to create the task in, if not provided, the function
+        will try to obtain it from environment variables. Default is None.
+    :type team_id: int
+    :param port: The port to redirect the requests to. Default is 8000.
+    :type port: int
+    :param update_status: If True, the task status will be updated to STARTED.
+    :type update_status: bool
+    :param vpn_action: The action to perform with the VPN connection, either "up" or "down". Default is "up".
+    :type vpn_action: Literal["up", "down"]
+    :param vpn_raise_on_error: If True, an exception will be raised if an error occurs while connecting to VPN.
+    :type vpn_raise_on_error: bool
+    :param only_for_development: If True, the debugging will be started only if the app is running in development mode.
+        It's not recommended to set this parameter to False in production environments.
+    :type only_for_development: bool
+    :return: The task ID of the debug task or None if the debugging was not started.
+    :rtype: Optional[int]
+
+    :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            # Ensure that the TEAM_ID environment variable is set.
+            # Or provide the team ID as an argument to the function.
+            os.environ['TEAM_ID'] = 123456
+
+            # The task ID can be used to make requests to the app.
+            task_id = sly.app.development.enable_advanced_debug()
+
+            # An example of how to send a request to the app using the task ID.
+            data = {"project_id": 789, "force": True}
+            api.task.send_request(task_id, "endpoint-name-here", data, skip_response=True)
+    """
+
+    if only_for_development and not is_development():
+        logger.debug(
+            "Advanced debugging was not started because the app is not running in development mode. "
+            "If you need to force the debugging, set the only_for_development argument to False. "
+            "Use this parameter with caution, and do not set to False in production environments."
+        )
+        return None
+
+    logger.debug(
+        "Starting advanced debugging, will create a wireguard VPN connection and create "
+        "or use an existing debug task to redirect requests to the local machine. "
+        "Learn more about this feature in Supervisely Developer Portal: "
+        "https://developer.supervisely.com/app-development/advanced/advanced-debugging"
+    )
+
+    supervisely_vpn_network(action=vpn_action, raise_on_error=vpn_raise_on_error)
+    task = create_debug_task(team_id=team_id, port=port, update_status=update_status)
+    task_id = task.get("id", None)
+
+    logger.debug(
+        f"Advanced debugging has been started. "
+        f"VPN connection has been established and debug task has been create. Task ID: {task_id}. "
+        "The metod will return the task ID, you can use it to make requests to the app."
+    )
+
+    return task_id

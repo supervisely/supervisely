@@ -1,6 +1,8 @@
+import asyncio
 import os
-from typing import Callable, List, NamedTuple, Optional, Union
+from typing import AsyncGenerator, Callable, List, NamedTuple, Optional, Union
 
+import aiofiles
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -19,6 +21,7 @@ from supervisely.io.fs import (
     ensure_base_path,
     get_bytes_hash,
     get_file_ext,
+    get_file_hash_async,
     get_file_name,
     get_file_name_with_ext,
 )
@@ -62,7 +65,7 @@ class VolumeInfo(NamedTuple):
                 'rescaleIntercept': 0
             },
             path_original='/h5af-public/images/original/M/e/7R/vsytec8zX0p.nrrd',
-            full_storage_url='https://dev.supervise.ly/h5un-public/images/original/M/e/7R/zX0p.nrrd',
+            full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zX0p.nrrd',
             tags=[],
             team_id=435,
             workspace_id=685,
@@ -178,7 +181,7 @@ class VolumeApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         volume_id = 19581134
         volume_info = api.volume.get_info_by_id(volume_id) # api usage example
@@ -257,7 +260,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
         :param dataset_id: :class:`Dataset<supervisely.project.project.Dataset>` ID in Supervisely.
         :type dataset_id: int
-        :param filters: List of parameters to sort output Volumes. See: https://dev.supervise.ly/api-docs/#tag/Volumes/paths/~1volumes.list/get
+        :param filters: List of parameters to sort output Volumes. See: https://api.docs.supervisely.com/#tag/Volumes/paths/~1volumes.list/get
         :type filters: List[Dict[str, str]], optional
         :param sort: Attribute to sort the list by. The default is "id". Valid values are "id", "name", "description", "createdAt", "updatedAt".
         :type sort: :class:`str`
@@ -346,7 +349,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             #         'rescaleIntercept': 0
             #     },
             #     path_original='/h5af-public/images/original/M/e/7R/vs0p.nrrd',
-            #     full_storage_url='https://dev.supervise.ly/.../original/M/e/7R/zX0p.nrrd',
+            #     full_storage_url='https://app.supervisely.com/.../original/M/e/7R/zX0p.nrrd',
             #     tags=[],
             #     team_id=435,
             #     workspace_id=685,
@@ -432,7 +435,7 @@ class VolumeApi(RemoveableBulkModuleApi):
             #         'rescaleIntercept': 0
             #     },
             #     path_original='/h5af-public/images/original/M/e/7R/zfsfX0p.nrrd',
-            #     full_storage_url='https://dev.supervise.ly/h5un-public/images/original/M/e/7R/zXdd0p.nrrd',
+            #     full_storage_url='https://app.supervisely.com/h5un-public/images/original/M/e/7R/zXdd0p.nrrd',
             #     tags=[],
             #     team_id=435,
             #     workspace_id=685,
@@ -852,7 +855,7 @@ class VolumeApi(RemoveableBulkModuleApi):
 
     def _download(self, id: int, is_stream: bool = False):
         """
-        Private method for volume volume downloading.
+        Private method for volume downloading.
 
         :param id: Volume ID in Supervisely.
         :type id: int
@@ -1236,3 +1239,219 @@ class VolumeApi(RemoveableBulkModuleApi):
                 )
             )
         return volume_infos
+
+    async def _download_async(
+        self,
+        id: int,
+        is_stream: bool = False,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+    ) -> AsyncGenerator:
+        """
+        Download Volume with given ID asynchronously.
+        If is_stream is True, returns stream of bytes, otherwise returns response object.
+        For streaming, returns tuple of chunk and hash.
+
+        :param id: Volume ID in Supervisely.
+        :type id: int
+        :param is_stream: If True, returns stream of bytes, otherwise returns response object.
+        :type is_stream: bool, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for downloading. Default is 1MB.
+        :type chunk_size: int, optional
+        :return: Stream of bytes or response object.
+        :rtype: AsyncGenerator
+        """
+        api_method_name = "volumes.download"
+
+        json_body = {ApiField.ID: id}
+
+        if is_stream:
+            async for chunk, hhash in self._api.stream_async(
+                api_method_name,
+                "POST",
+                json_body,
+                headers=headers,
+                range_start=range_start,
+                range_end=range_end,
+                chunk_size=chunk_size,
+            ):
+                yield chunk, hhash
+        else:
+            response = await self._api.post_async(api_method_name, json_body, headers=headers)
+            yield response
+
+    async def download_path_async(
+        self,
+        id: int,
+        path: str,
+        semaphore: Optional[asyncio.Semaphore] = None,
+        range_start: Optional[int] = None,
+        range_end: Optional[int] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Downloads Volume with given ID to local path.
+
+        :param id: Volume ID in Supervisely.
+        :type id: int
+        :param path: Local save path for Volume.
+        :type path: str
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param range_start: Start byte of range for partial download.
+        :type range_start: int, optional
+        :param range_end: End byte of range for partial download.
+        :type range_end: int, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for downloading. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+                        Check is not supported for partial downloads.
+                        When range is set, hash check is disabled.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: str, optional
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            volume_info = api.volume.get_info_by_id(770918)
+            save_path = os.path.join("/path/to/save/", volume_info.name)
+
+            semaphore = asyncio.Semaphore(100)
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(
+                        api.volume.download_path_async(volume_info.id, save_path, semaphore)
+                )
+        """
+
+        if range_start is not None or range_end is not None:
+            check_hash = False  # Hash check is not supported for partial downloads
+            headers = headers or {}
+            headers["Range"] = f"bytes={range_start or ''}-{range_end or ''}"
+            logger.debug(f"Image ID: {id}. Setting Range header: {headers['Range']}")
+
+        writing_method = "ab" if range_start not in [0, None] else "wb"
+
+        ensure_base_path(path)
+        hash_to_check = None
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        async with semaphore:
+            async with aiofiles.open(path, writing_method) as fd:
+                async for chunk, hhash in self._download_async(
+                    id,
+                    is_stream=True,
+                    headers=headers,
+                    range_start=range_start,
+                    range_end=range_end,
+                    chunk_size=chunk_size,
+                ):
+                    await fd.write(chunk)
+                    hash_to_check = hhash
+                    if progress_cb is not None and progress_cb_type == "size":
+                        progress_cb(len(chunk))
+            if check_hash:
+                if hash_to_check is not None:
+                    downloaded_file_hash = await get_file_hash_async(path)
+                    if hash_to_check != downloaded_file_hash:
+                        raise RuntimeError(
+                            f"Downloaded hash of volume with ID:{id} does not match the expected hash: {downloaded_file_hash} != {hash_to_check}"
+                        )
+            if progress_cb is not None and progress_cb_type == "number":
+                progress_cb(1)
+
+    async def download_paths_async(
+        self,
+        ids: List[int],
+        paths: List[str],
+        semaphore: Optional[asyncio.Semaphore] = None,
+        headers: Optional[dict] = None,
+        chunk_size: int = 1024 * 1024,
+        check_hash: bool = True,
+        progress_cb: Optional[Union[tqdm, Callable]] = None,
+        progress_cb_type: Literal["number", "size"] = "number",
+    ) -> None:
+        """
+        Download Volumes with given IDs and saves them to given local paths asynchronously.
+
+        :param ids: List of Volume IDs in Supervisely.
+        :type ids: :class:`List[int]`
+        :param paths: Local save paths for Volumes.
+        :type paths: :class:`List[str]`
+        :param semaphore: Semaphore for limiting the number of simultaneous downloads.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param headers: Headers for request.
+        :type headers: dict, optional
+        :param chunk_size: Size of chunk for downloading. Default is 1MB.
+        :type chunk_size: int, optional
+        :param check_hash: If True, checks hash of downloaded file.
+        :type check_hash: bool, optional
+        :param progress_cb: Function for tracking download progress.
+        :type progress_cb: tqdm or callable, optional
+        :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "number".
+        :type progress_cb_type: str, optional
+        :raises: :class:`ValueError` if len(ids) != len(paths)
+        :return: None
+        :rtype: :class:`NoneType`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import asyncio
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            ids = [770914, 770915]
+            paths = ["/path/to/save/volume1.nrrd", "/path/to/save/volume2.nrrd"]
+            loop = sly.utils.get_or_create_event_loop()
+            loop.run_until_complete(api.volume.download_paths_async(ids, paths))
+        """
+        if len(ids) == 0:
+            return
+        if len(ids) != len(paths):
+            raise ValueError(f'Can not match "ids" and "paths" lists, {len(ids)} != {len(paths)}')
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+        tasks = []
+        for img_id, img_path in zip(ids, paths):
+            task = self.download_path_async(
+                img_id,
+                img_path,
+                semaphore,
+                headers=headers,
+                chunk_size=chunk_size,
+                check_hash=check_hash,
+                progress_cb=progress_cb,
+                progress_cb_type=progress_cb_type,
+            )
+            tasks.append(task)
+        await asyncio.gather(*tasks)

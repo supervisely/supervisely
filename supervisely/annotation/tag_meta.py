@@ -2,12 +2,14 @@
 """General information about :class:`Tag<supervisely.annotation.tag.Tag>`"""
 
 from __future__ import annotations
-from typing import List, Optional, Dict
+
 from copy import deepcopy
-from supervisely.imaging.color import random_rgb, rgb2hex, hex2rgb, _validate_color
-from supervisely.io.json import JsonSerializable
-from supervisely.collection.key_indexed_collection import KeyObject
+from typing import Dict, List, Optional
+
 from supervisely._utils import take_with_default
+from supervisely.collection.key_indexed_collection import KeyObject
+from supervisely.imaging.color import _validate_color, hex2rgb, random_rgb, rgb2hex
+from supervisely.io.json import JsonSerializable
 
 
 class TagValueType:
@@ -47,6 +49,7 @@ class TagMetaJsonFields:
     """"""
     APPLICABLE_CLASSES = "classes"
     """"""
+    TARGET_TYPE = "target_type"  # "Scope"
 
 
 class TagApplicableTo:
@@ -62,6 +65,19 @@ class TagApplicableTo:
     """"""
 
 
+class TagTargetType:
+    """
+    Defines Tag target type (scope) - entities, frames or both.
+    """
+
+    ALL = "all"  # both entities and frames
+    """"""
+    FRAME_BASED = "framesOnly"
+    """"""
+    GLOBAL = "entitiesOnly"
+    """"""
+
+
 SUPPORTED_TAG_VALUE_TYPES = [
     TagValueType.NONE,
     TagValueType.ANY_NUMBER,
@@ -72,6 +88,12 @@ SUPPORTED_APPLICABLE_TO = [
     TagApplicableTo.ALL,
     TagApplicableTo.IMAGES_ONLY,
     TagApplicableTo.OBJECTS_ONLY,
+]
+
+SUPPORTED_TARGET_TYPES = [
+    TagTargetType.ALL,
+    TagTargetType.FRAME_BASED,
+    TagTargetType.GLOBAL,
 ]
 
 
@@ -95,6 +117,8 @@ class TagMeta(KeyObject, JsonSerializable):
     :type applicable_to: str, optional
     :param applicable_classes: Defines applicability of Tag only to certain classes.
     :type applicable_classes: List[str], optional
+    :param target_type: Defines Tag target type (scope) - entities, frames or both.
+    :type target_type: str, optional
     :raises: :class:`ValueError`, if color is not list, or doesn't have exactly 3 values
     :Usage example:
 
@@ -128,6 +152,7 @@ class TagMeta(KeyObject, JsonSerializable):
         hotkey: Optional[str] = None,
         applicable_to: Optional[str] = None,
         applicable_classes: Optional[List[str]] = None,
+        target_type: Optional[str] = None,
     ):
         if value_type not in SUPPORTED_TAG_VALUE_TYPES:
             raise ValueError(
@@ -144,10 +169,18 @@ class TagMeta(KeyObject, JsonSerializable):
         self._hotkey = take_with_default(hotkey, "")
         self._applicable_to = take_with_default(applicable_to, TagApplicableTo.ALL)
         self._applicable_classes = take_with_default(applicable_classes, [])
+        self._target_type = take_with_default(target_type, TagTargetType.ALL)
         if self._applicable_to not in SUPPORTED_APPLICABLE_TO:
             raise ValueError(
                 "applicable_to = {!r} is unknown, should be one of {}".format(
                     self._applicable_to, SUPPORTED_APPLICABLE_TO
+                )
+            )
+
+        if self._target_type not in SUPPORTED_TARGET_TYPES:
+            raise ValueError(
+                "target_type = {!r} is unknown, should be one of {}".format(
+                    self._target_type, SUPPORTED_TARGET_TYPES
                 )
             )
 
@@ -330,9 +363,27 @@ class TagMeta(KeyObject, JsonSerializable):
         """
         return self._applicable_classes
 
+    @property
+    def target_type(self) -> str:
+        """
+        Tag target type (scope) - entities, frames or both.
+
+        :return: Target type
+        :rtype: :class:`str`
+        :Usage example:
+
+         .. code-block:: python
+
+            meta_dog = sly.TagMeta('dog', sly.TagValueType.NONE, target_type=TagTargetType.FRAME_BASED)
+
+            print(meta_dog.target_type)
+            # Output: 'framesOnly'
+        """
+        return self._target_type
+
     def to_json(self) -> Dict:
         """
-        Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the TagMeta to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -379,6 +430,12 @@ class TagMeta(KeyObject, JsonSerializable):
             TagMetaJsonFields.VALUE_TYPE: self.value_type,
             TagMetaJsonFields.COLOR: rgb2hex(self.color),
         }
+
+        #! fix for the issue with the default value of the target_type
+        #! while restoring Data Version with old class definitions
+        if not hasattr(self, "_target_type"):
+            self._target_type = TagTargetType.ALL
+
         if self.value_type == TagValueType.ONEOF_STRING:
             jdict[TagMetaJsonFields.VALUES] = self.possible_values
 
@@ -390,13 +447,15 @@ class TagMeta(KeyObject, JsonSerializable):
             jdict[TagMetaJsonFields.APPLICABLE_TYPE] = self.applicable_to
         if self._applicable_classes is not None:
             jdict[TagMetaJsonFields.APPLICABLE_CLASSES] = self.applicable_classes
+        if self._target_type is not None:
+            jdict[TagMetaJsonFields.TARGET_TYPE] = self.target_type
 
         return jdict
 
     @classmethod
     def from_json(cls, data: Dict) -> TagMeta:
         """
-        Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to TagMeta. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: TagMeta in json format as a dict.
         :type data: dict
@@ -445,6 +504,7 @@ class TagMeta(KeyObject, JsonSerializable):
             hotkey = data.get(TagMetaJsonFields.HOTKEY, "")
             applicable_to = data.get(TagMetaJsonFields.APPLICABLE_TYPE, TagApplicableTo.ALL)
             applicable_classes = data.get(TagMetaJsonFields.APPLICABLE_CLASSES, [])
+            target_type = data.get(TagMetaJsonFields.TARGET_TYPE, TagTargetType.ALL)
 
             return cls(
                 name=name,
@@ -455,6 +515,7 @@ class TagMeta(KeyObject, JsonSerializable):
                 hotkey=hotkey,
                 applicable_to=applicable_to,
                 applicable_classes=applicable_classes,
+                target_type=target_type,
             )
         else:
             raise ValueError("Tags must be dict or str types.")
@@ -488,7 +549,7 @@ class TagMeta(KeyObject, JsonSerializable):
             print(meta_coat_color.possible_values)
             # Output: ['brown', 'white', 'black', 'red', 'chocolate', 'gold', 'grey', 'bald (no coat)']
         """
-        if self.value_type is TagValueType.ONEOF_STRING:
+        if self.value_type == TagValueType.ONEOF_STRING:
             if value in self._possible_values:
                 raise ValueError("Value {} already exists for tag {}".format(value, self.name))
             else:
@@ -632,6 +693,7 @@ class TagMeta(KeyObject, JsonSerializable):
         hotkey: Optional[str] = None,
         applicable_to: Optional[str] = None,
         applicable_classes: Optional[List[str]] = None,
+        target_type: Optional[str] = None,
     ) -> TagMeta:
         """
         Clone makes a copy of TagMeta with new fields, if fields are given, otherwise it will use original TagMeta fields.
@@ -683,6 +745,7 @@ class TagMeta(KeyObject, JsonSerializable):
             hotkey=take_with_default(hotkey, self.hotkey),
             applicable_to=take_with_default(applicable_to, self.applicable_to),
             applicable_classes=take_with_default(applicable_classes, self.applicable_classes),
+            target_type=take_with_default(target_type, self.target_type),
         )
 
     def __str__(self):
@@ -713,6 +776,7 @@ class TagMeta(KeyObject, JsonSerializable):
             "Hotkey",
             "Applicable to",
             "Applicable classes",
+            "Target type",
         ]
 
     def get_row_ptable(self):
@@ -724,6 +788,7 @@ class TagMeta(KeyObject, JsonSerializable):
             self.hotkey,
             self.applicable_to,
             self.applicable_classes,
+            self.target_type,
         ]
 
     def _set_id(self, id: int):

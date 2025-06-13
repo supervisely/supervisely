@@ -1,0 +1,27 @@
+.custom-models-selector-table {
+  border-collapse: collapse;
+}
+.custom-models-selector-table tr:nth-child(2n) {
+  background-color: #f6f8fa;
+}
+.custom-models-selector-table td,
+.custom-models-selector-table th {
+  border: 1px solid #dfe2e5;
+  padding: 6px 13px;
+  text-align: center;
+  line-height: 20px;
+}
+
+.custom-models-selector-table td {
+  text-align: left;
+}
+
+.custom-models-selector-table tr td:nth-child(4) {
+  text-align: center;
+}
+
+.el-radio-group.multi-line label.el-radio {
+  display: block;
+  margin-left: 0px;
+  margin-bottom: 5px;
+}

@@ -1,31 +1,32 @@
 # coding: utf-8
 from __future__ import annotations
-import uuid
-import json
-from typing import Optional, Dict, List
 
-from supervisely.project.project_meta import ProjectMeta
+import json
+import uuid
+from typing import Dict, List, Optional
+
 from supervisely._utils import take_with_default
 from supervisely.api.module_api import ApiField
-from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
-    PointcloudEpisodeObjectCollection,
-)
-from supervisely.video_annotation.constants import (
-    FRAMES,
-    DESCRIPTION,
-    FRAMES_COUNT,
-    TAGS,
-    OBJECTS,
-    KEY,
-)
-from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
 from supervisely.pointcloud_annotation.pointcloud_episode_frame_collection import (
     PointcloudEpisodeFrameCollection,
 )
-from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.pointcloud_annotation.pointcloud_episode_object_collection import (
+    PointcloudEpisodeObjectCollection,
+)
 from supervisely.pointcloud_annotation.pointcloud_episode_tag_collection import (
     PointcloudEpisodeTagCollection,
 )
+from supervisely.pointcloud_annotation.pointcloud_figure import PointcloudFigure
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.video_annotation.constants import (
+    DESCRIPTION,
+    FRAMES,
+    FRAMES_COUNT,
+    KEY,
+    OBJECTS,
+    TAGS,
+)
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeAnnotation:
@@ -388,7 +389,9 @@ class PointcloudEpisodeAnnotation:
         tags = PointcloudEpisodeTagCollection.from_json(
             data[TAGS], project_meta.tag_metas, key_id_map
         )
-        objects = PointcloudEpisodeObjectCollection.from_json(data[OBJECTS], project_meta, key_id_map)
+        objects = PointcloudEpisodeObjectCollection.from_json(
+            data[OBJECTS], project_meta, key_id_map
+        )
         frames = PointcloudEpisodeFrameCollection.from_json(
             data[FRAMES], objects, key_id_map=key_id_map
         )
@@ -416,7 +419,7 @@ class PointcloudEpisodeAnnotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -466,7 +469,7 @@ class PointcloudEpisodeAnnotation:
             import supervisely as sly
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -608,7 +611,7 @@ class PointcloudEpisodeAnnotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -689,7 +692,7 @@ class PointcloudEpisodeAnnotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -733,7 +736,7 @@ class PointcloudEpisodeAnnotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -804,7 +807,7 @@ class PointcloudEpisodeAnnotation:
             import supervisely as sly
             from supervisely.video_annotation.key_id_map import KeyIdMap
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import numpy as np
 
+from supervisely import logger
 from supervisely.geometry.constants import (
     CLASS_ID,
     CREATED_AT,
@@ -95,7 +96,7 @@ class Node(JsonSerializable):
     @classmethod
     def from_json(cls, data: Dict) -> Node:
         """
-        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Node. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Node in json format as a dict.
         :type data: dict
@@ -113,12 +114,13 @@ class Node(JsonSerializable):
         # TODO validations
         loc = data[LOC]
         return cls(
-            location=PointLocation(row=loc[1], col=loc[0]), disabled=data.get(DISABLED, False)
+            location=PointLocation(row=loc[1], col=loc[0]),
+            disabled=data.get(DISABLED, False),
         )
 
     def to_json(self) -> Dict:
         """
-        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Node to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -214,6 +216,8 @@ class GraphNodes(Geometry):
             updated_at=updated_at,
             created_at=created_at,
         )
+        if len(nodes) == 0:
+            raise ValueError("Empty list of nodes is not allowed for GraphNodes")
         self._nodes = nodes
         if isinstance(nodes, (list, tuple)):
             self._nodes = {}
@@ -236,7 +240,7 @@ class GraphNodes(Geometry):
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> GraphNodes:
         """
-        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to GraphNodes. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: GraphNodes in json format as a dict.
         :type data: dict
@@ -262,7 +266,10 @@ class GraphNodes(Geometry):
             from supervisely.geometry.graph import GraphNodes
             figure = GraphNodes.from_json(figure_json)
         """
-        nodes = {node_id: Node.from_json(node_json) for node_id, node_json in data[cls.items_json_field].items()}
+        nodes = {
+            node_id: Node.from_json(node_json)
+            for node_id, node_json in data[cls.items_json_field].items()
+        }
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
@@ -279,7 +286,7 @@ class GraphNodes(Geometry):
 
     def to_json(self) -> Dict[str, Dict]:
         """
-        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the GraphNodes to list. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -312,7 +319,11 @@ class GraphNodes(Geometry):
             #    }
             # }
         """
-        res = {self.items_json_field: {node_id: node.to_json() for node_id, node in self._nodes.items()}}
+        res = {
+            self.items_json_field: {
+                node_id: node.to_json() for node_id, node in self._nodes.items()
+            }
+        }
         self._add_creation_info(res)
         return res
 
@@ -549,7 +560,10 @@ class GraphNodes(Geometry):
             if not node.disabled:
                 effective_color = self._get_nested_or_default(nodes_config, [node_id, COLOR], color)
                 Point.from_point_location(node.location).draw(
-                    bitmap=bitmap, color=effective_color, thickness=thickness, config=None
+                    bitmap=bitmap,
+                    color=effective_color,
+                    thickness=thickness,
+                    config=None,
                 )
 
     @property
@@ -582,6 +596,10 @@ class GraphNodes(Geometry):
 
             rectangle = figure.to_bbox()
         """
+        if self._nodes is None or len(self._nodes) == 0:
+            logger.warning(
+                f"Cannot create a bounding box from {self.name()} with empty nodes. Geometry ID: {self.sly_id} "
+            )
         return Rectangle.from_geometries_list(
             [Point.from_point_location(node.location) for node in self._nodes.values()]
         )
@@ -609,7 +627,9 @@ class GraphNodes(Geometry):
         super().validate(name, settings)
         # TODO template self-consistency checks.
 
-        nodes_not_in_template = set(self._nodes.keys()) - set(settings[self.items_json_field].keys())
+        nodes_not_in_template = set(self._nodes.keys()) - set(
+            settings[self.items_json_field].keys()
+        )
         if len(nodes_not_in_template) > 0:
             raise ValueError(
                 "Graph contains nodes not declared in the template: {!r}.".format(

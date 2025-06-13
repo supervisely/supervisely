@@ -1,0 +1,5 @@
+<sly-run-app-button :public-api-instance="publicApiInstance" :group-id="state.{{{widget.widget_id}}}.team_id"
+	:workspace-id="state.{{{widget.widget_id}}}.workspace_id" :module-id="state.{{{widget.widget_id}}}.module_id"
+	:payload="state.{{{widget.widget_id}}}.payload" :options="data.{{{widget.widget_id}}}.options" {% if
+	widget._visible_by_vue_field %} v-show="{{{widget._visible_by_vue_field}}}" {% endif %}
+	:check-existing-task-cb="data.{{{widget.widget_id}}}.check_existing_task_cb"></sly-run-app-button>

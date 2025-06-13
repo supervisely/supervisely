@@ -28,6 +28,8 @@ class Card(Widget):
     :type remove_padding: Optional[bool]
     :param overflow: Overflow property of the card. Can be "auto", "unset" or "scroll".
     :type overflow: Optional[Literal["auto", "unset", "scroll"]]
+    :param style: CSS styles string of the card.
+    :type style: Optional[str]
     :param widget_id: Unique widget identifier.
     :type widget_id: str
 
@@ -51,6 +53,7 @@ class Card(Widget):
         widget_id: Optional[str] = None,
         remove_padding: Optional[bool] = False,
         overflow: Optional[Literal["auto", "unset", "scroll"]] = "auto",
+        style: Optional[str] = "",
     ):
         self._title = title
         self._description = description
@@ -63,6 +66,7 @@ class Card(Widget):
         if self._slot_content is not None:
             self._show_slot = True
         self._overflow = overflow
+        self._style = style
         self._options = {
             "collapsable": self._collapsable,
             "marginBottom": "0px",
@@ -124,6 +128,9 @@ class Card(Widget):
         self._collapsed = False
         StateJson()[self.widget_id]["collapsed"] = self._collapsed
         StateJson().send_changes()
+
+    def is_collapsed(self) -> bool:
+        return StateJson()[self.widget_id]["collapsed"]
 
     def lock(self, message: Optional[str] = None) -> None:
         """Locks the card, changes the lock message if specified.

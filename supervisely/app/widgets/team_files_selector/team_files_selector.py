@@ -23,6 +23,7 @@ class TeamFilesSelector(Widget):
             Literal["id", "createdAt", "updatedAt", "type", "size", "mimeType"]
         ] = [],
         widget_id: str = None,
+        initial_folder: str = None,
     ):
         self._api = Api()
         self._team_id = team_id
@@ -42,6 +43,7 @@ class TeamFilesSelector(Widget):
 
         self._additional_fields = additional_fields
         self._selected = []
+        self._initial_folder = initial_folder or "/"
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -55,6 +57,7 @@ class TeamFilesSelector(Widget):
                 "hideHeader": self._hide_header,
                 "hideEmptyTable": self._hide_empty_table,
                 "additionalFields": self._additional_fields,
+                "initialFolder": {"path": self._initial_folder},
             },
         }
 

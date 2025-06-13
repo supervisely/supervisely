@@ -2,11 +2,13 @@ from typing import Optional
 
 import supervisely.io.env as env
 from supervisely.api.api import Api
+from supervisely.api.file_api import FileInfo
 from supervisely.output import set_download
 from supervisely.sly_logger import logger
 
 
 class Export:
+
     class Context:
         def __init__(
             self, team_id: int, workspace_id: int, project_id: int, dataset_id: Optional[int] = None
@@ -39,6 +41,13 @@ class Export:
         @property
         def dataset_id(self) -> int:
             return self._dataset_id
+
+    def __init__(self):
+        self._output_file: FileInfo = None
+
+    @property
+    def output_file(self) -> FileInfo:
+        return self._output_file
 
     def process(self, context: Context) -> str:
         raise NotImplementedError("implement your own method when inherit")
@@ -74,4 +83,4 @@ class Export:
         if type(local_path) is not str:
             raise ValueError("Path must be a 'string'")
 
-        set_download(local_path)
+        self._output_file = set_download(local_path)

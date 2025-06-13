@@ -1,7 +1,18 @@
 # coding: utf-8
+import asyncio
 from collections import namedtuple
 from copy import deepcopy
-from typing import TYPE_CHECKING, List
+from math import ceil
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    AsyncGenerator,
+    Dict,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+)
 
 import requests
 
@@ -136,6 +147,10 @@ class ApiField:
     """"""
     DISABLED = "disabled"
     """"""
+    DISABLED_AT = "disabledAt"
+    """"""
+    DISABLED_BY = "disabledBy"
+    """"""
     LAST_LOGIN = "lastLogin"
     """"""
     PASSWORD = "password"
@@ -159,6 +174,8 @@ class ApiField:
     CREATED_BY_ID = (["createdBy"], "created_by_id")
     """"""
     CREATED_BY_LOGIN = (["managerLogin"], "created_by_login")
+    """"""
+    CREATED_BY_USER = "createdByUser"
     """"""
     ASSIGNED_TO_ID = (["userId"], "assigned_to_id")
     """"""
@@ -215,6 +232,8 @@ class ApiField:
     GEOMETRY_META = "geometryMeta"
     """"""
     OBJECT_ID = "objectId"
+    """"""
+    ANNOTATION_OBJECT_ID = "annotationObjectId"
     """"""
     FRAME = "frame"
     """"""
@@ -546,6 +565,104 @@ class ApiField:
     """"""
     LABELING_EXAM_ID = "labelingExamId"
     """"""
+    IS_PINNED = "isPinned"
+    """"""
+    EVENTS = "events"
+    """"""
+    COMMENTS = "comments"
+    """"""
+    COMMENT = "comment"
+    """"""
+    ASSIGNEES = "assignees"
+    """"""
+    LINKS = "links"
+    """"""
+    IS_LOCAL = "isLocal"
+    """"""
+    ISSUE_ID = "issueId"
+    """"""
+    EXTRA = "extra"
+    """"""
+    FIGURE_IMAGE_ID = "figureImageId"
+    """"""
+    BINDINGS = "bindings"
+    """"""
+    TOP = "top"
+    """"""
+    LEFT = "left"
+    """"""
+    POSITION = "position"
+    """"""
+    ANNOTATION_DATA = "annotationData"
+    """"""
+    JOB_ENTITY_STATUS = "jobEntityStatus"
+    """"""
+    INTEGER_COORDS = "integerCoords"
+    """"""
+    HIDDEN = "hidden"
+    """"""
+    PRIORITY = "priority"
+    """"""
+    CLEAR_LOCAL_DATA_SOURCE = "clearLocalDataSource"
+    """"""
+    ONLY_RUNNING = "onlyRunning"
+    """"""
+    SHOW_DISABLED = "showDisabled"
+    """"""
+    WITH_SHARED = "withShared"
+    """"""
+    USE_DIRECT_PROGRESS_MESSAGES = "useDirectProgressMessages"
+    """"""
+    EXTRA_FIELDS = "extraFields"
+    """"""
+    CUSTOM_SORT = "customSort"
+    """"""
+    GROUP_ID = "groupId"
+    """"""
+    EXPERIMENT = "experiment"
+    """"""
+    IS_FINISHED = "isFinished"
+    """"""
+    NON_FINAL_VALUE = "nonFinalValue"
+    """"""
+    HOTKEY = "hotkey"
+    """"""
+    RELATED_DATA_ID = "relatedDataId"
+    """"""
+    DOWNLOAD_ID = "downloadId"
+    """"""
+    OFFSET_START = "offsetStart"
+    """"""
+    OFFSET_END = "offsetEnd"
+    """"""
+    SOURCE_BLOB = "sourceBlob"
+    """"""
+    JOBS = "jobs"
+    """"""
+    LABELERS = "labelers"
+    """"""
+    REVIEWERS = "reviewers"
+    """"""
+    REVIEWER_IDS = "reviewerIds"
+    """"""
+    ENTITIES_COUNT = "entitiesCount"
+    """"""
+    ACCEPTED_COUNT = "acceptedCount"
+    """"""
+    ANNOTATED_COUNT = "annotatedCount"
+    """"""
+    IN_PROGRESS_COUNT = "inProgressCount"
+    """"""
+    PENDING_COUNT = "pendingCount"
+    """"""
+    QUEUE_META = "queueMeta"
+    """"""
+    ENTITY_IDS = "entityIds"
+    """"""
+    COLLECTION_ID = "collectionId"
+    """"""
+    QUALITY_CHECK_USER_IDS = "qualityCheckUserIds"
+    """"""
 
 
 def _get_single_item(items):
@@ -801,6 +918,29 @@ class ModuleApiBase(_JsonConvertibleModule):
                     raise RuntimeError("Can not parse field {!r}".format(field_name))
             return self.InfoType(*field_values)
 
+    @classmethod
+    def convert_info_to_json(cls, info: NamedTuple) -> Dict:
+        """_convert_info_to_json"""
+
+        def _create_nested_dict(keys, value):
+            if len(keys) == 1:
+                return {keys[0]: value}
+            else:
+                return {keys[0]: _create_nested_dict(keys[1:], value)}
+
+        json_info = {}
+        for field_name, value in zip(cls.info_sequence(), info):
+            if type(field_name) is str:
+                json_info[field_name] = value
+            elif isinstance(field_name, tuple):
+                if len(field_name[0]) == 0:
+                    json_info[field_name[1]] = value
+                else:
+                    json_info.update(_create_nested_dict(field_name[0], value))
+            else:
+                raise RuntimeError("Can not parse field {!r}".format(field_name))
+        return json_info
+
     def _get_response_by_id(self, id, method, id_field, fields=None):
         """_get_response_by_id"""
         try:
@@ -818,6 +958,98 @@ class ModuleApiBase(_JsonConvertibleModule):
         """_get_info_by_id"""
         response = self._get_response_by_id(id, method, id_field=ApiField.ID, fields=fields)
         return self._convert_json_info(response.json()) if (response is not None) else None
+
+    async def get_list_idx_page_async(
+        self,
+        method: str,
+        data: dict,
+    ) -> Tuple[int, List[NamedTuple]]:
+        """
+        Get the list of items for a given page number.
+        Page number is specified in the data dictionary.
+
+        :param method: Method to call for listing items.
+        :type method: str
+        :param data: Data to pass to the API method.
+        :type data: dict
+        :return: List of items.
+        :rtype: Tuple[int, List[NamedTuple]]
+        """
+
+        response = await self._api.post_async(method, data)
+        response_json = response.json()
+        entities = response_json.get("entities", [])
+        # To avoid empty pages when a filter is applied to the data and the `pagesCount` is less than the number calculated based on the items and `per_page` size.
+        # Process `pagesCount` in the main function according to the actual number of pages returned.
+        pages_count = response_json.get("pagesCount", None)
+        if pages_count is None:
+            raise ValueError("Can not determine the number of pages to retrieve.")
+        return pages_count, [self._convert_json_info(item) for item in entities]
+
+    async def get_list_page_generator_async(
+        self,
+        method: str,
+        data: dict,
+        pages_count: Optional[int] = None,
+        semaphore: Optional[List[asyncio.Semaphore]] = None,
+    ) -> AsyncGenerator[List[Any], None]:
+        """
+        Yields list of images in dataset asynchronously page by page.
+
+        :param method: Method to call for listing items.
+        :type method: str
+        :param data: Data to pass to the API method.
+        :type data: dict
+        :param pages_count: Preferred number of pages to retrieve if used with a `per_page` limit.
+                            Will be automatically adjusted if the `pagesCount` differs from the requested number.
+        :type pages_count: int, optional
+        :param semaphore: Semaphore for limiting the number of simultaneous requests.
+        :type semaphore: :class:`asyncio.Semaphore`, optional
+        :param kwargs: Additional arguments.
+        :return: List of images in dataset.
+        :rtype: AsyncGenerator[List[ImageInfo]]
+
+        :Usage example:
+
+            .. code-block:: python
+
+                    import supervisely as sly
+                    import asyncio
+
+                    os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+                    os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+                    api = sly.Api.from_env()
+
+                    method = 'images.list'
+                    data = {
+                        'datasetId': 123456
+                    }
+
+                    loop = sly.utils.get_or_create_event_loop()
+                    images = loop.run_until_complete(api.image.get_list_generator_async(method, data))
+        """
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        async def sem_task(task):
+            async with semaphore:
+                return await task
+
+        if pages_count is None:
+            pages_count = 999999  # to avoid range lesser than total pages count
+        for page_num in range(1, pages_count + 1):
+            if page_num <= pages_count:
+                data[ApiField.PAGE] = page_num
+                total_pages, items = await sem_task(self.get_list_idx_page_async(method, data))
+
+                # To correct `total_pages` count in case filter is applied
+                if page_num == 1:
+                    pages_count = total_pages
+
+                yield items
+            else:
+                break
 
 
 class ModuleApi(ModuleApiBase):
@@ -851,7 +1083,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -901,7 +1133,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -940,7 +1172,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -976,7 +1208,7 @@ class ModuleApi(ModuleApiBase):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1261,7 +1493,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1295,7 +1527,7 @@ class RemoveableBulkModuleApi(ModuleApi):
             import supervisely as sly
 
             # You can connect to API directly
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 

@@ -1,5 +1,6 @@
 from os.path import join
 from re import compile as re_compile
+from typing import List
 
 from supervisely.nn.artifacts.artifacts import BaseTrainArtifacts
 
@@ -9,11 +10,17 @@ class MMClassification(BaseTrainArtifacts):
         super().__init__(team_id)
 
         self._app_name = "Train MMClassification"
+        self._slug = "supervisely-ecosystem/mmclassification/supervisely/train"
+        self._serve_app_name = "Serve MMClassification"
+        self._serve_slug = "supervisely-ecosystem/mmclassification/supervisely/serve"
+        self._framework_name = "MMClassification"
         self._framework_folder = "/mmclassification"
         self._weights_folder = "checkpoints"
         self._task_type = "classification"
         self._weights_ext = ".pth"
         self._pattern = re_compile(r"^/mmclassification/\d+_[^/]+/?$")
+        self._available_task_types: List[str] = ["classification"]
+        self._require_runtime = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

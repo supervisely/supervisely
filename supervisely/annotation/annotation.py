@@ -9,20 +9,21 @@ import json
 import operator
 from collections import defaultdict
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
 
 from supervisely import logger
 from supervisely._utils import take_with_default
-from supervisely.annotation.label import Label
+from supervisely.annotation.label import Label, LabelJsonFields
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_collection import TagCollection
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.image_rotator import ImageRotator
 from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
 from supervisely.geometry.polygon import Polygon
@@ -81,6 +82,13 @@ class Annotation:
     :type img_tags: TagCollection or List[Tag]
     :param img_description: Image description.
     :type img_description: str, optional
+    :param pixelwise_scores_labels: List of Label objects.
+    :type pixelwise_scores_labels: List[Label]
+    :param custom_data: Custom data.
+    :type custom_data: dict, optional
+    :param image_id: Id of the image.
+    :type image_id: int, optional
+
     :raises: :class:`TypeError`, if image size is not tuple or list
     :Usage example:
 
@@ -286,7 +294,7 @@ class Annotation:
 
     def to_json(self) -> Dict:
         """
-        Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -354,7 +362,7 @@ class Annotation:
     @classmethod
     def from_json(cls, data: Dict, project_meta: ProjectMeta) -> Annotation:
         """
-        Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Annotation in json format as a dict.
         :type data: dict
@@ -396,7 +404,7 @@ class Annotation:
                 f"Failed to deserialize one of the label from JSON format annotation: \n{repr(e)}"
             )
 
-        custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {})
+        custom_data = data.get(AnnotationJsonFields.CUSTOM_DATA, {}) or {}
         prob_labels = None
         if (
             AnnotationJsonFields.PROBABILITY_LABELS in custom_data
@@ -447,7 +455,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -490,6 +498,13 @@ class Annotation:
         :type img_tags: TagCollection or List[Tag]
         :param img_description: Image description.
         :type img_description: str, optional
+        :param pixelwise_scores_labels: List of Label objects.
+        :type pixelwise_scores_labels: List[Label]
+        :param custom_data: Custom data.
+        :type custom_data: dict, optional
+        :param image_id: Id of the image.
+        :type image_id: int, optional
+
         :return: New instance of Annotation
         :rtype: :class:`Annotation<Annotation>`
         :Usage Example:
@@ -528,7 +543,7 @@ class Annotation:
             image_id=take_with_default(image_id, self.image_id),
         )
 
-    def _add_labels_impl(self, dest, labels):
+    def _add_labels_impl(self, dest: List, labels: List[Label]):
         """
         The function _add_labels_impl extend list of the labels of the current Annotation object
         :param dest: destination list of the Label class objects
@@ -539,7 +554,15 @@ class Annotation:
             if self.img_size.count(None) == 0:
                 # image has resolution in DB
                 canvas_rect = Rectangle.from_size(self.img_size)
-                dest.extend(label.crop(canvas_rect))
+                try:
+                    dest.extend(label.crop(canvas_rect))
+                except Exception:
+                    logger.error(
+                        f"Cannot crop label of '{label.obj_class.name}' class "
+                        "when extend list of the labels of the current Annotation object",
+                        exc_info=True,
+                    )
+                    raise
             else:
                 # image was uploaded by link and does not have resolution in DB
                 # add label without normalization and validation
@@ -898,7 +921,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -956,7 +979,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1016,7 +1039,7 @@ class Annotation:
             import supervisely as sly
             from supervisely.geometry.image_rotator import ImageRotator
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1079,7 +1102,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1144,7 +1167,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1205,7 +1228,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1262,7 +1285,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1367,7 +1390,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1444,7 +1467,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1527,7 +1550,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1661,7 +1684,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1719,7 +1742,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1779,7 +1802,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1904,7 +1927,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1961,7 +1984,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2162,7 +2185,7 @@ class Annotation:
 
             if np.any(mask):  # figure may be entirely covered by others
                 g = lbl.geometry
-                new_mask = Bitmap(data=mask)
+                new_mask = Bitmap(data=mask, extra_validation=False)
                 new_lbl = lbl.clone(geometry=new_mask, obj_class=dest_class)
                 new_labels.append(new_lbl)
         new_ann = self.clone(labels=new_labels)
@@ -2222,7 +2245,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2351,7 +2374,7 @@ class Annotation:
         new_labels = []
         for obj_class, white_mask in class_mask.items():
             mask = white_mask == 255
-            bitmap = Bitmap(data=mask)
+            bitmap = Bitmap(data=mask, extra_validation=False)
             new_labels.append(Label(geometry=bitmap, obj_class=obj_class))
         return self.clone(labels=new_labels)
 
@@ -2367,7 +2390,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2778,7 +2801,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2915,3 +2938,212 @@ class Annotation:
         """Remove binding keys from all labels."""
         for label in self.labels:
             label.binding_key = None
+
+    @classmethod
+    def _to_pixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from subpixel precision to pixel precision.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Label in json format.
+        :type data: :class:`dict`
+        :return: Json data with coordinates converted to pixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+        image_size = [
+            data[AnnotationJsonFields.IMG_SIZE][AnnotationJsonFields.IMG_SIZE_HEIGHT],
+            data[AnnotationJsonFields.IMG_SIZE][AnnotationJsonFields.IMG_SIZE_WIDTH],
+        ]
+        new_labels = []
+        for label in data[AnnotationJsonFields.LABELS]:
+            if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+                label = Rectangle._to_pixel_coordinate_system_json(label, image_size)
+            else:
+                label = Geometry._to_pixel_coordinate_system_json(label, image_size)
+            new_labels.append(label)
+
+        data[AnnotationJsonFields.LABELS] = new_labels
+        return data
+
+    @classmethod
+    def _to_subpixel_coordinate_system_json(cls, data: Dict) -> Dict:
+        """
+        Convert label geometry from pixel precision to subpixel precision.
+
+        In the labeling tool, labels are created with subpixel precision,
+        which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+        However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+        :param data: Label in json format.
+        :type data: dict
+        :return: Json data with coordinates converted to subpixel coordinate system.
+        :rtype: :class:`dict`
+        """
+        data = deepcopy(data)  # Avoid modifying the original data
+        new_labels = []
+        for label in data[AnnotationJsonFields.LABELS]:
+            if label[LabelJsonFields.GEOMETRY_TYPE] == Rectangle.geometry_name():
+                label = Rectangle._to_subpixel_coordinate_system_json(label)
+            else:
+                label = Geometry._to_subpixel_coordinate_system_json(label)
+            new_labels.append(label)
+
+        data[AnnotationJsonFields.LABELS] = new_labels
+        return data
+
+    # def _to_subpixel_coordinate_system(self) -> Annotation:
+    #     """
+    #     Convert all labels in the annotation from pixel precision to subpixel precision by subtracting a subpixel offset from the coordinates.
+
+    #     In the labeling tool, labels are created with subpixel precision,
+    #     which means that the coordinates of the geometry can have decimal values representing fractions of a pixel.
+    #     However, in Supervisely SDK, geometry coordinates are represented using pixel precision, where the coordinates are integers representing whole pixels.
+
+    #     :return: New instance of Annotation with labels in subpixel precision.
+    #     :rtype: :class:`Annotation<Annotation>`
+    #     """
+    #     new_ann = self.clone()
+    #     new_labels = [label._to_subpixel_coordinate_system() for label in new_ann.labels]
+    #     new_ann._labels = new_labels
+    #     return new_ann
+
+    def to_coco(
+        self,
+        coco_image_id: int,
+        class_mapping: Dict[str, int],
+        coco_ann: Optional[Union[Dict, List]] = None,
+        last_label_id: Optional[int] = None,
+        coco_captions: Optional[Union[Dict, List]] = None,
+        last_caption_id: Optional[int] = None,
+    ) -> Tuple[List, List]:
+        """
+        Convert Supervisely annotation to COCO format annotation ("annotations" field).
+
+        :param coco_image_id: Image id in COCO format.
+        :type coco_image_id: int
+        :param class_mapping: Dictionary that maps class names to class ids.
+        :type class_mapping: Dict[str, int]
+        :param coco_ann: COCO annotation in dictionary or list format to append new annotations.
+        :type coco_ann: Union[Dict, List], optional
+        :param last_label_id: Last label id in COCO format to continue counting.
+        :type last_label_id: int, optional
+        :param coco_captions: COCO captions in dictionary or list format to append new captions.
+        :type coco_captions: Union[Dict, List], optional
+        :return: Tuple with list of COCO objects and list of COCO captions.
+        :rtype: :class:`tuple`
+
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+
+            coco_instances = dict(
+                info=dict(
+                    description="COCO dataset converted from Supervisely",
+                    url="None",
+                    version=str(1.0),
+                    year=2025,
+                    contributor="Supervisely",
+                    date_created="2025-01-01 00:00:00",
+                ),
+                licenses=[dict(url="None", id=0, name="None")],
+                images=[],
+                annotations=[],
+                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 0, "name": "lemon"}, ...]
+            )
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            image_id = 11
+            label_id = 222
+            class_mapping = {obj_cls.name: idx for idx, obj_cls in enumerate(meta.obj_classes)}
+
+            curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, coco_instances, label_id)
+            # or
+            # curr_coco_ann, _ = ann.to_coco(image_id, class_mapping, label_id=label_id)
+            # coco_instances["annotations"].extend(curr_coco_ann)
+
+            label_id += len(curr_coco_ann)
+            image_id += 1
+        """
+
+        from supervisely.convert.image.coco.coco_helper import sly_ann_to_coco
+
+        return sly_ann_to_coco(
+            ann=self,
+            coco_image_id=coco_image_id,
+            class_mapping=class_mapping,
+            coco_ann=coco_ann,
+            last_label_id=last_label_id,
+            coco_captions=coco_captions,
+            last_caption_id=last_caption_id,
+        )
+
+    def to_yolo(
+        self,
+        class_names: List[str],
+        task_type: Literal["detect", "segment", "pose"] = "detect",
+    ) -> List[str]:
+        """
+        Convert Supervisely annotation to YOLO annotation format.
+        Returns a list of strings, each string represents one object.
+
+        :param class_names: List of class names.
+        :type class_names: List[str]
+        :param task_type: Task type, one of "detection", "segmentation", "pose".
+        :type task_type: str
+        :return: List of objects in YOLO format.
+        :rtype: :class:`list`
+
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            class_names = [obj_cls.name for obj_cls in meta.obj_classes]
+
+            yolo_lines = ann.to_yolo(class_names, task_type="segmentation")
+        """
+
+        from supervisely.convert.image.yolo.yolo_helper import sly_ann_to_yolo
+
+        return sly_ann_to_yolo(ann=self, class_names=class_names, task_type=task_type)
+
+    def to_pascal_voc(
+        self,
+        image_name: str,
+    ) -> Tuple[List, List]:
+        """
+        Convert Supervisely annotation to Pascal VOC format annotation ("annotations" field).
+
+        :param ann: Supervisely annotation.
+        :type ann: :class:`Annotation<supervisely.annotation.annotation.Annotation>`
+        :param image_name: Image name.
+        :type image_name: :class:`str`
+        :return: Tuple with xml tree and instance and class masks in PIL.Image format.
+        :rtype: :class:`Tuple`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+            from supervisely.convert.image.pascal_voc.pascal_voc_helper import sly_ann_to_pascal_voc
+
+            ann = sly.Annotation.from_json(ann_json, meta)
+            xml_tree, instance_mask, class_mask = sly_ann_to_pascal_voc(ann, image_name)
+        """
+
+        from supervisely.convert.image.pascal_voc.pascal_voc_helper import (
+            sly_ann_to_pascal_voc,
+        )
+
+        return sly_ann_to_pascal_voc(self, image_name)

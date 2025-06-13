@@ -1,9 +1,10 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Literal, Union
 
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import Widget
 from supervisely.io.fs import get_file_ext
+from supervisely.nn.utils import ModelSource, _get_model_name
 
 
 class PretrainedModelsSelector(Widget):
@@ -134,36 +135,73 @@ class PretrainedModelsSelector(Widget):
             selected_row_index = int(widget_actual_state["selectedRow"])
             return models[selected_row_index]
 
-    def get_selected_model_params(self, model_name_column: str = "Model") -> Union[Dict, None]:
+    def get_selected_model_params(
+        self,
+        model_name_column: str = "Model",
+        train_version: Literal["v1", "v2"] = "v1",
+    ) -> Union[Dict, None]:
         selected_model = self.get_selected_row()
-        model_name = selected_model.get(model_name_column)
-        if model_name is None:
-            raise ValueError(
-                "Could not find model name. Make sure you have column 'Model' in your models list."
-            )
-        checkpoint_url = selected_model.get("meta", {}).get("weights_url")
-        if checkpoint_url is None:
-            pass
+        if selected_model is None:
+            return {}
 
-        checkpoint_ext = get_file_ext(checkpoint_url)
-        checkpoint_name = f"{model_name.lower()}{checkpoint_ext}"
+        if train_version == "v1":
+            model_name = selected_model.get(model_name_column)
+            if model_name is None:
+                model_name = _get_model_name(selected_model)
+                if model_name is None:
+                    raise ValueError(
+                        "Could not find model name. Make sure you have column 'Model' in your models list."
+                    )
 
-        task_type = self.get_selected_task_type()
-        model_params = {
-            "model_source": "Pretrained models",
-            "task_type": task_type,
-            "checkpoint_name": checkpoint_name,
-            "checkpoint_url": checkpoint_url,
-        }
+            model_meta = selected_model.get("meta")
+            if model_meta is None:
+                raise ValueError(
+                    "Could not find model meta. Make sure you have key 'meta' in your models configuration list."
+                )
+            checkpoint_url = model_meta.get("weights_url")
+            if checkpoint_url is None:
+                model_files = model_meta.get("model_files")
+                if model_files is None:
+                    raise ValueError(
+                        "Could not find model files. Make sure you have key 'model_files' or 'weights_url' in 'meta' in your models configuration list."
+                    )
+                checkpoint_url = model_files.get("checkpoint")
+                if checkpoint_url is None:
+                    raise ValueError(
+                        "Could not find checkpoint url. Make sure you have key 'checkpoint' in 'model_files' in 'meta' in your models configuration list."
+                    )
 
-        if len(self._arch_types) > 1:
-            arch_type = self.get_selected_arch_type()
-            model_params["arch_type"] = arch_type
+            checkpoint_ext = get_file_ext(checkpoint_url)
+            checkpoint_name = f"{model_name.lower()}{checkpoint_ext}"
 
-        config_url = selected_model.get("meta", {}).get("config_url")
-        if config_url is not None:
-            model_params["config_url"] = config_url
+            task_type = self.get_selected_task_type()
+            model_params = {
+                "model_source": "Pretrained models",
+                "task_type": task_type,
+                "checkpoint_name": checkpoint_name,
+                "checkpoint_url": checkpoint_url,
+            }
 
+            if len(self._arch_types) > 1:
+                arch_type = self.get_selected_arch_type()
+                model_params["arch_type"] = arch_type
+
+            config_url = selected_model.get("meta", {}).get("config_url")
+            if config_url is not None:
+                model_params["config_url"] = config_url
+        elif train_version == "v2":
+            model_info = self.get_selected_row()
+            meta = model_info.get("meta")
+            if meta is None:
+                raise ValueError("key 'meta' not found in model configuration")
+            model_files = meta.get("model_files")
+            if model_files is None:
+                raise ValueError("key 'model_files' not found in key 'meta' in model configuration")
+            model_params = {
+                "model_source": ModelSource.PRETRAINED,
+                "model_info": model_info,
+                "model_files": model_files,
+            }
         return model_params
 
     def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
@@ -172,27 +210,47 @@ class PretrainedModelsSelector(Widget):
         if widget_actual_state is not None and widget_actual_data is not None:
             return widget_actual_state["selectedRow"]
 
-    def set_active_arch_type(self, arch_type: str):
+    def set_active_arch_type(self, arch_type: str) -> None:
         if arch_type not in self._arch_types:
             raise ValueError(f'Architecture type "{arch_type}" does not exist')
         StateJson()[self.widget_id]["selectedArchType"] = arch_type
         StateJson().send_changes()
 
-    def set_active_task_type(self, task_type: str):
+    def set_active_task_type(self, task_type: str) -> None:
         if task_type not in self._task_types:
             raise ValueError(f'Task type "{task_type}" does not exist')
         StateJson()[self.widget_id]["selectedTaskType"] = task_type
         StateJson().send_changes()
 
-    def set_active_row(self, row_index: int):
+    def set_active_row(self, row_index: int) -> None:
         if row_index < 0:
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
+    def set_by_model_name(self, model_name: str) -> None:
+        for task_type in self._table_data:
+            for arch_type in self._table_data[task_type]:
+                for idx, model in enumerate(self._table_data[task_type][arch_type]):
+                    name_from_info = _get_model_name(model)
+                    if name_from_info is not None:
+                        if name_from_info.lower() == model_name.lower():
+                            self.set_active_task_type(task_type)
+                            self.set_active_arch_type(arch_type)
+                            self.set_active_row(idx)
+                            return
+
+    def get_by_model_name(self, model_name: str) -> Union[Dict, None]:
+        for task_type in self._table_data:
+            for arch_type in self._table_data[task_type]:
+                for idx, model in enumerate(self._table_data[task_type][arch_type]):
+                    name_from_info = _get_model_name(model)
+                    if name_from_info is not None:
+                        if name_from_info.lower() == model_name.lower():
+                            return model
+
     def _filter_and_sort_models(self, models: List[Dict], sort_models: bool = True) -> Dict:
         filtered_models = {}
-
         for model in models:
             for key in model:
                 if isinstance(model[key], (int, float)):

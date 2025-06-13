@@ -28,6 +28,7 @@ from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.annotation.label import Label
 from supervisely.annotation.tag import Tag
 from supervisely.api.entity_annotation.figure_api import FigureInfo
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import (
     ApiField,
     ModuleApi,
@@ -44,6 +45,7 @@ from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.polyline import Polyline
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.project.project_meta import ProjectMeta
+from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
 
 
@@ -86,6 +88,7 @@ class LabelingJobInfo(NamedTuple):
     include_images_with_tags: list
     exclude_images_with_tags: list
     entities: list
+    priority: int
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -110,7 +113,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         jobs = api.labeling_job.get_list(9) # api usage example
     """
@@ -127,6 +130,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         COMPLETED = "completed"
         """"""
         STOPPED = "stopped"
+        """"""
+        REVIEW_COMPLETED = "review_completed"
         """"""
 
     @staticmethod
@@ -175,7 +180,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              filter_images_by_tags=[],
                              include_images_with_tags=[],
                              exclude_images_with_tags=[],
-                             entities=None)
+                             entities=None,
+                             priority=2)
         """
         return [
             ApiField.ID,
@@ -216,6 +222,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.INCLUDE_IMAGES_WITH_TAGS,
             ApiField.EXCLUDE_IMAGES_WITH_TAGS,
             ApiField.ENTITIES,
+            ApiField.PRIORITY,
         ]
 
     @staticmethod
@@ -330,6 +337,10 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         images_ids: Optional[List[int]] = [],
         dynamic_classes: Optional[bool] = False,
         dynamic_tags: Optional[bool] = False,
+        disable_confirm: Optional[bool] = None,
+        disable_submit: Optional[bool] = None,
+        toolbox_settings: Optional[Dict] = None,
+        enable_quality_check: Optional[bool] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -366,6 +377,14 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type dynamic_classes: bool, optional
         :param dynamic_tags: If True, tags created after creating the job will be available for annotators
         :type dynamic_tags: bool, optional
+        :param disable_confirm: If True, the Confirm button will be disabled in the labeling tool. It will remain disabled until the next API call sets the parameter to False, re-enabling the button.
+        :type disable_confirm: bool, optional
+        :param disable_submit: If True, the Submit button will be disabled in the labeling tool. It will remain disabled until the next API call sets the parameter to False, re-enabling the button.
+        :type disable_submit: bool, optional
+        :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
+        :type toolbox_settings: Dict, optional
+        :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Job.
+        :type enable_quality_check: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -380,125 +399,40 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
 
             user_name = 'alex'
             dataset_id = 602
-            new_label_jobs = api.labeling_job.create(user_name, dataset_id, user_ids=[111, 222], readme='Readmy text',
-                                                     description='Work for labelers', objects_limit_per_image=5, tags_limit_per_image=3)
-            print(new_label_jobs)
-            # Output: [
-            #     [
-            #         92,
-            #         "alex (#1) (#3)",
-            #         "Readmy text",
-            #         "Work for labelers",
-            #         13,
-            #         29,
-            #         "Labelling Workspace",
-            #         494,
-            #         "Test Dataset",
-            #         602,
-            #         "ds1",
-            #         8,
-            #         "alex",
-            #         111,
-            #         "quantigo273",
-            #         8,
-            #         "alex",
-            #         "2021-03-25T11:04:34.031Z",
-            #         null,
-            #         null,
-            #         "pending",
-            #         false,
-            #         3,
-            #         0,
-            #         0,
-            #         0,
-            #         0,
-            #         [],
-            #         [],
-            #         [
-            #             null,
-            #             null
-            #         ],
-            #         5,
-            #         3,
-            #         [],
-            #         [],
-            #         [],
-            #         [
-            #             {
-            #                 "reviewStatus": "none",
-            #                 "id": 287244,
-            #                 "name": "IMG_0813"
-            #             },
-            #             {
-            #                 "reviewStatus": "none",
-            #                 "id": 287246,
-            #                 "name": "IMG_0432"
-            #             },
-            #             {
-            #                 "reviewStatus": "none",
-            #                 "id": 287245,
-            #                 "name": "IMG_0315"
-            #             }
-            #         ]
-            #     ],
-            #     [
-            #         93,
-            #         "alex (#2) (#3)",
-            #         "Readmy text",
-            #         "Work for labelers",
-            #         13,
-            #         29,
-            #         "Labelling Workspace",
-            #         494,
-            #         "Test Dataset",
-            #         602,
-            #         "ds1",
-            #         8,
-            #         "alex",
-            #         222,
-            #         "quantigo19",
-            #         8,
-            #         "alex",
-            #         "2021-03-25T11:04:34.031Z",
-            #         null,
-            #         null,
-            #         "pending",
-            #         false,
-            #         3,
-            #         0,
-            #         0,
-            #         0,
-            #         0,
-            #         [],
-            #         [],
-            #         [
-            #             null,
-            #             null
-            #         ],
-            #         5,
-            #         3,
-            #         [],
-            #         [],
-            #         [],
-            #         [
-            #             {
-            #                 "reviewStatus": "none",
-            #                 "id": 287248,
-            #                 "name": "IMG_8454"
-            #             },
-            #             {
-            #                 "reviewStatus": "none",
-            #                 "id": 287249,
-            #                 "name": "IMG_6896"
-            #             },
-            #             {
-            #                 "reviewStatus": "none",
-            #                 "id": 287247,
-            #                 "name": "IMG_1942"
-            #             }
-            #         ]
-            #     ]
-            # ]
+            new_labeling_jobs = api.labeling_job.create(
+                user_name,
+                dataset_id,
+                user_ids=[111, 222],
+                readme='Readmy text',
+                description='Work for labelers',
+                objects_limit_per_image=5,
+                tags_limit_per_image=3
+            )
+            print(new_labeling_jobs)
+
+            # >>> List[LabelingJobInfo(id=2,...)]
+
+            # Create video labeling job with toolbox settings
+
+            user_id = 4
+            dataset_id = 277
+            video_id = 24897
+            toolbox_settings = {"playbackRate": 32, "skipFramesSize": 15, "showVideoTime": True}
+
+            new_labeling_jobs = api.labeling_job.create(
+                name="Labeling Job name",
+                dataset_id=dataset_id,
+                user_ids=[user_id],
+                readme="Labeling Job readme",
+                description="Some description",
+                classes_to_label=["car", "animal"],
+                tags_to_label=["animal_age_group"],
+                images_ids=[video_id],
+                toolbox_settings=toolbox_settings,
+            )
+            print(new_labeling_jobs)
+
+            # >>> List[LabelingJobInfo(id=3,...)]
         """
         if classes_to_label is None:
             classes_to_label = []
@@ -520,21 +454,63 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         if tags_limit_per_image is None:
             tags_limit_per_image = 0
 
+        meta = {
+            "classes": classes_to_label,
+            "projectTags": tags_to_label,
+            "imageTags": filter_images_by_tags,
+            "imageFiguresLimit": objects_limit_per_image,
+            "imageTagsLimit": tags_limit_per_image,
+            "entityIds": images_ids,
+            "dynamicClasses": dynamic_classes,
+            "dynamicTags": dynamic_tags,
+        }
+
+        if toolbox_settings is not None:
+            dataset_info = self._api.dataset.get_info_by_id(dataset_id)
+            project_id = dataset_info.project_id
+            project_info = self._api.project.get_info_by_id(project_id)
+            project_type = project_info.type
+            if project_type == ProjectType.VIDEOS.value:
+                playback_rate_possible_values = [
+                    0.1,
+                    0.3,
+                    0.5,
+                    0.6,
+                    0.7,
+                    0.8,
+                    0.9,
+                    1,
+                    1.1,
+                    1.2,
+                    1.3,
+                    1.5,
+                    2,
+                    4,
+                    8,
+                    16,
+                    32,
+                ]
+                playback_rate = toolbox_settings.get("playbackRate", None)
+                if playback_rate is not None:
+                    if playback_rate not in playback_rate_possible_values:
+                        raise ValueError(
+                            f"'playbackRate' must be one of: '{','.join(playback_rate_possible_values)}'"
+                        )
+                meta["toolboxSettings"] = toolbox_settings
+
+        if disable_confirm is not None:
+            meta.update({"disableConfirm": disable_confirm})
+        if disable_submit is not None:
+            meta.update({"disableSubmit": disable_submit})
+        if enable_quality_check is not None:
+            meta.update({"enableIntermediateReview": enable_quality_check})
+
         data = {
             ApiField.NAME: name,
             ApiField.DATASET_ID: dataset_id,
             ApiField.USER_IDS: user_ids,
             # ApiField.DESCRIPTION: description,
-            ApiField.META: {
-                "classes": classes_to_label,
-                "projectTags": tags_to_label,
-                "imageTags": filter_images_by_tags,
-                "imageFiguresLimit": objects_limit_per_image,
-                "imageTagsLimit": tags_limit_per_image,
-                "entityIds": images_ids,
-                "dynamicClasses": dynamic_classes,
-                "dynamicTags": dynamic_tags,
-            },
+            ApiField.META: meta,
         }
 
         if readme is not None:
@@ -1217,17 +1193,28 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         return job_meta
 
     def get_annotations(
-        self, id: int, image_ids: List[int], project_meta: ProjectMeta = None
+        self,
+        id: int,
+        image_ids: Optional[List[int]] = None,
+        project_meta: Optional[ProjectMeta] = None,
+        image_infos: Optional[List[ImageInfo]] = None,
     ) -> List[Annotation]:
         """
         Return annotations for given image ids from labeling job with given id.
+        To speed up the process, you can provide image infos, which will be used instead of fetching them from the API.
 
         :param id: Labeling Job ID in Supervisely.
         :type id: int
         :param image_ids: Image IDs in Supervisely.
-        :type image_ids: int
+                        If not provided, you must provide :param:`image_infos`.
+                        Have lower priority than :param:`image_infos`.
+        :type image_ids: List[int], optional
         :param project_meta: Project meta of the labeling job with given id. Can be retrieved with :func:`get_project_meta`.
         :type project_meta: :class:`ProjectMeta`, optional
+        :param image_infos: List of ImageInfo objects.
+                            If not provided, will be retrieved from the API.
+                            Have higher priority than :param:`image_ids`.
+        :type image_infos: List[ImageInfo], optional
         :return: Annotation for given image id from labeling job with given id.
         :rtype: :class:`Annotation`
         """
@@ -1270,20 +1257,27 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                 labels.append(label)
             return labels
 
-        self._api.add_header("x-job-id", str(id))
+        if image_ids is None and image_infos is None:
+            raise ValueError("Either 'image_ids' or 'image_infos' must be provided.")
+        if image_infos is not None:
+            image_ids = [image_info.id for image_info in image_infos]
+        if self._api.headers.get("x-job-id") != str(id):
+            self._api.add_header("x-job-id", str(id))
         job_info = self.get_info_by_id(id)
+        if image_infos is None:
+            image_infos = self._api.image.get_list(
+                job_info.dataset_id,
+                filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
+            )
         figures_map = self._api.image.figure.download(job_info.dataset_id, image_ids)
-        images = self._api.image.get_list(
-            job_info.dataset_id,
-            filters=[{ApiField.FIELD: ApiField.ID, "operator": "in", "value": image_ids}],
-        )
-        self._api.pop_header("x-job-id")
+        if self._api.headers.get("x-job-id") == str(id):
+            self._api.pop_header("x-job-id")
 
         if project_meta is None:
             project_meta = self.get_project_meta(id)
 
         anns = []
-        for image in images:
+        for image in image_infos:
             img_figures = figures_map.get(image.id, [])
             img_tags = _create_tags_from_labeling_job(image.tags, project_meta)
             labels = _create_labels_from_labeling_job(img_figures, project_meta)

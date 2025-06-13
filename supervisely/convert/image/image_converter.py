@@ -1,5 +1,5 @@
-import os
 import mimetypes
+import os
 from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
@@ -16,10 +16,10 @@ from supervisely import (
     is_development,
     logger,
 )
-from supervisely.convert.base_converter import BaseConverter
 from supervisely.api.api import ApiContext
+from supervisely.convert.base_converter import BaseConverter
 from supervisely.imaging.image import SUPPORTED_IMG_EXTS, is_valid_ext
-from supervisely.io.fs import get_file_ext, get_file_name, dirs_filter, list_files
+from supervisely.io.fs import dirs_filter, get_file_ext, get_file_name, list_files
 from supervisely.io.json import load_json_file
 from supervisely.project.project_settings import LabelingInterface
 
@@ -31,12 +31,13 @@ class ImageConverter(BaseConverter):
     modality = "images"
 
     class Item(BaseConverter.BaseItem):
+
         def __init__(
             self,
             item_path: str,
             ann_data: Union[str, dict] = None,
             meta_data: Union[str, dict] = None,
-            shape: Union[Tuple, List] = None,
+            shape: Optional[Union[Tuple, List]] = None,
             custom_data: Optional[dict] = None,
         ):
             self._path: str = item_path
@@ -51,7 +52,7 @@ class ImageConverter(BaseConverter):
         def meta(self) -> Union[str, dict]:
             return self._meta_data
 
-        def set_shape(self, shape: Tuple[int, int] = None) -> None:
+        def set_shape(self, shape: Optional[Tuple[int, int]] = None) -> None:
             try:
                 if shape is not None:
                     self._shape = shape
@@ -113,6 +114,7 @@ class ImageConverter(BaseConverter):
         batch_size: int = 50,
         log_progress=True,
         entities: List[Item] = None,
+        progress_cb=None,
     ) -> None:
         """Upload converted data to Supervisely"""
         dataset_info = api.dataset.get_info_by_id(dataset_id, raise_error=True)
@@ -121,52 +123,82 @@ class ImageConverter(BaseConverter):
         meta, renamed_classes, renamed_tags = self.merge_metas_with_conflicts(api, dataset_id)
 
         existing_names = set([img.name for img in api.image.get_list(dataset_id)])
-        if log_progress:
-            progress, progress_cb = self.get_progress(self.items_count, "Uploading images...")
-        else:
-            progress_cb = None
+        progress = None
+        if progress_cb is not None:
+            log_progress = True
+        elif log_progress:
+            progress, progress_cb = self.get_progress(self.items_count, "Uploading")
+
+        if self.upload_as_links:
+            batch_size = 1000
 
         for batch in batched(entities or self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
             item_metas = []
-            anns = []
             for item in batch:
                 item.path = self.validate_image(item.path)
                 if item.path is None:
                     continue  # image has failed validation
-                item.name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
-                if self.upload_as_links:
-                    ann = None  # TODO: implement
-                else:
-                    ann = self.to_supervisely(item, meta, renamed_classes, renamed_tags)
-                name = generate_free_name(
-                    existing_names, item.name, with_ext=True, extend_used_names=True
+                name = f"{get_file_name(item.path)}{get_file_ext(item.path).lower()}"
+
+                item.name = generate_free_name(
+                    existing_names, name, with_ext=True, extend_used_names=True
                 )
-                item_names.append(name)
+                item_names.append(item.name)
                 item_paths.append(item.path)
-                item_metas.append(load_json_file(item.meta) if item.meta else {})
-                if ann is not None:
-                    anns.append(ann)
+
+                if isinstance(item.meta, str):  # path to file
+                    item_metas.append(load_json_file(item.meta))
+                elif isinstance(item.meta, dict):
+                    item_metas.append(item.meta)
+                else:
+                    item_metas.append({})
 
             with ApiContext(
                 api=api, project_id=project_id, dataset_id=dataset_id, project_meta=meta
             ):
-                upload_method = (
-                    api.image.upload_links if self.upload_as_links else api.image.upload_paths
-                )
-                img_infos = upload_method(dataset_id, item_names, item_paths, metas=item_metas)
+                if self.upload_as_links:
+                    img_infos = api.image.upload_links(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        batch_size=batch_size,
+                        conflict_resolution="rename",
+                        force_metadata_for_links=self._force_shape_for_links,
+                    )
+                else:
+                    img_infos = api.image.upload_paths(
+                        dataset_id,
+                        item_names,
+                        item_paths,
+                        metas=item_metas,
+                        conflict_resolution="rename",
+                    )
                 img_ids = [img_info.id for img_info in img_infos]
+
+                anns = []
+                if not (self.upload_as_links and not self.supports_links):
+                    for info, item in zip(img_infos, batch):
+                        if self._force_shape_for_links:
+                            item.set_shape((info.height, info.width))
+                        anns.append(self.to_supervisely(item, meta, renamed_classes, renamed_tags))
+
                 if len(anns) == len(img_ids):
-                    api.annotation.upload_anns(img_ids, anns)
+                    api.annotation.upload_anns(
+                        img_ids, anns, skip_bounds_validation=self.upload_as_links
+                    )
 
             if log_progress:
                 progress_cb(len(batch))
 
         if log_progress:
-            if is_development():
+            if is_development() and progress is not None:
                 progress.close()
-        logger.info(f"Dataset ID:'{dataset_id}' has been successfully uploaded.")
+        logger.info(
+            f"Dataset has been successfully uploaded → {dataset_info.name}, ID:{dataset_id}"
+        )
 
     def validate_image(self, path: str) -> Tuple[str, str]:
         if self.upload_as_links:
@@ -174,13 +206,17 @@ class ImageConverter(BaseConverter):
         return image_helper.validate_image(path)
 
     def is_image(self, path: str) -> bool:
+        if self._upload_as_links and self.supports_links:
+            ext = get_file_ext(path)
+            return ext.lower() in self.allowed_exts
         mimetypes.add_type("image/heic", ".heic")  # to extend types_map
         mimetypes.add_type("image/heif", ".heif")  # to extend types_map
         mimetypes.add_type("image/jpeg", ".jfif")  # to extend types_map
         mimetypes.add_type("image/avif", ".avif")  # to extend types_map
+        mimetypes.add_type("image/bmp", ".bmp")  # to extend types_map
 
-        mime = magic.Magic(mime=True)
-        mimetype = mime.from_file(path)
+        with open(path, "rb") as f:
+            mimetype = magic.from_buffer(f.read(), mime=True)
         file_ext = mimetypes.guess_extension(mimetype)
         if file_ext is None:
             return False
@@ -193,7 +229,11 @@ class ImageConverter(BaseConverter):
 
         def _is_meta_dir(dirpath: str) -> bool:
             if os.path.basename(dirpath).lower() == "meta":
-                jsons = list_files(dirpath, valid_extensions=[".json"], ignore_valid_extensions_case=True)
+                jsons = list_files(
+                    dirpath,
+                    valid_extensions=[".json"],
+                    ignore_valid_extensions_case=True,
+                )
                 return len(jsons) > 0
             return False
 

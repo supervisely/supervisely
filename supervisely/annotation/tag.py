@@ -3,14 +3,13 @@
 
 # docs
 from __future__ import annotations
-from typing import List, Optional, Dict, Union
-from supervisely.annotation.tag_meta import TagMeta
-from supervisely.annotation.tag_meta_collection import TagMetaCollection
 
+from typing import Dict, List, Optional, Union
 
-from supervisely.annotation.tag_meta import TagValueType
-from supervisely.collection.key_indexed_collection import KeyObject
 from supervisely._utils import take_with_default
+from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.collection.key_indexed_collection import KeyObject
 
 
 class TagJsonFields:
@@ -83,6 +82,8 @@ class Tag(KeyObject):
         # Output: ValueError: Tag coat color can not have value yellow
     """
 
+    _SUPPORT_UNFINISHED_TAGS = False
+
     def __init__(
         self,
         meta: TagMeta,
@@ -97,7 +98,8 @@ class Tag(KeyObject):
         self._meta = meta
         self._value = value
         if not self._meta.is_valid_value(value):
-            raise ValueError("Tag {} can not have value {}".format(self.meta.name, value))
+            if not (self._SUPPORT_UNFINISHED_TAGS and value is None):
+                raise ValueError(f"Tag {self.meta.name} can not have value {value}")
         self.labeler_login = labeler_login
         self.updated_at = updated_at
         self.created_at = created_at
@@ -193,7 +195,7 @@ class Tag(KeyObject):
 
     def to_json(self) -> Dict:
         """
-        Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Tag to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -219,9 +221,7 @@ class Tag(KeyObject):
             #  "createdAt": "2021-01-22T18:00:00.000Z"
             # }
         """
-        res = {
-            TagJsonFields.TAG_NAME: self.meta.name
-        }
+        res = {TagJsonFields.TAG_NAME: self.meta.name}
         if self.meta.value_type != TagValueType.NONE:
             res[TagJsonFields.VALUE] = self.value
         if self.labeler_login is not None:
@@ -235,7 +235,7 @@ class Tag(KeyObject):
     @classmethod
     def from_json(cls, data: Dict, tag_meta_collection: TagMetaCollection) -> Tag:
         """
-        Convert a json dict to Tag. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Tag. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Tag in json format as a dict.
         :type data: dict

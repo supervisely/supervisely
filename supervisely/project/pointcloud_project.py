@@ -726,6 +726,22 @@ class PointcloudProject(VideoProject):
         return train_items, val_items
 
     @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for PointcloudProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for PointcloudProject class now."
+        )
+
+    @staticmethod
     def download(
         api: Api,
         project_id: int,
@@ -737,6 +753,7 @@ class PointcloudProject(VideoProject):
         batch_size: Optional[int] = 10,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        **kwargs,
     ) -> PointcloudProject:
         """
         Download pointcloud project from Supervisely to the given directory.
@@ -858,6 +875,12 @@ class PointcloudProject(VideoProject):
             progress_cb=progress_cb,
         )
 
+    @staticmethod
+    async def download_async(*args, **kwargs):
+        raise NotImplementedError(
+            f"Static method 'download_async()' is not supported for PointcloudProject class now."
+        )
+
 
 def download_pointcloud_project(
     api: Api,
@@ -914,7 +937,7 @@ def download_pointcloud_project(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 

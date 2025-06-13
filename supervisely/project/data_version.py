@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 import time
 from datetime import datetime
-from typing import List, NamedTuple, Tuple, Union
+from typing import List, NamedTuple, Optional, Tuple, Union
 
 import requests
 import zstd
@@ -17,7 +17,9 @@ from supervisely.io.fs import remove_dir, silent_remove
 
 
 class VersionInfo(NamedTuple):
-    """ """
+    """
+    Object with image parameters from Supervisely that describes the version of the project.
+    """
 
     id: int
     project_id: int
@@ -30,9 +32,14 @@ class VersionInfo(NamedTuple):
     updated_at: str
     project_updated_at: str
     team_id: int
+    name: str
 
 
 class DataVersion(ModuleApiBase):
+    """
+    Class for managing project versions.
+    This class provides methods for creating, restoring, and managing project versions.
+    """
 
     def __init__(self, api):
         """
@@ -67,6 +74,7 @@ class DataVersion(ModuleApiBase):
             ApiField.UPDATED_AT,
             ApiField.PROJECT_UPDATED_AT,
             ApiField.TEAM_ID,
+            ApiField.NAME,
         ]
 
     @staticmethod
@@ -92,7 +100,7 @@ class DataVersion(ModuleApiBase):
         if self.project_info.version is None:
             self._create_warning_system_file()
 
-    def get_list(self, project_id: int, filters: List = None) -> List[VersionInfo]:
+    def get_list(self, project_id: int, filters: Optional[List] = None) -> List[VersionInfo]:
         """
         Get list of project versions.
 
@@ -182,8 +190,8 @@ class DataVersion(ModuleApiBase):
     def create(
         self,
         project_info: Union[ProjectInfo, int],
-        version_title: str = None,
-        version_description: str = None,
+        version_title: Optional[str] = None,
+        version_description: Optional[str] = None,
     ) -> int:
         """
         Create a new project version.
@@ -194,9 +202,9 @@ class DataVersion(ModuleApiBase):
         :param project_info: ProjectInfo object or project ID
         :type project_info: Union[ProjectInfo, int]
         :param version_title: Version title
-        :type version_title: str
+        :type version_title: Optional[str]
         :param version_description: Version description
-        :type version_description: str
+        :type version_description: Optional[str]
         :return: Version ID
         :rtype: int
         """
@@ -257,8 +265,8 @@ class DataVersion(ModuleApiBase):
         commit_token: str,
         updated_at: str,
         file_id: int,
-        title: str = None,
-        description: str = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """
         Commit project version.
@@ -275,9 +283,9 @@ class DataVersion(ModuleApiBase):
         :param file_id: File ID
         :type file_id: int
         :param title: Version title
-        :type title: str
+        :type title: Optional[str]
         :param description: Version description
-        :type description: str
+        :type description: Optional[str]
         :return: None
         """
         body = {
@@ -357,8 +365,8 @@ class DataVersion(ModuleApiBase):
     def restore(
         self,
         project_info: Union[ProjectInfo, int],
-        version_id: int = None,
-        version_num: int = None,
+        version_id: Optional[int] = None,
+        version_num: Optional[int] = None,
         skip_missed_entities: bool = False,
     ) -> ProjectInfo:
         """
@@ -399,11 +407,12 @@ class DataVersion(ModuleApiBase):
         updated_at = self.versions[str(version_id)]["updated_at"]
         backup_files = self.versions[str(version_id)]["path"]
 
-        if updated_at == self.project_info.updated_at:
-            logger.warning(
-                f"Project is already on version {version_num} with the same updated_at timestamp"
-            )
-            return
+        # turn off this check for now (treating this as a project clone operation)
+        # if updated_at == self.project_info.updated_at:
+        #     logger.warning(
+        #         f"Project is already on version {version_num} with the same updated_at timestamp"
+        #     )
+        #     return
 
         if backup_files is None:
             logger.warning(

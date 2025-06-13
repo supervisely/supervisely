@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 from tqdm import tqdm
 
-from supervisely._utils import is_production
+from supervisely._utils import batched, get_or_create_event_loop, is_production
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.tag_meta import TagValueType
 from supervisely.api.api import Api
-from supervisely.io.fs import get_file_ext, get_file_name_with_ext
+from supervisely.io.env import team_id
+from supervisely.io.fs import (
+    get_file_ext,
+    get_file_name_with_ext,
+    is_archive,
+    remove_dir,
+    silent_remove,
+    unpack_archive,
+)
+from supervisely.annotation.obj_class import ObjClass
+from supervisely.geometry.graph import GraphNodes
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.sly_logger import logger
@@ -31,6 +42,7 @@ class AvailableImageConverters:
     CITYSCAPES = "cityscapes"
     LABEL_ME = "label_me"
     LABEL_STUDIO = "label_studio"
+    HIGH_COLOR_DEPTH = "high_color_depth"
 
 
 class AvailableVideoConverters:
@@ -44,16 +56,22 @@ class AvailablePointcloudConverters:
     LAS = "las/laz"
     PLY = "ply"
     BAG = "rosbag"
+    LYFT = "lyft"
+    NUSCENES = "nuscenes"
+    KITTI3D = "kitti3d"
 
 
 class AvailablePointcloudEpisodesConverters:
     SLY = "supervisely"
     BAG = "rosbag"
+    LYFT = "lyft"
+    KITTI360 = "kitti360"
 
 
 class AvailableVolumeConverters:
     SLY = "supervisely"
     DICOM = "dicom"
+    NII = "nii"
 
 
 class BaseConverter:
@@ -144,12 +162,17 @@ class BaseConverter:
         remote_files_map: Optional[Dict[str, str]] = None,
     ):
         self._input_data: str = input_data
-        self._items: List[self.BaseItem] = []
+        self._items: List[BaseConverter.BaseItem] = []
         self._meta: ProjectMeta = None
         self._labeling_interface = labeling_interface or LabelingInterface.DEFAULT
+
+        # import as links settings
         self._upload_as_links: bool = upload_as_links
         self._remote_files_map: Optional[Dict[str, str]] = remote_files_map
         self._supports_links = False  # if converter supports uploading by links
+        self._force_shape_for_links = False
+        self._api = Api.from_env() if self._upload_as_links else None
+        self._team_id = team_id() if self._upload_as_links else None
         self._converter = None
 
         if self._labeling_interface not in LabelingInterface.values():
@@ -326,8 +349,17 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+            def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
+                if old_cls.geometry_type == new_cls.geometry_type:
+                    if old_cls.geometry_type == GraphNodes:
+                        old_nodes = old_cls.geometry_config["nodes"]
+                        new_nodes = new_cls.geometry_config["nodes"]
+                        return old_nodes.keys() == new_nodes.keys()
+                    return True
+                return False
+
             while meta1.obj_classes.get(new_name) is not None:
-                if meta1.obj_classes.get(new_name).geometry_type == new_cls.geometry_type:
+                if _is_matched(meta1.get_obj_class(new_name), new_cls):
                     matched = True
                     break
                 new_name = f"{new_cls.name}_{i}"
@@ -396,17 +428,96 @@ class BaseConverter:
         """
         existing = meta1.project_settings.labeling_interface
         new = meta2.project_settings.labeling_interface
-        if existing == new:
+        if existing == new or new == LabelingInterface.DEFAULT:
             return meta1
 
-        if new is None or new == LabelingInterface.DEFAULT:
-            return meta1
-
-        if existing == LabelingInterface.DEFAULT:
-            group_tag_name = meta2.project_settings.multiview_tag_name
-            if group_tag_name and renamed_tags:
-                group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
+        group_tag_name = meta2.project_settings.multiview_tag_name
+        if group_tag_name:
+            group_tag_name = renamed_tags.get(group_tag_name, group_tag_name)
             new_settings = meta2.project_settings.clone(multiview_tag_name=group_tag_name)
+        else:
+            new_settings = meta2.project_settings
 
-            return meta1.clone(project_settings=new_settings)
-        return meta1
+        return meta1.clone(project_settings=new_settings)
+
+    def _download_remote_ann_files(self) -> None:
+        """
+        Download all annotation files from Cloud Storage to the local storage.
+        Needed to detect annotation format if "upload_as_links" is enabled.
+        """
+        if not self.upload_as_links:
+            return
+
+        ann_archives = {l: r for l, r in self._remote_files_map.items() if is_archive(l)}
+
+        anns_to_download = {
+            l: r for l, r in self._remote_files_map.items() if get_file_ext(l) == self.ann_ext
+        }
+        if not anns_to_download and not ann_archives:
+            return
+
+        import asyncio
+
+        for files_type, files in {
+            "annotations": anns_to_download,
+            "archives": ann_archives,
+        }.items():
+            if not files:
+                continue
+
+            is_archive_type = files_type == "archives"
+
+            file_size = None
+            if is_archive_type:
+                logger.info(f"Remote archives detected.")
+                file_size = sum(
+                    self._api.storage.get_info_by_path(self._team_id, remote_path).sizeb
+                    for remote_path in files.values()
+                )
+
+            loop = get_or_create_event_loop()
+            _, progress_cb = self.get_progress(
+                len(files) if not is_archive_type else file_size,
+                f"Downloading {files_type} from remote storage",
+                is_size=is_archive_type,
+            )
+
+            for local_path in files.keys():
+                silent_remove(local_path)
+
+            logger.info(f"Downloading {files_type} from remote storage...")
+            download_coro = self._api.storage.download_bulk_async(
+                team_id=self._team_id,
+                remote_paths=list(files.values()),
+                local_save_paths=list(files.keys()),
+                progress_cb=progress_cb,
+                progress_cb_type="number" if not is_archive_type else "size",
+            )
+
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(download_coro, loop=loop)
+                future.result()
+            else:
+                loop.run_until_complete(download_coro)
+            logger.info("Possible annotations downloaded successfully.")
+
+            if is_archive_type:
+                for local_path in files.keys():
+                    parent_dir = Path(local_path).parent
+                    if parent_dir.name == "ann":
+                        target_dir = parent_dir
+                    else:
+                        target_dir = parent_dir / "ann"
+                        target_dir.mkdir(parents=True, exist_ok=True)
+
+                    unpack_archive(local_path, str(target_dir))
+                    silent_remove(local_path)
+
+                    dirs = [d for d in target_dir.iterdir() if d.is_dir()]
+                    files = [f for f in target_dir.iterdir() if f.is_file()]
+                    if len(dirs) == 1 and len(files) == 0:
+                        for file in dirs[0].iterdir():
+                            file.rename(target_dir / file.name)
+                        remove_dir(str(dirs[0]))
+
+                    logger.info(f"Archive {local_path} unpacked successfully to {str(target_dir)}")
