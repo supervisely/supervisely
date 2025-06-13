@@ -783,12 +783,13 @@ def download_pointcloud_episode_project(
                     rimgs = api.pointcloud_episode.get_list_related_images_batch(
                         dataset.id, pointcloud_ids
                     )
-                    rimg_ids = [rimg[ApiField.ID] for rimg in rimgs]
-
-                    if len(rimg_ids) > 0:
+                    if len(rimgs) > 0:
+                        rimg_ids = [rimg[ApiField.ID] for rimg in rimgs]
                         batch_rimg_figures = api.image.figure.download(
                             dataset_id=dataset.id, image_ids=rimg_ids
                         )
+                    else:
+                        batch_rimg_figures = []
                 except Exception as e:
                     logger.info(
                         "INFO FOR DEBUGGING",
@@ -1105,7 +1106,11 @@ def upload_pointcloud_episode_project(
                 # build mapping hash->id
                 for info, uploaded in zip(img_infos["img_metas"], uploaded_rimgs):
                     img_hash = info.get(ApiField.HASH)
-                    img_id = uploaded.get(ApiField.ID) if isinstance(uploaded, dict) else getattr(uploaded, 'id', None)
+                    img_id = (
+                        uploaded.get(ApiField.ID)
+                        if isinstance(uploaded, dict)
+                        else getattr(uploaded, "id", None)
+                    )
                     if img_hash is not None and img_id is not None:
                         pcl_to_hash_to_id[img_hash] = img_id
             except Exception as e:

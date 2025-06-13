@@ -1019,10 +1019,13 @@ def download_pointcloud_project(
             if download_related_images:
                 try:
                     rimgs = api.pointcloud.get_list_related_images_batch(dataset.id, pointcloud_ids)
-                    rimg_ids = [rimg[ApiField.ID] for rimg in rimgs]
-                    batch_rimg_figures = api.image.figure.download(
-                        dataset_id=dataset.id, image_ids=rimg_ids
-                    )
+                    if len(rimgs) > 0:
+                        rimg_ids = [rimg[ApiField.ID] for rimg in rimgs]
+                        batch_rimg_figures = api.image.figure.download(
+                            dataset_id=dataset.id, image_ids=rimg_ids
+                        )
+                    else:
+                        batch_rimg_figures = []
                 except Exception as e:
                     logger.info(
                         "INFO FOR DEBUGGING",
@@ -1334,7 +1337,11 @@ def upload_pointcloud_project(
                     pcl_to_hash_to_id = {}
                     for info, uploaded in zip(rimg_infos, uploaded_rimgs):
                         img_hash = info.get(ApiField.HASH)
-                        img_id = uploaded.get(ApiField.ID) if isinstance(uploaded, dict) else getattr(uploaded, 'id', None)
+                        img_id = (
+                            uploaded.get(ApiField.ID)
+                            if isinstance(uploaded, dict)
+                            else getattr(uploaded, "id", None)
+                        )
                         if img_hash is not None and img_id is not None:
                             pcl_to_hash_to_id[img_hash] = img_id
                 except Exception as e:
@@ -1354,11 +1361,6 @@ def upload_pointcloud_project(
                 # upload figures
                 if len(rimg_figures) > 0:
                     hash_to_ids = pcl_to_hash_to_id
-                    if len(hash_to_ids) == 0:
-                        logger.warn(
-                            f"Hash to ID mapping for pointcloud_id={pointcloud.id} is empty. Figures upload might fail."
-                        )
-
                     figures_payload = []
                     for img_hash, figs_json in rimg_figures.items():
                         if img_hash not in hash_to_ids:
@@ -1373,7 +1375,9 @@ def upload_pointcloud_project(
                                     UUID(fig[OBJECT_KEY])
                                 )
                             except Exception as e:
-                                logger.warn(f"Failed to process figure json for img_hash={img_hash}: {repr(e)}")
+                                logger.debug(
+                                    f"Failed to process figure json for img_hash={img_hash}: {repr(e)}"
+                                )
                                 continue
 
                         figures_payload.extend(figs_json)
@@ -1384,7 +1388,7 @@ def upload_pointcloud_project(
                                 figures_json=figures_payload, dataset_id=dataset.id
                             )
                         except Exception as e:
-                            logger.warn(f"Failed to upload figures for related images: {repr(e)}")
+                            logger.debug(f"Failed to upload figures for related images: {repr(e)}")
 
             if ds_progress:
                 ds_progress(1)

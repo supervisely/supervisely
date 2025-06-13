@@ -146,7 +146,7 @@ class PointcloudConverter(BaseConverter):
                                 figs_json = load_json_file(fig_path)
                                 pcl_to_rimg_figures.setdefault(pcd_id, {})[img_hash] = figs_json
                             except Exception as e:
-                                logger.warn(f"Failed to read figures json '{fig_path}': {repr(e)}")
+                                logger.debug(f"Failed to read figures json '{fig_path}': {repr(e)}")
 
                     except Exception as e:
                         logger.warn(
@@ -169,7 +169,7 @@ class PointcloudConverter(BaseConverter):
                             if img_hash is not None and img_id is not None:
                                 pcl_to_hash_to_id.setdefault(pcd_id, {})[img_hash] = img_id
                     except Exception as e:
-                        logger.warn(f"Failed to add related images to pointcloud: {repr(e)}")
+                        logger.debug(f"Failed to add related images to pointcloud: {repr(e)}")
 
             # ---- upload figures for processed batch ----
             if len(pcl_to_rimg_figures) > 0:
@@ -182,9 +182,6 @@ class PointcloudConverter(BaseConverter):
                     for pcl_id, hash_to_figs in pcl_to_rimg_figures.items():
                         hash_to_ids = pcl_to_hash_to_id.get(pcl_id, {})
                         if len(hash_to_ids) == 0:
-                            logger.warn(
-                                f"Hash to ID mapping for pcl_id={pcl_id} is empty. Figures upload might fail."
-                            )
                             continue
 
                         for img_hash, figs_json in hash_to_figs.items():
@@ -201,7 +198,7 @@ class PointcloudConverter(BaseConverter):
                                             UUID(fig[OBJECT_KEY])
                                         )
                                 except Exception as e:
-                                    logger.warn(
+                                    logger.debug(
                                         f"Failed to process figure json for img_hash={img_hash}: {repr(e)}"
                                     )
                                     continue
@@ -214,11 +211,11 @@ class PointcloudConverter(BaseConverter):
                                     figures_json=figures_payload, dataset_id=dataset_id
                                 )
                             except Exception as e:
-                                logger.warn(
+                                logger.debug(
                                     f"Failed to upload figures for related images: {repr(e)}"
                                 )
                 except Exception as e:
-                    logger.warn(f"Unexpected error during related image figures upload: {repr(e)}")
+                    logger.debug(f"Unexpected error during related image figures upload: {repr(e)}")
 
             if log_progress:
                 progress_cb(len(batch))
