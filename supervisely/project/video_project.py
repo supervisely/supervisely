@@ -1036,6 +1036,22 @@ class VideoProject(Project):
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
         )
+    
+    @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for VideoProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for VideoProject class now."
+        )
 
     @classmethod
     def read_single(cls, dir):

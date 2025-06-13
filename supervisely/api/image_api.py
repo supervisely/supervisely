@@ -3652,7 +3652,87 @@ class ImageApi(RemoveableBulkModuleApi):
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
 
-    def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
+    def add_tags_batch(
+        self,
+        image_ids: List[int],
+        tag_ids: Union[int, List[int]],
+        values: Optional[Union[str, int, List[Union[str, int, None]]]] = None,
+        log_progress: bool = False,
+        batch_size: Optional[int] = 100,
+        tag_metas: Optional[Union[TagMeta, List[TagMeta]]] = None,
+    ) -> List[int]:
+        """
+        Add tag with given ID to Images by IDs with different values.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param tag_ids: Tag IDs in Supervisely.
+        :type tag_ids: int or List[int]
+        :param values: List of tag values for each image or single value for all images.
+        :type values: List[str] or List[int] or str or int, optional
+        :param log_progress: If True, will log progress.
+        :type log_progress: bool, optional
+        :param batch_size: Batch size
+        :type batch_size: int, optional
+        :param tag_metas: Tag Metas. Needed for values validation, omit to skip validation
+        :type tag_metas: TagMeta or List[TagMeta], optional
+        :return: List of tags IDs.
+        :rtype: List[int]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            image_ids = [2389126, 2389127]
+            tag_ids = 277083
+            values = ['value1', 'value2']
+            api.image.add_tags_batch(image_ids, tag_ids, values)
+        """
+        if len(image_ids) == 0:
+            return []
+
+        if isinstance(tag_ids, int):
+            tag_ids = [tag_ids] * len(image_ids)
+
+        if isinstance(tag_metas, TagMeta):
+            tag_metas = [tag_metas] * len(image_ids)
+
+        if values is None:
+            values = [None] * len(image_ids)
+        elif isinstance(values, (str, int)):
+            values = [values] * len(image_ids)
+
+        if len(values) != len(image_ids):
+            raise ValueError("Length of image_ids and values should be the same")
+
+        if len(tag_ids) != len(image_ids):
+            raise ValueError("Length of image_ids and tag_ids should be the same")
+
+        if tag_metas and len(tag_metas) != len(image_ids):
+            raise ValueError("Length of image_ids and tag_metas should be the same")
+
+        if tag_metas:
+            for tag_meta, tag_id, value in zip(tag_metas, tag_ids, values):
+                if not (tag_meta.sly_id == tag_id):
+                    raise ValueError(f"{tag_meta.name = } and {tag_id = } should be same")
+                if not tag_meta.is_valid_value(value):
+                    raise ValueError(f"{tag_meta.name = } can not have value {value = }")
+
+        project_id = self.get_project_id(image_ids[0])
+        data = [
+            {ApiField.ENTITY_ID: image_id, ApiField.TAG_ID: tag_id, ApiField.VALUE: value}
+            for image_id, tag_id, value in zip(image_ids, tag_ids, values)
+        ]
+
+        return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
+
+    def update_tag_value(
+        self, tag_id: int, value: Union[str, float]
+    ) -> Dict:
         """
         Update tag value with given ID.
 
