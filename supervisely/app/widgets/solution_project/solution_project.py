@@ -113,8 +113,6 @@ class SolutionProject(Widget):
         return {
             "title": self._title,
             "width": self._width,
-            "preview_urls": self._preview_url,
-            "items_counts": self._items_count,
             "clickable": False,
         }
 
@@ -132,7 +130,10 @@ class SolutionProject(Widget):
         return info
 
     def get_json_state(self) -> Dict[str, Any]:
-        state = {}
+        state = {
+            "preview_urls": self._preview_url,
+            "items_counts": self._items_count,
+        }
         if self._show_tooltip:
             state["tooltip_description"] = self._tooltip._description
             state["tooltip_properties"] = deepcopy(self._tooltip._properties)
@@ -147,8 +148,8 @@ class SolutionProject(Widget):
         if isinstance(preview_url, str):
             preview_url = [preview_url]
         self._preview_url = preview_url
-        DataJson()[self.widget_id]["preview_urls"] = self._preview_url
-        DataJson().send_changes()
+        StateJson()[self.widget_id]["preview_urls"] = self._preview_url
+        StateJson().send_changes()
 
     def update_items_count(self, items_count: Union[int, str, List[Union[int, str]]]):
         if isinstance(items_count, int):
@@ -165,8 +166,8 @@ class SolutionProject(Widget):
                 #     )
 
         self._items_count = items_count
-        DataJson()[self.widget_id]["items_counts"] = self._items_count
-        DataJson().send_changes()
+        StateJson()[self.widget_id]["items_counts"] = self._items_count
+        StateJson().send_changes()
 
     def add_property(
         self,
@@ -281,9 +282,9 @@ class SolutionProject(Widget):
     def set_project(self, project: ProjectInfo) -> None:
         self._preview_url = [project.image_preview_url]
         self._items_count = [f"{project.items_count or 0} {self._items_type}"]
-        DataJson()[self.widget_id]["preview_urls"] = self._preview_url
-        DataJson()[self.widget_id]["items_counts"] = self._items_count
-        DataJson().send_changes()
+        StateJson()[self.widget_id]["preview_urls"] = self._preview_url
+        StateJson()[self.widget_id]["items_counts"] = self._items_count
+        StateJson().send_changes()
 
     def update_badge_by_key(
         self,
