@@ -675,8 +675,7 @@ class SmartSamplingAutomation(Automation):
         self.job_id = self.widget.widget_id
         self.func = func
 
-    def apply(self, func: Optional[Callable] = None):
-        self.func = func or self.func
+    def apply(self):
         enabled, _, _, sec = self.get_automation_details()
         if not enabled:
             if self.scheduler.is_job_scheduled(self.job_id):
@@ -790,7 +789,7 @@ class SmartSampling(SolutionElement):
         self.project = self.api.project.get_info_by_id(project_id)
         # self.sampling_settings = SamplingSettings()
         self.main_widget = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
-        self.automation = SmartSamplingAutomation(self.main_widget.run)
+        self.automation = SmartSamplingAutomation(self.run)
         self.card = self._create_card()
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 
@@ -801,6 +800,10 @@ class SmartSampling(SolutionElement):
         def on_save_settings_click():
             self.main_modal.hide()
             self.update_sampling_widgets()
+
+        @self.automation_btn.click
+        def on_automation_btn_click():
+            self.apply_automation()
 
         super().__init__(*args, **kwargs)
 
@@ -842,11 +845,14 @@ class SmartSampling(SolutionElement):
     def automation_btn(self) -> Button:
         """Get the apply annotations button"""
         return self.automation.apply_btn
+    
+    def run(self):
+        self.main_widget.run()
 
-    def apply_automation(self, func: Optional[Callable] = None):
+    def apply_automation(self):
         enabled, _, _, sec = self.automation.get_automation_details()
         self.show_automation_info(enabled, sec)
-        self.automation.apply(func)
+        self.automation.apply()
 
     # UI CREATION METHODS
     def _create_main_modal(self) -> Widget:

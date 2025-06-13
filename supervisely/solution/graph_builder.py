@@ -61,6 +61,7 @@ class SolutionGraphBuilder:
         end_plug: Literal["disc", "square", "arrow1", "arrow2", "arrow3", "behind"] = "arrow2",
         start_plug_size: int = 3,
         end_plug_size: int = 3,
+        point_anchor: Union[Dict[str, int], None] = None,
     ) -> None:
         """
         Add an edge to the graph.
@@ -88,25 +89,25 @@ class SolutionGraphBuilder:
         if dash is True:
             dash = {"len": 8, "gap": 8}
 
-        edge = [
-            target,
-            {
-                "startSocket": start_sockert,
-                "endSocket": end_socket,
-                "path": path,
-                "dash": dash,
-                "color": color,
-                "size": size,
-                "middleLabel": label,
-                "labelType": "default",
-                "fontSize": font_size,
-                "fontFamily": font_family,
-                "startPlug": start_plug,
-                "endPlug": end_plug,
-                "startPlugSize": start_plug_size,
-                "endPlugSize": end_plug_size,
-            },
-        ]
+        settings = {
+            "startSocket": start_sockert,
+            "endSocket": end_socket,
+            "path": path,
+            "dash": dash,
+            "color": color,
+            "size": size,
+            "middleLabel": label,
+            "labelType": "default",
+            "fontSize": font_size,
+            "fontFamily": font_family,
+            "startPlug": start_plug,
+            "endPlug": end_plug,
+            "startPlugSize": start_plug_size,
+            "endPlugSize": end_plug_size,
+        }
+        if point_anchor is not None:
+            settings["pointAnchor"] = point_anchor
+        edge = [target, settings]
         self.edges[source].append(edge)
 
     def build(self) -> SolutionGraph:
