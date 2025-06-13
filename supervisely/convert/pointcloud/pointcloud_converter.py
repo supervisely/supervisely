@@ -108,8 +108,6 @@ class PointcloudConverter(BaseConverter):
                 item_paths,
             )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
-
-            # Prepare dict for figures: pointcloud_id -> {img_hash: [figs]}
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
             key_id_map = KeyIdMap()
 
@@ -143,7 +141,6 @@ class PointcloudConverter(BaseConverter):
                             }
                         )
 
-                        # cache figures json if present
                         if fig_path is not None and os.path.isfile(fig_path):
                             try:
                                 figs_json = load_json_file(fig_path)
