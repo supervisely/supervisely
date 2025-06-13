@@ -356,6 +356,7 @@ class PointcloudEpisodeProject(PointcloudProject):
         def _list_items_for_splits(project) -> List[EpisodeItemInfo]:
             items = []
             for dataset in project.datasets:
+                dataset: PointcloudEpisodeDataset
                 for item_name in dataset:
                     items.append(
                         EpisodeItemInfo(
@@ -747,7 +748,7 @@ def download_pointcloud_episode_project(
         datasets_infos = api.dataset.get_list(project_id)
 
     for dataset in datasets_infos:
-        dataset_fs = project_fs.create_dataset(dataset.name)
+        dataset_fs: PointcloudEpisodeDataset = project_fs.create_dataset(dataset.name)
         pointclouds = api.pointcloud_episode.get_list(dataset.id)
 
         # Download annotation to project_path/dataset_path/annotation.json
@@ -955,6 +956,7 @@ def upload_pointcloud_episode_project(
 
     key_id_map = KeyIdMap()
     for dataset_fs in project_fs.datasets:
+        dataset_fs: PointcloudEpisodeDataset
         ann_json_path = dataset_fs.get_ann_path()
 
         if os.path.isfile(ann_json_path):
@@ -1030,6 +1032,7 @@ def upload_pointcloud_episode_project(
         img_infos = {"img_paths": [], "img_metas": []}
         # STEP 3.1 — upload images
         pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
+        pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
         for pcl_info in pcl_infos:
             related_items = dataset_fs.get_related_images(pcl_info.name)
             images_paths_for_frame = [img_path for img_path, _ in related_items]
@@ -1098,7 +1101,13 @@ def upload_pointcloud_episode_project(
 
         if len(img_infos["img_metas"]) > 0:
             try:
-                api.pointcloud_episode.add_related_images(img_infos["img_metas"])
+                uploaded_rimgs = api.pointcloud_episode.add_related_images(img_infos["img_metas"])
+                # build mapping hash->id
+                for info, uploaded in zip(img_infos["img_metas"], uploaded_rimgs):
+                    img_hash = info.get(ApiField.HASH)
+                    img_id = uploaded.get(ApiField.ID) if isinstance(uploaded, dict) else getattr(uploaded, 'id', None)
+                    if img_hash is not None and img_id is not None:
+                        pcl_to_hash_to_id[img_hash] = img_id
             except Exception as e:
                 logger.info(
                     "INFO FOR DEBUGGING",
@@ -1116,13 +1125,9 @@ def upload_pointcloud_episode_project(
                 continue
 
             try:
-                # temporary workaround: obtain IDs of uploaded images
-                uploaded_rimg = api.pointcloud_episode.get_list_related_images(pcl_info.id)
-                hash_to_ids = {rimg[ApiField.HASH]: rimg[ApiField.ID] for rimg in uploaded_rimg}
-
                 for img_hash, figs_json in rimg_figures.items():
-                    if img_hash in hash_to_ids:
-                        img_id = hash_to_ids[img_hash]
+                    if img_hash in pcl_to_hash_to_id:
+                        img_id = pcl_to_hash_to_id[img_hash]
                         for fig in figs_json:
                             fig[ApiField.ENTITY_ID] = img_id
                             fig[ApiField.DATASET_ID] = dataset.id

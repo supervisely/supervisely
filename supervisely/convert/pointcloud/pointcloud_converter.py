@@ -1,6 +1,7 @@
 import imghdr
 import os
-from typing import List, Optional, Set, Tuple, Dict
+from typing import Dict, List, Optional, Set, Tuple
+from uuid import UUID
 
 import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import (
@@ -17,9 +18,8 @@ from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
-from uuid import UUID
-from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.pointcloud_annotation.constants import OBJECT_KEY
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudConverter(BaseConverter):
@@ -109,8 +109,8 @@ class PointcloudConverter(BaseConverter):
             )
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
+            pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
             key_id_map = KeyIdMap()
-
             for pcd_id, ann, item in zip(pcd_ids, anns, batch):
                 if ann is not None:
                     api.pointcloud.annotation.append(pcd_id, ann, key_id_map)
@@ -157,7 +157,17 @@ class PointcloudConverter(BaseConverter):
                 # add images for this point cloud
                 if len(rimg_infos) > 0:
                     try:
-                        api.pointcloud.add_related_images(rimg_infos, camera_names)
+                        uploaded_rimgs = api.pointcloud.add_related_images(rimg_infos, camera_names)
+                        # build mapping hash->id
+                        for info, uploaded in zip(rimg_infos, uploaded_rimgs):
+                            img_hash = info.get(ApiField.HASH)
+                            img_id = (
+                                uploaded.get(ApiField.ID)
+                                if isinstance(uploaded, dict)
+                                else getattr(uploaded, "id", None)
+                            )
+                            if img_hash is not None and img_id is not None:
+                                pcl_to_hash_to_id.setdefault(pcd_id, {})[img_hash] = img_id
                     except Exception as e:
                         logger.warn(f"Failed to add related images to pointcloud: {repr(e)}")
 
@@ -170,36 +180,43 @@ class PointcloudConverter(BaseConverter):
                     figures_payload: List[Dict] = []
 
                     for pcl_id, hash_to_figs in pcl_to_rimg_figures.items():
-                        try:
-                            uploaded_rimgs = api.pointcloud.get_list_related_images(pcl_id)
-                            hash_to_ids = {ri[ApiField.HASH]: ri[ApiField.ID] for ri in uploaded_rimgs}
-                        except Exception as e:
-                            logger.warn(f"Failed to fetch related images for pcl_id={pcl_id}: {repr(e)}")
+                        hash_to_ids = pcl_to_hash_to_id.get(pcl_id, {})
+                        if len(hash_to_ids) == 0:
+                            logger.warn(
+                                f"Hash to ID mapping for pcl_id={pcl_id} is empty. Figures upload might fail."
+                            )
                             continue
 
                         for img_hash, figs_json in hash_to_figs.items():
                             if img_hash not in hash_to_ids:
                                 continue
-                            img_id = hash_to_ids[img_hash]
-
+                            rimg_id = hash_to_ids[img_hash]
                             for fig in figs_json:
                                 try:
-                                    fig[ApiField.ENTITY_ID] = img_id
+                                    fig[ApiField.ENTITY_ID] = rimg_id
                                     fig[ApiField.DATASET_ID] = dataset_id
                                     fig[ApiField.PROJECT_ID] = project_id
                                     if OBJECT_KEY in fig:
-                                        fig[ApiField.OBJECT_ID] = key_id_map.get_object_id(UUID(fig[OBJECT_KEY]))
+                                        fig[ApiField.OBJECT_ID] = key_id_map.get_object_id(
+                                            UUID(fig[OBJECT_KEY])
+                                        )
                                 except Exception as e:
-                                    logger.warn(f"Failed to process figure json for hash={img_hash}: {repr(e)}")
+                                    logger.warn(
+                                        f"Failed to process figure json for img_hash={img_hash}: {repr(e)}"
+                                    )
                                     continue
 
                             figures_payload.extend(figs_json)
 
                         if len(figures_payload) > 0:
                             try:
-                                api.image.figure.create_bulk(figures_json=figures_payload, dataset_id=dataset_id)
+                                api.image.figure.create_bulk(
+                                    figures_json=figures_payload, dataset_id=dataset_id
+                                )
                             except Exception as e:
-                                logger.warn(f"Failed to upload figures for related images: {repr(e)}")
+                                logger.warn(
+                                    f"Failed to upload figures for related images: {repr(e)}"
+                                )
                 except Exception as e:
                     logger.warn(f"Unexpected error during related image figures upload: {repr(e)}")
 

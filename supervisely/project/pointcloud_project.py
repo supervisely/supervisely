@@ -1330,6 +1330,13 @@ def upload_pointcloud_project(
 
                 try:
                     uploaded_rimgs = api.pointcloud.add_related_images(rimg_infos, camera_names)
+                    # build mapping hash->id
+                    pcl_to_hash_to_id = {}
+                    for info, uploaded in zip(rimg_infos, uploaded_rimgs):
+                        img_hash = info.get(ApiField.HASH)
+                        img_id = uploaded.get(ApiField.ID) if isinstance(uploaded, dict) else getattr(uploaded, 'id', None)
+                        if img_hash is not None and img_id is not None:
+                            pcl_to_hash_to_id[img_hash] = img_id
                 except Exception as e:
                     logger.info(
                         "INFO FOR DEBUGGING",
@@ -1346,42 +1353,38 @@ def upload_pointcloud_project(
 
                 # upload figures
                 if len(rimg_figures) > 0:
-                    try:
-                        # ! temp code (we need IDs of uploaded related images)
-                        uploaded_rimg = api.pointcloud.get_list_related_images(pointcloud.id)
-                        hash_to_ids = {
-                            rimg[ApiField.HASH]: rimg[ApiField.ID] for rimg in uploaded_rimg
-                        }
-                        # remove this when API will return IDs of uploaded related images
-                        # ! temp code end
-                        for img_hash, figs_json in rimg_figures.items():
-                            if img_hash in hash_to_ids:
-                                img_id = hash_to_ids[img_hash]
-                                for fig in figs_json:
-                                    fig[ApiField.ENTITY_ID] = img_id
-                                    fig[ApiField.DATASET_ID] = dataset.id
-                                    fig[ApiField.PROJECT_ID] = project.id
-                                    fig[ApiField.OBJECT_ID] = key_id_map.get_object_id(
-                                        UUID(fig[OBJECT_KEY])
-                                    )
-
-                        api.image.figure.create_bulk(
-                            figures_json=[fig for figs in rimg_figures.values() for fig in figs],
-                            dataset_id=dataset.id,
+                    hash_to_ids = pcl_to_hash_to_id
+                    if len(hash_to_ids) == 0:
+                        logger.warn(
+                            f"Hash to ID mapping for pointcloud_id={pointcloud.id} is empty. Figures upload might fail."
                         )
 
-                    except Exception as e:
-                        logger.info(
-                            "INFO FOR DEBUGGING",
-                            extra={
-                                "project_id": project.id,
-                                "dataset_id": dataset.id,
-                                "pointcloud_id": pointcloud.id,
-                                "pointcloud_name": pointcloud.name,
-                                "rimg_figures": rimg_figures,
-                            },
-                        )
-                        raise e
+                    figures_payload = []
+                    for img_hash, figs_json in rimg_figures.items():
+                        if img_hash not in hash_to_ids:
+                            continue
+                        img_id = hash_to_ids[img_hash]
+                        for fig in figs_json:
+                            try:
+                                fig[ApiField.ENTITY_ID] = img_id
+                                fig[ApiField.DATASET_ID] = dataset.id
+                                fig[ApiField.PROJECT_ID] = project.id
+                                fig[ApiField.OBJECT_ID] = key_id_map.get_object_id(
+                                    UUID(fig[OBJECT_KEY])
+                                )
+                            except Exception as e:
+                                logger.warn(f"Failed to process figure json for img_hash={img_hash}: {repr(e)}")
+                                continue
+
+                        figures_payload.extend(figs_json)
+
+                    if len(figures_payload) > 0:
+                        try:
+                            api.image.figure.create_bulk(
+                                figures_json=figures_payload, dataset_id=dataset.id
+                            )
+                        except Exception as e:
+                            logger.warn(f"Failed to upload figures for related images: {repr(e)}")
 
             if ds_progress:
                 ds_progress(1)
