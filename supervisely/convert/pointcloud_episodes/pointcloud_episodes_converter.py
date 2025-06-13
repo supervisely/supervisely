@@ -52,12 +52,12 @@ class PointcloudEpisodeConverter(BaseConverter):
             return PointcloudEpisodeAnnotation()
 
         def set_related_images(self, related_images: Tuple[str, str, Optional[str]]) -> None:
-            """Добавляет связанное изображение к элементу.
+            """Adds related image to the item.
 
-            related_images: кортеж из:
-                0) путь к изображению
-                1) путь к .json с метаданными изображения
-                2) путь к .figures.json (может быть None, если фигур нет)
+            related_images tuple:
+                - path to image
+                - path to .json with image metadata
+                - path to .figures.json (can be None if no figures)
             """
             self._related_images.append(related_images)
 
@@ -194,12 +194,10 @@ class PointcloudEpisodeConverter(BaseConverter):
             if log_progress:
                 progress_cb(len(batch))
 
-        # Сначала прикрепляем аннотацию, чтобы key_id_map был заполнен корректными OBJECT_ID
         if self.items_count > 0:
             ann = self.to_supervisely(self._items[0], meta, renamed_classes, renamed_tags)
             api.pointcloud_episode.annotation.append(dataset_id, ann, frame_to_pointcloud_ids, key_id_map)
 
-        # --- Загрузка фигур для связанных изображений ---
         if len(pcl_to_rimg_figures) > 0:
 
             if log_progress:
