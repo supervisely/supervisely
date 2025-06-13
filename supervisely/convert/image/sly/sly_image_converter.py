@@ -17,7 +17,7 @@ from supervisely.api.api import Api
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.image_helper import validate_image_bounds
-from supervisely.io.fs import dirs_filter, file_exists, get_file_ext
+from supervisely.io.fs import dirs_filter, file_exists, get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.project.project import find_project_dirs
 from supervisely.project.project import upload_project as upload_project_fs
@@ -122,17 +122,20 @@ class SLYImageConverter(ImageConverter):
         self._items = []
         for image_path in images_list:
             item = self.Item(image_path)
-            ann_name = f"{item.name}.json"
-            if ann_name in ann_dict:
-                ann_path = ann_dict[ann_name]
+            json_name, json_name_noext = f"{item.name}.json", f"{get_file_name(item.name)}.json"
+            ann_path = ann_dict.get(json_name, ann_dict.get(json_name_noext))
+            if ann_path:
                 if self._meta is None:
                     meta = self.generate_meta_from_annotation(ann_path, meta)
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
                     item.ann_data = ann_path
-                    detected_ann_cnt += 1
-            if ann_name in img_meta_dict:
-                item.set_meta_data(img_meta_dict[ann_name])
+            
+            meta_path = img_meta_dict.get(json_name, img_meta_dict.get(json_name_noext))
+            if meta_path:
+                item.set_meta_data(meta_path)
+            if item.ann_data is not None or item.meta is not None:
+                detected_ann_cnt += 1
             self._items.append(item)
         self._meta = meta
         return detected_ann_cnt > 0
