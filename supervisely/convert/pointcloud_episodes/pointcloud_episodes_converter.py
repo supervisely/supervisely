@@ -1,6 +1,7 @@
 import imghdr
 import os
 from typing import Dict, List, Optional, Set, Tuple, Union
+from uuid import UUID
 
 from supervisely import (
     Api,
@@ -16,7 +17,9 @@ from supervisely.io.fs import get_file_ext, get_file_name
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
+from supervisely.pointcloud_annotation.constants import OBJECT_KEY
 from supervisely.project.project_settings import LabelingInterface
+from supervisely.video_annotation.key_id_map import KeyIdMap
 
 
 class PointcloudEpisodeConverter(BaseConverter):
@@ -47,7 +50,14 @@ class PointcloudEpisodeConverter(BaseConverter):
         def create_empty_annotation(self) -> PointcloudEpisodeAnnotation:
             return PointcloudEpisodeAnnotation()
 
-        def set_related_images(self, related_images: dict) -> None:
+        def set_related_images(self, related_images: Tuple[str, str, Optional[str]]) -> None:
+            """Adds related image to the item.
+
+            related_images tuple:
+                - path to image
+                - path to .json with image metadata
+                - path to .figures.json (can be None if no figures)
+            """
             self._related_images.append(related_images)
 
     def __init__(
@@ -104,7 +114,10 @@ class PointcloudEpisodeConverter(BaseConverter):
         else:
             progress_cb = None
 
-        frame_to_pointcloud_ids = {}
+        frame_to_pointcloud_ids: Dict[int, int] = {}
+        pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
+        pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
+        key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
@@ -129,12 +142,21 @@ class PointcloudEpisodeConverter(BaseConverter):
                 rimg_infos = []
                 camera_names = []
                 if len(item._related_images) > 0:
-                    img_paths, rimg_ann_paths = list(zip(*item._related_images))
+                    img_paths: List[str] = []
+                    ann_paths: List[str] = []
+                    fig_paths: List[Optional[str]] = []
+
+                    for triple in item._related_images:
+                        img_paths.append(triple[0])
+                        ann_paths.append(triple[1])
+                        fig_paths.append(triple[2] if len(triple) > 2 else None)
+
                     rimg_hashes = api.pointcloud_episode.upload_related_images(img_paths)
-                    for img_ind, (img_hash, rimg_ann_path) in enumerate(
-                        zip(rimg_hashes, rimg_ann_paths)
+
+                    for img_ind, (img_hash, ann_path, fig_path) in enumerate(
+                        zip(rimg_hashes, ann_paths, fig_paths)
                     ):
-                        meta_json = load_json_file(rimg_ann_path)
+                        meta_json = load_json_file(ann_path)
                         try:
                             if ApiField.META not in meta_json:
                                 raise ValueError("Related image meta not found in json file.")
@@ -152,19 +174,102 @@ class PointcloudEpisodeConverter(BaseConverter):
                                     ApiField.META: meta_json[ApiField.META],
                                 }
                             )
-                            api.pointcloud.add_related_images(rimg_infos, camera_names)
+
+                            if fig_path is not None:
+                                try:
+                                    figs_json = load_json_file(fig_path)
+                                    pcl_to_rimg_figures.setdefault(pcd_id, {})[img_hash] = figs_json
+                                except Exception as e:
+                                    logger.debug(
+                                        f"Failed to read figures json '{fig_path}': {repr(e)}"
+                                    )
+
                         except Exception as e:
                             logger.warning(
-                                f"Failed to upload related image or add it to pointcloud episo: {repr(e)}"
+                                f"Failed to process related image meta '{ann_path}': {repr(e)}"
                             )
                             continue
+
+                    uploaded_rimgs = api.pointcloud.add_related_images(rimg_infos, camera_names)
+                    try:
+                        # build mapping hash->id
+                        for info, uploaded in zip(rimg_infos, uploaded_rimgs):
+                            img_hash = info.get(ApiField.HASH)
+                            img_id = (
+                                uploaded.get(ApiField.ID)
+                                if isinstance(uploaded, dict)
+                                else getattr(uploaded, "id", None)
+                            )
+                            if img_hash is not None and img_id is not None:
+                                pcl_to_hash_to_id.setdefault(pcd_id, {})[img_hash] = img_id
+                    except Exception as e:
+                        logger.debug(
+                            f"Failed to build hash->ID mapping for related images: {repr(e)}"
+                        )
 
             if log_progress:
                 progress_cb(len(batch))
 
         if self.items_count > 0:
             ann = self.to_supervisely(self._items[0], meta, renamed_classes, renamed_tags)
-            api.pointcloud_episode.annotation.append(dataset_id, ann, frame_to_pointcloud_ids)
+            api.pointcloud_episode.annotation.append(
+                dataset_id, ann, frame_to_pointcloud_ids, key_id_map
+            )
+
+        # ---- upload figures for processed batch ----
+        if len(pcl_to_rimg_figures) > 0:
+            if log_progress:
+                progress, progress_cb = self.get_progress(
+                    self.items_count, "Uploading figures for related images..."
+                )
+            else:
+                progress_cb = None
+
+            try:
+                dataset_info = api.dataset.get_info_by_id(dataset_id)
+                project_id = dataset_info.project_id
+
+                figures_to_upload: List[Dict] = []
+                for pcl_id, hash_to_figs in pcl_to_rimg_figures.items():
+                    hash_to_ids = pcl_to_hash_to_id.get(pcl_id, {})
+                    if len(hash_to_ids) == 0:
+                        continue
+
+                    for img_hash, figs_json in hash_to_figs.items():
+                        if img_hash not in hash_to_ids:
+                            continue
+                        img_id = hash_to_ids[img_hash]
+
+                        for fig in figs_json:
+                            try:
+                                fig[ApiField.ENTITY_ID] = img_id
+                                fig[ApiField.DATASET_ID] = dataset_id
+                                fig[ApiField.PROJECT_ID] = project_id
+                                if OBJECT_KEY in fig:
+                                    fig[ApiField.OBJECT_ID] = key_id_map.get_object_id(
+                                        UUID(fig[OBJECT_KEY])
+                                    )
+                            except Exception as e:
+                                logger.debug(
+                                    f"Failed to process figure json for img_hash={img_hash}: {repr(e)}"
+                                )
+                                continue
+
+                        figures_to_upload.extend(figs_json)
+
+                if len(figures_to_upload) > 0:
+                    try:
+                        api.image.figure.create_bulk(
+                            figures_json=figures_to_upload, dataset_id=dataset_id
+                        )
+                    except Exception as e:
+                        logger.debug(f"Failed to upload figures for related images: {repr(e)}")
+
+                if log_progress:
+                    progress_cb(len(pcl_to_rimg_figures))
+
+            except Exception as e:
+                logger.debug(f"Unexpected error during figures upload: {repr(e)}")
 
         if log_progress:
             if is_development():
@@ -177,7 +282,7 @@ class PointcloudEpisodeConverter(BaseConverter):
         pcd_dict = {}
         frames_pcd_map = None
         used_img_ext = set()
-        rimg_dict, rimg_json_dict = {}, {}
+        rimg_dict, rimg_json_dict, rimg_fig_dict = {}, {}, {}
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
@@ -187,7 +292,9 @@ class PointcloudEpisodeConverter(BaseConverter):
 
                 ext = get_file_ext(full_path)
                 recognized_ext = imghdr.what(full_path)
-                if ext == ".json":
+                if file.endswith(".figures.json"):
+                    rimg_fig_dict[file] = full_path
+                elif ext == ".json":
                     rimg_json_dict[file] = full_path
                 elif recognized_ext:
                     if ext.lower() == ".pcd":
@@ -226,9 +333,12 @@ class PointcloudEpisodeConverter(BaseConverter):
                     if rimg_name in rimg_dict:
                         rimg_path = rimg_dict[rimg_name]
                         rimg_ann_name = f"{rimg_name}.json"
+                        rimg_fig_name = f"{rimg_name}.figures.json"
+                        rimg_fig_path = rimg_fig_dict.get(rimg_fig_name)
+
                         if rimg_ann_name in rimg_json_dict:
                             rimg_ann_path = rimg_json_dict[rimg_ann_name]
-                            item.set_related_images((rimg_path, rimg_ann_path))
+                            item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
                 items.append(item)
             else:
                 logger.warning(f"Pointcloud file {pcd_name} not found. Skipping frame.")

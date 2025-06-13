@@ -101,7 +101,11 @@ class SLYPointcloudConverter(PointcloudConverter):
                 item.name, used_img_ext, rimg_dict, rimg_ann_dict
             )
             if rimg is not None and rimg_ann is not None:
-                item.set_related_images((rimg, rimg_ann))
+                rimg_ext = get_file_ext(rimg)
+                rimg_fig_path = rimg_ann.replace(f"{rimg_ext}.json", f"{rimg_ext}.figures.json")
+                if not os.path.exists(rimg_fig_path):
+                    rimg_fig_path = None
+                item.set_related_images((rimg, rimg_ann, rimg_fig_path))
             self._items.append(item)
         return sly_ann_detected
 
