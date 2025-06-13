@@ -11,6 +11,12 @@ import supervisely.io.json as sly_json
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
+from supervisely.nn.benchmark.object_detection.metric_provider import (
+    METRIC_NAMES as OBJECT_DETECTION_METRIC_NAMES,
+)
+from supervisely.nn.benchmark.semantic_segmentation.metric_provider import (
+    METRIC_NAMES as SEMANTIC_SEGMENTATION_METRIC_NAMES,
+)
 from supervisely.nn.inference import Inference
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.utils import RuntimeType
@@ -98,7 +104,7 @@ class ExperimentGenerator(BaseGenerator):
 
         date = self._get_date()
         training_duration = self.info.get("training_duration", "N/A")
-        metrics = self._generate_metrics_table()
+        metrics = self._generate_metrics_table(task_type)
         primary_metric = self._get_primary_metric()
         display_metrics = self._get_display_metrics(task_type)
         checkpoints = self._generate_checkpoints_table()
@@ -212,7 +218,7 @@ class ExperimentGenerator(BaseGenerator):
 
         return context
 
-    def _generate_metrics_table(self) -> str:
+    def _generate_metrics_table(self, task_type: str) -> str:
         """Generate HTML table with evaluation metrics.
 
         :returns: HTML string with metrics table
@@ -226,9 +232,18 @@ class ExperimentGenerator(BaseGenerator):
         html.append("<thead><tr><th>Metrics</th><th>Values</th></tr></thead>")
         html.append("<tbody>")
 
+        if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
+            metric_names = OBJECT_DETECTION_METRIC_NAMES
+        elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+            metric_names = SEMANTIC_SEGMENTATION_METRIC_NAMES
+        else:
+            raise NotImplementedError(f"Task type '{task_type}' is not supported")
+
         for metric_name, metric_value in metrics.items():
-            metric_name = metric_name.replace("_", " ")
-            metric_name = metric_name.replace("-", " ")
+            formatted_metric_name = metric_names.get(metric_name)
+            if formatted_metric_name is None:
+                formatted_metric_name = metric_name.replace("_", " ")
+                formatted_metric_name = formatted_metric_name.replace("-", " ")
             if isinstance(metric_value, float):
                 metric_value = f"{metric_value:.4f}"
             html.append(f"<tr><td>{metric_name}</td><td>{metric_value}</td></tr>")
@@ -246,9 +261,8 @@ class ExperimentGenerator(BaseGenerator):
         metrics = self.info.get("evaluation_metrics", {})
         if not metrics:
             return None
-
+        
         html = ['<table class="metrics-table">']
-
         # Generate header row with metric names
         header_cells = []
         for metric_name in metrics.keys():

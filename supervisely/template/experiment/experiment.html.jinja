@@ -63,14 +63,14 @@ was performed.
 
 [📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
 
-- 🎯 Best checkpoint: **{{ artifacts.best_checkpoint.name }}** ([download]({{ artifacts.best_checkpoint.url
+- 🔥 Best checkpoint: **{{ artifacts.best_checkpoint.name }}** ([download]({{ artifacts.best_checkpoint.url
 }}){:download="{{ artifacts.best_checkpoint.name }}"})
 {% if artifacts.onnx_checkpoint.name %}
 - 📦 ONNX export: **{{ artifacts.onnx_checkpoint.name }}** ([download]({{ artifacts.onnx_checkpoint.url
 }}){:download="{{ artifacts.onnx_checkpoint.name }}"})
 {% endif %}
 {% if artifacts.trt_checkpoint.name %}
-- 📦 TensorRT export: **{{ artifacts.trt_checkpoint.name }}** ([download]({{ artifacts.trt_checkpoint.url
+- ⚡ TensorRT export: **{{ artifacts.trt_checkpoint.name }}** ([download]({{ artifacts.trt_checkpoint.url
 }}){:download="{{ artifacts.trt_checkpoint.name }}"})
 {% endif %}
 
@@ -151,7 +151,7 @@ use it for predictions.
 
 {% tabs %}
 
-{% tab title="PyTorch Model" %}
+{% tab title="PyTorch" %}
 
 ```python
 import supervisely as sly
@@ -168,7 +168,7 @@ model = api.nn.deploy(
 {% endtab %}
 
 {% if artifacts.onnx_checkpoint.name %}
-{% tab title="ONNX Model" %}
+{% tab title="ONNX" %}
 
 ```python
 import supervisely as sly
@@ -186,7 +186,7 @@ model = api.nn.deploy(
 {% endif %}
 
 {% if artifacts.trt_checkpoint.name %}
-{% tab title="TensorRT Model" %}
+{% tab title="TensorRT" %}
 
 ```python
 import supervisely as sly
