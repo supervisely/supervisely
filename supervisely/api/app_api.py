@@ -1688,7 +1688,7 @@ class AppApi(TaskApi):
             users_ids = [users_id]
 
         new_params = {}
-        if "state" not in params:
+        if params is not None and "state" not in params:
             new_params["state"] = params
         else:
             new_params = params

@@ -58,7 +58,7 @@ class CollectionItem:
         :type score: float
         """
 
-        score: float
+        score: Optional[float] = 0.0
 
         def to_json(self) -> dict:
             """
