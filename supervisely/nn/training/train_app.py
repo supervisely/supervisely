@@ -7,10 +7,10 @@ training workflows in a Supervisely application.
 
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from os import getcwd, listdir, walk
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
-from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -46,6 +46,7 @@ from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
+from supervisely.decorators.profile import timeit_with_result
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
     InstanceSegmentationEvaluator,
@@ -70,6 +71,7 @@ from supervisely.project.download import (
     get_dataset_path,
     is_cached,
 )
+from supervisely.template.experiment.experiment_generator import ExperimentGenerator
 
 
 class TrainApp:
@@ -528,7 +530,7 @@ class TrainApp:
         """
 
         def decorator(func):
-            self._train_func = func
+            self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
             return func
 
@@ -675,14 +677,20 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-        # Step 10. Set output widgets
+        # Step 10. Generate experiment report
+        experiment_link_file_info = self._generate_experiment_report(experiment_info, model_meta)
+
+        # Step 11. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(
-            experiment_info, remote_dir, session_link_file_info, mb_eval_report
+            experiment_info,
+            remote_dir,
+            experiment_link_file_info,
+            mb_eval_report,
         )
         self._set_ws_progress_status("completed")
 
-        # Step 11. Workflow output
+        # Step 12. Workflow output
         if is_production():
             best_checkpoint_file_info = self._get_best_checkpoint_info(experiment_info, remote_dir)
             self._workflow_output(
@@ -1743,7 +1751,9 @@ class TrainApp:
             "evaluation_report_id": evaluation_report_id,
             "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
+            "device": self.gui.training_process.get_device_name(),
         }
 
         if self._has_splits_selector:
@@ -1778,9 +1788,32 @@ class TrainApp:
         )
 
         # Do not include this fields to uploaded file:
-        experiment_info["primary_metric"] = primary_metric_name
         experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
+
+    def _generate_experiment_report(
+        self, experiment_info: dict, model_meta: ProjectMeta
+    ) -> FileInfo:
+        """
+        Generates and uploads the experiment report to the output directory.
+        """
+        # @TODO: add report thumbnail to GUI
+        # @TODO: add report to workflow output
+        experiment = ExperimentGenerator(
+            api=self._api,
+            experiment_info=experiment_info,
+            hyperparameters=self.hyperparameters_yaml,
+            model_meta=model_meta,
+            serving_class=self._inference_class,
+            team_id=self.team_id,
+            output_dir=join(self.work_dir, "experiment_report"),
+            app_options=self._app_options,
+        )
+        experiment.generate()
+
+        experiment.upload_to_artifacts()
+        file_info = experiment.get_report()
+        return file_info
 
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
         """
@@ -2001,7 +2034,7 @@ class TrainApp:
         experiment_info: dict,
         remote_dir: str,
         file_info: FileInfo,
-        mb_eval_report=None,
+        mb_eval_report: Optional[FileInfo] = None,
     ) -> None:
         """
         Sets the training output in the GUI.
@@ -2016,8 +2049,10 @@ class TrainApp:
         if is_production():
             self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
+        # Set artifacts thumbnail to GUI
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
+        # Set experiment report thumbnail to GUI
         self.gui.training_artifacts.artifacts_field.show()
         # ---------------------------- #
 
@@ -2603,6 +2638,7 @@ class TrainApp:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            self.app.shutdown()
             raise e
 
         try:
@@ -2619,7 +2655,9 @@ class TrainApp:
             self._set_text_status("training")
             if self._app_options.get("train_logger", None) is None:
                 self._set_ws_progress_status("training")
+
             experiment_info = self._train_func()
+            experiment_info["training_duration"] = self._train_func.elapsed
         except ZeroDivisionError as e:
             message = (
                 "'ZeroDivisionError' occurred during training. "
@@ -2645,13 +2683,14 @@ class TrainApp:
                 self.gui.training_logs.tensorboard_button.hide()
                 self.gui.training_logs.tensorboard_offline_button.show()
 
-            sleep(1)
-            self.app.shutdown()
+            time.sleep(1)
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
             raise e
+        finally:
+            self.app.shutdown()
 
     def _show_error(self, message: str, e=None):
         if e is not None:
@@ -2718,6 +2757,7 @@ class TrainApp:
             "export_onnx",
             "export_trt",
             "convert_gt_project",
+            "experiment_report",
         ],
     ):
 
@@ -2753,6 +2793,8 @@ class TrainApp:
             self.gui.training_process.validator_text.set("Generating training metadata...", "info")
         elif status == "convert_gt_project":
             self.gui.training_process.validator_text.set("Converting GT project...", "info")
+        elif status == "experiment_report":
+            self.gui.training_process.validator_text.set("Generating experiment report...", "info")
 
     def _set_ws_progress_status(
         self,

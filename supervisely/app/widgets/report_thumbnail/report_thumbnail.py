@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
 from supervisely.api.file_api import FileInfo
@@ -16,11 +16,13 @@ class ReportThumbnail(Widget):
         title: Optional[str] = None,
         color: Optional[str] = "#dcb0ff",
         bg_color: Optional[str] = "#faebff",
+        report_type: Literal["model_benchmark", "experiment"] = "model_benchmark",
     ):
         self._id: int = None
         self._info: FileInfo = None
         self._description: str = None
         self._url: str = None
+        self._report_type = report_type
         self._set_info(info)
         self._title = title
         self._color = color if _validate_hex_color(color) else "#dcb0ff"
@@ -54,13 +56,26 @@ class ReportThumbnail(Widget):
             return
         self._id = info.id
         self._info = info
-        self._description = "Open the Model Benchmark evaluation report."
-        lnk = f"/model-benchmark?id={info.id}"
+        if self._report_type == "model_benchmark":
+            self._description = "Open the Model Benchmark evaluation report."
+            lnk = f"/model-benchmark?id={info.id}"
+        elif self._report_type == "experiment":
+            self._description = "Open the Experiment report."
+            lnk = f"/nn/experiments/{info.id}"
+        else:
+            raise ValueError(f"Invalid report type: {self._report_type}")
+
         lnk = abs_url(lnk) if is_development() or is_debug_with_sly_net() else lnk
         # self._description = info.path
         self._url = lnk
 
-    def set(self, info: FileInfo = None):
+    def set(
+        self,
+        info: FileInfo = None,
+        report_type: Optional[Literal["model_benchmark", "experiment"]] = None,
+    ):
+        if report_type is not None:
+            self._report_type = report_type
         self._set_info(info)
         self.update_data()
         DataJson().send_changes()

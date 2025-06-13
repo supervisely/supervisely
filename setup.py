@@ -128,6 +128,8 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
+    "markdown",
+    "pymdown-extensions",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -190,6 +192,7 @@ setup(
     package_data={
         "": [
             "*.html",
+            "*.jinja",
             "*.css",
             "*.js",
             "*.md",
