@@ -1568,12 +1568,12 @@ class TrainApp:
         best_checkpoints_name = experiment_info["best_checkpoint"]
 
         # Prepare checkpoint files
-        model_files = experiment_info["model_files"]
+        logger.info(experiment_info["model_files"])
         try:
             ckpt_files = {}
-            for file in model_files:
-                file_name = sly_fs.get_file_name_with_ext(model_files[file])
-                with open(model_files[file], "r") as f:
+            for file in experiment_info["model_files"]:
+                file_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"][file])
+                with open(experiment_info["model_files"][file], "r") as f:
                     ckpt_files[file_name] = f.read()
         except Exception as e:
             logger.warning(f"Error loading model files: {e}")

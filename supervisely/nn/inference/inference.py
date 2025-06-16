@@ -748,7 +748,10 @@ class Inference:
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-        for file in model_files:
+        
+        # Sort files to download 'checkpoint' first
+        files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
+        for file in files_order:
             file_url = model_files[file]
             file_info = self.api.file.get_info_by_path(team_id, file_url)
             if file_info is None:
