@@ -773,6 +773,30 @@ class Inference:
                     )
             else:
                 self.api.file.download(team_id, file_url, file_path)
+
+            if file == "checkpoint":
+                file_ext = sly_fs.get_file_ext(file_path)
+                if file_ext == ".pth" or file_ext == ".pt":
+                    import torch
+                    checkpoint = torch.load(file_path)
+                    ckpt_files = checkpoint.get("model_files", None)
+                    if ckpt_files is None:
+                        local_model_files[file] = file_path
+                        continue
+                    try:
+                        logger.info(f"Getting model files from checkpoint: {file_name}")
+                        for file in ckpt_files:
+                            file_path = os.path.join(self.model_dir, file)
+                            with open(file_path, "w") as f:
+                                f.write(ckpt_files[file])
+                            local_model_files[file] = file_path
+                        return local_model_files
+                    except Exception as e:
+                        logger.debug(f"Failed to get model files from checkpoint: {repr(e)}")
+                        logger.debug(f"Model files will be downloaded from Team Files")
+                        local_model_files[file] = file_path
+                        continue
+
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
@@ -3740,7 +3764,6 @@ class Inference:
                 logger.debug(
                     f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
                 )
-
 
 def _exclude_duplicated_predictions(
     api: Api,

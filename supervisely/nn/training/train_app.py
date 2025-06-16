@@ -1577,6 +1577,12 @@ class TrainApp:
             logger.warning(f"Error loading model files: {e}")
             model_files = {}
 
+        ckpt_files = {}
+        for file in model_files:
+            file_name = sly_fs.get_file_name_with_ext(model_files[file])
+            with open(model_files[file], "r") as f:
+                ckpt_files[file_name] = f.read()
+
         for checkpoint_path in checkpoint_paths:
             checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
             new_checkpoint_path = join(self._output_checkpoints_dir, checkpoint_name)
@@ -1594,7 +1600,7 @@ class TrainApp:
                         "experiment": self.gui.training_process.get_experiment_name(),
                     }
                     state_dict["model_meta"] = model_meta.to_json()
-                    state_dict["model_files"] = model_files
+                    state_dict["model_files"] = ckpt_files
                     torch.save(state_dict, new_checkpoint_path)
                 except Exception as e:
                     logger.warning(
