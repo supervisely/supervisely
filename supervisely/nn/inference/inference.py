@@ -788,10 +788,10 @@ class Inference:
                         continue
                     try:
                         logger.info(f"Getting model files from checkpoint: {file_name}")
-                        for file in ckpt_files:
-                            file_path = os.path.join(self.model_dir, file)
+                        for ckpt_file in ckpt_files:
+                            file_path = os.path.join(self.model_dir, ckpt_file)
                             with open(file_path, "w") as f:
-                                f.write(ckpt_files[file])
+                                f.write(ckpt_files[ckpt_file])
                             local_model_files[file] = file_path
                         return local_model_files
                     except Exception as e:

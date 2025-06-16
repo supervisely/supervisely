@@ -1570,6 +1570,7 @@ class TrainApp:
         # Prepare checkpoint files
         logger.info(experiment_info["model_files"])
         try:
+            # need to save original key names
             ckpt_files = {}
             for file in experiment_info["model_files"]:
                 file_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"][file])
