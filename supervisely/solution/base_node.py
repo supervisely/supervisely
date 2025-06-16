@@ -37,7 +37,9 @@ class SolutionElement(Widget):
 
 
 class Automation:
-    scheduler = TasksScheduler()
+    @property
+    def scheduler(self):
+        return TasksScheduler()
 
 
 # only SolutionCard/SolutionProject can be used as content

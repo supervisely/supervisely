@@ -1,4 +1,7 @@
-def get_interval_period(sec: int) -> tuple[str, int]:
+from typing import Tuple
+
+
+def get_interval_period(sec: int) -> Tuple[str, int]:
     """
     Returns the period and interval based on the given seconds.
     :param sec: Number of seconds
@@ -16,6 +19,7 @@ def get_interval_period(sec: int) -> tuple[str, int]:
         period = "d"
         interval = sec // 86400
     return period, interval
+
 
 def get_seconds_from_period_and_interval(period: str, interval: int) -> int:
     """
