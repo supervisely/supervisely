@@ -2,14 +2,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, TypeVar,
 
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import (
-    Button,
-    SolutionCard,
-    SolutionGraph,
-    SolutionProject,
-    Text,
-    Widget,
-)
+from supervisely.app.widgets import SolutionCard, SolutionGraph, SolutionProject, Widget
 from supervisely.solution.scheduler import TasksScheduler
 
 T = TypeVar("T")
@@ -44,8 +37,7 @@ class SolutionElement(Widget):
 
 
 class Automation:
-    def __init__(self):
-        self.scheduler = TasksScheduler()
+    scheduler = TasksScheduler()
 
 
 # only SolutionCard/SolutionProject can be used as content

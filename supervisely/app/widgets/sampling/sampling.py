@@ -31,9 +31,8 @@ class Sampling(Widget):
         output_project_selectable: bool = True,
         widgth: int = 370,
         widget_id: str = None,
-        file_path: str = __file__,
     ):
-        super().__init__(widget_id, file_path)
+        super().__init__(widget_id=widget_id)
         if not input_selectable and project_id is None:
             raise ValueError(
                 "Either 'project_id' must be provided or 'project_selectable' must be True."
@@ -360,7 +359,7 @@ class Sampling(Widget):
             style=f"width: {self.widgth}px;",
         )
 
-    def _get_settings(self) -> dict:
+    def get_settings(self) -> dict:
         settings = {
             SamplingSettings.ONLY_ANNOTATED: self.only_annotated_checkbox.is_checked(),
             SamplingSettings.STEP: self.step_input.get_value(),
@@ -411,7 +410,7 @@ class Sampling(Widget):
                 dst_project_info = sample_video_project(
                     api=self._api,
                     project_id=project_id,
-                    settings=self._get_settings(),
+                    settings=self.get_settings(),
                     dst_project_id=self._get_dst_project_id(),
                     datasets_ids=datasets_ids,
                     items_progress_cb=pbar.update,

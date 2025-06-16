@@ -6,6 +6,7 @@ from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.input.input import Input
+from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
 
@@ -17,12 +18,13 @@ class CloudImport(Widget):
     and manage import tasks.
     """
 
-    APP_SLUG = "e9b5a1d81aa98072cd77b402fdc122d7/cloud-storage-data-synchronizer"
+    APP_SLUG = "supervisely-ecosystem/cloud-storage-data-synchronizer"
     JOB_ID = "cloud_import_job"
 
     def __init__(
         self,
         project_id: int,
+        one_at_a_time: bool = True,
         widget_id: Optional[str] = None,
     ):
         """
@@ -32,11 +34,53 @@ class CloudImport(Widget):
         self.api = Api.from_env()
         self.project_id = project_id
         self.project = self.api.project.get_info_by_id(project_id)
+        self.one_at_a_time = one_at_a_time
         self.workspace_id = self.project.workspace_id
-        self._tasks = []
+        self._init_tasks_history()
         self._create_gui()
 
         super().__init__(widget_id=widget_id)
+
+    def _update_tasks_history(self):
+        tasks = self.tasks_history.get_tasks().copy()
+        self.project = self.api.project.get_info_by_id(self.project_id)
+        full_history = self.project.custom_data.get("import_history", {}).get("tasks", [])
+        history_dict = {item["task_id"]: item for item in full_history}
+
+        for task in tasks:
+            task_id = task["id"]
+            history_item = history_dict.get(task_id)
+            if history_item is None:
+                task["dataset_ids"] = ""
+                task["timestamp"] = ""
+                task["items_count"] = 0
+            else:
+                datasets = history_item.get("datasets", [])
+                task["dataset_ids"] = ", ".join(str(d["id"]) for d in datasets)
+                task["timestamp"] = history_item.get("timestamp", "")
+                task["items_count"] = history_item.get("items_count", 0)
+            self.tasks_history.update_task(task_id, task)
+        TasksHistory.update(self.tasks_history)
+
+    def _init_tasks_history(self):
+        self.tasks_history = TasksHistory()
+        self.tasks_history.table_columns = [
+            "Task ID",
+            "App Name",
+            "Dataset IDs",
+            "Created At",
+            "Images Count",
+            "Status",
+        ]
+        self.tasks_history.columns_keys = [
+            ["id"],
+            ["meta", "app", "name"],
+            ["dataset_ids"],
+            ["created_at"],
+            ["items_count"],
+            ["status"],
+        ]
+        self.tasks_history.update = self._update_tasks_history
 
     def _create_gui(self):
         """
@@ -54,12 +98,9 @@ class CloudImport(Widget):
         run_btn_cont = Container([self.run_btn], style="align-items: flex-end")
         self.content = Container([text, self.path_input, self.agent_select, run_btn_cont])
 
-        # @self.run_btn.click
-        # def _on_run_btn_click():
-        #     self.run()
-
-    def to_html(self):
-        return self.content.to_html()
+        @self.run_btn.click
+        def _on_run_btn_click():
+            self.run()
 
     def run(self, path: Optional[str] = None) -> int:
         if path is None:
@@ -96,8 +137,8 @@ class CloudImport(Widget):
         )
 
         logger.info(f"Cloud import started on agent {agent_id} (task_id: {session.task_id})")
-        self._tasks.append(session.task_id)
-        self.update_data()
+        task_info = self.api.task.get_info_by_id(session.task_id)
+        self.tasks_history.add_task(task_info)
 
         return session.task_id
 
@@ -116,44 +157,7 @@ class CloudImport(Widget):
         Collects and returns the import tasks history.
         :return: List of cloud import tasks ids.
         """
-        return self._tasks
-
-    def _get_table_data(self) -> List[List]:
-        """
-        Collects and returns the import tasks history as a list of lists.
-        """
-
-        self.project = self.api.project.get_info_by_id(self.project_id)
-        full_history = self.project.custom_data.get("import_history", {}).get("tasks", [])
-        history_dict = {item["task_id"]: item for item in full_history}
-
-        data = []
-        for task_id in self.tasks:
-            history_item = history_dict.get(task_id)
-            if history_item is None:
-                data.append([task_id, "", "", "", 0, "failed"])
-                continue
-            if history_item.get("slug") != self.APP_SLUG:
-                logger.warning(
-                    f"Import history item with task_id {task_id} does not match the slug {self.APP_SLUG}. Skipping."
-                )
-                continue
-            datasets = history_item.get("datasets", [])
-            ds_ids = ", ".join(str(d["id"]) for d in datasets)
-            status = history_item.get("status")
-            if status == "started":
-                status = "ok"
-            row = [
-                history_item.get("task_id"),
-                history_item.get("app", {}).get("name", ""),
-                ds_ids,
-                history_item.get("timestamp"),
-                history_item.get("items_count"),
-                status,
-            ]
-            data.append(row)
-
-        return data
+        return self.tasks_history.get_tasks().copy()
 
     def get_json_data(self) -> dict:
         """
@@ -162,7 +166,6 @@ class CloudImport(Widget):
         return {
             "project_id": self.project_id,
             "workspace_id": self.workspace_id,
-            "tasks": self._tasks,
         }
 
     def get_json_state(self) -> dict:
@@ -170,3 +173,6 @@ class CloudImport(Widget):
         Returns the current state of the Cloud Import widget.
         """
         return {}
+
+    def to_html(self) -> str:
+        return self.content.to_html()

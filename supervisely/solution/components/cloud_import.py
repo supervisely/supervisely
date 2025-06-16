@@ -131,38 +131,23 @@ class CloudImport(SolutionElement):
         def show_run_modal():
             self.run_modal.show()
 
-        self.modals = [self.tasks_modal, self.sync_modal, self.logs_modal, self.run_modal]
+        self.modals = [
+            self.tasks_modal,
+            self.sync_modal,
+            self.main_widget.tasks_history.logs_modal,
+            self.run_modal,
+        ]
 
         super().__init__(*args, **kwargs)
 
     @property
-    def logs(self):
-        if not hasattr(self, "_logs"):
-            self._logs = TaskLogs()
-        return self._logs
-
-    @property
-    def logs_modal(self):
-        if not hasattr(self, "_logs_modal"):
-            self._logs_modal = Dialog(title="Task logs", content=self.logs)
-        return self._logs_modal
-
-    @property
-    def tasks_table(self):
-        if not hasattr(self, "_tasks_table"):
-            self._tasks_table = self._create_tasks_history_table()
-
-            @self._tasks_table.row_click
-            def on_row_click(clicked_row: FastTable.ClickedRow):
-                self.logs.set_task_id(clicked_row.row[0])
-                self.logs_modal.show()
-
-        return self._tasks_table
+    def tasks_history(self):
+        return self.main_widget.tasks_history
 
     @property
     def tasks_modal(self):
         if not hasattr(self, "_tasks_modal"):
-            self._tasks_modal = self._create_tasks_modal(self.tasks_table)
+            self._tasks_modal = self._create_tasks_modal()
         return self._tasks_modal
 
     @property
@@ -177,21 +162,8 @@ class CloudImport(SolutionElement):
     def automation_btn(self):
         return self.automation.apply_btn
 
-    def _create_tasks_modal(self, tasks_table: FastTable):
-        return Dialog(title="Import tasks history", content=tasks_table)
-
-    def _create_tasks_history_table(self):
-        import_table_columns = [
-            "Task ID",
-            "App Name",
-            "Dataset IDs",
-            "Created At",
-            "Images Count",
-            "Status",
-        ]
-        return FastTable(
-            columns=import_table_columns, sort_column_idx=0, fixed_columns=1, sort_order="desc"
-        )
+    def _create_tasks_modal(self):
+        return Dialog(title="Import tasks history", content=self.tasks_history)
 
     def _create_tasks_button(self):
         btn = Button(
@@ -204,9 +176,7 @@ class CloudImport(SolutionElement):
 
         @btn.click
         def _show_tasks_dialog():
-            self.tasks_table.clear()
-            for row in self.main_widget._get_table_data():
-                self.tasks_table.insert_row(row)
+            self.main_widget.tasks_history.update()
             self.tasks_modal.show()
 
         return btn

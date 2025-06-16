@@ -6,4 +6,5 @@ from supervisely.solution.components.move_labeled import MoveLabeled
 from supervisely.solution.components.project import ProjectNode
 from supervisely.solution.components.smart_sampling import SmartSampling
 from supervisely.solution.components.train_val_split import TrainValSplit
+from supervisely.solution.components.video_samling import VideoSampling
 from supervisely.solution.graph_builder import SolutionGraphBuilder
