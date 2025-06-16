@@ -98,6 +98,17 @@ def batched(seq, batch_size=50):
         yield seq[i : i + batch_size]
 
 
+def batched_iter(iterable, batch_size=50):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
 def get_bytes_hash(bytes):
     return base64.b64encode(hashlib.sha256(bytes).digest()).decode("utf-8")
 
