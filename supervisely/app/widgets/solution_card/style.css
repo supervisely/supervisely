@@ -192,12 +192,14 @@ a {
 .solutions-node.icon-node .icon {
   background-color: #fff;
   flex: none;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   background-color: #caccce;
 }
-
+.solutions-node.icon-node .icon .sly-icon.font-icon {
+  font-size: 20px;
+}
 /* nodes tooltip */
 
 .solutions-node .node-tooltip-wrapper {

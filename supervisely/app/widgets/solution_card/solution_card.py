@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
 from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import Widget
+from supervisely.app.widgets import Widget, Icons
 
 
 class SolutionCard(Widget):
@@ -51,6 +51,7 @@ class SolutionCard(Widget):
         width: Optional[Union[str, int]] = None,
         widget_id: Optional[str] = None,
         show_loading: Optional[bool] = True,
+        icon: Optional[Icons] = None,
     ):
         self._title = title
         if isinstance(width, int):
@@ -65,6 +66,7 @@ class SolutionCard(Widget):
         self._show_loading = show_loading
         self._link = link
         self._content = content
+        self._icon = icon
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     @property

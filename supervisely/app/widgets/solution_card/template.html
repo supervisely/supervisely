@@ -35,7 +35,14 @@
             {% endif %}
 
             <div class="node-content" v-if="data.{{{widget.widget_id}}}.title !== null">
-                <div class="icon"></div>
+                {% if widget._icon %}
+                    <div class="icon">
+                        {{{ widget._icon }}}
+                    </div>
+                {% else %}
+                    <div class="icon">
+                    </div>
+                {% endif %}
                 <div class="node-title" v-html="data.{{{widget.widget_id}}}.title"></div>
             </div>
 
