@@ -1567,27 +1567,23 @@ class TrainApp:
         new_checkpoint_paths = []
         best_checkpoints_name = experiment_info["best_checkpoint"]
 
-        # Prepare model files
+        # Prepare checkpoint files
+        model_files = experiment_info["model_files"]
         try:
-            model_files = {}
-            for file in experiment_info["model_files"]:
-                with open(experiment_info["model_files"][file], "r") as f:
-                    model_files[file] = f.read()
+            ckpt_files = {}
+            for file in model_files:
+                file_name = sly_fs.get_file_name_with_ext(model_files[file])
+                with open(model_files[file], "r") as f:
+                    ckpt_files[file_name] = f.read()
         except Exception as e:
             logger.warning(f"Error loading model files: {e}")
-            model_files = {}
-
-        ckpt_files = {}
-        for file in model_files:
-            file_name = sly_fs.get_file_name_with_ext(model_files[file])
-            with open(model_files[file], "r") as f:
-                ckpt_files[file_name] = f.read()
+            ckpt_files = {}
 
         for checkpoint_path in checkpoint_paths:
             checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
             new_checkpoint_path = join(self._output_checkpoints_dir, checkpoint_name)
             shutil.move(checkpoint_path, new_checkpoint_path)
-            if len(model_files) > 0:
+            if len(ckpt_files) > 0:
                 try:
                     # pylint: disable=import-error
                     import torch
