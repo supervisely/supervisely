@@ -48,7 +48,7 @@ class SolutionGraphBuilder:
         self,
         source: Union[SolutionElement, SolutionGraph.Node, str],
         target: Union[SolutionElement, SolutionGraph.Node, str],
-        start_sockert: Literal["top", "bottom", "left", "right"] = "bottom",
+        start_socket: Literal["top", "bottom", "left", "right"] = "bottom",
         end_socket: Literal["top", "bottom", "left", "right"] = "top",
         path: Literal["straight", "grid", "arc", "magnet", "fluid"] = "straight",
         dash: Union[Dict, bool] = False,  # {"len": 8, "gap": 8}
@@ -90,7 +90,7 @@ class SolutionGraphBuilder:
             dash = {"len": 8, "gap": 8}
 
         settings = {
-            "startSocket": start_sockert,
+            "startSocket": start_socket,
             "endSocket": end_socket,
             "path": path,
             "dash": dash,
