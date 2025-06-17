@@ -1575,7 +1575,7 @@ class TrainApp:
             for file in experiment_info["model_files"]:
                 file_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"][file])
                 with open(experiment_info["model_files"][file], "r") as f:
-                    ckpt_files[file_name] = f.read()
+                    ckpt_files[file] = {"name": file_name, "content": f.read()}
         except Exception as e:
             logger.warning(f"Error loading model files: {e}")
             ckpt_files = {}
