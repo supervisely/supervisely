@@ -1568,7 +1568,6 @@ class TrainApp:
         best_checkpoints_name = experiment_info["best_checkpoint"]
 
         # Prepare checkpoint files
-        logger.info(experiment_info["model_files"])
         try:
             # need to save original key names
             ckpt_files = {}

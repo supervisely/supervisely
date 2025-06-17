@@ -778,35 +778,63 @@ class Inference:
                 self.api.file.download(team_id, file_url, file_path)
 
             if file == "checkpoint":
-                file_ext = sly_fs.get_file_ext(file_path)
-                if file_ext == ".pth" or file_ext == ".pt":
-                    import torch
-                    checkpoint = torch.load(file_path)
-                    ckpt_files = checkpoint.get("model_files", None)
-                    if ckpt_files is None:
+                try:
+                    extracted_files = self._extract_model_files_from_checkpoint(file_path)
+                    local_model_files.update(extracted_files)
+                    if extracted_files:
                         local_model_files[file] = file_path
-                        continue
-                    try:
-                        logger.info(f"Getting model files from checkpoint: {file_name}")
-                        for ckpt_file in ckpt_files:
-                            file_key = ckpt_file
-                            file_name = ckpt_files[ckpt_file]["name"]
-                            file_path = os.path.join(self.model_dir, file_name)
-                            file_content = ckpt_files[ckpt_file]["content"]
-                            with open(file_path, "w") as f:
-                                f.write(file_content)
-                            local_model_files[file_key] = file_path
                         return local_model_files
-                    except Exception as e:
-                        logger.debug(f"Failed to get model files from checkpoint: {repr(e)}")
-                        logger.debug(f"Model files will be downloaded from Team Files")
-                        local_model_files[file] = file_path
-                        continue
-
+                except Exception as e:
+                    logger.debug(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
+                    logger.debug("Model files will be downloaded from Team Files")
+                    local_model_files[file] = file_path
+                    continue
+            
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
+
+    def _extract_model_files_from_checkpoint(self, checkpoint_path: str) -> dict:
+        extracted_files: dict = {}
+        file_ext = sly_fs.get_file_ext(checkpoint_path)
+        if file_ext not in (".pth", ".pt"):
+            return extracted_files
+
+        import torch  # pylint: disable=import-error
+
+        logger.debug(f"Reading checkpoint: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+
+        # 1. Extract additional model files embedded into checkpoint (if any)
+        ckpt_files = checkpoint.get("model_files", None)
+        if ckpt_files and isinstance(ckpt_files, dict):
+            for file_key, file_info in ckpt_files.items():
+                try:
+                    content = file_info["content"]
+                    fname = file_info.get("name", f"{file_key}.txt")
+                    dst_path = os.path.join(self.model_dir, fname)
+                    # Overwrite if exists
+                    if os.path.exists(dst_path):
+                        sly_fs.silent_remove(dst_path)
+                    with open(dst_path, "w") as f:
+                        f.write(content)
+                    extracted_files[file_key] = dst_path
+                except Exception as e:
+                    logger.debug(f"Failed to write '{file_key}' from checkpoint to disk: {repr(e)}")
+
+        # 2. Extract project meta (if present)
+        model_meta = checkpoint.get("model_meta", None)
+        if model_meta is not None:
+            try:
+                meta_path = os.path.join(self.model_dir, "model_meta.json")
+                if os.path.exists(meta_path):
+                    sly_fs.silent_remove(meta_path)
+                sly_json.dump_json_file(model_meta, meta_path)
+            except Exception as e:
+                logger.debug(f"Failed to dump model_meta from checkpoint: {repr(e)}")
+
+        return extracted_files
 
     def _load_model(self, deploy_params: dict):
         self.model_source = deploy_params.get("model_source")
@@ -940,11 +968,20 @@ class Inference:
         if isinstance(model_meta, dict):
             self._model_meta = ProjectMeta.from_json(model_meta)
         elif isinstance(model_meta, str):
-            remote_artifacts_dir = model_info["artifacts_dir"]
-            model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
-            model_meta_path = self.download(model_meta_url)
-            model_meta = sly_json.load_json_file(model_meta_path)
-            self._model_meta = ProjectMeta.from_json(model_meta)
+            model_meta_path = os.path.join(self.model_dir, "model_meta.json")
+            if os.path.exists(model_meta_path):
+                logger.debug("Reading model meta from checkpoint")
+                model_meta = sly_json.load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                sly_fs.silent_remove(model_meta_path)
+            else:
+                remote_artifacts_dir = model_info["artifacts_dir"]
+                model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
+                model_meta_path = self.download(model_meta_url)
+                model_meta = sly_json.load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                sly_fs.silent_remove(model_meta_path)
+
         else:
             raise ValueError(
                 "model_meta should be a dict or a name of '.json' file in experiment artifacts folder in Team Files"
