@@ -1,11 +1,22 @@
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, TypeVar, Union
+from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 from supervisely.api.project_api import ProjectInfo
-from supervisely.app import DataJson, StateJson
-from supervisely.app.widgets import SolutionCard, SolutionGraph, SolutionProject, Widget
+from supervisely.app import DataJson
+from supervisely.app.widgets import (
+    Button,
+    Checkbox,
+    Container,
+    Empty,
+    InputNumber,
+    Select,
+    SolutionCard,
+    SolutionGraph,
+    SolutionProject,
+    Text,
+    Widget,
+)
 from supervisely.solution.scheduler import TasksScheduler
-
-T = TypeVar("T")
+from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 
 class SolutionElement(Widget):
@@ -40,6 +51,114 @@ class Automation:
     @property
     def scheduler(self):
         return TasksScheduler()
+
+
+class AutomationWidget(Automation):
+
+    def __init__(self, description: str, func: Callable):
+        super().__init__()
+        self.description = description
+        self.func = func
+        self.apply_btn = Button("Apply", plain=True, button_size="small")
+        self.widget = self._create_widget()
+        self.job_id = self.widget.widget_id
+        self._on_apply = None
+
+        @self.apply_btn.click
+        def on_apply_btn_click():
+            self.apply()
+
+    def apply(self) -> None:
+        sec, _, _ = self.get_automation_details()
+        if sec is None:
+            if self.scheduler.is_job_scheduled(self.job_id):
+                self.scheduler.remove_job(self.job_id)
+        else:
+            self.scheduler.add_job(self.func, sec, self.job_id, True)
+        if self._on_apply is not None:
+            self._on_apply()
+
+    def on_apply(self, func: Callable) -> None:
+        self._on_apply = func
+
+    def is_enabled(self) -> bool:
+        """Check if the automation is enabled."""
+        return self.enabled_checkbox.is_checked()
+
+    def _create_widget(self):
+        self.description = Text(
+            self.description,
+            status="text",
+            color="gray",
+        )
+        self.enabled_checkbox = Checkbox(content="Run every", checked=False)
+        self.interval_input = InputNumber(
+            min=1, value=60, debounce=1000, controls=False, size="mini", width=150
+        )
+        self.interval_input.disable()
+        self.period_select = Select(
+            [Select.Item("min", "minutes"), Select.Item("h", "hours"), Select.Item("d", "days")],
+            size="mini",
+        )
+        self.period_select.disable()
+
+        settings_container = Container(
+            [
+                self.enabled_checkbox,
+                self.interval_input,
+                self.period_select,
+                Empty(),
+            ],
+            direction="horizontal",
+            gap=3,
+            fractions=[1, 1, 1, 1],
+            style="align-items: center",
+            overflow="wrap",
+        )
+
+        apply_btn_container = Container([self.apply_btn], style="align-items: flex-end")
+
+        @self.enabled_checkbox.value_changed
+        def on_automate_checkbox_change(is_checked):
+            if is_checked:
+                self.interval_input.enable()
+                self.period_select.enable()
+            else:
+                self.interval_input.disable()
+                self.period_select.disable()
+
+        return Container([self.description, settings_container, apply_btn_container])
+
+    def get_automation_details(self) -> Tuple[int, str, int, str]:
+        enabled = self.enabled_checkbox.is_checked()
+        period = self.period_select.get_value()
+        interval = self.interval_input.get_value()
+
+        if not enabled:
+            # removed = g.session.importer.unschedule_cloud_import()
+            return None, None, None
+
+        sec = get_seconds_from_period_and_interval(period, interval)
+        if sec == 0:
+            return None, None, None
+
+        return sec, interval, period
+
+    def save_automation_details(self, enabled: bool, interval: int, period: str) -> None:
+        """
+        :param enabled: Whether the automation is enabled.
+        :param interval: Interval for synchronization.
+        :param period: Period unit for synchronization (e.g., "minutes", "hours", "days").
+        """
+        if self.enabled_checkbox.is_checked() != enabled:
+            if enabled:
+                self.enabled_checkbox.check()
+            else:
+                self.enabled_checkbox.uncheck()
+        if self.period_select.get_value() != period:
+            self.period_select.set_value(period)
+        if self.interval_input.get_value() != interval:
+            self.interval_input.value = interval
 
 
 # only SolutionCard/SolutionProject can be used as content

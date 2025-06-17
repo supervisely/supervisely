@@ -58,6 +58,9 @@ class TasksScheduler(metaclass=Singleton):
         """Modify the interval of an existing job"""
         if job_id in self.jobs:
             self.scheduler.reschedule_job(job_id, trigger="interval", seconds=interval_seconds)
+            logger.info(
+                f"[SCHEDULER]: Job '{job_id}' interval modified to {interval_seconds} seconds."
+            )
             return True
         return False
 

@@ -214,6 +214,26 @@ class Button(Widget):
         DataJson().send_changes()
 
     @property
+    def size(self) -> Optional[Literal["mini", "small", "large"]]:
+        """Returns the size of the button.
+
+        :return: Size of the button.
+        :rtype: Optional[Literal["mini", "small", "large"]]
+        """
+        return self._button_size
+
+    @size.setter
+    def size(self, value: Optional[Literal["mini", "small", "large"]]) -> None:
+        """Sets the size of the button.
+
+        :param value: Size of the button.
+        :type value: Optional[Literal["mini", "small", "large"]]
+        """
+        self._button_size = value
+        DataJson()[self.widget_id]["button_size"] = self._button_size
+        DataJson().send_changes()
+
+    @property
     def link(self) -> str:
         """Returns the link to be opened on button click.
 
@@ -270,7 +290,7 @@ class Button(Widget):
         :rtype: bool
         """
         return self._disabled
-    
+
     @property
     def style(self) -> Optional[str]:
         """Returns the CSS style applied to the button.
@@ -279,7 +299,7 @@ class Button(Widget):
         :rtype: Optional[str]
         """
         return self._style
-    
+
     @style.setter
     def style(self, value: Optional[str]) -> None:
         """Sets the CSS style to be applied to the button.

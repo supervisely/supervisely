@@ -94,3 +94,11 @@ class Container(Widget):
         """The Container widget does not have any state
         the method is overridden to return None."""
         return None
+
+    def disable(self):
+        for widget in self._widgets:
+            widget.disable()
+
+    def enable(self):
+        for widget in self._widgets:
+            widget.enable()

@@ -29,7 +29,7 @@ class Sampling(Widget):
         datasets_ids: List[int] = None,
         output_project_id: int = None,
         output_project_selectable: bool = True,
-        widgth: int = 370,
+        width: int = 370,
         widget_id: str = None,
     ):
         super().__init__(widget_id=widget_id)
@@ -51,7 +51,7 @@ class Sampling(Widget):
         self.datasets_ids = datasets_ids
         self.output_project_id = output_project_id
         self.output_project_selectable = output_project_selectable
-        self.widgth = widgth
+        self.width = width
         self.project_info = (
             self._api.project.get_info_by_id(self.project_id) if self.project_id else None
         )
@@ -84,8 +84,8 @@ class Sampling(Widget):
         self.input_project_container = Container(
             widgets=[
                 self.input_datasets_select,
-                self.nested_datasets_checkbox,
                 self.project_preview,
+                self.nested_datasets_checkbox,
             ],
             style="padding-left: 21px; padding-top: 10px;",
         )
@@ -356,7 +356,7 @@ class Sampling(Widget):
                 self.preview_container,
                 self.result_container,
             ],
-            style=f"width: {self.widgth}px;",
+            style=f"width: {self.width}px;",
         )
 
     def get_settings(self) -> dict:

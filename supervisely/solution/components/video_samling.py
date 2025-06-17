@@ -1,23 +1,22 @@
+from typing import Tuple
+
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.dialog.dialog import Dialog
+from supervisely.app.widgets.empty.empty import Empty
+from supervisely.app.widgets.notification_box.notification_box import NotificationBox
 from supervisely.app.widgets.sampling.sampling import Sampling, SamplingSettings
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.text.text import Text
 from supervisely.solution.base_node import (
-    Automation,
+    AutomationWidget,
     SolutionCard,
     SolutionCardNode,
     SolutionElement,
 )
-
-
-class SamplingAutomation(Automation):
-    def __init__(self):
-        self.widget = Text("This is a placeholder for the automation widget.")
 
 
 class VideoSampling(SolutionElement):
@@ -39,14 +38,30 @@ class VideoSampling(SolutionElement):
         self.project_id = project_id
         self.project_info = self.api.project.get_info_by_id(project_id)
         self.output_project_id = output_project_id
-        self.automation = SamplingAutomation()
         self.tasks_history = TasksHistory(self.api)
         self.card = self._create_card()
         self.node = SolutionCardNode(x=x, y=y, content=self.card)
+        self.automation = AutomationWidget(description="Automate sampling", func=lambda: self.run())
+        self.sampling_in_progress = False
 
         @self.card.click
         def show_run_modal():
             self.run_modal.show()
+
+        @self.automation.on_apply
+        def on_apply():
+            is_enabled = self.automation.is_enabled()
+            if is_enabled:
+                self.sampling_widget.settings_container.disable()
+                self.sampling_widget.run_button.disable()
+                self.select_agent_container.disable()
+            else:
+                self.sampling_widget.settings_container.enable()
+                self.sampling_widget.run_button.enable()
+                self.select_agent_container.enable()
+            self.sync_modal.hide()
+            self.run_modal.hide()
+            self.update_automation_details()
 
         self.modals = [
             self.sync_modal,
@@ -67,44 +82,86 @@ class VideoSampling(SolutionElement):
             "run": True,
         }
 
-    def _run_sampling_app(self):
-        agent_id = self.select_agent.get_value()
-        module_id = self.api.app.get_ecosystem_module_id(self.APP_SLUG)
-        module_info = self.api.app.get_ecosystem_module_info(module_id, version=self.APP_VERSION)
+    def run(self):
+        if self.sampling_in_progress:
+            logger.warning("Sampling is already in progress. Please wait until it completes.")
+            return
+        self.sampling_in_progress = True
+        self.samping_in_progress_notification.show()
+        self._sampling_widget.run_button.loading = True
+        try:
+            agent_id = self.select_agent.get_value()
+            module_id = self.api.app.get_ecosystem_module_id(self.APP_SLUG)
+            module_info = self.api.app.get_ecosystem_module_info(
+                module_id, version=self.APP_VERSION
+            )
 
-        # Prepare parameters
-        params = module_info.get_arguments(videos_project=self.project_id)
-        params["allDatasets"] = True
-        params["includeNestedDatasets"] = True
+            # Prepare parameters
+            params = module_info.get_arguments(videos_project=self.project_id)
+            params["allDatasets"] = True
+            params["includeNestedDatasets"] = True
 
-        sampling_settings = self.sampling_widget.get_settings()
-        params.update(self._sampling_settings_to_app_params(sampling_settings))
+            sampling_settings = self.sampling_widget.get_settings()
+            params.update(self._sampling_settings_to_app_params(sampling_settings))
 
-        output_project_id = self.output_project_id
-        params["outputProjectId"] = output_project_id
+            output_project_id = self.output_project_id
+            params["outputProjectId"] = output_project_id
 
-        # Start sampling task
-        session = self.api.app.start(
-            agent_id=agent_id,
-            module_id=module_id,
-            workspace_id=self.project_info.workspace_id,
-            task_name="Samling from Solution",
-            params=params,
-            app_version=self.APP_VERSION,
-            is_branch=True,
-        )
+            # Start sampling task
+            session = self.api.app.start(
+                agent_id=agent_id,
+                module_id=module_id,
+                workspace_id=self.project_info.workspace_id,
+                task_name="Sampling from Solution",
+                params=params,
+                app_version=self.APP_VERSION,
+                is_branch=True,
+            )
 
-        logger.info(f"Video sampling started on agent {agent_id} (task_id: {session.task_id})")
-        task_info = self.api.task.get_info_by_id(session.task_id)
-        self.tasks_history.add_task(task_info)
+            logger.info(f"Video sampling started on agent {agent_id} (task_id: {session.task_id})")
+            task_info = self.api.task.get_info_by_id(session.task_id)
+            self.tasks_history.add_task(task_info)
 
-        return session.task_id
+            self.api.task.wait(id=session.task_id, target_status=self.api.task.Status.TERMINATING)
+            project_info = self.api.project.get_info_by_id(output_project_id)
+            self.sampling_widget.output_project_preview.set(project_info)
+            return session.task_id
+        finally:
+            self.samping_in_progress_notification.hide()
+            self._sampling_widget.run_button.loading = False
+            self.sampling_in_progress = False
+
+    @property
+    def samping_in_progress_notification(self):
+        if not hasattr(self, "_samping_in_progress_notification"):
+            self._samping_in_progress_notification = NotificationBox(
+                title="Sampling in progress",
+                description="Please wait until the sampling is completed.",
+            )
+        return self._samping_in_progress_notification
 
     @property
     def select_agent(self):
         if not hasattr(self, "_select_agent"):
             self._select_agent = AgentSelector(team_id=self.project_info.team_id, compact=True)
         return self._select_agent
+
+    @property
+    def select_agent_container(self):
+        if not hasattr(self, "_select_agent_container"):
+            self._select_agent_container = Container(
+                widgets=[
+                    Text(
+                        '<i class="zmdi zmdi-storage" style="padding-right: 10px; padding-top: 20px; color: rgb(0, 154, 255);"></i><b>Select Agent</b>'
+                    ),
+                    Container(
+                        widgets=[self.select_agent], style="padding-left: 21px; padding-top: 10px;"
+                    ),
+                ],
+                gap=0,
+                style="padding-top: 10px;",
+            )
+        return self._select_agent_container
 
     @property
     def sampling_widget(self):
@@ -114,15 +171,21 @@ class VideoSampling(SolutionElement):
                 input_selectable=False,
                 output_project_id=self.output_project_id,
                 output_project_selectable=False,
+                width="auto",
             )
-            self.sampling_widget.preview_container = Container(
-                widgets=[
-                    self.sampling_widget.preview_container,
-                    self.select_agent,
-                    self.sampling_widget.run_button_container,
-                ]
-            )
-            self._sampling_widget.run = self._run_sampling_app
+            self._sampling_widget.run_button.size = "small"
+            self._sampling_widget.run_button.plain = True
+
+            self._sampling_widget.preview_container._widgets = [
+                self._sampling_widget.preview_field,
+                self.select_agent_container,
+                self._sampling_widget.run_button_container,
+                self.samping_in_progress_notification,
+            ]
+
+            self.samping_in_progress_notification.hide()
+            self._sampling_widget.run = lambda: self.run()
+            self._sampling_widget.nested_datasets_checkbox.hide()
 
         return self._sampling_widget
 
@@ -152,7 +215,9 @@ class VideoSampling(SolutionElement):
     def run_modal(self):
         if not hasattr(self, "_run_modal"):
             self._run_modal = Dialog(
-                title="Sample videos", content=self.sampling_widget, size="tiny"
+                title="Sample videos",
+                content=Container(widgets=[self.sampling_widget, self.automation.widget]),
+                size="tiny",
             )
         return self._run_modal
 
@@ -213,3 +278,47 @@ class VideoSampling(SolutionElement):
             tooltip=self._create_tooltip(),
             width=250,
         )
+
+    def _show_automation_badge(self) -> None:
+        self._update_automation_badge(True)
+
+    def _hide_automation_badge(self) -> None:
+        self._update_automation_badge(False)
+
+    def _update_automation_badge(self, enable: bool) -> None:
+        for idx, prop in enumerate(self.card.badges):
+            if prop["on_hover"] == "Automation":
+                if enable:
+                    pass  # already enabled
+                else:
+                    self.card.remove_badge(idx)
+                return
+
+        if enable:  # if not found
+            self.card.add_badge(
+                self.card.Badge(
+                    label="⚡",
+                    on_hover="Automation",
+                    badge_type="warning",
+                    plain=True,
+                )
+            )
+
+    def update_automation_details(self) -> Tuple[int, str, int, str]:
+        sec, interval, period = self.automation.get_automation_details()
+        # self.sync_modal.hide()
+        if sec is not None:
+            if self.card is not None:
+                self.card.update_property(
+                    "Sync", "Every {} {}".format(interval, period), highlight=True
+                )
+                logger.info(f"Added job to synchronize from Cloud Storage every {sec} sec")
+                self._show_automation_badge()
+        else:
+            if self.card is not None:
+                self.card.remove_property_by_key("Sync")
+                self.card.remove_property_by_key("Path")
+                # g.session.importer.unschedule_cloud_import()
+                self._hide_automation_badge()
+
+        return sec, interval, period

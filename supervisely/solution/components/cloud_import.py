@@ -8,12 +8,10 @@ from supervisely.app.widgets import (
     Container,
     Dialog,
     Empty,
-    FastTable,
     Input,
     InputNumber,
     Select,
     SolutionCard,
-    TaskLogs,
     Text,
 )
 from supervisely.solution.base_node import Automation, SolutionCardNode, SolutionElement
