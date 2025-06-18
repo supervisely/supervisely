@@ -87,10 +87,11 @@ class ExperimentGenerator(BaseGenerator):
         return {}
 
     def context(self) -> dict:
-        exp_name = self.info.get("experiment_name", "N/A")
-        model_name = self.info.get("model_name", "N/A")
-        task_type = self.info.get("task_type", "N/A")
-        framework_name = self.info.get("framework_name", "N/A")
+        task_id = self.info["task_id"]
+        exp_name = self.info["experiment_name"]
+        model_name = self.info["model_name"]
+        task_type = self.info["task_type"]
+        framework_name = self.info["framework_name"]
         device = self.info.get("device", "N/A")
 
         project_id = self.info["project_id"]
@@ -119,7 +120,8 @@ class ExperimentGenerator(BaseGenerator):
         onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
         sample_pred_gallery = self._get_sample_predictions_gallery()
         pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
-        train_app_slug, serve_app_slug = self._get_app_slugs()
+        train_app, serve_app = self._get_app_train_serve_app_info()
+        apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
         agent_info = self._get_agent_info()
 
         context = {
@@ -129,17 +131,19 @@ class ExperimentGenerator(BaseGenerator):
             "experiment": {
                 "name": exp_name,
                 "model_name": model_name,
+                "task_id": task_id,
                 "task_name": task_type,
                 "device": device,
                 "framework_name": framework_name,
                 "date": date,
                 "training_duration": training_duration,
-                "artifacts_dir": artifacts_dir,
+                "artifacts_dir": artifacts_dir + "/",
                 "export": self.info.get("export"),
                 "agent": agent_info,
             },
             "project": {
                 "name": project_info.name if project_info else "",
+                "id": project_id,
                 "link": project_link,
                 "type": project_type,
                 "train_size": project_train_size,
@@ -149,10 +153,10 @@ class ExperimentGenerator(BaseGenerator):
             },
             "links": {
                 "app": {
-                    "train": train_app_slug,
-                    "serve": serve_app_slug,
-                    "apply_nn_to_images": "nn-image-labeling/project-dataset",
-                    "apply_nn_to_videos": "apply-nn-to-videos-project",
+                    "train": train_app,
+                    "serve": serve_app,
+                    "apply_nn_to_images": apply_images_app,
+                    "apply_nn_to_videos": apply_videos_app,
                 },
                 "training_session": training_session,
                 "evaluation_report": {
@@ -671,7 +675,7 @@ class ExperimentGenerator(BaseGenerator):
 
         return pytorch_demo, onnx_demo, trt_demo
 
-    def _get_app_slugs(self):
+    def _get_app_train_serve_app_info(self):
         """Get app slugs.
 
         :returns: App slugs
@@ -689,10 +693,29 @@ class ExperimentGenerator(BaseGenerator):
         train_app_info = find_app_by_framework(self.api, self.info["framework_name"], "train")
         serve_app_info = find_app_by_framework(self.api, self.info["framework_name"], "serve")
 
-        train_app_slug = train_app_info["slug"].replace("supervisely-ecosystem/", "")
-        serve_app_slug = serve_app_info["slug"].replace("supervisely-ecosystem/", "")
+        if train_app_info is not None:
+            train_app_slug = train_app_info["slug"].replace("supervisely-ecosystem/", "")
+            train_app_id = train_app_info["id"]
+        else:
+            train_app_slug = None
+            train_app_id = None
 
-        return train_app_slug, serve_app_slug
+        if serve_app_info is not None:
+            serve_app_slug = serve_app_info["slug"].replace("supervisely-ecosystem/", "")
+            serve_app_id = serve_app_info["id"]
+        else:
+            serve_app_slug = None
+            serve_app_id = None
+
+        train_app = {
+            "slug": train_app_slug,
+            "module_id": train_app_id,
+        }
+        serve_app = {
+            "slug": serve_app_slug,
+            "module_id": serve_app_id,
+        }
+        return train_app, serve_app
 
     def _get_agent_info(self) -> str:
         task_id = self.info.get("task_id", None)
@@ -732,3 +755,25 @@ class ExperimentGenerator(BaseGenerator):
                 model_classes[:3] + ["..."] if len(model_classes) > 3 else model_classes
             ),
         }
+
+    def _get_app_apply_nn_app_info(self):
+        """Get apply NN app info.
+
+        :returns: Apply NN app info
+        :rtype: dict
+        """
+
+        apply_nn_images_slug = "nn-image-labeling/project-dataset"
+        apply_nn_images_module_id = self.api.app.get_ecosystem_module_id(f"supervisely-ecosystem/{apply_nn_images_slug}")
+        apply_nn_videos_slug = "apply-nn-to-videos-project"
+        apply_nn_videos_module_id = self.api.app.get_ecosystem_module_id(f"supervisely-ecosystem/{apply_nn_videos_slug}")
+
+        apply_nn_images_app = {
+            "slug": apply_nn_images_slug,
+            "module_id": apply_nn_images_module_id,
+        }
+        apply_nn_videos_app = {
+            "slug": apply_nn_videos_slug,
+            "module_id": apply_nn_videos_module_id,
+        }
+        return apply_nn_images_app, apply_nn_videos_app

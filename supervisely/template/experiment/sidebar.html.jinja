@@ -102,6 +102,58 @@
     <div>
         <div class="experiment-sidebar-section">
             <h3>🚀 Actions</h3>
+
+            <div>
+
+            <sly-iw-launch-button 
+                title="Deploy"
+                description="Deploy to Supervisely"
+                icon="https://img.icons8.com/?size=100&id=YPSNW3VXY1QT&format=png&color=000000"
+                :disabled="false"
+                :autoRun="true"
+                :moduleId="{{ links.app.serve.module_id }}"
+                :state="{ 'trainTaskId': {{experiment.task_id}}, }">
+            </sly-iw-launch-button>
+
+            <sly-iw-launch-button
+                title="Predict"
+                description="Apply Model to Supervisely project"
+                icon="https://img.icons8.com/?size=100&id=12133&format=png&color=000000"
+                :disabled="false"
+                :autoRun="true"
+                :moduleId="{{ links.app.apply_nn_to_images.module_id }}"
+                :state="{ 'slyProjectId': {{ project.id }}, }">
+            </sly-iw-launch-button>
+
+            <sly-iw-download-button
+                title="Download"
+                description="Zip archive with artifacts"
+                icon="https://img.icons8.com/?size=100&id=12071&format=png&color=000000"
+                :disabled="false"
+                teamFilesPath="{{ experiment.artifacts_dir + '/' }}">
+            </sly-iw-download-button>
+            
+            <sly-iw-launch-button
+                title="Fine-tune"
+                description="Continue training"
+                icon="https://img.icons8.com/?size=100&id=zV8avTS0dJu1&format=png&color=000000"
+                :disabled="false"
+                :autoRun="true"
+                :moduleId="{{ links.app.train.module_id }}"
+                :state="{ 'slyProjectId': {{ project.id }}, }">
+            </sly-iw-launch-button>
+
+            <sly-iw-launch-button
+                title="Train New"
+                description="Start new training with the same data and hyperparameters"
+                icon="https://img.icons8.com/?size=100&id=16887&format=png&color=000000"
+                :disabled="false"
+                :autoRun="true"
+                :moduleId="{{ links.app.train.module_id }}"
+                :state="{ 'slyProjectId': {{ project.id }}, }">
+            </sly-iw-launch-button>
+
+            </div>
         </div>
         <hr class="experiment-divider">
         <div class="experiment-sidebar-section">
