@@ -485,8 +485,10 @@ class ExperimentSelector(Widget):
         }
         return deploy_params
 
-    def set_active_row(self, row_index: int) -> None:
-        if row_index < 0 or row_index > len(self._rows) - 1:
+    def set_active_row(self, row_index: int, task_type: str = None) -> None:
+        if task_type is None:
+            task_type = self.get_selected_task_type()
+        if row_index < 0 or row_index > len(self._rows[task_type]) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
@@ -495,7 +497,7 @@ class ExperimentSelector(Widget):
         for task_type in self._rows:
             for i, row in enumerate(self._rows[task_type]):
                 if row.task_id == task_id:
-                    self.set_active_row(i)
+                    self.set_active_row(i, task_type)
                     return
 
     def get_by_task_id(self, task_id: int) -> Union[ModelRow, None]:

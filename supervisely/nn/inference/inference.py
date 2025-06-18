@@ -34,6 +34,7 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
@@ -276,6 +277,18 @@ class Inference:
             self.gui.on_change_model_callbacks.append(on_change_model_callback)
             self.gui.on_serve_callbacks.append(on_serve_callback)
             self._initialize_app_layout()
+
+            train_task_id = os.getenv("modal.state.trainTaskId")
+            if train_task_id:
+                try:
+                    train_task_id = int(train_task_id)
+                    logger.info(f"Setting best checkpoint from training task id: {train_task_id}")
+                    experiment_info = self.api.nn.get_experiment_info(train_task_id)
+                    self._set_checkpoint_from_experiment_info(experiment_info)
+                except Exception as e:
+                    logger.warning(f"Failed to set checkpoint from training task id: {repr(e)}")
+                    logger.info("Resetting UI to default state")
+                    self._reset_gui_state()
 
         self._inference_requests = {}
         max_workers = 1 if not multithread_inference else None
@@ -3807,6 +3820,28 @@ class Inference:
                 logger.debug(
                     f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
                 )
+
+    def _set_checkpoint_from_experiment_info(self, experiment_info: ExperimentInfo):
+        try:
+            if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+                return
+
+            task_id = experiment_info.task_id
+            self.gui.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
+            self.gui.experiment_selector.set_by_task_id(task_id)
+
+            best_ckpt = experiment_info.best_checkpoint
+            if best_ckpt:
+                row = self.gui.experiment_selector.get_by_task_id(task_id)
+                if row is not None:
+                    row.set_selected_checkpoint_by_name(best_ckpt)
+        except Exception as e:
+            logger.warning(f"Failed to set checkpoint from experiment info: {repr(e)}")
+
+    def _reset_gui_state(self):
+        if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+            return
+        self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
 
 def _exclude_duplicated_predictions(
     api: Api,
