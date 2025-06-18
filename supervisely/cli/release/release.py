@@ -188,6 +188,7 @@ def upload_archive(
         fields["files"] = files_contents
         for file_name, file_path in files.items():
             files_contents[file_name] = Path(file_path).read_text(encoding="utf-8")
+        fields["files"] = json.dumps(files_contents)
 
     e = MultipartEncoder(fields=fields)
     encoder_len = e.len
