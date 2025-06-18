@@ -350,6 +350,7 @@ def run(
     # get files
     files = config.get("files", None)
     if files is not None:
+        files = files.copy()
         for file_name, file_path in files.items():
             file_path = str(module_root.joinpath(file_path).absolute())
             files[file_name] = file_path
