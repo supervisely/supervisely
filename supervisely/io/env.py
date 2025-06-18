@@ -510,6 +510,22 @@ def set_autostart(value: Optional[Literal["1", "true", "yes"]] = None) -> None:
     os.environ["modal.state.autostart"] = value
 
 
+def is_restart() -> bool:
+    """Returns True if the app is restarted, False otherwise.
+    The app is considered restarted if the environment variable `SUPERVISELY_APP_RESTART` is set to "1".
+
+    :return: True if the app is restarted, False otherwise
+    :rtype: bool
+    """
+    return _parse_from_env(
+        name="is_restart",
+        keys=["IS_RESTART", "modal.state.isRestart"],
+        postprocess_fn=flag_from_env,
+        default=False,
+        raise_not_found=False,
+    )
+
+
 def apps_cache_dir():
     """Returns apps cache directory path from environment variable using following keys:
         - APPS_CACHE_DIR

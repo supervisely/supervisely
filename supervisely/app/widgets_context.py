@@ -7,3 +7,6 @@ class JinjaWidgets(metaclass=Singleton):
         self.context = {}
         self.context["__no_html_mode__"] = auto_widget_id
         self.context["__widget_scripts__"] = {}
+        self.strict_widget_id_mode = False
+        self.widget_id_increment = 0
+

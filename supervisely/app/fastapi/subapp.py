@@ -913,6 +913,10 @@ class Application(metaclass=Singleton):
 
         self._static_dir = static_dir
 
+        if sly_env.is_restart():
+            logger.info("Application is restarted. Restoring data and state.")
+            restore_data_state_if_restart()
+
         self._stop_event = ThreadingEvent()
         # for backward compatibility
         self._graceful_stop_event: Optional[ThreadingEvent] = None
@@ -1155,6 +1159,31 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
         auto_start = task_params.get("autostart", default)
 
     sly_env.set_autostart(auto_start)
+
+
+def restore_data_state_if_restart():
+    from supervisely.app.content import DataJson, Field, StateJson
+
+    """Restore data and state from task if application is restarted."""
+    if not sly_env.is_restart():
+        return {}, {}
+
+    api = Api()
+    task_id = sly_env.task_id(raise_not_found=False)
+    if task_id is None:
+        logger.warning("`restore_data_state_if_restart` called, but TASK_ID is not defined.")
+        return {}, {}
+
+    task_info = api.task.get_fields(task_id, fields=["data", "state"])
+    old_data = task_info.get("data", {})
+    old_state = task_info.get("state", {})
+    logger.info(f"🔴 OLD STATE: {old_state}")
+    logger.info(f"🔴 OLD DATA: {old_data}")
+
+    DataJson().update(old_data)
+    DataJson().send_changes()
+    StateJson().update(old_state)
+    StateJson().send_changes()
 
 
 def call_on_autostart(

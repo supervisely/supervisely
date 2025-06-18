@@ -15,6 +15,7 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
+from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.solution.scheduler import TasksScheduler
 from supervisely.solution.utils import get_seconds_from_period_and_interval
 
@@ -26,6 +27,7 @@ class SolutionElement(Widget):
         This class is used to create a common interface for all solution elements.
         It can be extended to create specific solution elements with their own properties and methods.
         """
+        JinjaWidgets().strict_widget_id_mode = True
         widget_id = kwargs.get("widget_id", None)
         if not hasattr(self, "widget_id"):
             self.widget_id = widget_id
@@ -166,6 +168,7 @@ class SolutionCardNode(SolutionGraph.Node):
     def __new__(
         cls, content: Widget, x: int = 0, y: int = 0, *args, **kwargs
     ) -> SolutionGraph.Node:
+        JinjaWidgets().strict_widget_id_mode = True
         if not isinstance(content, (SolutionCard, SolutionProject)):
             raise TypeError("Content must be one of SolutionCard or SolutionProject")
         return super().__new__(cls, *args, **kwargs)

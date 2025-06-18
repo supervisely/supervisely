@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from jinja2 import Environment
 from varname import varname
 
+from supervisely.io.env import is_restart as is_restart_env
 from supervisely._utils import generate_free_name, rand_str
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import _MainServer
@@ -127,6 +128,14 @@ def generate_id(cls_name=""):
         return "autoId" + suffix
     else:
         return cls_name + "AutoId" + suffix
+    
+def generate_strict_widget_id(cls_name=""):
+    JinjaWidgets().widget_id_increment += 1
+    suffix = f"{JinjaWidgets().widget_id_increment:04d}"
+    if cls_name == "":
+        return "autoId" + suffix
+    else:
+        return cls_name + "AutoId" + suffix
 
 
 class Widget(Hidable, Disableable, Loading):
@@ -142,14 +151,17 @@ class Widget(Hidable, Disableable, Loading):
         if (
             widget_id is not None
             and JinjaWidgets().auto_widget_id is True
-            and ("autoId" in widget_id or "AutoId" in widget_id)
-        ):
+        ) and ("autoId" in widget_id or "AutoId" in widget_id):
             # regenerate id with class name at the beginning
             self.widget_id = generate_id(type(self).__name__)
 
+
         if widget_id is None:
             if JinjaWidgets().auto_widget_id is True:
-                self.widget_id = generate_id(type(self).__name__)
+                if JinjaWidgets().strict_widget_id_mode is True:
+                    self.widget_id = generate_strict_widget_id(type(self).__name__)
+                else:
+                    self.widget_id = generate_id(type(self).__name__)
             else:
                 try:
                     self.widget_id = varname(frame=2)
@@ -168,11 +180,13 @@ class Widget(Hidable, Disableable, Loading):
     def _register(self):
         # get singletons
         data = DataJson()
-        data.raise_for_key(self.widget_id)
+        if is_restart_env() is False:
+            data.raise_for_key(self.widget_id)
         self.update_data()
 
         state = StateJson()
-        state.raise_for_key(self.widget_id)
+        if is_restart_env() is False:
+            state.raise_for_key(self.widget_id)
         self.update_state(state=state)
 
         JinjaWidgets().context[self.widget_id] = self
@@ -190,7 +204,12 @@ class Widget(Hidable, Disableable, Loading):
         if serialized_state is not None:
             if state is None:
                 state = StateJson()
-            state.setdefault(self.widget_id, {}).update(serialized_state)
+            if is_restart_env() is True:
+                # if we are in restart mode, we should not rewrite existing state
+                if self.widget_id not in state:
+                    state[self.widget_id] = serialized_state
+            else:
+                state.setdefault(self.widget_id, {}).update(serialized_state)
 
     def update_data(self):
         data = DataJson()
@@ -203,7 +222,12 @@ class Widget(Hidable, Disableable, Loading):
 
         serialized_data = {**widget_data, **hidable_data, **disableable_data}
         if serialized_data is not None:
-            data.setdefault(self.widget_id, {}).update(serialized_data)
+            if is_restart_env() is True:
+                # if we are in restart mode, we should not rewrite existing data
+                if self.widget_id not in data:
+                    data[self.widget_id] = serialized_data
+            else:
+                data.setdefault(self.widget_id, {}).update(serialized_data)
 
     def get_route_path(self, route: str) -> str:
         return f"/{self.widget_id}/{route}"
