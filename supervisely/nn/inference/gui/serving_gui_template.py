@@ -135,7 +135,7 @@ class ServingGUITemplate(ServingGUI):
         if runtime_field is not None:
             card_widgets.append(runtime_field)
 
-        # Runtime exported checkpoint  message
+        # Runtime exported checkpoint message
         self._export_msg = Text("")
         self._export_msg.hide()
         card_widgets.append(self._export_msg)
