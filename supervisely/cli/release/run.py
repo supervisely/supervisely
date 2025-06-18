@@ -351,7 +351,7 @@ def run(
     files = config.get("files", None)
     if files is not None:
         for file_name, file_path in files.items():
-            file_path = module_root.joinpath(file_path).absolute()
+            file_path = str(module_root.joinpath(file_path).absolute())
             files[file_name] = file_path
 
     # check that everything is commited and pushed
