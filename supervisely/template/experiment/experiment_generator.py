@@ -422,7 +422,7 @@ class ExperimentGenerator(BaseGenerator):
         :returns: Training session info
         :rtype: dict
         """
-        task_id = self.info.get("task_id", None)
+        task_id = self.info["task_id"]
         if task_id is None or task_id == -1:
             training_session = {
                 "id": None,
