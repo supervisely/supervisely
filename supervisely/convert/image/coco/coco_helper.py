@@ -357,7 +357,7 @@ def get_categories_from_meta(meta: ProjectMeta) -> List[Dict[str, Any]]:
     cat = lambda idx, c: {"supercategory": c.name, "id": idx, "name": c.name}
     return [
         cat(idx, c) if c.geometry_type != GraphNodes else _get_graph_info(idx, c)
-        for idx, c in enumerate(meta.obj_classes)
+        for idx, c in enumerate(meta.obj_classes, start=1)
     ]
 
 
@@ -524,16 +524,16 @@ def sly_ann_to_coco(
     h, w = ann.img_size
     for binding_key, labels in ann.get_bindings().items():
         if binding_key is None:
-            polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
+            polygons = [l for l in labels if isinstance(l.geometry, Polygon)]
             masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
-            bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
+            bboxes = [l for l in labels if isinstance(l.geometry, Rectangle)]
             graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
             for label in polygons + bboxes + masks:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
                 coco_obj["bbox"] = _get_common_bbox([label])
                 coco_obj["area"] = label.geometry.area
-                if label.obj_class.geometry_type == Polygon:
+                if isinstance(label.geometry, Polygon):
                     poly = label.geometry.to_json()["points"]["exterior"]
                     poly = np.array(poly).flatten().astype(float).tolist()
                     coco_obj["segmentation"] = [poly]
@@ -552,8 +552,8 @@ def sly_ann_to_coco(
 
             continue
 
-        bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
-        polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
+        bboxes = [l for l in labels if isinstance(l.geometry, Rectangle)]
+        polygons = [l for l in labels if isinstance(l.geometry, Polygon)]
         masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
         graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
 
@@ -738,7 +738,7 @@ def sly_ds_to_coco(
         sly_id=info.id,
     )
 
-    class_mapping = {cls.name: idx for idx, cls in enumerate(meta.obj_classes)}
+    class_mapping = {cls.name: idx for idx, cls in enumerate(meta.obj_classes, start=1)}
     label_id = 0
     caption_id = 0
     for image_idx, name in enumerate(dataset.get_items_names(), 1):
@@ -751,16 +751,17 @@ def sly_ds_to_coco(
             dst_img_path = images_dir / img_name
             shutil.copy(img_path, dst_img_path)
 
+        ann = Annotation.load_json_file(ann_path, meta)
         if os.path.exists(img_info_path):
             image_info_json = load_json_file(img_info_path)
         else:
-            img = sly_image(img_path, remove_alpha_channel=False)
+            # img = sly_image(img_path, remove_alpha_channel=False)
             now = datetime.now()
             image_info_json = {
                 "id": None,
                 "name": img_name,
-                "height": img.shape[0],
-                "width": img.shape[1],
+                "height": ann.img_size[0],
+                "width": ann.img_size[1],
                 "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             }
         image_info = ImageApi._convert_json_info(ImageApi(None), image_info_json)
@@ -771,7 +772,6 @@ def sly_ds_to_coco(
             coco_captions["images"].append(image_coco(image_info, image_idx))
             # pylint: enable=unsubscriptable-object
 
-        ann = Annotation.load_json_file(ann_path, meta)
         if ann.img_size is None or ann.img_size == (0, 0) or ann.img_size == (None, None):
             img = sly_image(img_path)
             ann = ann.clone(img_size=[img.shape[0], img.shape[1]])
