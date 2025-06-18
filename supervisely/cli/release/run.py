@@ -349,6 +349,10 @@ def run(
 
     # get files
     files = config.get("files", None)
+    if files is not None:
+        for file_name, file_path in files.items():
+            file_path = module_root.joinpath(file_path)
+            files[file_name] = file_path
 
     # check that everything is commited and pushed
     success = _check_git(repo)
