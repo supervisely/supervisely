@@ -128,8 +128,6 @@ INSTALL_REQUIRES = [
     "aiofiles",
     "httpx[http2]==0.27.2",
     "debugpy",
-    "markdown",
-    "pymdown-extensions",
 ]
 
 ALT_INSTALL_REQUIRES = {
@@ -292,6 +290,8 @@ setup(
             "torch",
             "torchvision",
             "tensorboardX",
+            "markdown",
+            "pymdown-extensions",
         ],
         # legacy dependencies
         "plugins": [
