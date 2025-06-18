@@ -131,6 +131,7 @@ class ProjectNode(SolutionElement):
         is_training: bool = False,
         x: int = 0,
         y: int = 0,
+        dataset_id: Optional[int] = None,
         *args,
         **kwargs,
     ):
@@ -144,11 +145,14 @@ class ProjectNode(SolutionElement):
         :param is_training: Whether this is a training project (affects display)
         :param x: X coordinate of the node
         :param y: Y coordinate of the node
+        :param dataset_id: Optional dataset ID to filter items in the project
+        :param args: Additional positional arguments
         """
         self.api = api
         self.project_id = project_id
         self.project = self.api.project.get_info_by_id(project_id)
         self.workspace_id = self.project.workspace_id
+        self.dataset_id = dataset_id
         self.title = title
         self.description = description
         self.is_training = is_training
@@ -174,6 +178,7 @@ class ProjectNode(SolutionElement):
             "project_id": self.project_id,
             "workspace_id": self.workspace_id,
             "is_training": self.is_training,
+            "dataset_id": self.dataset_id,
         }
 
     def get_json_state(self) -> dict:
@@ -189,23 +194,28 @@ class ProjectNode(SolutionElement):
         :param new_items_count: Optional count of newly added items
         """
         self.project = self.api.project.get_info_by_id(self.project_id)
+        items_count = self.project.items_count or 0
+        preview_url = self.project.image_preview_url
+        dataset_info = None
+        if self.dataset_id is not None:
+            dataset_info = self.api.dataset.get_info_by_id(self.dataset_id)
+            items_count = dataset_info.items_count or 0
+            preview_url = dataset_info.image_preview_url
 
         if new_items_count is not None:
             self.node.update_property(key="Last update", value=f"+{new_items_count}")
             self.node.update_badge_by_key(key="Last update:", label=f"+{new_items_count}")
-        self.node.update_property(key="Total", value=f"{self.project.items_count} images")
+        self.node.update_property(key="Total", value=f"{items_count} images")
 
         # Update preview
         if self.is_training:
-            train_items, val_items = self._get_train_val_items()
+            train_items, val_items = self._get_train_val_items(dataset_id=self.dataset_id)
             self.gui.update_preview(
                 [self._get_random_image_url(train_items), self._get_random_image_url(val_items)],
                 [len(train_items), len(val_items)],
             )
         else:
-            self.gui.update_preview(
-                [self.project.image_preview_url], [self.project.items_count or 0]
-            )
+            self.gui.update_preview([preview_url], [items_count or 0])
 
     def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
         """
@@ -227,9 +237,14 @@ class ProjectNode(SolutionElement):
 
         return train_collections, val_collections
 
-    def _get_train_val_items(self) -> Tuple[List, List]:
+    def _get_train_val_items(
+        self,
+        dataset_id: Optional[int] = None,
+    ) -> Tuple[List, List]:
         """
         Returns the items in training and validation collections.
+        :param dataset_id: Optional dataset ID to filter items
+        :type dataset_id: Optional[int]
         :return: Tuple containing lists of training and validation items.
         """
         train_collections, val_collections = self._get_train_val_collections()
@@ -242,6 +257,11 @@ class ProjectNode(SolutionElement):
         for collection_id in val_collections:
             images = self.api.entities_collection.get_items(collection_id, self.project_id)
             val_items.extend(images)
+
+        if dataset_id is not None:
+            # Filter items by dataset ID if provided
+            train_items = [item for item in train_items if item.dataset_id == dataset_id]
+            val_items = [item for item in val_items if item.dataset_id == dataset_id]
 
         return train_items, val_items
 
