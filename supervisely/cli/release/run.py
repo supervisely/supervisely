@@ -347,6 +347,9 @@ def run(
             with open(modal_template_path, "r") as f:
                 modal_template = f.read()
 
+    # get files
+    files = config.get("files", None)
+
     # check that everything is commited and pushed
     success = _check_git(repo)
     if not success:
@@ -476,6 +479,7 @@ def run(
             sub_app_directory if sub_app_directory != None else "",
             created_at,
             share_app,
+            files,
         )
         if response.status_code != 200:
             error = f"[red][Error][/] Error releasing the application. Please contact Supervisely team. Status Code: {response.status_code}"
