@@ -1669,20 +1669,55 @@ class AppApi(TaskApi):
     def start(
         self,
         agent_id,
-        app_id=None,
-        workspace_id=None,
-        description="",
-        params=None,
-        log_level="info",
-        users_id=None,
-        app_version=None,
-        is_branch=False,
-        task_name="run-from-python",
-        restart_policy="never",
-        proxy_keep_url=False,
-        module_id=None,
-        redirect_requests={},
+        app_id: Optional[int] = None,
+        workspace_id: Optional[int] = None,
+        description: str = "",
+        params: Dict[str, Any] = None,
+        log_level: Literal["info", "debug", "warning", "error"] = "info",
+        users_id: Optional[int] = None,
+        app_version: Optional[str] = None,
+        is_branch: bool = False,
+        task_name: str = "run-from-python",
+        restart_policy: Literal["never", "on_error"] = "never",
+        proxy_keep_url: bool = False,
+        module_id: Optional[int] = None,
+        redirect_requests: Dict[str, int] = {},
     ) -> SessionInfo:
+        """Start a new application session (task).
+
+        :param agent_id: ID of the agent to run the task on. If set None - the task will be run on the any available agent.
+        :type agent_id: int
+        :param app_id: Deprecated. Use `module_id` instead.
+        :type app_id: Optional[int]
+        :param workspace_id: ID of the workspace to run the task in. If not specified, the default workspace will be used.
+        :type workspace_id: Optional[int]
+        :param description: Task description which will be shown in UI.
+        :type description: str
+        :param params: Task parameters which will be passed to the application.
+        :type params: Optional[dict]
+        :param log_level: Log level for the task. Default is "info".
+        :type log_level: Literal["info", "debug", "warning", "error"]
+        :param users_id: User ID for which will be created an instance of the application.
+        :type users_id: Optional[int]
+        :param app_version: Application version e.g. "v1.0.0" or branch name e.g. "dev".
+        :type app_version: Optional[str]
+        :param is_branch: If the application version is a branch name, set this parameter to True.
+        :type is_branch: bool
+        :param task_name: Task name which will be shown in UI. Default is "run-from-python".
+        :type task_name: str
+        :param restart_policy: When the app should be restarted: never or if error occurred.
+        :type restart_policy: str
+        :param proxy_keep_url: For internal usage only.
+        :type proxy_keep_url: bool
+        :param module_id: Module ID. Can be obtained from the apps page in UI.
+        :type module_id: Optional[int]
+        :param redirect_requests: For internal usage only in Develop and Debug mode.
+        :type redirect_requests: dict
+        :return: SessionInfo object with information about the started task.
+        :rtype: SessionInfo
+        :raises ValueError: If both app_id and module_id are not provided.
+        :raises ValueError: If both app_id and module_id are provided.
+        """
         users_ids = None
         if users_id is not None:
             users_ids = [users_id]
