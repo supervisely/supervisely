@@ -210,7 +210,8 @@ class ProjectNode(SolutionElement):
         self.project = self.api.project.get_info_by_id(self.project_id)
         items_count = self.project.items_count or 0
         preview_url = self.project.image_preview_url
-        if self.dataset is not None:
+        if self.dataset_id is not None:
+            self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
             items_count = self.dataset.items_count or 0
             preview_url = self.dataset.image_preview_url
 
