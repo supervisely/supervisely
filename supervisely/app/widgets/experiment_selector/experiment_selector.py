@@ -142,6 +142,14 @@ class ExperimentSelector(Widget):
         @property
         def checkpoints_selector(self) -> Select:
             return self._checkpoints_widget
+        
+        @property
+        def experiment_info(self) -> ExperimentInfo:
+            return self._experiment_info
+
+        @property
+        def best_checkpoint(self) -> str:
+            return self.experiment_info.best_checkpoint
 
         @property
         def session_link(self) -> str:

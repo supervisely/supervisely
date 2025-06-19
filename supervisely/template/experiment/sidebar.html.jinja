@@ -150,6 +150,7 @@
                 :autoRun="false"
                 :openInNewWindow="true"
                 :selectContext="true"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'trainMode': 'new' }"
                 :moduleId="{{ resources.apps.train.module_id }}"
                 :command="command">
             </sly-iw-launch-button>
@@ -157,13 +158,14 @@
             <sly-iw-launch-button
                 style="min-height: 30px; height: 30px; margin-bottom: 5px;"
                 title="Train New"
-                description="Start new training with the same data and hyperparameters"
+                description="Start new training with the same configurations"
                 icon="https://img.icons8.com/?size=100&id=74239&format=png&color=000000"
                 :disabled="false"
                 :autoRun="false"
                 :openInNewWindow="true"
+                :selectContext="true"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'trainMode': 'continue' }"
                 :moduleId="{{ resources.apps.train.module_id }}"
-                :state="{ 'slyProjectId': {{ experiment.project.id }}, }"
                 :command="command">
             </sly-iw-launch-button>
 
