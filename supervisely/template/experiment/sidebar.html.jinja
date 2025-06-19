@@ -106,9 +106,10 @@
             <div>
 
             <sly-iw-launch-button 
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
                 title="Deploy"
                 description="Deploy to Supervisely"
-                icon="https://img.icons8.com/?size=100&id=YPSNW3VXY1QT&format=png&color=000000"
+                icon="https://img.icons8.com/?size=100&id=59881&format=png&color=000000"
                 :disabled="false"
                 :autoRun="false"
                 :state="{ 'trainTaskId': {{ experiment.task_id }}, }"
@@ -118,9 +119,11 @@
             </sly-iw-launch-button>
 
             <sly-iw-launch-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
                 title="Predict"
                 description="Apply Model to Supervisely project"
-                icon="https://img.icons8.com/?size=100&id=12133&format=png&color=000000"
+                icon="https://img.icons8.com/?size=100&id=79621&format=png&color=000000"
+                :selectContext="true"
                 :disabled="false"
                 :autoRun="false"
                 :moduleId="{{ resources.apps.apply_nn_to_images.module_id }}"
@@ -129,31 +132,35 @@
             </sly-iw-launch-button>
 
             <sly-iw-download-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
                 title="Download"
                 description="Zip archive with artifacts"
-                icon="https://img.icons8.com/?size=100&id=12071&format=png&color=000000"
+                icon="https://img.icons8.com/?size=100&id=59783&format=png&color=000000"
                 :disabled="false"
                 teamFilesPath="{{ experiment.paths.artifacts_dir.path + '/' }}"
                 :command="command">
             </sly-iw-download-button>
             
             <sly-iw-launch-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
                 title="Fine-tune"
                 description="Continue training"
-                icon="https://img.icons8.com/?size=100&id=zV8avTS0dJu1&format=png&color=000000"
+                icon="https://img.icons8.com/?size=100&id=61035&format=png&color=000000"
                 :disabled="false"
                 :autoRun="false"
                 :openInNewWindow="true"
+                :selectContext="true"
                 :moduleId="{{ resources.apps.train.module_id }}"
                 :command="command">
             </sly-iw-launch-button>
 
             <sly-iw-launch-button
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
                 title="Train New"
                 description="Start new training with the same data and hyperparameters"
-                icon="https://img.icons8.com/?size=100&id=16887&format=png&color=000000"
+                icon="https://img.icons8.com/?size=100&id=74239&format=png&color=000000"
                 :disabled="false"
-                :autoRun="true"
+                :autoRun="false"
                 :openInNewWindow="true"
                 :moduleId="{{ resources.apps.train.module_id }}"
                 :state="{ 'slyProjectId': {{ experiment.project.id }}, }"
