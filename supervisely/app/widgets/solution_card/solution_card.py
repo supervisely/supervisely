@@ -183,7 +183,7 @@ class SolutionCard(Widget):
     def update_property(
         self, key: str, value: str, link: Optional[bool] = None, highlight: Optional[bool] = None
     ):
-        for prop in self._tooltip._properties:
+        for prop in self.tooltip_properties:
             if prop["key"] == key:
                 break
         else:
@@ -199,7 +199,7 @@ class SolutionCard(Widget):
 
     def remove_property_by_key(self, key: str):
         found = False
-        for idx, prop in enumerate(self._tooltip._properties):
+        for idx, prop in enumerate(self.tooltip_properties):
             if prop["key"] == key:
                 found = True
                 break
@@ -207,7 +207,7 @@ class SolutionCard(Widget):
             self.remove_property(idx)
 
     def remove_property(self, idx: str):
-        if idx < 0 or idx >= len(self._tooltip._properties):
+        if idx < 0 or idx >= len(self.tooltip_properties):
             raise IndexError("Property index out of range")
         self._tooltip._properties.pop(idx)
         StateJson()[self.widget_id]["tooltip_properties"] = deepcopy(self._tooltip._properties)
@@ -297,7 +297,7 @@ class SolutionCard(Widget):
 
     def remove_badge_by_key(self, key: str):
         found = False
-        for idx, prop in enumerate(self._badges):
+        for idx, prop in enumerate(self.badges):
             if prop["on_hover"] == key:
                 found = True
                 break

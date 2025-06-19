@@ -2,6 +2,7 @@ from typing import Callable, List, Optional, Tuple
 
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Button, SolutionProject
 from supervisely.sly_logger import logger
@@ -54,10 +55,12 @@ class ProjectGUI:
         title: str,
         project: ProjectInfo,
         is_training: bool = False,
+        dataset: Optional[DatasetInfo] = None,
     ):
         self.title = title
         self.project = project
         self.is_training = is_training
+        self.dataset = dataset
         self.card = self._create_card()
 
     def _create_card(self) -> SolutionProject:
@@ -68,9 +71,15 @@ class ProjectGUI:
         if self.is_training:
             items_count, preview_url = [0, 0], [None, None]
         else:
-            items_count, preview_url = [self.project.items_count or 0], [
+            items_count = (
+                self.project.items_count if self.dataset is None else self.dataset.items_count
+            )
+            preview_url = (
                 self.project.image_preview_url
-            ]
+                if self.dataset is None
+                else self.dataset.image_preview_url
+            )
+            items_count, preview_url = [items_count or 0], [preview_url]
             if preview_url[0] == abs_url("/"):
                 preview_url[0] = None
 
@@ -153,6 +162,10 @@ class ProjectNode(SolutionElement):
         self.project = self.api.project.get_info_by_id(project_id)
         self.workspace_id = self.project.workspace_id
         self.dataset_id = dataset_id
+        self.dataset = None
+        if self.dataset_id is not None:
+            self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
+            
         self.title = title
         self.description = description
         self.is_training = is_training
@@ -162,6 +175,7 @@ class ProjectNode(SolutionElement):
             title=self.title,
             project=self.project,
             is_training=self.is_training,
+            dataset=self.dataset,
         )
 
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
@@ -196,11 +210,9 @@ class ProjectNode(SolutionElement):
         self.project = self.api.project.get_info_by_id(self.project_id)
         items_count = self.project.items_count or 0
         preview_url = self.project.image_preview_url
-        dataset_info = None
-        if self.dataset_id is not None:
-            dataset_info = self.api.dataset.get_info_by_id(self.dataset_id)
-            items_count = dataset_info.items_count or 0
-            preview_url = dataset_info.image_preview_url
+        if self.dataset is not None:
+            items_count = self.dataset.items_count or 0
+            preview_url = self.dataset.image_preview_url
 
         if new_items_count is not None:
             self.node.update_property(key="Last update", value=f"+{new_items_count}")

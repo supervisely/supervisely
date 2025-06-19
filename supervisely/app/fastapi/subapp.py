@@ -913,10 +913,6 @@ class Application(metaclass=Singleton):
 
         self._static_dir = static_dir
 
-        if sly_env.is_restart():
-            logger.info("Application is restarted. Restoring data and state.")
-            restore_data_state_if_restart()
-
         self._stop_event = ThreadingEvent()
         # for backward compatibility
         self._graceful_stop_event: Optional[ThreadingEvent] = None
@@ -1162,28 +1158,43 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
 
 
 def restore_data_state_if_restart():
+    """Restore data and state from task if application is restarted."""
+
     from supervisely.app.content import DataJson, Field, StateJson
 
-    """Restore data and state from task if application is restarted."""
-    if not sly_env.is_restart():
-        return {}, {}
-
+    logger.debug("Checking if previous data state exists...")
     api = Api()
     task_id = sly_env.task_id(raise_not_found=False)
     if task_id is None:
-        logger.warning("`restore_data_state_if_restart` called, but TASK_ID is not defined.")
-        return {}, {}
+        logger.debug("TASK_ID is not defined. Can't restore data and state.")
+        return
 
-    task_info = api.task.get_fields(task_id, fields=["data", "state"])
-    old_data = task_info.get("data", {})
-    old_state = task_info.get("state", {})
-    logger.info(f"🔴 OLD STATE: {old_state}")
-    logger.info(f"🔴 OLD DATA: {old_data}")
+    task_info = api.task.get_info_by_id(task_id)
+    if task_info is None:
+        logger.debug(f"Not found task (ID: {task_id}). Can't restore data and state.")
+        return
 
-    DataJson().update(old_data)
-    DataJson().send_changes()
-    StateJson().update(old_state)
-    StateJson().send_changes()
+    if not task_info.get("settings"):
+        logger.debug(f"Task Info (ID: {task_id}) has no settings field.")
+        return
+
+    if not task_info["settings"].get("customData"):
+        logger.debug(f"Task Info (ID: {task_id}) has no customData field in settings. ")
+        return
+
+    old_data = task_info["settings"]["customData"].get(Field.DATA.value)
+    if not old_data:
+        logger.debug(f"Not found DATA in Task Info (ID: {task_id}). Nothing to restore.")
+    else:
+        DataJson().update(old_data)
+        DataJson().send_changes()
+
+    old_state = task_info["settings"]["customData"].get(Field.STATE.value)
+    if not old_state:
+        logger.debug(f"Not found STATE in Task Info (ID: {task_id}). Nothing to restore.")
+    else:
+        StateJson().update(old_state)
+        StateJson().send_changes()
 
 
 def call_on_autostart(
