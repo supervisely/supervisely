@@ -5,9 +5,12 @@ This module provides the `TrainGUI` class that handles the graphical user interf
 training workflows in Supervisely.
 """
 
-from os import environ
+import os
+from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
+from supervisely import logger
+import supervisely.io.fs as sly_fs
 import supervisely.io.env as sly_env
 import supervisely.io.json as sly_json
 from supervisely import Api, ProjectMeta
@@ -639,7 +642,13 @@ class TrainGUI:
 
         self.layout: Widget = self.stepper
 
-        # (дублирующийся блок был перемещён выше и здесь удалён)
+        # Run from experiment page
+        train_task_id = getenv("modal.state.trainTaskId", None)
+        train_mode = getenv("modal.state.trainMode", None)
+        if train_task_id is not None and train_mode is not None:
+            self._run_from_experiment(train_task_id, train_mode)
+        # ----------------------------------------- #
+
 
     def set_next_step(self):
         current_step = self.stepper.get_active_step()
@@ -1062,5 +1071,19 @@ class TrainGUI:
                 export_weights_settings.get(RuntimeType.TENSORRT, False)
             )
         self.hyperparameters_selector_cb()
-
     # ----------------------------------------- #
+
+    def _run_from_experiment(self, train_task_id: int, train_mode: str):
+        experiment_info = self._api.nn.get_experiment_info(train_task_id)
+
+        if train_mode == "new":
+            local_hparams_path = f"./{experiment_info.hyperparameters}"
+            remote_hparams_path = os.path.join(experiment_info.artifacts_dir, experiment_info.hyperparameters)
+            self._api.file.download(self.team_id, remote_hparams_path, local_hparams_path)
+            
+            with open(local_hparams_path, "r") as f:
+                hparams = f.read()
+
+            self.hyperparameters_selector.editor.set_text(hparams)
+            logger.info(f"Loaded hyperparameters from: '{experiment_info.experiment_name}'")
+            sly_fs.silent_remove(local_hparams_path)
