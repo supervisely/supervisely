@@ -126,10 +126,12 @@ class NiiConverter(VolumeConverter):
                     ann_name = get_file_name(ann_name)
 
                 ann_name = renamed_classes.get(ann_name, ann_name)
-                for mask, _ in helper.get_annotation_from_nii(ann_path):
+                for mask, pixel_value in helper.get_annotation_from_nii(ann_path):
                     obj_class = meta.get_obj_class(ann_name)
                     if obj_class is None:
-                        obj_class = ObjClass(ann_name, Mask3D)
+                        obj_class = ObjClass(
+                            ann_name, Mask3D, description=f"{helper.MASK_PIXEL_VALUE}{pixel_value}"
+                        )
                         meta = meta.add_obj_class(obj_class)
                         self._meta_changed = True
                         self._meta = meta
