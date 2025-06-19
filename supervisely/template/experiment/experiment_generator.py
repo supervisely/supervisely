@@ -87,140 +87,64 @@ class ExperimentGenerator(BaseGenerator):
         return {}
 
     def context(self) -> dict:
-        task_id = self.info["task_id"]
-        exp_name = self.info["experiment_name"]
-        model_name = self.info["model_name"]
-        task_type = self.info["task_type"]
-        framework_name = self.info["framework_name"]
-        device = self.info.get("device", "N/A")
+        context = {
+            "env": self._get_env_context(),
+            "experiment": self._get_experiment_context(),
+            "resources": self._get_links_context(),
+            "code": self._get_code_context(),
+            "widgets": self._get_widgets_context(),
+        }
+        return context
 
-        project_id = self.info["project_id"]
-        project_info = self.api.project.get_info_by_id(project_id)
-        project_type = project_info.type
-        project_link = f"{self.api.server_address}/projects/{project_id}/datasets"
-        project_train_size = self.info["train_size"]
-        project_val_size = self.info["val_size"]
-        model_classes = [cls.name for cls in self.model_meta.obj_classes]
-        class_names = self._get_class_names(model_classes)
+    # --------------------------- Context blocks helpers --------------------------- #
+    def _get_env_context(self):
+        return {"server_address": self.api.server_address}
 
-        date = self._get_date()
-        training_duration = self.info.get("training_duration", "N/A")
-        metrics = self._generate_metrics_table(task_type)
-        primary_metric = self._get_primary_metric()
-        display_metrics = self._get_display_metrics(task_type)
-        checkpoints = self._generate_checkpoints_table()
-        hyperparameters = self._generate_hyperparameters_yaml()
-        artifacts_dir = self.info["artifacts_dir"].rstrip("/")
-        experiment_dir = os.path.basename(artifacts_dir)
-        docker_image = self._get_docker_image()
-        repo_info = self._get_repository_info()
-        training_session = self._get_training_session()
-
-        best_checkpoint = self._get_best_checkpoint()
-        onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
-        sample_pred_gallery = self._get_sample_predictions_gallery()
-        pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
+    def _get_apps_context(self):
         train_app, serve_app = self._get_app_train_serve_app_info()
         apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
-        agent_info = self._get_agent_info()
+        return {
+            "train": train_app,
+            "serve": serve_app,
+            "apply_nn_to_images": apply_images_app,
+            "apply_nn_to_videos": apply_videos_app,
+        }
 
-        context = {
-            "env": {
-                "server_address": self.api.server_address,
+    def _get_links_context(self):
+        return {"apps": self._get_apps_context()}
+
+    def _get_code_context(self):
+        docker_image = self._get_docker_image()
+        repo_info = self._get_repository_info()
+        pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
+
+        return {
+            "docker": {"image": docker_image},
+            "local_prediction": {
+                "repo": repo_info,
+                "serving_module": self.serving_class.__module__ if self.serving_class else None,
+                "serving_class": self.serving_class.__name__ if self.serving_class else None,
             },
-            "experiment": {
-                "name": exp_name,
-                "model_name": model_name,
-                "task_id": task_id,
-                "task_name": task_type,
-                "device": device,
-                "framework_name": framework_name,
-                "date": date,
-                "training_duration": training_duration,
-                "artifacts_dir": artifacts_dir + "/",
-                "export": self.info.get("export"),
-                "agent": agent_info,
-            },
-            "project": {
-                "name": project_info.name if project_info else "",
-                "id": project_id,
-                "link": project_link,
-                "type": project_type,
-                "train_size": project_train_size,
-                "val_size": project_val_size,
-                "classes_count": len(model_classes),
-                "class_names": class_names,
-            },
-            "links": {
-                "app": {
-                    "train": train_app,
-                    "serve": serve_app,
-                    "apply_nn_to_images": apply_images_app,
-                    "apply_nn_to_videos": apply_videos_app,
-                },
-                "training_session": training_session,
-                "evaluation_report": {
-                    "id": self.info.get("evaluation_report_id"),
-                    "url": self.info.get("evaluation_report_link"),
-                },
-                "tensorboard_logs": {
-                    "path": self.info.get("logs", {}).get("link", None),
-                    "url": (
-                        f"{self.api.server_address}/files/?path={self.info.get('logs', {}).get('link')}"
-                        if self.info.get("logs", {}).get("link")
-                        else None
-                    ),
-                },
-                "team_files": {
-                    "path": artifacts_dir,
-                    "url": (
-                        f"{self.api.server_address}/files/?path={self.artifacts_dir}"
-                        if self.artifacts_dir
-                        else None
-                    ),
-                },
-                "checkpoint_dir_url": f"{self.api.server_address}/files/?path={self.artifacts_dir}",
-            },
-            "artifacts": {
-                "checkpoints_table": checkpoints,
-                "metrics_table": metrics,
-                "hyperparameters": hyperparameters,
-                "experiment_dir": experiment_dir,
-                "best_checkpoint": best_checkpoint,
-                "onnx_checkpoint": onnx_checkpoint,
-                "trt_checkpoint": trt_checkpoint,
-            },
-            "benchmark": {
-                "id": self.info.get("evaluation_report_id"),
-                "url": self.info.get("evaluation_report_link"),
-                "metrics": self.info.get("evaluation_metrics"),
-                "primary_metric": primary_metric,
-                "display_metrics": display_metrics,
-            },
-            "code": {
-                "docker": {
-                    "image": docker_image,
-                },
-                "local_prediction": {
-                    "repo": {
-                        "name": repo_info["name"],
-                        "url": repo_info["url"],
-                    },
-                    "serving_module": self.serving_class.__module__ if self.serving_class else None,
-                    "serving_class": self.serving_class.__name__ if self.serving_class else None,
-                },
-                "demo": {
-                    "pytorch": pytorch_demo,
-                    "onnx": onnx_demo,
-                    "tensorrt": trt_demo,
-                },
-            },
-            "widgets": {
-                "sample_pred_gallery": sample_pred_gallery,
+            "demo": {
+                "pytorch": pytorch_demo,
+                "onnx": onnx_demo,
+                "tensorrt": trt_demo,
             },
         }
 
-        return context
+    def _get_widgets_context(self):
+        checkpoints_table = self._generate_checkpoints_table()
+        metrics_table = self._generate_metrics_table(self.info["task_type"])
+        sample_gallery = self._get_sample_predictions_gallery()
+
+        return {
+            "tables": {
+                "checkpoints": checkpoints_table,
+                "metrics": metrics_table,
+            },
+            "sample_pred_gallery": sample_gallery,
+        }
+    # --------------------------------------------------------------------------- #
 
     def _generate_metrics_table(self, task_type: str) -> str:
         """Generate HTML table with evaluation metrics.
@@ -777,3 +701,107 @@ class ExperimentGenerator(BaseGenerator):
             "module_id": apply_nn_videos_module_id,
         }
         return apply_nn_images_app, apply_nn_videos_app
+    
+    def _get_project_context(self):
+        project_id = self.info["project_id"]
+        project_info = self.api.project.get_info_by_id(project_id)
+        project_type = project_info.type
+        project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
+        project_train_size = self.info["train_size"]
+        project_val_size = self.info["val_size"]
+        model_classes = [cls.name for cls in self.model_meta.obj_classes]
+        class_names = self._get_class_names(model_classes)
+
+        project_context = {
+                "id": project_id,
+                "name": project_info.name if project_info else "Project was archived",
+                "url": project_url,
+                "type": project_type,
+
+                "splits": {
+                    "train": project_train_size,
+                    "val": project_val_size,
+                },
+
+                "classes": {
+                    "count": len(model_classes),
+                    "names": class_names,
+                },
+            }
+        return project_context
+
+    def _get_model_context(self):
+        """Return model description part of context."""
+        return {
+            "name": self.info["model_name"],
+            "framework": self.info["framework_name"],
+            "task_type": self.info["task_type"],
+        }
+
+    def _get_training_context(self):
+        """Return training-related context (checkpoints, metrics, etc.)."""
+
+        device = self.info.get("device", "N/A")
+        training_session = self._get_training_session()
+        training_duration = self.info.get("training_duration", "N/A")
+        hyperparameters = self._generate_hyperparameters_yaml()
+
+        best_checkpoint = self._get_best_checkpoint()
+        onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
+
+        logs_path = self.info.get("logs", {}).get("link")
+        logs_url = (
+            f"{self.api.server_address}/files/?path={logs_path}" if logs_path else None
+        )
+
+        primary_metric = self._get_primary_metric()
+        display_metrics = self._get_display_metrics(self.info["task_type"])
+
+        return {
+            "device": device,
+            "session": training_session,
+            "duration": training_duration,
+            "hyperparameters": hyperparameters,
+            "checkpoints": {
+                "pytorch": best_checkpoint,
+                "onnx": onnx_checkpoint,
+                "tensorrt": trt_checkpoint,
+            },
+            "export": self.info.get("export"),
+            "logs": {"path": logs_path, "url": logs_url},
+            "evaluation": {
+                "id": self.info.get("evaluation_report_id"),
+                "url": self.info.get("evaluation_report_link"),
+                "primary_metric": primary_metric,
+                "display_metrics": display_metrics,
+                "metrics": self.info.get("evaluation_metrics"),
+            },
+        }
+
+    def _get_experiment_context(self):
+        task_id = self.info["task_id"]
+        exp_name = self.info["experiment_name"]
+        agent_info = self._get_agent_info()
+        date = self._get_date()
+        project_context = self._get_project_context()
+        model_context = self._get_model_context()
+        training_context = self._get_training_context()
+        artifacts_dir = self.info["artifacts_dir"].rstrip("/")
+        experiment_dir = os.path.basename(artifacts_dir)
+        checkpoints_dir = os.path.join(artifacts_dir, "checkpoints")
+
+        experiment_context = {
+            "task_id": task_id,
+            "name": exp_name,
+            "agent": agent_info,
+            "date": date,
+            "project": project_context,
+            "model": model_context,
+            "training": training_context,
+            "paths": {
+                "experiment_dir": {"path": experiment_dir, "url": f"{self.api.server_address}/files/?path={experiment_dir.rstrip('/') + '/'}"},
+                "artifacts_dir": {"path": artifacts_dir, "url": f"{self.api.server_address}/files/?path={artifacts_dir.rstrip('/') + '/'}"},
+                "checkpoints_dir": {"path": checkpoints_dir, "url": f"{self.api.server_address}/files/?path={checkpoints_dir.rstrip('/') + '/'}"},
+            },
+        }
+        return experiment_context

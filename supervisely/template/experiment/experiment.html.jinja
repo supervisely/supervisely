@@ -4,27 +4,27 @@
 
 ## Overview
 
-- **Model**: {{ experiment.model_name }}
-- **Framework**: {{ experiment.framework_name }}
-- **Task**: {{ experiment.task_name }}
-- **Project**: [{{ project.name }}]({{ project.link }}){:target="_blank"}
-- **Classes**: ({{ project.classes_count }}) {% for class_name in project.class_names.list %} <span class="class-tag">{{
+- **Model**: {{ experiment.model.name }}
+- **Framework**: {{ experiment.model.framework }}
+- **Task**: {{ experiment.model.task_type }}
+- **Project**: [{{ experiment.project.name }}]({{ experiment.project.url }}){:target="_blank"}
+- **Classes**: ({{ experiment.project.classes.count }}) {% for class_name in experiment.project.classes.names.short_list %} <span class="class-tag">{{
     class_name }}</span> {% endfor %}
 
-- **Training {{ project.type }}**: {{ project.train_size }}
-- **Validation {{ project.type }}**: {{ project.val_size }}
-- **Device**: {{ experiment.device }}
-- **Training duration**: {{ experiment.training_duration }}
-{% if benchmark.primary_metric.name %}
-- **{{ benchmark.primary_metric.name }}**: {{ benchmark.primary_metric.rounded_value }}
+- **Training {{ experiment.project.type }}**: {{ experiment.project.splits.train }}
+- **Validation {{ experiment.project.type }}**: {{ experiment.project.splits.val }}
+- **Device**: {{ experiment.training.device }}
+- **Training duration**: {{ experiment.training.duration }}
+{% if experiment.training.evaluation.primary_metric.name %}
+- **{{ experiment.training.evaluation.primary_metric.name }}**: {{ experiment.training.evaluation.primary_metric.rounded_value }}
 {% endif %}
 
-{% if artifacts.hyperparameters %}
+{% if experiment.training.hyperparameters %}
 <details>
     <summary>Training Hyperparameters</summary>
 
     ```yaml
-    {% for hyperparameter in artifacts.hyperparameters %}
+    {% for hyperparameter in experiment.training.hyperparameters %}
     {{ hyperparameter }}
     {% endfor %}
     ```
@@ -33,7 +33,7 @@
 
 {% endif %}
 
-{% if links.evaluation_report.id and widgets.sample_pred_gallery %}
+{% if experiment.training.evaluation.id and widgets.sample_pred_gallery %}
 
 ## Predictions
 <div class="prediction-gallery">
@@ -42,14 +42,14 @@
 
 {% endif %}
 
-{% if artifacts.metrics_table %}
+{% if widgets.tables.metrics %}
 
 ## Evaluation
-The **{{ artifacts.best_checkpoint.name }}** checkpoint was evaluated on the validation set of **{{ project.val_size }}
+The **{{ experiment.training.checkpoints.pytorch.name }}** checkpoint was evaluated on the validation set of **{{ experiment.project.splits.val }}
 images**.
 
-See the full [📊 Evaluation Report]({{ links.evaluation_report.url }}) for details and visualizations.
-{{ artifacts.metrics_table | safe }}
+See the full [📊 Evaluation Report]({{ experiment.training.evaluation.url }}) for details and visualizations.
+{{ widgets.tables.metrics | safe }}
 
 {% else %}
 
@@ -61,23 +61,23 @@ was performed.
 
 ## Artifacts
 
-[📂 Open in Team Files]({{ links.team_files.url }}){:target="_blank"}
+[📂 Open in Team Files]({{ experiment.paths.artifacts_dir.url }}){:target="_blank"}
 
-- 🔥 Best checkpoint: **{{ artifacts.best_checkpoint.name }}** ([download]({{ artifacts.best_checkpoint.url
-}}){:download="{{ artifacts.best_checkpoint.name }}"})
-{% if artifacts.onnx_checkpoint.name %}
-- 📦 ONNX export: **{{ artifacts.onnx_checkpoint.name }}** ([download]({{ artifacts.onnx_checkpoint.url
-}}){:download="{{ artifacts.onnx_checkpoint.name }}"})
+- 🔥 Best checkpoint: **{{ experiment.training.checkpoints.pytorch.name }}** ([download]({{ experiment.training.checkpoints.pytorch.url
+}}){:download="{{ experiment.training.checkpoints.pytorch.name }}"})
+{% if experiment.training.checkpoints.onnx.name %}
+- 📦 ONNX export: **{{ experiment.training.checkpoints.onnx.name }}** ([download]({{ experiment.training.checkpoints.onnx.url
+}}){:download="{{ experiment.training.checkpoints.onnx.name }}"})
 {% endif %}
-{% if artifacts.trt_checkpoint.name %}
-- ⚡ TensorRT export: **{{ artifacts.trt_checkpoint.name }}** ([download]({{ artifacts.trt_checkpoint.url
-}}){:download="{{ artifacts.trt_checkpoint.name }}"})
+{% if experiment.training.checkpoints.tensorrt.name %}
+- ⚡ TensorRT export: **{{ experiment.training.checkpoints.tensorrt.name }}** ([download]({{ experiment.training.checkpoints.tensorrt.url
+}}){:download="{{ experiment.training.checkpoints.tensorrt.name }}"})
 {% endif %}
 
-{% if artifacts.checkpoints_table %}
+{% if widgets.tables.checkpoints %}
 <details>
     <summary>📋 All Checkpoints</summary>
-    {{ artifacts.checkpoints_table }}
+    {{ widgets.tables.checkpoints }}
 </details>
 {% endif %}
 
@@ -89,13 +89,13 @@ You can use your model with the quick buttons in the sidebar.
 
 You can also run Supervisely Apps manually to apply your model:
 
-- [Serve {{ experiment.framework_name }}]({{ env.server_address }}/ecosystem/apps/{{ links.app.serve.slug
+- [Serve {{ experiment.model.framework }}]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.serve.slug
 }}){:target="_blank"} - deploy your model in the Supervisely Platform.
-- [Train {{ experiment.framework_name }}]({{ env.server_address }}/ecosystem/apps/{{ links.app.train.slug
+- [Train {{ experiment.model.framework }}]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.train.slug
 }}){:target="_blank"} - train a model in the Supervisely Platform.
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_images.slug }}){:target="_blank"} -
+- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_images.slug }}){:target="_blank"} -
 connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ links.app.apply_nn_to_videos.slug }}){:target="_blank"} -
+- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_videos.slug }}){:target="_blank"} -
 for predictions on video project or dataset.
 
 ## API Integration
@@ -134,7 +134,7 @@ api = sly.Api() # Make sure you've set your credentials in environment variables
 
 # 2. Deploy the model
 model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
     device="cuda:0", # or "cpu"
 )
 
@@ -160,14 +160,14 @@ api = sly.Api()
 
 # Deploy PyTorch checkpoint
 model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}",
+    model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
     device="cuda:0", # or "cpu"
 )
 ```
 
 {% endtab %}
 
-{% if artifacts.onnx_checkpoint.name %}
+{% if experiment.training.checkpoints.onnx.name %}
 {% tab title="ONNX" %}
 
 ```python
@@ -177,7 +177,7 @@ api = sly.Api()
 
 # Deploy ONNX checkpoint
 model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.onnx_checkpoint.name }}",
+    model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name }}",
     device="cuda:0", # or "cpu"
 )
 ```
@@ -185,7 +185,7 @@ model = api.nn.deploy(
 {% endtab %}
 {% endif %}
 
-{% if artifacts.trt_checkpoint.name %}
+{% if experiment.training.checkpoints.tensorrt.name %}
 {% tab title="TensorRT" %}
 
 ```python
@@ -195,7 +195,7 @@ api = sly.Api()
 
 # Deploy TensorRT checkpoint
 model = api.nn.deploy(
-    model="{{ experiment.artifacts_dir }}/export/{{ artifacts.trt_checkpoint.name }}",
+    model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.tensorrt.name }}",
     device="cuda:0", # or "cpu"
 )
 ```
@@ -293,7 +293,7 @@ from pathlib import Path
 
 # Deploy a detector
 detector = api.nn.deploy(
-    model="{{ experiment.framework_name }}/{{ experiment.model_name }}",
+    model="{{ experiment.model.framework }}/{{ experiment.model.name }}",
     device="cuda:0", # Use GPU for detection
 )
 
@@ -326,7 +326,7 @@ Use your trained models in your own code, using Supervisely SDK and our API or o
 You can deploy the model in a 🐋 Docker Container with a single `docker run` command. Download a checkpoint, pull the
 docker image for the corresponding model's framework, and run the `docker run` command with addtional arguments.
 
-1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }})
+1. Download checkpoint from Supervisely - [Open in Team Files]({{ experiment.paths.checkpoints_dir.url }})
 
 2. Pull the Docker image
 
@@ -339,11 +339,11 @@ docker pull {{ code.docker.image }}
 ```bash
 docker run \
     --runtime=nvidia \
-    -v "./{{ artifacts.experiment_dir }}:/model" \
+    -v "./{{ experiment.paths.experiment_dir.path }}:/model" \
     -p 8000:8000 \
     {{ code.docker.image }} \
     deploy \
-    --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
+    --model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
     --device "cuda:0"
 ```
 
@@ -369,12 +369,12 @@ quick way to run inference on your local images, videos, or directories.
 ```bash
 docker run \
     --runtime=nvidia \
-    -v "./{{ artifacts.experiment_dir }}:/model" \
+    -v "./{{ experiment.paths.experiment_dir.path }}:/model" \
     -p 8000:8000 \
     {{ code.docker.image }} \
     predict \
     "./image.jpg" \ # Put your image/video/directory here
-    --model "/model/checkpoints/{{ artifacts.best_checkpoint.name }}" \
+    --model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
     --device "cuda:0"
 ```
 
@@ -388,7 +388,7 @@ In case you develop an application that is not related to the Supervisely platfo
 the model in your own code. This will allow you to use the model in your own codebase, and you can deploy it in any way
 you want.
 
-1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }})
+1. Download checkpoint from Supervisely - [Open in Team Files]({{ experiment.paths.checkpoints_dir.url }})
 
 2. Clone our repository
 
@@ -412,7 +412,7 @@ from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.
 
 # Load model
 model = {{ code.local_prediction.serving_class }}(
-    model="./{{ artifacts.experiment_dir }}/checkpoints/{{ artifacts.best_checkpoint.name }}", # path to the checkpoint you've downloaded
+    model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}", # path to the checkpoint you've downloaded
     device="cuda", # or "cuda:1", "cpu"
 )
 
@@ -430,13 +430,13 @@ API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:ta
 [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/local-deployment.md){:target="_blank"}
 documentation.
 
-{% if artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name %}
+{% if experiment.training.checkpoints.onnx.name or experiment.training.checkpoints.tensorrt.name %}
 #### Deploy ONNX/TensorRT
 
 You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT
 model,
-{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
-and [download `classes.json`]({{ artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url
+{% if experiment.training.checkpoints.onnx.classes_url or experiment.training.checkpoints.tensorrt.classes_url %}
+and [download `classes.json`]({{ experiment.training.checkpoints.onnx.classes_url or experiment.training.checkpoints.tensorrt.classes_url
 }}){:download="classes.json"} file from the export directory.
 {% else %}
 and provide class names in the additional `classes` parameter.
@@ -445,20 +445,20 @@ and provide class names in the additional `classes` parameter.
 ```python
 # Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
 from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
-{% if artifacts.onnx_checkpoint.classes_url or artifacts.trt_checkpoint.classes_url %}
+{% if experiment.training.checkpoints.onnx.classes_url or experiment.training.checkpoints.tensorrt.classes_url %}
 from supervisely.io.json import load_json_file
 
-classes_path = "./{{ artifacts.experiment_dir }}/export/classes.json"
+classes_path = "./{{ experiment.paths.experiment_dir.path }}/export/classes.json"
 classes = load_json_file(classes_path)
 {% else %}
 
-classes = {{ project.class_names.short_list }}
+classes = {{ project.classes.names.short_list }}
 {% endif %}
 
 # Deploy ONNX or TensorRT
 model = {{ code.local_prediction.serving_class }}(
     # Path to the ONNX or TensorRT model
-    model="./{{ artifacts.experiment_dir }}/export/{{ artifacts.onnx_checkpoint.name or artifacts.trt_checkpoint.name }}",
+    model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name or experiment.training.checkpoints.tensorrt.name }}",
     device="cuda",
 )
 
@@ -483,10 +483,10 @@ and you will develop your own code for inference and deployment of that particul
 that for each neural network or a framework, you need to set up an environment and write inference code by yourself,
 since each model has its own installation instructions and the way of processing inputs and outputs correctly.
 
-We provide a basic instructions and a demo script of how to load {{ experiment.framework_name }} and get predictions
+We provide a basic instructions and a demo script of how to load {{ experiment.model.framework }} and get predictions
 using the original code from the authors.
 
-1. Download checkpoint from Supervisely - [Open in Team Files]({{ links.checkpoint_dir_url }}){:target="_blank"}
+1. Download checkpoint from Supervisely - [Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"}
 
 2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo.name }}]({{
 code.local_prediction.repo.url }}){:target="_blank"}
