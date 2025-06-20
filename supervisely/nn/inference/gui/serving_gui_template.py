@@ -14,6 +14,7 @@ from supervisely.app.widgets import (
     RadioTabs,
     SelectString,
     Widget,
+    Text,
 )
 from supervisely.app.widgets.experiment_selector.experiment_selector import (
     ExperimentSelector,
@@ -133,6 +134,27 @@ class ServingGUITemplate(ServingGUI):
         card_widgets = [self.model_source_tabs]
         if runtime_field is not None:
             card_widgets.append(runtime_field)
+
+        # Runtime exported checkpoint message
+        self._export_msg = Text("")
+        self._export_msg.hide()
+        card_widgets.append(self._export_msg)
+
+        if self.runtime_select is not None:
+            self.runtime_select.value_changed(lambda _: self._update_export_message())
+        if self.experiment_selector is not None:
+            self.experiment_selector.value_changed(lambda _: self._update_export_message())
+            for task_type in self.experiment_selector.rows:
+                for row in self.experiment_selector.rows[task_type]:
+                    row.checkpoints_selector.value_changed(lambda _: self._update_export_message())
+        if self.pretrained_models_table is not None:
+            self.pretrained_models_table.model_changed(lambda _: self._update_export_message())
+
+        if self.model_source_tabs is not None:
+            self.model_source_tabs.value_changed(lambda _: self._update_export_message())
+
+        self._update_export_message()
+
         return card_widgets
 
     def _initialize_extra_widgets(self) -> List[Widget]:
@@ -204,3 +226,53 @@ class ServingGUITemplate(ServingGUI):
         elif self.model_source == ModelSource.CUSTOM and self.experiment_selector:
             return self.experiment_selector.get_selected_experiment_info()
         return {}
+
+    def _update_export_message(self):
+        self._export_msg.hide()
+
+        runtime = self.runtime
+        non_conversion_runtimes = [RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT]
+        if runtime not in non_conversion_runtimes:
+            return
+        
+        if self.model_source == ModelSource.PRETRAINED:
+            self._export_msg.set(
+                "Checkpoint will be converted before deployment.",
+                "info",
+            )
+            self._export_msg.show()
+            return
+
+        checkpoint_name = None
+        if self.model_source == ModelSource.CUSTOM and self.experiment_selector is not None:
+            selected_row = self.experiment_selector.get_selected_row()
+            if selected_row is None:
+                return
+            checkpoint_name = selected_row.get_selected_checkpoint_name()
+            if checkpoint_name is None:
+                return
+
+        model_info = self.model_info or {}
+        export_info = model_info.get("export", {})
+        available = False
+        if isinstance(export_info, dict):
+            for key in export_info.keys():
+                if key.lower().startswith(runtime.lower()):
+                    available = True
+                    break
+            if checkpoint_name != selected_row.best_checkpoint:
+                available = False
+
+
+
+        if available:
+            self._export_msg.set(
+                "Runtime checkpoint exists – no conversion needed.",
+                "info",
+            )
+        else:
+            self._export_msg.set(
+                "Checkpoint will be converted before deployment.",
+                "info",
+            )
+        self._export_msg.show()
