@@ -15,11 +15,17 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
+from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.solution.scheduler import TasksScheduler
 from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 
 class SolutionElement(Widget):
+
+    def __new__(cls, *args, **kwargs):
+        JinjaWidgets().incremental_widget_id_mode = True
+        return super().__new__(cls)
+
     def __init__(self, *args, **kwargs):
         """Base class for all solution elements.
 
@@ -166,6 +172,7 @@ class SolutionCardNode(SolutionGraph.Node):
     def __new__(
         cls, content: Widget, x: int = 0, y: int = 0, *args, **kwargs
     ) -> SolutionGraph.Node:
+        JinjaWidgets().incremental_widget_id_mode = True
         if not isinstance(content, (SolutionCard, SolutionProject)):
             raise TypeError("Content must be one of SolutionCard or SolutionProject")
         return super().__new__(cls, *args, **kwargs)
