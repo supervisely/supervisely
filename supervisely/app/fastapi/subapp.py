@@ -1157,29 +1157,26 @@ def set_autostart_flag_from_state(default: Optional[str] = None):
     sly_env.set_autostart(auto_start)
 
 
-def restore_data_state_if_restart():
+def restore_data_state(task_id: Optional[int] = None):
     """Restore data and state from task if application is restarted."""
 
     from supervisely.app.content import DataJson, Field, StateJson
 
     logger.debug("Checking if previous data state exists...")
     api = Api()
-    task_id = sly_env.task_id(raise_not_found=False)
     if task_id is None:
-        logger.debug("TASK_ID is not defined. Can't restore data and state.")
-        return
+        task_id = sly_env.task_id()
 
     task_info = api.task.get_info_by_id(task_id)
     if task_info is None:
-        logger.debug(f"Not found task (ID: {task_id}). Can't restore data and state.")
-        return
+        raise ValueError(f"Task with ID {task_id} not found.")
 
     if not task_info.get("settings"):
-        logger.debug(f"Task Info (ID: {task_id}) has no settings field.")
+        logger.warning(f"Task Info (ID: {task_id}) has no settings field.")
         return
 
     if not task_info["settings"].get("customData"):
-        logger.debug(f"Task Info (ID: {task_id}) has no customData field in settings. ")
+        logger.warning(f"Task Info (ID: {task_id}) has no customData field in settings. ")
         return
 
     old_data = task_info["settings"]["customData"].get(Field.DATA.value)

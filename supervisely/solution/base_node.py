@@ -23,7 +23,7 @@ from supervisely.solution.utils import get_seconds_from_period_and_interval
 class SolutionElement(Widget):
 
     def __new__(cls, *args, **kwargs):
-        JinjaWidgets().strict_widget_id_mode = True
+        JinjaWidgets().incremental_widget_id_mode = True
         return super().__new__(cls)
 
     def __init__(self, *args, **kwargs):
@@ -172,7 +172,7 @@ class SolutionCardNode(SolutionGraph.Node):
     def __new__(
         cls, content: Widget, x: int = 0, y: int = 0, *args, **kwargs
     ) -> SolutionGraph.Node:
-        JinjaWidgets().strict_widget_id_mode = True
+        JinjaWidgets().incremental_widget_id_mode = True
         if not isinstance(content, (SolutionCard, SolutionProject)):
             raise TypeError("Content must be one of SolutionCard or SolutionProject")
         return super().__new__(cls, *args, **kwargs)

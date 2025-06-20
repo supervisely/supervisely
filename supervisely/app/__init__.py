@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from supervisely.app.content import StateJson, DataJson
 from supervisely.app.content import get_data_dir, get_synced_data_dir
-from supervisely.app.fastapi.subapp import call_on_autostart, restore_data_state_if_restart
+from supervisely.app.fastapi.subapp import call_on_autostart, restore_data_state
 import supervisely.app.fastapi as fastapi
 import supervisely.app.widgets as widgets
 import supervisely.app.development as development

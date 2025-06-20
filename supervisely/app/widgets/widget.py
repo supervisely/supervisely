@@ -127,8 +127,9 @@ def generate_id(cls_name=""):
         return "autoId" + suffix
     else:
         return cls_name + "AutoId" + suffix
-    
-def generate_strict_widget_id(cls_name=""):
+
+
+def generate_incremental_id(cls_name=""):
     JinjaWidgets().widget_id_increment += 1
     suffix = f"{JinjaWidgets().widget_id_increment:04d}"
     if cls_name == "":
@@ -157,8 +158,8 @@ class Widget(Hidable, Disableable, Loading):
 
         if widget_id is None:
             if JinjaWidgets().auto_widget_id is True:
-                if JinjaWidgets().strict_widget_id_mode is True:
-                    self.widget_id = generate_strict_widget_id(type(self).__name__)
+                if JinjaWidgets().incremental_widget_id_mode is True:
+                    self.widget_id = generate_incremental_id(type(self).__name__)
                 else:
                     self.widget_id = generate_id(type(self).__name__)
             else:
