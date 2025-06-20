@@ -32,6 +32,7 @@ from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
 from supervisely.nn.utils import ModelSource, RuntimeType
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class StepFlow:
@@ -840,12 +841,14 @@ class TrainGUI:
                 )
         return app_state
 
-    def load_from_app_state(self, app_state: Union[str, dict]) -> None:
+    def load_from_app_state(self, app_state: Union[str, dict], click_cb: bool = True) -> None:
         """
         Load the GUI state from app state dictionary.
 
         :param app_state: The state dictionary.
         :type app_state: dict
+        :param click_cb: Automatically click the callback functions to set the GUI state.
+        :type click_cb: bool
 
         app_state example:
 
@@ -856,10 +859,17 @@ class TrainGUI:
                     "percent": 90
                 },
                 "classes": ["apple"],
+                # Pretrained model
                 "model": {
                     "source": "Pretrained models",
                     "model_name": "rtdetr_r50vd_coco_objects365"
                 },
+                # Custom model
+                # "model": {
+                #     "source": "Custom models",
+                #     "task_id": 555,
+                #     "checkpoint": "checkpoint_10.pth"
+                # },
                 "hyperparameters": hyperparameters, # yaml string
                 "options": {
                     "model_benchmark": {
@@ -889,16 +899,16 @@ class TrainGUI:
         hyperparameters_settings = app_state["hyperparameters"]
         experiment_name = app_state.get("experiment_name", None)
 
-        self._init_input(input_settings, options)
-        self._init_train_val_splits(train_val_splits_settings, options)
-        self._init_classes(classes_settings, options)
-        self._init_tags(tags_settings, options)
-        self._init_model(model_settings, options)
-        self._init_hyperparameters(hyperparameters_settings, options)
+        self._init_input(input_settings, options, click_cb)
+        self._init_train_val_splits(train_val_splits_settings, options, click_cb)
+        self._init_classes(classes_settings, options, click_cb)
+        self._init_tags(tags_settings, options, click_cb)
+        self._init_model(model_settings, options, click_cb)
+        self._init_hyperparameters(hyperparameters_settings, options, click_cb)
         if experiment_name is not None:
             self.training_process.set_experiment_name(experiment_name)
 
-    def _init_input(self, input_settings: Union[dict, None], options: dict) -> None:
+    def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True) -> None:
         """
         Initialize the input selector with the given settings.
 
@@ -909,10 +919,11 @@ class TrainGUI:
         """
         # Set Input
         self.input_selector.set_cache(options.get("cache_project", True))
-        self.input_selector_cb()
+        if click_cb:
+            self.input_selector_cb()
         # ----------------------------------------- #
 
-    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict) -> None:
+    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict, click_cb: bool = True) -> None:
         """
         Initialize the train/val splits selector with the given settings.
 
@@ -974,9 +985,10 @@ class TrainGUI:
             self.train_val_splits_selector.train_val_splits.set_collections_splits(
                 train_collections, val_collections
             )
-        self.train_val_splits_selector_cb()
+        if click_cb:
+            self.train_val_splits_selector_cb()
 
-    def _init_classes(self, classes_settings: list, options: dict) -> None:
+    def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True) -> None:
         """
         Initialize the classes selector with the given settings.
 
@@ -990,10 +1002,11 @@ class TrainGUI:
 
         # Set Classes
         self.classes_selector.set_classes(classes_settings)
-        self.classes_selector_cb()
+        if click_cb:
+            self.classes_selector_cb()
         # ----------------------------------------- #
 
-    def _init_tags(self, tags_settings: list, options: dict) -> None:
+    def _init_tags(self, tags_settings: list, options: dict, click_cb: bool = True) -> None:
         """
         Initialize the tags selector with the given settings.
 
@@ -1007,10 +1020,11 @@ class TrainGUI:
 
         # Set Tags
         self.tags_selector.set_tags(tags_settings)
-        self.tags_selector_cb()
+        if click_cb:
+            self.tags_selector_cb()
         # ----------------------------------------- #
 
-    def _init_model(self, model_settings: dict, options: dict) -> None:
+    def _init_model(self, model_settings: dict, options: dict, click_cb: bool = True) -> None:
         """
         Initialize the model selector with the given settings.
 
@@ -1038,10 +1052,11 @@ class TrainGUI:
                 )
 
             active_row.set_selected_checkpoint_by_name(model_settings["checkpoint"])
-        self.model_selector_cb()
+        if click_cb:
+            self.model_selector_cb()
         # ----------------------------------------- #
 
-    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict) -> None:
+    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True) -> None:
         """
         Initialize the hyperparameters selector with the given settings.
 
@@ -1070,20 +1085,47 @@ class TrainGUI:
             self.hyperparameters_selector.set_export_tensorrt_checkbox_value(
                 export_weights_settings.get(RuntimeType.TENSORRT, False)
             )
-        self.hyperparameters_selector_cb()
+        if click_cb:
+            self.hyperparameters_selector_cb()
     # ----------------------------------------- #
+
+    # Run from experiment page
+    def _download_experiment_state(self, experiment_info: ExperimentInfo) -> dict:
+        local_app_state_path = f"./app_state.json"
+        remote_app_state_path = os.path.join(experiment_info.artifacts_dir, "app_state.json")
+        self._api.file.download(self.team_id, remote_app_state_path, local_app_state_path)
+        app_state = sly_json.load_json_file(local_app_state_path)
+        sly_fs.silent_remove(local_app_state_path)
+        return app_state
+    
+    def _download_experiment_hparams(self, experiment_info: ExperimentInfo) -> dict:
+        local_hparams_path = f"./{experiment_info.hyperparameters}"
+        remote_hparams_path = os.path.join(experiment_info.artifacts_dir, experiment_info.hyperparameters)
+        self._api.file.download(self.team_id, remote_hparams_path, local_hparams_path)
+        with open(local_hparams_path, "r") as f:
+            hparams = f.read()
+        sly_fs.silent_remove(local_hparams_path)
+        return hparams
 
     def _run_from_experiment(self, train_task_id: int, train_mode: str):
         experiment_info = self._api.nn.get_experiment_info(train_task_id)
+        experiment_state = experiment_info.app_state
 
-        if train_mode == "new":
-            local_hparams_path = f"./{experiment_info.hyperparameters}"
-            remote_hparams_path = os.path.join(experiment_info.artifacts_dir, experiment_info.hyperparameters)
-            self._api.file.download(self.team_id, remote_hparams_path, local_hparams_path)
-            
-            with open(local_hparams_path, "r") as f:
-                hparams = f.read()
+        if train_mode == "continue":
+            model_settings = {
+                "source": ModelSource.CUSTOM,
+                "task_id": train_task_id,
+                "checkpoint": experiment_info.best_checkpoint
+            }
 
-            self.hyperparameters_selector.editor.set_text(hparams)
-            logger.info(f"Loaded hyperparameters from: '{experiment_info.experiment_name}'")
-            sly_fs.silent_remove(local_hparams_path)
+        if experiment_state is not None:
+            experiment_state = self._download_experiment_state(experiment_info)
+            if train_mode == "continue":
+                experiment_state["model"] = model_settings
+            self.load_from_app_state(experiment_state, click_cb=False)
+        else:
+            hparams = self._download_experiment_hparams(experiment_info)
+            self.hyperparameters_selector.set_hyperparameters(hparams)
+            if train_mode == "continue":
+                self._init_model(model_settings, click_cb=False)
+    # ----------------------------------------- #
