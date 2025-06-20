@@ -141,6 +141,7 @@ class ProjectNode(SolutionElement):
         x: int = 0,
         y: int = 0,
         dataset_id: Optional[int] = None,
+        refresh_interval: int = 30,
         *args,
         **kwargs,
     ):
@@ -180,7 +181,8 @@ class ProjectNode(SolutionElement):
 
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
         self.modals = []
-        self.apply_automation(sec=30)
+        self.refresh_interval = refresh_interval
+        self.apply_automation(sec=self.refresh_interval)
 
         super().__init__(*args, **kwargs)
 
