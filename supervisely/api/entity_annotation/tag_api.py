@@ -84,6 +84,22 @@ class TagApi(ModuleApi):
             "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
         )
 
+    def get_list_fast(self, project_id: int, filters=None):
+        """
+        Get list of tags for a given project ID.
+
+        :param project_id: :class:`Dataset<supervisely.project.project.Project>` ID in Supervisely.
+        :type project_id: int
+        :param filters: List of parameters to sort output tags. See: https://api.docs.supervisely.com/#tag/Advanced/paths/~1tags.list/get
+        :type filters: List[Dict[str, str]], optional
+        :return: List of the tags from the project with given id.
+        :rtype: list
+        """
+
+        return self.get_list_all_pages_fast(
+            "tags.list", {ApiField.PROJECT_ID: project_id, "filter": filters or []}
+        )
+
     def get_name_to_id_map(self, project_id: int):
         """
         Get dictionary with mapping tag name to tag ID for a given project ID.
