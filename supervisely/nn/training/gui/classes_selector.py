@@ -5,7 +5,7 @@ from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text
 class ClassesSelector:
     title = "Classes Selector"
     description = "Select classes that will be used for training"
-    lock_message = "Select training and validation splits to unlock"
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, project_id: int, classes: list, app_options: dict = {}):
         # Init widgets

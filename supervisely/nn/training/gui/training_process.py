@@ -15,7 +15,7 @@ from supervisely.app.widgets import (
 class TrainingProcess:
     title = "Training Process"
     description = "Manage training process"
-    lock_message = "Select hyperparameters to unlock"
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, app_options: Dict[str, Any]):
         # Initialize widgets to None

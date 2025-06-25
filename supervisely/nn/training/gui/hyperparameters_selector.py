@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
 class HyperparametersSelector:
     title = "Hyperparameters"
     description = "Set hyperparameters for training"
-    lock_message = "Select model to unlock"
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
         # Init widgets
