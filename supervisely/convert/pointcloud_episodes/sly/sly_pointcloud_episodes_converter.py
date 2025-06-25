@@ -127,7 +127,11 @@ class SLYPointcloudEpisodesConverter(PointcloudEpisodeConverter):
                         rimg_ann_name = f"{rimg_name}.json"
                         if rimg_ann_name in rimg_json_dict:
                             rimg_ann_path = rimg_json_dict[rimg_ann_name]
-                            item.set_related_images((rimg_path, rimg_ann_path))
+                            rimg_fig_name = f"{rimg_name}.figures.json"
+                            rimg_fig_path = os.path.join(os.path.dirname(rimg_ann_path), rimg_fig_name)
+                            if not os.path.exists(rimg_fig_path):
+                                rimg_fig_path = None
+                            item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
                 self._items.append(item)
             else:
                 logger.warning(f"Pointcloud file {pcd_name} not found. Skipping frame.")
