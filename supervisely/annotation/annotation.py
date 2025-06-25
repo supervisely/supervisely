@@ -3056,7 +3056,7 @@ class Annotation:
                 licenses=[dict(url="None", id=0, name="None")],
                 images=[],
                 annotations=[],
-                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 0, "name": "lemon"}, ...]
+                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
             )
 
             ann = sly.Annotation.from_json(ann_json, meta)
