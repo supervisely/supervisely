@@ -285,6 +285,7 @@ class Inference:
                     logger.info(f"Setting best checkpoint from training task id: {train_task_id}")
                     experiment_info = self.api.nn.get_experiment_info(train_task_id)
                     self._set_checkpoint_from_experiment_info(experiment_info)
+                    self.gui.deploy_with_current_params()
                 except Exception as e:
                     logger.warning(f"Failed to set checkpoint from training task id: {repr(e)}")
                     logger.info("Resetting UI to default state")

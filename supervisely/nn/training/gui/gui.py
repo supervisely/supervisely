@@ -1126,11 +1126,18 @@ class TrainGUI:
             }
 
         if experiment_state is not None:
+            self.input_selector.validator_text.set(f"Training configuration is loaded from the experiment: {experiment_info.experiment_name}.", "success")
+            self.input_selector.validator_text.show()
             experiment_state = self._download_experiment_state(experiment_info)
             if train_mode == "continue":
                 experiment_state["model"] = model_settings
             self.load_from_app_state(experiment_state, click_cb=False)
         else:
+            self.input_selector.validator_text.set(
+                f"Сouldn't load full training configuration from the experiment: {experiment_info.experiment_name}. Only model and hyperparameters are loaded.",
+                "warning"
+            )
+            self.input_selector.validator_text.show()
             hparams = self._download_experiment_hparams(experiment_info)
             self.hyperparameters_selector.set_hyperparameters(hparams)
             if train_mode == "continue":
