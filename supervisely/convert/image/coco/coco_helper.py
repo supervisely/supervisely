@@ -357,7 +357,7 @@ def get_categories_from_meta(meta: ProjectMeta) -> List[Dict[str, Any]]:
     cat = lambda idx, c: {"supercategory": c.name, "id": idx, "name": c.name}
     return [
         cat(idx, c) if c.geometry_type != GraphNodes else _get_graph_info(idx, c)
-        for idx, c in enumerate(meta.obj_classes)
+        for idx, c in enumerate(meta.obj_classes, start=1)
     ]
 
 
@@ -435,7 +435,7 @@ def sly_ann_to_coco(
             licenses=[dict(url="None", id=0, name="None")],
             images=[],
             annotations=[],
-            categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 0, "name": "lemon"}, ...]
+            categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
         )
 
         ann = sly.Annotation.from_json(ann_json, meta)
@@ -524,20 +524,21 @@ def sly_ann_to_coco(
     h, w = ann.img_size
     for binding_key, labels in ann.get_bindings().items():
         if binding_key is None:
-            polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
-            masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
-            bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
-            graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
+            polygons = [l for l in labels if l.geometry.name() == Polygon.geometry_name()]
+            masks = [l for l in labels if l.geometry.name() == Bitmap.geometry_name()]
+            bboxes = [l for l in labels if l.geometry.name() == Rectangle.geometry_name()]
+            graphs = [l for l in labels if l.geometry.name() == GraphNodes.geometry_name()]
+            # polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
             for label in polygons + bboxes + masks:
                 cat_id = class_mapping[label.obj_class.name]
                 coco_obj = coco_obj_template(label_id, coco_image_id, cat_id)
                 coco_obj["bbox"] = _get_common_bbox([label])
                 coco_obj["area"] = label.geometry.area
-                if label.obj_class.geometry_type == Polygon:
+                if label.geometry.name() == Polygon.geometry_name():
                     poly = label.geometry.to_json()["points"]["exterior"]
                     poly = np.array(poly).flatten().astype(float).tolist()
                     coco_obj["segmentation"] = [poly]
-                elif label.obj_class.geometry_type == Bitmap:
+                elif label.geometry.name() == Bitmap.geometry_name():
                     segmentation = extend_mask_up_to_image(
                         label.geometry.data, (h, w), label.geometry.origin
                     )
@@ -552,10 +553,10 @@ def sly_ann_to_coco(
 
             continue
 
-        bboxes = [l for l in labels if l.obj_class.geometry_type == Rectangle]
-        polygons = [l for l in labels if l.obj_class.geometry_type == Polygon]
-        masks = [l for l in labels if l.obj_class.geometry_type == Bitmap]
-        graphs = [l for l in labels if l.obj_class.geometry_type == GraphNodes]
+        bboxes = [l for l in labels if l.geometry.name() == Rectangle.geometry_name()]
+        polygons = [l for l in labels if l.geometry.name() == Polygon.geometry_name()]
+        masks = [l for l in labels if l.geometry.name() == Bitmap.geometry_name()]
+        graphs = [l for l in labels if l.geometry.name() == GraphNodes.geometry_name()]
 
         need_to_process_separately = len(masks) > 0 and len(polygons) > 0
         bbox_matched_w_mask = False
@@ -624,8 +625,14 @@ def sly_ann_to_coco(
 
     res_captions = []  # result list of COCO captions
     for tag in caption_tags:
-        caption = {"image_id": coco_image_id, "id": caption_id, "caption": tag.value}
-        caption_id = _update_caption_results(caption_id, coco_captions, caption, res_captions)
+        caption = {
+            "image_id": coco_image_id,
+            "id": last_caption_id,
+            "caption": tag.value,
+        }
+        last_caption_id = _update_caption_results(
+            last_caption_id, coco_captions, caption, res_captions
+        )
 
     return res_inst, res_captions
 
@@ -738,7 +745,7 @@ def sly_ds_to_coco(
         sly_id=info.id,
     )
 
-    class_mapping = {cls.name: idx for idx, cls in enumerate(meta.obj_classes)}
+    class_mapping = {cls.name: idx for idx, cls in enumerate(meta.obj_classes, start=1)}
     label_id = 0
     caption_id = 0
     for image_idx, name in enumerate(dataset.get_items_names(), 1):
@@ -751,16 +758,20 @@ def sly_ds_to_coco(
             dst_img_path = images_dir / img_name
             shutil.copy(img_path, dst_img_path)
 
+        ann = Annotation.load_json_file(ann_path, meta)
+        if ann.img_size is None or ann.img_size == (0, 0) or ann.img_size == (None, None):
+            img = sly_image(img_path)
+            ann = ann.clone(img_size=[img.shape[0], img.shape[1]])
+
         if os.path.exists(img_info_path):
             image_info_json = load_json_file(img_info_path)
         else:
-            img = sly_image(img_path, remove_alpha_channel=False)
             now = datetime.now()
             image_info_json = {
                 "id": None,
                 "name": img_name,
-                "height": img.shape[0],
-                "width": img.shape[1],
+                "height": ann.img_size[0],
+                "width": ann.img_size[1],
                 "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             }
         image_info = ImageApi._convert_json_info(ImageApi(None), image_info_json)
@@ -771,10 +782,6 @@ def sly_ds_to_coco(
             coco_captions["images"].append(image_coco(image_info, image_idx))
             # pylint: enable=unsubscriptable-object
 
-        ann = Annotation.load_json_file(ann_path, meta)
-        if ann.img_size is None or ann.img_size == (0, 0) or ann.img_size == (None, None):
-            img = sly_image(img_path)
-            ann = ann.clone(img_size=[img.shape[0], img.shape[1]])
         insts, captions = ann.to_coco(
             image_idx, class_mapping, coco_ann, label_id, coco_captions, caption_id
         )
