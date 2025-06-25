@@ -13,7 +13,7 @@ from supervisely import (
 )
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -281,9 +281,9 @@ class PointcloudEpisodeConverter(BaseConverter):
         unsupported_exts = set()
         pcd_dict = {}
         frames_pcd_map = None
-        used_img_ext = set()
         rimg_dict, rimg_json_dict, rimg_fig_dict = {}, {}, {}
         for root, _, files in os.walk(self._input_data):
+            dir_name = os.path.basename(root)
             for file in files:
                 full_path = os.path.join(root, file)
                 if file == "frame_pointcloud_map.json":
@@ -302,9 +302,9 @@ class PointcloudEpisodeConverter(BaseConverter):
                             f"File '{file}' has been recognized as '.{recognized_ext}' format. Skipping."
                         )
                         continue
-                    rimg_dict[file] = full_path
-                    if ext not in used_img_ext:
-                        used_img_ext.add(ext)
+                    if dir_name not in rimg_dict:
+                        rimg_dict[dir_name] = []
+                    rimg_dict[dir_name].append(full_path)
                 elif ext.lower() in self.allowed_exts:
                     try:
                         validate_pcd_ext(ext)
@@ -326,19 +326,17 @@ class PointcloudEpisodeConverter(BaseConverter):
             if pcd_name in pcd_dict:
                 updated_frames_pcd_map[i] = pcd_name
                 item = self.Item(pcd_dict[pcd_name], i)
-                for ext in used_img_ext:
-                    rimg_name = f"{item.name}{ext}"
-                    if not rimg_name in rimg_dict:
-                        rimg_name = f"{get_file_name(item.name)}{ext}"
-                    if rimg_name in rimg_dict:
-                        rimg_path = rimg_dict[rimg_name]
-                        rimg_ann_name = f"{rimg_name}.json"
-                        rimg_fig_name = f"{rimg_name}.figures.json"
-                        rimg_fig_path = rimg_fig_dict.get(rimg_fig_name)
-
-                        if rimg_ann_name in rimg_json_dict:
-                            rimg_ann_path = rimg_json_dict[rimg_ann_name]
-                            item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
+                rimg_dir_name = pcd_name.replace(".pcd", "_pcd")
+                rimgs = rimg_dict.get(rimg_dir_name, [])
+                for rimg_path in rimgs:
+                    rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"
+                    if rimg_ann_name in rimg_json_dict:
+                        rimg_ann_path = rimg_json_dict[rimg_ann_name]
+                        rimg_fig_name = f"{get_file_name_with_ext(rimg_path)}.figures.json"
+                        rimg_fig_path = rimg_fig_dict.get(rimg_fig_name, None)
+                        if rimg_fig_path is not None and not os.path.exists(rimg_fig_path):
+                            rimg_fig_path = None
+                        item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
                 items.append(item)
             else:
                 logger.warning(f"Pointcloud file {pcd_name} not found. Skipping frame.")
