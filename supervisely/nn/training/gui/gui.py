@@ -1134,7 +1134,7 @@ class TrainGUI:
             self.load_from_app_state(experiment_state, click_cb=False)
         else:
             self.input_selector.validator_text.set(
-                f"Сouldn't load full training configuration from the experiment: {experiment_info.experiment_name}. Only model and hyperparameters are loaded.",
+                f"Couldn't load full training configuration from the experiment: {experiment_info.experiment_name}. Only model and hyperparameters are loaded.",
                 "warning"
             )
             self.input_selector.validator_text.show()
