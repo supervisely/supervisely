@@ -576,9 +576,12 @@ class TrainApp:
             self._workflow_input()
         # Step 2. Download Project
         self._download_project()
-        # Step 3. Split Project
+        # Step 3. Convert Project to Task
+        if self.gui.classes_selector.is_auto_convert_enabled():
+            self._convert_project_to_model_task()
+        # Step 4. Split Project
         self._split_project()
-        # Step 4. Download Model files
+        # Step 5. Download Model files
         self._download_model()
 
     def _finalize(self, experiment_info: dict) -> None:
@@ -918,23 +921,40 @@ class TrainApp:
 
     # Preprocess
     # Download Project
-    def _read_project(self, remove_unselected_classes: bool = True) -> None:
+    def _read_project(self) -> None:
         """
         Reads the project data from Supervisely.
-
-        :param remove_unselected_classes: Whether to remove unselected classes from the project.
-        :type remove_unselected_classes: bool
         """
         if self.project_info.type == ProjectType.IMAGES.value:
             self.sly_project = Project(self.project_dir, OpenMode.READ)
-            if remove_unselected_classes:
-                self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
+            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
         elif self.project_info.type == ProjectType.VIDEOS.value:
             self.sly_project = VideoProject(self.project_dir, OpenMode.READ)
         else:
             raise ValueError(
                 f"Unsupported project type: {self.project_info.type}. Only images and videos are supported."
             )
+        
+    def _convert_project_to_model_task(self) -> None:
+        """
+        Converts the project to the appropriate type.
+        """
+        if not self.project_info.type == ProjectType.IMAGES.value:
+            logger.info("Auto convertion supported only for images projects")
+            return
+        
+        task_type = self.gui.model_selector.get_selected_task_type()
+        if task_type not in [TaskType.OBJECT_DETECTION, TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+            logger.info(f"Auto convertion for task type: {task_type} is not supported")
+            return
+        
+        logger.info(f"Converting project for task: {task_type}")
+        with self.progress_bar_main(message=f"Converting project to {task_type}", total=len(self.sly_project.datasets)) as pbar:
+            if task_type == TaskType.OBJECT_DETECTION:
+                self.sly_project.to_detection_task(self.project_dir, inplace=True, progress_cb=pbar.update)
+            elif task_type == TaskType.INSTANCE_SEGMENTATION or task_type == TaskType.SEMANTIC_SEGMENTATION:
+                self.sly_project.to_segmentation_task(self.project_dir, inplace=True, progress_cb=pbar.update)
+        self.sly_project = Project(self.project_dir, OpenMode.READ)
 
     def _download_project(self) -> None:
         """
@@ -2762,41 +2782,52 @@ class TrainApp:
             "experiment_report",
         ],
     ):
+        message = f"Status: {status}"
 
         if status == "reset":
-            self.gui.training_process.validator_text.set("", "text")
+            message = ""
+            status = "text"
+            self.gui.training_process.validator_text.set(message, status)
+            return
         elif status == "completed":
-            self.gui.training_process.validator_text.set("Training completed", "success")
+            message = "Training completed"
+            status = "success"
         elif status == "training":
-            self.gui.training_process.validator_text.set("Training is in progress...", "info")
+            message = "Training is in progress..."
+            status = "info"
         elif status == "finalizing":
-            self.gui.training_process.validator_text.set(
-                "Finalizing and preparing training artifacts...", "info"
-            )
+            message = "Finalizing and preparing training artifacts..."
+            status = "info"
         elif status == "preparing":
-            self.gui.training_process.validator_text.set("Preparing data for training...", "info")
+            message = "Preparing data for training..."
+            status = "info"
         elif status == "export_onnx":
-            self.gui.training_process.validator_text.set(
-                f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
-            )
+            message = f"Converting to {RuntimeType.ONNXRUNTIME}"
+            status = "info"
         elif status == "export_trt":
-            self.gui.training_process.validator_text.set(
-                f"Converting to {RuntimeType.TENSORRT}", "info"
-            )
+            message = f"Converting to {RuntimeType.TENSORRT}"
+            status = "info"
         elif status == "uploading":
-            self.gui.training_process.validator_text.set("Uploading training artifacts...", "info")
+            message = "Uploading training artifacts..."
+            status = "info"
         elif status == "benchmark":
-            self.gui.training_process.validator_text.set(
-                "Running Model Benchmark evaluation...", "info"
-            )
+            message = "Running Model Benchmark evaluation..."
+            status = "info"
         elif status == "validating":
-            self.gui.training_process.validator_text.set("Validating experiment...", "info")
+            message = "Validating experiment..."
+            status = "info"
         elif status == "metadata":
-            self.gui.training_process.validator_text.set("Generating training metadata...", "info")
+            message = "Generating training metadata..."
+            status = "info"
         elif status == "convert_gt_project":
-            self.gui.training_process.validator_text.set("Converting GT project...", "info")
+            message = "Converting GT project..."
+            status = "info"
         elif status == "experiment_report":
-            self.gui.training_process.validator_text.set("Generating experiment report...", "info")
+            message = "Generating experiment report..."
+            status = "info"
+        
+        message = f"Status: {status}"
+        self.gui.training_process.validator_text.set(message, status)
 
     def _set_ws_progress_status(
         self,
@@ -2896,56 +2927,47 @@ class TrainApp:
         return remote_export_weights
 
     def _convert_and_split_gt_project(self, task_type: str):
-        # 1. Convert GT project to cv task
-        Project.download(
-            self._api,
-            self.project_info.id,
-            "tmp_project",
-            save_images=False,
-            save_image_info=True,
-        )
-        project = Project("tmp_project", OpenMode.READ)
-
-        pr_prefix = ""
+        # @TODO: Project can be modified in external code
+        
+        # Convert project if auto convert was disabled
+        if not self.gui.classes_selector.is_auto_convert_enabled():
+            self._convert_project_to_model_task()
+        
+        project = self.sly_project
         if task_type == TaskType.OBJECT_DETECTION:
-            Project.to_detection_task(project.directory, inplace=True)
             pr_prefix = "[detection]: "
-        elif (
-            task_type == TaskType.INSTANCE_SEGMENTATION
-            or task_type == TaskType.SEMANTIC_SEGMENTATION
-        ):
-            Project.to_segmentation_task(project.directory, inplace=True)
+        elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
             pr_prefix = "[segmentation]: "
+        else:
+            pr_prefix = ""
 
         gt_project_info = self._api.project.create(
             self.workspace_id,
             f"{pr_prefix}{self.project_info.name}",
             description=(
-                f"Converted ground truth project for trainig session: '{self.task_id}'. "
+                f"Converted ground truth project for training session: '{self.task_id}'. "
                 f"Original project id: '{self.project_info.id}. "
                 "Removing this project will affect model benchmark evaluation report."
             ),
             change_name_if_conflict=True,
         )
-
-        # 3. Upload converted gt project
-        project = Project("tmp_project", OpenMode.READ)
         self._api.project.update_meta(gt_project_info.id, project.meta)
-        for dataset in project.datasets:
-            dataset: Dataset
-            ds_info = self._api.dataset.create(
-                gt_project_info.id, dataset.name, change_name_if_conflict=True
-            )
-            for batch_names in batched(dataset.get_items_names(), 100):
-                img_infos = [dataset.get_item_info(name) for name in batch_names]
-                img_ids = [img_info.id for img_info in img_infos]
-                anns = [dataset.get_ann(name, project.meta) for name in batch_names]
 
-                img_infos = self._api.image.copy_batch(ds_info.id, img_ids)
-                img_ids = [img_info.id for img_info in img_infos]
-                self._api.annotation.upload_anns(img_ids, anns)
-        sly_fs.remove_dir(project.directory)
+        with self.progress_bar_main(message=f"Uploading converted GT project for model benchmark report", total=len(project.datasets)) as pbar:
+            for dataset in project.datasets:
+                dataset: Dataset
+                ds_info = self._api.dataset.create(gt_project_info.id, dataset.name, change_name_if_conflict=True)
+                with self.progress_bar_secondary(message=f"Uploading GT dataset: {dataset.name}", total=len(dataset.get_items_names())) as pbar_secondary:
+                    for batch_names in batched(dataset.get_items_names(), 100):
+                        img_infos = [dataset.get_item_info(name) for name in batch_names]
+                        img_ids = [img_info.id for img_info in img_infos]
+                        anns = [dataset.get_ann(name, project.meta) for name in batch_names]
 
-        # 4. Match splits with original project
+                        img_infos = self._api.image.copy_batch(ds_info.id, img_ids)
+                        img_ids = [img_info.id for img_info in img_infos]
+                        self._api.annotation.upload_anns(img_ids, anns)
+                        pbar_secondary.update(len(batch_names))
+                pbar.update(1)
+
         gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data

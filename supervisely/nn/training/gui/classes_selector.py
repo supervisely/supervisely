@@ -1,5 +1,5 @@
 from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
-from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text
+from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text, Checkbox
 
 
 class ClassesSelector:
@@ -37,9 +37,19 @@ class ClassesSelector:
 
         self.validator_text = Text("")
         self.validator_text.hide()
+
+        # Auto-convert checkbox
+        self.auto_convert_checkbox = Checkbox("Auto convert classes to model task type", False)
+
         self.button = Button("Select")
         self.display_widgets.extend(
-            [self.qa_stats_text, self.classes_table, self.validator_text, self.button]
+            [
+                self.qa_stats_text,
+                self.classes_table,
+                self.auto_convert_checkbox,
+                self.validator_text,
+                self.button,
+            ]
         )
         # -------------------------------- #
 
@@ -55,7 +65,7 @@ class ClassesSelector:
 
     @property
     def widgets_to_disable(self) -> list:
-        return [self.classes_table]
+        return [self.classes_table, self.auto_convert_checkbox]
 
     def get_selected_classes(self) -> list:
         return self.classes_table.get_selected_classes()
@@ -103,3 +113,6 @@ class ClassesSelector:
         self.validator_text.set(text=message, status=status)
         self.validator_text.show()
         return n_classes > 0
+
+    def is_auto_convert_enabled(self) -> bool:
+        return self.auto_convert_checkbox.is_checked()

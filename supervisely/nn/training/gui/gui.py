@@ -441,11 +441,18 @@ class TrainGUI:
 
             if wrong_shape_classes:
                 specific_text = task_specific_texts[task_type]
-                message_text = f"Model task type is {task_type}. {specific_text}. Selected classes have wrong shapes for the model task: {', '.join(wrong_shape_classes)}"
-                self.model_selector.validator_text.set(
-                    text=message_text,
-                    status="warning",
-                )
+                if self.classes_selector and self.classes_selector.is_auto_convert_enabled():
+                    message_text = (
+                        f"Auto-convert enabled. Selected classes with shapes {{ {', '.join(wrong_shape_classes)} }} will be converted for task '{task_type}'."
+                    )
+                    status = "info"
+                    self.need_convert_shapes_for_bm = True
+                else:
+                    message_text = (
+                        f"Model task type is {task_type}. {specific_text}. Selected classes have wrong shapes: {', '.join(wrong_shape_classes)}"
+                    )
+                    status = "warning"
+                self.classes_selector.validator_text.set(message_text, status)
 
         # ------------------------------------------------- #
 
@@ -473,15 +480,8 @@ class TrainGUI:
                 self.model_selector.widgets_to_disable,
                 self.model_selector.validator_text,
                 self.model_selector.validate_step,
-                position=position,
-            ).add_on_select_actions(
-                "model_selector",
-                [
-                    set_experiment_name,
-                    need_convert_class_shapes,
-                    validate_class_shape_for_model_task,
-                ],
-            )
+                position=position
+            ).add_on_select_actions("model_selector", [set_experiment_name])
             position += 1
 
         # 3. Classes selector
@@ -494,6 +494,9 @@ class TrainGUI:
                 self.classes_selector.validator_text,
                 self.classes_selector.validate_step,
                 position=position,
+            ).add_on_select_actions(
+                "classes_selector",
+                [need_convert_class_shapes, validate_class_shape_for_model_task],
             )
             position += 1
 
