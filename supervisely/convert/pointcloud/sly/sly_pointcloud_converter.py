@@ -47,7 +47,6 @@ class SLYPointcloudConverter(PointcloudConverter):
 
     def validate_format(self) -> bool:
         pcd_list, ann_dict, rimg_dict, rimg_ann_dict = [], {}, {}, {}
-        used_img_ext = []
         for root, _, files in os.walk(self._input_data):
             dir_name = os.path.basename(root)
             for file in files:
@@ -73,8 +72,6 @@ class SLYPointcloudConverter(PointcloudConverter):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
-                    if ext not in used_img_ext:
-                        used_img_ext.append(ext)
                 else:
                     try:
                         validate_pcd_ext(ext)

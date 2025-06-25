@@ -3,7 +3,6 @@ import os
 from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
-import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import (
     Api,
     PointcloudAnnotation,
@@ -229,7 +228,6 @@ class PointcloudConverter(BaseConverter):
         only_modality_items = True
         unsupported_exts = set()
         pcd_list, rimg_dict, rimg_ann_dict, rimg_fig_dict = [], {}, {}, {}
-        used_img_ext = set()
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
@@ -251,8 +249,6 @@ class PointcloudConverter(BaseConverter):
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
-                    if ext not in used_img_ext:
-                        used_img_ext.add(ext)
                 elif ext.lower() in self.allowed_exts:
                     try:
                         validate_pcd_ext(ext)

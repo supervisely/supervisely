@@ -281,7 +281,6 @@ class PointcloudEpisodeConverter(BaseConverter):
         unsupported_exts = set()
         pcd_dict = {}
         frames_pcd_map = None
-        used_img_ext = set()
         rimg_dict, rimg_json_dict, rimg_fig_dict = {}, {}, {}
         for root, _, files in os.walk(self._input_data):
             dir_name = os.path.basename(root)

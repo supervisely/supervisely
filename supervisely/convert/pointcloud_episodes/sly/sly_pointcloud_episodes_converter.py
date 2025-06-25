@@ -7,7 +7,7 @@ from supervisely.convert.base_converter import AvailablePointcloudEpisodesConver
 from supervisely.convert.pointcloud_episodes.pointcloud_episodes_converter import (
     PointcloudEpisodeConverter,
 )
-from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name, get_file_name_with_ext
+from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
 
