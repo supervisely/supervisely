@@ -1,5 +1,5 @@
 from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
-from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text, Checkbox
+from supervisely.app.widgets import Button, Card, ClassesTable, Container, Text, CheckboxField
 
 
 class ClassesSelector:
@@ -39,7 +39,11 @@ class ClassesSelector:
         self.validator_text.hide()
 
         # Auto-convert checkbox
-        self.auto_convert_checkbox = Checkbox("Auto convert classes to model task type", False)
+        self.auto_convert_checkbox = CheckboxField(
+            title="Auto convert classes to model task type",
+            description="If possible, classes with wrong shapes will be converted to the model task type",
+            checked=False,
+        )
 
         self.button = Button("Select")
         self.display_widgets.extend(
@@ -105,9 +109,7 @@ class ClassesSelector:
                 intersections = set(selected_classes).intersection(empty_classes)
                 if intersections:
                     class_text = "class" if len(intersections) == 1 else "classes"
-                    message += (
-                        f". Selected {class_text} have no annotations: {', '.join(intersections)}"
-                    )
+                    message += f". Selected {class_text} have no annotations: {', '.join(intersections)}"
                     status = "warning"
 
         self.validator_text.set(text=message, status=status)
