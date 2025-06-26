@@ -2785,8 +2785,6 @@ class TrainApp:
             "experiment_report",
         ],
     ):
-        message = f"Status: {status}"
-
         if status == "reset":
             message = ""
             status = "text"
@@ -2829,7 +2827,7 @@ class TrainApp:
             message = "Generating experiment report..."
             status = "info"
         
-        message = f"Status: {status}"
+        message = f"Status: {message}"
         self.gui.training_process.validator_text.set(message, status)
 
     def _set_ws_progress_status(
