@@ -21,6 +21,7 @@ class TemplateRenderer:
         generate_sidebar: bool = False,
         jinja_options: Optional[Dict[str, Any]] = None,
         jinja_extensions: Optional[list] = None,
+        add_header_ids: bool = True,
     ):
         """
         Initializes template renderer with specified parameters.
@@ -44,6 +45,7 @@ class TemplateRenderer:
 
         self.jinja_extensions = jinja_extensions
         self.jinja_options = jinja_options
+        self.add_header_ids = add_header_ids
 
     def render(
         self,
@@ -74,8 +76,62 @@ class TemplateRenderer:
         # Generate sidebar if AutoSidebarExtension is used
         if AutoSidebarExtension in self.jinja_extensions:
             html = self._generate_autosidebar(html)
+        elif self.add_header_ids:
+            html = self._add_header_ids(html)
 
         return html
+
+    def _add_header_ids(self, content_html: str) -> str:
+        """
+        Add IDs to h2 and h3 header tags for table of contents generation.
+        
+        Args:
+            content_html: HTML content with h2 and h3 headers
+            
+        Returns:
+            HTML content with IDs added to headers
+        """
+        def clean_title_for_id(title: str) -> str:
+            """Convert header title to a clean ID format"""
+            # Remove HTML tags if any
+            title = re.sub(r'<[^>]+>', '', title)
+            # Keep only alphanumeric characters, spaces, and hyphens
+            title = re.sub(r'[^\w\s-]', '', title)
+            # Replace spaces with hyphens and convert to lowercase
+            title = title.strip().lower().replace(' ', '-')
+            # Remove multiple consecutive hyphens
+            title = re.sub(r'-+', '-', title)
+            # Remove leading/trailing hyphens
+            title = title.strip('-')
+            return title
+        
+        def replace_header(match):
+            """Replace header with version that includes ID"""
+            level = match.group(1)  # Header level (2 or 3)
+            title = match.group(2).strip()  # Header title text
+            
+            # Generate clean ID
+            clean_id = clean_title_for_id(title)
+            section_id = f"{clean_id}"
+            
+            # Check for potential duplicate IDs (basic check)
+            if section_id in used_ids:
+                logger.debug(f"Duplicate header ID detected: '{section_id}' for title '{title}'")
+            used_ids.add(section_id)
+            
+            # Return header with ID attribute
+            return f'<h{level} id="{section_id}">{title}</h{level}>'
+        
+        # Track used IDs for duplicate detection
+        used_ids = set()
+        
+        # Pattern to match h2 and h3 headers
+        header_pattern = r"<h([2-3])>(.*?)</h\1>"
+        
+        # Replace all matching headers with versions that include IDs
+        updated_html = re.sub(header_pattern, replace_header, content_html, flags=re.IGNORECASE)
+        
+        return updated_html
 
     def _generate_autosidebar(self, content_html: str):
         # Extract h2 headers and generate ids
