@@ -62,7 +62,7 @@ class ClassesSelector:
 
         # Auto-convert checkbox
         self.auto_convert_checkbox = CheckboxField(
-            title="Auto convert classes to model task type",
+            title="Auto-convert classes to model task type",
             description="If possible, classes with wrong geometries will be converted to the model task type",
             checked=False,
         )

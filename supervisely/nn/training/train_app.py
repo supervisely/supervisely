@@ -186,6 +186,7 @@ class TrainApp:
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
         self._train_func = None
+        self._training_duration = None
 
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
@@ -1779,6 +1780,7 @@ class TrainApp:
             "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
             "device": self.gui.training_process.get_device_name(),
+            "training_duration": self._training_duration,
         }
 
         if self._has_splits_selector:
@@ -2682,7 +2684,7 @@ class TrainApp:
                 self._set_ws_progress_status("training")
 
             experiment_info = self._train_func()
-            experiment_info["training_duration"] = self._train_func.elapsed
+            self._training_duration = self._train_func.elapsed
         except ZeroDivisionError as e:
             message = (
                 "'ZeroDivisionError' occurred during training. "
@@ -2928,45 +2930,57 @@ class TrainApp:
         return remote_export_weights
 
     def _convert_and_split_gt_project(self, task_type: str):
-        # @TODO: Project can be modified in external code
-        if not self.gui.classes_selector.is_auto_convert_enabled():
-            self._convert_project_to_model_task()
+        # 1. Convert GT project to cv task
+        Project.download(
+            self._api,
+            self.project_info.id,
+            "tmp_project",
+            save_images=False,
+            save_image_info=True,
+        )
+        project = Project("tmp_project", OpenMode.READ)
+        project.remove_classes_except(project.directory, self.classes, True)
 
-        project = self.sly_project
+        pr_prefix = ""
         if task_type == TaskType.OBJECT_DETECTION:
+            Project.to_detection_task(project.directory, inplace=True)
             pr_prefix = "[detection]: "
-        elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
-            pr_prefix = "[segmentation]: "
-        else:
-            pr_prefix = ""
+        elif task_type == TaskType.INSTANCE_SEGMENTATION:
+            Project.to_segmentation_task(project.directory, segmentation_type="instance", inplace=True)
+            pr_prefix = "[instance segmentation]: "
+        elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+            Project.to_segmentation_task(project.directory, segmentation_type="semantic", inplace=True)
+            pr_prefix = "[semantic segmentation]: "
 
         gt_project_info = self._api.project.create(
             self.workspace_id,
             f"{pr_prefix}{self.project_info.name}",
             description=(
-                f"Converted ground truth project for training session: '{self.task_id}'. "
+                f"Converted ground truth project for trainig session: '{self.task_id}'. "
                 f"Original project id: '{self.project_info.id}. "
                 "Removing this project will affect model benchmark evaluation report."
             ),
             change_name_if_conflict=True,
         )
+
+        # 3. Upload converted gt project
+        project = Project("tmp_project", OpenMode.READ)
         self._api.project.update_meta(gt_project_info.id, project.meta)
+        for dataset in project.datasets:
+            dataset: Dataset
+            ds_info = self._api.dataset.create(
+                gt_project_info.id, dataset.name, change_name_if_conflict=True
+            )
+            for batch_names in batched(dataset.get_items_names(), 100):
+                img_infos = [dataset.get_item_info(name) for name in batch_names]
+                img_ids = [img_info.id for img_info in img_infos]
+                anns = [dataset.get_ann(name, project.meta) for name in batch_names]
 
-        with self.progress_bar_main(message=f"Uploading converted GT project for model benchmark report", total=len(project.datasets)) as pbar:
-            for dataset in project.datasets:
-                dataset: Dataset
-                ds_info = self._api.dataset.create(gt_project_info.id, dataset.name, change_name_if_conflict=True)
-                with self.progress_bar_secondary(message=f"Uploading GT dataset: {dataset.name}", total=len(dataset.get_items_names())) as pbar_secondary:
-                    for batch_names in batched(dataset.get_items_names(), 100):
-                        img_infos = [dataset.get_item_info(name) for name in batch_names]
-                        img_ids = [img_info.id for img_info in img_infos]
-                        anns = [dataset.get_ann(name, project.meta) for name in batch_names]
+                img_infos = self._api.image.copy_batch(ds_info.id, img_ids)
+                img_ids = [img_info.id for img_info in img_infos]
+                self._api.annotation.upload_anns(img_ids, anns)
+        sly_fs.remove_dir(project.directory)
 
-                        img_infos = self._api.image.copy_batch(ds_info.id, img_ids)
-                        img_ids = [img_info.id for img_info in img_infos]
-                        self._api.annotation.upload_anns(img_ids, anns)
-                        pbar_secondary.update(len(batch_names))
-                pbar.update(1)
-
+        # 4. Match splits with original project
         gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data
