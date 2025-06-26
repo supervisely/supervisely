@@ -577,8 +577,9 @@ class TrainApp:
         # Step 2. Download Project
         self._download_project()
         # Step 3. Convert Project to Task
-        if self.gui.classes_selector.is_auto_convert_enabled():
-            self._convert_project_to_model_task()
+        if self.gui.need_convert_shapes:
+            if self.gui.classes_selector.is_auto_convert_enabled():
+                self._convert_project_to_model_task()
         # Step 4. Split Project
         self._split_project()
         # Step 5. Download Model files
@@ -623,8 +624,8 @@ class TrainApp:
                 # Convert GT project
                 gt_project_id, bm_splits_data = None, train_splits_data
                 # @TODO: check with anyshape classes
-                if self._app_options.get("auto_convert_classes", True):
-                    if self.gui.need_convert_shapes_for_bm:
+                if self.gui.need_convert_shapes:
+                    if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value():
                         self._set_text_status("convert_gt_project")
                         gt_project_id, bm_splits_data = self._convert_and_split_gt_project(
                             experiment_info["task_type"]
@@ -952,8 +953,10 @@ class TrainApp:
         with self.progress_bar_main(message=f"Converting project to {task_type}", total=len(self.sly_project.datasets)) as pbar:
             if task_type == TaskType.OBJECT_DETECTION:
                 self.sly_project.to_detection_task(self.project_dir, inplace=True, progress_cb=pbar.update)
-            elif task_type == TaskType.INSTANCE_SEGMENTATION or task_type == TaskType.SEMANTIC_SEGMENTATION:
-                self.sly_project.to_segmentation_task(self.project_dir, inplace=True, progress_cb=pbar.update)
+            elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                self.sly_project.to_segmentation_task(self.project_dir, inplace=True, segmentation_type="instance", progress_cb=pbar.update)
+            elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+                self.sly_project.to_segmentation_task(self.project_dir, inplace=True, segmentation_type="semantic", progress_cb=pbar.update)
         self.sly_project = Project(self.project_dir, OpenMode.READ)
 
     def _download_project(self) -> None:
@@ -2928,11 +2931,9 @@ class TrainApp:
 
     def _convert_and_split_gt_project(self, task_type: str):
         # @TODO: Project can be modified in external code
-        
-        # Convert project if auto convert was disabled
         if not self.gui.classes_selector.is_auto_convert_enabled():
             self._convert_project_to_model_task()
-        
+
         project = self.sly_project
         if task_type == TaskType.OBJECT_DETECTION:
             pr_prefix = "[detection]: "

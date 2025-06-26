@@ -253,7 +253,7 @@ class TrainGUI:
         self.hyperparameters = hyperparameters
         self.app_options = app_options
         self.collapsable = self.app_options.get("collapsable", False)
-        self.need_convert_shapes_for_bm = False
+        self.need_convert_shapes = False
 
         self.team_id = sly_env.team_id(raise_not_found=False)
         self.workspace_id = sly_env.workspace_id(raise_not_found=False)
@@ -303,7 +303,7 @@ class TrainGUI:
         # 3. Classes selector
         self.classes_selector = None
         if self.show_classes_selector:
-            self.classes_selector = ClassesSelector(self.project_id, [], self.app_options)
+            self.classes_selector = ClassesSelector(self.project_id, [], self.model_selector, self.app_options)
             self.steps.append(self.classes_selector.card)
 
         # 4. Tags selector
@@ -364,96 +364,36 @@ class TrainGUI:
             self.training_process.set_experiment_name(experiment_name)
 
         def need_convert_class_shapes() -> bool:
-            if self.hyperparameters_selector.run_model_benchmark_checkbox is not None:
-                if not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
-                    self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
-                    self.need_convert_shapes_for_bm = False
-                else:
-                    task_type = self.model_selector.get_selected_task_type()
+            if self.hyperparameters_selector.run_model_benchmark_checkbox is None or not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
+                self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
+                self.need_convert_shapes = False
+                return False
 
-                    def _need_convert(shape):
-                        if task_type == TaskType.OBJECT_DETECTION:
-                            return shape != Rectangle.geometry_name()
-                        elif task_type in [
-                            TaskType.INSTANCE_SEGMENTATION,
-                            TaskType.SEMANTIC_SEGMENTATION,
-                        ]:
-                            return shape == Polygon.geometry_name()
-                        return False
-
-                    if self.classes_selector is not None:
-                        data = self.classes_selector.classes_table._table_data
-                        selected_classes = set(
-                            self.classes_selector.classes_table.get_selected_classes()
-                        )
-                        empty = set(
-                            r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0
-                        )
-                        need_convert = set(
-                            r[0]["data"] for r in data if _need_convert(r[1]["data"])
-                        )
-                    else:
-                        # Set project meta classes when classes selector is disabled
-                        selected_classes = set(cls.name for cls in self.project_meta.obj_classes)
-                        need_convert = set(
-                            obj_class.name
-                            for obj_class in self.project_meta.obj_classes
-                            if _need_convert(obj_class.geometry_type)
-                        )
-                        empty = set()
-
-                    if need_convert.intersection(selected_classes - empty):
-                        self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
-                        self.need_convert_shapes_for_bm = True
-                    else:
-                        self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
-                        self.need_convert_shapes_for_bm = False
-            else:
-                self.need_convert_shapes_for_bm = False
-
-        def validate_class_shape_for_model_task():
             task_type = self.model_selector.get_selected_task_type()
+
             if self.classes_selector is not None:
-                classes = self.classes_selector.get_selected_classes()
+                wrong_shapes = set(self.classes_selector.get_wrong_shape_classes(task_type))
+
+                # Exclude classes with no annotations to avoid unnecessary conversion
+                data = self.classes_selector.classes_table._table_data
+                empty_classes = {r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0}
+                need_conversion = bool(wrong_shapes - empty_classes)
             else:
-                classes = list(self.project_meta.obj_classes.keys())
-
-            required_geometries = {
-                TaskType.INSTANCE_SEGMENTATION: {Polygon, Bitmap},
-                TaskType.SEMANTIC_SEGMENTATION: {Polygon, Bitmap},
-                TaskType.POSE_ESTIMATION: {GraphNodes},
-            }
-            task_specific_texts = {
-                TaskType.INSTANCE_SEGMENTATION: "Only polygon and bitmap shapes are supported for segmentation task",
-                TaskType.SEMANTIC_SEGMENTATION: "Only polygon and bitmap shapes are supported for segmentation task",
-                TaskType.POSE_ESTIMATION: "Only keypoint (graph) shape is supported for pose estimation task",
-            }
-
-            if task_type not in required_geometries:
-                return
-
-            wrong_shape_classes = [
-                class_name
-                for class_name in classes
-                if self.project_meta.get_obj_class(class_name).geometry_type
-                not in required_geometries[task_type]
-            ]
-
-            if wrong_shape_classes:
-                specific_text = task_specific_texts[task_type]
-                if self.classes_selector and self.classes_selector.is_auto_convert_enabled():
-                    message_text = (
-                        f"Auto-convert enabled. Selected classes with shapes {{ {', '.join(wrong_shape_classes)} }} will be converted for task '{task_type}'."
-                    )
-                    status = "info"
-                    self.need_convert_shapes_for_bm = True
+                # Classes selector disabled – check entire project meta
+                if task_type == TaskType.OBJECT_DETECTION:
+                    need_conversion = any(obj_cls.geometry_type != Rectangle for obj_cls in self.project_meta.obj_classes)
+                elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
+                    need_conversion = any(obj_cls.geometry_type == Polygon for obj_cls in self.project_meta.obj_classes)
                 else:
-                    message_text = (
-                        f"Model task type is {task_type}. {specific_text}. Selected classes have wrong shapes: {', '.join(wrong_shape_classes)}"
-                    )
-                    status = "warning"
-                self.classes_selector.validator_text.set(message_text, status)
+                    need_conversion = False
 
+            if need_conversion:
+                self.hyperparameters_selector.model_benchmark_auto_convert_warning.show()
+            else:
+                self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
+
+            self.need_convert_shapes = need_conversion
+            return need_conversion
         # ------------------------------------------------- #
 
         self.step_flow = StepFlow(self.stepper, self.app_options)
@@ -494,10 +434,7 @@ class TrainGUI:
                 self.classes_selector.validator_text,
                 self.classes_selector.validate_step,
                 position=position,
-            ).add_on_select_actions(
-                "classes_selector",
-                [need_convert_class_shapes, validate_class_shape_for_model_task],
-            )
+            ).add_on_select_actions("classes_selector", [need_convert_class_shapes])
             position += 1
 
         # 4. Tags selector
@@ -634,8 +571,6 @@ class TrainGUI:
             @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
             def show_mb_speedtest(is_checked: bool):
                 self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
-                need_convert_class_shapes()
-
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper
