@@ -1192,7 +1192,7 @@ class TrainApp:
 
         # Clean up temporary directory
         sly_fs.remove_dir(project_split_path)
-        self._read_project(False)
+        self._read_project()
 
     # ----------------------------------------- #
 
