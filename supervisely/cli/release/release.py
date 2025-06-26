@@ -160,6 +160,7 @@ def upload_archive(
     user_id,
     subapp_path,
     share_app,
+    files,
 ):
     f = open(archive_path, "rb")
     archive_name = os.path.basename(archive_path)
@@ -182,6 +183,13 @@ def upload_archive(
         fields["userId"] = str(user_id)
     if share_app:
         fields["isShared"] = "true"
+    if files:
+        files_contents = {}
+        fields["files"] = files_contents
+        for file_name, file_path in files.items():
+            files_contents[file_name] = Path(file_path).read_text(encoding="utf-8")
+        fields["files"] = json.dumps(files_contents)
+
     e = MultipartEncoder(fields=fields)
     encoder_len = e.len
     with tqdm(
@@ -293,6 +301,7 @@ def release(
     subapp_path="",
     created_at=None,
     share_app=False,
+    files=None,
 ):
     if created_at is None:
         created_at = get_created_at(repo, release_version)
@@ -317,6 +326,7 @@ def release(
             user_id,
             subapp_path,
             share_app,
+            files,
         )
     finally:
         delete_directory(os.path.dirname(archive_path))

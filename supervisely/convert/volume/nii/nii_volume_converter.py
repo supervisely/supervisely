@@ -126,10 +126,12 @@ class NiiConverter(VolumeConverter):
                     ann_name = get_file_name(ann_name)
 
                 ann_name = renamed_classes.get(ann_name, ann_name)
-                for mask, _ in helper.get_annotation_from_nii(ann_path):
+                for mask, pixel_value in helper.get_annotation_from_nii(ann_path):
                     obj_class = meta.get_obj_class(ann_name)
                     if obj_class is None:
-                        obj_class = ObjClass(ann_name, Mask3D)
+                        obj_class = ObjClass(
+                            ann_name, Mask3D, description=f"{helper.MASK_PIXEL_VALUE}{pixel_value}"
+                        )
                         meta = meta.add_obj_class(obj_class)
                         self._meta_changed = True
                         self._meta = meta
@@ -169,10 +171,10 @@ class NiiConverter(VolumeConverter):
             item_paths = []
 
             for item in batch:
-                # if self._upload_as_links:
-                #     remote_path = self.remote_files_map.get(item.path)
-                #     if remote_path is not None:
-                #         item.custom_data = {"remote_path": remote_path}
+                if self._upload_as_links:
+                    remote_path = self.remote_files_map.get(item.path)
+                    if remote_path is not None:
+                        item.custom_data["remote_path"] = remote_path
 
                 item.path = helper.nifti_to_nrrd(item.path, converted_dir)
                 ext = get_file_ext(item.path)
@@ -195,8 +197,8 @@ class NiiConverter(VolumeConverter):
                     leave=True if progress_cb is None else False,
                     position=1,
                 )
-                # if item.custom_data is not None:
-                #     volume_meta.update(item.custom_data)
+                if item.custom_data is not None:
+                    volume_meta.update(item.custom_data)
                 api.volume.upload_np(dataset_id, item.name, volume_np, volume_meta, progress_nrrd)
                 info = api.volume.get_info_by_name(dataset_id, item.name)
                 item.volume_meta = info.meta
