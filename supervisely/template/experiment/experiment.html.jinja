@@ -1,4 +1,4 @@
-# {{ experiment.name }}
+{# # {{ experiment.name }}
 
 *Trained on: {{ experiment.date }}*
 
@@ -17,21 +17,7 @@
 - **Training duration**: {{ experiment.training.duration }}
 {% if experiment.training.evaluation.primary_metric.name %}
 - **{{ experiment.training.evaluation.primary_metric.name }}**: {{ experiment.training.evaluation.primary_metric.rounded_value }}
-{% endif %}
-
-{% if experiment.training.hyperparameters %}
-<details>
-    <summary>Hyperparameters</summary>
-
-    ```yaml
-    {% for hyperparameter in experiment.training.hyperparameters %}
-    {{ hyperparameter }}
-    {% endfor %}
-    ```
-
-</details>
-
-{% endif %}
+{% endif %} #}
 
 {% if experiment.training.evaluation.id and widgets.sample_pred_gallery %}
 
@@ -89,7 +75,35 @@ Here are the essential checkpoints and exports of the model:
 </details>
 {% endif %}
 
-### Supervisely Apps
+## Classes
+
+The model can predict {{ experiment.project.classes.count }} classes. Here is the full list of classes:
+
+<details>
+    <summary>Classes</summary>
+    {{ widgets.tables.classes }}
+
+</details>
+
+{% if experiment.training.hyperparameters %}
+
+## Hyperparameters
+
+The training process was configured with the following hyperparameters. You can use them to reproduce the training.
+
+<details>
+    <summary>Hyperparameters</summary>
+
+    ```yaml
+    {% for hyperparameter in experiment.training.hyperparameters %}
+    {{ hyperparameter }}
+    {% endfor %}
+    ```
+
+</details>
+{% endif %}
+
+## Supervisely Apps
 
 The quick actions on this page, such as **Deploy**, **Predict**, or **Fine-tune**, help you to quickly work with your model. But you can also run the apps manually from the Supervisely Platform. Here are related apps to this experiment:
 
@@ -106,14 +120,14 @@ for predictions on video project or dataset.
 
 In this section, you'll find the quickstart guides for integrating your model into your applications using the Supervisely API, you'll learn how to deploy your model outside of the Supervisely Platform, and how to deploy it in a Docker container.
 
-**Table of contents:**
+### Table of contents:
 
 - [Supervisely API](#supervisely-api)
 - [Deploy in Docker](#deploy-in-docker)
 - [Deploy locally with Supervisely SDK](#deploy-locally-with-supervisely-sdk)
 - [Using Original Model Codebase](#using-original-model-codebase)
 
-### Supervisely API
+## Supervisely API
 
 Here is a **quickstart** guide of how to use the Supervisely API.
 
@@ -153,7 +167,7 @@ can pass them in the terminal before running the script:
     )
     ```
 
-#### Deploy via API
+### Deploy via API
 
 Deploy your model in a few lines of code. The model will be deployed in the Supervisely Platform, after this, you can
 use it for predictions.
@@ -218,7 +232,7 @@ model = api.nn.deploy(
 API](https://docs.supervisely.com/neural-networks/overview-1/model-api){:target="_blank"}
 documentation.
 
-#### Predict via API
+### Predict via API
 
 Use the deployed model to make predictions on images, videos, or directories. Connect to a deployed
 model and make predictions.
@@ -277,7 +291,7 @@ predictions = model.predict(video_id=123 # Video ID in Supervisely)
 > For more information, see [Prediction
 API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"}.
 
-### Tracking Objects in Video
+## Tracking Objects in Video
 
 You can track objects in video using `boxmot` library.
 [BoxMot](https://github.com/mikel-brostrom/boxmot){:target="_blank"} is a
@@ -324,7 +338,7 @@ video_ann: sly.VideoAnnotation = track(
 Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video){:target="_blank"}.
 
 
-### Deploy in Docker
+## Deploy in Docker
 
 You can deploy the model in a 🐋 Docker Container with a single `docker run` command. Download a checkpoint, pull the
 docker image for the corresponding model's framework, and run the `docker run` command with addtional arguments.
@@ -387,7 +401,7 @@ docker run \
 Container](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container){:target="_blank"}
 documentation.
 
-### Deploy locally with Supervisely SDK
+## Deploy locally with Supervisely SDK
 
 If you develop your application outside of Supervisely, you can deploy your model on your machine with the help of the Supervisely SDK and our prepared codebase for a specific model (we usually make a fork of the original model repository).
 This approach helps you to quickly set up the environment and run inference without the need to implement code for loading the model and making predictions by yourself, because all our model integrations are developed with the Supervisely SDK, and the inference could be done in a few lines of code, in a unified way.
@@ -432,7 +446,7 @@ This approach helps you to quickly set up the environment and run inference with
 > For more information, see [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/local-deployment.md){:target="_blank"} and [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"} documentations.
 
 {% if experiment.training.checkpoints.onnx.name or experiment.training.checkpoints.tensorrt.name %}
-#### Deploy ONNX/TensorRT
+### Deploy ONNX/TensorRT
 
 You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT
 model,
@@ -477,7 +491,7 @@ predictions = model.predict(
 
 {% if code.demo.pytorch.path %}
 
-### Using Original Model Codebase
+## Using Original Model Codebase
 
 In this approach you'll completely decouple your model from both the **Supervisely Platform** and **Supervisely SDK**,
 and you will develop your own code for inference and deployment of that particular model. It's important to understand

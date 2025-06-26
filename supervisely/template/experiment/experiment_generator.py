@@ -136,11 +136,13 @@ class ExperimentGenerator(BaseGenerator):
         checkpoints_table = self._generate_checkpoints_table()
         metrics_table = self._generate_metrics_table(self.info["task_type"])
         sample_gallery = self._get_sample_predictions_gallery()
+        classes_table = self._generate_classes_table()
 
         return {
             "tables": {
                 "checkpoints": checkpoints_table,
                 "metrics": metrics_table,
+                "classes": classes_table,
             },
             "sample_pred_gallery": sample_gallery,
         }
@@ -156,8 +158,8 @@ class ExperimentGenerator(BaseGenerator):
         if not metrics:
             return None
 
-        html = ['<table class="metrics-table">']
-        html.append("<thead><tr><th>Metrics</th><th>Values</th></tr></thead>")
+        html = ['<table class="table">']
+        html.append("<thead><tr><th>Metrics</th><th>Value</th></tr></thead>")
         html.append("<tbody>")
 
         if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
@@ -180,6 +182,27 @@ class ExperimentGenerator(BaseGenerator):
         html.append("</table>")
         return "\n".join(html)
 
+    def _generate_classes_table(self) -> str:
+        """Generate HTML table with class names.
+
+        :returns: HTML string with classes table
+        :rtype: str
+        """
+        model_classes = [cls.name for cls in self.model_meta.obj_classes]
+        if not model_classes:
+            return None
+
+        html = ['<table class="table">']
+        html.append("<thead><tr><th>Class name</th></tr></thead>")
+        html.append("<tbody>")
+
+        for class_name in model_classes:
+            html.append(f"<tr><td>{class_name}</td></tr>")
+
+        html.append("</tbody>")
+        html.append("</table>")
+        return "\n".join(html)
+    
     def _generate_metrics_table_horizontal(self) -> str:
         """Generate HTML table with evaluation metrics.
 
@@ -190,7 +213,7 @@ class ExperimentGenerator(BaseGenerator):
         if not metrics:
             return None
         
-        html = ['<table class="metrics-table">']
+        html = ['<table class="table">']
         # Generate header row with metric names
         header_cells = []
         for metric_name in metrics.keys():
@@ -301,8 +324,8 @@ class ExperimentGenerator(BaseGenerator):
             for info in checkpoint_infos
         ]
 
-        html = ['<table class="checkpoints-table">']
-        html.append("<thead><tr><th>Checkpoints</th><th>Size</th><th> </th></tr></thead>")
+        html = ['<table class="table">']
+        html.append("<thead><tr><th>Checkpoint</th><th>Size</th><th> </th></tr></thead>")
         html.append("<tbody>")
         for checkpoint, size, dl_link in zip(checkpoints, checkpoint_sizes, checkpoint_dl_links):
             if isinstance(checkpoint, str):

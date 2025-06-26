@@ -1,0 +1,59 @@
+<div class="experiment-info-header">
+    <div class="experiment-info-subheader">
+        <h1>{{ experiment.name }}</h1>
+
+    </div>
+    <div class="experiment-info-subheader-body">
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Info</h2>
+                <a href="{{ experiment.training.session.url }}" target="_blank">Session <i class="zmdi zmdi-arrow-right-top" /></a>
+                <a href="{{ experiment.training.logs.url }}" target="_blank">Logs <i class="zmdi zmdi-arrow-right-top" /></a>
+            </div>
+            <ul>
+            <li><strong>Date:</strong> {{ experiment.date }}</li>
+            <li><strong>Model:</strong> {{ experiment.model.name }} ({{ experiment.model.framework }})</li>
+            <li><strong>Device:</strong> {{ experiment.training.device }}</li>
+            <li><strong>Duration:</strong> {{ experiment.training.duration }}</li>
+            </ul>
+        </div>
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Data</h2>
+                <a href="{{ experiment.project.url }}" target="_blank">Project <i class="zmdi zmdi-arrow-right-top" /></a>
+                <a href="{{ experiment.paths.artifacts_dir.url }}" target="_blank">Artifacts <i class="zmdi zmdi-arrow-right-top" /></a>
+            </div>
+            <ul>
+            <li><strong>Project:</strong> {{ experiment.project.name }}</li>
+            <li><strong>Classes:</strong> ({{ experiment.project.classes.count }})  {% for class_name in experiment.project.classes.names.short_list %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>
+            <li><strong>Training:</strong> {{ experiment.project.splits.train }} {{ experiment.project.type }}</li>
+            <li><strong>Validation:</strong> {{ experiment.project.splits.val }} {{ experiment.project.type }}</li>
+            </ul>
+        </div>
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Evaluation</h2>
+                {% if experiment.training.evaluation.id %}
+                <a href="{{ experiment.training.evaluation.url }}" target="_blank">Full Report <i class="zmdi zmdi-arrow-right-top" /></a>
+                {% endif %}
+            </div>
+            {% for metric in experiment.training.evaluation.display_metrics %}
+            <div class="experiment-metric">
+                <span class="experiment-label">{{ metric.name }}</span>
+                <span class="experiment-value">{{ metric.value }}</span>
+                <div class="experiment-progress-bar">
+                    <div class="experiment-progress" style="width: {{ metric.percent_value }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="experiment-info-subheader-footer-menu">
+        <a href="#predictions" class="active">Predictions</a>
+        <a href="#evaluation">Evaluation</a>
+        <a href="#artifacts">Artifacts</a>
+        <a href="#classes">Classes</a>
+        <a href="#hyperparameters">Hyperparameters</a>
+        <a href="#api-integration-amp-deployment">API Integration</a>
+    </div>
+</div>
