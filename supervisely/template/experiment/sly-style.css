@@ -167,6 +167,7 @@
     cursor: pointer;
     font-weight: 600;
     transition: background-color 0.2s;
+    width: fit-content;
 }
 
 .experiment-body details summary:hover {

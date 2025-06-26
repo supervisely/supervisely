@@ -13,8 +13,9 @@
             <ul>
             <li><strong>Date:</strong> {{ experiment.date }}</li>
             <li><strong>Model:</strong> {{ experiment.model.name }} ({{ experiment.model.framework }})</li>
+            <li><strong>Task:</strong> {{ experiment.model.task_type }}</li>
             <li><strong>Device:</strong> {{ experiment.training.device }}</li>
-            <li><strong>Duration:</strong> {{ experiment.training.duration }}</li>
+            <li><strong>Training duration:</strong> {{ experiment.training.duration }}</li>
             </ul>
         </div>
         <div class="experiment-info-subheader-block">
@@ -49,11 +50,11 @@
         </div>
     </div>
     <div class="experiment-info-subheader-footer-menu">
-        <a href="#predictions" class="active">Predictions</a>
-        <a href="#evaluation">Evaluation</a>
-        <a href="#artifacts">Artifacts</a>
-        <a href="#classes">Classes</a>
-        <a href="#hyperparameters">Hyperparameters</a>
-        <a href="#api-integration-amp-deployment">API Integration</a>
+        <a :href="`${window.location.pathname}#predictions`" class="active">Predictions</a>
+        <a :href="`${window.location.pathname}#evaluation-2`">Evaluation</a>
+        <a :href="`${window.location.pathname}#artifacts`">Artifacts</a>
+        <a :href="`${window.location.pathname}#classes`">Classes</a>
+        <a :href="`${window.location.pathname}#hyperparameters`">Hyperparameters</a>
+        <a :href="`${window.location.pathname}#api-integration-amp-deployment`">API Integration & Deployment</a>
     </div>
 </div>

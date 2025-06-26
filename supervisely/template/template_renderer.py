@@ -117,6 +117,7 @@ class TemplateRenderer:
             # Check for potential duplicate IDs (basic check)
             if section_id in used_ids:
                 logger.debug(f"Duplicate header ID detected: '{section_id}' for title '{title}'")
+                section_id += "-2"  # TODO: Improve duplicate handling logic
             used_ids.add(section_id)
             
             # Return header with ID attribute
