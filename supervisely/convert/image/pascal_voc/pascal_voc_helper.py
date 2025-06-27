@@ -35,7 +35,7 @@ VALID_IMG_EXT = {".jpe", ".jpeg", ".jpg"}
 TRAIN_TAG_NAME = "train"
 VAL_TAG_NAME = "val"
 TRAINVAL_TAG_NAME = "trainval"
-DEFAULT_OBJECT_FIELDS = {"name", "pose", "truncated", "difficult", "bndbox"}
+DEFAULT_OBJECT_FIELDS = {"name", "class", "bndbox"}
 
 default_classes_colors = {
     "neutral": (224, 224, 192),
@@ -208,7 +208,7 @@ def xml_to_sly_labels(
 
         for element in obj:
             field_name, value = element.tag, element.text
-            if field_name == "name":
+            if field_name in ["name", "class"]:
                 cls_name = bbox_classes_map.get(value, value)
                 if renamed_classes and cls_name in renamed_classes:
                     cls_name = renamed_classes[cls_name]
@@ -255,7 +255,7 @@ def update_meta_from_xml(
     for obj in root.iter("object"):
         for element in obj:
             field_name = element.tag
-            if field_name == "name":
+            if field_name in ["name", "class"]:
                 class_name = element.text
                 original_class_name = class_name
                 obj_cls = meta.obj_classes.get(class_name)
