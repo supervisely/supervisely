@@ -72,7 +72,9 @@ class ExperimentGenerator(BaseGenerator):
         remote_report_path = os.path.join(
             self.info["artifacts_dir"], "visualization", "template.vue"
         )
-        experiment_report = self.api.file.get_info_by_path(self.team_id, remote_report_path)
+        experiment_report = self.api.file.get_info_by_path(
+            self.team_id, remote_report_path
+        )
         if experiment_report is None:
             raise ValueError("Generate and upload report first")
         return experiment_report
@@ -122,8 +124,12 @@ class ExperimentGenerator(BaseGenerator):
             "docker": {"image": docker_image},
             "local_prediction": {
                 "repo": repo_info,
-                "serving_module": self.serving_class.__module__ if self.serving_class else None,
-                "serving_class": self.serving_class.__name__ if self.serving_class else None,
+                "serving_module": (
+                    self.serving_class.__module__ if self.serving_class else None
+                ),
+                "serving_class": (
+                    self.serving_class.__name__ if self.serving_class else None
+                ),
             },
             "demo": {
                 "pytorch": pytorch_demo,
@@ -146,6 +152,7 @@ class ExperimentGenerator(BaseGenerator):
             },
             "sample_pred_gallery": sample_gallery,
         }
+
     # --------------------------------------------------------------------------- #
 
     def _generate_metrics_table(self, task_type: str) -> str:
@@ -162,7 +169,10 @@ class ExperimentGenerator(BaseGenerator):
         html.append("<thead><tr><th>Metrics</th><th>Value</th></tr></thead>")
         html.append("<tbody>")
 
-        if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
+        if (
+            task_type == TaskType.OBJECT_DETECTION
+            or task_type == TaskType.INSTANCE_SEGMENTATION
+        ):
             metric_names = OBJECT_DETECTION_METRIC_NAMES
         elif task_type == TaskType.SEMANTIC_SEGMENTATION:
             metric_names = SEMANTIC_SEGMENTATION_METRIC_NAMES
@@ -202,7 +212,7 @@ class ExperimentGenerator(BaseGenerator):
         html.append("</tbody>")
         html.append("</table>")
         return "\n".join(html)
-    
+
     def _generate_metrics_table_horizontal(self) -> str:
         """Generate HTML table with evaluation metrics.
 
@@ -212,7 +222,7 @@ class ExperimentGenerator(BaseGenerator):
         metrics = self.info.get("evaluation_metrics", {})
         if not metrics:
             return None
-        
+
         html = ['<table class="table">']
         # Generate header row with metric names
         header_cells = []
@@ -252,7 +262,9 @@ class ExperimentGenerator(BaseGenerator):
         primary_metric_value = eval_metrics.get(primary_metric_name)
 
         if primary_metric_name is None or primary_metric_value is None:
-            logger.debug(f"Primary metric is not found in evaluation metrics: {eval_metrics}")
+            logger.debug(
+                f"Primary metric is not found in evaluation metrics: {eval_metrics}"
+            )
             return primary_metric
 
         primary_metric = {
@@ -276,7 +288,10 @@ class ExperimentGenerator(BaseGenerator):
             return display_metrics
 
         main_metrics = []
-        if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
+        if (
+            task_type == TaskType.OBJECT_DETECTION
+            or task_type == TaskType.INSTANCE_SEGMENTATION
+        ):
             main_metrics = ["mAP", "AP75", "AP50", "precision", "recall"]
         elif task_type == TaskType.SEMANTIC_SEGMENTATION:
             main_metrics = ["mIoU", "mPixel", "mPrecision", "mRecall", "mF1"]
@@ -289,7 +304,11 @@ class ExperimentGenerator(BaseGenerator):
                 value = round(metric_value, 3)
                 percent_value = round(metric_value * 100, 3)
                 display_metrics.append(
-                    {"name": metric_name, "value": value, "percent_value": percent_value}
+                    {
+                        "name": metric_name,
+                        "value": value,
+                        "percent_value": percent_value,
+                    }
                 )
 
         return display_metrics
@@ -314,20 +333,29 @@ class ExperimentGenerator(BaseGenerator):
             if trt_checkpoint is not None:
                 checkpoints.append(trt_checkpoint)
 
-        checkpoint_paths = [os.path.join(self.artifacts_dir, ckpt) for ckpt in checkpoints]
-        checkpoint_infos = [
-            self.api.file.get_info_by_path(self.team_id, path) for path in checkpoint_paths
+        checkpoint_paths = [
+            os.path.join(self.artifacts_dir, ckpt) for ckpt in checkpoints
         ]
-        checkpoint_sizes = [f"{info.sizeb / 1024 / 1024:.2f} MB" for info in checkpoint_infos]
+        checkpoint_infos = [
+            self.api.file.get_info_by_path(self.team_id, path)
+            for path in checkpoint_paths
+        ]
+        checkpoint_sizes = [
+            f"{info.sizeb / 1024 / 1024:.2f} MB" for info in checkpoint_infos
+        ]
         checkpoint_dl_links = [
             f"<a href='{info.full_storage_url}' download='{sly_fs.get_file_name_with_ext(info.path)}'>Download</a>"
             for info in checkpoint_infos
         ]
 
         html = ['<table class="table">']
-        html.append("<thead><tr><th>Checkpoint</th><th>Size</th><th> </th></tr></thead>")
+        html.append(
+            "<thead><tr><th>Checkpoint</th><th>Size</th><th> </th></tr></thead>"
+        )
         html.append("<tbody>")
-        for checkpoint, size, dl_link in zip(checkpoints, checkpoint_sizes, checkpoint_dl_links):
+        for checkpoint, size, dl_link in zip(
+            checkpoints, checkpoint_sizes, checkpoint_dl_links
+        ):
             if isinstance(checkpoint, str):
                 html.append(
                     f"<tr><td>{os.path.basename(checkpoint)}</td><td>{size}</td><td>{dl_link}</td></tr>"
@@ -383,6 +411,25 @@ class ExperimentGenerator(BaseGenerator):
         }
         return training_session
 
+    def _get_training_duration(self) -> str:
+        """Get training duration.
+
+        :returns: Training duration in format "{h}h {m}m" or "N/A"
+        :rtype: str
+        """
+        raw_duration = self.info.get("training_duration", "N/A")
+        if raw_duration in (None, "N/A"):
+            return "N/A"
+
+        try:
+            duration_minutes = float(raw_duration)
+        except (TypeError, ValueError):
+            return str(raw_duration)
+
+        hours = int(duration_minutes // 60)
+        minutes = int(duration_minutes % 60)
+        return f"{hours}h {minutes}m"
+
     def _get_date(self) -> str:
         """Format experiment date.
 
@@ -408,7 +455,9 @@ class ExperimentGenerator(BaseGenerator):
         best_checkpoint_path = os.path.join(
             self.artifacts_dir, "checkpoints", self.info["best_checkpoint"]
         )
-        best_checkpoint_info = self.api.file.get_info_by_path(self.team_id, best_checkpoint_path)
+        best_checkpoint_info = self.api.file.get_info_by_path(
+            self.team_id, best_checkpoint_path
+        )
         best_checkpoint = {
             "name": self.info["best_checkpoint"],
             "path": best_checkpoint_path,
@@ -449,7 +498,9 @@ class ExperimentGenerator(BaseGenerator):
                 self.team_id,
                 os.path.join(os.path.dirname(onnx_checkpoint_path), "classes.json"),
             )
-            onnx_file_info = self.api.file.get_info_by_path(self.team_id, onnx_checkpoint_path)
+            onnx_file_info = self.api.file.get_info_by_path(
+                self.team_id, onnx_checkpoint_path
+            )
             onnx_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.ONNXRUNTIME)),
                 "path": onnx_checkpoint_path,
@@ -459,12 +510,16 @@ class ExperimentGenerator(BaseGenerator):
             }
         trt_checkpoint = export.get(RuntimeType.TENSORRT)
         if trt_checkpoint is not None:
-            trt_checkpoint_path = os.path.join(self.artifacts_dir, export.get(RuntimeType.TENSORRT))
+            trt_checkpoint_path = os.path.join(
+                self.artifacts_dir, export.get(RuntimeType.TENSORRT)
+            )
             classes_file = self.api.file.get_info_by_path(
                 self.team_id,
                 os.path.join(os.path.dirname(trt_checkpoint_path), "classes.json"),
             )
-            trt_file_info = self.api.file.get_info_by_path(self.team_id, trt_checkpoint_path)
+            trt_file_info = self.api.file.get_info_by_path(
+                self.team_id, trt_checkpoint_path
+            )
             trt_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.TENSORRT)),
                 "path": trt_checkpoint_path,
@@ -521,7 +576,9 @@ class ExperimentGenerator(BaseGenerator):
             root_dir = current_dir
 
             while root_dir.parent != root_dir:
-                config_path = root_dir / "supervisely_integration" / "train" / "config.json"
+                config_path = (
+                    root_dir / "supervisely_integration" / "train" / "config.json"
+                )
                 if config_path.exists():
                     break
                 root_dir = root_dir.parent
@@ -629,26 +686,37 @@ class ExperimentGenerator(BaseGenerator):
         :rtype: Tuple[str, str]
         """
 
-        def find_app_by_framework(api: Api, framework: str, action: Literal["train", "serve"]):
+        def find_app_by_framework(
+            api: Api, framework: str, action: Literal["train", "serve"]
+        ):
             modules = api.app.get_list_ecosystem_modules(
-                categories=[action, f"framework:{framework}"], categories_operation="and"
+                categories=[action, f"framework:{framework}"],
+                categories_operation="and",
             )
             if len(modules) == 0:
                 return None
             return modules[0]
 
-        train_app_info = find_app_by_framework(self.api, self.info["framework_name"], "train")
-        serve_app_info = find_app_by_framework(self.api, self.info["framework_name"], "serve")
+        train_app_info = find_app_by_framework(
+            self.api, self.info["framework_name"], "train"
+        )
+        serve_app_info = find_app_by_framework(
+            self.api, self.info["framework_name"], "serve"
+        )
 
         if train_app_info is not None:
-            train_app_slug = train_app_info["slug"].replace("supervisely-ecosystem/", "")
+            train_app_slug = train_app_info["slug"].replace(
+                "supervisely-ecosystem/", ""
+            )
             train_app_id = train_app_info["id"]
         else:
             train_app_slug = None
             train_app_id = None
 
         if serve_app_info is not None:
-            serve_app_slug = serve_app_info["slug"].replace("supervisely-ecosystem/", "")
+            serve_app_slug = serve_app_info["slug"].replace(
+                "supervisely-ecosystem/", ""
+            )
             serve_app_id = serve_app_info["id"]
         else:
             serve_app_slug = None
@@ -680,7 +748,9 @@ class ExperimentGenerator(BaseGenerator):
         if task_info is not None:
             agent_info["name"] = task_info["agentName"]
             agent_info["id"] = task_info["agentId"]
-            agent_info["link"] = f"{self.api.server_address}/nodes/{agent_info['id']}/info"
+            agent_info["link"] = (
+                f"{self.api.server_address}/nodes/{agent_info['id']}/info"
+            )
         return agent_info
 
     def _get_class_names(self, model_classes: list) -> dict:
@@ -711,9 +781,13 @@ class ExperimentGenerator(BaseGenerator):
         """
 
         apply_nn_images_slug = "nn-image-labeling/project-dataset"
-        apply_nn_images_module_id = self.api.app.get_ecosystem_module_id(f"supervisely-ecosystem/{apply_nn_images_slug}")
+        apply_nn_images_module_id = self.api.app.get_ecosystem_module_id(
+            f"supervisely-ecosystem/{apply_nn_images_slug}"
+        )
         apply_nn_videos_slug = "apply-nn-to-videos-project"
-        apply_nn_videos_module_id = self.api.app.get_ecosystem_module_id(f"supervisely-ecosystem/{apply_nn_videos_slug}")
+        apply_nn_videos_module_id = self.api.app.get_ecosystem_module_id(
+            f"supervisely-ecosystem/{apply_nn_videos_slug}"
+        )
 
         apply_nn_images_app = {
             "slug": apply_nn_images_slug,
@@ -724,7 +798,7 @@ class ExperimentGenerator(BaseGenerator):
             "module_id": apply_nn_videos_module_id,
         }
         return apply_nn_images_app, apply_nn_videos_app
-    
+
     def _get_project_context(self):
         project_id = self.info["project_id"]
         project_info = self.api.project.get_info_by_id(project_id)
@@ -736,21 +810,19 @@ class ExperimentGenerator(BaseGenerator):
         class_names = self._get_class_names(model_classes)
 
         project_context = {
-                "id": project_id,
-                "name": project_info.name if project_info else "Project was archived",
-                "url": project_url,
-                "type": project_type,
-
-                "splits": {
-                    "train": project_train_size,
-                    "val": project_val_size,
-                },
-
-                "classes": {
-                    "count": len(model_classes),
-                    "names": class_names,
-                },
-            }
+            "id": project_id,
+            "name": project_info.name if project_info else "Project was archived",
+            "url": project_url,
+            "type": project_type,
+            "splits": {
+                "train": project_train_size,
+                "val": project_val_size,
+            },
+            "classes": {
+                "count": len(model_classes),
+                "names": class_names,
+            },
+        }
         return project_context
 
     def _get_model_context(self):
@@ -766,7 +838,7 @@ class ExperimentGenerator(BaseGenerator):
 
         device = self.info.get("device", "N/A")
         training_session = self._get_training_session()
-        training_duration = self.info.get("training_duration", "N/A")
+        training_duration = self._get_training_duration()
         hyperparameters = self._generate_hyperparameters_yaml()
 
         best_checkpoint = self._get_best_checkpoint()
@@ -822,9 +894,18 @@ class ExperimentGenerator(BaseGenerator):
             "model": model_context,
             "training": training_context,
             "paths": {
-                "experiment_dir": {"path": experiment_dir, "url": f"{self.api.server_address}/files/?path={experiment_dir.rstrip('/') + '/'}"},
-                "artifacts_dir": {"path": artifacts_dir, "url": f"{self.api.server_address}/files/?path={artifacts_dir.rstrip('/') + '/'}"},
-                "checkpoints_dir": {"path": checkpoints_dir, "url": f"{self.api.server_address}/files/?path={checkpoints_dir.rstrip('/') + '/'}"},
+                "experiment_dir": {
+                    "path": experiment_dir,
+                    "url": f"{self.api.server_address}/files/?path={experiment_dir.rstrip('/') + '/'}",
+                },
+                "artifacts_dir": {
+                    "path": artifacts_dir,
+                    "url": f"{self.api.server_address}/files/?path={artifacts_dir.rstrip('/') + '/'}",
+                },
+                "checkpoints_dir": {
+                    "path": checkpoints_dir,
+                    "url": f"{self.api.server_address}/files/?path={checkpoints_dir.rstrip('/') + '/'}",
+                },
             },
         }
         return experiment_context

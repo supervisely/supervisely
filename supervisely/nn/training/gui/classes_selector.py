@@ -1,14 +1,7 @@
 from typing import List, Tuple
 
 from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
-from supervisely.app.widgets import (
-    Button,
-    Card,
-    CheckboxField,
-    ClassesTable,
-    Container,
-    Text,
-)
+from supervisely.app.widgets import Button, Card, CheckboxField, ClassesTable, Container, Text
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
@@ -182,7 +175,6 @@ class ClassesSelector:
 
     def validate_step(self) -> bool:
         # @TODO: Handle AnyShape classes
-        # @TODO: Handle unconvertable classes (Rectangle -> Bitmap, etc)
         self.validator_text.hide()
         task_type = self.model_selector.get_selected_task_type() if self.model_selector else None
 
@@ -199,7 +191,6 @@ class ClassesSelector:
             self.validator_text.show()
             return False
 
-        # ----------------------------------------------------------- #
         class_word = "class" if n_classes == 1 else "classes"
         message_parts = [f"Selected {n_classes} {class_word}"]
         status = "success"
@@ -216,8 +207,6 @@ class ClassesSelector:
                 f"{empty_word.capitalize()} with no annotations: {', '.join(empty_classes)}"
             )
             status = "warning"
-
-        # ----------------------------------------------------------- #
 
         convertible_classes, non_convertible_classes = self.classify_incompatible_classes(task_type)
         incompatible_exist = bool(convertible_classes or non_convertible_classes)
@@ -260,7 +249,6 @@ class ClassesSelector:
             if self.is_auto_convert_enabled():
                 message_parts.append("Auto-convert enabled, but no shape conversion required.")
 
-        # ----------------------------------------------------------- #
         self.validator_text.set(text=". ".join(message_parts), status=status)
         self.validator_text.show()
         return is_valid

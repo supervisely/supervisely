@@ -7,18 +7,8 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 from supervisely import Api
-from supervisely.app.widgets import (
-    Card,
-    Container,
-    Field,
-    RadioTabs,
-    SelectString,
-    Widget,
-    Text,
-)
-from supervisely.app.widgets.experiment_selector.experiment_selector import (
-    ExperimentSelector,
-)
+from supervisely.app.widgets import Card, Container, Field, RadioTabs, SelectString, Text, Widget
+from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
 from supervisely.app.widgets.pretrained_models_selector.pretrained_models_selector import (
     PretrainedModelsSelector,
 )
@@ -234,7 +224,7 @@ class ServingGUITemplate(ServingGUI):
         non_conversion_runtimes = [RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT]
         if runtime not in non_conversion_runtimes:
             return
-        
+
         if self.model_source == ModelSource.PRETRAINED:
             self._export_msg.set(
                 "Checkpoint will be converted before deployment.",
@@ -262,8 +252,6 @@ class ServingGUITemplate(ServingGUI):
                     break
             if checkpoint_name != selected_row.best_checkpoint:
                 available = False
-
-
 
         if available:
             self._export_msg.set(
