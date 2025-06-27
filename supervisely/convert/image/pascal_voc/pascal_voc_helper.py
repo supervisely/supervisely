@@ -121,6 +121,7 @@ def get_ann(
     meta: ProjectMeta,
     bbox_classes_map: dict,
     renamed_classes=None,
+    renamed_tags=None,
 ) -> Annotation:
     segm_path, inst_path = item.segm_path, item.inst_path
     height, width = item.shape
@@ -129,7 +130,7 @@ def get_ann(
 
     if item.ann_data is not None:
         bbox_labels = xml_to_sly_labels(
-            item.ann_data, meta, bbox_classes_map, img_rect, renamed_classes
+            item.ann_data, meta, bbox_classes_map, img_rect, renamed_classes, renamed_tags
         )
         ann = ann.add_labels(bbox_labels)
 
@@ -191,6 +192,7 @@ def xml_to_sly_labels(
     bbox_classes_map: dict,
     img_rect: Rectangle,
     renamed_classes=None,
+    renamed_tags=None,
 ) -> List[Label]:
     import xml.etree.ElementTree as ET
 
@@ -207,8 +209,7 @@ def xml_to_sly_labels(
         for element in obj:
             field_name, value = element.tag, element.text
             if field_name == "name":
-                cls_name = value
-                cls_name = bbox_classes_map.get(cls_name, cls_name)
+                cls_name = bbox_classes_map.get(value, value)
                 if renamed_classes and cls_name in renamed_classes:
                     cls_name = renamed_classes[cls_name]
                 obj_cls = meta.obj_classes.get(cls_name)
@@ -221,7 +222,10 @@ def xml_to_sly_labels(
                 ]
                 geometry = Rectangle(*bbox_coords)
             elif field_name not in DEFAULT_OBJECT_FIELDS:
-                tag_meta = meta.get_tag_meta(field_name)
+                tag_name = field_name
+                if renamed_tags and tag_name in renamed_tags:
+                    tag_name = renamed_tags[tag_name]
+                tag_meta = meta.get_tag_meta(tag_name)
                 if tag_meta is None:
                     logger.warn(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
                     continue
