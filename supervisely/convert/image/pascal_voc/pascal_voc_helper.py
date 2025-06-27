@@ -12,6 +12,8 @@ from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
+from supervisely.annotation.tag import Tag, TagValueType
+from supervisely.annotation.tag_meta import TagMeta
 from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -33,6 +35,7 @@ VALID_IMG_EXT = {".jpe", ".jpeg", ".jpg"}
 TRAIN_TAG_NAME = "train"
 VAL_TAG_NAME = "val"
 TRAINVAL_TAG_NAME = "trainval"
+DEFAULT_OBJECT_FIELDS = {"name", "pose", "truncated", "difficult", "bndbox"}
 
 default_classes_colors = {
     "neutral": (224, 224, 192),
@@ -196,20 +199,38 @@ def xml_to_sly_labels(
         tree = ET.parse(in_file)
         root = tree.getroot()
 
-        for obj in root.iter("object"):
-            cls_name = obj.find("name").text
-            cls_name = bbox_classes_map.get(cls_name, cls_name)
-            if renamed_classes and cls_name in renamed_classes:
-                cls_name = renamed_classes[cls_name]
-            obj_cls = meta.obj_classes.get(cls_name)
-            if obj_cls is None:
-                logger.warn(f"Class {cls_name} is not found in meta. Skipping.")
-                continue
-            xmlbox = obj.find("bndbox")
-            bbox_coords = [float(xmlbox.find(x).text) for x in ("ymin", "xmin", "ymax", "xmax")]
-            bbox = Rectangle(*bbox_coords)
-            label = Label(bbox, obj_cls)
-            labels.append(label)
+    for obj in root.iter("object"):
+        geometry = None
+        obj_cls = None
+        tags = []
+
+        for element in obj:
+            field_name, value = element.tag, element.text
+            if field_name == "name":
+                cls_name = value
+                cls_name = bbox_classes_map.get(cls_name, cls_name)
+                if renamed_classes and cls_name in renamed_classes:
+                    cls_name = renamed_classes[cls_name]
+                obj_cls = meta.obj_classes.get(cls_name)
+                if obj_cls is None:
+                    logger.warn(f"Class {cls_name} is not found in meta. Skipping.")
+                    continue
+            elif field_name == "bndbox":
+                bbox_coords = [
+                    float(element.find(x).text) for x in ("ymin", "xmin", "ymax", "xmax")
+                ]
+                geometry = Rectangle(*bbox_coords)
+            elif field_name not in DEFAULT_OBJECT_FIELDS:
+                tag_meta = meta.get_tag_meta(field_name)
+                if tag_meta is None:
+                    logger.warn(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
+                    continue
+                if not isinstance(value, str):
+                    value = str(value)
+                tags.append(Tag(tag_meta, value))
+        if geometry is None or obj_cls is None:
+            continue
+        labels.append(Label(geometry, obj_cls, tags))
     labels = validate_image_bounds(labels, img_rect)
 
     return labels
@@ -227,32 +248,40 @@ def update_meta_from_xml(
         tree = ET.parse(in_file)
         root = tree.getroot()
 
-        for obj in root.iter("object"):
-            class_name = obj.find("name").text
-            original_class_name = class_name
-            obj_cls = meta.obj_classes.get(class_name)
-            if obj_cls is None:
-                obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
-                meta = meta.add_obj_class(obj_cls)
-                existing_cls_names.add(class_name)
-                continue
-            elif obj_cls.geometry_type == Rectangle:
-                continue
-            class_name = class_name + "_bbox"
-            obj_cls = meta.obj_classes.get(class_name)
-            if obj_cls is None:
-                obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
-                meta = meta.add_obj_class(obj_cls)
-                existing_cls_names.add(class_name)
-            elif obj_cls.geometry_type == Rectangle:
-                pass
-            else:
-                class_name = generate_free_name(
-                    existing_cls_names, class_name, extend_used_names=True
-                )
-                obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
-                meta = meta.add_obj_class(obj_cls)
-            bbox_classes_map[original_class_name] = class_name
+    for obj in root.iter("object"):
+        for element in obj:
+            field_name = element.tag
+            if field_name == "name":
+                class_name = element.text
+                original_class_name = class_name
+                obj_cls = meta.obj_classes.get(class_name)
+                if obj_cls is None:
+                    obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
+                    meta = meta.add_obj_class(obj_cls)
+                    existing_cls_names.add(class_name)
+                    continue
+                elif obj_cls.geometry_type == Rectangle:
+                    continue
+                class_name = class_name + "_bbox"
+                obj_cls = meta.obj_classes.get(class_name)
+                if obj_cls is None:
+                    obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
+                    meta = meta.add_obj_class(obj_cls)
+                    existing_cls_names.add(class_name)
+                elif obj_cls.geometry_type == Rectangle:
+                    pass
+                else:
+                    class_name = generate_free_name(
+                        existing_cls_names, class_name, extend_used_names=True
+                    )
+                    obj_cls = ObjClass(name=class_name, geometry_type=Rectangle)
+                    meta = meta.add_obj_class(obj_cls)
+                bbox_classes_map[original_class_name] = class_name
+            elif field_name not in DEFAULT_OBJECT_FIELDS:
+                tag_meta = meta.get_tag_meta(field_name)
+                if tag_meta is None:
+                    tag_meta = TagMeta(field_name, TagValueType.ANY_STRING)
+                    meta = meta.add_tag_meta(tag_meta)
 
     return meta
 
