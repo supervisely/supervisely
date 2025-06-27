@@ -160,7 +160,6 @@ class PascalVOCConverter(ImageConverter):
             self._items.append(item)
         return detected_ann_cnt
 
-
     def _scan_for_item_segm_paths(self, item: Item, item_name_noext: str) -> Item:
         if self._segm_dir is not None:
             segm_path = os.path.join(self._segm_dir, f"{item_name_noext}.png")
@@ -170,11 +169,11 @@ class PascalVOCConverter(ImageConverter):
             inst_path = os.path.join(self._inst_dir, f"{item_name_noext}.png")
             if file_exists(inst_path):
                 item.inst_path = inst_path
-        
+
         return item
 
     def _scan_for_item_ann_path_and_update_meta(
-            self, item: Item, ann_path: Optional[str], existing_cls_names: Set[str]
+        self, item: Item, ann_path: Optional[str], existing_cls_names: Set[str]
     ) -> Item:
         if ann_path is None:
             return item
@@ -185,7 +184,6 @@ class PascalVOCConverter(ImageConverter):
         )
         item.ann_data = ann_path
         return item
-
 
     def to_supervisely(
         self,
@@ -200,7 +198,12 @@ class PascalVOCConverter(ImageConverter):
         try:
             item.set_shape()
             return pascal_voc_helper.get_ann(
-                item, self.color2class_name, meta, self._bbox_classes_map, renamed_classes
+                item,
+                self.color2class_name,
+                meta,
+                self._bbox_classes_map,
+                renamed_classes,
+                renamed_tags,
             )
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")
