@@ -20,7 +20,7 @@ from supervisely.nn.utils import ModelSource, _get_model_name
 class ModelSelector:
     title = "Select Model"
     description = "Select a model for training"
-    lock_message = "Select classes to unlock"
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
         # Init widgets

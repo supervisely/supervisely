@@ -1,0 +1,18 @@
+<div class="experiment-body">
+    <sly-style>
+    {% include "sly-style.css" %}
+    </sly-style>
+
+    <div class="experiment-main-wrapper">
+        <!-- Main content -->
+        <div class="experiment-main-content">
+            <div class="main-content markdown-body">
+                {% include "header.html.jinja" %}
+                
+                {% markdown %}
+                {% include "experiment.html.jinja" %}
+                {% endmarkdown %}
+            </div>
+        </div>
+    </div>
+</div>

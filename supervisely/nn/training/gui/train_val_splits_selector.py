@@ -7,7 +7,7 @@ from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplit
 class TrainValSplitsSelector:
     title = "Train / Val Splits"
     description = "Select train and val splits for training"
-    lock_message = "Select input options to unlock"
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, project_id: int, app_options: dict = {}):
         # Init widgets

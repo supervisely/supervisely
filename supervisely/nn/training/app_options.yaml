@@ -24,10 +24,6 @@ show_logs_in_gui: true
 # [Beta] Collapse GUI cards on selection
 collapsable: false
 
-# Automatically convert classes according to model CV task for model benchmark
-# works only with model_benchmark: true
-auto_convert_classes: false
-
 # if false, use all classes from project meta
 classes_selector: 
   enabled: true

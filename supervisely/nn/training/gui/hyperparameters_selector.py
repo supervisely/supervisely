@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
 class HyperparametersSelector:
     title = "Hyperparameters"
     description = "Set hyperparameters for training"
-    lock_message = "Select model to unlock"
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, hyperparameters: dict, app_options: dict = {}):
         # Init widgets
@@ -60,7 +60,7 @@ class HyperparametersSelector:
                 f"Learn more about Model Benchmark in the {docs_link}.", status="info"
             )
             self.model_benchmark_auto_convert_warning = Text(
-                text="Project will be automatically converted according to CV task for Model Evaluation.",
+                text="Project will be automatically converted according to CV task and uploaded for Model Evaluation.",
                 status="warning",
             )
             self.model_benchmark_auto_convert_warning.hide()
