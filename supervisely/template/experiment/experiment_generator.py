@@ -120,9 +120,11 @@ class ExperimentGenerator(BaseGenerator):
     def _get_apps_context(self):
         train_app, serve_app = self._get_app_train_serve_app_info()
         apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
+        log_viewer_app = self._get_log_viewer_app_info()
         return {
             "train": train_app,
             "serve": serve_app,
+            "log_viewer": log_viewer_app,
             "apply_nn_to_images": apply_images_app,
             "apply_nn_to_videos": apply_videos_app,
         }
@@ -425,6 +427,16 @@ class ExperimentGenerator(BaseGenerator):
             hyperparameters = self.hyperparameters.split("\n")
             return hyperparameters
         return None
+
+    def _get_log_viewer_app_info(self):
+        """Get log viewer app information.
+
+        :returns: Log viewer app info
+        :rtype: dict
+        """
+        slug = "supervisely-ecosystem/tensorboard-experiments-viewer"
+        module_id = self.api.app.get_ecosystem_module_id(slug)
+        return {"slug": slug, "module_id": module_id}
 
     def _get_app_info(self):
         """Get app information from task.

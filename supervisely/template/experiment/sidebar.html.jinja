@@ -169,6 +169,19 @@
                 :command="command">
             </sly-iw-launch-button>
 
+            <sly-iw-launch-button 
+                style="min-height: 30px; height: 30px; margin-bottom: 5px;"
+                title="Logs"
+                description="Open training logs"
+                icon="https://img.icons8.com/?size=100&id=59881&format=png&color=000000"
+                :disabled="false"
+                :autoRun="true"
+                :state="{ 'slyFolder': {{ experiment.training.logs.path }} }"
+                :moduleId="{{ resources.apps.log_viewer.module_id }}"
+                :openInNewWindow="true"
+                :command="command">
+            </sly-iw-launch-button>
+
             </div>
         </div>
         <hr class="experiment-divider">
