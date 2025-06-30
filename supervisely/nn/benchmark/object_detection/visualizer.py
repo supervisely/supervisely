@@ -706,17 +706,15 @@ class ObjectDetectionVisualizer(BaseVisualizer):
 
     def _get_sample_data_for_gallery(self):
         """Get sample images with annotations for visualization (preview gallery)"""
-
-        sample = set()
+        sample_images = []
         limit = 9
         for ds_info in self.eval_result.pred_dataset_infos:
             images = self.api.image.get_list(
                 ds_info.id, limit=limit, force_metadata_for_links=False
             )
-            anns = self.api.annotation.download_batch(ds_info.id, [img.id for img in images])
-            sample.update([(img, ann) for img, ann in zip(images, anns)])
-        sample = list(sample)
-        if len(sample) > limit:
-            sample = random.sample(sample, limit)
-        self.eval_result.sample_images = [img for img, _ in sample]
-        self.eval_result.sample_anns = [ann for _, ann in sample]
+            sample_images.extend(images)
+        if len(sample_images) > limit:
+            sample_images = random.sample(sample_images, limit)
+        self.eval_result.sample_images = sample_images
+        ids = [img.id for img in sample_images]
+        self.eval_result.sample_anns = self.api.annotation.download_batch(ds_info.project_id, ids)
