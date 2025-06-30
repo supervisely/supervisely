@@ -1,7 +1,14 @@
 from typing import List, Tuple
 
 from supervisely._utils import abs_url, is_debug_with_sly_net, is_development
-from supervisely.app.widgets import Button, Card, CheckboxField, ClassesTable, Container, Text
+from supervisely.app.widgets import (
+    Button,
+    Card,
+    CheckboxField,
+    ClassesTable,
+    Container,
+    Text,
+)
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
@@ -121,7 +128,9 @@ class ClassesSelector:
 
         return wrong_shape_classes
 
-    def classify_incompatible_classes(self, task_type: str) -> Tuple[List[str], List[str]]:
+    def classify_incompatible_classes(
+        self, task_type: str
+    ) -> Tuple[List[str], List[str]]:
         """
         Rules:
         1) Detection – any shape can be converted, Rectangle is compatible.
@@ -149,7 +158,10 @@ class ClassesSelector:
                 # Any other geometry is converted to Rectangle (BBox)
                 convertible.append(class_name)
 
-            elif task_type in (TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION):
+            elif task_type in (
+                TaskType.INSTANCE_SEGMENTATION,
+                TaskType.SEMANTIC_SEGMENTATION,
+            ):
                 if geo_cls is Bitmap:
                     # already compatible (bitmap mask)
                     continue
@@ -176,7 +188,11 @@ class ClassesSelector:
     def validate_step(self) -> bool:
         # @TODO: Handle AnyShape classes
         self.validator_text.hide()
-        task_type = self.model_selector.get_selected_task_type() if self.model_selector else None
+        task_type = (
+            self.model_selector.get_selected_task_type()
+            if self.model_selector
+            else None
+        )
 
         if len(self.classes_table.project_meta.obj_classes) == 0:
             self.validator_text.set(text="Project has no classes", status="error")
@@ -187,7 +203,9 @@ class ClassesSelector:
         n_classes = len(selected_classes)
 
         if n_classes == 0:
-            self.validator_text.set(text="Please select at least one class", status="error")
+            self.validator_text.set(
+                text="Please select at least one class", status="error"
+            )
             self.validator_text.show()
             return False
 
@@ -199,7 +217,9 @@ class ClassesSelector:
         empty_classes = [
             row[0]["data"]
             for row in self.classes_table._table_data
-            if row[0]["data"] in selected_classes and row[2]["data"] == 0 and row[3]["data"] == 0
+            if row[0]["data"] in selected_classes
+            and row[2]["data"] == 0
+            and row[3]["data"] == 0
         ]
         if empty_classes:
             empty_word = "class" if len(empty_classes) == 1 else "classes"
@@ -208,7 +228,53 @@ class ClassesSelector:
             )
             status = "warning"
 
-        convertible_classes, non_convertible_classes = self.classify_incompatible_classes(task_type)
+        convertible_classes, non_convertible_classes = (
+            self.classify_incompatible_classes(task_type)
+        )
+
+        if (
+            n_classes > 0
+            and not convertible_classes
+            and len(non_convertible_classes) == n_classes
+        ):
+            available_task_types = []
+            if self.model_selector is not None and hasattr(
+                self.model_selector, "pretrained_models_table"
+            ):
+                available_task_types = (
+                    self.model_selector.pretrained_models_table.get_available_task_types()
+                )
+
+            other_suitable_exists = False
+            for other_task_type in available_task_types:
+                if other_task_type == task_type:
+                    continue
+                other_conv, other_non_conv = self.classify_incompatible_classes(
+                    other_task_type
+                )
+                if other_conv or len(other_non_conv) < n_classes:
+                    other_suitable_exists = True
+                    break
+
+            if other_suitable_exists:
+                self.validator_text.set(
+                    text=(
+                        f"No suitable classes for task type '{task_type}'. "
+                        "Training is not possible. Please choose another task type."
+                    ),
+                    status="error",
+                )
+            else:
+                self.validator_text.set(
+                    text=(
+                        "Project contains no suitable classes for training. "
+                        "Training is not possible. Please select another project."
+                    ),
+                    status="error",
+                )
+            self.validator_text.show()
+            return False
+
         incompatible_exist = bool(convertible_classes or non_convertible_classes)
         if incompatible_exist:
             task_specific_texts = {
@@ -247,7 +313,9 @@ class ClassesSelector:
                     is_valid = False
         else:
             if self.is_auto_convert_enabled():
-                message_parts.append("Auto-convert enabled, but no shape conversion required.")
+                message_parts.append(
+                    "Auto-convert enabled, but no shape conversion required."
+                )
 
         self.validator_text.set(text=". ".join(message_parts), status=status)
         self.validator_text.show()
