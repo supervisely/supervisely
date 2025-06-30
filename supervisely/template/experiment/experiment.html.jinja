@@ -1,24 +1,3 @@
-{# # {{ experiment.name }}
-
-*Trained on: {{ experiment.date }}*
-
-## Overview
-
-- **Model**: {{ experiment.model.name }}
-- **Framework**: {{ experiment.model.framework }}
-- **Task**: {{ experiment.model.task_type }}
-- **Project**: [{{ experiment.project.name }}]({{ experiment.project.url }}){:target="_blank"}
-- **Classes**: ({{ experiment.project.classes.count }}) {% for class_name in experiment.project.classes.names.short_list %} <span class="class-tag">{{
-    class_name }}</span> {% endfor %}
-
-- **Training {{ experiment.project.type }}**: {{ experiment.project.splits.train }}
-- **Validation {{ experiment.project.type }}**: {{ experiment.project.splits.val }}
-- **Device**: {{ experiment.training.device }}
-- **Training duration**: {{ experiment.training.duration }}
-{% if experiment.training.evaluation.primary_metric.name %}
-- **{{ experiment.training.evaluation.primary_metric.name }}**: {{ experiment.training.evaluation.primary_metric.rounded_value }}
-{% endif %} #}
-
 {% if experiment.training.evaluation.id and widgets.sample_pred_gallery %}
 
 ## Predictions
@@ -31,7 +10,7 @@ Here are prediction samples made with **{{ experiment.training.checkpoints.pytor
 
 {% endif %}
 
-{% if widgets.tables.metrics %}
+{% if experiment.training.evaluation.id %}
 
 ## Evaluation
 
@@ -290,6 +269,8 @@ predictions = model.predict(video_id=123 # Video ID in Supervisely)
 > For more information, see [Prediction
 API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"}.
 
+{% if experiment.model.task_type == "object detection" %}
+
 ## Tracking Objects in Video
 
 You can track objects in video using `boxmot` library.
@@ -336,6 +317,7 @@ video_ann: sly.VideoAnnotation = track(
 > For more information, see the section [Tracking Objects in
 Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video){:target="_blank"}.
 
+{% endif %}
 
 ## Deploy in Docker
 

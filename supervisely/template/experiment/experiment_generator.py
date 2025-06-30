@@ -23,6 +23,21 @@ from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
 from supervisely.template.base_generator import BaseGenerator
 
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.point_3d import Point3d
+from supervisely.geometry.pointcloud import Pointcloud
+from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.cuboid import Cuboid
+from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.point import Point
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.rectangle import Rectangle
+
+from supervisely.imaging.color import rgb2hex
+
 
 # @TODO: Partly supports unreleased apps
 class ExperimentGenerator(BaseGenerator):
@@ -193,21 +208,55 @@ class ExperimentGenerator(BaseGenerator):
         return "\n".join(html)
 
     def _generate_classes_table(self) -> str:
-        """Generate HTML table with class names.
+        """Generate HTML table with class names, shapes and colors.
 
         :returns: HTML string with classes table
         :rtype: str
         """
-        model_classes = [cls.name for cls in self.model_meta.obj_classes]
-        if not model_classes:
+        type_to_icon = {
+            AnyGeometry: "zmdi zmdi-shape",
+            Rectangle: "zmdi zmdi-crop-din",
+            Polygon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAB6klEQVRYhe2Wuy8EURTGf+u5VESNXq2yhYZCoeBv8RcI1i6NVUpsoVCKkHjUGlFTiYb1mFmh2MiKjVXMudmb3cPOzB0VXzKZm5k53/nmvO6Ff4RHD5AD7gFP1l3Kd11AHvCBEpAVW2esAvWmK6t8l1O+W0lCQEnIJoAZxUnzNQNkZF36jrQjgoA+uaciCgc9VaExBOyh/6WWAi1VhbjOJ4FbIXkBtgkK0BNHnYqNKUIPeBPbKyDdzpld5T6wD9SE4AwYjfEDaXFeFzE/doUWuhqwiFsOCwqv2hV2lU/L+sHBscGTxdvSFVoXpAjCZdauMHVic6ndl6U1VBsJCFhTeNUU9IiIEo3qvQYGHAV0AyfC5wNLhKipXuBCjA5wT8WxcM1FMRoBymK44CjAE57hqIazwCfwQdARcXa3UXHuRXVucIjb7jYvNkdxBZg0TBFid7PQTRAtX2xOiXkuMAMqYwkIE848rZFbjyNAmw9bIeweaZ2A5TgC7PnwKkTPtN+cTOrsyN3FEWAjRTAX6sA5ek77gSL6+WHZVQDAIHAjhJtN78aAS3lXAXYIivBOnCdyOAUYB6o0xqsvziry7FLE/Cp20cNcJEjDr8MUmVOVRzkVN+Nd7vZGVXXgiwxtPiRS5WFhz4fEq/zv4AvToMn7vCn3eAAAAABJRU5ErkJggg==",
+            Bitmap: "zmdi zmdi-brush",
+            Polyline: "zmdi zmdi-gesture",
+            Point: "zmdi zmdi-dot-circle-alt",
+            Cuboid: "zmdi zmdi-ungroup",  #
+            GraphNodes: "zmdi zmdi-grain",
+            Cuboid3d: "zmdi zmdi-codepen",
+            Pointcloud: "zmdi zmdi-cloud-outline",
+            MultichannelBitmap: "zmdi zmdi-layers",
+            Point3d: "zmdi zmdi-filter-center-focus",
+        }
+
+        if not hasattr(self.model_meta, "obj_classes"):
+            return None
+
+        if len(self.model_meta.obj_classes) == 0:
             return None
 
         html = ['<table class="table">']
-        html.append("<thead><tr><th>Class name</th></tr></thead>")
+        html.append("<thead><tr><th>Class name</th><th>Shape</th></tr></thead>")
         html.append("<tbody>")
 
-        for class_name in model_classes:
-            html.append(f"<tr><td>{class_name}</td></tr>")
+        for obj_class in self.model_meta.obj_classes:
+            class_name = obj_class.name
+            color_hex = rgb2hex(obj_class.color)
+            icon = type_to_icon.get(obj_class.geometry_type, "zmdi zmdi-shape")
+
+            class_cell = (
+                f"<i class='zmdi zmdi-circle' style='color: {color_hex}; margin-right: 5px;'></i>"
+                f"<span>{class_name}</span>"
+            )
+
+            if isinstance(icon, str) and icon.startswith("data:image"):
+                shape_cell = f"<img src='{icon}' style='height: 15px; margin-right: 2px;' />"
+            else:
+                shape_cell = f"<i class='{icon}' style='margin-right: 2px;'></i>"
+
+            shape_name = obj_class.geometry_type.geometry_name()
+            shape_cell += f"<span>{shape_name}</span>"
+
+            html.append(f"<tr><td>{class_cell}</td><td>{shape_cell}</td></tr>")
 
         html.append("</tbody>")
         html.append("</table>")

@@ -31,6 +31,7 @@
             <li><strong>Validation:</strong> {{ experiment.project.splits.val }} {{ experiment.project.type }}</li>
             </ul>
         </div>
+        {% if experiment.training.evaluation.id %}
         <div class="experiment-info-subheader-block">
             <div class="experiment-info-subheader-mini-title">
                 <h2>Evaluation</h2>
@@ -48,10 +49,13 @@
             </div>
             {% endfor %}
         </div>
+        {% endif %}
     </div>
     <div class="experiment-info-subheader-footer-menu">
+        {% if experiment.training.evaluation.id %}
         <a :href="`${window.location.pathname}#predictions`" class="active">Predictions</a>
         <a :href="`${window.location.pathname}#evaluation-2`">Evaluation</a>
+        {% endif %}
         <a :href="`${window.location.pathname}#artifacts`">Artifacts</a>
         <a :href="`${window.location.pathname}#classes`">Classes</a>
         <a :href="`${window.location.pathname}#hyperparameters`">Hyperparameters</a>
