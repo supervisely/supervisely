@@ -122,7 +122,7 @@ class ClassesSelector:
             obj_class: ObjClass
             if obj_class is None:
                 continue
-            if obj_class.shape_type not in allowed_shapes[task_type]:
+            if obj_class.geometry_type not in allowed_shapes[task_type]:
                 wrong_shape_classes.append(class_name)
 
         return wrong_shape_classes
@@ -148,7 +148,7 @@ class ClassesSelector:
             if obj_class is None:
                 continue
 
-            geo_cls = obj_class.shape_type
+            geo_cls = obj_class.geometry_type
 
             if task_type == TaskType.OBJECT_DETECTION:
                 if geo_cls is Rectangle:
