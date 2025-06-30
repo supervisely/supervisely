@@ -249,9 +249,9 @@ class ExperimentGenerator(BaseGenerator):
             )
 
             if isinstance(icon, str) and icon.startswith("data:image"):
-                shape_cell = f"<img src='{icon}' style='height: 15px; margin-right: 2px;' />"
+                shape_cell = f"<img src='{icon}' style='height: 15px; margin-right: 2px;'/>"
             else:
-                shape_cell = f"<i class='{icon}' style='margin-right: 2px;'></i>"
+                shape_cell = f"<i class='{icon}' style='margin-right: 5px;'></i>"
 
             shape_name = obj_class.geometry_type.geometry_name()
             shape_cell += f"<span>{shape_name}</span>"
