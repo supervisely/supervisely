@@ -471,13 +471,14 @@ class ExperimentGenerator(BaseGenerator):
             return "N/A"
 
         try:
-            duration_minutes = float(raw_duration)
+            duration_seconds = float(raw_duration)
         except (TypeError, ValueError):
             return str(raw_duration)
 
-        hours = int(duration_minutes // 60)
-        minutes = int(duration_minutes % 60)
-        return f"{hours}h {minutes}m"
+        hours = int(duration_seconds // 3600)
+        minutes = int((duration_seconds % 3600) // 60)
+        seconds = int(duration_seconds % 60)
+        return f"{hours}h {minutes}m {seconds}s"
 
     def _get_date(self) -> str:
         """Format experiment date.
