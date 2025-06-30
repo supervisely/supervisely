@@ -705,8 +705,18 @@ class ObjectDetectionVisualizer(BaseVisualizer):
         return False
 
     def _get_sample_data_for_gallery(self):
-        # get sample images with annotations for visualization (Prediction project)
-        pred_ds = random.choice(self.eval_result.pred_dataset_infos)
-        self.eval_result.sample_images = self.api.image.get_list(pred_ds.id, limit=9)
-        image_ids = [x.id for x in self.eval_result.sample_images]
-        self.eval_result.sample_anns = self.api.annotation.download_batch(pred_ds.id, image_ids)
+        """Get sample images with annotations for visualization (preview gallery)"""
+
+        sample = set()
+        limit = 9
+        for ds_info in self.eval_result.pred_dataset_infos:
+            images = self.api.image.get_list(
+                ds_info.id, limit=limit, force_metadata_for_links=False
+            )
+            anns = self.api.annotation.download_batch(ds_info.id, [img.id for img in images])
+            sample.update([(img, ann) for img, ann in zip(images, anns)])
+        sample = list(sample)
+        if len(sample) > limit:
+            sample = random.sample(sample, limit)
+        self.eval_result.sample_images = [img for img, _ in sample]
+        self.eval_result.sample_anns = [ann for _, ann in sample]

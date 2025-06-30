@@ -280,15 +280,21 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
                     raise RuntimeError(f"Match data was not created properly. {e}")
 
     def _get_sample_data_for_gallery(self):
-        # get sample images with annotations for visualization
-        pred_ds = random.choice(self.eval_result.pred_dataset_infos)
-        imgs = self.api.image.get_list(pred_ds.id, limit=9, force_metadata_for_links=False)
-        anns = self.api.annotation.download_batch(
-            pred_ds.id, [x.id for x in imgs], force_metadata_for_links=False
-        )
+        """Get sample images with annotations for visualization (preview gallery)"""
 
-        self.eval_result.sample_images = imgs
-        self.eval_result.sample_anns = anns
+        sample = set()
+        limit = 9
+        for ds_info in self.eval_result.pred_dataset_infos:
+            images = self.api.image.get_list(
+                ds_info.id, limit=limit, force_metadata_for_links=False
+            )
+            anns = self.api.annotation.download_batch(ds_info.id, [img.id for img in images])
+            sample.update([(img, ann) for img, ann in zip(images, anns)])
+        sample = list(sample)
+        if len(sample) > limit:
+            sample = random.sample(sample, limit)
+        self.eval_result.sample_images = [img for img, _ in sample]
+        self.eval_result.sample_anns = [ann for _, ann in sample]
 
     def _create_clickable_label(self):
         return MarkdownWidget(name="clickable_label", title="", text=self.vis_texts.clickable_label)
