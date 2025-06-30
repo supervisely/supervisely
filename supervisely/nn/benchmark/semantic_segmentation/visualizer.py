@@ -292,7 +292,7 @@ class SemanticSegmentationVisualizer(BaseVisualizer):
             sample_images = random.sample(sample_images, limit)
         self.eval_result.sample_images = sample_images
         ids = [img.id for img in sample_images]
-        self.eval_result.sample_anns = self.api.annotation.download_batch(ds_info.project_id, ids)
+        self.eval_result.sample_anns = self.api.annotation.download_batch(ds_info.id, ids)
 
     def _create_clickable_label(self):
         return MarkdownWidget(name="clickable_label", title="", text=self.vis_texts.clickable_label)

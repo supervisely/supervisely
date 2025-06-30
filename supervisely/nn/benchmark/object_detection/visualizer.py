@@ -717,4 +717,4 @@ class ObjectDetectionVisualizer(BaseVisualizer):
             sample_images = random.sample(sample_images, limit)
         self.eval_result.sample_images = sample_images
         ids = [img.id for img in sample_images]
-        self.eval_result.sample_anns = self.api.annotation.download_batch(ds_info.project_id, ids)
+        self.eval_result.sample_anns = self.api.annotation.download_batch(ds_info.id, ids)
