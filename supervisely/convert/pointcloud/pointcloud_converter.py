@@ -3,7 +3,6 @@ import os
 from typing import Dict, List, Optional, Set, Tuple
 from uuid import UUID
 
-import supervisely.convert.pointcloud.sly.sly_pointcloud_helper as helpers
 from supervisely import (
     Api,
     PointcloudAnnotation,
@@ -14,7 +13,7 @@ from supervisely import (
 )
 from supervisely.api.module_api import ApiField
 from supervisely.convert.base_converter import BaseConverter
-from supervisely.io.fs import get_file_ext, get_file_name
+from supervisely.io.fs import get_file_ext, get_file_name_with_ext
 from supervisely.io.json import load_json_file
 from supervisely.pointcloud.pointcloud import ALLOWED_POINTCLOUD_EXTENSIONS
 from supervisely.pointcloud.pointcloud import validate_ext as validate_pcd_ext
@@ -88,6 +87,7 @@ class PointcloudConverter(BaseConverter):
         else:
             progress_cb = None
 
+        key_id_map = KeyIdMap()
         for batch in batched(self._items, batch_size=batch_size):
             item_names = []
             item_paths = []
@@ -110,7 +110,6 @@ class PointcloudConverter(BaseConverter):
             pcd_ids = [pcd_info.id for pcd_info in pcd_infos]
             pcl_to_rimg_figures: Dict[int, Dict[str, List[Dict]]] = {}
             pcl_to_hash_to_id: Dict[int, Dict[str, int]] = {}
-            key_id_map = KeyIdMap()
             for pcd_id, ann, item in zip(pcd_ids, anns, batch):
                 if ann is not None:
                     api.pointcloud.annotation.append(pcd_id, ann, key_id_map)
@@ -229,7 +228,6 @@ class PointcloudConverter(BaseConverter):
         only_modality_items = True
         unsupported_exts = set()
         pcd_list, rimg_dict, rimg_ann_dict, rimg_fig_dict = [], {}, {}, {}
-        used_img_ext = set()
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 full_path = os.path.join(root, file)
@@ -237,7 +235,9 @@ class PointcloudConverter(BaseConverter):
                     continue
 
                 ext = get_file_ext(full_path)
-                if ext == ".json":
+                if file.endswith(".figures.json"):
+                    rimg_fig_dict[file] = full_path
+                elif ext == ".json":
                     dir_name = os.path.basename(root)
                     parent_dir_name = os.path.basename(os.path.dirname(root))
                     if any(
@@ -246,17 +246,15 @@ class PointcloudConverter(BaseConverter):
                     ) or dir_name.endswith("_pcd"):
                         rimg_ann_dict[file] = full_path
                 elif imghdr.what(full_path):
-                    rimg_dict[file] = full_path
-                    if ext not in used_img_ext:
-                        used_img_ext.add(ext)
+                    if dir_name not in rimg_dict:
+                        rimg_dict[dir_name] = []
+                    rimg_dict[dir_name].append(full_path)
                 elif ext.lower() in self.allowed_exts:
                     try:
                         validate_pcd_ext(ext)
                         pcd_list.append(full_path)
                     except:
                         pass
-                elif file.endswith(".figures.json"):
-                    rimg_fig_dict[file] = full_path
                 else:
                     only_modality_items = False
                     unsupported_exts.add(ext)
@@ -265,14 +263,16 @@ class PointcloudConverter(BaseConverter):
         items = []
         for pcd_path in pcd_list:
             item = self.Item(pcd_path)
-            rimg, rimg_ann = helpers.find_related_items(
-                item.name, list(used_img_ext), rimg_dict, rimg_ann_dict
-            )
-            if rimg is not None and rimg_ann is not None:
-                rimg_ext = get_file_ext(rimg)
-                rimg_fig_path = rimg_fig_dict.get(f"{get_file_name(rimg)}{rimg_ext}.figures.json")
-                if rimg_fig_path is None:
-                    rimg_fig_path = rimg_fig_dict.get(f"{get_file_name(rimg)}.figures.json")
-                item.set_related_images((rimg, rimg_ann, rimg_fig_path))
+            rimg_dir_name = item.name.replace(".pcd", "_pcd")
+            rimgs = rimg_dict.get(rimg_dir_name, [])
+            for rimg_path in rimgs:
+                rimg_ann_name = f"{get_file_name_with_ext(rimg_path)}.json"
+                if rimg_ann_name in rimg_ann_dict:
+                    rimg_ann_path = rimg_ann_dict[rimg_ann_name]
+                    rimg_fig_name = f"{get_file_name_with_ext(rimg_path)}.figures.json"
+                    rimg_fig_path = rimg_fig_dict.get(rimg_fig_name, None)
+                    if rimg_fig_path is not None and not os.path.exists(rimg_fig_path):
+                        rimg_fig_path = None
+                    item.set_related_images((rimg_path, rimg_ann_path, rimg_fig_path))
             items.append(item)
         return items, only_modality_items, unsupported_exts

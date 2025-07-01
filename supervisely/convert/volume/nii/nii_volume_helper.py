@@ -15,7 +15,7 @@ from supervisely.volume.volume import convert_3d_nifti_to_nrrd
 
 VOLUME_NAME = "anatomic"
 LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
-
+MASK_PIXEL_VALUE = "Mask pixel value: "
 
 class PlanePrefix(str, StrEnum):
     """Prefix for plane names."""

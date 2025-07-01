@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -708,16 +709,12 @@ class DeployApi:
             )
 
         runtime = get_runtime(runtime)
-        experiment_task_id = experiment_info.task_id
-        experiment_task_info = self._api.task.get_info_by_id(experiment_task_id)
-        if experiment_task_info is None:
-            raise ValueError(f"Task with ID '{experiment_task_id}' not found")
-
+        module = None
         module_id = None
         serve_app_name = None
         if with_module:
-            train_module_id = experiment_task_info["meta"]["app"]["moduleId"]
-            module = self.get_serving_app_by_train_app(module_id=train_module_id)
+            framework_name = experiment_info.framework_name
+            module = self.find_serving_app_by_framework(framework_name)
             serve_app_name = module["name"]
             module_id = module["id"]
             logger.debug(f"Serving app detected: '{serve_app_name}'. Module ID: '{module_id}'")
@@ -768,10 +765,15 @@ class DeployApi:
             "runtime": runtime,
         }
 
-        config = experiment_info.model_files.get("config")
-        if config is not None:
-            deploy_params["model_files"]["config"] = f"{experiment_info.artifacts_dir}{config}"
-            logger.debug(f"Config file added: {experiment_info.artifacts_dir}{config}")
+        for file_key, file_path in experiment_info.model_files.items():
+            full_file_path = os.path.join(experiment_info.artifacts_dir, file_path)
+            if not self._api.file.exists(team_id, full_file_path):
+                logger.debug(f"Model file not found: '{full_file_path}'. Trying to find it by checkpoint path.")
+                full_file_path = os.path.join(artifacts_dir, file_path)
+                if not self._api.file.exists(team_id, full_file_path):
+                    raise ValueError(f"Model file not found: '{full_file_path}'. Make sure that the file exists in the artifacts directory.")
+            deploy_params["model_files"][file_key] = full_file_path
+            logger.debug(f"Model file added: {full_file_path}")
         return module_id, serve_app_name, deploy_params
 
     def _set_auto_runtime_by_checkpoint(self, checkpoint_path: str) -> str:

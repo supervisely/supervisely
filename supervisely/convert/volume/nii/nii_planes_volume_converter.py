@@ -150,8 +150,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
             objs = []
             spatial_figures = []
             for idx, ann_path in enumerate(item.ann_data, start=1):
-                for mask, pixel_id in helper.get_annotation_from_nii(ann_path):
-                    class_id = pixel_id if item.is_semantic else idx
+                for mask, pixel_value in helper.get_annotation_from_nii(ann_path):
+                    class_id = pixel_value if item.is_semantic else idx
                     class_name = f"Segment_{class_id}"
                     color = None
                     if item.custom_data.get("cls_color_map") is not None:
@@ -161,7 +161,12 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     class_name = renamed_classes.get(class_name, class_name)
                     obj_class = meta.get_obj_class(class_name)
                     if obj_class is None:
-                        obj_class = ObjClass(class_name, Mask3D, color)
+                        obj_class = ObjClass(
+                            class_name,
+                            Mask3D,
+                            color,
+                            description=f"{helper.MASK_PIXEL_VALUE}{pixel_value}",
+                        )
                         meta = meta.add_obj_class(obj_class)
                         self._meta_changed = True
                         self._meta = meta
