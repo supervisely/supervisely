@@ -258,7 +258,7 @@ class ClassesSelector:
             if other_suitable_exists:
                 self.validator_text.set(
                     text=(
-                        f"No suitable classes for task type '{task_type}'. "
+                        f"No suitable classes for task type {task_type}. "
                         "Training is not possible. Please choose another task type."
                     ),
                     status="error",
@@ -295,7 +295,7 @@ class ClassesSelector:
             else:
                 if self.is_convert_class_shapes_enabled():
                     message_parts.append(
-                        f"Conversion enabled. Classes will be converted for task '{task_type}'."
+                        f"Conversion enabled. Classes will be converted for task {task_type}."
                     )
                     status = "info" if status == "success" else status
                     is_valid = True

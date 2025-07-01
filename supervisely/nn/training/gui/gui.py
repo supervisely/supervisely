@@ -831,26 +831,27 @@ class TrainGUI:
             self.training_process.set_experiment_name(experiment_name)
 
         # Run init-steps and stop on validation failure
-        def _run_step(init_fn, settings, err_msg: str) -> bool:
-            """Wrap _init_* calls, log on failure and cut execution chain."""
+        def _run_step(init_fn, settings) -> bool:
             if not init_fn(settings, options, click_cb):
-                logger.warning(err_msg)
                 return False
             return True
         
         # GUI init steps
         _steps = [
-            (self._init_input, app_state.get("input"), "Input validation failed"),
-            (self._init_model, app_state["model"], "Model validation failed"),
-            (self._init_classes, app_state.get("classes", []), "Classes validation failed"),
-            (self._init_tags, app_state.get("tags", []), "Tags validation failed"),
-            (self._init_train_val_splits, app_state.get("train_val_split", {}), "Train/val splits validation failed"),
-            (self._init_hyperparameters, app_state["hyperparameters"], "Hyperparameters validation failed"),
+            (self._init_input, app_state.get("input"), "Input project"),
+            (self._init_model, app_state["model"], "Select Model"),
+            (self._init_classes, app_state.get("classes", []), "Classes Selector"),
+            (self._init_tags, app_state.get("tags", []), "Tags Selector"),
+            (self._init_train_val_splits, app_state.get("train_val_split", {}), "Train/Val Splits"),
+            (self._init_hyperparameters, app_state["hyperparameters"], "Hyperparameters"),
         ]
 
-        for init_fn, settings, msg in _steps:
-            if not _run_step(init_fn, settings, msg):
+        for idx, (init_fn, settings, step_name) in enumerate(_steps, start=1):
+            if not _run_step(init_fn, settings):
+                logger.warning(f"Step '{step_name}' {idx}/{len(_steps)} failed to validate")
                 return
+            logger.info(f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully")
+        logger.info(f"All steps have been validated successfully")
         # ------------------------------------------------------------------ #
 
     def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True) -> bool:
