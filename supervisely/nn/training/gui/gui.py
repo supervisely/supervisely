@@ -775,10 +775,10 @@ class TrainGUI:
 
     def load_from_app_state(self, app_state: Union[str, dict], click_cb: bool = True) -> None:
         """
-        Load the GUI state from app state dictionary.
+        Load the GUI state from app state dictionary or path to the state file.
 
-        :param app_state: The state dictionary.
-        :type app_state: dict
+        :param app_state: The state dictionary or path to the state file.
+        :type app_state: Union[str, dict]
         :param click_cb: Automatically click the callback functions to set the GUI state.
         :type click_cb: bool
 
@@ -804,15 +804,16 @@ class TrainGUI:
                 # },
                 "hyperparameters": hyperparameters, # yaml string
                 "options": {
+                    "convert_class_shapes": True,
                     "model_benchmark": {
                         "enable": True,
                         "speed_test": True
                     },
                     "cache_project": True,
-                "export": {
-                    "enable": True,
-                    "ONNXRuntime": True,
-                    "TensorRT": True
+                    "export": {
+                        "enable": True,
+                        "ONNXRuntime": True,
+                        "TensorRT": True
                     },
                 },
                 "experiment_name": "my_experiment",
@@ -824,36 +825,35 @@ class TrainGUI:
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
         
-        # Set input options
-        input_settings = app_state.get("input")
-        self._init_input(input_settings, options, click_cb)
-
-        # Set model options
-        model_settings = app_state["model"]
-        self._init_model(model_settings, options, click_cb)
-
-        # Set classes
-        classes_settings = app_state.get("classes", [])
-        self._init_classes(classes_settings, options, click_cb)
-
-        # Set tags
-        tags_settings = app_state.get("tags", [])
-        self._init_tags(tags_settings, options, click_cb)
-
-        # Set train/val splits
-        train_val_splits_settings = app_state.get("train_val_split", {})
-        self._init_train_val_splits(train_val_splits_settings, options, click_cb)
-
-        # Set hyperparameters
-        hyperparameters_settings = app_state["hyperparameters"]
-        self._init_hyperparameters(hyperparameters_settings, options, click_cb)
-
         # Set experiment name
-        experiment_name = app_state.get("experiment_name", None)
+        experiment_name = app_state.get("experiment_name")
         if experiment_name is not None:
             self.training_process.set_experiment_name(experiment_name)
 
-    def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True) -> None:
+        # Run init-steps and stop on validation failure
+        def _run_step(init_fn, settings, err_msg: str) -> bool:
+            """Wrap _init_* calls, log on failure and cut execution chain."""
+            if not init_fn(settings, options, click_cb):
+                logger.warning(err_msg)
+                return False
+            return True
+        
+        # GUI init steps
+        _steps = [
+            (self._init_input, app_state.get("input"), "Input validation failed"),
+            (self._init_model, app_state["model"], "Model validation failed"),
+            (self._init_classes, app_state.get("classes", []), "Classes validation failed"),
+            (self._init_tags, app_state.get("tags", []), "Tags validation failed"),
+            (self._init_train_val_splits, app_state.get("train_val_split", {}), "Train/val splits validation failed"),
+            (self._init_hyperparameters, app_state["hyperparameters"], "Hyperparameters validation failed"),
+        ]
+
+        for init_fn, settings, msg in _steps:
+            if not _run_step(init_fn, settings, msg):
+                return
+        # ------------------------------------------------------------------ #
+
+    def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True) -> bool:
         """
         Initialize the input selector with the given settings.
 
@@ -864,11 +864,14 @@ class TrainGUI:
         """
         # Set Input
         self.input_selector.set_cache(options.get("cache_project", True))
-        if click_cb:
+        is_valid = self.input_selector.validate_step()
+        if is_valid and click_cb:
             self.input_selector_cb()
+            self.set_next_step()
+        return is_valid
         # ----------------------------------------- #
 
-    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict, click_cb: bool = True) -> None:
+    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict, click_cb: bool = True) -> bool:
         """
         Initialize the train/val splits selector with the given settings.
 
@@ -878,7 +881,7 @@ class TrainGUI:
         :type options: dict
         """
         if self.train_val_splits_selector is None:
-            return  # Selector disabled by app options
+            return True # Selector disabled by app options
 
         if train_val_splits_settings == {}:
             available_methods = self.app_options.get("train_val_splits_methods", [])
@@ -930,10 +933,14 @@ class TrainGUI:
             self.train_val_splits_selector.train_val_splits.set_collections_splits(
                 train_collections, val_collections
             )
-        if click_cb:
-            self.train_val_splits_selector_cb()
 
-    def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True) -> None:
+        is_valid = self.train_val_splits_selector.validate_step()
+        if is_valid and click_cb:
+            self.train_val_splits_selector_cb()
+            self.set_next_step()
+        return is_valid
+    
+    def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True) -> bool:
         """
         Initialize the classes selector with the given settings.
 
@@ -943,15 +950,22 @@ class TrainGUI:
         :type options: dict
         """
         if self.classes_selector is None:
-            return  # Selector disabled by app options
+            return True # Selector disabled by app options
+
+        convert_class_shapes = options.get("convert_class_shapes", True)
+        if convert_class_shapes:
+            self.classes_selector.convert_class_shapes_checkbox.check()
 
         # Set Classes
         self.classes_selector.set_classes(classes_settings)
-        if click_cb:
+        is_valid = self.classes_selector.validate_step()
+        if is_valid and click_cb:
             self.classes_selector_cb()
+            self.set_next_step()
+        return is_valid
         # ----------------------------------------- #
 
-    def _init_tags(self, tags_settings: list, options: dict, click_cb: bool = True) -> None:
+    def _init_tags(self, tags_settings: list, options: dict, click_cb: bool = True) -> bool:
         """
         Initialize the tags selector with the given settings.
 
@@ -961,15 +975,18 @@ class TrainGUI:
         :type options: dict
         """
         if self.tags_selector is None:
-            return  # Selector disabled by app options
+            return True # Selector disabled by app options
 
         # Set Tags
         self.tags_selector.set_tags(tags_settings)
-        if click_cb:
+        is_valid = self.tags_selector.validate_step()
+        if is_valid and click_cb:
             self.tags_selector_cb()
+            self.set_next_step()
+        return is_valid
         # ----------------------------------------- #
 
-    def _init_model(self, model_settings: dict, options: dict, click_cb: bool = True) -> None:
+    def _init_model(self, model_settings: dict, options: dict, click_cb: bool = True) -> bool:
         """
         Initialize the model selector with the given settings.
 
@@ -997,11 +1014,15 @@ class TrainGUI:
                 )
 
             active_row.set_selected_checkpoint_by_name(model_settings["checkpoint"])
-        if click_cb:
+
+        is_valid = self.model_selector.validate_step()
+        if is_valid and click_cb:
             self.model_selector_cb()
+            self.set_next_step()
+        return is_valid
         # ----------------------------------------- #
 
-    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True) -> None:
+    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True) -> bool:
         """
         Initialize the hyperparameters selector with the given settings.
 
@@ -1030,8 +1051,12 @@ class TrainGUI:
             self.hyperparameters_selector.set_export_tensorrt_checkbox_value(
                 export_weights_settings.get(RuntimeType.TENSORRT, False)
             )
-        if click_cb:
+
+        is_valid = self.hyperparameters_selector.validate_step()
+        if is_valid and click_cb:
             self.hyperparameters_selector_cb()
+            self.set_next_step()
+        return is_valid
     # ----------------------------------------- #
 
     # Run from experiment page

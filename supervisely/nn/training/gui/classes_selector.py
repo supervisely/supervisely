@@ -60,7 +60,7 @@ class ClassesSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
 
-        self.auto_convert_checkbox = CheckboxField(
+        self.convert_class_shapes_checkbox = CheckboxField(
             title="Convert classes to model task type",
             description="If enabled, classes with compatible shapes will be converted to the model class type",
             checked=False,
@@ -71,7 +71,7 @@ class ClassesSelector:
             [
                 self.qa_stats_text,
                 self.classes_table,
-                self.auto_convert_checkbox,
+                self.convert_class_shapes_checkbox,
                 self.validator_text,
                 self.button,
             ]
@@ -90,7 +90,7 @@ class ClassesSelector:
 
     @property
     def widgets_to_disable(self) -> list:
-        return [self.classes_table, self.auto_convert_checkbox]
+        return [self.classes_table, self.convert_class_shapes_checkbox]
 
     def get_selected_classes(self) -> list:
         return self.classes_table.get_selected_classes()
@@ -293,7 +293,7 @@ class ClassesSelector:
                 status = "error"
                 is_valid = False
             else:
-                if self.is_auto_convert_enabled():
+                if self.is_convert_class_shapes_enabled():
                     message_parts.append(
                         f"Conversion enabled. Classes will be converted for task '{task_type}'."
                     )
@@ -311,7 +311,7 @@ class ClassesSelector:
                     status = "error"
                     is_valid = False
         else:
-            if self.is_auto_convert_enabled():
+            if self.is_convert_class_shapes_enabled():
                 message_parts.append(
                     "Conversion enabled, but no shape conversion required."
                 )
@@ -320,5 +320,5 @@ class ClassesSelector:
         self.validator_text.show()
         return is_valid
 
-    def is_auto_convert_enabled(self) -> bool:
-        return self.auto_convert_checkbox.is_checked()
+    def is_convert_class_shapes_enabled(self) -> bool:
+        return self.convert_class_shapes_checkbox.is_checked()

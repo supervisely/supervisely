@@ -579,7 +579,7 @@ class TrainApp:
         self._download_project()
         # Step 3. Convert Project to Task
         if self.gui.need_convert_shapes:
-            if self.gui.classes_selector.is_auto_convert_enabled():
+            if self.gui.classes_selector.is_convert_class_shapes_enabled():
                 self._convert_project_to_model_task()
         # Step 4. Split Project
         self._split_project()
@@ -738,11 +738,6 @@ class TrainApp:
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
-        # if not self.is_model_benchmark_enabled:
-        #     raise ValueError(
-        #         "Enable 'model_benchmark' in app_options.yaml to register an inference class."
-        #     )
-
         self._is_inference_class_regirested = True
         self._inference_class = inference_class
         self._inference_settings = None
@@ -768,11 +763,17 @@ class TrainApp:
 
         model = self._get_model_config_for_app_state(experiment_info)
         options = {
+            "cache_project": self.gui.input_selector.get_cache_value(),
+            "convert_class_shapes": self.gui.classes_selector.is_convert_class_shapes_enabled(),
             "model_benchmark": {
                 "enable": self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value(),
                 "speed_test": self.gui.hyperparameters_selector.get_speedtest_checkbox_value(),
             },
-            "cache_project": self.gui.input_selector.get_cache_value(),
+            "export": {
+                "enable": self.gui.hyperparameters_selector.is_export_required(),
+                "ONNXRuntime": self.gui.hyperparameters_selector.get_export_onnx_checkbox_value(),
+                "TensorRT": self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value(),
+            },
         }
 
         app_state = {
@@ -786,36 +787,48 @@ class TrainApp:
         app_state["tags"] = tags
         return app_state
 
-    def load_app_state(self, app_state: dict) -> None:
+    def load_app_state(self, app_state: Union[str, dict]) -> None:
         """
         Load the GUI state from app state dictionary.
 
-        :param app_state: The state dictionary.
-        :type app_state: dict
+        :param app_state: The state dictionary or path to the state file.
+        :type app_state: Union[str, dict]
 
         app_state example:
 
             app_state = {
-                "input": {"project_id": 55555},
                 "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
                 },
                 "classes": ["apple"],
-                "tags": ["green", "red"],
+                # Pretrained model
                 "model": {
                     "source": "Pretrained models",
                     "model_name": "rtdetr_r50vd_coco_objects365"
                 },
+                # Custom model
+                # "model": {
+                #     "source": "Custom models",
+                #     "task_id": 555,
+                #     "checkpoint": "checkpoint_10.pth"
+                # },
                 "hyperparameters": hyperparameters, # yaml string
                 "options": {
+                    "convert_class_shapes": True,
                     "model_benchmark": {
                         "enable": True,
                         "speed_test": True
                     },
-                    "cache_project": True
-                }
+                    "cache_project": True,
+                    "export": {
+                        "enable": True,
+                        "ONNXRuntime": True,
+                        "TensorRT": True
+                    },
+                },
+                "experiment_name": "my_experiment",
             }
         """
         self.gui.load_from_app_state(app_state)
@@ -2540,9 +2553,7 @@ class TrainApp:
                 remote_checkpoint_dir = dirname(file_info.path)
                 self._api.app.workflow.add_output_folder(remote_checkpoint_dir, meta=meta)
             else:
-                logger.debug(
-                    f"File with checkpoints not found in Team Files. Cannot set workflow output."
-                )
+                logger.debug("File with checkpoints not found in Team Files. Cannot set workflow output.")
 
             if self.is_model_benchmark_enabled:
                 if model_benchmark_report:
@@ -2561,9 +2572,7 @@ class TrainApp:
                     )
                     self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
                 else:
-                    logger.debug(
-                        f"File with model benchmark report not found in Team Files. Cannot set workflow output."
-                    )
+                    logger.debug("File with model benchmark report not found in Team Files. Cannot set workflow output.")
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #
