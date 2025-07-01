@@ -579,14 +579,14 @@ class TrainApp:
         self._download_project()
         # Step 3. Convert Project to Task
         if self.gui.need_convert_shapes:
-            if self.gui.classes_selector.is_convert_class_shapes_enabled():
-                self._convert_project_to_model_task()
+            if self.gui.classes_selector is not None:
+                if self.gui.classes_selector.is_convert_class_shapes_enabled():
+                    self._convert_project_to_model_task()
         # Step 4. Split Project
         self._split_project()
-
-        # Step 4. Remove classes except selected
-        self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
-
+        # Step 5. Remove classes except selected
+        if self.sly_project.type == ProjectType.IMAGES.value:
+            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
         # Step 6. Download Model files
         self._download_model()
 
@@ -961,7 +961,7 @@ class TrainApp:
         Converts the project to the appropriate type.
         """
         if not self.project_info.type == ProjectType.IMAGES.value:
-            logger.info("Auto convertion supported only for images projects")
+            logger.info("Class shape conversion supported only for images projects")
             return
 
         task_type = self.gui.model_selector.get_selected_task_type()
@@ -970,12 +970,12 @@ class TrainApp:
             TaskType.INSTANCE_SEGMENTATION,
             TaskType.SEMANTIC_SEGMENTATION,
         ]:
-            logger.info(f"Auto convertion for task type: {task_type} is not supported")
+            logger.info(f"Class shape conversion for {task_type} task is not supported")
             return
 
-        logger.info(f"Converting project for task: {task_type}")
+        logger.info(f"Converting project for {task_type} task")
         with self.progress_bar_main(
-            message=f"Converting project to {task_type}",
+            message=f"Converting project to {task_type} task",
             total=len(self.sly_project.datasets),
         ) as pbar:
             if task_type == TaskType.OBJECT_DETECTION:
