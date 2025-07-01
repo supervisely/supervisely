@@ -773,7 +773,7 @@ class TrainGUI:
                 )
         return app_state
 
-    def load_from_app_state(self, app_state: Union[str, dict], click_cb: bool = True) -> None:
+    def load_from_app_state(self, app_state: Union[str, dict], click_cb: bool = True, validate_steps: bool = True) -> None:
         """
         Load the GUI state from app state dictionary or path to the state file.
 
@@ -781,6 +781,8 @@ class TrainGUI:
         :type app_state: Union[str, dict]
         :param click_cb: Automatically click the callback functions to set the GUI state.
         :type click_cb: bool
+        :param validate_steps: Validate the steps. If False, the steps will not be validated.
+        :type validate_steps: bool
 
         app_state example:
 
@@ -832,7 +834,7 @@ class TrainGUI:
 
         # Run init-steps and stop on validation failure
         def _run_step(init_fn, settings) -> bool:
-            if not init_fn(settings, options, click_cb):
+            if not init_fn(settings, options, click_cb, validate_steps):
                 return False
             return True
         
@@ -848,13 +850,16 @@ class TrainGUI:
 
         for idx, (init_fn, settings, step_name) in enumerate(_steps, start=1):
             if not _run_step(init_fn, settings):
-                logger.warning(f"Step '{step_name}' {idx}/{len(_steps)} failed to validate")
+                if validate_steps:
+                    logger.warning(f"Step '{step_name}' {idx}/{len(_steps)} failed to validate")
                 return
-            logger.info(f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully")
-        logger.info(f"All steps have been validated successfully")
+            if validate_steps:
+                logger.info(f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully")
+        if validate_steps:
+            logger.info(f"All steps have been validated successfully")
         # ------------------------------------------------------------------ #
 
-    def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True) -> bool:
+    def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True, validate: bool = True) -> bool:
         """
         Initialize the input selector with the given settings.
 
@@ -862,17 +867,123 @@ class TrainGUI:
         :type input_settings: dict
         :param options: The application options.
         :type options: dict
+        :param click_cb: Click the callback function.
+        :type click_cb: bool
+        :param validate: Validate the step.
+        :type validate: bool
         """
         # Set Input
         self.input_selector.set_cache(options.get("cache_project", True))
-        is_valid = self.input_selector.validate_step()
+        is_valid = True
+        if validate:
+            is_valid = self.input_selector.validate_step()
         if is_valid and click_cb:
             self.input_selector_cb()
             self.set_next_step()
         return is_valid
         # ----------------------------------------- #
 
-    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict, click_cb: bool = True) -> bool:
+    def _init_model(self, model_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+        """
+        Initialize the model selector with the given settings.
+
+        :param model_settings: The model settings.
+        :type model_settings: dict
+        :param options: The application options.
+        :type options: dict
+        :param click_cb: Click the callback function.
+        :type click_cb: bool
+        :param validate: Validate the step.
+        :type validate: bool
+        """
+
+        # Pretrained
+        if model_settings["source"] == ModelSource.PRETRAINED:
+            self.model_selector.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
+            self.model_selector.pretrained_models_table.set_by_model_name(
+                model_settings["model_name"]
+            )
+
+        # Custom
+        elif model_settings["source"] == ModelSource.CUSTOM:
+            self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
+            self.model_selector.experiment_selector.set_by_task_id(model_settings["task_id"])
+            active_row = self.model_selector.experiment_selector.get_selected_row()
+            if model_settings["checkpoint"] not in active_row.checkpoints_names:
+                raise ValueError(
+                    f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
+                )
+
+            active_row.set_selected_checkpoint_by_name(model_settings["checkpoint"])
+
+        is_valid = True
+        if validate:
+            is_valid = self.model_selector.validate_step()
+        if is_valid and click_cb:
+            self.model_selector_cb()
+            self.set_next_step()
+        return is_valid
+        # ----------------------------------------- #
+        
+    def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+        """
+        Initialize the classes selector with the given settings.
+
+        :param classes_settings: The classes settings.
+        :type classes_settings: list
+        :param options: The application options.
+        :type options: dict
+        :param click_cb: Click the callback function.
+        :type click_cb: bool
+        :param validate: Validate the step.
+        :type validate: bool
+        """
+        if self.classes_selector is None:
+            return True # Selector disabled by app options
+
+        convert_class_shapes = options.get("convert_class_shapes", True)
+        if convert_class_shapes:
+            self.classes_selector.convert_class_shapes_checkbox.check()
+
+        # Set Classes
+        self.classes_selector.set_classes(classes_settings)
+        is_valid = True
+        if validate:
+            is_valid = self.classes_selector.validate_step()
+        if is_valid and click_cb:
+            self.classes_selector_cb()
+            self.set_next_step()
+        return is_valid
+        # ----------------------------------------- #
+
+    def _init_tags(self, tags_settings: list, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+        """
+        Initialize the tags selector with the given settings.
+
+        :param tags_settings: The tags settings.
+        :type tags_settings: list
+        :param options: The application options.
+        :type options: dict
+        :param click_cb: Click the callback function.
+        :type click_cb: bool
+        :param validate: Validate the step.
+        :type validate: bool
+        """
+        if self.tags_selector is None:
+            return True # Selector disabled by app options
+
+        # Set Tags
+        self.tags_selector.set_tags(tags_settings)
+        is_valid = True
+        if validate:
+            is_valid = self.tags_selector.validate_
+        if is_valid and click_cb:
+            self.tags_selector_cb()
+            self.set_next_step()
+        return is_valid
+        # ----------------------------------------- #
+
+    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
         """
         Initialize the train/val splits selector with the given settings.
 
@@ -880,6 +991,10 @@ class TrainGUI:
         :type train_val_splits_settings: dict
         :param options: The application options.
         :type options: dict
+        :param click_cb: Click the callback function.
+        :type click_cb: bool
+        :param validate: Validate the step.
+        :type validate: bool
         """
         if self.train_val_splits_selector is None:
             return True # Selector disabled by app options
@@ -935,95 +1050,15 @@ class TrainGUI:
                 train_collections, val_collections
             )
 
-        is_valid = self.train_val_splits_selector.validate_step()
+        is_valid = True
+        if validate:
+            is_valid = self.train_val_splits_selector.validate_step()
         if is_valid and click_cb:
             self.train_val_splits_selector_cb()
             self.set_next_step()
         return is_valid
     
-    def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True) -> bool:
-        """
-        Initialize the classes selector with the given settings.
-
-        :param classes_settings: The classes settings.
-        :type classes_settings: list
-        :param options: The application options.
-        :type options: dict
-        """
-        if self.classes_selector is None:
-            return True # Selector disabled by app options
-
-        convert_class_shapes = options.get("convert_class_shapes", True)
-        if convert_class_shapes:
-            self.classes_selector.convert_class_shapes_checkbox.check()
-
-        # Set Classes
-        self.classes_selector.set_classes(classes_settings)
-        is_valid = self.classes_selector.validate_step()
-        if is_valid and click_cb:
-            self.classes_selector_cb()
-            self.set_next_step()
-        return is_valid
-        # ----------------------------------------- #
-
-    def _init_tags(self, tags_settings: list, options: dict, click_cb: bool = True) -> bool:
-        """
-        Initialize the tags selector with the given settings.
-
-        :param tags_settings: The tags settings.
-        :type tags_settings: list
-        :param options: The application options.
-        :type options: dict
-        """
-        if self.tags_selector is None:
-            return True # Selector disabled by app options
-
-        # Set Tags
-        self.tags_selector.set_tags(tags_settings)
-        is_valid = self.tags_selector.validate_step()
-        if is_valid and click_cb:
-            self.tags_selector_cb()
-            self.set_next_step()
-        return is_valid
-        # ----------------------------------------- #
-
-    def _init_model(self, model_settings: dict, options: dict, click_cb: bool = True) -> bool:
-        """
-        Initialize the model selector with the given settings.
-
-        :param model_settings: The model settings.
-        :type model_settings: dict
-        :param options: The application options.
-        :type options: dict
-        """
-
-        # Pretrained
-        if model_settings["source"] == ModelSource.PRETRAINED:
-            self.model_selector.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
-            self.model_selector.pretrained_models_table.set_by_model_name(
-                model_settings["model_name"]
-            )
-
-        # Custom
-        elif model_settings["source"] == ModelSource.CUSTOM:
-            self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.experiment_selector.set_by_task_id(model_settings["task_id"])
-            active_row = self.model_selector.experiment_selector.get_selected_row()
-            if model_settings["checkpoint"] not in active_row.checkpoints_names:
-                raise ValueError(
-                    f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
-                )
-
-            active_row.set_selected_checkpoint_by_name(model_settings["checkpoint"])
-
-        is_valid = self.model_selector.validate_step()
-        if is_valid and click_cb:
-            self.model_selector_cb()
-            self.set_next_step()
-        return is_valid
-        # ----------------------------------------- #
-
-    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True) -> bool:
+    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
         """
         Initialize the hyperparameters selector with the given settings.
 
@@ -1031,6 +1066,10 @@ class TrainGUI:
         :type hyperparameters_settings: dict
         :param options: The application options.
         :type options: dict
+        :param click_cb: Click the callback function.
+        :type click_cb: bool
+        :param validate: Validate the step.
+        :type validate: bool
         """
         self.hyperparameters_selector.set_hyperparameters(hyperparameters_settings)
 
@@ -1053,7 +1092,9 @@ class TrainGUI:
                 export_weights_settings.get(RuntimeType.TENSORRT, False)
             )
 
-        is_valid = self.hyperparameters_selector.validate_step()
+        is_valid = True
+        if validate:
+            is_valid = self.hyperparameters_selector.validate_step()
         if is_valid and click_cb:
             self.hyperparameters_selector_cb()
             self.set_next_step()
@@ -1095,7 +1136,7 @@ class TrainGUI:
             experiment_state = self._download_experiment_state(experiment_info)
             if train_mode == "continue":
                 experiment_state["model"] = model_settings
-            self.load_from_app_state(experiment_state, click_cb=False)
+            self.load_from_app_state(experiment_state, click_cb=False, validate_steps=False)
         else:
             self.input_selector.validator_text.set(
                 f"Couldn't load full training configuration from the experiment: {experiment_info.experiment_name}. Only model and hyperparameters are loaded.",
@@ -1105,5 +1146,5 @@ class TrainGUI:
             hparams = self._download_experiment_hparams(experiment_info)
             self.hyperparameters_selector.set_hyperparameters(hparams)
             if train_mode == "continue":
-                self._init_model(model_settings, click_cb=False)
+                self._init_model(model_settings, click_cb=False, validate=False)
     # ----------------------------------------- #

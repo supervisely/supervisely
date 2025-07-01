@@ -498,6 +498,7 @@ class ExperimentSelector(Widget):
             task_type = self.get_selected_task_type()
         if row_index < 0 or row_index > len(self._rows[task_type]) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
+        self.set_active_task_type(task_type)
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
