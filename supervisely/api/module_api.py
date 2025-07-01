@@ -685,6 +685,10 @@ class ApiField:
     """"""
     THRESHOLD_DIRECTION = "thresholdDirection"
     """"""
+    METHOD = "method"
+    """"""
+    PROMPT = "prompt"
+    """"""
 
 
 def _get_single_item(items):

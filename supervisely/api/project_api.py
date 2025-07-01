@@ -2241,3 +2241,120 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.editInfo",
             {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp, ApiField.SILENT: silent},
         )
+
+    def perform_ai_search(
+        self,
+        project_id: int,
+        dataset_id: Optional[int] = None,
+        image_id: Optional[int] = None,
+        prompt: Optional[str] = None,
+        method: Optional[Literal["centroids", "random"]] = None,
+        limit: int = 100,
+    ) -> Optional[int]:
+        """
+        Send AI search request to initiate search process.
+        This method allows you to search for similar images in a project using either a text prompt, an image ID, or a method type.
+        It is mutually exclusive, meaning you can only provide one of the parameters: `prompt`, `image_id`, or `method`.
+
+        :param project_id: ID of the Project
+        :type project_id: int
+        :param dataset_id: ID of the Dataset. If not None - search will be limited to this dataset.
+        :type dataset_id: Optional[int]
+        :param image_id: ID of the Image. Searches for images similar to the specified image.
+        :type image_id: Optional[int]
+        :param prompt: Text prompt for search request. Searches for similar images based on a text description.
+        :type prompt: Optional[str]
+        :param method: Activates diverse search using one of the following methods: "centroids", "random".
+        :type method: Optional[Literal["centroids", "random"]]
+        :param limit: Limit for search request
+        :type limit: int
+        :return: Entitites Collection ID of the search results, or None if no collection was created.
+        :rtype: dict
+        :raises ValueError: only one of `prompt`, `image_id` or `method`must be provided, and `method` must be one of the allowed values.
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            project_id = 123
+            image_id = 789
+            prompt = "person with a dog"
+
+            # Search with text prompt
+            collection_id = api.project.perform_ai_search(
+                project_id=project_id,
+                prompt=prompt,
+            )
+
+            # Search with method
+            collection_id = api.project.perform_ai_search(
+                project_id=project_id,
+                method="centroids",
+            )
+
+            # Search with image ID
+            collection_id = api.project.perform_ai_search(
+                project_id=project_id,
+                image_id=image_id,
+            )
+        """
+
+        # Check that only one of prompt, method, or image_id is provided
+        provided_params = sum([prompt is not None, method is not None, image_id is not None])
+        if provided_params != 1:
+            raise ValueError(
+                "Must provide exactly one of 'prompt', 'method', or 'image_id' parameters. They are mutually exclusive."
+            )
+
+        if prompt is None and method is None and image_id is None:
+            raise ValueError("Must provide either 'prompt', 'method', or 'image_id' parameter.")
+
+        # Validate method values
+        if method is not None and method not in ["centroids", "random"]:
+            raise ValueError("Method must be either 'centroids' or 'random'.")
+
+        request_body = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.LIMIT: limit,
+        }
+
+        if dataset_id is not None:
+            request_body[ApiField.DATASET_ID] = dataset_id
+
+        if image_id is not None:
+            request_body[ApiField.IMAGE_ID] = image_id
+
+        if prompt is not None:
+            request_body[ApiField.PROMPT] = prompt
+
+        if method is not None:
+            request_body[ApiField.METHOD] = method
+
+        response = self._api.post("projects.send-ai-search", request_body)
+        return response.json().get(ApiField.COLLECTION_ID, None)
+
+    def claculate_embeddings(self, id: int) -> None:
+        """
+        Calculate embeddings for the project.
+        This method is used to calculate embeddings for all images in the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+            project_id = 123
+
+            # Calculate embeddings for the project
+            api.project.claculate_embeddings(project_id)
+        """
+        self._api.post("projects.calculate-project-embeddings", {ApiField.PROJECT_ID: id})

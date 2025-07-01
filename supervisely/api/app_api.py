@@ -1833,6 +1833,23 @@ class AppApi(TaskApi):
             raise ValueError(f"Multiple serving apps found for app name {app_name}")
         return modules[0]["id"]
 
+    def get_session_token(self, slug: str) -> str:
+        """
+        Get session token for the app with specified slug.
+
+        :param slug: Slug of the app, e.g. "supervisely-ecosystem/hello-world-app".
+        :type slug: str
+
+        :return: Session token for the app.
+        :rtype: str
+        """
+        data = {ApiField.SLUG: slug}
+        response = self._api.post(
+            "instance.get-render-previews-session-token",
+            data,
+        )
+        return response.text
+
 
 # info about app in team
 # {
