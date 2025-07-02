@@ -445,7 +445,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
     def get_info_by_ai_search_key(
         self, project_id: int, ai_search_key: str
-    ) -> EntitiesCollectionInfo:
+    ) -> Optional[EntitiesCollectionInfo]:
         """
         Get information about Entities Collection of type `CollectionType.AI_SEARCH` with given AI search key.
 
@@ -526,7 +526,7 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
 
             collection_id = 2
             item_ids = [525, 526]
-            items = [CollectionItem(id=item_id) for item_id in item_ids]
+            items = [CollectionItem(entity_id=item_id) for item_id in item_ids]
             new_items = api.entities_collection.add_items(collection_id, items)
             print(new_items)
             # Output: [

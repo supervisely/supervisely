@@ -2271,7 +2271,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param limit: Limit for search request
         :type limit: int
         :return: Entitites Collection ID of the search results, or None if no collection was created.
-        :rtype: dict
+        :rtype: Optional[int]
         :raises ValueError: only one of `prompt`, `image_id` or `method`must be provided, and `method` must be one of the allowed values.
         :Usage example:
 
