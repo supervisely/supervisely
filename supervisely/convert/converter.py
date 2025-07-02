@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
 
 from tqdm import tqdm
 
@@ -40,7 +40,7 @@ class ImportManager:
 
     def __init__(
         self,
-        input_data: str,
+        input_data: Union[str, List[str]],
         project_type: ProjectType,
         team_id: Optional[int] = None,
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
@@ -60,9 +60,14 @@ class ImportManager:
         self._remote_files_map = {}
         self._modality = project_type
 
-        self._input_data = self._prepare_input_data(input_data)
-        self._unpack_archives(self._input_data)
-        remove_junk_from_dir(self._input_data)
+        if isinstance(input_data, str):
+            input_data = [input_data]
+
+        self._input_data = []
+        for data in input_data:
+            self._input_data.append(self._prepare_input_data(data))
+            self._unpack_archives(data)
+            remove_junk_from_dir(data)
 
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
@@ -90,13 +95,29 @@ class ImportManager:
         }
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
-        modality_converter = modality_converter_map[str(self._modality)](
-            self._input_data,
-            self._labeling_interface,
-            self._upload_as_links,
-            self._remote_files_map,
-        )
-        return modality_converter.detect_format()
+
+        detected_formats = set()
+        for data in self._input_data:
+            modality_converter = modality_converter_map[str(self._modality)](
+                data,
+                self._labeling_interface,
+                self._upload_as_links,
+                self._remote_files_map,
+            )
+            detected_formats.add(modality_converter.detect_format())
+
+        if len(detected_formats) > 1:
+            raise ValueError(
+                f"Detected multiple formats for input data: {detected_formats}. "
+                f"Please ensure that all input data is in the same format."
+            )
+        elif len(detected_formats) == 0:
+            raise ValueError(
+                f"Could not detect format for input data: {self._input_data}. "
+                f"Please ensure that the input data is in a supported format."
+            )
+
+        return list(detected_formats)[0]
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
