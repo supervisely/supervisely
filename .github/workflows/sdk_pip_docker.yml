@@ -7,6 +7,48 @@ on:
 env:
   REGISTRY: docker.io
   ORG: supervisely
+  RELEASE_VERSION: ${{ inputs.package_version }}
+
+  _docker_build_push: &docker_build_push
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Check tag
+        id: tag_check
+        run: |
+          if docker manifest inspect "${REGISTRY}/${ORG}/${IMAGE_NAME}:${RELEASE_VERSION}" >/dev/null 2>&1; then
+            echo "exists=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Build & push ${{ env.IMAGE_NAME }}
+        if: steps.tag_check.outputs.exists == 'false'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE_PATH }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            tag_ref_name=${{ env.RELEASE_VERSION }}
+
+      - name: Skip Docker push notice
+        if: steps.tag_check.outputs.exists == 'true'
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists — skipping."
 
 jobs:
   deploy:
@@ -51,112 +93,65 @@ jobs:
         with:
           time: "300s"
 
-  _docker_build_push: &docker_build_push
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Write tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> "${GITHUB_ENV}"
-
-      - name: Check if tag exists
-        id: tag_check
-        run: |
-          if docker manifest inspect "${REGISTRY}/${ORG}/${IMAGE_NAME}:${RELEASE_VERSION}" >/dev/null 2>&1; then
-            echo "TAG_EXISTS=true"  >> "$GITHUB_ENV"
-            echo "found=true"       >> "$GITHUB_OUTPUT"
-          else
-            echo "TAG_EXISTS=false" >> "$GITHUB_ENV"
-            echo "found=false"      >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Set up Docker Buildx
-        if: env.TAG_EXISTS != 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        if: env.TAG_EXISTS != 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build & push image
-        if: env.TAG_EXISTS != 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ${{ env.DOCKERFILE_PATH }}
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
-            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-
-      - name: Skip notice
-        if: steps.tag_check.outputs.found == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists — skipping build & push."
-
   base-py-sdk:
-    <<: *docker_build_push
     needs: deploy
+    <<: *docker_build_push
     env:
       IMAGE_NAME: base-py-sdk
       DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
 
   collaboration:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: collaboration
       DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
 
   data-operations:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: data-operations
       DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
 
   development:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: development
       DOCKERFILE_PATH: docker_images/development/Dockerfile
 
   import-export:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: import-export
       DOCKERFILE_PATH: docker_images/import_export/Dockerfile
 
   labeling:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: labeling
       DOCKERFILE_PATH: docker_images/labeling/Dockerfile
 
   synthetic:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: synthetic
       DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
 
   system:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: system
       DOCKERFILE_PATH: docker_images/system/Dockerfile
 
   visualization-stats:
-    <<: *docker_build_push
     needs: base-py-sdk
+    <<: *docker_build_push
     env:
       IMAGE_NAME: visualization-stats
       DOCKERFILE_PATH: docker_images/visualization_stats/Dockerfile
