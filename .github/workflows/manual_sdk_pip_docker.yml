@@ -23,6 +23,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Wait for tag replication
         uses: jakejarvis/wait-action@master
         with:
@@ -38,7 +40,7 @@ jobs:
       - name: Build sdist / wheel
         run: python -m build
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@v1.8.8
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: true
       - name: Wait after PyPI publish
@@ -56,6 +58,8 @@ jobs:
       DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -97,6 +101,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -138,6 +144,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -179,6 +187,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/development/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -220,6 +230,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/import_export/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -261,6 +273,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/labeling/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -302,6 +316,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -343,6 +359,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/system/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -384,6 +402,8 @@ jobs:
       DOCKERFILE_PATH: docker_images/visualization_stats/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
