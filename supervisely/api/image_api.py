@@ -17,7 +17,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from math import ceil
 from pathlib import Path
@@ -57,6 +57,10 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.constants import DOWNLOAD_BATCH_SIZE
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.entities_collection_api import (
+    AiSearchThresholdDirection,
+    CollectionTypeFilter,
+)
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.file_api import FileInfo
@@ -379,6 +383,15 @@ class ImageInfo(NamedTuple):
     #: :class:`int`: Bytes offset of the blob file that points to the end of the image data.
     offset_end: Optional[int] = None
 
+    #: :class:`float`: Image meta that could have the confidence level of the image in Enntities Collection of type AI Search.
+    ai_search_meta: Optional[dict] = None
+
+    #: :class:`str`: Timestamp of the last update of the embeddings for the image.
+    #: This field is used to track when the embeddings were last updated.
+    #: It is set to None if the embeddings have never been computed for the image.
+    #: Format: "YYYY-MM-DDTHH:MM:SS.sssZ"
+    embeddings_updated_at: Optional[str] = None
+
     # DO NOT DELETE THIS COMMENT
     #! New fields must be added with default values to keep backward compatibility.
 
@@ -456,6 +469,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.DOWNLOAD_ID,
             ApiField.OFFSET_START,
             ApiField.OFFSET_END,
+            ApiField.AI_SEARCH_META,
+            ApiField.EMBEDDINGS_UPDATED_AT,
         ]
 
     @staticmethod
@@ -602,6 +617,10 @@ class ImageApi(RemoveableBulkModuleApi):
         fields: Optional[List[str]] = None,
         recursive: Optional[bool] = False,
         entities_collection_id: Optional[int] = None,
+        ai_search_collection_id: Optional[int] = None,
+        ai_search_threshold: Optional[float] = None,
+        ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
+        extra_fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -628,8 +647,16 @@ class ImageApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
         :type recursive: bool, optional
-        :param entities_collection_id: :class:`EntitiesCollection<supervisely.api.entities_collection_api.EntitiesCollectionApi>` ID to which the images belong. Can be used to filter images by specific entities collection.
+        :param entities_collection_id: :class:`EntitiesCollection` ID of `Default` type to which the images belong.
         :type entities_collection_id: int, optional
+        :param ai_search_collection_id: :class:`EntitiesCollection` ID of type `AI Search` to which the images belong.
+        :type ai_search_collection_id: int, optional
+        :param ai_search_threshold: Confidence level to filter images in AI Search collection.
+        :type ai_search_threshold: float, optional
+        :param ai_search_threshold_direction: Direction of the confidence level filter. One of {'above' (default), 'below'}.
+        :type ai_search_threshold_direction: str, optional
+        :param extra_fields: List of extra fields to return. If None, returns no extra fields.
+        :type extra_fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -703,20 +730,44 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
-        if entities_collection_id is not None:
+        # Handle collection filtering
+        collection_info = None
+        if entities_collection_id is not None and ai_search_collection_id is not None:
+            raise ValueError(
+                "You can use only one of entities_collection_id or ai_search_collection_id"
+            )
+        elif entities_collection_id is not None:
+            collection_info = (CollectionTypeFilter.DEFAULT, entities_collection_id)
+        elif ai_search_collection_id is not None:
+            collection_info = (CollectionTypeFilter.AI_SEARCH, ai_search_collection_id)
+
+        if collection_info is not None:
+            collection_type, collection_id = collection_info
             if ApiField.FILTERS not in data:
                 data[ApiField.FILTERS] = []
+
+            collection_filter_data = {
+                ApiField.COLLECTION_ID: collection_id,
+                ApiField.INCLUDE: True,
+            }
+            if ai_search_threshold is not None:
+                if collection_type != CollectionTypeFilter.AI_SEARCH:
+                    raise ValueError(
+                        "ai_search_threshold is only available for AI Search collection"
+                    )
+                collection_filter_data[ApiField.THRESHOLD] = ai_search_threshold
+                collection_filter_data[ApiField.THRESHOLD_DIRECTION] = ai_search_threshold_direction
             data[ApiField.FILTERS].append(
                 {
-                    "type": "entities_collection",
-                    "data": {
-                        ApiField.COLLECTION_ID: entities_collection_id,
-                        ApiField.INCLUDE: True,
-                    },
+                    ApiField.TYPE: collection_type,
+                    ApiField.DATA: collection_filter_data,
                 }
             )
+
         if fields is not None:
             data[ApiField.FIELDS] = fields
+        if extra_fields is not None:
+            data[ApiField.EXTRA_FIELDS] = extra_fields
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -5412,3 +5463,47 @@ class ImageApi(RemoveableBulkModuleApi):
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def set_embeddings_updated_at(self, ids: List[int], timestamps: Optional[List[str]] = None):
+        """
+        Updates the `updated_at` field of images with the timestamp of the embeddings were created.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: List[int]
+        :param timestamps: List of timestamps in ISO format. If None, uses current time.
+                            You could set timestamps to [None, ..., None] if you need to recreate embeddings for images.
+        :type timestamps: List[str], optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import datetime
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [123, 456, 789]
+            timestamps = [datetime.datetime.now().isoformat() for _ in image_ids]
+            api.image.set_embeddings_updated_at(image_ids, timestamps)
+        """
+        method = "images.embeddings-updated-at.update"
+
+        if timestamps is None:
+            timestamps = [datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") for _ in ids]
+
+        if len(ids) != len(timestamps):
+            raise ValueError(
+                f"Length of ids and timestamps should be equal. {len(ids)} != {len(timestamps)}"
+            )
+        images = [
+            {ApiField.ID: image_id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp}
+            for image_id, timestamp in zip(ids, timestamps)
+        ]
+        self._api.post(
+            method,
+            {ApiField.IMAGES: images},
+        )

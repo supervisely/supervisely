@@ -1723,7 +1723,7 @@ class AppApi(TaskApi):
             users_ids = [users_id]
 
         new_params = {}
-        if "state" not in params:
+        if params is not None and "state" not in params:
             new_params["state"] = params
         else:
             new_params = params
@@ -1832,6 +1832,23 @@ class AppApi(TaskApi):
         if len(modules) > 1:
             raise ValueError(f"Multiple serving apps found for app name {app_name}")
         return modules[0]["id"]
+
+    def get_session_token(self, slug: str) -> str:
+        """
+        Get session token for the app with specified slug.
+
+        :param slug: Slug of the app, e.g. "supervisely-ecosystem/hello-world-app".
+        :type slug: str
+
+        :return: Session token for the app.
+        :rtype: str
+        """
+        data = {ApiField.SLUG: slug}
+        response = self._api.post(
+            "instance.get-render-previews-session-token",
+            data,
+        )
+        return response.text
 
 
 # info about app in team
