@@ -2,12 +2,11 @@ name: Manual Upload PyPI, Docker Build & Push
 
 on:
   workflow_dispatch:
-    branches: [ '*' ]
     inputs:
-      package_version:
-        description: 'Package version without leading v, e.g. 1.20.300'
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
         required: true
-        type: string
+        default: ""
 
 env:
   REGISTRY: docker.io
