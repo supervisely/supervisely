@@ -24,7 +24,7 @@ from tqdm import tqdm
 if TYPE_CHECKING:
     from pandas.core.frame import DataFrame
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from supervisely import logger
 from supervisely._utils import (
@@ -97,9 +97,6 @@ class ProjectInfo(NamedTuple):
     import_settings: dict
     version: dict
     created_by_id: int
-    embeddings_enabled: Optional[bool] = None
-    embeddings_updated_at: Optional[str] = None
-    embeddings_in_progress: Optional[bool] = None
 
     @property
     def image_preview_url(self):
@@ -147,8 +144,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         project_id = 1951
         project_info = api.project.get_info_by_id(project_id)
     """
-
-    debug_messages_sent = {"get_list_versions": False}
 
     @staticmethod
     def info_sequence():
@@ -200,9 +195,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.IMPORT_SETTINGS,
             ApiField.VERSION,
             ApiField.CREATED_BY_ID,
-            ApiField.EMBEDDINGS_ENABLED,
-            ApiField.EMBEDDINGS_UPDATED_AT,
-            ApiField.EMBEDDINGS_IN_PROGRESS,
         ]
 
     @staticmethod
@@ -235,7 +227,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type workspace_id: int
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
-        :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
+        :param fields: The list of api fields which will be returned with the response.
         :type fields: List[str]
 
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
@@ -314,29 +306,25 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
-        method = "projects.list"
-
-        debug_message = "While getting list of projects, the following fields are not available: "
-
         if ApiField.VERSION in fields:
             fields.remove(ApiField.VERSION)
-            if self.debug_messages_sent.get("get_list_versions", False) is False:
-                self.debug_messages_sent["get_list_versions"] = True
-                logger.debug(debug_message + "version. ")
-
-        data = {
-            ApiField.WORKSPACE_ID: workspace_id,
-            ApiField.FILTER: filters or [],
-            ApiField.FIELDS: fields,
-        }
-
-        return self.get_list_all_pages(method, data)
+            logger.debug(
+                "Project version information is not available while getting list of projects"
+            )
+        return self.get_list_all_pages(
+            "projects.list",
+            {
+                ApiField.WORKSPACE_ID: workspace_id,
+                ApiField.FILTER: filters or [],
+                ApiField.FIELDS: fields,
+            },
+        )
 
     def get_info_by_id(
         self,
         id: int,
         expected_type: Optional[str] = None,
-        raise_error: bool = False,
+        raise_error: Optional[bool] = False,
     ) -> ProjectInfo:
         """
         Get Project information by ID.
@@ -904,6 +892,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=True) -> ProjectInfo:
         """ """
         res = super()._convert_json_info(info, skip_missing=skip_missing)
+        if res.reference_image_url is not None:
+            res = res._replace(reference_image_url=res.reference_image_url)
         if res.items_count is None:
             res = res._replace(items_count=res.images_count)
         return ProjectInfo(**res._asdict())
@@ -1986,7 +1976,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         per_page: Optional[int] = None,
         page: Union[int, Literal["all"]] = "all",
         account_type: Optional[str] = None,
-        extra_fields: Optional[List[str]] = None,
     ) -> dict:
         """
         List all available projects from all available teams for the user that match the specified filtering criteria.
@@ -2019,9 +2008,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param account_type: (Deprecated) Type of user account
         :type account_type: str, optional
-
-        :param extra_fields: List of additional fields to be included in the response.
-        :type extra_fields: List[str], optional
 
         :return: Search response information and 'ProjectInfo' of all projects that are searched by a given criterion.
         :rtype: dict
@@ -2115,8 +2101,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             logger.warning(
                 "The 'account_type' parameter is deprecated. The result will not be filtered by account type. To filter received ProjectInfos, you could use the 'team_id' from the ProjectInfo object to get TeamInfo and check the account type."
             )
-        if extra_fields is not None:
-            request_body[ApiField.EXTRA_FIELDS] = extra_fields
 
         first_response = self._api.post(method, request_body).json()
 
@@ -2157,206 +2141,3 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
         _convert_entities(first_response)
         return first_response
-
-    def enable_embeddings(self, id: int, silent: bool = True) -> None:
-        """
-        Enable embeddings for the project.
-
-        :param id: Project ID
-        :type id: int
-        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
-        :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
-        """
-        self._api.post(
-            "projects.editInfo",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: True, ApiField.SILENT: silent},
-        )
-
-    def disable_embeddings(self, id: int, silent: bool = True) -> None:
-        """
-        Disable embeddings for the project.
-
-        :param id: Project ID
-        :type id: int
-        :param silent: Determines whether the `updatedAt` timestamp of the Poject should be updated or not, if False - update `updatedAt`
-        :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
-        """
-        self._api.post(
-            "projects.editInfo",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
-        )
-
-    def set_embeddings_in_progress(self, id: int, in_progress: bool) -> None:
-        """
-        Set embeddings in progress status for the project.
-        This method is used to indicate whether embeddings are currently being created for the project.
-
-        :param id: Project ID
-        :type id: int
-        :param in_progress: Status to set. If True, embeddings are in progress right now.
-        :type in_progress: bool
-        :return: None
-        :rtype: :class:`NoneType`
-        """
-        self._api.post(
-            "projects.embeddings-in-progress.update",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress},
-        )
-
-    def set_embeddings_updated_at(
-        self, id: int, timestamp: Optional[str] = None, silent: bool = True
-    ) -> None:
-        """
-        Set the timestamp when embeddings were last updated for the project.
-        If no timestamp is provided, uses the current UTC time.
-
-        :param id: Project ID
-        :type id: int
-        :param timestamp: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffffZ). If None, current UTC time is used.
-        :type timestamp: Optional[str]
-        :param silent: Determines whether the `updatedAt` timestamp of the Project should be updated or not, if False - update `updatedAt`
-        :type silent: bool
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
-
-         .. code-block:: python
-
-
-            api = sly.Api.from_env()
-            project_id = 123
-
-            # Set current time as embeddings update timestamp
-            api.project.set_embeddings_updated_at(project_id)
-
-            # Set specific timestamp
-            api.project.set_embeddings_updated_at(project_id, "2025-06-01T10:30:45.123456Z")
-        """
-        if timestamp is None:
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-
-        self._api.post(
-            "projects.editInfo",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp, ApiField.SILENT: silent},
-        )
-
-    def perform_ai_search(
-        self,
-        project_id: int,
-        dataset_id: Optional[int] = None,
-        image_id: Optional[int] = None,
-        prompt: Optional[str] = None,
-        method: Optional[Literal["centroids", "random"]] = None,
-        limit: int = 100,
-    ) -> Optional[int]:
-        """
-        Send AI search request to initiate search process.
-        This method allows you to search for similar images in a project using either a text prompt, an image ID, or a method type.
-        It is mutually exclusive, meaning you can only provide one of the parameters: `prompt`, `image_id`, or `method`.
-
-        :param project_id: ID of the Project
-        :type project_id: int
-        :param dataset_id: ID of the Dataset. If not None - search will be limited to this dataset.
-        :type dataset_id: Optional[int]
-        :param image_id: ID of the Image. Searches for images similar to the specified image.
-        :type image_id: Optional[int]
-        :param prompt: Text prompt for search request. Searches for similar images based on a text description.
-        :type prompt: Optional[str]
-        :param method: Activates diverse search using one of the following methods: "centroids", "random".
-        :type method: Optional[Literal["centroids", "random"]]
-        :param limit: Limit for search request
-        :type limit: int
-        :return: Entitites Collection ID of the search results, or None if no collection was created.
-        :rtype: Optional[int]
-        :raises ValueError: only one of `prompt`, `image_id` or `method`must be provided, and `method` must be one of the allowed values.
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-
-            api = sly.Api.from_env()
-
-            project_id = 123
-            image_id = 789
-            prompt = "person with a dog"
-
-            # Search with text prompt
-            collection_id = api.project.perform_ai_search(
-                project_id=project_id,
-                prompt=prompt,
-            )
-
-            # Search with method
-            collection_id = api.project.perform_ai_search(
-                project_id=project_id,
-                method="centroids",
-            )
-
-            # Search with image ID
-            collection_id = api.project.perform_ai_search(
-                project_id=project_id,
-                image_id=image_id,
-            )
-        """
-
-        # Check that only one of prompt, method, or image_id is provided
-        provided_params = sum([prompt is not None, method is not None, image_id is not None])
-        if provided_params != 1:
-            raise ValueError(
-                "Must provide exactly one of 'prompt', 'method', or 'image_id' parameters. They are mutually exclusive."
-            )
-
-        if prompt is None and method is None and image_id is None:
-            raise ValueError("Must provide either 'prompt', 'method', or 'image_id' parameter.")
-
-        # Validate method values
-        if method is not None and method not in ["centroids", "random"]:
-            raise ValueError("Method must be either 'centroids' or 'random'.")
-
-        request_body = {
-            ApiField.PROJECT_ID: project_id,
-            ApiField.LIMIT: limit,
-        }
-
-        if dataset_id is not None:
-            request_body[ApiField.DATASET_ID] = dataset_id
-
-        if image_id is not None:
-            request_body[ApiField.IMAGE_ID] = image_id
-
-        if prompt is not None:
-            request_body[ApiField.PROMPT] = prompt
-
-        if method is not None:
-            request_body[ApiField.METHOD] = method
-
-        response = self._api.post("projects.send-ai-search", request_body)
-        return response.json().get(ApiField.COLLECTION_ID, None)
-
-    def calculate_embeddings(self, id: int) -> None:
-        """
-        Calculate embeddings for the project.
-        This method is used to calculate embeddings for all images in the project.
-
-        :param id: Project ID
-        :type id: int
-        :return: None
-        :rtype: :class:`NoneType`
-        :Usage example:
-
-         .. code-block:: python
-
-            import supervisely as sly
-
-            api = sly.Api.from_env()
-            project_id = 123
-
-            # Calculate embeddings for the project
-            api.project.calculate_embeddings(project_id)
-        """
-        self._api.post("projects.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
