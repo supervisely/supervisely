@@ -2336,7 +2336,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         response = self._api.post("projects.send-ai-search", request_body)
         return response.json().get(ApiField.COLLECTION_ID, None)
 
-    def claculate_embeddings(self, id: int) -> None:
+    def calculate_embeddings(self, id: int) -> None:
         """
         Calculate embeddings for the project.
         This method is used to calculate embeddings for all images in the project.
@@ -2355,6 +2355,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             project_id = 123
 
             # Calculate embeddings for the project
-            api.project.claculate_embeddings(project_id)
+            api.project.calculate_embeddings(project_id)
         """
         self._api.post("projects.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
