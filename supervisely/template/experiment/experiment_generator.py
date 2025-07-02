@@ -866,8 +866,8 @@ class ExperimentGenerator(BaseGenerator):
         project_info = self.api.project.get_info_by_id(project_id)
         project_type = project_info.type
         project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
-        project_train_size = self.info["train_size"]
-        project_val_size = self.info["val_size"]
+        project_train_size = self.info.get("train_size", "N/A")
+        project_val_size = self.info.get("val_size", "N/A")
         model_classes = [cls.name for cls in self.model_meta.obj_classes]
         class_names = self._get_class_names(model_classes)
 

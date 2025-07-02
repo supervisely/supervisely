@@ -761,10 +761,13 @@ class TrainApp:
         classes = self.classes
         tags = self.tags
 
-        model = self._get_model_config_for_app_state(experiment_info)
+        convert_class_shapes = False
+        if self.gui.classes_selector is not None:
+            convert_class_shapes = self.gui.classes_selector.is_convert_class_shapes_enabled()
+
         options = {
             "cache_project": self.gui.input_selector.get_cache_value(),
-            "convert_class_shapes": self.gui.classes_selector.is_convert_class_shapes_enabled(),
+            "convert_class_shapes": convert_class_shapes,
             "model_benchmark": {
                 "enable": self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value(),
                 "speed_test": self.gui.hyperparameters_selector.get_speedtest_checkbox_value(),
@@ -776,6 +779,7 @@ class TrainApp:
             },
         }
 
+        model = self._get_model_config_for_app_state(experiment_info)
         app_state = {
             "model": model,
             "hyperparameters": self.hyperparameters_yaml,
