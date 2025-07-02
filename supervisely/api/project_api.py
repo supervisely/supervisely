@@ -2193,6 +2193,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def set_embeddings_in_progress(self, id: int, in_progress: bool) -> None:
         """
         Set embeddings in progress status for the project.
+        This method is used to indicate whether embeddings are currently being created for the project.
+
         :param id: Project ID
         :type id: int
         :param in_progress: Status to set. If True, embeddings are in progress right now.

@@ -5471,6 +5471,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :param ids: List of Image IDs in Supervisely.
         :type ids: List[int]
         :param timestamps: List of timestamps in ISO format. If None, uses current time.
+                            You could set timestamps to [None, ..., None] if you need to recreate embeddings for images.
         :type timestamps: List[str], optional
         :return: None
         :rtype: NoneType

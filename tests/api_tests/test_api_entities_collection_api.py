@@ -23,7 +23,7 @@ class TestEntitiesCollectionApi(unittest.TestCase):
     def setUpClass(cls):
         cls.api = Api.from_env()
         cls.entities_collection_api = cls.api.entities_collection
-        cls.workspace_id = 228
+        cls.workspace_id = 1
 
         project_info = cls.api.project.create(
             cls.workspace_id, "Test Project", change_name_if_conflict=True
