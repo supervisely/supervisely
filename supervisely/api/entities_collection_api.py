@@ -449,8 +449,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """
         Get information about Entities Collection of type `CollectionType.AI_SEARCH` with given AI search key.
 
-        :param prject_id: Project ID in Supervisely.
-        :type prject_id: int
+        :param project_id: Project ID in Supervisely.
+        :type project_id: int
         :param ai_search_key: AI search key for the collection.
         :type  ai_search_key: str
         :return: Information about Entities Collection.
