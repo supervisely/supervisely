@@ -14,22 +14,21 @@ env:
   ORG: supervisely
   RELEASE_VERSION: ${{ inputs.package_version }}
 
+jobs:
   _docker_build_push: &docker_build_push
     if: ${{ false }}
+    name: Docker Build & Push Template
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Check tag
+      - name: Check tag exists
         id: tag_check
         run: |
           if docker manifest inspect "${REGISTRY}/${ORG}/${IMAGE_NAME}:${RELEASE_VERSION}" >/dev/null 2>&1; then
@@ -37,7 +36,6 @@ env:
           else
             echo "exists=false" >>"$GITHUB_OUTPUT"
           fi
-
       - name: Build & push ${{ env.IMAGE_NAME }}
         if: steps.tag_check.outputs.exists == 'false'
         uses: docker/build-push-action@v5
@@ -50,62 +48,53 @@ env:
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
           build-args: |
             tag_ref_name=${{ env.RELEASE_VERSION }}
-
-      - name: Skip Docker push notice
+      - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists — skipping."
 
-jobs:
-  deploy:
+  publish-pypi:
+    name: Publish PyPI
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/supervisely
     permissions:
       id-token: write
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Write tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> "${GITHUB_ENV}"
-
-      - name: Install build deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install build
-
       - name: Wait for tag replication
         uses: jakejarvis/wait-action@master
         with:
           time: "150s"
-
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
       - name: Build sdist / wheel
         run: python -m build
-
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@v1.8.8
         with:
           skip-existing: true
-
       - name: Wait after PyPI publish
         uses: jakejarvis/wait-action@master
         with:
           time: "300s"
 
   base-py-sdk:
-    needs: deploy
+    name: Build base-py-sdk
+    needs: publish-pypi
     <<: *docker_build_push
     env:
       IMAGE_NAME: base-py-sdk
       DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
 
   collaboration:
+    name: Build collaboration
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -113,6 +102,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
 
   data-operations:
+    name: Build data-operations
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -120,6 +110,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
 
   development:
+    name: Build development
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -127,6 +118,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/development/Dockerfile
 
   import-export:
+    name: Build import-export
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -134,6 +126,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/import_export/Dockerfile
 
   labeling:
+    name: Build labeling
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -141,6 +134,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/labeling/Dockerfile
 
   synthetic:
+    name: Build synthetic
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -148,6 +142,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
 
   system:
+    name: Build system
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -155,6 +150,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/system/Dockerfile
 
   visualization-stats:
+    name: Build visualization-stats
     needs: base-py-sdk
     <<: *docker_build_push
     env:
