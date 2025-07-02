@@ -4,6 +4,10 @@ on:
   release:
     types: [published]
 
+env:
+  REGISTRY: docker.io
+  ORG: supervisely
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -12,223 +16,139 @@ jobs:
       url: https://pypi.org/p/supervisely
     permissions:
       id-token: write
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.8"
 
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
+      - name: Write tag to ENV variable
+        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> "${GITHUB_ENV}"
 
-      - name: Install dependencies
+      - name: Install build deps
         run: |
           python -m pip install --upgrade pip
           pip install build
 
-      - name: Delay for Github tag_name
+      - name: Wait for tag replication
         uses: jakejarvis/wait-action@master
         with:
           time: "150s"
 
-      - name: Build package
+      - name: Build sdist / wheel
         run: python -m build
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.8
         with:
           skip-existing: true
 
-      - name: Delay after PyPI publish
+      - name: Wait after PyPI publish
         uses: jakejarvis/wait-action@master
         with:
           time: "300s"
 
-      - name: Build and Push Docker Image
-        uses: mr-smithers-excellent/docker-build-push@v6
+      # ---------- Docker (official actions) ----------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          image: supervisely/base-py-sdk
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "base_images/py_sdk/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-  collaboration:
-    needs: deploy
-    runs-on: ubuntu-latest
+      - name: Build & push base-py-sdk image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: base_images/py_sdk/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ORG }}/base-py-sdk:${{ env.RELEASE_VERSION }}
+            ${{ env.REGISTRY }}/${{ env.ORG }}/base-py-sdk:latest
+          build-args: |
+            tag_ref_name=${{ env.RELEASE_VERSION }}
 
+# ---------- Docker Build Push Helper ----------
+  _docker_build_push: &docker_build_push
+    runs-on: ubuntu-latest
+    needs: deploy
     steps:
       - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
 
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
+      - name: Write tag to ENV variable
+        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> "${GITHUB_ENV}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          image: supervisely/collaboration
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/collaboration/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE_PATH }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_VERSION }}
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            tag_ref_name=${{ env.RELEASE_VERSION }}
+
+# ---------- Docker Build Push Jobs ----------
+  collaboration:
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: collaboration
+      DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
 
   data-operations:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/data-operations
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/data_operations/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: data-operations
+      DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
 
   development:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/development
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/development/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: development
+      DOCKERFILE_PATH: docker_images/development/Dockerfile
 
   import-export:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/import-export
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/import_export/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: import-export
+      DOCKERFILE_PATH: docker_images/import_export/Dockerfile
 
   labeling:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/labeling
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/labeling/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: labeling
+      DOCKERFILE_PATH: docker_images/labeling/Dockerfile
 
   synthetic:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/synthetic
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/synthetic/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: synthetic
+      DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
 
   system:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/system
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/system/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: system
+      DOCKERFILE_PATH: docker_images/system/Dockerfile
 
   visualization-stats:
-    needs: deploy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image with NVIDIA
-        uses: mr-smithers-excellent/docker-build-push@v6
-        with:
-          image: supervisely/visualization-stats
-          tags: ${{ env.RELEASE_VERSION }}, latest
-          addLatest: true
-          dockerfile: "docker_images/visualization_stats/Dockerfile"
-          registry: docker.io
-          buildArgs: |
-            tag_ref_name=${{ env.RELEASE_VERSION }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    <<: *docker_build_push
+    env:
+      IMAGE_NAME: visualization-stats
+      DOCKERFILE_PATH: docker_images/visualization_stats/Dockerfile
