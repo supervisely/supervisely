@@ -7,10 +7,10 @@ on:
 env:
   REGISTRY: docker.io
   ORG: supervisely
-  RELEASE_VERSION: ${{ inputs.package_version }}
 
   _docker_build_push: &docker_build_push
     if: ${{ false }}
+    name: Docker Build & Push Template
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +24,7 @@ env:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Check tag
+      - name: Check tag exists
         id: tag_check
         run: |
           if docker manifest inspect "${REGISTRY}/${ORG}/${IMAGE_NAME}:${RELEASE_VERSION}" >/dev/null 2>&1; then
@@ -46,12 +46,13 @@ env:
           build-args: |
             tag_ref_name=${{ env.RELEASE_VERSION }}
 
-      - name: Skip Docker push notice
+      - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists — skipping."
 
 jobs:
   deploy:
+    name: Publish PyPI
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -67,8 +68,8 @@ jobs:
         with:
           python-version: "3.8"
 
-      - name: Write tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> "${GITHUB_ENV}"
+      - name: Capture tag as RELEASE_VERSION
+        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >>"$GITHUB_ENV"
 
       - name: Install build deps
         run: |
@@ -83,8 +84,8 @@ jobs:
       - name: Build sdist / wheel
         run: python -m build
 
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.8
         with:
           skip-existing: true
 
@@ -94,6 +95,7 @@ jobs:
           time: "300s"
 
   base-py-sdk:
+    name: Build base-py-sdk
     needs: deploy
     <<: *docker_build_push
     env:
@@ -101,6 +103,7 @@ jobs:
       DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
 
   collaboration:
+    name: Build collaboration
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -108,6 +111,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
 
   data-operations:
+    name: Build data-operations
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -115,6 +119,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
 
   development:
+    name: Build development
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -122,6 +127,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/development/Dockerfile
 
   import-export:
+    name: Build import-export
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -129,6 +135,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/import_export/Dockerfile
 
   labeling:
+    name: Build labeling
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -136,6 +143,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/labeling/Dockerfile
 
   synthetic:
+    name: Build synthetic
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -143,6 +151,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
 
   system:
+    name: Build system
     needs: base-py-sdk
     <<: *docker_build_push
     env:
@@ -150,6 +159,7 @@ jobs:
       DOCKERFILE_PATH: docker_images/system/Dockerfile
 
   visualization-stats:
+    name: Build visualization-stats
     needs: base-py-sdk
     <<: *docker_build_push
     env:
