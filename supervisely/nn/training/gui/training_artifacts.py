@@ -64,13 +64,21 @@ class TrainingArtifacts:
         self.display_widgets.extend([self.validator_text])
 
         # Outputs
-        # self.artifacts_thumbnail = FolderThumbnail()
-        self.artifacts_thumbnail = ReportThumbnail(
-            title="Experiment Report",
-            color="#5fa8ff",
-            bg_color="#e6f3ff",
-            report_type="experiment",
-        )
+        output_mode = self.app_options.get("output_mode", "report")
+        if output_mode == "report":
+            self.artifacts_thumbnail = ReportThumbnail(
+                title="Experiment Report",
+                color="#5fa8ff",
+                bg_color="#e6f3ff",
+                report_type="experiment",
+            )
+        elif output_mode == "directory":
+            self.artifacts_thumbnail = FolderThumbnail()
+        else:
+            raise ValueError(
+                f"Invalid output mode: {output_mode}. "
+                "Please set 'output_mode' in app_options.yaml to 'report' or 'directory'."
+            )
         self.artifacts_thumbnail.hide()
 
         self.artifacts_field = Field(

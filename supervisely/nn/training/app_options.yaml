@@ -1,31 +1,14 @@
 # All available options for the training app
 
-# Add selector for selecting cuda device
-device_selector: false
+# ==================== GUI / UX ====================
+# ==================== Model Selection =============
+model_selector:
+  enabled: true
+  show_custom: true
 
-# Add options to run model benchmark after training
-model_benchmark: false
-
-# Export model
-export_onnx_supported: false
-export_tensorrt_supported: false
-
-# How to use models outside of the Supervisely platform
-# demo:
-#   branch: "main"
-#   path: "supervisely_integration/demo"
-
-# Enable this option when using supervisely train logger
-# train_logger: "tensorboard"
-
-# Show logs in UI during training
-show_logs_in_gui: true
-
-# [Beta] Collapse GUI cards on selection
-collapsable: false
-
+# ==================== Data Selection ==============
 # if false, use all classes from project meta
-classes_selector: 
+classes_selector:
   enabled: true
 
 # if false, use all tags from project meta
@@ -33,7 +16,7 @@ tags_selector:
   enabled: false
 
 # if false, skip train/val splits step
-train_val_splits_selector: 
+train_val_splits_selector:
   enabled: true
   methods:
     - Random
@@ -41,6 +24,42 @@ train_val_splits_selector:
     - Based on datasets
     - Based on collections
 
-model_selector:
-  enabled: true
-  show_custom: true
+# ==================== Options ====================
+# How to display training results in the GUI:
+#   report    – generate a detailed experiment page (default);
+#   directory – show only a link to the output folder instead of the report.
+output_mode: report
+
+# Add selector for selecting cuda device
+device_selector: false
+
+# Add options to run model benchmark after training
+model_benchmark: false
+
+# Show logs in UI during training
+show_logs_in_gui: true
+
+# [Beta] Collapse GUI cards on selection
+collapsable: false
+
+# ==================== Export ======================
+# Requires additional implementation
+export_onnx_supported: false
+export_tensorrt_supported: false
+
+# ==================== Logging =====================
+# Enable this option when using supervisely train logger
+# train_logger: "tensorboard"
+
+# ==================== Integration =================
+# How to run trained checkpoints outside Supervisely:
+#   branch  – main (master) branch of the training repository.
+#   path    – path to the directory with demo files in training repository.
+#           - directory should contain:
+#             - README.md
+#             - demo_pytorch.py
+#             - demo_onnx.py
+#             - demo_tensorrt.py
+# demo:
+#   branch: "main"
+#   path: "supervisely_integration/demo"

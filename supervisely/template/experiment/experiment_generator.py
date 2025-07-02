@@ -751,13 +751,17 @@ class ExperimentGenerator(BaseGenerator):
         def find_app_by_framework(
             api: Api, framework: str, action: Literal["train", "serve"]
         ):
-            modules = api.app.get_list_ecosystem_modules(
-                categories=[action, f"framework:{framework}"],
-                categories_operation="and",
-            )
-            if len(modules) == 0:
+            try:
+                modules = api.app.get_list_ecosystem_modules(
+                    categories=[action, f"framework:{framework}"],
+                    categories_operation="and",
+                )
+                if len(modules) == 0:
+                    return None
+                return modules[0]
+            except Exception as e:
+                logger.warning(f"Failed to find {action} app by framework: {e}")
                 return None
-            return modules[0]
 
         train_app_info = find_app_by_framework(
             self.api, self.info["framework_name"], "train"

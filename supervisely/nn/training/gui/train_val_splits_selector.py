@@ -2,7 +2,7 @@ from typing import List
 
 from supervisely import Api, Project
 from supervisely.app.widgets import Button, Card, Container, Text, TrainValSplits
-
+from supervisely.api.module_api import ApiField
 
 class TrainValSplitsSelector:
     title = "Train / Val Splits"
@@ -222,12 +222,13 @@ class TrainValSplitsSelector:
                 return False
 
             # Check if datasets are not empty
-            stats = self.api.project.get_stats(self.project_id)
+            filters = [{ ApiField.FIELD: ApiField.ID, ApiField.OPERATOR: "in", ApiField.VALUE: train_dataset_id + val_dataset_id}]
+            selected_datasets = self.api.dataset.get_list(self.project_id, filters, recursive=True)
             datasets_count = {}
-            for dataset in stats["images"]["datasets"]:
-                datasets_count[dataset["id"]] = {
-                    "name": dataset["name"],
-                    "total": dataset["imagesInDataset"],
+            for dataset in selected_datasets:
+                datasets_count[dataset.id] = {
+                    "name": dataset.name,
+                    "total": dataset.images_count,
                 }
 
             empty_dataset_names = []

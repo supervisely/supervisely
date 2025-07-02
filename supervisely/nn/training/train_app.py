@@ -686,15 +686,19 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-        # Step 10. Generate experiment report
-        experiment_link_file_info = self._generate_experiment_report(experiment_info, model_meta)
+        # Step 10. Generate training output
+        output_mode = self._app_options.get("output_mode", "report")
+        if output_mode == "report":
+            output_file_info = self._generate_experiment_report(experiment_info, model_meta)
+        else: # output artifacts directory
+            output_file_info = session_link_file_info
 
         # Step 11. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(
             experiment_info,
             remote_dir,
-            experiment_link_file_info,
+            output_file_info,
             mb_eval_report,
         )
         self._set_ws_progress_status("completed")
