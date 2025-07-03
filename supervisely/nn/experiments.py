@@ -20,6 +20,10 @@ class ExperimentInfo:
     """Name of the framework used in the experiment"""
     model_name: str
     """Name of the model used in the experiment. Defined by the user in the training app"""
+    base_checkpoint: str
+    """Name of the base checkpoint used for training"""
+    base_checkpoint_link: str
+    """Link to the base checkpoint used for training"""
     task_type: str
     """Task type of the experiment"""
     project_id: int
