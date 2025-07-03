@@ -14,8 +14,7 @@ Here are prediction samples made with **{{ experiment.training.checkpoints.pytor
 
 ## Evaluation
 
-The **{{ experiment.training.checkpoints.pytorch.name }}** checkpoint was evaluated on the validation set containing
-**{{ experiment.project.splits.val }}
+The **{{ experiment.training.checkpoints.pytorch.name }}** checkpoint was evaluated on the validation set containing **{{ experiment.project.splits.val }}
 images**.
 
 See the full [📊 Evaluation Report]({{ experiment.training.evaluation.url }}) for details and visualizations.
@@ -36,17 +35,14 @@ was performed.
 The artifacts of this experiment are stored in the **Team Files**. You can download them and use in your code.
 Here are the essential checkpoints and exports of the model:
 
-- 🔥 Best checkpoint: **{{ experiment.training.checkpoints.pytorch.name }}** ([download]({{
-experiment.training.checkpoints.pytorch.url
+- 🔥 Best checkpoint: **{{ experiment.training.checkpoints.pytorch.name }}** ([download]({{ experiment.training.checkpoints.pytorch.url
 }}){:download="{{ experiment.training.checkpoints.pytorch.name }}"})
 {% if experiment.training.checkpoints.onnx.name %}
-- 📦 ONNX export: **{{ experiment.training.checkpoints.onnx.name }}** ([download]({{
-experiment.training.checkpoints.onnx.url
+- 📦 ONNX export: **{{ experiment.training.checkpoints.onnx.name }}** ([download]({{ experiment.training.checkpoints.onnx.url
 }}){:download="{{ experiment.training.checkpoints.onnx.name }}"})
 {% endif %}
 {% if experiment.training.checkpoints.tensorrt.name %}
-- ⚡ TensorRT export: **{{ experiment.training.checkpoints.tensorrt.name }}** ([download]({{
-experiment.training.checkpoints.tensorrt.url
+- ⚡ TensorRT export: **{{ experiment.training.checkpoints.tensorrt.name }}** ([download]({{ experiment.training.checkpoints.tensorrt.url
 }}){:download="{{ experiment.training.checkpoints.tensorrt.name }}"})
 {% endif %}
 
@@ -87,25 +83,20 @@ The training process was configured with the following hyperparameters. You can 
 
 ## Supervisely Apps
 
-The quick actions on this page, such as **Deploy**, **Predict**, or **Fine-tune**, help you to quickly work with your
-model. But you can also run the apps manually from the Supervisely Platform. Here are related apps to this experiment:
+The quick actions on this page, such as **Deploy**, **Predict**, or **Fine-tune**, help you to quickly work with your model. But you can also run the apps manually from the Supervisely Platform. Here are related apps to this experiment:
 
 - [Serve {{ experiment.model.framework }}]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.serve.slug
 }}){:target="_blank"} - deploy your model in the Supervisely Platform.
 - [Train {{ experiment.model.framework }}]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.train.slug
 }}){:target="_blank"} - train a model in the Supervisely Platform.
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_images.slug
-}}){:target="_blank"} -
+- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_images.slug }}){:target="_blank"} -
 connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_videos.slug
-}}){:target="_blank"} -
+- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_videos.slug }}){:target="_blank"} -
 for predictions on video project or dataset.
 
 ## API Integration & Deployment
 
-In this section, you'll find the quickstart guides for integrating your model into your applications using the
-Supervisely API, you'll learn how to deploy your model outside of the Supervisely Platform, and how to deploy it in a
-Docker container.
+In this section, you'll find the quickstart guides for integrating your model into your applications using the Supervisely API, you'll learn how to deploy your model outside of the Supervisely Platform, and how to deploy it in a Docker container.
 
 ### Table of contents:
 
@@ -120,40 +111,39 @@ Here is a **quickstart** guide of how to use the Supervisely API.
 
 1. Install Supervisely:
 
-```bash
-pip install supervisely
-```
+    ```bash
+    pip install supervisely
+    ```
 
 2. Authentication. Provide your **API token** and the **Server address** into environment variables. For example, you
 can pass them in the terminal before running the script:
 
-```bash
-export API_TOKEN="your_api_token"
-export SERVER_ADDRESS="https://app.supervisely.com" # or your own server URL for Enterprise Edition
-```
+    ```bash
+    export API_TOKEN="your_api_token"
+    export SERVER_ADDRESS="https://app.supervisely.com" # or your own server URL for Enterprise Edition
+    ```
 
-If you need help with authentication, check the [Basics of
-Authentication](https://developer.supervisely.com/getting-started/basics-of-authentication){:target="_blank"} tutorial.
+    If you need help with authentication, check the [Basics of Authentication](https://developer.supervisely.com/getting-started/basics-of-authentication){:target="_blank"} tutorial.
 
 3. The following code will deploy a model and make predictions using the Supervisely API.
 
-```python
-import supervisely as sly
+    ```python
+    import supervisely as sly
 
-# 1. Authenticate with Supervisely API
-api = sly.Api() # Make sure you've set your credentials in environment variables.
+    # 1. Authenticate with Supervisely API
+    api = sly.Api() # Make sure you've set your credentials in environment variables.
 
-# 2. Deploy the model
-model = api.nn.deploy(
-model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
-device="cuda:0", # or "cpu"
-)
+    # 2. Deploy the model
+    model = api.nn.deploy(
+        model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
+        device="cuda:0", # or "cpu"
+    )
 
-# 3. Predict
-predictions = model.predict(
-input=["image1.jpg", "image2.jpg"], # can also be numpy arrays, PIL images, URLs or a directory
-)
-```
+    # 3. Predict
+    predictions = model.predict(
+        input=["image1.jpg", "image2.jpg"], # can also be numpy arrays, PIL images, URLs or a directory
+    )
+    ```
 
 ### Deploy via API
 
@@ -171,8 +161,8 @@ api = sly.Api()
 
 # Deploy PyTorch checkpoint
 model = api.nn.deploy(
-model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
+    device="cuda:0", # or "cpu"
 )
 ```
 
@@ -188,8 +178,8 @@ api = sly.Api()
 
 # Deploy ONNX checkpoint
 model = api.nn.deploy(
-model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name }}",
+    device="cuda:0", # or "cpu"
 )
 ```
 
@@ -206,8 +196,8 @@ api = sly.Api()
 
 # Deploy TensorRT checkpoint
 model = api.nn.deploy(
-model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.tensorrt.name }}",
-device="cuda:0", # or "cpu"
+    model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.tensorrt.name }}",
+    device="cuda:0", # or "cpu"
 )
 ```
 
@@ -232,7 +222,7 @@ model and make predictions.
 ```python
 # Predict local images
 predictions = model.predict(
-input="image.jpg", # Can also be a directory, np.array, PIL.Image, URL or a list of them
+    input="image.jpg", # Can also be a directory, np.array, PIL.Image, URL or a list of them
 )
 ```
 
@@ -306,21 +296,21 @@ from pathlib import Path
 
 # Deploy a detector
 detector = api.nn.deploy(
-model="{{ experiment.model.framework }}/{{ experiment.model.name }}",
-device="cuda:0", # Use GPU for detection
+    model="{{ experiment.model.framework }}/{{ experiment.model.name }}",
+    device="cuda:0", # Use GPU for detection
 )
 
 # Load BoxMot tracker
 tracker = boxmot.BotSort(
-reid_weights=Path('osnet_x0_25_msmt17.pt'),
-device="cpu", # Use CPU for tracking
+    reid_weights=Path('osnet_x0_25_msmt17.pt'),
+    device="cpu", # Use CPU for tracking
 )
 
 # Track objects in a single line
 video_ann: sly.VideoAnnotation = track(
-video_id=42,
-detector=detector,
-tracker=tracker,
+    video_id=42,
+    detector=detector,
+    tracker=tracker,
 )
 ```
 
@@ -334,61 +324,58 @@ Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tr
 You can deploy the model in a 🐋 Docker Container with a single `docker run` command. Download a checkpoint, pull the
 docker image for the corresponding model's framework, and run the `docker run` command with addtional arguments.
 
-1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url
-}}){:target="_blank"})
+1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
 
 2. Pull the Docker image
 
-```bash
-docker pull {{ code.docker.image }}
-```
+    ```bash
+    docker pull {{ code.docker.image }}
+    ```
 
 3. Run the Docker container
 
-```bash
-docker run \
---runtime=nvidia \
--v "./{{ experiment.paths.experiment_dir.path }}:/model" \ # Mount the experiment directory to the container
--p 8000:8000 \
-{{ code.docker.image }} \
-deploy \
---model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
---device "cuda:0"
-```
+    ```bash
+    docker run \
+        --runtime=nvidia \
+        -v "./{{ experiment.paths.experiment_dir.path }}:/model" \  # Mount the experiment directory to the container
+        -p 8000:8000 \
+        {{ code.docker.image }} \
+        deploy \
+        --model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
+        --device "cuda:0"
+    ```
 
 4. Connect and run the inference:
 
-```python
-from supervisely.nn import ModelAPI
+    ```python
+    from supervisely.nn import ModelAPI
 
-# No need to authenticate for local deployment
-model = ModelAPI(
-url="http://localhost:8000" # URL of a running model's server in Docker container
-)
+    # No need to authenticate for local deployment
+    model = ModelAPI(
+        url="http://localhost:8000" # URL of a running model's server in Docker container
+    )
 
-# Predict
-predictions = model.predict(
-input=["image1.jpg", "image2.jpg"] # Can also be numpy arrays, PIL images, URLs or a directory
-)
-```
+    # Predict
+    predictions = model.predict(
+        input=["image1.jpg", "image2.jpg"] # Can also be numpy arrays, PIL images, URLs or a directory
+    )
+    ```
 
-See the [Model API](https://docs.supervisely.com/neural-networks/overview-1/model-api){:target="_blank"} documentation
-for more details on how to use the `ModelAPI` class.
+See the [Model API](https://docs.supervisely.com/neural-networks/overview-1/model-api){:target="_blank"} documentation for more details on how to use the `ModelAPI` class.
 
 Alternatively, you can use `docker run` with the `predict` action to make predictions in a single command. This is a
-quick way to start inference on your local images, videos, or directories without deploying the model. The container
-will be automatically stopped after the predictions are made.
+quick way to start inference on your local images, videos, or directories without deploying the model. The container will be automatically stopped after the predictions are made.
 
 ```bash
 docker run \
---runtime=nvidia \
--v "./{{ experiment.paths.experiment_dir.path }}:/model" \
--p 8000:8000 \
-{{ code.docker.image }} \
-predict \
-"./image.jpg" \ # Put your image/video/directory here
---model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
---device "cuda:0"
+    --runtime=nvidia \
+    -v "./{{ experiment.paths.experiment_dir.path }}:/model" \
+    -p 8000:8000 \
+    {{ code.docker.image }} \
+    predict \
+    "./image.jpg" \ # Put your image/video/directory here
+    --model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
+    --device "cuda:0"
 ```
 
 > For more information, see [Deploy in Docker
@@ -397,56 +384,47 @@ documentation.
 
 ## Deploy locally with Supervisely SDK
 
-If you develop your application outside of Supervisely, you can deploy your model on your machine with the help of the
-Supervisely SDK and our prepared codebase for a specific model (we usually make a fork of the original model
-repository).
-This approach helps you to quickly set up the environment and run inference without the need to implement code for
-loading the model and making predictions by yourself, because all our model integrations are developed with the
-Supervisely SDK, and the inference could be done in a few lines of code, in a unified way.
+If you develop your application outside of Supervisely, you can deploy your model on your machine with the help of the Supervisely SDK and our prepared codebase for a specific model (we usually make a fork of the original model repository).
+This approach helps you to quickly set up the environment and run inference without the need to implement code for loading the model and making predictions by yourself, because all our model integrations are developed with the Supervisely SDK, and the inference could be done in a few lines of code, in a unified way.
 
-1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url
-}}){:target="_blank"})
+1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
 
 2. Clone our repository
 
-```bash
-git clone {{ code.local_prediction.repo.url }}
-cd {{ code.local_prediction.repo.name }}
-```
+    ```bash
+    git clone {{ code.local_prediction.repo.url }}
+    cd {{ code.local_prediction.repo.name }}
+    ```
 
 3. Install requirements
 
-```bash
-pip install -r dev_requirements.txt
-pip install supervisely
-```
+    ```bash
+    pip install -r dev_requirements.txt
+    pip install supervisely
+    ```
 
 4. Run the inference code
 
-```python
-# Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
-from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
+    ```python
+    # Be sure you are in the root of the {{ code.local_prediction.repo.name }} repository
+    from {{ code.local_prediction.serving_module }} import {{ code.local_prediction.serving_class }}
 
-# Load model
-model = {{ code.local_prediction.serving_class }}(
-model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}", # path
-to the checkpoint you've downloaded
-device="cuda", # or "cuda:1", "cpu"
-)
+    # Load model
+    model = {{ code.local_prediction.serving_class }}(
+        model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}", # path to the checkpoint you've downloaded
+        device="cuda", # or "cuda:1", "cpu"
+    )
 
-# Predict
-predictions = model.predict(
-# 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
-input=["path/to/image1.jpg", "path/to/image2.jpg"],
-conf=0.5, # confidence threshold
-# ... additional parameters (see the docs)
-)
-```
+    # Predict
+    predictions = model.predict(
+        # 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
+        input=["path/to/image1.jpg", "path/to/image2.jpg"],
+        conf=0.5, # confidence threshold
+        # ... additional parameters (see the docs)
+    )
+    ```
 
-> For more information, see [Local
-Deployment](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk){:target="_blank"}
-and [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"}
-documentations.
+> For more information, see [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk){:target="_blank"} and [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"} documentations.
 
 {% if experiment.training.checkpoints.onnx.name or experiment.training.checkpoints.tensorrt.name %}
 ### Deploy ONNX/TensorRT
@@ -454,8 +432,7 @@ documentations.
 You can also use exported ONNX and TensorRT models. Specify the `model` parameter as a path to your ONNX or TensorRT
 model,
 {% if experiment.training.checkpoints.onnx.classes_url or experiment.training.checkpoints.tensorrt.classes_url %}
-and [download `classes.json`]({{ experiment.training.checkpoints.onnx.classes_url or
-experiment.training.checkpoints.tensorrt.classes_url
+and [download `classes.json`]({{ experiment.training.checkpoints.onnx.classes_url or experiment.training.checkpoints.tensorrt.classes_url
 }}){:download="classes.json"} file from the export directory.
 {% else %}
 and provide class names in the additional `classes` parameter.
@@ -476,19 +453,18 @@ classes = {{ project.classes.names.short_list }}
 
 # Deploy ONNX or TensorRT
 model = {{ code.local_prediction.serving_class }}(
-# Path to the ONNX or TensorRT model
-model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name or
-experiment.training.checkpoints.tensorrt.name }}",
-device="cuda",
+    # Path to the ONNX or TensorRT model
+    model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name or experiment.training.checkpoints.tensorrt.name }}",
+    device="cuda",
 )
 
 # Predict
 predictions = model.predict(
-# 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
-input=["path/to/image1.jpg", "path/to/image2.jpg"],
-conf=0.5, # confidence threshold
-classes=classes,
-# ... additional parameters (see the docs)
+    # 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
+    input=["path/to/image1.jpg", "path/to/image2.jpg"],
+    conf=0.5, # confidence threshold
+    classes=classes,
+    # ... additional parameters (see the docs)
 )
 ```
 
@@ -506,8 +482,7 @@ since each model has its own installation instructions and the way of processing
 We provide a basic instructions and a demo script of how to load {{ experiment.model.framework }} and get predictions
 using the original code from the authors.
 
-1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url
-}}){:target="_blank"})
+1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
 
 2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo.name }}]({{
 code.local_prediction.repo.url }}){:target="_blank"}
@@ -515,9 +490,9 @@ code.local_prediction.repo.url }}){:target="_blank"}
 3. Use the demo script for inference:
 
 <details>
-    <summary><strong>🐍 View Code</strong></summary>
+<summary><strong>🐍 View Code</strong></summary>
 
-    <sly-iw-tabs :tabs="[
+<sly-iw-tabs :tabs="[
     { name: 'pytorch-demo', title: '🔥 PyTorch' },
     {% if code.demo.onnx.path %}
     { name: 'onnx-demo', title: '📦 ONNX' },
@@ -527,35 +502,35 @@ code.local_prediction.repo.url }}){:target="_blank"}
     {% endif %}
 ]" :defaultIndex="0">
 
-        <template #pytorch-demo>
+<template #pytorch-demo>
 
-            ```python
-            {{ code.demo.pytorch.script | safe }}
-            ```
+```python
+{{ code.demo.pytorch.script | safe }}
+```
 
-        </template>
+</template>
 
-        {% if code.demo.onnx.path %}
-        <template #onnx-demo>
+{% if code.demo.onnx.path %}
+<template #onnx-demo>
 
-            ```python
-            {{ code.demo.onnx.script | safe }}
-            ```
+```python
+{{ code.demo.onnx.script | safe }}
+```
 
-        </template>
-        {% endif %}
+</template>
+{% endif %}
 
-        {% if code.demo.tensorrt.path %}
-        <template #tensorrt-demo>
+{% if code.demo.tensorrt.path %}
+<template #tensorrt-demo>
 
-            ```python
-            {{ code.demo.tensorrt.script | safe }}
-            ```
+```python
+{{ code.demo.tensorrt.script | safe }}
+```
 
-        </template>
-        {% endif %}
+</template>
+{% endif %}
 
-    </sly-iw-tabs>
+</sly-iw-tabs>
 
 </details>
 
