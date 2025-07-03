@@ -20,10 +20,6 @@ class ExperimentInfo:
     """Name of the framework used in the experiment"""
     model_name: str
     """Name of the model used in the experiment. Defined by the user in the training app"""
-    base_checkpoint: str
-    """Name of the base checkpoint used for training"""
-    base_checkpoint_link: str
-    """Link to the base checkpoint used for training. URL in case of pretrained model, or Team Files path in case of custom model."""
     task_type: str
     """Task type of the experiment"""
     project_id: int
@@ -42,6 +38,10 @@ class ExperimentInfo:
     """Path to .yaml file with hyperparameters used in the experiment"""
     artifacts_dir: str
     """Path to the directory with artifacts"""
+    base_checkpoint: Optional[str] = None
+    """Name of the base checkpoint used for training"""
+    base_checkpoint_link: Optional[str] = None
+    """Link to the base checkpoint used for training. URL in case of pretrained model, or Team Files path in case of custom model."""
     export: Optional[dict] = None
     """Dictionary with exported weights in different formats"""
     app_state: Optional[str] = None
