@@ -17,6 +17,7 @@ VOLUME_NAME = "anatomic"
 LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
 MASK_PIXEL_VALUE = "Mask pixel value: "
 
+
 class PlanePrefix(str, StrEnum):
     """Prefix for plane names."""
 
@@ -117,14 +118,72 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
         yield mask, class_id
 
 
+def get_scores_from_table(csv_file_path: str) -> dict:
+    """Get scores from CSV table and return nested dictionary structure.
+
+    Args:
+        csv_file_path: Path to the CSV file containing layer scores
+
+    Returns:
+        Nested dictionary with structure:
+        {
+            "label_index": {
+                "slice_index": {
+                    "127": {
+                        "score": float_value,
+                        "comment": ""
+                    }
+                }
+            }
+        }
+    """
+    import csv
+
+    result = defaultdict(lambda: defaultdict(dict))
+
+    if not os.path.exists(csv_file_path):
+        logger.warning(f"CSV file not found: {csv_file_path}")
+        return result
+
+    try:
+        with open(csv_file_path, "r") as file:
+            reader = csv.DictReader(file)
+            label_columns = [col for col in reader.fieldnames if col.startswith("Label-")]
+
+            for row in reader:
+                layer = row["Layer"]
+                slice_idx = f"0-0-0"
+
+                for label_col in label_columns:
+                    label_index = label_col.split("-")[1]
+                    score_value = float(row[label_col])
+                    result[label_index][slice_idx][layer] = {"score": score_value, "comment": ""}
+
+    except Exception as e:
+        logger.warning(f"Failed to read CSV file {csv_file_path}: {e}")
+        return {}
+
+    return result
+
+
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
         self._items = items
         self._ds_id = dataset_id
         self._ann_paths = defaultdict(list)
-
         self._item_by_filename = {}
         self._item_by_path = {}
+
+        self.set_items(items)
+
+        self._project_wide = False
+        self._volumes = None
+
+    def set_items(self, items):
+        self._items = items
+        self._ann_paths.clear()
+        self._item_by_filename.clear()
+        self._item_by_path.clear()
 
         for item in items:
             path = Path(item.ann_data)
@@ -134,9 +193,6 @@ class AnnotationMatcher:
             self._ann_paths[dataset_name].append(filename)
             self._item_by_filename[filename] = item
             self._item_by_path[(dataset_name, filename)] = item
-
-        self._project_wide = False
-        self._volumes = None
 
     def get_volumes(self, api: Api):
         dataset_info = api.dataset.get_info_by_id(self._ds_id)
@@ -166,11 +222,8 @@ class AnnotationMatcher:
 
     def match_items(self):
         """Match annotation files with corresponding volumes using regex-based matching."""
-        import re
-
         item_to_volume = {}
 
-        # Perform matching
         for dataset_name, volumes in self._volumes.items():
             volume_names = [parse_name_parts(name) for name in list(volumes.keys())]
             _volume_names = [vol for vol in volume_names if vol is not None]
@@ -200,7 +253,6 @@ class AnnotationMatcher:
                         continue
                     item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
 
-        # Mark volumes having only one matching item as semantic and validate shape.
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
             volume_to_items[volume.id].append(item)
@@ -306,9 +358,11 @@ def parse_name_parts(full_name: str) -> NameParts:
     is_ann = False
     if VOLUME_NAME in full_name:
         type = "anatomic"
-    else:
+    elif any(part in full_name for part in LABEL_NAME):
         type = next((part for part in LABEL_NAME if part in full_name), None)
         is_ann = type is not None
+    elif get_file_ext(full_name) == ".csv":
+        type = "scores"
 
     if type is None:
         return
