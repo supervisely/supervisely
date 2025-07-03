@@ -142,7 +142,7 @@ class ExperimentSelector(Widget):
         @property
         def checkpoints_selector(self) -> Select:
             return self._checkpoints_widget
-        
+
         @property
         def experiment_info(self) -> ExperimentInfo:
             return self._experiment_info
@@ -467,7 +467,7 @@ class ExperimentSelector(Widget):
             return
         selected_row = self.get_selected_row()
         return selected_row.get_selected_checkpoint_path()
-    
+
     def get_selected_checkpoint_name(self) -> str:
         if len(self._rows) == 0:
             return
@@ -502,9 +502,9 @@ class ExperimentSelector(Widget):
     def set_active_row(self, row_index: int, task_type: str = None) -> None:
         if task_type is None:
             task_type = self.get_selected_task_type()
+            self.set_active_task_type(task_type)
         if row_index < 0 or row_index > len(self._rows[task_type]) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
-        self.set_active_task_type(task_type)
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
 
@@ -512,6 +512,7 @@ class ExperimentSelector(Widget):
         for task_type in self._rows:
             for i, row in enumerate(self._rows[task_type]):
                 if row.task_id == task_id:
+                    self.set_active_task_type(task_type)
                     self.set_active_row(i, task_type)
                     return
 
