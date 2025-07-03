@@ -69,6 +69,7 @@ class FigureInfo(NamedTuple):
     meta: dict
     area: str
     priority: Optional[int] = None
+    custom_data: Optional[dict] = None
 
     @property
     def bbox(self) -> Optional[Rectangle]:
