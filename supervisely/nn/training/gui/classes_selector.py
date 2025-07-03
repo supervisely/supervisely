@@ -62,7 +62,7 @@ class ClassesSelector:
 
         self.convert_class_shapes_checkbox = CheckboxField(
             title="Convert classes to model task type",
-            description="If enabled, classes with compatible shapes will be converted to the model class type",
+            description="If enabled, classes with compatible shapes will be converted according to the model CV task type",
             checked=False,
         )
 
