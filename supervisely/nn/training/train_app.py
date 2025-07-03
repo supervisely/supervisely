@@ -687,10 +687,10 @@ class TrainApp:
         self._upload_demo_files(remote_dir)
 
         # Step 10. Generate training output
-        output_mode = self._app_options.get("output_mode", "report")
-        if output_mode == "report":
+        need_generate_report = self._app_options.get("generate_report", True)
+        if need_generate_report:
             output_file_info = self._generate_experiment_report(experiment_info, model_meta)
-        else: # output artifacts directory
+        else:  # output artifacts directory
             output_file_info = session_link_file_info
 
         # Step 11. Set output widgets
@@ -2561,7 +2561,9 @@ class TrainApp:
                 remote_checkpoint_dir = dirname(file_info.path)
                 self._api.app.workflow.add_output_folder(remote_checkpoint_dir, meta=meta)
             else:
-                logger.debug("File with checkpoints not found in Team Files. Cannot set workflow output.")
+                logger.debug(
+                    "File with checkpoints not found in Team Files. Cannot set workflow output."
+                )
 
             if self.is_model_benchmark_enabled:
                 if model_benchmark_report:
@@ -2580,7 +2582,9 @@ class TrainApp:
                     )
                     self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
                 else:
-                    logger.debug("File with model benchmark report not found in Team Files. Cannot set workflow output.")
+                    logger.debug(
+                        "File with model benchmark report not found in Team Files. Cannot set workflow output."
+                    )
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
         # ----------------------------------------- #

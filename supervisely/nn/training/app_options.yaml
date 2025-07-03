@@ -1,5 +1,3 @@
-# All available settings for the training app
-# ==================== GUI / UX ====================
 # ==================== Model Selection =============
 model_selector:
   enabled: true
@@ -25,9 +23,9 @@ train_val_splits_selector:
 
 # ==================== Options ====================
 # How to display training results in the GUI:
-#   report    – generate a detailed experiment page (default);
-#   directory – show only a link to the output folder instead of the report.
-output_mode: report
+#   if true    – generate experiment page with training results
+#   if false   – show only a link to the output folder instead of the report
+generate_report: true
 
 # Add selector for selecting cuda device
 device_selector: false
@@ -44,7 +42,14 @@ collapsable: false
 # ==================== Export ======================
 # Requires additional implementation
 export_onnx_supported: false
+# @train.export_onnx
+# def to_onnx(experiment_info: dict):
+#     Implement ONNX export
+
 export_tensorrt_supported: false
+# @train.export_tensorrt
+# def to_tensorrt(experiment_info: dict):
+#     Implement TensorRT export
 
 # ==================== Logging =====================
 # Enable this option when using supervisely train logger
