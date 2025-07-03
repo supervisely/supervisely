@@ -190,6 +190,7 @@ setup(
     package_data={
         "": [
             "*.html",
+            "*.jinja",
             "*.css",
             "*.js",
             "*.md",
@@ -289,6 +290,8 @@ setup(
             "torch",
             "torchvision",
             "tensorboardX",
+            "markdown",
+            "pymdown-extensions",
         ],
         # legacy dependencies
         "plugins": [

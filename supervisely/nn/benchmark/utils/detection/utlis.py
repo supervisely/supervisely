@@ -24,5 +24,12 @@ def read_coco_datasets(cocoGt_json, cocoDt_json):
     cocoGt = COCO()
     cocoGt.dataset = cocoGt_json
     cocoGt.createIndex()
+
+    # Fix key error in pycocotools
+    info = cocoGt.dataset.get("info", None)
+    if info is None:
+        cocoGt.dataset["info"] = {}
+    # ------------------------------ #
+
     cocoDt = cocoGt.loadRes(cocoDt_json["annotations"])
     return cocoGt, cocoDt
