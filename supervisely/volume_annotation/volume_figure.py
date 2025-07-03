@@ -98,6 +98,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[dict] = None,
         **kwargs,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
@@ -128,6 +129,7 @@ class VolumeFigure(VideoFigure):
         Plane.validate_name(plane_name)
         self._plane_name = plane_name
         self._slice_index = slice_index
+        self._custom_data = custom_data or {}
 
     @property
     def volume_object(self) -> VolumeObject:
@@ -282,6 +284,34 @@ class VolumeFigure(VideoFigure):
 
         return Plane.get_normal(self.plane_name)
 
+    @property
+    def custom_data(self) -> Optional[dict]:
+        """
+        Get custom data associated with the VolumeFigure.
+
+        :return: Custom data associated with the VolumeFigure.
+        :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7,
+                custom_data={"key": "value"}
+            )
+
+            print(volume_figure_heart.custom_data)
+            # Output: {'key': 'value'}
+        """
+        return self._custom_data
+
     def _validate_geometry_type(self):
         if (
             self.parent_object.obj_class.geometry_type != AnyGeometry
@@ -344,6 +374,7 @@ class VolumeFigure(VideoFigure):
         labeler_login=None,
         updated_at=None,
         created_at=None,
+        custom_data=None,
     ):
         """
         Makes a copy of VolumeFigure with new fields, if fields are given, otherwise it will use fields of the original VolumeFigure.
@@ -366,6 +397,8 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: Date and Time when VolumeFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param custom_data: Custom data associated with the VolumeFigure.
+        :type custom_data: dict, optional
         :return: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
@@ -422,6 +455,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            custom_data=take_with_default(custom_data, self.custom_data),
         )
 
     def get_meta(self):
@@ -542,6 +576,7 @@ class VolumeFigure(VideoFigure):
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
+        custom_data = data.get(ApiField.CUSTOM_DATA, None)
 
         return cls(
             volume_object=volume_object,
@@ -553,6 +588,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def to_json(self, key_id_map=None, save_meta=True):
@@ -596,11 +632,13 @@ class VolumeFigure(VideoFigure):
             #         "planeName": "axial",
             #         "sliceIndex": 7
             #     },
-            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54"
+            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54",
+            #     "custom_data": {}
             # }
         """
 
         json_data = super().to_json(key_id_map, save_meta)
+        json_data[ApiField.CUSTOM_DATA] = self.custom_data
         if type(self._geometry) == ClosedSurfaceMesh:
             json_data.pop(ApiField.GEOMETRY)
             json_data.pop(ApiField.META)

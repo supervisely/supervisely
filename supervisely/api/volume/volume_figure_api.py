@@ -2,7 +2,7 @@
 import os
 import re
 import tempfile
-from typing import Dict, List
+from typing import Dict, List, Literal, Optional
 from uuid import UUID
 
 from numpy import uint8
@@ -33,7 +33,8 @@ class VolumeFigureApi(FigureApi):
         plane_name: str,
         slice_index: int,
         geometry_json: dict,
-        geometry_type,
+        geometry_type: str,
+        custom_data: Optional[dict] = None,
         # track_id=None,
     ):
         """
@@ -98,6 +99,7 @@ class VolumeFigureApi(FigureApi):
             },
             geometry_json,
             geometry_type,
+            custom_data=custom_data,
             # track_id,
         )
 
@@ -643,3 +645,27 @@ class VolumeFigureApi(FigureApi):
         if kwargs.get("image_ids", False) is not False:
             volume_ids = kwargs["image_ids"]  # backward compatibility
         return super().download(dataset_id, volume_ids, skip_geometry)
+
+    def update_custom_data(
+        self,
+        figure_id: int,
+        custom_data: Dict[str, str],
+        update_strategy: Literal["replace", "merge"] = "replace",
+    ) -> None:
+        """
+        Update custom data for a specific figure in a volume.
+
+        :param figure_id: ID of the figure to update.
+        :type figure_id: int
+        :param custom_data: Custom data to update.
+        :type custom_data: Dict[str, str]
+        :param update_strategy: Strategy to apply, either "replace" or "merge".
+        :type update_strategy: Literal["replace", "merge"]
+        :rtype: VolumeFigure
+        """
+        data = {
+            ApiField.FIGURE_ID: figure_id,
+            ApiField.CUSTOM_DATA: custom_data,
+            ApiField.UPDATE_STRATEGY: update_strategy,
+        }
+        self._api.post("figures.custom-data.update", data)
