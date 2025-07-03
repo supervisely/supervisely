@@ -1,5 +1,11 @@
 from typing import Any, Dict
 
+# Safe optional import for torch to prevent pylint import-error when the library is absent.
+try:
+    import torch  # type: ignore
+except ImportError:  # pragma: no cover
+    torch = None  # type: ignore
+
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -95,9 +101,12 @@ class TrainingProcess:
 
     def get_device_name(self) -> str:
         device = self.get_device()
-        import torch
 
-        device_name = torch.cuda.get_device_name(device) if device.startswith("cuda") else "CPU"
+        if torch is not None and device.startswith("cuda"):
+            device_name = torch.cuda.get_device_name(device)
+        else:
+            device_name = "CPU"
+
         return device_name
 
     def get_experiment_name(self) -> str:

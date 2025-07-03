@@ -2,7 +2,10 @@ import json
 import re
 import textwrap
 
-import markdown
+try:
+    import markdown  # type: ignore
+except ImportError:  # pragma: no cover
+    markdown = None  # type: ignore
 from jinja2.ext import Extension
 from jinja2.nodes import CallBlock
 
@@ -40,6 +43,9 @@ class MarkdownExtension(Extension):
 
     def __init__(self, environment):
         super(MarkdownExtension, self).__init__(environment)
+        if markdown is None:
+            raise ImportError("markdown library is required for MarkdownExtension but is not installed.")
+
         environment.extend(
             markdowner=markdown.Markdown(
                 extensions=self.EXTENSIONS, extension_configs=self.EXTENSION_CONFIGS

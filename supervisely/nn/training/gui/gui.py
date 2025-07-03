@@ -883,7 +883,7 @@ class TrainGUI:
         return is_valid
         # ----------------------------------------- #
 
-    def _init_model(self, model_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+    def _init_model(self, model_settings: dict, options: dict = None, click_cb: bool = True, validate: bool = True) -> bool:
         """
         Initialize the model selector with the given settings.
 
@@ -976,7 +976,7 @@ class TrainGUI:
         self.tags_selector.set_tags(tags_settings)
         is_valid = True
         if validate:
-            is_valid = self.tags_selector.validate_
+            is_valid = self.tags_selector.validate_step()
         if is_valid and click_cb:
             self.tags_selector_cb()
             self.set_next_step()
@@ -1146,5 +1146,5 @@ class TrainGUI:
             hparams = self._download_experiment_hparams(experiment_info)
             self.hyperparameters_selector.set_hyperparameters(hparams)
             if train_mode == "continue":
-                self._init_model(model_settings, click_cb=False, validate=False)
+                self._init_model(model_settings, {}, click_cb=False, validate=False)
     # ----------------------------------------- #

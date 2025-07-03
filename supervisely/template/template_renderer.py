@@ -46,6 +46,7 @@ class TemplateRenderer:
         self.jinja_extensions = jinja_extensions
         self.jinja_options = jinja_options
         self.add_header_ids = add_header_ids
+        self.environment = None
 
     def render(
         self,
@@ -70,6 +71,7 @@ class TemplateRenderer:
         loader = FileSystemLoader(directory)
         env_options = {**self.jinja_options, "extensions": self.jinja_extensions}
         environment = Environment(loader=loader, **env_options)
+        self.environment = environment
         template = environment.get_template(filename)
         html = template.render(**context)
 
