@@ -897,7 +897,7 @@ class ExperimentGenerator(BaseGenerator):
         base_checkpoint_path = None
         if base_checkpoint_link is not None:
             if base_checkpoint_link.startswith("/experiments/"):
-                base_checkpoint_info = self.api.file.get_info_by_path(base_checkpoint_link)
+                base_checkpoint_info = self.api.file.get_info_by_path(self.team_id, base_checkpoint_link)
                 base_checkpoint_name = base_checkpoint_info.name
                 base_checkpoint_link = base_checkpoint_info.full_storage_url
                 base_checkpoint_path = f"{self.api.server_address}/files/?path={base_checkpoint_info.path}"
