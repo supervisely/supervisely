@@ -247,7 +247,12 @@ class FigureApi(RemoveableBulkModuleApi):
         response = self._api.post("figures.bulk.add", body)
         return response.json()[0][ApiField.ID]
 
-    def get_by_ids(self, dataset_id: int, ids: List[int]) -> List[FigureInfo]:
+    def get_by_ids(
+        self,
+        dataset_id: int,
+        ids: List[int],
+        with_custom_data: bool = False,
+    ) -> List[FigureInfo]:
         """
         Get Figures information by IDs from given dataset ID.
 
@@ -255,6 +260,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type dataset_id: int
         :param ids: List of Figures IDs.
         :type ids: List[int]
+        :param with_custom_data: If True, include custom data in the response.
+        :type with_custom_data: bool
         :return: List of information about Figures. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[NamedTuple]`
         :Usage example:
@@ -370,6 +377,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "area",
             "priority",
         ]
+        if with_custom_data:
+            fields.append(ApiField.CUSTOM_DATA)
         figures_infos = self.get_list_all_pages(
             "figures.list",
             {
@@ -457,7 +466,11 @@ class FigureApi(RemoveableBulkModuleApi):
         return figure_ids
 
     def download(
-        self, dataset_id: int, image_ids: List[int] = None, skip_geometry: bool = False
+        self,
+        dataset_id: int,
+        image_ids: List[int] = None,
+        skip_geometry: bool = False,
+        with_custom_data: bool = False,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of image ID and list of FigureInfo for the given dataset ID. Can be filtered by image IDs.
@@ -468,6 +481,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type image_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
+        :param with_custom_data: If True, include custom data in the response.
+        :type with_custom_data: bool
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
@@ -489,6 +504,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
         ]
+        if with_custom_data:
+            fields.append(ApiField.CUSTOM_DATA)
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
 
@@ -792,6 +809,7 @@ class FigureApi(RemoveableBulkModuleApi):
         skip_geometry: bool = False,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
+        with_custom_data: bool = False,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Asynchronously download figures for the given dataset ID. Can be filtered by image IDs.
@@ -807,6 +825,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param log_progress: If True, log the progress of the download.
         :type log_progress: bool, optional
+        :param with_custom_data: If True, include custom data in the response.
+        :type with_custom_data: bool, optional
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
 
@@ -841,6 +861,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
         ]
+        if with_custom_data:
+            fields.append(ApiField.CUSTOM_DATA)
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
 
@@ -919,6 +941,7 @@ class FigureApi(RemoveableBulkModuleApi):
         skip_geometry: bool = False,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
+        with_custom_data: bool = False,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Download figures for the given dataset ID. Can be filtered by image IDs.
@@ -936,6 +959,8 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param log_progress: If True, log the progress of the download.
         :type log_progress: bool, optional
+        :param with_custom_data: If True, include custom data in the response.
+        :type with_custom_data: bool, optional
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
@@ -961,6 +986,7 @@ class FigureApi(RemoveableBulkModuleApi):
                     skip_geometry=skip_geometry,
                     semaphore=semaphore,
                     log_progress=log_progress,
+                    with_custom_data=with_custom_data,
                 )
             )
         except Exception:
@@ -972,4 +998,5 @@ class FigureApi(RemoveableBulkModuleApi):
                 dataset_id=dataset_id,
                 image_ids=image_ids,
                 skip_geometry=skip_geometry,
+                with_custom_data=with_custom_data,
             )

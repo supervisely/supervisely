@@ -98,6 +98,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[dict] = None,
         **kwargs,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
@@ -128,6 +129,7 @@ class VolumeFigure(VideoFigure):
         Plane.validate_name(plane_name)
         self._plane_name = plane_name
         self._slice_index = slice_index
+        self._custom_data = custom_data if custom_data is not None else {}
 
     @property
     def volume_object(self) -> VolumeObject:
@@ -344,6 +346,7 @@ class VolumeFigure(VideoFigure):
         labeler_login=None,
         updated_at=None,
         created_at=None,
+        custom_data=None,
     ):
         """
         Makes a copy of VolumeFigure with new fields, if fields are given, otherwise it will use fields of the original VolumeFigure.
@@ -366,6 +369,8 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: Date and Time when VolumeFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param custom_data: Custom data associated with the VolumeFigure.
+        :type custom_data: dict, optional
         :return: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
@@ -422,6 +427,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            custom_data=take_with_default(custom_data, self._custom_data),
         )
 
     def get_meta(self):
@@ -543,6 +549,8 @@ class VolumeFigure(VideoFigure):
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
 
+        custom_data = data.get(ApiField.CUSTOM_DATA, None)
+
         return cls(
             volume_object=volume_object,
             geometry=geometry,
@@ -553,6 +561,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def to_json(self, key_id_map=None, save_meta=True):
@@ -604,6 +613,8 @@ class VolumeFigure(VideoFigure):
         if type(self._geometry) == ClosedSurfaceMesh:
             json_data.pop(ApiField.GEOMETRY)
             json_data.pop(ApiField.META)
+        custom_data = self._custom_data if self._custom_data is not None else {}
+        json_data[ApiField.CUSTOM_DATA] = custom_data
         return json_data
 
     @classmethod
@@ -616,6 +627,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[dict] = None,
     ) -> VolumeFigure:
         """
         Create a VolumeFigure from Mask 3D geometry.
@@ -634,6 +646,8 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: The date and time when the VolumeFigure was created (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
         :type created_at: str, optional
+        :param custom_data: Custom data associated with the VolumeFigure.
+        :type custom_data: dict, optional
         :return: A VolumeFigure object created from Mask3D geometry.
         :rtype: VolumeFigure
         """
@@ -656,6 +670,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def _set_3d_geometry(self, new_geometry: Mask3D) -> None:

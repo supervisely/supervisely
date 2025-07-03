@@ -35,6 +35,7 @@ class VolumeFigureApi(FigureApi):
         geometry_json: dict,
         geometry_type,
         # track_id=None,
+        custom_data=None,
     ):
         """
         Create new VolumeFigure for given slice in given volume ID.
@@ -84,22 +85,32 @@ class VolumeFigureApi(FigureApi):
 
         Plane.validate_name(plane_name)
 
-        return super().create(
-            volume_id,
-            object_id,
-            {
+        meta = {
+            constants.SLICE_INDEX: slice_index,
+            constants.NORMAL: Plane.get_normal(plane_name),
+            # for backward compatibility
+            ApiField.META: {
                 constants.SLICE_INDEX: slice_index,
                 constants.NORMAL: Plane.get_normal(plane_name),
-                # for backward compatibility
-                ApiField.META: {
-                    constants.SLICE_INDEX: slice_index,
-                    constants.NORMAL: Plane.get_normal(plane_name),
-                },
             },
-            geometry_json,
-            geometry_type,
-            # track_id,
-        )
+        }
+        input_figure = {
+            ApiField.META: meta,
+            ApiField.OBJECT_ID: object_id,
+            ApiField.GEOMETRY_TYPE: geometry_type,
+            ApiField.GEOMETRY: geometry_json,
+        }
+        body = {
+            ApiField.ENTITY_ID: volume_id,
+            ApiField.FIGURES: [input_figure],
+        }
+
+        if custom_data is not None:
+            body[ApiField.CUSTOM_DATA] = custom_data
+
+        response = self._api.post("figures.bulk.add", body)
+        return response.json()[0][ApiField.ID]
+
 
     def append_bulk(self, volume_id: int, figures: List[VolumeFigure], key_id_map: KeyIdMap):
         """
@@ -625,7 +636,12 @@ class VolumeFigureApi(FigureApi):
             spatial_figure._set_3d_geometry(geometry)
 
     def download(
-        self, dataset_id: int, volume_ids: List[int] = None, skip_geometry: bool = False, **kwargs
+        self,
+        dataset_id: int,
+        volume_ids: List[int] = None,
+        skip_geometry: bool = False,
+        with_custom_data: bool = False,
+        **kwargs,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Method returns a dictionary with pairs of volume ID and list of FigureInfo for the given dataset ID. Can be filtered by volume IDs.
@@ -636,10 +652,12 @@ class VolumeFigureApi(FigureApi):
         :type volume_ids: List[int], optional
         :param skip_geometry: Skip the download of figure geometry. May be useful for a significant api request speed increase in the large datasets.
         :type skip_geometry: bool
+        :param with_custom_data: If True, download custom data for figures.
+        :type with_custom_data: bool
 
         :return: A dictionary where keys are volume IDs and values are lists of figures.
         :rtype: :class: `Dict[int, List[FigureInfo]]`
         """
         if kwargs.get("image_ids", False) is not False:
             volume_ids = kwargs["image_ids"]  # backward compatibility
-        return super().download(dataset_id, volume_ids, skip_geometry)
+        return super().download(dataset_id, volume_ids, skip_geometry, with_custom_data=with_custom_data)
