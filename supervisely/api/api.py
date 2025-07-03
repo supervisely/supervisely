@@ -308,8 +308,9 @@ class Api:
     ):
         self.logger = external_logger or logger
 
-        if server_address is None and token is None:
+        if server_address is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
+        if  token is None:
             token = os.environ.get(API_TOKEN, None)
 
         if server_address is None:
