@@ -891,16 +891,30 @@ class ExperimentGenerator(BaseGenerator):
         }
         return project_context
 
+    def _get_base_checkpoint_info(self):
+        base_checkpoint_name = self.info.get("base_checkpoint", "N/A")
+        base_checkpoint_link = self.info.get("base_checkpoint_link", None)
+        base_checkpoint_path = None
+        if base_checkpoint_link is not None:
+            if base_checkpoint_link.startswith("/experiments/"):
+                base_checkpoint_info = self.api.file.get_info_by_path(base_checkpoint_link)
+                base_checkpoint_name = base_checkpoint_info.name
+                base_checkpoint_link = base_checkpoint_info.full_storage_url
+                base_checkpoint_path = f"{self.api.server_address}/files/?path={base_checkpoint_info.path}"
+
+        base_checkpoint = {
+            "name": base_checkpoint_name,
+            "url": base_checkpoint_link,
+            "path": base_checkpoint_path,
+        }
+        return base_checkpoint
+
     def _get_model_context(self):
         """Return model description part of context."""
-        base_checkpoint = {
-            "name": self.info.get("base_checkpoint", "N/A"),
-            "url": self.info.get("base_checkpoint_link", None),
-        }
         return {
             "name": self.info["model_name"],
             "framework": self.info["framework_name"],
-            "base_checkpoint": base_checkpoint,
+            "base_checkpoint": self._get_base_checkpoint_info(),
             "task_type": self.info["task_type"],
         }
 

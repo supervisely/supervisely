@@ -91,8 +91,12 @@
             <li><strong>Date:</strong> {{ experiment.date }}</li>
             <li><strong>Framework:</strong> {{ experiment.model.framework }}</li>
             <li><strong>Model:</strong> {{ experiment.model.name }}</li>
-            {% if experiment.model.base_checkpoint.url %}
+            {% if experiment.model.base_checkpoint.url and not experiment.model.base_checkpoint.path %}
+            <!-- Pretrained Checkpoint -> download link-->
             <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }}</a></li>
+            {% elif experiment.model.base_checkpoint.path %}
+            <!-- Custom Checkpoint -> TeamFiles Link -->
+            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.path }}" target="_blank">{{ experiment.model.base_checkpoint.name }}</a></li>
             {% else %}
             <li><strong>Base checkpoint:</strong> {{ experiment.model.base_checkpoint.name }}</li>
             {% endif %}
