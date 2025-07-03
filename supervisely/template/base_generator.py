@@ -52,20 +52,19 @@ class BaseGenerator:
     
     def upload(self, remote_dir: str, team_id: Optional[int] = None, **kwargs):
         team_id = team_id or sly_env.team_id()
-        uploaded_dir = self.api.file.upload_directory_fast(
+        self.api.file.upload_directory_fast(
             team_id=team_id,
             local_dir=self.output_dir,
             remote_dir=remote_dir,
             **kwargs
         )
-        logger.info(f"Template uploaded to {uploaded_dir}")
-        effective_remote_dir = uploaded_dir or remote_dir
+        logger.info(f"Template uploaded to {remote_dir}")
         template_id = self.api.file.get_info_by_path(
             team_id=team_id,
-            remote_path=f"{effective_remote_dir}/{self.VUE_TEMPLATE_NAME}",
+            remote_path=f"{remote_dir}/{self.VUE_TEMPLATE_NAME}",
         ).id
         if self._report_url(self.api.server_address, template_id) is not None:
-            url = self._upload_link_file(template_id, effective_remote_dir, team_id)
+            url = self._upload_link_file(template_id, remote_dir, team_id)
             logger.info(f"Open URL: {url}")
         else:
             logger.warning("Subclasses must implement the `_report_url` method to upload a link file.")
