@@ -1,8 +1,12 @@
-name: Publish PyPI, Build & Push Docker Images
+name: Manual Publish PyPI, Build & Push Docker Images
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Docker Image Tag (without 'v')"
+        required: true
+        type: string
 
 env:
   REGISTRY: docker.io
@@ -21,8 +25,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Wait for tag replication
         uses: jakejarvis/wait-action@master
         with:
@@ -51,14 +53,13 @@ jobs:
     needs: publish-pypi
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: base-py-sdk
       DOCKERFILE_PATH: base_images/py_sdk/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -95,14 +96,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: collaboration
       DOCKERFILE_PATH: docker_images/collaboration/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -139,14 +139,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: data-operations
       DOCKERFILE_PATH: docker_images/data_operations/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -183,14 +182,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: development
       DOCKERFILE_PATH: docker_images/development/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -227,14 +225,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: import-export
       DOCKERFILE_PATH: docker_images/import_export/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -271,14 +268,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: labeling
       DOCKERFILE_PATH: docker_images/labeling/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -315,14 +311,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: synthetic
       DOCKERFILE_PATH: docker_images/synthetic/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -359,14 +354,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: system
       DOCKERFILE_PATH: docker_images/system/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub
@@ -403,14 +397,13 @@ jobs:
     needs: base-py-sdk
     runs-on: ubuntu-latest
     env:
+      RELEASE_VERSION: ${{ inputs.tag_version }}
       IMAGE_NAME: visualization-stats
       DOCKERFILE_PATH: docker_images/visualization_stats/Dockerfile
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Write Tag to ENV variable
-        run: echo "RELEASE_VERSION=${GITHUB_REF_NAME:1}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to Docker Hub

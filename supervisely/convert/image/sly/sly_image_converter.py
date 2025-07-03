@@ -130,7 +130,6 @@ class SLYImageConverter(ImageConverter):
                 is_valid = self.validate_ann_file(ann_path, meta)
                 if is_valid:
                     item.ann_data = ann_path
-            
             meta_path = img_meta_dict.get(json_name, img_meta_dict.get(json_name_noext))
             if meta_path:
                 item.set_meta_data(meta_path)
@@ -162,7 +161,10 @@ class SLYImageConverter(ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = sly_image_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            img_size = list(ann_json["size"].values())
+            img_size = ann_json["size"]  # dict { "width": 1280, "height": 720 }
+            if "width" not in img_size or "height" not in img_size:
+                raise ValueError("Invalid image size in annotation JSON")
+            img_size = (img_size["height"], img_size["width"])
             labels = validate_image_bounds(
                 [Label.from_json(obj, meta) for obj in ann_json["objects"]],
                 Rectangle.from_size(img_size),
