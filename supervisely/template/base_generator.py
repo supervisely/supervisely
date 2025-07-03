@@ -87,4 +87,4 @@ class BaseGenerator:
         return f"{remote_dir}/{self.LINK_FILE}"
 
     def _report_url(self, server_address: str, template_id: int) -> str:
-        return None
+        raise NotImplementedError("Subclasses must implement the `_report_url` method to upload a link file.")
