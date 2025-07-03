@@ -23,7 +23,7 @@ class ExperimentInfo:
     base_checkpoint: str
     """Name of the base checkpoint used for training"""
     base_checkpoint_link: str
-    """Link to the base checkpoint used for training"""
+    """Link to the base checkpoint used for training. URL in case of pretrained model, or Team Files path in case of custom model."""
     task_type: str
     """Task type of the experiment"""
     project_id: int
