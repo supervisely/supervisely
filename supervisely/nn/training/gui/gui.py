@@ -577,6 +577,8 @@ class TrainGUI:
 
         # Run from experiment page
         train_task_id = getenv("modal.state.trainTaskId", None)
+        if train_task_id is not None:
+            train_task_id = int(train_task_id)
         train_mode = getenv("modal.state.trainMode", None)
         if train_task_id is not None and train_mode is not None:
             self._run_from_experiment(train_task_id, train_mode)
