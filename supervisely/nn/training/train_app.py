@@ -399,6 +399,20 @@ class TrainApp:
         :rtype: str
         """
         return self.gui.training_process.get_device()
+    
+    @property
+    def base_checkpoint(self) -> str:
+        """
+        Returns the name of the base checkpoint.
+        """
+        return self.gui.model_selector.get_checkpoint_name()
+    
+    @property
+    def base_checkpoint_link(self) -> str:
+        """
+        Returns the link to the base checkpoint.
+        """
+        return self.gui.model_selector.get_checkpoint_link()
 
     # Classes
     @property
@@ -1812,6 +1826,8 @@ class TrainApp:
             "experiment_name": self.gui.training_process.get_experiment_name(),
             "framework_name": self.framework_name,
             "model_name": experiment_info["model_name"],
+            "base_checkpoint": self.base_checkpoint,
+            "base_checkpoint_link": self.base_checkpoint_link,
             "task_type": experiment_info["task_type"],
             "project_id": self.project_info.id,
             "task_id": self.task_id,

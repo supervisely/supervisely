@@ -893,9 +893,14 @@ class ExperimentGenerator(BaseGenerator):
 
     def _get_model_context(self):
         """Return model description part of context."""
+        base_checkpoint = {
+            "name": self.info.get("base_checkpoint", "N/A"),
+            "url": self.info.get("base_checkpoint_link", None),
+        }
         return {
             "name": self.info["model_name"],
             "framework": self.info["framework_name"],
+            "base_checkpoint": base_checkpoint,
             "task_type": self.info["task_type"],
         }
 

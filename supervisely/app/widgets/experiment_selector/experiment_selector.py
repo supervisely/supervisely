@@ -467,6 +467,12 @@ class ExperimentSelector(Widget):
             return
         selected_row = self.get_selected_row()
         return selected_row.get_selected_checkpoint_path()
+    
+    def get_selected_checkpoint_name(self) -> str:
+        if len(self._rows) == 0:
+            return
+        selected_row = self.get_selected_row()
+        return selected_row.get_selected_checkpoint_name()
 
     def get_model_files(self) -> Dict[str, str]:
         """

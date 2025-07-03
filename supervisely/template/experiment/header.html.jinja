@@ -89,7 +89,13 @@
             </div>
             <ul>
             <li><strong>Date:</strong> {{ experiment.date }}</li>
-            <li><strong>Model:</strong> {{ experiment.model.name }} ({{ experiment.model.framework }})</li>
+            <li><strong>Framework:</strong> {{ experiment.model.framework }}</li>
+            <li><strong>Model:</strong> {{ experiment.model.name }}</li>
+            {% if experiment.model.base_checkpoint.url %}
+            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }}</a></li>
+            {% else %}
+            <li><strong>Base checkpoint:</strong> {{ experiment.model.base_checkpoint.name }}</li>
+            {% endif %}
             <li><strong>Task:</strong> {{ experiment.model.task_type }}</li>
             <li><strong>Device:</strong> {{ experiment.training.device }}</li>
             <li><strong>Training duration:</strong> {{ experiment.training.duration }}</li>
@@ -131,8 +137,11 @@
     <div class="experiment-info-subheader-footer-menu">
         {% if experiment.training.evaluation.id %}
         <a :href="`${window.location.pathname}#predictions`" class="active">Predictions</a>
-        {% endif %}
         <a :href="`${window.location.pathname}#evaluation-2`">Evaluation</a>
+        {% endif %}
+        {% if not experiment.training.evaluation.id %}
+        <a :href="`${window.location.pathname}#evaluation-2`" class="active">Evaluation</a>
+        {% endif %}
         <a :href="`${window.location.pathname}#artifacts`">Artifacts</a>
         <a :href="`${window.location.pathname}#classes`">Classes</a>
         <a :href="`${window.location.pathname}#hyperparameters`">Hyperparameters</a>

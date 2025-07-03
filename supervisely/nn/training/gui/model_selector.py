@@ -1,6 +1,7 @@
 from typing import Literal
 
 import supervisely.io.env as sly_env
+import supervisely.io.fs as sly_fs
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.app.widgets import (
@@ -15,6 +16,7 @@ from supervisely.app.widgets import (
 from supervisely.nn.artifacts.utils import FrameworkMapper
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.utils import ModelSource, _get_model_name
+from supervisely._utils import get_filename_from_headers
 
 
 class ModelSelector:
@@ -124,6 +126,45 @@ class ModelSelector:
             return self.pretrained_models_table.get_selected_row()
         else:
             return self.experiment_selector.get_selected_experiment_info()
+
+    def get_checkpoint_name(self) -> str:
+        if self.get_model_source() == ModelSource.PRETRAINED:
+            selected_row = self.pretrained_models_table.get_selected_row()
+            meta = selected_row.get("meta", None)
+            if meta is not None:
+                model_files = meta.get("model_files", None)
+                if model_files is not None:
+                    checkpoint_name = model_files.get("checkpoint", None)
+                    if checkpoint_name is not None:
+                        is_url = sly_fs.str_is_url(checkpoint_name)
+                        if (not is_url) or checkpoint_name.lower().endswith((".pth", ".pt")):
+                            checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_name)
+                        else:
+                            checkpoint_name = get_filename_from_headers(checkpoint_name)
+                        return checkpoint_name
+            return None
+        else:
+            checkpoint_name = self.experiment_selector.get_selected_checkpoint_name()
+        return checkpoint_name
+    
+    def get_checkpoint_link(self) -> str:
+        if self.get_model_source() == ModelSource.PRETRAINED:
+            selected_row = self.pretrained_models_table.get_selected_row()
+            meta = selected_row.get("meta", None)
+            if meta is not None:
+                model_files = meta.get("model_files", None)
+                if model_files is not None:
+                    checkpoint_link = model_files.get("checkpoint", None)
+                    if checkpoint_link is not None:
+                        is_url = sly_fs.str_is_url(checkpoint_link)
+                        if checkpoint_link.startswith("/experiments/"):
+                            is_url = True
+                        if is_url:
+                            return checkpoint_link
+            return None
+        else:
+            checkpoint_link = self.experiment_selector.get_selected_checkpoint_path()
+        return checkpoint_link
 
     def validate_step(self) -> bool:
         self.validator_text.hide()
