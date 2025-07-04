@@ -728,6 +728,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         outside_request: bool = True,
         retries: int = 10,
         raise_error: bool = False,
+        cookies: Optional[Dict[str, str]] = None,
+        return_response: bool = False,
     ):
         """send_request"""
         if type(data) is not dict:
@@ -745,7 +747,10 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
             },
             retries=retries,
             raise_error=raise_error,
+            cookies=cookies,
         )
+        if return_response:
+            return resp
         return resp.json()
 
     def set_output_directory(self, task_id, file_id, directory_path):
