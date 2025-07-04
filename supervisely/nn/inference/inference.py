@@ -1007,11 +1007,7 @@ class Inference:
         model_info = deploy_params.get("model_info", {})
         model_files = deploy_params.get("model_files", {})
         if model_info:
-            checkpoint_name = model_info.get("checkpoint", None)
-            if checkpoint_name is not None:
-                checkpoint_name = os.path.basename(model_files.get("checkpoint"))
-            else:
-                raise ValueError("Checkpoint name is not provided in model_info or model_files")
+            checkpoint_name = os.path.basename(model_info.get("checkpoint"))
             checkpoint_file_path = os.path.join(
                 model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
             )
@@ -3525,13 +3521,9 @@ class Inference:
             try:
                 import torch
                 checkpoint = torch.load(checkpoint_path)
-                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_info = checkpoint["model_info"]
-                print(model_info)
-                checkpoint_name = model_info.get("checkpoint", None)
-                if checkpoint_name is None:
-                    model_info["checkpoint"] = checkpoint_name
-                print(model_info)
+                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_files["checkpoint"] = checkpoint_path
                 need_download = False
                 return model_files, model_source, model_info, need_download
             except Exception as e:
