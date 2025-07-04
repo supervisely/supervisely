@@ -1008,6 +1008,10 @@ class Inference:
         model_files = deploy_params.get("model_files", {})
         if model_info:
             checkpoint_name = os.path.basename(model_files.get("checkpoint"))
+            if checkpoint_name is None:
+                checkpoint_name = model_info.get("checkpoint", None)
+            if checkpoint_name is None:
+                raise ValueError("Checkpoint name is not provided")
             checkpoint_file_path = os.path.join(
                 model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
             )
