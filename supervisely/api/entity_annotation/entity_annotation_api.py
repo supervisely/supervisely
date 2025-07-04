@@ -1,8 +1,10 @@
 # coding: utf-8
 
 # docs
+from typing import Callable, Dict, List, Optional, Union
+
 from tqdm import tqdm
-from typing import List, Dict, Union, Optional, Callable
+
 from supervisely._utils import batched
 from supervisely.api.module_api import ApiField, ModuleApi
 from supervisely.video_annotation.key_id_map import KeyIdMap
