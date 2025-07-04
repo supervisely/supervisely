@@ -422,7 +422,7 @@ class VolumeFigureApi(FigureApi):
     def _append_bulk_mask3d(
         self,
         entity_id: int,
-        figures: List,
+        figures: List[VolumeFigure],
         figures_keys: List,
         key_id_map: KeyIdMap,
         field_name=ApiField.ENTITY_ID,
@@ -451,10 +451,11 @@ class VolumeFigureApi(FigureApi):
         for figure in figures:
             empty_figures.append(
                 {
-                    "objectId": key_id_map.get_object_id(figure.volume_object.key()),
-                    "geometryType": Mask3D.name(),
-                    "tool": Mask3D.name(),
-                    "entityId": entity_id,
+                    ApiField.OBJECT_ID: key_id_map.get_object_id(figure.volume_object.key()),
+                    ApiField.GEOMETRY_TYPE: Mask3D.name(),
+                    ApiField.LABELING_TOOL: Mask3D.name(),
+                    ApiField.ENTITY_ID: entity_id,
+                    ApiField.CUSTOM_DATA: figure.custom_data
                 }
             )
         for batch_keys, batch_jsons in zip(
@@ -664,7 +665,7 @@ class VolumeFigureApi(FigureApi):
         :rtype: VolumeFigure
         """
         data = {
-            ApiField.FIGURE_ID: figure_id,
+            ApiField.ID: figure_id,
             ApiField.CUSTOM_DATA: custom_data,
             ApiField.UPDATE_STRATEGY: update_strategy,
         }

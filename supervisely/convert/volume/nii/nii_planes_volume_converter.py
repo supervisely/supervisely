@@ -83,9 +83,11 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         ann_dict = defaultdict(list)
         cls_color_map = None
 
-        ann_to_score_path = defaultdict(list)
+        ann_to_score_path = {}
         csv_files = list_files_recursively(self._input_data, [".csv"], None, True)
-        csv_files = {get_file_name(file): file for file in csv_files}
+        csv_nameparts = {
+            helper.parse_name_parts(os.path.basename(file)): file for file in csv_files
+        }
 
         for root, _, files in os.walk(self._input_data):
             if converted_dir_name in root:
@@ -101,9 +103,12 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         continue
                     if name_parts.is_ann:
                         dict_to_use = ann_dict
-                        score_path = csv_files.get(name_parts.name_no_ext, None)
+                        score_path = helper.find_best_name_match(
+                            name_parts, list(csv_nameparts.keys())
+                        )
                         if score_path is not None:
-                            ann_to_score_path[name_parts.full_name].append(score_path)
+                            full_score_path = csv_nameparts[score_path]
+                            ann_to_score_path[name_parts.full_name] = full_score_path
                     else:
                         dict_to_use = volumes_dict
 
@@ -124,14 +129,14 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                 item = self.Item(item_path=paths[0])
                 item.ann_data = ann_dict.get(key, [])
 
-                scores_paths = [ann_to_score_path.get(ann_name, None) for ann_name in item.ann_data]
-                scores_paths = [path for path in scores_paths if path is not None]
-                if scores_paths:
+                ann_path = os.path.basename(item.ann_data[0]) if item.ann_data else None
+                if ann_path in ann_to_score_path:
+                    score_path = ann_to_score_path[ann_path]
                     try:
-                        scores = helper.get_scores_from_table(scores_paths[0])
+                        scores = helper.get_scores_from_table(score_path)
                         item.custom_data["scores"] = scores
                     except Exception as e:
-                        logger.warning(f"Failed to read scores from {scores_paths[0]}: {e}")
+                        logger.warning(f"Failed to read scores from {score_path}: {e}")
                 item.is_semantic = len(item.ann_data) == 1
                 if cls_color_map is not None:
                     item.custom_data["cls_color_map"] = cls_color_map
@@ -199,9 +204,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         meta = meta.add_obj_class(obj_class)
                         self._meta_changed = True
                         self._meta = meta
-                    obj = VolumeObject(
-                        obj_class, mask_3d=mask, custom_data=scores.get(class_id, {})
-                    )
+                    obj_scores = scores.get(class_id, None)
+                    obj = VolumeObject(obj_class, mask_3d=mask, custom_data=obj_scores)
                     spatial_figures.append(obj.figure)
                     objs.append(obj)
             return VolumeAnnotation(item.volume_meta, objects=objs, spatial_figures=spatial_figures)

@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict, namedtuple
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Union
 
 import nrrd
 import numpy as np
@@ -155,7 +155,7 @@ def get_scores_from_table(csv_file_path: str) -> dict:
                 slice_idx = f"0-0-0"
 
                 for label_col in label_columns:
-                    label_index = label_col.split("-")[1]
+                    label_index = int(label_col.split("-")[1])
                     score_value = float(row[label_col])
                     result[label_index][slice_idx][layer] = {"score": score_value, "comment": ""}
 
@@ -244,7 +244,7 @@ class AnnotationMatcher:
                 if ann_name is None:
                     logger.warning(f"Failed to parse annotation name: {ann_file}")
                     continue
-                match = find_best_volume_match_for_ann(ann_name, volume_names)
+                match = find_best_name_match(ann_name, volume_names)
                 if match is not None:
                     if match.plane != ann_name.plane:
                         logger.warning(
@@ -361,8 +361,8 @@ def parse_name_parts(full_name: str) -> NameParts:
     elif any(part in full_name for part in LABEL_NAME):
         type = next((part for part in LABEL_NAME if part in full_name), None)
         is_ann = type is not None
-    elif get_file_ext(full_name) == ".csv":
-        type = "scores"
+    elif "score" in name_no_ext or get_file_ext(full_name) == ".csv":
+        type = "score"
 
     if type is None:
         return
@@ -421,58 +421,58 @@ def parse_name_parts(full_name: str) -> NameParts:
     )
 
 
-def find_best_volume_match_for_ann(ann, volumes):
+def find_best_name_match(item: NameParts, pool: list[NameParts]) -> Union[NameParts, None]:
     """
-    Finds the best matching NameParts object from `volumes` for the given annotation NameParts `ann`.
+    Finds the best matching NameParts object from `pool` for the given annotation NameParts `item`.
     Prefers an exact match where all fields except `type` are the same, and `type` is 'anatomic'.
     Returns the matched NameParts object or None if not found.
     """
-    volume_names = [volume.full_name for volume in volumes]
-    ann_name = ann.full_name
+    pool_item_names = [i.full_name for i in pool]
+    item_name = item.full_name
     # Prefer exact match except for type
-    for vol in volumes:
-        if vol.name_no_ext == ann.name_no_ext.replace(ann.type, "anatomic"):
+    for i in pool:
+        if i.name_no_ext == item.name_no_ext.replace(item.type, i.type):
             logger.debug(
-                "Found exact match for annotation.",
-                extra={"ann": ann_name, "vol": vol.full_name},
+                "Found exact match.",
+                extra={"item": item_name, "pool_item": i.full_name},
             )
-            return vol
+            return i
 
     logger.debug(
         "Failed to find exact match, trying to find a fallback match UUIDs.",
-        extra={"ann": ann_name, "volumes": volume_names},
+        extra={"item": item_name, "pool_items": pool_item_names},
     )
 
     # Fallback: match by plane and patient_uuid, type='anatomic'
-    for vol in volumes:
+    for i in pool:
         if (
-            vol.plane == ann.plane
-            and vol.patient_uuid == ann.patient_uuid
-            and vol.case_uuid == ann.case_uuid
+            i.plane == item.plane
+            and i.patient_uuid == item.patient_uuid
+            and i.case_uuid == item.case_uuid
         ):
             logger.debug(
-                "Found fallback match for annotation by UUIDs.",
-                extra={"ann": ann_name, "vol": vol.full_name},
+                "Found fallback match for item by UUIDs.",
+                extra={"item": item_name, "i": i.full_name},
             )
-            return vol
+            return i
 
     logger.debug(
         "Failed to find fallback match, trying to find a fallback match by plane.",
-        extra={"ann": ann_name, "volumes": volume_names},
+        extra={"item": item_name, "pool_items": pool_item_names},
     )
 
     # Fallback: match by plane and type='anatomic'
-    for vol in volumes:
-        if vol.plane == ann.plane:
+    for i in pool:
+        if i.plane == item.plane:
             logger.debug(
-                "Found fallback match for annotation by plane.",
-                extra={"ann": ann_name, "vol": vol.full_name},
+                "Found fallback match for item by plane.",
+                extra={"item": item_name, "i": i.full_name},
             )
-            return vol
+            return i
 
     logger.debug(
-        "Failed to find any match for annotation.",
-        extra={"ann": ann_name, "volumes": volume_names},
+        "Failed to find any match for item.",
+        extra={"item": item_name, "pool_items": pool_item_names},
     )
 
     return None
