@@ -211,7 +211,6 @@ class Inference:
         if self._is_local_deploy:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
-            print(deploy_params)
             if need_download:
                 local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
@@ -1007,13 +1006,12 @@ class Inference:
     def _set_checkpoint_info_custom_model(self, deploy_params: dict):
         model_info = deploy_params.get("model_info", {})
         model_files = deploy_params.get("model_files", {})
-        print(model_info)
-        print(model_files)
         if model_info:
             checkpoint_name = os.path.basename(model_files.get("checkpoint"))
-            checkpoint_file_path = os.path.join(
-                model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
-            )
+            artifacts_dir = model_info.get("artifacts_dir")
+            if artifacts_dir is None:
+                artifacts_dir = os.path.dirname(os.path.dirname(model_files.get("checkpoint")))
+            checkpoint_file_path = os.path.join(artifacts_dir, "checkpoints", checkpoint_name)
             checkpoint_file_info = None
             if not self._is_local_deploy:
                 checkpoint_file_info = self.api.file.get_info_by_path(
@@ -3527,8 +3525,6 @@ class Inference:
                 model_info = checkpoint["model_info"]
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_files["checkpoint"] = checkpoint_path
-                print(model_info)
-                print(model_files)
                 need_download = False
                 return model_files, model_source, model_info, need_download
             except Exception as e:
