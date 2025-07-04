@@ -208,15 +208,12 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        print(f"Is local deploy: {self._is_local_deploy}")
         if self._is_local_deploy:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
-            print("Got deploy params")
             if need_download:
                 local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
-            print("Loading model headless")
             self._load_model_headless(**deploy_params)
 
         if self._use_gui:
@@ -3560,13 +3557,10 @@ class Inference:
         device = self._args.device if self._args.device else "cuda:0"
         runtime = self._args.runtime if self._args.runtime else RuntimeType.PYTORCH
 
-        print("Getting pretrained model params")
         model_files, model_source, model_info, need_download = (
             self._get_pretrained_model_params_from_args()
         )
-        print(f"Model source: {model_source}")
         if model_source is None:
-            print("Getting custom model params")
             model_files, model_source, model_info, need_download = (
                 self._get_custom_model_params_from_args()
             )
@@ -3585,7 +3579,6 @@ class Inference:
             "device": device,
             "runtime": runtime,
         }
-        print(f"Deploy parameters: {deploy_params}")
         logger.debug(f"Deploy parameters: {deploy_params}")
         return deploy_params, need_download
 
