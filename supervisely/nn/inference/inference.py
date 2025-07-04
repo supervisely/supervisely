@@ -3520,10 +3520,13 @@ class Inference:
 
         if not need_download:
             try:
+                # Read data from checkpoint
                 import torch
                 checkpoint = torch.load(checkpoint_path)
                 model_info = checkpoint["model_info"]
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_meta = os.path.join(self.model_dir, "model_meta.json")
+                model_info["model_meta"] = self._load_json_file(model_meta)
                 model_files["checkpoint"] = checkpoint_path
                 need_download = False
                 return model_files, model_source, model_info, need_download
