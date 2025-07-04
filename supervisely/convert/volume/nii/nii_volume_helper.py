@@ -151,13 +151,13 @@ def get_scores_from_table(csv_file_path: str) -> dict:
             label_columns = [col for col in reader.fieldnames if col.startswith("Label-")]
 
             for row in reader:
-                layer = row["Layer"]
-                slice_idx = f"0-0-0"
+                slice = row["Layer"]
+                plane = f"0-0-0"
 
                 for label_col in label_columns:
                     label_index = int(label_col.split("-")[1])
                     score_value = float(row[label_col])
-                    result[label_index][slice_idx][layer] = {"score": score_value, "comment": ""}
+                    result[label_index][plane][slice] = {"score": score_value, "comment": ""}
 
     except Exception as e:
         logger.warning(f"Failed to read CSV file {csv_file_path}: {e}")
