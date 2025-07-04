@@ -83,11 +83,21 @@ class VolumeObject(VideoObject):
                 )
             elif isinstance(mask_3d, ndarray):
                 self.figure = volume_figure.VolumeFigure(
-                    self, geometry=Mask3D(mask_3d), labeler_login=labeler_login, updated_at=updated_at, created_at=created_at, custom_data=custom_data
+                    self,
+                    geometry=Mask3D(mask_3d),
+                    labeler_login=labeler_login,
+                    updated_at=updated_at,
+                    created_at=created_at,
+                    custom_data=custom_data,
                 )
             elif isinstance(mask_3d, Mask3D):
                 self.figure = volume_figure.VolumeFigure(
-                    self, geometry=mask_3d, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at, custom_data=custom_data
+                    self,
+                    geometry=mask_3d,
+                    labeler_login=labeler_login,
+                    updated_at=updated_at,
+                    created_at=created_at,
+                    custom_data=custom_data,
                 )
             else:
                 raise TypeError("mask_3d type must be one of [Mask3D, ndarray, str]")
