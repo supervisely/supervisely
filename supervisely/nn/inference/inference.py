@@ -3523,6 +3523,11 @@ class Inference:
                 checkpoint = torch.load(checkpoint_path)
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_info = checkpoint["model_info"]
+                print(model_info)
+                checkpoint_name = model_info.get("checkpoint", None)
+                if checkpoint_name is None:
+                    model_info["checkpoint"] = checkpoint_name
+                print(model_info)
                 need_download = False
                 return model_files, model_source, model_info, need_download
             except Exception as e:
