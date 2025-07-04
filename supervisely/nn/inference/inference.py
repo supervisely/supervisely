@@ -1007,7 +1007,7 @@ class Inference:
         model_info = deploy_params.get("model_info", {})
         model_files = deploy_params.get("model_files", {})
         if model_info:
-            checkpoint_name = os.path.basename(model_info.get("checkpoint"))
+            checkpoint_name = os.path.basename(model_files.get("checkpoint"))
             checkpoint_file_path = os.path.join(
                 model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
             )
