@@ -93,6 +93,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.nn.model.model_api import ModelAPI
 
 try:
     from typing import Literal
@@ -150,6 +151,9 @@ class Inference:
         use_gui: Optional[bool] = False,
         multithread_inference: Optional[bool] = True,
         use_serving_gui_template: Optional[bool] = False,
+        model: Optional[str] = None,
+        device: Optional[str] = None,
+        runtime: Optional[str] = None,
     ):
 
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
@@ -165,8 +169,11 @@ class Inference:
         sly_fs.mkdir(model_dir)
 
         self.autorestart = None
-        self.device: str = None
-        self.runtime: str = None
+        # Quick deploy parameters (do **not** store in `self.model` to avoid
+        # name clash with actual NN module assigned later in child class).
+        _deploy_model = model
+        _deploy_device = device
+        _deploy_runtime = runtime
         self.model_precision: str = None
         self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
@@ -307,6 +314,95 @@ class Inference:
         )
 
         self.inference_requests_manager = InferenceRequestsManager(executor=self._executor)
+
+        try:
+            if _deploy_model is not None and not self._model_served:
+                self.serve()
+                self._deploy_headless(_deploy_model, _deploy_device, _deploy_runtime)
+        except Exception as e:
+            logger.error("Failed to deploy model from __init__ parameters", exc_info=True)
+            raise e
+
+    def __call__(
+        self,
+        input: Union[np.ndarray, str, PathLike, list] = None,
+        image_id: Union[List[int], int] = None,
+        video_id: Union[List[int], int] = None,
+        dataset_id: Union[List[int], int] = None,
+        project_id: Union[List[int], int] = None,
+        batch_size: int = None,
+        conf: float = None,
+        img_size: int = None,
+        classes: List[str] = None,
+        upload_mode: str = None,
+        recursive: bool = None,
+        **kwargs,
+    ):
+        return ModelAPI(api=self._api, url="http://0.0.0.0:8000").predict(
+            input,
+            image_id,
+            video_id,
+            dataset_id,
+            project_id,
+            batch_size,
+            conf,
+            img_size,
+            classes,
+            upload_mode,
+            recursive,
+            **kwargs,
+        )
+
+    def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
+        """Deploy model immediately from constructor arguments."""
+        import glob
+
+        # Pretrained models
+        selected_pretrained = None
+        if self.pretrained_models is not None:
+            for m in self.pretrained_models:
+                m_name = m.get("meta", {}).get("model_name", "")
+                if m_name and m_name.lower() == model.lower():
+                    selected_pretrained = m
+                    break
+
+        if selected_pretrained is not None:
+            model_files_remote = selected_pretrained["meta"]["model_files"]
+            model_files_local = self._download_pretrained_model(model_files_remote, headless=True)
+
+            deploy_params = {
+                "model_source": ModelSource.PRETRAINED,
+                "model_files": model_files_local,
+                "model_info": selected_pretrained,
+                "device": device,
+                "runtime": runtime,
+            }
+            self._load_model_headless(**deploy_params)
+            return self
+
+        # 2. Treat as custom checkpoint path (local or Team Files)
+        checkpoint_path = model
+        model_files = {"checkpoint": checkpoint_path}
+
+        # Try to find config next to checkpoint (local path only)
+        if not checkpoint_path.startswith("/") and os.path.isfile(checkpoint_path):
+            ckpt_dir = os.path.dirname(checkpoint_path)
+            yaml_candidates = glob.glob(os.path.join(ckpt_dir, "*.yml")) + glob.glob(
+                os.path.join(ckpt_dir, "*.yaml")
+            )
+            if yaml_candidates:
+                model_files["config"] = yaml_candidates[0]
+
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": model_files,
+            "model_info": {"artifacts_dir": os.path.dirname(os.path.dirname(checkpoint_path))},
+            "device": device,
+            "runtime": runtime,
+        }
+
+        self._load_model_headless(**deploy_params)
+        return self
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -2579,8 +2675,6 @@ class Inference:
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             self._app = Application(layout=self._app_layout)
-        # elif isinstance(self.gui, GUI.InferenceGUI):
-        #     self._app = Application(layout=self.get_ui())
         else:
             self._app = Application(layout=self.get_ui())
 
