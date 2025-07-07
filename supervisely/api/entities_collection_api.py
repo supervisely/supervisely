@@ -505,14 +505,16 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         """ """
         return "entities-collections.remove"
 
-    def add_items(self, id: int, items: List[CollectionItem]) -> List[Dict[str, int]]:
+    def add_items(self, id: int, items: List[Union[int, CollectionItem]]) -> List[Dict[str, int]]:
         """
         Add items to Entities Collection.
 
         :param id: Entities Collection ID in Supervisely.
         :type id: int
-        :param items: List of items to add to the collection.
-        :type items: List[CollectionItem]
+        :param items: List of items to add to the collection. Could be a list of entity IDs (int) or CollectionItem objects.
+        :type items: List[Union[int, CollectionItem]]
+        :return: List of added items with their IDs and creation timestamps.
+        :rtype: List[Dict[str, int]]
         :Usage example:
 
          .. code-block:: python
@@ -534,8 +536,16 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
             #   {"id": 2, "entityId": 526, 'createdAt': '2025-04-10T08:49:41.852Z'}
             ]
         """
-        items = [item.to_json() for item in items]
-        data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_ITEMS: items}
+        if all(isinstance(item, int) for item in items):
+            data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_IDS: items}
+        elif all(isinstance(item, CollectionItem) for item in items):
+            items = [item.to_json() for item in items]
+            data = {ApiField.COLLECTION_ID: id, ApiField.ENTITY_ITEMS: items}
+        else:
+            raise ValueError(
+                "Items list must contain only integers or only CollectionItem instances, not a mix."
+            )
+
         response = self._api.post("entities-collections.items.bulk.add", data)
         response = response.json()
         if len(response["missing"]) > 0:
