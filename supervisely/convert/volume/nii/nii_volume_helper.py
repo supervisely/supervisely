@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict, namedtuple
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List, Union
 
 import nrrd
 import numpy as np
@@ -16,6 +16,7 @@ from supervisely.volume.volume import convert_3d_nifti_to_nrrd
 VOLUME_NAME = "anatomic"
 LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
 MASK_PIXEL_VALUE = "Mask pixel value: "
+
 
 class PlanePrefix(str, StrEnum):
     """Prefix for plane names."""
@@ -117,14 +118,78 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
         yield mask, class_id
 
 
+def get_scores_from_table(csv_file_path: str, plane: str) -> dict:
+    """Get scores from CSV table and return nested dictionary structure.
+
+    Args:
+        csv_file_path: Path to the CSV file containing layer scores
+
+    Returns:
+        Nested dictionary with structure:
+        {
+            "label_index": {
+                "slice_index": {
+                    "127": {
+                        "score": float_value,
+                        "comment": ""
+                    }
+                }
+            }
+        }
+    """
+    import csv
+
+    if plane == PlanePrefix.CORONAL:
+        plane = "0-1-0"
+    elif plane == PlanePrefix.SAGITTAL:
+        plane = "1-0-0"
+    elif plane == PlanePrefix.AXIAL:
+        plane = "0-0-1"
+
+    result = defaultdict(lambda: defaultdict(dict))
+
+    if not os.path.exists(csv_file_path):
+        logger.warning(f"CSV file not found: {csv_file_path}")
+        return result
+
+    try:
+        with open(csv_file_path, "r") as file:
+            reader = csv.DictReader(file)
+            label_columns = [col for col in reader.fieldnames if col.startswith("Label-")]
+
+            for row in reader:
+                frame_idx = int(row["Layer"]) - 1  # Assuming Layer is 1-indexed in CSV
+
+                for label_col in label_columns:
+                    label_index = int(label_col.split("-")[1])
+                    score = f"{float(row[label_col]):.2f}"
+                    result[label_index][plane][frame_idx] = {"score": score, "comment": None}
+
+    except Exception as e:
+        logger.warning(f"Failed to read CSV file {csv_file_path}: {e}")
+        return {}
+
+    return result
+
+
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
         self._items = items
         self._ds_id = dataset_id
         self._ann_paths = defaultdict(list)
-
         self._item_by_filename = {}
         self._item_by_path = {}
+
+        self.set_items(items)
+
+        self._project_wide = False
+        self._volumes = None
+
+    def set_items(self, items):
+        self._items = items
+        self._ann_paths.clear()
+        self._item_by_filename.clear()
+        self._item_by_path.clear()
 
         for item in items:
             path = Path(item.ann_data)
@@ -134,9 +199,6 @@ class AnnotationMatcher:
             self._ann_paths[dataset_name].append(filename)
             self._item_by_filename[filename] = item
             self._item_by_path[(dataset_name, filename)] = item
-
-        self._project_wide = False
-        self._volumes = None
 
     def get_volumes(self, api: Api):
         dataset_info = api.dataset.get_info_by_id(self._ds_id)
@@ -166,11 +228,8 @@ class AnnotationMatcher:
 
     def match_items(self):
         """Match annotation files with corresponding volumes using regex-based matching."""
-        import re
-
         item_to_volume = {}
 
-        # Perform matching
         for dataset_name, volumes in self._volumes.items():
             volume_names = [parse_name_parts(name) for name in list(volumes.keys())]
             _volume_names = [vol for vol in volume_names if vol is not None]
@@ -191,7 +250,7 @@ class AnnotationMatcher:
                 if ann_name is None:
                     logger.warning(f"Failed to parse annotation name: {ann_file}")
                     continue
-                match = find_best_volume_match_for_ann(ann_name, volume_names)
+                match = find_best_name_match(ann_name, volume_names)
                 if match is not None:
                     if match.plane != ann_name.plane:
                         logger.warning(
@@ -200,7 +259,6 @@ class AnnotationMatcher:
                         continue
                     item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
 
-        # Mark volumes having only one matching item as semantic and validate shape.
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
             volume_to_items[volume.id].append(item)
@@ -306,9 +364,11 @@ def parse_name_parts(full_name: str) -> NameParts:
     is_ann = False
     if VOLUME_NAME in full_name:
         type = "anatomic"
-    else:
+    elif any(part in full_name for part in LABEL_NAME):
         type = next((part for part in LABEL_NAME if part in full_name), None)
         is_ann = type is not None
+    elif "score" in name_no_ext or get_file_ext(full_name) == ".csv":
+        type = "score"
 
     if type is None:
         return
@@ -367,58 +427,58 @@ def parse_name_parts(full_name: str) -> NameParts:
     )
 
 
-def find_best_volume_match_for_ann(ann, volumes):
+def find_best_name_match(item: NameParts, pool: List[NameParts]) -> Union[NameParts, None]:
     """
-    Finds the best matching NameParts object from `volumes` for the given annotation NameParts `ann`.
+    Finds the best matching NameParts object from `pool` for the given annotation NameParts `item`.
     Prefers an exact match where all fields except `type` are the same, and `type` is 'anatomic'.
     Returns the matched NameParts object or None if not found.
     """
-    volume_names = [volume.full_name for volume in volumes]
-    ann_name = ann.full_name
+    pool_item_names = [i.full_name for i in pool]
+    item_name = item.full_name
     # Prefer exact match except for type
-    for vol in volumes:
-        if vol.name_no_ext == ann.name_no_ext.replace(ann.type, "anatomic"):
+    for i in pool:
+        if i.name_no_ext == item.name_no_ext.replace(item.type, i.type):
             logger.debug(
-                "Found exact match for annotation.",
-                extra={"ann": ann_name, "vol": vol.full_name},
+                "Found exact match.",
+                extra={"item": item_name, "pool_item": i.full_name},
             )
-            return vol
+            return i
 
     logger.debug(
         "Failed to find exact match, trying to find a fallback match UUIDs.",
-        extra={"ann": ann_name, "volumes": volume_names},
+        extra={"item": item_name, "pool_items": pool_item_names},
     )
 
     # Fallback: match by plane and patient_uuid, type='anatomic'
-    for vol in volumes:
+    for i in pool:
         if (
-            vol.plane == ann.plane
-            and vol.patient_uuid == ann.patient_uuid
-            and vol.case_uuid == ann.case_uuid
+            i.plane == item.plane
+            and i.patient_uuid == item.patient_uuid
+            and i.case_uuid == item.case_uuid
         ):
             logger.debug(
-                "Found fallback match for annotation by UUIDs.",
-                extra={"ann": ann_name, "vol": vol.full_name},
+                "Found fallback match for item by UUIDs.",
+                extra={"item": item_name, "i": i.full_name},
             )
-            return vol
+            return i
 
     logger.debug(
         "Failed to find fallback match, trying to find a fallback match by plane.",
-        extra={"ann": ann_name, "volumes": volume_names},
+        extra={"item": item_name, "pool_items": pool_item_names},
     )
 
     # Fallback: match by plane and type='anatomic'
-    for vol in volumes:
-        if vol.plane == ann.plane:
+    for i in pool:
+        if i.plane == item.plane:
             logger.debug(
-                "Found fallback match for annotation by plane.",
-                extra={"ann": ann_name, "vol": vol.full_name},
+                "Found fallback match for item by plane.",
+                extra={"item": item_name, "i": i.full_name},
             )
-            return vol
+            return i
 
     logger.debug(
-        "Failed to find any match for annotation.",
-        extra={"ann": ann_name, "volumes": volume_names},
+        "Failed to find any match for item.",
+        extra={"item": item_name, "pool_items": pool_item_names},
     )
 
     return None

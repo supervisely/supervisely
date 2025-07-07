@@ -312,11 +312,13 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
 
         for nrrd_path in nrrd_paths:
             object_key = None
+            custom_data = None
 
             # searching connection between interpolation and spatial figure in annotations and set its object_key
             for sf in ann.spatial_figures:
                 if sf.key().hex == get_file_name(nrrd_path):
                     object_key = sf.parent_object.key()
+                    custom_data = sf.custom_data
                     break
 
             if object_key:
@@ -341,12 +343,12 @@ class VolumeAnnotationAPI(EntityAnnotationAPI):
             geometry = Mask3D(np.zeros((3, 3, 3), dtype=np.bool_))
 
             if transfer_type == "download":
-                new_object = VolumeObject(new_obj_class, mask_3d=geometry)
+                new_object = VolumeObject(new_obj_class, mask_3d=geometry, custom_data=custom_data)
             elif transfer_type == "upload":
                 if class_created:
                     self._api.project.update_meta(project_id, project_meta)
                 new_object = VolumeObject(new_obj_class)
-                new_object.figure = VolumeFigure(new_object, geometry, key=sf.key())
+                new_object.figure = VolumeFigure(new_object, geometry, key=sf.key(), custom_data=custom_data)
 
             # add new Volume object to VolumeAnnotation with spatial figure
             ann = ann.add_objects([new_object])

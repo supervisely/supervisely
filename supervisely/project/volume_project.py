@@ -478,6 +478,12 @@ def download_volume_project(
                         figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                         mesh_paths.append(figure_path)
 
+                figs = api.volume.figure.download(dataset.id, [volume_id], skip_geometry=True)[volume_id]
+                figs_ids_map = {fig.id: fig for fig in figs}
+                for ann_fig in ann.figures + ann.spatial_figures:
+                    fig = figs_ids_map.get(ann_fig.geometry.sly_id)
+                    ann_fig.custom_data.update(fig.custom_data)
+
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)
 

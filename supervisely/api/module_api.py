@@ -663,6 +663,8 @@ class ApiField:
     """"""
     QUALITY_CHECK_USER_IDS = "qualityCheckUserIds"
     """"""
+    UPDATE_STRATEGY = "updateStrategy"
+    """"""
 
 
 def _get_single_item(items):
