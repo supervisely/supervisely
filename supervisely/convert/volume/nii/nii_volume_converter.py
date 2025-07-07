@@ -193,7 +193,7 @@ class NiiConverter(VolumeConverter):
                 volume_np, volume_meta = read_nrrd_serie_volume_np(item.path)
                 progress_nrrd = tqdm_sly(
                     desc=f"Uploading volume '{item.name}'",
-                    total=sum(volume_np.shape),
+                    total=sum(volume_np.shape) + 1,
                     leave=True if progress_cb is None else False,
                     position=1,
                 )
