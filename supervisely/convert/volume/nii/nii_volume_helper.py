@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict, namedtuple
 from pathlib import Path
-from typing import Generator, Union, List
+from typing import Generator, List, Union
 
 import nrrd
 import numpy as np
