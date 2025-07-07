@@ -651,7 +651,7 @@ class VolumeFigureApi(FigureApi):
         self,
         figure_id: int,
         custom_data: Dict[str, str],
-        update_strategy: Literal["replace", "merge"] = "replace",
+        update_strategy: Literal["replace", "merge"] = "merge",
     ) -> None:
         """
         Update custom data for a specific figure in a volume.
@@ -662,7 +662,9 @@ class VolumeFigureApi(FigureApi):
         :type custom_data: Dict[str, str]
         :param update_strategy: Strategy to apply, either "replace" or "merge".
         :type update_strategy: Literal["replace", "merge"]
-        :rtype: VolumeFigure
+        :return: None
+        :rtype: :class:`NoneType`
+
         """
         data = {
             ApiField.ID: figure_id,

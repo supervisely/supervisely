@@ -127,13 +127,14 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         for key, paths in volumes_dict.items():
             if len(paths) == 1:
                 item = self.Item(item_path=paths[0])
+                name_parts = helper.parse_name_parts(os.path.basename(item.path))
                 item.ann_data = ann_dict.get(key, [])
 
                 ann_path = os.path.basename(item.ann_data[0]) if item.ann_data else None
                 if ann_path in ann_to_score_path:
                     score_path = ann_to_score_path[ann_path]
                     try:
-                        scores = helper.get_scores_from_table(score_path)
+                        scores = helper.get_scores_from_table(score_path, name_parts.plane)
                         item.custom_data["scores"] = scores
                     except Exception as e:
                         logger.warning(f"Failed to read scores from {score_path}: {e}")
@@ -146,6 +147,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     f"Found {len(paths)} volumes with key {key}. Will try to match them by directories."
                 )
                 for path in paths:
+                    name_parts = helper.parse_name_parts(os.path.basename(path))
                     item = self.Item(item_path=path)
                     possible_ann_paths = []
                     for ann_path in ann_dict.get(key, []):
@@ -158,7 +160,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     scores_paths = [path for path in scores_paths if path is not None]
                     if scores_paths:
                         try:
-                            scores = helper.get_scores_from_table(scores_paths[0])
+                            scores = helper.get_scores_from_table(scores_paths[0], name_parts.plane)
                             item.custom_data["scores"] = scores
                         except Exception as e:
                             logger.warning(f"Failed to read scores from {scores_paths[0]}: {e}")
@@ -204,7 +206,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         meta = meta.add_obj_class(obj_class)
                         self._meta_changed = True
                         self._meta = meta
-                    obj_scores = scores.get(class_id, None)
+                    obj_scores = scores.get(class_id, {})
+                    obj_scores = {k: v for k, v in obj_scores.items()}
                     obj = VolumeObject(obj_class, mask_3d=mask, custom_data=obj_scores)
                     spatial_figures.append(obj.figure)
                     objs.append(obj)
@@ -297,7 +300,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 elif file.endswith(".csv"):
                     scores_path = os.path.join(root, file)
                     try:
-                        scores = helper.get_scores_from_table(scores_path)
+                        scores = helper.get_scores_from_table(scores_path, name_parts.plane)
                         if scores:
                             item.ann_data = scores_path
                             item.custom_data["scores"] = scores

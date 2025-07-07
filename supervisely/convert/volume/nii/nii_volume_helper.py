@@ -118,7 +118,7 @@ def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
         yield mask, class_id
 
 
-def get_scores_from_table(csv_file_path: str) -> dict:
+def get_scores_from_table(csv_file_path: str, plane: str) -> dict:
     """Get scores from CSV table and return nested dictionary structure.
 
     Args:
@@ -139,6 +139,13 @@ def get_scores_from_table(csv_file_path: str) -> dict:
     """
     import csv
 
+    if plane == PlanePrefix.CORONAL:
+        plane = "0-1-0"
+    elif plane == PlanePrefix.SAGITTAL:
+        plane = "1-0-0"
+    elif plane == PlanePrefix.AXIAL:
+        plane = "0-0-1"
+
     result = defaultdict(lambda: defaultdict(dict))
 
     if not os.path.exists(csv_file_path):
@@ -151,13 +158,12 @@ def get_scores_from_table(csv_file_path: str) -> dict:
             label_columns = [col for col in reader.fieldnames if col.startswith("Label-")]
 
             for row in reader:
-                slice = row["Layer"]
-                plane = f"0-0-0"
+                frame_idx = int(row["Layer"]) - 1  # Assuming Layer is 1-indexed in CSV
 
                 for label_col in label_columns:
                     label_index = int(label_col.split("-")[1])
-                    score_value = float(row[label_col])
-                    result[label_index][plane][slice] = {"score": score_value, "comment": ""}
+                    score = f"{float(row[label_col]):.2f}"
+                    result[label_index][plane][frame_idx] = {"score": score, "comment": None}
 
     except Exception as e:
         logger.warning(f"Failed to read CSV file {csv_file_path}: {e}")

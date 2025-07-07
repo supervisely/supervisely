@@ -52,6 +52,8 @@ class VolumeFigure(VideoFigure):
     :type updated_at: str, optional
     :param created_at: Date and Time when VolumeFigure was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param custom_data: Custom data associated with the VolumeFigure.
+    :type custom_data: dict, optional
     :Usage example:
 
      .. code-block:: python
@@ -654,6 +656,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[dict] = None,
     ) -> VolumeFigure:
         """
         Create a VolumeFigure from Mask 3D geometry.
@@ -672,6 +675,8 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: The date and time when the VolumeFigure was created (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
         :type created_at: str, optional
+        :param custom_data: Custom data associated with the VolumeFigure.
+        :type custom_data: dict, optional
         :return: A VolumeFigure object created from Mask3D geometry.
         :rtype: VolumeFigure
         """
@@ -694,6 +699,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def _set_3d_geometry(self, new_geometry: Mask3D) -> None:
