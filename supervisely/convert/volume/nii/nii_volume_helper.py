@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict, namedtuple
 from pathlib import Path
-from typing import Generator, Union
+from typing import Generator, Union, List
 
 import nrrd
 import numpy as np
@@ -427,7 +427,7 @@ def parse_name_parts(full_name: str) -> NameParts:
     )
 
 
-def find_best_name_match(item: NameParts, pool: list[NameParts]) -> Union[NameParts, None]:
+def find_best_name_match(item: NameParts, pool: List[NameParts]) -> Union[NameParts, None]:
     """
     Finds the best matching NameParts object from `pool` for the given annotation NameParts `item`.
     Prefers an exact match where all fields except `type` are the same, and `type` is 'anatomic'.
