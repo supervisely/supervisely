@@ -2559,18 +2559,21 @@ class Inference:
 
         if self._is_local_deploy:
             # Predict and shutdown
-            if self._args.mode == "predict" and any(
+            if self._args.mode == "predict":
+                if any(
                 [
                     self._args.input,
                     self._args.project_id,
                     self._args.dataset_id,
                     self._args.image_id,
                 ]
-            ):
-
-                self._parse_inference_settings_from_args()
-                self._inference_by_local_deploy_args()
-                exit(0)
+                ):
+                    self._parse_inference_settings_from_args()
+                    self._inference_by_local_deploy_args()
+                    exit(0)
+                else:
+                    logger.info("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
+                    exit(0)
 
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
