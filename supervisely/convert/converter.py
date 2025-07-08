@@ -4,6 +4,7 @@ from typing import List, Optional, Union
 
 from tqdm import tqdm
 
+from supervisely import fs
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
@@ -63,9 +64,9 @@ class ImportManager:
         if isinstance(input_data, str):
             input_data = [input_data]
 
-        self._input_data = []
+        self._input_data = get_data_dir()
         for data in input_data:
-            self._input_data.append(self._prepare_input_data(data))
+            self._prepare_input_data(data)
             self._unpack_archives(data)
             remove_junk_from_dir(data)
 
@@ -96,28 +97,13 @@ class ImportManager:
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
 
-        detected_formats = set()
-        for data in self._input_data:
-            modality_converter = modality_converter_map[str(self._modality)](
-                data,
-                self._labeling_interface,
-                self._upload_as_links,
-                self._remote_files_map,
-            )
-            detected_formats.add(modality_converter.detect_format())
-
-        if len(detected_formats) > 1:
-            raise ValueError(
-                f"Detected multiple formats for input data: {detected_formats}. "
-                f"Please ensure that all input data is in the same format."
-            )
-        elif len(detected_formats) == 0:
-            raise ValueError(
-                f"Could not detect format for input data: {self._input_data}. "
-                f"Please ensure that the input data is in a supported format."
-            )
-
-        return list(detected_formats)[0]
+        modality_converter = modality_converter_map[str(self._modality)](
+            self._input_data,
+            self._labeling_interface,
+            self._upload_as_links,
+            self._remote_files_map,
+        )
+        return modality_converter
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
@@ -129,10 +115,12 @@ class ImportManager:
     def _prepare_input_data(self, input_data):
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
-            return input_data
+            # return input_data
+            fs.copy_dir_recursively(input_data, get_data_dir())
         elif file_exists(input_data):
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
-            return os.path.dirname(input_data)
+            # return os.path.dirname(input_data)
+            fs.copy_file(input_data, get_data_dir())
         elif self._api.storage.exists(self._team_id, input_data):
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
