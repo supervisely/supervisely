@@ -197,8 +197,8 @@ class NiiConverter(VolumeConverter):
                     leave=True if progress_cb is None else False,
                     position=1,
                 )
-                if item.custom_data is not None:
-                    volume_meta.update(item.custom_data)
+                if isinstance(item.custom_data, dict) and "remote_path" in item.custom_data:
+                    volume_meta["remote_path"] = item.custom_data["remote_path"]
                 api.volume.upload_np(dataset_id, item.name, volume_np, volume_meta, progress_nrrd)
                 info = api.volume.get_info_by_name(dataset_id, item.name)
                 item.volume_meta = info.meta
