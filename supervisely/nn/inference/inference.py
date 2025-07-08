@@ -169,8 +169,6 @@ class Inference:
         sly_fs.mkdir(model_dir)
 
         self.autorestart = None
-        # Quick deploy parameters (do **not** store in `self.model` to avoid
-        # name clash with actual NN module assigned later in child class).
         _deploy_model = model
         _deploy_device = device
         _deploy_runtime = runtime
