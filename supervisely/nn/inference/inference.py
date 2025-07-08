@@ -172,6 +172,8 @@ class Inference:
         _deploy_model = model
         _deploy_device = device
         _deploy_runtime = runtime
+        self.device = None
+        self.runtime = None
         self._is_quick_deploy = False
         self.model_precision: str = None
         self.model_source: str = None
@@ -313,15 +315,10 @@ class Inference:
         )
 
         self.inference_requests_manager = InferenceRequestsManager(executor=self._executor)
-
-        try:
-            if _deploy_model is not None and not self._model_served:
-                self._is_quick_deploy = True
-                self.serve()
-                self._deploy_headless(_deploy_model, _deploy_device, _deploy_runtime)
-        except Exception as e:
-            logger.error("Failed to deploy model from __init__ parameters", exc_info=True)
-            raise e
+        if _deploy_model is not None and not self._model_served:
+            self._is_quick_deploy = True
+            self.serve()
+            self._deploy_headless(_deploy_model, _deploy_device, _deploy_runtime)
 
     def __call__(
         self,
@@ -375,6 +372,7 @@ class Inference:
         def get_pretrained_model(model: str) -> dict:
             if self.pretrained_models is not None:
                 for m in self.pretrained_models:
+                    m_name = _get_model_name(m)
                     m_name = m.get("meta", {}).get("model_name", "")
                     if m_name and m_name.lower() == model.lower():
                         return m
@@ -2762,7 +2760,7 @@ class Inference:
                     self._inference_by_local_deploy_args()
                     exit(0)
                 else:
-                    logger.info("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
+                    logger.error("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
                     exit(0)
 
         if isinstance(self.gui, GUI.InferenceGUI):
