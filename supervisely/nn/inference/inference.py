@@ -961,7 +961,7 @@ class Inference:
             # --- LOCAL ---
             try:
                 logger.debug("Reading state dict...")
-                import torch
+                import torch  # pylint: disable=import-error
                 ckpt = torch.load(checkpoint_path, map_location="cpu")
                 model_info = ckpt.get("model_info", {})
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
@@ -3711,7 +3711,7 @@ class Inference:
         if not need_download:
             try:
                 # Read data from checkpoint
-                import torch
+                import torch  # pylint: disable=import-error
                 checkpoint = torch.load(checkpoint_path)
                 model_info = checkpoint["model_info"]
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
