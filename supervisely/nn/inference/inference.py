@@ -174,6 +174,7 @@ class Inference:
         _deploy_model = model
         _deploy_device = device
         _deploy_runtime = runtime
+        self._is_quick_deploy = False
         self.model_precision: str = None
         self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
@@ -317,6 +318,7 @@ class Inference:
 
         try:
             if _deploy_model is not None and not self._model_served:
+                self._is_quick_deploy = True
                 self.serve()
                 self._deploy_headless(_deploy_model, _deploy_device, _deploy_runtime)
         except Exception as e:
@@ -325,7 +327,7 @@ class Inference:
 
     def __call__(
         self,
-        input: Union[np.ndarray, str, PathLike, list] = None,
+        input: Union[np.ndarray, str, os.PathLike, list] = None,
         image_id: Union[List[int], int] = None,
         video_id: Union[List[int], int] = None,
         dataset_id: Union[List[int], int] = None,
@@ -355,18 +357,38 @@ class Inference:
 
     def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
         """Deploy model immediately from constructor arguments."""
-        import glob
+        # Clean model_dir before deploying
+        sly_fs.mkdir(self._model_dir, True)
+
+        def get_runtime(runtime: Optional[str]) -> str:
+            if runtime is None:
+                runtime = RuntimeType.PYTORCH
+            else:
+                if runtime.lower() in ["torch", RuntimeType.PYTORCH.lower()]:
+                    runtime = RuntimeType.PYTORCH
+                elif runtime.lower() in ["onnx", RuntimeType.ONNXRUNTIME.lower()]:
+                    runtime = RuntimeType.ONNXRUNTIME
+                elif runtime.lower() in ["trt", RuntimeType.TENSORRT.lower()]:
+                    runtime = RuntimeType.TENSORRT
+                else:
+                    raise ValueError(f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}.")
+            return runtime
+
+        def get_pretrained_model(model: str) -> dict:
+            if self.pretrained_models is not None:
+                for m in self.pretrained_models:
+                    m_name = m.get("meta", {}).get("model_name", "")
+                    if m_name and m_name.lower() == model.lower():
+                        return m
+            return None
+        
+        runtime = get_runtime(runtime)
+        logger.debug(f"Runtime: {runtime}")
 
         # Pretrained models
-        selected_pretrained = None
-        if self.pretrained_models is not None:
-            for m in self.pretrained_models:
-                m_name = m.get("meta", {}).get("model_name", "")
-                if m_name and m_name.lower() == model.lower():
-                    selected_pretrained = m
-                    break
-
+        selected_pretrained = get_pretrained_model(model)
         if selected_pretrained is not None:
+            logger.debug("Pretrained model found")
             model_files_remote = selected_pretrained["meta"]["model_files"]
             model_files_local = self._download_pretrained_model(model_files_remote, headless=True)
 
@@ -377,30 +399,16 @@ class Inference:
                 "device": device,
                 "runtime": runtime,
             }
+            logger.debug(f"Deploying pretrained model '{model}' ...")
+            logger.debug(f"Deploy parameters: {deploy_params}")
             self._load_model_headless(**deploy_params)
             return self
 
-        # 2. Treat as custom checkpoint path (local or Team Files)
+        # Custom Models
         checkpoint_path = model
-        model_files = {"checkpoint": checkpoint_path}
-
-        # Try to find config next to checkpoint (local path only)
-        if not checkpoint_path.startswith("/") and os.path.isfile(checkpoint_path):
-            ckpt_dir = os.path.dirname(checkpoint_path)
-            yaml_candidates = glob.glob(os.path.join(ckpt_dir, "*.yml")) + glob.glob(
-                os.path.join(ckpt_dir, "*.yaml")
-            )
-            if yaml_candidates:
-                model_files["config"] = yaml_candidates[0]
-
-        deploy_params = {
-            "model_source": ModelSource.CUSTOM,
-            "model_files": model_files,
-            "model_info": {"artifacts_dir": os.path.dirname(os.path.dirname(checkpoint_path))},
-            "device": device,
-            "runtime": runtime,
-        }
-
+        checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
+        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
+        logger.debug(f"Deploying custom model '{checkpoint_name}'...")
         self._load_model_headless(**deploy_params)
         return self
 
@@ -904,6 +912,94 @@ class Inference:
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
+    
+    def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
+        def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
+            exp_path = os.path.join(artifacts_dir, "experiment_info.json")
+            if sly_fs.file_exists(exp_path):
+                return self._load_json_file(exp_path)
+            return None
+
+        def _compose_model_files(artifacts_dir: str, checkpoint_path: str, files_map: dict) -> dict:
+            model_files = {k: os.path.join(artifacts_dir, v) for k, v in files_map.items()}
+            model_files["checkpoint"] = checkpoint_path
+            return model_files
+
+        is_local = sly_fs.file_exists(checkpoint_path)
+        if not is_local:
+            team_id = sly_env.team_id()
+            api = self.api
+            if api is None or not api.file.exists(team_id, checkpoint_path):
+                raise FileNotFoundError(
+                    f"Checkpoint '{checkpoint_path}' not found locally and remotely.")
+        artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+
+        if not is_local:
+            logger.debug("Remote checkpoint found")
+            # --- REMOTE ---
+            # experiment_info.json
+            logger.debug("Getting experiment_info.json...")
+            remote_exp_info = os.path.join(artifacts_dir, "experiment_info.json")
+            local_exp_info = os.path.join(self.model_dir, "experiment_info.json")
+            self.download(remote_exp_info, local_exp_info)
+            experiment_info = self._load_json_file(local_exp_info)
+
+            # model_meta.json
+            logger.debug("Getting model_meta.json...")
+            meta_name = experiment_info.get("model_meta") or "model_meta.json"
+            remote_meta = os.path.join(artifacts_dir, meta_name)
+            local_meta = os.path.join(self.model_dir, meta_name)
+            self.download(remote_meta, local_meta)
+            model_meta = self._load_json_file(local_meta)
+            experiment_info["model_meta"] = model_meta
+
+            # model files
+            logger.debug("Getting model files...")
+            remote_files_rel = experiment_info.get("model_files", {})
+            remote_files_full = _compose_model_files(artifacts_dir, checkpoint_path, remote_files_rel)
+            local_model_files = self._download_custom_model(remote_files_full, False)
+            model_files = local_model_files
+            model_info = experiment_info
+            logger.debug("Deploy parameters extracted from remote checkpoint successfully")
+        else:
+            logger.debug("Local checkpoint found")
+            # --- LOCAL ---
+            try:
+                logger.debug("Reading state dict...")
+                import torch
+                ckpt = torch.load(checkpoint_path, map_location="cpu")
+                model_info = ckpt.get("model_info", {})
+                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_files["checkpoint"] = checkpoint_path
+                meta_path = os.path.join(self.model_dir, "model_meta.json")
+                if sly_fs.file_exists(meta_path):
+                    model_info["model_meta"] = self._load_json_file(meta_path)
+                logger.debug("Deploy parameters extracted from state dict successfully")
+            except:
+                logger.debug(f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files...")
+                experiment_info = _read_experiment_info(artifacts_dir)
+                if experiment_info:
+                    logger.debug("Reading experiment_info.json...")
+                    model_files = _compose_model_files(artifacts_dir, checkpoint_path, experiment_info.get("model_files", {}))
+                    meta_name = experiment_info.get("model_meta") or "model_meta.json"
+                    meta_path = os.path.join(artifacts_dir, meta_name)
+                    if not sly_fs.file_exists(meta_path):
+                        raise FileNotFoundError(f"Model meta file not found: '{meta_path}'")
+                    experiment_info["model_meta"] = self._load_json_file(meta_path)
+                    model_info = experiment_info
+                    logger.debug("Deploy parameters extracted from experiment_info.json successfully")
+                else:
+                    raise FileNotFoundError(f"'experiment_info.json' not found in '{artifacts_dir}'")
+
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": model_files,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+        }
+        logger.debug(f"Deploy parameters: {deploy_params}")
+        return deploy_params
 
     def _extract_model_files_from_checkpoint(self, checkpoint_path: str) -> dict:
         extracted_files: dict = {}
@@ -3383,6 +3479,8 @@ class Inference:
         # Local deploy without predict args
         if self._is_local_deploy:
             self._run_server()
+        elif self._is_quick_deploy:
+            self._run_server_in_thread()
 
     def _parse_local_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
@@ -3683,6 +3781,18 @@ class Inference:
         config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
+
+    def _run_server_in_thread(self):
+        """Run Uvicorn server in a separate thread so that this method doesn't block the caller."""
+        import threading
+
+        def _serve():
+            config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
+            self._uvicorn_server = uvicorn.Server(config)
+            self._uvicorn_server.run()
+
+        self._server_thread = threading.Thread(target=_serve, daemon=True)
+        self._server_thread.start()
 
     def _read_settings(self, settings: Union[str, Dict[str, Any]]):
         if isinstance(settings, dict):
