@@ -373,7 +373,6 @@ class Inference:
             if self.pretrained_models is not None:
                 for m in self.pretrained_models:
                     m_name = _get_model_name(m)
-                    m_name = m.get("meta", {}).get("model_name", "")
                     if m_name and m_name.lower() == model.lower():
                         return m
             return None
