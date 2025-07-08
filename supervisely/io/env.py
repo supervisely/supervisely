@@ -226,6 +226,7 @@ def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
     :return: path to the team files folders
     :rtype: str
     """
+
     return _parse_from_env(
         name="team_files_folders",
         keys=[
@@ -234,7 +235,7 @@ def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
             "modal.state.slyFolders",
             "FOLDERS",
         ],
-        postprocess_fn=lambda x: [str(file).strip() for file in x.split(",")],
+        postprocess_fn=lambda s: [str(x).strip('"') for x in s.strip("[]").split(",")],
         default=[],
         raise_not_found=raise_not_found,
     )
@@ -308,7 +309,7 @@ def team_files_files(raise_not_found: Optional[bool] = True) -> List[str]:
     return _parse_from_env(
         name="team_files_files",
         keys=["CONTEXT_SLYFILES", "context.slyFiles", "modal.state.slyFiles", "FILES"],
-        postprocess_fn=lambda x: [str(file).strip() for file in x.split(",")],
+        postprocess_fn=lambda s: [str(x).strip('"') for x in s.strip("[]").split(",")],
         default=[],
         raise_not_found=raise_not_found,
     )
