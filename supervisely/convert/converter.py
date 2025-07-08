@@ -67,8 +67,8 @@ class ImportManager:
         self._input_data = get_data_dir()
         for data in input_data:
             self._prepare_input_data(data)
-            self._unpack_archives(data)
-            remove_junk_from_dir(data)
+        self._unpack_archives(self._input_data)
+        remove_junk_from_dir(self._input_data)
 
         self._converter = self.get_converter()
         if isinstance(self._converter, (HighColorDepthImageConverter, CSVConverter)):
@@ -103,7 +103,7 @@ class ImportManager:
             self._upload_as_links,
             self._remote_files_map,
         )
-        return modality_converter
+        return modality_converter.detect_format()
 
     def upload_dataset(self, dataset_id):
         """Upload converted data to Supervisely"""
@@ -120,7 +120,8 @@ class ImportManager:
         elif file_exists(input_data):
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
             # return os.path.dirname(input_data)
-            fs.copy_file(input_data, get_data_dir())
+            dst_file = os.path.join(get_data_dir(), os.path.basename(input_data))
+            fs.copy_file(input_data, dst_file)
         elif self._api.storage.exists(self._team_id, input_data):
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,

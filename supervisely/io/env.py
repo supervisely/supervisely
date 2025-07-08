@@ -234,7 +234,7 @@ def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
             "modal.state.slyFolders",
             "FOLDERS",
         ],
-        postprocess_fn=lambda x: [str(folder) for folder in x.split(",")],
+        postprocess_fn=lambda x: [str(file).strip() for file in x.split(",")],
         default=[],
         raise_not_found=raise_not_found,
     )
@@ -308,7 +308,7 @@ def team_files_files(raise_not_found: Optional[bool] = True) -> List[str]:
     return _parse_from_env(
         name="team_files_files",
         keys=["CONTEXT_SLYFILES", "context.slyFiles", "modal.state.slyFiles", "FILES"],
-        postprocess_fn=lambda x: [str(file) for file in x.split(",")],
+        postprocess_fn=lambda x: [str(file).strip() for file in x.split(",")],
         default=[],
         raise_not_found=raise_not_found,
     )
