@@ -416,7 +416,7 @@ This approach helps you to quickly set up the environment and run inference with
     )
 
     # Predict
-    predictions = model.predict(
+    predictions = model(
         # 'input' can accept various formats: image paths, np.arrays, Supervisely IDs and others.
         input=["path/to/image1.jpg", "path/to/image2.jpg"],
         conf=0.5, # confidence threshold
