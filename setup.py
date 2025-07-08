@@ -52,6 +52,7 @@ def get_version():
     version = os.getenv("RELEASE_VERSION", None)
     if version is not None:
         return version
+    return "v6.73.394"  # todo: remove before release!
     branch_name = get_branch()
     gh_releases = get_github_releases()
     commit = get_common_commit_with_master()
