@@ -172,8 +172,8 @@ class Inference:
         _deploy_model = model
         _deploy_device = device
         _deploy_runtime = runtime
-        self.device = None
-        self.runtime = None
+        self.device: str = None
+        self.runtime: str = None
         self._is_quick_deploy = False
         self.model_precision: str = None
         self.model_source: str = None
