@@ -113,6 +113,7 @@ class ImportManager:
     #     raise NotImplementedError
 
     def _prepare_input_data(self, input_data):
+        logger.debug(f"Preparing input data: {input_data}")
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
             # return input_data
