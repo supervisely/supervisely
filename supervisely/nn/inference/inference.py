@@ -925,12 +925,19 @@ class Inference:
         is_local = sly_fs.file_exists(checkpoint_path)
         if not is_local:
             team_id = sly_env.team_id()
-            api = self.api
-            if api is None or not api.file.exists(team_id, checkpoint_path):
+            if self.api is None:
+                raise ValueError(
+                    f"File: '{checkpoint_path}' not found in local storage. "
+                    "Initialize API by providing 'API_TOKEN' and 'SERVER_ADDRESS' "
+                    "environment variables to use remote checkpoint."
+                )
+            if not self.api.file.exists(team_id, checkpoint_path):
                 raise FileNotFoundError(
-                    f"Checkpoint '{checkpoint_path}' not found locally and remotely.")
-        artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+                    f"Checkpoint '{checkpoint_path}' not found locally and remotely. "
+                    "Make sure you have provided correct checkpoint path."
+                )
 
+        artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
         if not is_local:
             logger.debug("Remote checkpoint found")
             # --- REMOTE ---
@@ -1005,7 +1012,6 @@ class Inference:
             return extracted_files
 
         import torch  # pylint: disable=import-error
-
         logger.debug(f"Reading checkpoint: {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
 
