@@ -220,8 +220,10 @@ class Inference:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
+                logger.debug("Downloading model files")
                 local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
+            logger.debug("Loading model...")
             self._load_model_headless(**deploy_params)
 
         if self._use_gui:
@@ -2756,7 +2758,7 @@ class Inference:
                 ]
                 ):
                     self._parse_inference_settings_from_args()
-                    self._inference_by_local_deploy_args()
+                    self._inference_by_cli_deploy_args()
                     exit(0)
                 else:
                     logger.error("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
@@ -3594,6 +3596,7 @@ class Inference:
         return args, True
 
     def _parse_inference_settings_from_args(self):
+        logger.debug("Parsing inference settings from args")
         def parse_value(value: str):
             if value.lower() in ("true", "false"):
                 return value.lower() == "true"
@@ -3629,6 +3632,7 @@ class Inference:
                 args.settings = settings_dict
         args.settings = self._read_settings(args.settings)
         self._validate_settings(args.settings)
+        logger.debug("Inference settings were successfully parsed from args")
 
     def _get_pretrained_model_params_from_args(self):
         model_files = None
@@ -3743,6 +3747,7 @@ class Inference:
         return model_files, model_source, model_info, need_download
 
     def _get_deploy_params_from_args(self):
+        logger.debug("Getting deploy params from args")
         # Ensure model directory exists
         device = self._args.device if self._args.device else "cuda:0"
         runtime = self._args.runtime if self._args.runtime else RuntimeType.PYTORCH
@@ -3815,7 +3820,8 @@ class Inference:
                     f"Inference settings doesn't have key: '{key}'. Available keys are: '{acceptable_keys}'"
                 )
 
-    def _inference_by_local_deploy_args(self):
+    def _inference_by_cli_deploy_args(self):
+        logger.debug("Starting inference by CLI deploy args")
         missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
 
         def predict_project_id_by_args(
@@ -3829,14 +3835,13 @@ class Inference:
         ):
             if self.api is None:
                 raise ValueError(missing_env_message)
-
-            if dataset_ids:
-                logger.info(f"Predicting datasets: '{dataset_ids}'")
-            else:
-                logger.info(f"Predicting project: '{project_id}'")
-
             if draw:
                 raise ValueError("Draw visualization is not supported for project inference")
+
+            if dataset_ids:
+                logger.info(f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'")
+            else:
+                logger.info(f"Predicting Project by ID: {project_id}")
 
             state = {
                 "projectId": project_id,
@@ -3876,6 +3881,7 @@ class Inference:
             draw: bool = False,
             upload: bool = False,
         ):
+            logger.info(f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}")
             if draw:
                 raise ValueError("Draw visualization is not supported for dataset inference")
             if self.api is None:
@@ -3899,7 +3905,7 @@ class Inference:
             if self.api is None:
                 raise ValueError(missing_env_message)
 
-            logger.info(f"Predicting image: '{image_id}'")
+            logger.info(f"Predicting Image by ID: {image_id}")
 
             def predict_image_np(image_np):
                 anns, _ = self._inference_auto([image_np], settings)
@@ -3936,8 +3942,7 @@ class Inference:
             output_dir: str = "./predictions",
             draw: bool = False,
         ):
-            logger.info(f"Predicting '{input_path}'")
-
+            logger.info(f"Predicting Local Data: {input_path}")
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
                 if pred_dir is not None:
