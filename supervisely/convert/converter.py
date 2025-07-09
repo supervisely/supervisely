@@ -156,7 +156,7 @@ class ImportManager:
         if not is_dir:
             dir_name = "Import data"
             local_path = os.path.join(get_data_dir(), dir_name)
-            mkdir(local_path, remove_content_if_exists=True)
+            mkdir(local_path, remove_content_if_exists=False)
             save_path = os.path.join(local_path, os.path.basename(remote_path))
         else:
             dir_name = os.path.basename(os.path.normpath(remote_path))
