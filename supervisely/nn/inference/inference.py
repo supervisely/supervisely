@@ -157,9 +157,9 @@ class Inference:
     ):
 
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
-        self._args, self._is_local_deploy = self._parse_local_deploy_args()
+        self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
         if model_dir is None:
-            if self._is_local_deploy is True:
+            if self._is_cli_deploy is True:
                 try:
                     model_dir = get_data_dir()
                 except:
@@ -216,7 +216,7 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
@@ -1200,7 +1200,7 @@ class Inference:
                 artifacts_dir = os.path.dirname(os.path.dirname(model_files.get("checkpoint")))
             checkpoint_file_path = os.path.join(artifacts_dir, "checkpoints", checkpoint_name)
             checkpoint_file_info = None
-            if not self._is_local_deploy:
+            if not self._is_cli_deploy:
                 checkpoint_file_info = self.api.file.get_info_by_path(
                     sly_env.team_id(), checkpoint_file_path
                 )
@@ -1303,7 +1303,7 @@ class Inference:
     def api(self) -> Api:
         if self._api is None:
             if (
-                self._is_local_deploy
+                self._is_cli_deploy
                 and os.getenv("SERVER_ADDRESS") is None
                 and os.getenv("API_TOKEN") is None
             ):
@@ -2726,7 +2726,7 @@ class Inference:
         inference_request.done(len(results))
 
     def serve(self):
-        if not self._use_gui and not self._is_local_deploy:
+        if not self._use_gui and not self._is_cli_deploy:
             Progress("Deploying model ...", 1)
 
         if is_debug_with_sly_net():
@@ -2741,10 +2741,10 @@ class Inference:
             self._task_id = task["id"]
             os.environ["TASK_ID"] = str(self._task_id)
         else:
-            if not self._is_local_deploy:
+            if not self._is_cli_deploy:
                 self._task_id = sly_env.task_id() if is_production() else None
 
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             # Predict and shutdown
             if self._args.mode == "predict":
                 if any(
@@ -3472,12 +3472,12 @@ class Inference:
             }
 
         # Local deploy without predict args
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             self._run_server()
         elif self._is_quick_deploy:
             self._run_server_in_thread()
 
-    def _parse_local_deploy_args(self):
+    def _parse_cli_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
