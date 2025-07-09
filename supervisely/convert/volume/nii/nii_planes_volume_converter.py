@@ -2,7 +2,8 @@ import os
 from collections import defaultdict
 from pathlib import Path
 
-from supervisely import ProjectMeta, logger, Api
+from supervisely import Api, ProjectMeta, logger
+from supervisely._utils import batched, is_development
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.convert.volume.nii import nii_volume_helper as helper
 from supervisely.convert.volume.nii.nii_volume_converter import NiiConverter
@@ -12,7 +13,6 @@ from supervisely.io.fs import get_file_ext, get_file_name, list_files_recursivel
 from supervisely.volume.volume import is_nifti_file
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely._utils import batched, is_development
 
 
 class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
@@ -83,6 +83,12 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         ann_dict = defaultdict(list)
         cls_color_map = None
 
+        ann_to_score_path = {}
+        csv_files = list_files_recursively(self._input_data, [".csv"], None, True)
+        csv_nameparts = {
+            helper.parse_name_parts(os.path.basename(file)): file for file in csv_files
+        }
+
         for root, _, files in os.walk(self._input_data):
             if converted_dir_name in root:
                 continue
@@ -91,17 +97,25 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                 if is_nifti_file(path):
                     name_parts = helper.parse_name_parts(file)
                     if name_parts is None:
-                        logger.warning(
+                        logger.debug(
                             f"File recognized as NIfTI, but failed to parse plane identifier from name. Path: {path}",
                         )
                         continue
+                    if name_parts.is_ann:
+                        dict_to_use = ann_dict
+                        score_path = helper.find_best_name_match(
+                            name_parts, list(csv_nameparts.keys())
+                        )
+                        if score_path is not None:
+                            full_score_path = csv_nameparts[score_path]
+                            ann_to_score_path[name_parts.full_name] = full_score_path
+                    else:
+                        dict_to_use = volumes_dict
 
-                    dict_to_use = ann_dict if name_parts.is_ann else volumes_dict
-                    key = (
-                        name_parts.plane
-                        if name_parts.patient_uuid is None and name_parts.case_uuid is None
-                        else f"{name_parts.plane}_{name_parts.patient_uuid}_{name_parts.case_uuid}"
-                    )
+                    if name_parts.patient_uuid is None and name_parts.case_uuid is None:
+                        key = name_parts.plane
+                    else:
+                        key = f"{name_parts.plane}_{name_parts.patient_uuid}_{name_parts.case_uuid}"
                     dict_to_use[key].append(path)
                 ext = get_file_ext(path)
                 if ext == ".txt":
@@ -113,7 +127,17 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         for key, paths in volumes_dict.items():
             if len(paths) == 1:
                 item = self.Item(item_path=paths[0])
+                name_parts = helper.parse_name_parts(os.path.basename(item.path))
                 item.ann_data = ann_dict.get(key, [])
+
+                ann_path = os.path.basename(item.ann_data[0]) if item.ann_data else None
+                if ann_path in ann_to_score_path:
+                    score_path = ann_to_score_path[ann_path]
+                    try:
+                        scores = helper.get_scores_from_table(score_path, name_parts.plane)
+                        item.custom_data["scores"] = scores
+                    except Exception as e:
+                        logger.warning(f"Failed to read scores from {score_path}: {e}")
                 item.is_semantic = len(item.ann_data) == 1
                 if cls_color_map is not None:
                     item.custom_data["cls_color_map"] = cls_color_map
@@ -123,12 +147,23 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                     f"Found {len(paths)} volumes with key {key}. Will try to match them by directories."
                 )
                 for path in paths:
+                    name_parts = helper.parse_name_parts(os.path.basename(path))
                     item = self.Item(item_path=path)
                     possible_ann_paths = []
                     for ann_path in ann_dict.get(key, []):
                         if Path(ann_path).parent == Path(path).parent:
                             possible_ann_paths.append(ann_path)
                     item.ann_data = possible_ann_paths
+                    scores_paths = [
+                        ann_to_score_path.get(ann_name, None) for ann_name in possible_ann_paths
+                    ]
+                    scores_paths = [path for path in scores_paths if path is not None]
+                    if scores_paths:
+                        try:
+                            scores = helper.get_scores_from_table(scores_paths[0], name_parts.plane)
+                            item.custom_data["scores"] = scores
+                        except Exception as e:
+                            logger.warning(f"Failed to read scores from {scores_paths[0]}: {e}")
                     item.is_semantic = len(possible_ann_paths) == 1
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
@@ -149,6 +184,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
         try:
             objs = []
             spatial_figures = []
+            scores = item.custom_data.get("scores", {})
             for idx, ann_path in enumerate(item.ann_data, start=1):
                 for mask, pixel_value in helper.get_annotation_from_nii(ann_path):
                     class_id = pixel_value if item.is_semantic else idx
@@ -170,7 +206,9 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         meta = meta.add_obj_class(obj_class)
                         self._meta_changed = True
                         self._meta = meta
-                    obj = VolumeObject(obj_class, mask_3d=mask)
+                    obj_scores = scores.get(class_id, {})
+                    obj_scores = {k: v for k, v in obj_scores.items()}
+                    obj = VolumeObject(obj_class, mask_3d=mask, custom_data=obj_scores)
                     spatial_figures.append(obj.figure)
                     objs.append(obj)
             return VolumeAnnotation(item.volume_meta, objects=objs, spatial_figures=spatial_figures)
@@ -210,7 +248,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
 
     def validate_format(self) -> bool:
         try:
-            from nibabel import load, filebasedimages
+            from nibabel import filebasedimages, load
         except ImportError:
             raise ImportError(
                 "No module named nibabel. Please make sure that module is installed from pip and try again."
@@ -235,8 +273,8 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         for root, _, files in os.walk(self._input_data):
             for file in files:
                 path = os.path.join(root, file)
+                name_parts = helper.parse_name_parts(file)
                 if is_nii(file):
-                    name_parts = helper.parse_name_parts(file)
                     if name_parts is None or not name_parts.is_ann:
                         continue
                     try:
