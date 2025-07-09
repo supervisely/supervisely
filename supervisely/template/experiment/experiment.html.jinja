@@ -329,17 +329,17 @@ docker image for the corresponding model's framework, and run the `docker run` c
 2. Pull the Docker image
 
     ```bash
-    docker pull {{ code.docker.image }}
+    docker pull {{ code.docker.deploy }}
     ```
 
-3. Run the Docker container
+3. Run the Docker container from app root directory
 
     ```bash
     docker run \
         --runtime=nvidia \
         -v "./{{ experiment.paths.experiment_dir.path }}:/model" \  # Mount the experiment directory to the container
         -p 8000:8000 \
-        {{ code.docker.image }} \
+        {{ code.docker.deploy }} \
         deploy \
         --model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \
         --device "cuda:0"
@@ -371,7 +371,7 @@ docker run \
     --runtime=nvidia \
     -v "./{{ experiment.paths.experiment_dir.path }}:/model" \
     -p 8000:8000 \
-    {{ code.docker.image }} \
+    {{ code.docker.deploy }} \
     predict \
     "./image.jpg" \ # Put your image/video/directory here
     --model "/model/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}" \

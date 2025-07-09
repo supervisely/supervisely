@@ -3668,8 +3668,12 @@ class Inference:
     def _get_custom_model_params_from_args(self):
         def _load_experiment_info(artifacts_dir):
             experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
+            if not os.path.exists(experiment_path):
+                raise ValueError(f"Experiment info file not found in {artifacts_dir}")
             model_info = self._load_json_file(experiment_path)
             model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
+            if not os.path.exists(model_meta_path):
+                raise ValueError(f"Model meta file not found in {artifacts_dir}")
             model_info["model_meta"] = self._load_json_file(model_meta_path)
             original_model_files = model_info.get("model_files")
             return model_info, original_model_files
@@ -3695,6 +3699,7 @@ class Inference:
             else:
                 loop.run_until_complete(coro)
 
+        logger.debug("Getting custom model params from args")
         model_source = ModelSource.CUSTOM
         need_download = False
         checkpoint_path = self._args.model
@@ -3715,6 +3720,7 @@ class Inference:
         if not need_download:
             try:
                 # Read data from checkpoint
+                logger.debug(f"Reading data from checkpoint: {checkpoint_path}")
                 import torch  # pylint: disable=import-error
                 checkpoint = torch.load(checkpoint_path)
                 model_info = checkpoint["model_info"]
@@ -3729,21 +3735,24 @@ class Inference:
 
         artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
         if not need_download:
+            logger.debug(f"Looking for data in artifacts: '{artifacts_dir}'")
             model_info, original_model_files = _load_experiment_info(artifacts_dir)
             model_files = _prepare_local_model_files(
                 artifacts_dir, checkpoint_path, original_model_files
             )
-
+            logger.debug(f"Data was found in artifacts directory: '{artifacts_dir}'")
         else:
+            logger.debug(f"Downloading data from remote directory: '{artifacts_dir}'")
             local_artifacts_dir = os.path.join(
-                self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
+                self.model_dir, "cli_deploy", os.path.basename(artifacts_dir)
             )
             _download_remote_files(team_id, artifacts_dir, local_artifacts_dir)
-
             model_info, original_model_files = _load_experiment_info(local_artifacts_dir)
             model_files = _prepare_local_model_files(
                 local_artifacts_dir, checkpoint_path, original_model_files
             )
+            logger.debug(f"Data was downloaded from remote directory: '{artifacts_dir}'")
+        logger.debug("Custom model params were successfully parsed from args")
         return model_files, model_source, model_info, need_download
 
     def _get_deploy_params_from_args(self):
