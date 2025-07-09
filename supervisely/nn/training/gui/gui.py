@@ -259,7 +259,7 @@ class TrainGUI:
         self.workspace_id = sly_env.workspace_id(raise_not_found=False)
         self.project_id = sly_env.project_id()
         self.project_info = self._api.project.get_info_by_id(self.project_id)
-        if self.project_info.type is None:
+        if self.project_info is None:
             raise ValueError(f"Project with ID: '{self.project_id}' does not exist or was archived")
 
         self.project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project_id))
