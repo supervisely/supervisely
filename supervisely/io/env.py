@@ -36,6 +36,12 @@ def _int_from_env(value):
     return int(value)
 
 
+def _parse_list_from_env(value: str) -> List[str]:
+    import ast
+
+    return [str(x).strip() for x in ast.literal_eval(value)]
+
+
 def _parse_from_env(
     name: str,
     keys: List[str],
@@ -226,7 +232,6 @@ def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
     :return: path to the team files folders
     :rtype: str
     """
-
     return _parse_from_env(
         name="team_files_folders",
         keys=[
@@ -235,7 +240,7 @@ def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
             "modal.state.slyFolders",
             "FOLDERS",
         ],
-        postprocess_fn=lambda s: [str(x).strip('"').strip("'") for x in s.strip("[]").split(",")],
+        postprocess_fn=_parse_list_from_env,
         default=[],
         raise_not_found=raise_not_found,
     )
@@ -309,7 +314,7 @@ def team_files_files(raise_not_found: Optional[bool] = True) -> List[str]:
     return _parse_from_env(
         name="team_files_files",
         keys=["CONTEXT_SLYFILES", "context.slyFiles", "modal.state.slyFiles", "FILES"],
-        postprocess_fn=lambda s: [str(x).strip('"').strip("'") for x in s.strip("[]").split(",")],
+        postprocess_fn=_parse_list_from_env,
         default=[],
         raise_not_found=raise_not_found,
     )
