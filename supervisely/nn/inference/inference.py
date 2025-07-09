@@ -3710,6 +3710,8 @@ class Inference:
                 raise ValueError(
                     "Team ID not found in env. Required for remote custom checkpoints."
                 )
+            if self.api is None:
+                raise ValueError("API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables.")
             file_info = self.api.file.get_info_by_path(team_id, checkpoint_path)
             if not file_info:
                 raise ValueError(
