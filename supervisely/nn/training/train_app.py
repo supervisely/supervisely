@@ -1667,26 +1667,25 @@ class TrainApp:
             checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
             new_checkpoint_path = join(self._output_checkpoints_dir, checkpoint_name)
             shutil.move(checkpoint_path, new_checkpoint_path)
-            if len(ckpt_files) > 0:
-                try:
-                    # pylint: disable=import-error
-                    import torch
-
-                    state_dict = torch.load(new_checkpoint_path)
-                    state_dict["model_info"] = {
-                        "model_name": experiment_info["model_name"],
-                        "framework": self.framework_name,
-                        "checkpoint": checkpoint_name,
-                        "experiment": self.gui.training_process.get_experiment_name(),
-                    }
-                    state_dict["model_meta"] = model_meta.to_json()
-                    state_dict["model_files"] = ckpt_files
-                    torch.save(state_dict, new_checkpoint_path)
-                except Exception as e:
-                    logger.warning(
-                        f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}"
-                    )
-                    continue
+            try:
+                # pylint: disable=import-error
+                import torch
+                state_dict = torch.load(new_checkpoint_path)
+                state_dict["model_info"] = {
+                    "task_id": self.task_id,
+                    "model_name": experiment_info["model_name"],
+                    "framework": self.framework_name,
+                    "checkpoint": checkpoint_name,
+                    "experiment": self.gui.training_process.get_experiment_name(),
+                }
+                state_dict["model_meta"] = model_meta.to_json()
+                state_dict["model_files"] = ckpt_files
+                torch.save(state_dict, new_checkpoint_path)
+            except Exception as e:
+                logger.warning(
+                    f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}"
+                )
+                continue
 
             new_checkpoint_paths.append(new_checkpoint_path)
             if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:

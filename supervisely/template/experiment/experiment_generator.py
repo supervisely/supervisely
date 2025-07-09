@@ -138,7 +138,7 @@ class ExperimentGenerator(BaseGenerator):
         pytorch_demo, onnx_demo, trt_demo = self._get_demo_scripts()
 
         return {
-            "docker": {"image": docker_image},
+            "docker": {"image": docker_image, "deploy": f"{docker_image}-deploy"},
             "local_prediction": {
                 "repo": repo_info,
                 "serving_module": (
