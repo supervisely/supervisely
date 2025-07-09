@@ -19,7 +19,10 @@ SLY_OBJECT_KEYS = [
     LabelJsonFields.TAGS,
     LabelJsonFields.GEOMETRY_TYPE,
 ]
-SLY_TAG_KEYS = [TagJsonFields.TAG_NAME, TagJsonFields.VALUE]
+SLY_TAG_KEYS = [
+    TagJsonFields.TAG_NAME,
+    # TagJsonFields.VALUE
+]
 
 
 # Check the annotation format documentation at
