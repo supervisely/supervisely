@@ -117,7 +117,7 @@ class ImportManager:
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
             # return input_data
-            dst_dir = os.path.join(get_data_dir(), os.path.basename(input_data))
+            dst_dir = os.path.join(get_data_dir(), os.path.basename(os.path.normpath(input_data)))
             fs.copy_dir_recursively(input_data, dst_dir)
         elif file_exists(input_data):
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
@@ -158,7 +158,7 @@ class ImportManager:
             dir_name = "Import data"
             local_path = os.path.join(get_data_dir(), dir_name)
             mkdir(local_path, remove_content_if_exists=False)
-            save_path = os.path.join(local_path, os.path.basename(os.path.normpath(remote_path)))
+            save_path = os.path.join(local_path, os.path.basename(remote_path))
         else:
             dir_name = os.path.basename(os.path.normpath(remote_path))
             local_path = os.path.join(get_data_dir(), dir_name)
