@@ -387,6 +387,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         else:
             progress_cb = None
 
+        volumeids_to_objects = defaultdict(list)
+        dataset_ids = set([vol_info.dataset_id for vol_info in matched_dict.values()])
+        for dataset_id in dataset_ids:
+            for obj in api.volume.object.get_list(dataset_id):
+                volumeids_to_objects[obj.entity_id].append(obj)
+
         for item, volume in matched_dict.items():
             item.volume_meta = volume.meta
             if not item.is_scores:
@@ -396,28 +402,29 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     self._meta_changed = False
                 api.volume.annotation.append(volume.id, ann, volume_info=volume)
             else:
-                from typing import List
-
-                from supervisely.api.entity_annotation.figure_api import FigureInfo
-                from supervisely.api.volume.volume_api import VolumeInfo
-
                 class_id_to_pixel_value = helper.get_class_id_to_pixel_value_map(meta)
                 scores = item.custom_data.get("scores", {})
                 if not scores:
                     logger.warning(f"No scores found for {item.ann_data}. Skipping.")
                     continue
+
+                obj_id_to_class_id = {
+                    obj.id: obj.class_id for obj in volumeids_to_objects[volume.id]
+                }
+
                 volume_figure_dict = api.volume.figure.download(volume.dataset_id, [volume.id])
-                figures_list: List[FigureInfo] = volume_figure_dict.get(volume.id, [])
+                figures_list = volume_figure_dict.get(volume.id, [])
                 for figure in figures_list:
-                    if figure.class_id is None:
+                    class_id = obj_id_to_class_id.get(figure.object_id, None)
+                    if class_id is None:
                         logger.warning(
-                            f"Figure {figure.id} has no class ID. Skipping figure update."
+                            f"Class ID for figure {figure.id} not found in volume objects. Skipping figure update."
                         )
                         continue
-                    pixel_value = class_id_to_pixel_value.get(figure.obj_class_id, None)
+                    pixel_value = class_id_to_pixel_value.get(class_id, None)
                     if pixel_value is None:
                         logger.warning(
-                            f"Pixel value for class ID {figure.obj_class_id} not found in meta. Skipping figure update."
+                            f"Pixel value for class ID {class_id} not found in meta. Skipping figure update."
                         )
                         continue
                     figure_custom_data = scores.get(pixel_value, {})
