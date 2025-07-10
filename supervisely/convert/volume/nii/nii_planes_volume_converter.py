@@ -226,6 +226,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._is_semantic = False
+            self._is_scores = False
             self.volume_meta = None
 
         @property
@@ -235,6 +236,14 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         @is_semantic.setter
         def is_semantic(self, value: bool):
             self._is_semantic = value
+
+        @property
+        def is_scores(self) -> bool:
+            return self._is_scores
+
+        @is_scores.setter
+        def is_scores(self, value: bool):
+            self._is_scores = value
 
         def create_empty_annotation(self):
             return VolumeAnnotation(self.volume_meta)
@@ -274,17 +283,22 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             for file in files:
                 path = os.path.join(root, file)
                 name_parts = helper.parse_name_parts(file)
-                if is_nii(file):
-                    if name_parts is None or not name_parts.is_ann:
-                        continue
-                    try:
-                        nii = load(path)
-                    except filebasedimages.ImageFileError:
-                        logger.warning(f"Failed to load NIfTI file: {path}")
-                        continue
+                if name_parts is None:
+                    continue
+                if is_nii(file) or name_parts.type == helper.SCORE_NAME:
                     item = self.Item(item_path=None, ann_data=path)
-                    item.set_shape(nii.shape)
-                    item.custom_data["name_parts"] = name_parts
+                    if name_parts.is_ann:
+                        try:
+                            nii = load(path)
+                        except filebasedimages.ImageFileError:
+                            logger.warning(f"Failed to load NIfTI file: {path}")
+                            continue
+                        item.set_shape(nii.shape)
+                        item.custom_data["name_parts"] = name_parts
+                    elif name_parts.type == helper.SCORE_NAME:
+                        item.is_scores = True
+                        scores = helper.get_scores_from_table(path, name_parts.plane)
+                        item.custom_data["scores"] = scores
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
@@ -358,6 +372,10 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     extra=extra,
                 )
         if len(matched_dict) == 0:
+            res_ds_info = api.dataset.get_info_by_id(dataset_id)
+            if res_ds_info.items_count == 0:
+                logger.info("Resulting dataset is empty. Removing it.")
+                api.dataset.remove(dataset_id)
             raise RuntimeError(
                 "No items were matched with volumes. Please check the input data and try again."
             )
@@ -371,11 +389,43 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
 
         for item, volume in matched_dict.items():
             item.volume_meta = volume.meta
-            ann = self.to_supervisely(item, meta, renamed_classes, None)
-            if self._meta_changed:
-                meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
-                self._meta_changed = False
-            api.volume.annotation.append(volume.id, ann, volume_info=volume)
+            if not item.is_scores:
+                ann = self.to_supervisely(item, meta, renamed_classes, None)
+                if self._meta_changed:
+                    meta, renamed_classes, _ = self.merge_metas_with_conflicts(api, dataset_id)
+                    self._meta_changed = False
+                api.volume.annotation.append(volume.id, ann, volume_info=volume)
+            else:
+                from typing import List
+
+                from supervisely.api.entity_annotation.figure_api import FigureInfo
+                from supervisely.api.volume.volume_api import VolumeInfo
+
+                class_id_to_pixel_value = helper.get_class_id_to_pixel_value_map(meta)
+                scores = item.custom_data.get("scores", {})
+                if not scores:
+                    logger.warning(f"No scores found for {item.ann_data}. Skipping.")
+                    continue
+                volume_figure_dict = api.volume.figure.download(volume.dataset_id, [volume.id])
+                figures_list: List[FigureInfo] = volume_figure_dict.get(volume.id, [])
+                for figure in figures_list:
+                    if figure.class_id is None:
+                        logger.warning(
+                            f"Figure {figure.id} has no class ID. Skipping figure update."
+                        )
+                        continue
+                    pixel_value = class_id_to_pixel_value.get(figure.obj_class_id, None)
+                    if pixel_value is None:
+                        logger.warning(
+                            f"Pixel value for class ID {figure.obj_class_id} not found in meta. Skipping figure update."
+                        )
+                        continue
+                    figure_custom_data = scores.get(pixel_value, {})
+                    if figure_custom_data:
+                        api.volume.figure.update_custom_data(figure.id, figure_custom_data)
+                        logger.info(
+                            f"Updated figure {figure.id} with custom data: {figure_custom_data}"
+                        )
             progress_cb(1) if log_progress else None
 
         res_ds_info = api.dataset.get_info_by_id(dataset_id)
