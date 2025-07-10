@@ -686,7 +686,7 @@ class SmartSamplingAutomation(Automation):
             )
 
     def _create_widget(self):
-        self.checkbox = Checkbox(content="Run every", checked=False)
+        self.enabled_checkbox = Checkbox(content="Run every", checked=False)
         self.num_input = InputNumber(min=1, value=60, debounce=1000, controls=False, size="mini")
         self.num_input.disable()
         self.period_select = Select(
@@ -700,7 +700,7 @@ class SmartSamplingAutomation(Automation):
         self.period_select.disable()
         automate_cont = Container(
             [
-                self.checkbox,
+                self.enabled_checkbox,
                 self.num_input,
                 self.period_select,
                 Empty(),
@@ -718,7 +718,7 @@ class SmartSamplingAutomation(Automation):
             color="gray",
         )
 
-        @self.checkbox.value_changed
+        @self.enabled_checkbox.value_changed
         def on_automate_checkbox_change(is_checked: bool) -> None:
             if is_checked:
                 self.num_input.enable()
@@ -734,7 +734,7 @@ class SmartSamplingAutomation(Automation):
         Get the automation details from the widget.
         :return: Tuple with (enabled, period, interval, seconds)
         """
-        enabled = self.checkbox.is_checked()
+        enabled = self.enabled_checkbox.is_checked()
         period = self.period_select.get_value()
         interval = self.num_input.get_value()
 
@@ -754,9 +754,9 @@ class SmartSamplingAutomation(Automation):
     def save_automation_details(self, enabled: bool, sec: int):
 
         if enabled is False:
-            self.checkbox.uncheck()
+            self.enabled_checkbox.uncheck()
         else:
-            self.checkbox.check()
+            self.enabled_checkbox.check()
             period, interval = get_interval_period(sec)
             self.num_input.value = interval
             self.period_select.set_value(period)

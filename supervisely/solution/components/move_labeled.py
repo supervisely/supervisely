@@ -46,7 +46,7 @@ class MoveLabeledAuto(Automation):
             )
 
     def _create_widget(self):
-        self.automate_checkbox = Checkbox(content="Run every", checked=False)
+        self.enabled_checkbox = Checkbox(content="Run every", checked=False)
         self.automate_input = InputNumber(
             min=1, value=60, debounce=1000, controls=False, size="mini"
         )
@@ -61,7 +61,7 @@ class MoveLabeledAuto(Automation):
         )
         self.automate_period_select.disable()
         automate_box_1 = Container(
-            [self.automate_checkbox, self.automate_input, self.automate_period_select, Empty()],
+            [self.enabled_checkbox, self.automate_input, self.automate_period_select, Empty()],
             direction="horizontal",
             gap=3,
             fractions=[1, 1, 1, 1],
@@ -98,7 +98,7 @@ class MoveLabeledAuto(Automation):
         #     title="Automate Synchronization", size="tiny", content=automate_content
         # )
 
-        @self.automate_checkbox.value_changed
+        @self.enabled_checkbox.value_changed
         def on_automate_checkbox_change(is_checked):
             if is_checked:
                 self.automate_input.enable()
@@ -121,7 +121,7 @@ class MoveLabeledAuto(Automation):
         return Container([text_1, automate_box_1, text_2, automate_box_2, automate_ok_btn_cont])
 
     def get_automation_details(self):
-        enabled = self.automate_checkbox.is_checked()
+        enabled = self.enabled_checkbox.is_checked()
         period = self.automate_period_select.get_value()
         interval = self.automate_input.get_value()
         min_batch_enabled = self.automate_min_batch.is_checked()
@@ -139,9 +139,9 @@ class MoveLabeledAuto(Automation):
 
     def update_automation_widgets(self, enabled, sec, min_batch=None):
         if enabled:
-            self.automate_checkbox.check()
+            self.enabled_checkbox.check()
         else:
-            self.automate_checkbox.uncheck()
+            self.enabled_checkbox.uncheck()
         period, interval = get_interval_period(sec)
         if period is not None and interval is not None:
             self.automate_period_select.set_value(period)
