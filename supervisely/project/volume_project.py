@@ -478,9 +478,6 @@ def download_volume_project(
                         figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                         mesh_paths.append(figure_path)
                 
-                if volume_id == 348775224:
-                    print("hello")
-
                 figs = api.volume.figure.download(dataset.id, [volume_id], skip_geometry=True)
                 figs = figs.get(volume_id, {})
                 figs_ids_map = {fig.id: fig for fig in figs}
