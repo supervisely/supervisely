@@ -1085,7 +1085,6 @@ class ExperimentGenerator(BaseGenerator):
             fig.update_layout(
                 height=300 * rows,
                 width=400 * cols,
-                title_text="Training metrics",
                 showlegend=False,
             )
 
@@ -1093,7 +1092,8 @@ class ExperimentGenerator(BaseGenerator):
             fig.write_image(local_img_path, engine="kaleido")
             sly_fs.remove_dir(tmp_logs_dir)
 
-            return f'<img src="/data/training_plots_grid.png" style="max-width:100%;" />'
+            img_widget = f"<sly-iw-image src=\"/data/training_plots_grid.png\" :template-base-path=\"templateBasePath\" :options=\"{{ style: {{ width: '60%', height: 'auto' }} }}\" />"
+            return img_widget
         except Exception as e:
             logger.warning(f"Failed to build or save static training plot: {e}")
             return None
