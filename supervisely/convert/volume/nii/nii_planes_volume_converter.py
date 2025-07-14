@@ -311,9 +311,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             name_parts = item.custom_data.get("name_parts")
             if item.is_scores:
                 continue
-            if name_parts.ending_idx is not None:
-                item.is_semantic = False
-            else:
+            if name_parts.ending_idx is None:
                 item.is_semantic = True
 
         self._meta = ProjectMeta(obj_classes=obj_classes)
