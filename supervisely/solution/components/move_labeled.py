@@ -292,3 +292,44 @@ class MoveLabeled(SolutionElement):
     def update_automation_widgets(self, enabled, sec, min_batch=None):
         self.automation.update_automation_widgets(enabled, sec, min_batch)
         self.update_automation_properties(enabled, sec, min_batch)
+
+    def add_to_collection(
+        self,
+        image_ids: List[int],
+        split_name: str,
+    ) -> None:
+        """
+        Add the MoveLabeled node to a collection.
+        """
+        if not image_ids:
+            logger.warning("No images to add to collection.")
+            return
+        collections = self.api.entities_collection.get_list(self.dst_project_id)
+
+        main_collection_name = f"All_{split_name}"
+        main_collection = None
+
+        last_batch_index = 0
+        for collection in collections:
+            if collection.name == main_collection_name:
+                main_collection = collection
+            elif collection.name.startswith(batch_collection_name):
+                last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
+
+        if main_collection is None:
+            main_collection = self.api.entities_collection.create(
+                self.dst_project_id, main_collection_name
+            )
+            logger.info(f"Created new collection '{main_collection_name}'")
+
+        self.api.entities_collection.add_items(main_collection.id, image_ids)
+
+        batch_collection_name = f"{split_name}_{last_batch_index + 1}"
+        batch_collection = self.api.entities_collection.create(
+            self.dst_project_id, batch_collection_name
+        )
+        logger.info(f"Created new collection '{batch_collection_name}'")
+
+        self.api.entities_collection.add_items(batch_collection.id, image_ids)
+
+        logger.info(f"Added {len(image_ids)} images to {split_name} collections")
