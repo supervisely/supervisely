@@ -3730,9 +3730,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
         return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
 
-    def update_tag_value(
-        self, tag_id: int, value: Union[str, float]
-    ) -> Dict:
+    def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
         """
         Update tag value with given ID.
 
@@ -4463,11 +4461,14 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def set_remote(self, images: List[int], links: List[str]):
         """
-        This method helps to change local source to remote for images without re-uploading them as new.
+        Updates the source of existing images by setting new remote links.
+        This method is used when an image was initially uploaded as a file or added via a link,
+        but later it was decided to change its location (e.g., moved to another storage or re-uploaded elsewhere).
+        By updating the link, the image source can be redirected to the new location.
 
         :param images: List of image ids.
         :type images: List[int]
-        :param links: List of remote links.
+        :param links: List of new remote links.
         :type links: List[str]
         :return: json-encoded content of a response.
 
@@ -4475,17 +4476,17 @@ class ImageApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
-                    import supervisely as sly
+                import supervisely as sly
 
-                    api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-                    images = [123, 124, 125]
-                    links = [
-                        "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
-                        "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
-                        "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
-                    ]
-                    result = api.image.set_remote(images, links)
+                images = [123, 124, 125]
+                links = [
+                    "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
+                    "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
+                    "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
+                ]
+                result = api.image.set_remote(images, links)
         """
 
         if len(images) == 0:
