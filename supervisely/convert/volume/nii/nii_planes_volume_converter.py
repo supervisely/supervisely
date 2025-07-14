@@ -372,10 +372,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     extra=extra,
                 )
         if len(matched_dict) == 0:
-            res_ds_info = api.dataset.get_info_by_id(dataset_id)
-            if res_ds_info.items_count == 0:
-                logger.info("Resulting dataset is empty. Removing it.")
-                api.dataset.remove(dataset_id)
             raise RuntimeError(
                 "No items were matched with volumes. Please check the input data and try again."
             )
@@ -412,7 +408,9 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     obj.id: obj.class_id for obj in volumeids_to_objects[volume.id]
                 }
 
-                volume_figure_dict = api.volume.figure.download(volume.dataset_id, [volume.id])
+                volume_figure_dict = api.volume.figure.download(
+                    volume.dataset_id, [volume.id], skip_geometry=True
+                )
                 figures_list = volume_figure_dict.get(volume.id, [])
                 for figure in figures_list:
                     class_id = obj_id_to_class_id.get(figure.object_id, None)
@@ -430,15 +428,10 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     figure_custom_data = scores.get(pixel_value, {})
                     if figure_custom_data:
                         api.volume.figure.update_custom_data(figure.id, figure_custom_data)
-                        logger.info(
+                        logger.debug(
                             f"Updated figure {figure.id} with custom data: {figure_custom_data}"
                         )
             progress_cb(1) if log_progress else None
-
-        res_ds_info = api.dataset.get_info_by_id(dataset_id)
-        if res_ds_info.items_count == 0:
-            logger.info("Resulting dataset is empty. Removing it.")
-            api.dataset.remove(dataset_id)
 
         if log_progress:
             if is_development():

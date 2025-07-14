@@ -214,18 +214,22 @@ def get_class_id_to_pixel_value_map(meta: ProjectMeta) -> dict:
 
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
-        self._items = items
-        self._ds_id = dataset_id
         self._ann_paths = defaultdict(list)
         self._item_by_filename = {}
         self._item_by_path = {}
 
-        self.set_items(items)
+        self.items = items
+        self._ds_id = dataset_id
 
         self._project_wide = False
         self._volumes = None
 
-    def set_items(self, items):
+    @property
+    def items(self):
+        return self._items
+
+    @items.setter
+    def items(self, items):
         self._items = items
         self._ann_paths.clear()
         self._item_by_filename.clear()
@@ -242,13 +246,13 @@ class AnnotationMatcher:
 
     def get_volumes(self, api: Api):
         dataset_info = api.dataset.get_info_by_id(self._ds_id)
-        datasets = {dataset_info.name: dataset_info}
-        project_id = dataset_info.project_id
-        if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
+        if dataset_info.items_count > 0:
+            datasets = {dataset_info.name: dataset_info}
             self._project_wide = False
         else:
             datasets = {
-                dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)
+                dsinfo.name: dsinfo
+                for dsinfo in api.dataset.get_list(dataset_info.project_id, recursive=True)
             }
             self._project_wide = True
 
