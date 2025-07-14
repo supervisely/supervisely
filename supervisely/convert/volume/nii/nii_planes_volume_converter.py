@@ -389,7 +389,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             for obj in api.volume.object.get_list(dataset_id):
                 volumeids_to_objects[obj.entity_id].append(obj)
 
-        for item, volume in matched_dict.items():
+        for item, volume in sorted(matched_dict.items(), key=lambda pair: pair[0].is_scores):
             item.volume_meta = volume.meta
             if not item.is_scores:
                 ann = self.to_supervisely(item, meta, renamed_classes, None)
