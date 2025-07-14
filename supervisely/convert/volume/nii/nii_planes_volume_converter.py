@@ -416,7 +416,11 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     class_id = obj_id_to_class_id.get(figure.object_id, None)
                     if class_id is None:
                         logger.warning(
-                            f"Class ID for figure {figure.id} not found in volume objects. Skipping figure update."
+                            f"Class ID for figure (id: {figure.id}) not found in volume objects. Skipping figure update.",
+                            extra={
+                                "obj_id_to_class_id": obj_id_to_class_id,
+                                "object_id": figure.object_id,
+                            },
                         )
                         continue
                     pixel_value = class_id_to_pixel_value.get(class_id, None)
