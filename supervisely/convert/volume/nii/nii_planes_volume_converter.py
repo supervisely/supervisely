@@ -384,10 +384,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
             progress_cb = None
 
         volumeids_to_objects = defaultdict(list)
-        dataset_ids = set([vol_info.dataset_id for vol_info in matched_dict.values()])
-        for dataset_id in dataset_ids:
-            for obj in api.volume.object.get_list(dataset_id):
-                volumeids_to_objects[obj.entity_id].append(obj)
 
         for item, volume in sorted(matched_dict.items(), key=lambda pair: pair[0].is_scores):
             item.volume_meta = volume.meta
@@ -404,13 +400,16 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     logger.warning(f"No scores found for {item.ann_data}. Skipping.")
                     continue
 
+                if volume.dataset_id not in volumeids_to_objects:
+                    for obj in api.volume.object.get_list(volume.dataset_id):
+                        volumeids_to_objects[obj.entity_id].append(obj)
+
                 obj_id_to_class_id = {
                     obj.id: obj.class_id for obj in volumeids_to_objects[volume.id]
                 }
                 if not obj_id_to_class_id:
                     logger.warning(
-                        f"No objects found for volume {volume.id}. Skipping figure updates.",
-                        extra={"volume id to objects mapping": volumeids_to_objects},
+                        f"No objects found for volume {volume.id}. Skipping figure updates."
                     )
                     continue
 
