@@ -1,6 +1,8 @@
+import random
 from dataclasses import dataclass
 from typing import Dict, Optional
 
+from supervisely.app.content import DataJson
 from supervisely.app.widgets import (
     Button,
     Container,
@@ -35,49 +37,6 @@ class SplitSettings:
         )
 
 
-class TrainValSplitGUI:
-    def __init__(self, items_count: int = 0):
-        self.items_count = items_count
-
-        self.modal = self._create_modal()
-        self.card = self._create_card()
-
-        @self.card.click
-        def show_split_modal():
-            self.modal.show()
-
-    @property
-    def ok_btn(self) -> Button:
-        if not hasattr(self, "_ok_btn"):
-            self._ok_btn = Button("Save", plain=True)
-        return self._ok_btn
-
-    def _create_modal(self) -> Dialog:
-        """Creates the modal dialog for Train/Val Split."""
-        self.random_splits = RandomSplitsTable(self.items_count)
-        ok_btn_container = Container([self.ok_btn], style="align-items: flex-end")
-
-        modal = Dialog(
-            title="Train/Val Split",
-            content=Container([self.random_splits, ok_btn_container]),
-        )
-        return modal
-
-    def _create_card(self) -> SolutionCard:
-        """Creates the SolutionCard for Train/Val Split."""
-        return SolutionCard(
-            title="Train/Val Split",
-            tooltip=self._create_tooltip(),
-            width=250,
-        )
-
-    def _create_tooltip(self) -> SolutionCard.Tooltip:
-        """Creates the tooltip for the Train/Val Split card."""
-        return SolutionCard.Tooltip(
-            description="Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
-        )
-
-
 class TrainValSplit(SolutionElement):
     """
     This class is a placeholder for the TrainValSplit node.
@@ -93,21 +52,64 @@ class TrainValSplit(SolutionElement):
         :param project_id: ID of the project from which labeled data will be split.
         """
         self.project_id = project_id
-        self.gui = TrainValSplitGUI()
+        self.main_widget = self._create_main_widget()
         self.split_settings = SplitSettings()
-        self.node = SolutionCardNode(content=self.gui.card, x=x, y=y)
-        self.modals = [self.gui.modal]
+        self.node = SolutionCardNode(content=self.card, x=x, y=y)
+        self.modals = [self.modal]
         super().__init__(*args, **kwargs)
 
-        @self.gui.ok_btn.click
+        @self.ok_btn.click
         def save_split_settings():
-            self.gui.modal.hide()
+            self.modal.hide()
             settings = self.get_split_settings()
             self.update_properties(settings)
             self.save_split_settings(settings)
 
+        @self.card.click
+        def show_split_modal():
+            self.modal.show()
+
+    @property
+    def modal(self) -> Dialog:
+        if not hasattr(self, "_modal"):
+            self._modal = Dialog(
+                title="Train/Val Split",
+                content=self.main_widget,
+            )
+        return self._modal
+
+    def _create_main_widget(self) -> Container:
+        self.random_splits = RandomSplitsTable(0)
+        ok_btn_container = Container([self.ok_btn], style="align-items: flex-end")
+        return Container([self.random_splits, ok_btn_container])
+
+    @property
+    def ok_btn(self) -> Button:
+        if not hasattr(self, "_ok_btn"):
+            self._ok_btn = Button("Save", plain=True)
+        return self._ok_btn
+
+    @property
+    def card(self) -> SolutionCard:
+        if not hasattr(self, "_card"):
+            self._card = self._create_card()
+        return self._card
+
+    def _create_card(self) -> SolutionCard:
+        """Creates the SolutionCard for Train/Val Split."""
+        return SolutionCard(
+            title="Train/Val Split",
+            tooltip=self._create_tooltip(),
+            width=250,
+        )
+
+    def _create_tooltip(self) -> SolutionCard.Tooltip:
+        """Creates the tooltip for the Train/Val Split card."""
+        return SolutionCard.Tooltip(
+            description="Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
+        )
+
     def get_json_data(self) -> dict:
-        """Return JSON data for the node."""
         return {
             "project_id": self.project_id,
             "split_settings": self.split_settings.to_json(),
@@ -115,7 +117,7 @@ class TrainValSplit(SolutionElement):
 
     def update_properties(self, settings: SplitSettings):
         """Update node properties with current split settings."""
-        counts = self.gui.random_splits.get_splits_counts()
+        counts = self.random_splits.get_splits_counts()
         train = settings.train_percent
         val = settings.val_percent
         train_count = counts.get("train", 0)
@@ -126,21 +128,37 @@ class TrainValSplit(SolutionElement):
 
     def set_items_count(self, items_count: int):
         """Set the number of items in the random splits table."""
-        self.gui.random_splits.set_items_count(items_count)
+        self.random_splits.set_items_count(items_count)
         settings = self.get_split_settings()
         self.update_properties(settings)
         self.save_split_settings(settings)
 
     def get_split_settings(self) -> SplitSettings:
         """Get split settings from GUI."""
-        train_percent = self.gui.random_splits.get_train_split_percent()
-        val_percent = self.gui.random_splits.get_val_split_percent()
+        train_percent = self.random_splits.get_train_split_percent()
+        val_percent = self.random_splits.get_val_split_percent()
         return SplitSettings(train_percent=train_percent, val_percent=val_percent)
 
     def save_split_settings(self, settings: Optional[SplitSettings] = None):
         """Save split settings to node state."""
         if settings is None:
             settings = self.get_split_settings()
-        # self.state["split_settings"] = settings.to_json()
-        # self.send_state_changes()
         self.split_settings = settings
+        DataJson()[self.widget_id]["split_settings"] = settings.to_json()
+        DataJson().send_changes()
+
+    def split(self, items: list, random: bool = True) -> Dict[str, list]:
+        """
+        Split the given items into train and validation sets.
+
+        :param items: List of items to split.
+        :return: Dictionary with train and validation items.
+        """
+        settings = self.get_split_settings()
+        train_count = int(len(items) * settings.train_percent / 100)
+        val_count = len(items) - train_count
+        if random:
+            random.shuffle(items)
+        train_items = items[:train_count]
+        val_items = items[train_count : train_count + val_count]
+        return {"train": train_items, "val": val_items}
