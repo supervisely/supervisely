@@ -246,6 +246,7 @@ class PointcloudConverter(BaseConverter):
                     ) or dir_name.endswith("_pcd"):
                         rimg_ann_dict[file] = full_path
                 elif imghdr.what(full_path):
+                    dir_name = os.path.basename(root)
                     if dir_name not in rimg_dict:
                         rimg_dict[dir_name] = []
                     rimg_dict[dir_name].append(full_path)
