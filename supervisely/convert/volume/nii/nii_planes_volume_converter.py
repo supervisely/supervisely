@@ -138,7 +138,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         item.custom_data["scores"] = scores
                     except Exception as e:
                         logger.warning(f"Failed to read scores from {score_path}: {e}")
-                item.is_semantic = len(item.ann_data) == 1
+                non_score_items = [i for i in self._items if not i.is_scores]
+                item.is_semantic = len(non_score_items) == 1
                 if cls_color_map is not None:
                     item.custom_data["cls_color_map"] = cls_color_map
                 self._items.append(item)
@@ -164,7 +165,8 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                             item.custom_data["scores"] = scores
                         except Exception as e:
                             logger.warning(f"Failed to read scores from {scores_paths[0]}: {e}")
-                    item.is_semantic = len(possible_ann_paths) == 1
+                    non_score_items = [i for i in possible_ann_paths if not i.is_scores]
+                    item.is_semantic = len(non_score_items) == 1
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
@@ -287,6 +289,7 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                     continue
                 if is_nii(file) or name_parts.type == helper.SCORE_NAME:
                     item = self.Item(item_path=None, ann_data=path)
+                    item.custom_data["name_parts"] = name_parts
                     if name_parts.is_ann:
                         try:
                             nii = load(path)
@@ -294,7 +297,6 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                             logger.warning(f"Failed to load NIfTI file: {path}")
                             continue
                         item.set_shape(nii.shape)
-                        item.custom_data["name_parts"] = name_parts
                     elif name_parts.type == helper.SCORE_NAME:
                         item.is_scores = True
                         scores = helper.get_scores_from_table(path, name_parts.plane)
@@ -306,6 +308,15 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
         obj_classes = None
         if cls_color_map is not None:
             obj_classes = [ObjClass(name, Mask3D, color) for name, color in cls_color_map.values()]
+
+        for item in self._items:
+            name_parts = item.custom_data.get("name_parts")
+            if item.is_scores:
+                continue
+            if name_parts.ending_idx is not None:
+                item.is_semantic = False
+            else:
+                item.is_semantic = True
 
         self._meta = ProjectMeta(obj_classes=obj_classes)
         return len(self._items) > 0
