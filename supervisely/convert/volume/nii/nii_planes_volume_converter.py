@@ -407,6 +407,12 @@ class NiiPlaneStructuredAnnotationConverter(NiiConverter, VolumeConverter):
                 obj_id_to_class_id = {
                     obj.id: obj.class_id for obj in volumeids_to_objects[volume.id]
                 }
+                if not obj_id_to_class_id:
+                    logger.warning(
+                        f"No objects found for volume {volume.id}. Skipping figure updates.",
+                        extra={"volume id to objects mapping": volumeids_to_objects},
+                    )
+                    continue
 
                 volume_figure_dict = api.volume.figure.download(
                     volume.dataset_id, [volume.id], skip_geometry=True
