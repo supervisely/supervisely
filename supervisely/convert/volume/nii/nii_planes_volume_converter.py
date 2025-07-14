@@ -138,8 +138,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                         item.custom_data["scores"] = scores
                     except Exception as e:
                         logger.warning(f"Failed to read scores from {score_path}: {e}")
-                non_score_items = [i for i in self._items if not i.is_scores]
-                item.is_semantic = len(non_score_items) == 1
+                item.is_semantic = len(item.ann_data) == 1
                 if cls_color_map is not None:
                     item.custom_data["cls_color_map"] = cls_color_map
                 self._items.append(item)
@@ -165,8 +164,7 @@ class NiiPlaneStructuredConverter(NiiConverter, VolumeConverter):
                             item.custom_data["scores"] = scores
                         except Exception as e:
                             logger.warning(f"Failed to read scores from {scores_paths[0]}: {e}")
-                    non_score_items = [i for i in possible_ann_paths if not i.is_scores]
-                    item.is_semantic = len(non_score_items) == 1
+                    item.is_semantic = len(item.ann_data) == 1
                     if cls_color_map is not None:
                         item.custom_data["cls_color_map"] = cls_color_map
                     self._items.append(item)
