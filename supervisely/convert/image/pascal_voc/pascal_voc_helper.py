@@ -13,7 +13,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag, TagValueType
-from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta
 from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -314,7 +314,13 @@ def update_meta_from_xml(
                 logger.warning(f"Tag '{tag_name}' has non-binary values.", extra={"values": values})
             tag_meta = TagMeta(tag_name, TagValueType.NONE)
         elif tag_name in object_class_names:
-            tag_meta = TagMeta(tag_name, TagValueType.ONEOF_STRING, possible_values=list(values))
+            tag_meta = TagMeta(
+                tag_name,
+                TagValueType.ONEOF_STRING,
+                possible_values=list(values),
+                applicable_to=TagApplicableTo.OBJECTS_ONLY,
+                applicable_classes=[tag_name],
+            )
         else:
             tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
         meta = meta.add_tag_meta(tag_meta)
