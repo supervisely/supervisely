@@ -1154,14 +1154,15 @@ def copy_dir_recursively(
     src_dir: str, dst_dir: str, progress_cb: Optional[Union[tqdm, Callable]] = None
 ) -> List[str]:
     mkdir(dst_dir)
+    src_dir_norm = src_dir.rstrip(os.sep)
 
-    for rel_sub_dir in get_subdirs(src_dir, recursive=True):
+    for rel_sub_dir in get_subdirs(src_dir_norm, recursive=True):
         dst_sub_dir = os.path.join(dst_dir, rel_sub_dir)
         mkdir(dst_sub_dir)
 
-    files = list_files_recursively(src_dir)
+    files = list_files_recursively(src_dir_norm)
     for src_file_path in files:
-        dst_file_path = os.path.normpath(src_file_path.replace(src_dir, dst_dir))
+        dst_file_path = os.path.normpath(src_file_path.replace(src_dir_norm, dst_dir))
         ensure_base_path(dst_file_path)
         if not file_exists(dst_file_path):
             copy_file(src_file_path, dst_file_path)

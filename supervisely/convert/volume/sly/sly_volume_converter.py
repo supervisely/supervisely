@@ -4,6 +4,7 @@ from typing import List
 import supervisely.convert.volume.sly.sly_volume_helper as sly_volume_helper
 from supervisely.volume_annotation.volume_annotation import VolumeAnnotation
 from supervisely import ProjectMeta, logger
+from supervisely.project.volume_project import VolumeProject, VolumeDataset
 from supervisely.convert.base_converter import AvailableVolumeConverters
 from supervisely.convert.volume.volume_converter import VolumeConverter
 from supervisely.io.fs import JUNK_FILES, get_file_ext, get_file_name
@@ -40,7 +41,7 @@ class SLYVolumeConverter(VolumeConverter):
             ann = VolumeAnnotation.from_json(ann_json, meta)  # , KeyIdMap())
             return True
         except Exception as e:
-            logger.warn(f"Failed to validate annotation: {repr(e)}")
+            logger.warning(f"Failed to validate annotation: {repr(e)}")
             return False
 
     def validate_key_file(self, key_file_path: str) -> bool:
@@ -51,6 +52,9 @@ class SLYVolumeConverter(VolumeConverter):
             return False
 
     def validate_format(self) -> bool:
+        if self.read_sly_project(self._input_data):
+            return True
+
         detected_ann_cnt = 0
         vol_list, stl_dict, ann_dict, mask_dict = [], {}, {}, {}
         for root, _, files in os.walk(self._input_data):
@@ -70,7 +74,7 @@ class SLYVolumeConverter(VolumeConverter):
                                     ProjectMeta.from_json(meta_json)
                                 )
                             except Exception as e:
-                                logger.warn(f"Failed to merge meta: {repr(e)}")
+                                logger.warning(f"Failed to merge meta: {repr(e)}")
                         continue
 
                 elif file in JUNK_FILES:  # add better check
@@ -139,5 +143,30 @@ class SLYVolumeConverter(VolumeConverter):
                 ann_json = sly_volume_helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
             return VolumeAnnotation.from_json(ann_json, meta)  # , KeyIdMap())
         except Exception as e:
-            logger.warn(f"Failed to read annotation: {repr(e)}")
+            logger.warning(f"Failed to read annotation: {repr(e)}")
             return item.create_empty_annotation()
+
+    def read_sly_project(self, input_data: str) -> bool:
+        try:
+            project_fs = VolumeProject.read_single(input_data)
+            self._meta = project_fs.meta
+            self._items = []
+            
+            for dataset_fs in project_fs.datasets:
+                dataset_fs: VolumeDataset
+
+                for item_name in dataset_fs:
+                    img_path, ann_path = dataset_fs.get_item_paths(item_name)
+                    item = self.Item(
+                        item_path=img_path,
+                        ann_data=ann_path,
+                        shape=None,
+                        interpolation_dir=dataset_fs.get_interpolation_dir(item_name),
+                        mask_dir=dataset_fs.get_mask_dir(item_name),
+                    )
+                    self._items.append(item)
+            return True
+
+        except Exception as e:
+            logger.info(f"Failed to read Supervisely project: {repr(e)}")
+            return False

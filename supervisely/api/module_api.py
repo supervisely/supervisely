@@ -689,6 +689,8 @@ class ApiField:
     """"""
     PROMPT = "prompt"
     """"""
+    UPDATE_STRATEGY = "updateStrategy"
+    """"""
 
 
 def _get_single_item(items):

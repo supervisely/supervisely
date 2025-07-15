@@ -88,7 +88,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   collaboration:
     name: Build collaboration
@@ -132,7 +132,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   data-operations:
     name: Build data-operations
@@ -176,7 +176,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   development:
     name: Build development
@@ -220,7 +220,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   import-export:
     name: Build import-export
@@ -264,7 +264,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   labeling:
     name: Build labeling
@@ -308,7 +308,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   synthetic:
     name: Build synthetic
@@ -352,7 +352,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   system:
     name: Build system
@@ -396,7 +396,7 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."
 
   visualization-stats:
     name: Build visualization-stats
@@ -440,4 +440,4 @@ jobs:
             tag_ref_name=${{ env.RELEASE_VERSION }}
       - name: Skip notice
         if: steps.tag_check.outputs.exists == 'true'
-        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION уже существует - пропускаем сборку."
+        run: echo "Image $IMAGE_NAME:$RELEASE_VERSION already exists - skipping build."

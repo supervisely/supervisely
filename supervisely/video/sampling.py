@@ -416,14 +416,14 @@ def _update_meta(
             api.project.get_meta(dst_project_id)
         )
     dst_project_meta = context.project_meta[dst_project_id]
-    dst_project_meta.merge(src_project_meta)
+    dst_project_meta = dst_project_meta.merge(src_project_meta)
     if dst_project_meta.get_tag_meta(VIDEO_OBJECT_TAG_META.name) is None:
-        dst_project_meta.add_tag_meta(VIDEO_OBJECT_TAG_META)
+        dst_project_meta = dst_project_meta.add_tag_meta(VIDEO_OBJECT_TAG_META)
     if dst_project_meta.get_tag_meta(AUTO_TRACKED_TAG_META.name) is None:
-        dst_project_meta.add_tag_meta(AUTO_TRACKED_TAG_META)
+        dst_project_meta = dst_project_meta.add_tag_meta(AUTO_TRACKED_TAG_META)
 
     if dst_project_meta != src_project_meta:
-        api.project.update_meta(dst_project_id, dst_project_meta.to_json())
+        dst_project_meta = api.project.update_meta(dst_project_id, dst_project_meta.to_json())
         context.project_meta[dst_project_id] = dst_project_meta
 
 

@@ -2,7 +2,7 @@
 import os
 import re
 import tempfile
-from typing import Dict, List
+from typing import Dict, List, Literal, Optional
 from uuid import UUID
 
 from numpy import uint8
@@ -33,7 +33,8 @@ class VolumeFigureApi(FigureApi):
         plane_name: str,
         slice_index: int,
         geometry_json: dict,
-        geometry_type,
+        geometry_type: str,
+        custom_data: Optional[dict] = None,
         # track_id=None,
     ):
         """
@@ -98,6 +99,7 @@ class VolumeFigureApi(FigureApi):
             },
             geometry_json,
             geometry_type,
+            custom_data=custom_data,
             # track_id,
         )
 
@@ -420,7 +422,7 @@ class VolumeFigureApi(FigureApi):
     def _append_bulk_mask3d(
         self,
         entity_id: int,
-        figures: List,
+        figures: List[VolumeFigure],
         figures_keys: List,
         key_id_map: KeyIdMap,
         field_name=ApiField.ENTITY_ID,
@@ -449,10 +451,11 @@ class VolumeFigureApi(FigureApi):
         for figure in figures:
             empty_figures.append(
                 {
-                    "objectId": key_id_map.get_object_id(figure.volume_object.key()),
-                    "geometryType": Mask3D.name(),
-                    "tool": Mask3D.name(),
-                    "entityId": entity_id,
+                    ApiField.OBJECT_ID: key_id_map.get_object_id(figure.volume_object.key()),
+                    ApiField.GEOMETRY_TYPE: Mask3D.name(),
+                    ApiField.LABELING_TOOL: Mask3D.name(),
+                    ApiField.ENTITY_ID: entity_id,
+                    ApiField.CUSTOM_DATA: figure.custom_data
                 }
             )
         for batch_keys, batch_jsons in zip(
@@ -643,3 +646,29 @@ class VolumeFigureApi(FigureApi):
         if kwargs.get("image_ids", False) is not False:
             volume_ids = kwargs["image_ids"]  # backward compatibility
         return super().download(dataset_id, volume_ids, skip_geometry)
+
+    def update_custom_data(
+        self,
+        figure_id: int,
+        custom_data: Dict[str, str],
+        update_strategy: Literal["replace", "merge"] = "merge",
+    ) -> None:
+        """
+        Update custom data for a specific figure in a volume.
+
+        :param figure_id: ID of the figure to update.
+        :type figure_id: int
+        :param custom_data: Custom data to update.
+        :type custom_data: Dict[str, str]
+        :param update_strategy: Strategy to apply, either "replace" or "merge".
+        :type update_strategy: Literal["replace", "merge"]
+        :return: None
+        :rtype: :class:`NoneType`
+
+        """
+        data = {
+            ApiField.ID: figure_id,
+            ApiField.CUSTOM_DATA: custom_data,
+            ApiField.UPDATE_STRATEGY: update_strategy,
+        }
+        self._api.post("figures.custom-data.update", data)

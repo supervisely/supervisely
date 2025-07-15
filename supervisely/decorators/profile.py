@@ -1,5 +1,6 @@
 import functools
 import time
+
 from supervisely.sly_logger import logger
 
 
@@ -19,6 +20,25 @@ def timeit(func):
         return value
 
     return wrapper_timer
+
+
+def timeit_with_result(func):
+    """Measures execution time and stores it in function's 'elapsed' attribute."""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            wrapper.elapsed = time.perf_counter() - start_time
+            logger.debug(
+                f"Function '{func.__name__}' finished in {wrapper.elapsed:.2f} seconds (≈ {wrapper.elapsed/60:.2f} minutes)"
+            )
+
+    wrapper.elapsed = None  # Initial value before first call
+    return wrapper
 
 
 def update_fields(func):
