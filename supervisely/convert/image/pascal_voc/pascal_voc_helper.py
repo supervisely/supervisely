@@ -181,7 +181,7 @@ def get_ann(
     ann = ann.add_labels(labels)
 
     if np.sum(colored_img) > 0:
-        logger.warn(
+        logger.warning(
             f"Not all objects or classes are captured from source segmentation: {item.name}"
         )
 
@@ -216,7 +216,7 @@ def xml_to_sly_labels(
                     cls_name = renamed_classes[cls_name]
                 obj_cls = meta.obj_classes.get(cls_name)
                 if obj_cls is None:
-                    logger.warn(f"Class {cls_name} is not found in meta. Skipping.")
+                    logger.warning(f"Class {cls_name} is not found in meta. Skipping.")
                     continue
             elif field_name == "bndbox":
                 bbox_coords = [
@@ -229,7 +229,7 @@ def xml_to_sly_labels(
                     tag_name = renamed_tags[tag_name]
                 tag_meta = meta.get_tag_meta(tag_name)
                 if tag_meta is None:
-                    logger.warn(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
+                    logger.warning(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
                     continue
                 if tag_meta.value_type == TagValueType.ANY_STRING:
                     if not isinstance(value, str):
@@ -242,11 +242,11 @@ def xml_to_sly_labels(
                         logger.debug("Tag with value '0' not added to labels.")
                 elif tag_meta.value_type == TagValueType.ONEOF_STRING:
                     if value not in tag_meta.possible_values:
-                        logger.warn(
+                        logger.warning(
                             f"Value '{value}' for tag '{tag_name}' is not in possible values: {tag_meta.possible_values}. Skipping."
                         )
-                    else:
-                        tags.append(Tag(tag_meta, value))
+                        continue
+                    tags.append(Tag(tag_meta, value))
 
         if geometry is None or obj_cls is None:
             continue
@@ -311,7 +311,7 @@ def update_meta_from_xml(
             continue
         if tag_name in DEFAULT_SUBCLASSES:
             if values.difference({"0", "1"}):
-                logger.warn(f"Tag '{tag_name}' has non-binary values.", extra={"values": values})
+                logger.warning(f"Tag '{tag_name}' has non-binary values.", extra={"values": values})
             tag_meta = TagMeta(tag_name, TagValueType.NONE)
         elif tag_name in object_class_names:
             tag_meta = TagMeta(tag_name, TagValueType.ONEOF_STRING, possible_values=list(values))
