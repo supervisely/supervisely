@@ -261,15 +261,13 @@ def update_meta_from_xml(
     meta: ProjectMeta,
     existing_cls_names: set,
     bbox_classes_map: dict,
+    tags_to_values: Dict[str, set],
 ) -> ProjectMeta:
     import xml.etree.ElementTree as ET
-    from collections import defaultdict
 
     with open(xml_path, "r") as in_file:
         tree = ET.parse(in_file)
         root = tree.getroot()
-
-    tags = defaultdict(set)
 
     for obj in root.iter("object"):
         for element in obj:
@@ -302,28 +300,7 @@ def update_meta_from_xml(
                 bbox_classes_map[original_class_name] = class_name
             elif field_name not in DEFAULT_OBJECT_FIELDS:
                 value = element.text
-                tags[field_name].add(value)
-
-    object_class_names = set(meta.obj_classes.keys())
-    for tag_name, values in tags.items():
-        tag_meta = meta.get_tag_meta(tag_name)
-        if tag_meta is not None:
-            continue
-        if tag_name in DEFAULT_SUBCLASSES:
-            if values.difference({"0", "1"}):
-                logger.warning(f"Tag '{tag_name}' has non-binary values.", extra={"values": values})
-            tag_meta = TagMeta(tag_name, TagValueType.NONE)
-        elif tag_name in object_class_names:
-            tag_meta = TagMeta(
-                tag_name,
-                TagValueType.ONEOF_STRING,
-                possible_values=list(values),
-                applicable_to=TagApplicableTo.OBJECTS_ONLY,
-                applicable_classes=[tag_name],
-            )
-        else:
-            tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
-        meta = meta.add_tag_meta(tag_meta)
+                tags_to_values[field_name].add(value)
 
     return meta
 
