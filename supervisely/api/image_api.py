@@ -383,7 +383,7 @@ class ImageInfo(NamedTuple):
     #: :class:`int`: Bytes offset of the blob file that points to the end of the image data.
     offset_end: Optional[int] = None
 
-    #: :class:`float`: Image meta that could have the confidence level of the image in Enntities Collection of type AI Search.
+    #: :class:`dict`: Image meta that could have the confidence level of the image in Enntities Collection of type AI Search.
     ai_search_meta: Optional[dict] = None
 
     #: :class:`str`: Timestamp of the last update of the embeddings for the image.

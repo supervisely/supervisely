@@ -573,8 +573,8 @@ class EntitiesCollectionApi(UpdateableModule, RemoveableModuleApi):
         :type project_id: int, optional
         :param ai_search_threshold: AI search threshold for filtering items. Optional, defaults to None.
         :type ai_search_threshold: float, optional
-        :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to None.
-        :type ai_search_threshold_direction: str, optional
+        :param ai_search_threshold_direction: Direction for the AI search threshold. Optional, defaults to 'above'.
+        :type ai_search_threshold_direction: str
         :return: List of ImageInfo objects.
         :rtype: List[ImageInfo]
         :raises RuntimeError: If Entities Collection with given ID not found.
