@@ -2355,11 +2355,14 @@ class VideoApi(RemoveableBulkModuleApi):
 
     def set_remote(self, videos: List[int], links: List[str]):
         """
-        This method helps to change local source to remote for videos without re-uploading them as new.
+        Updates the source of existing videos by setting new remote links.
+        This method is used when a video was initially uploaded as a file or added via a link,
+        but later it was decided to change its location (e.g., moved to another storage or re-uploaded elsewhere).
+        By updating the link, the video source can be redirected to the new location.
 
         :param videos: List of video ids.
         :type videos: List[int]
-        :param links: List of remote links.
+        :param links: List of new remote links.
         :type links: List[str]
         :return: json-encoded content of a response.
 
@@ -2367,17 +2370,17 @@ class VideoApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
-                    import supervisely as sly
+                import supervisely as sly
 
-                    api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-                    videos = [123, 124, 125]
-                    links = [
-                        "s3://bucket/f1champ/ds1/lap_1.mp4",
-                        "s3://bucket/f1champ/ds1/lap_2.mp4",
-                        "s3://bucket/f1champ/ds1/lap_3.mp4",
-                    ]
-                    result = api.video.set_remote(videos, links)
+                videos = [123, 124, 125]
+                links = [
+                    "s3://bucket/f1champ/ds1/lap_1.mp4",
+                    "s3://bucket/f1champ/ds1/lap_2.mp4",
+                    "s3://bucket/f1champ/ds1/lap_3.mp4",
+                ]
+                result = api.video.set_remote(videos, links)
         """
 
         if len(videos) == 0:

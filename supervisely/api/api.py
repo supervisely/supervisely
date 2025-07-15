@@ -38,6 +38,7 @@ import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
 import supervisely.api.dataset_api as dataset_api
+import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
@@ -45,9 +46,8 @@ import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.labeling_queue_api as labeling_queue_api
-import supervisely.api.entities_collection_api as entities_collection_api
+import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -297,19 +297,20 @@ class Api:
 
     def __init__(
         self,
-        server_address: str = None,
-        token: str = None,
+        server_address: Optional[str] = None,
+        token: Optional[str] = None,
         retry_count: Optional[int] = 10,
         retry_sleep_sec: Optional[int] = None,
         external_logger: Optional[Logger] = None,
-        ignore_task_id: Optional[bool] = False,
-        api_server_address: str = None,
+        ignore_task_id: bool = False,
+        api_server_address: Optional[str] = None,
         check_instance_version: Union[bool, str] = False,
     ):
         self.logger = external_logger or logger
 
-        if server_address is None and token is None:
+        if server_address is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
+        if token is None:
             token = os.environ.get(API_TOKEN, None)
 
         if server_address is None:
