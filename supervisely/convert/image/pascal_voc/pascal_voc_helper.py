@@ -13,7 +13,7 @@ from supervisely.annotation.label import Label
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag import Tag, TagValueType
-from supervisely.annotation.tag_meta import TagMeta
+from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta
 from supervisely.convert.image.image_helper import validate_image_bounds
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.polygon import Polygon
@@ -36,6 +36,8 @@ TRAIN_TAG_NAME = "train"
 VAL_TAG_NAME = "val"
 TRAINVAL_TAG_NAME = "trainval"
 DEFAULT_OBJECT_FIELDS = {"name", "class", "bndbox"}
+DEFAULT_SUBCLASSES = {"pose", "truncated", "difficult", "occluded", "obstacle", "out-of-scope"}
+
 
 default_classes_colors = {
     "neutral": (224, 224, 192),
@@ -179,7 +181,7 @@ def get_ann(
     ann = ann.add_labels(labels)
 
     if np.sum(colored_img) > 0:
-        logger.warn(
+        logger.warning(
             f"Not all objects or classes are captured from source segmentation: {item.name}"
         )
 
@@ -214,7 +216,7 @@ def xml_to_sly_labels(
                     cls_name = renamed_classes[cls_name]
                 obj_cls = meta.obj_classes.get(cls_name)
                 if obj_cls is None:
-                    logger.warn(f"Class {cls_name} is not found in meta. Skipping.")
+                    logger.warning(f"Class {cls_name} is not found in meta. Skipping.")
                     continue
             elif field_name == "bndbox":
                 bbox_coords = [
@@ -227,11 +229,25 @@ def xml_to_sly_labels(
                     tag_name = renamed_tags[tag_name]
                 tag_meta = meta.get_tag_meta(tag_name)
                 if tag_meta is None:
-                    logger.warn(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
+                    logger.warning(f"Tag meta for '{field_name}' is not found in meta. Skipping.")
                     continue
-                if not isinstance(value, str):
-                    value = str(value)
-                tags.append(Tag(tag_meta, value))
+                if tag_meta.value_type == TagValueType.ANY_STRING:
+                    if not isinstance(value, str):
+                        value = str(value)
+                    tags.append(Tag(tag_meta, value))
+                elif tag_meta.value_type == TagValueType.NONE:
+                    if int(value) == 1:
+                        tags.append(Tag(tag_meta))
+                    else:
+                        logger.debug("Tag with value '0' not added to labels.")
+                elif tag_meta.value_type == TagValueType.ONEOF_STRING:
+                    if value not in tag_meta.possible_values:
+                        logger.warning(
+                            f"Value '{value}' for tag '{tag_name}' is not in possible values: {tag_meta.possible_values}. Skipping."
+                        )
+                        continue
+                    tags.append(Tag(tag_meta, value))
+
         if geometry is None or obj_cls is None:
             continue
         labels.append(Label(geometry, obj_cls, tags))
@@ -245,6 +261,7 @@ def update_meta_from_xml(
     meta: ProjectMeta,
     existing_cls_names: set,
     bbox_classes_map: dict,
+    tags_to_values: Dict[str, set],
 ) -> ProjectMeta:
     import xml.etree.ElementTree as ET
 
@@ -282,10 +299,8 @@ def update_meta_from_xml(
                     meta = meta.add_obj_class(obj_cls)
                 bbox_classes_map[original_class_name] = class_name
             elif field_name not in DEFAULT_OBJECT_FIELDS:
-                tag_meta = meta.get_tag_meta(field_name)
-                if tag_meta is None:
-                    tag_meta = TagMeta(field_name, TagValueType.ANY_STRING)
-                    meta = meta.add_tag_meta(tag_meta)
+                value = element.text
+                tags_to_values[field_name].add(value)
 
     return meta
 
