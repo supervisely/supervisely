@@ -70,7 +70,7 @@ def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectM
             )
             continue
         tag_name = tag[TagJsonFields.TAG_NAME]
-        tag_value = tag[TagJsonFields.VALUE]
+        tag_value = tag.get(TagJsonFields.VALUE)
         if tag_value is None:
             tag_meta = TagMeta(tag_name, TagValueType.NONE)
         elif isinstance(tag_value, int) or isinstance(tag_value, float):
