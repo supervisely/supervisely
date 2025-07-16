@@ -30,6 +30,10 @@ class PointcloudEpisodeTag(VideoTag):
     :type updated_at: str, optional
     :param created_at: Date and Time when PointcloudEpisodeTag was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param is_finished: Pointcloud Episode Tag is finished or not (applicable for range tags).
+    :type is_finished: bool, optional
+    :param non_final_value: Pointcloud Episode Tag value is final or not. Can be useful to create tag without value.
+    :type non_final_value: bool, optional
     :Usage example:
 
      .. code-block:: python
@@ -37,7 +41,7 @@ class PointcloudEpisodeTag(VideoTag):
         import supervisely as sly
 
         meta_car = sly.TagMeta('car', sly.TagValueType.NONE)
-        # Now we can create a VideoTag using our TagMeta
+        # Now we can create a PointcloudEpisodeTag using our TagMeta
         tag_car = sly.PointcloudEpisodeTag(meta_car)
         # When you are creating a new Tag
         # Tag.value is automatically cross-checked against your TagMeta value type to make sure the value is valid.
@@ -60,7 +64,7 @@ class PointcloudEpisodeTag(VideoTag):
         # Output: ValueError: Tag car color can not have value yellow
     """
 
-    _SUPPORT_UNFINISHED_TAGS = False
+    _SUPPORT_UNFINISHED_TAGS = True
 
     def __init__(
         self,
@@ -72,6 +76,8 @@ class PointcloudEpisodeTag(VideoTag):
         labeler_login=None,
         updated_at=None,
         created_at=None,
+        is_finished=None,
+        non_final_value=None,
     ):
         super().__init__(
             meta,
@@ -82,6 +88,8 @@ class PointcloudEpisodeTag(VideoTag):
             labeler_login,
             updated_at,
             created_at,
+            is_finished=is_finished,
+            non_final_value=non_final_value,
         )
 
     @classmethod
@@ -148,6 +156,8 @@ class PointcloudEpisodeTag(VideoTag):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        is_finished: Optional[bool] = None,
+        non_final_value: Optional[Union[str, int, float]] = None,
     ) -> PointcloudEpisodeTag:
         """
         Makes a copy of PointcloudEpisodeTag with new fields, if fields are given, otherwise it will use fields of the original PointcloudEpisodeTag.
@@ -168,6 +178,10 @@ class PointcloudEpisodeTag(VideoTag):
         :type updated_at: str, optional
         :param created_at: Date and Time when PointcloudEpisodeTag was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param is_finished: Pointcloud Episode Tag is finished or not (applicable for range tags).
+        :type is_finished: bool, optional
+        :param non_final_value: Pointcloud Episode Tag value is final or not. Can be useful to create tag without value.
+        :type non_final_value: bool, optional
         :Usage example:
 
          .. code-block:: python
@@ -201,4 +215,6 @@ class PointcloudEpisodeTag(VideoTag):
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            is_finished=take_with_default(is_finished, self.is_finished),
+            non_final_value=take_with_default(non_final_value, self.non_final_value),
         )
