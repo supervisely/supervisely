@@ -14,17 +14,34 @@ from supervisely import (
     TagValueType,
     logger,
 )
-from supervisely.geometry.graph import KeypointsTemplate
-from supervisely.io.json import load_json_file
 from supervisely.annotation.label import LabelJsonFields
 from supervisely.annotation.tag import TagJsonFields
-from supervisely.video_annotation.constants import FIGURES, INDEX, KEY, IMG_SIZE, OBJECT_KEY, OBJECTS, FRAMES_COUNT, TAGS, FRAMES
+from supervisely.geometry.graph import KeypointsTemplate
+from supervisely.io.json import load_json_file
+from supervisely.video_annotation.constants import (
+    FIGURES,
+    FRAMES,
+    FRAMES_COUNT,
+    IMG_SIZE,
+    INDEX,
+    KEY,
+    OBJECT_KEY,
+    OBJECTS,
+    TAGS,
+)
 
 SLY_ANN_KEYS = [IMG_SIZE, FRAMES_COUNT, FRAMES, OBJECTS, TAGS]
 SLY_VIDEO_OBJECT_KEYS = [LabelJsonFields.OBJ_CLASS_NAME, LabelJsonFields.TAGS, KEY]
-SLY_TAG_KEYS = [TagJsonFields.TAG_NAME, TagJsonFields.VALUE]
+SLY_TAG_KEYS = [
+    TagJsonFields.TAG_NAME,
+    # TagJsonFields.VALUE
+]
 SLY_FRAME_KEYS = [FIGURES, INDEX]
-SLY_FIGURE_KEYS = [KEY, OBJECT_KEY, "geometryType"]  #, LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
+SLY_FIGURE_KEYS = [
+    KEY,
+    OBJECT_KEY,
+    "geometryType",
+]  # , LabelJsonFields.GEOMETRY_TYPE] TODO: add geometry type
 
 
 def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
@@ -119,7 +136,9 @@ def create_classes_from_annotation(
                 if "loc" not in node or len(node["loc"]) != 2:
                     continue
                 template.add_point(label=uuid, row=node["loc"][0], col=node["loc"][1])
-            obj_class = ObjClass(name=class_name, geometry_type=GraphNodes, geometry_config=template)
+            obj_class = ObjClass(
+                name=class_name, geometry_type=GraphNodes, geometry_config=template
+            )
 
         existing_class = meta.get_obj_class(class_name)
         if obj_class is None:
@@ -133,6 +152,7 @@ def create_classes_from_annotation(
                 meta = meta.delete_obj_class(class_name)
                 meta = meta.add_obj_class(obj_class)
     return meta
+
 
 def rename_in_json(ann_json, renamed_classes=None, renamed_tags=None):
     if renamed_classes:
