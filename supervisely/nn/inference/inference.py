@@ -2461,6 +2461,7 @@ class Inference:
             raise RuntimeError(
                 "Cannot unfreeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
             )
+        self._model_frozen = False
 
         logger.debug("Model is unfrozen and ready for inference.")
 
