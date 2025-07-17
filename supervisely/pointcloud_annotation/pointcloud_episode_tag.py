@@ -157,7 +157,7 @@ class PointcloudEpisodeTag(VideoTag):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
         is_finished: Optional[bool] = None,
-        non_final_value: Optional[Union[str, int, float]] = None,
+        non_final_value: Optional[bool] = None,
     ) -> PointcloudEpisodeTag:
         """
         Makes a copy of PointcloudEpisodeTag with new fields, if fields are given, otherwise it will use fields of the original PointcloudEpisodeTag.
