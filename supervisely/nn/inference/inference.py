@@ -182,6 +182,7 @@ class Inference:
         self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
+        self._model_frozen = False
         self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
@@ -2432,9 +2433,7 @@ class Inference:
     def _check_serve_before_call(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if self._model_served is True:
-                return func(*args, **kwargs)
-            else:
+            if self._model_served is False and self._model_frozen is False:
                 msg = (
                     "The model has not yet been deployed. "
                     "Please select the appropriate model in the UI and press the 'Serve' button. "
@@ -2442,8 +2441,28 @@ class Inference:
                 )
                 # raise DialogWindowError(title="Call undeployed model.", description=msg)
                 raise RuntimeError(msg)
+            elif self._model_frozen is True:
+                self._unfreeze_model()
+            return func(*args, **kwargs)
 
         return wrapper
+
+    def _unfreeze_model(self):
+        logger.debug("Unfreezing model...")
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            deploy_params = self.get_params_from_gui()
+            model_files = self._download_model_files(deploy_params)
+            deploy_params["model_files"] = model_files
+            self._load_model_headless(**deploy_params)
+        elif isinstance(self.gui, GUI.ServingGUI):
+            deploy_params = self.get_params_from_gui()
+            self._load_model(deploy_params)
+        else:
+            raise RuntimeError(
+                "Cannot unfreeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
+            )
+
+        logger.debug("Model is unfrozen and ready for inference.")
 
     def _set_served_callback(self):
         self._model_served = True
@@ -3478,6 +3497,40 @@ class Inference:
                     "total": ram_total,
                 },
             }
+
+        @server.post("/freeze_model")
+        def _freeze_model(request: Request):
+            if self._model_frozen:
+                return {"message": "Model is already frozen."}
+
+            previous_frozen_state = self._model_frozen
+            self._model_frozen = False
+            try:
+                self._check_serve_before_call(lambda: None)
+            except RuntimeError as e:
+                self._model_frozen = previous_frozen_state
+                raise e
+
+            # deploy_params = self.autorestart.deploy_params
+            # deploy_params["device"] = "cpu"
+            # self._load_model(deploy_params)
+            clean_up_cuda()
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                deploy_params = self.get_params_from_gui()
+                model_files = self._download_model_files(deploy_params)
+                deploy_params["model_files"] = model_files
+                deploy_params["device"] = "cpu"
+                self._load_model_headless(**deploy_params)
+            elif isinstance(self.gui, GUI.ServingGUI):
+                deploy_params = self.get_params_from_gui()
+                deploy_params["device"] = "cpu"
+                self._load_model(deploy_params)
+            else:
+                raise RuntimeError(
+                    "Cannot unfreeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
+                )
+            self._model_frozen = True
+            return {"message": "Model is frozen."}
 
         # Local deploy without predict args
         if self._is_cli_deploy:
