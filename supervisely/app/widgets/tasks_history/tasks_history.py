@@ -60,6 +60,15 @@ class TasksHistory(Widget):
                 return default
             raise
 
+    def _prepare_task_item(self, task: Dict[str, Any]) -> List[Any]:
+        """Prepares a task item for saving to DataJson."""
+        res = {}
+        for col_keys in self.columns_keys:
+            if not isinstance(col_keys, list):
+                col_keys = [col_keys]
+            res[col_keys[-1]] = self._get_task_item(col_keys, task, default="unknown")
+        return res
+
     @property
     def columns_keys(self) -> List[List[str]]:
         if not hasattr(self, "_columns_keys"):
@@ -86,9 +95,9 @@ class TasksHistory(Widget):
 
     def update_task(self, task_id: int, task: Dict[str, Any]):
         tasks = self.get_tasks()
-        for task in tasks:
-            if task["id"] == task_id:
-                task.update(task)
+        for row in tasks:
+            if row["id"] == task_id:
+                row.update(task)
                 DataJson()[self.widget_id]["tasks"] = tasks
                 DataJson().send_changes()
                 return
@@ -99,6 +108,7 @@ class TasksHistory(Widget):
         if not isinstance(task, dict):
             raise TypeError("task must be a dictionary")
         tasks = self.get_tasks()
+        task = self._prepare_task_item(task)
         tasks.append(task)
         DataJson()[self.widget_id]["tasks"] = tasks
         DataJson().send_changes()

@@ -13,7 +13,7 @@ class LinkNode(SolutionElement):
         self,
         title: str,
         description: str,
-        link: int,
+        link: str = "",
         width: int = 250,
         x: int = 0,
         y: int = 0,

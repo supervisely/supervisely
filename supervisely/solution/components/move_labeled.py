@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Literal, Optional, Tuple
 
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
@@ -296,7 +296,7 @@ class MoveLabeled(SolutionElement):
     def add_to_collection(
         self,
         image_ids: List[int],
-        split_name: str,
+        split_name: Literal["train", "val"],
     ) -> None:
         """
         Add the MoveLabeled node to a collection.

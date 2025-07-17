@@ -258,19 +258,21 @@ class SolutionCardNode(SolutionGraph.Node):
 
     def show_finished_badge(self):
         """Updates the card to show that main task is finished."""
-        self.card.update_badge_by_key(key="Finished", label="✅", plain=True, badge_type="success")
+        self.content.update_badge_by_key(
+            key="Finished", label="✅", plain=True, badge_type="success"
+        )
 
     def hide_finished_badge(self):
         """Hides the finished badge from the card."""
-        self.card.remove_badge_by_key(key="Finished")
+        self.content.remove_badge_by_key(key="Finished")
 
     def show_failed_badge(self):
         """Updates the card to show that the main task has failed."""
-        self.card.update_badge_by_key(key="Failed", label="❌", plain=True, badge_type="error")
+        self.content.update_badge_by_key(key="Failed", label="❌", plain=True, badge_type="error")
 
     def hide_failed_badge(self):
         """Hides the failed badge from the card."""
-        self.card.remove_badge_by_key(key="Failed")
+        self.content.remove_badge_by_key(key="Failed")
 
 
 # only SolutionProject can be used as content
