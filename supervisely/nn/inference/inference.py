@@ -3528,7 +3528,7 @@ class Inference:
                 self._load_model(deploy_params)
             else:
                 raise RuntimeError(
-                    "Cannot unfreeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
+                    "Cannot freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
                 )
             self._model_frozen = True
             return {"message": "Model is frozen."}
