@@ -31,6 +31,8 @@ class Sampling(Widget):
         output_project_selectable: bool = True,
         width: int = 370,
         widget_id: str = None,
+        file_path: str = __file__,
+        copy_annotations: bool = True,
     ):
         super().__init__(widget_id=widget_id)
         if not input_selectable and project_id is None:
@@ -51,7 +53,8 @@ class Sampling(Widget):
         self.datasets_ids = datasets_ids
         self.output_project_id = output_project_id
         self.output_project_selectable = output_project_selectable
-        self.width = width
+        self.widgth = widgth
+        self._copy_annotations = copy_annotations
         self.project_info = (
             self._api.project.get_info_by_id(self.project_id) if self.project_id else None
         )
@@ -128,7 +131,7 @@ class Sampling(Widget):
             widgets=[self.resize_row, self.resize_hw_container], gap=0
         )
         self.copy_annotations_checkbox = Checkbox(
-            Text("Copy annotations from source project", font_size=13)
+            Text("Copy annotations from source project", font_size=13), checked=self._copy_annotations
         )
         self.copy_annotations_row = Flexbox(widgets=[self.copy_annotations_checkbox])
 

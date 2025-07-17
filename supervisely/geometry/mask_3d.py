@@ -769,7 +769,9 @@ class Mask3D(Geometry):
 
         from supervisely.volume.volume import _sitk_image_orient_ras
 
-        sitk_volume = sitk.GetImageFromArray(self.data)
+        # Convert bool data to uint8 for SimpleITK compatibility
+        data_for_sitk = self.data.astype(np.uint8) if self.data.dtype == np.bool_ else self.data
+        sitk_volume = sitk.GetImageFromArray(data_for_sitk)
         if self.space_origin is not None:
             sitk_volume.SetOrigin(self.space_origin)
         if self.space_directions is not None:

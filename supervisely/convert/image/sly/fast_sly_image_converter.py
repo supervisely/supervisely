@@ -77,14 +77,17 @@ class FastSlyImageConverter(SLYImageConverter, ImageConverter):
                 ann_json = ann_json["annotation"]
             if renamed_classes or renamed_tags:
                 ann_json = helper.rename_in_json(ann_json, renamed_classes, renamed_tags)
-            img_size = list(ann_json["size"].values())
+            img_size = ann_json["size"]  # dict { "width": 1280, "height": 720 }
+            if "width" not in img_size or "height" not in img_size:
+                raise ValueError("Invalid image size in annotation JSON")
+            img_size = (img_size["height"], img_size["width"])
             labels = validate_image_bounds(
                 [Label.from_json(obj, meta) for obj in ann_json["objects"]],
                 Rectangle.from_size(img_size),
             )
             return Annotation.from_json(ann_json, meta).clone(labels=labels)
         except Exception as e:
-            logger.warn(f"Failed to convert annotation: {repr(e)}")
+            logger.warning(f"Failed to convert annotation: {repr(e)}")
             return None
 
     def upload_dataset(

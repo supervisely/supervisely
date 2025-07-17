@@ -34,6 +34,7 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
@@ -92,6 +93,7 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.nn.model.model_api import ModelAPI
 
 try:
     from typing import Literal
@@ -149,12 +151,15 @@ class Inference:
         use_gui: Optional[bool] = False,
         multithread_inference: Optional[bool] = True,
         use_serving_gui_template: Optional[bool] = False,
+        model: Optional[str] = None,
+        device: Optional[str] = None,
+        runtime: Optional[str] = None,
     ):
 
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
-        self._args, self._is_local_deploy = self._parse_local_deploy_args()
+        self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
         if model_dir is None:
-            if self._is_local_deploy is True:
+            if self._is_cli_deploy is True:
                 try:
                     model_dir = get_data_dir()
                 except:
@@ -164,8 +169,12 @@ class Inference:
         sly_fs.mkdir(model_dir)
 
         self.autorestart = None
+        _deploy_model = model
+        _deploy_device = device
+        _deploy_runtime = runtime
         self.device: str = None
         self.runtime: str = None
+        self._is_quick_deploy = False
         self.model_precision: str = None
         self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
@@ -207,12 +216,14 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
+                logger.debug("Downloading model files")
                 local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
+            logger.debug("Loading model...")
             self._load_model_headless(**deploy_params)
 
         if self._use_gui:
@@ -277,6 +288,19 @@ class Inference:
             self.gui.on_serve_callbacks.append(on_serve_callback)
             self._initialize_app_layout()
 
+            train_task_id = os.getenv("modal.state.trainTaskId")
+            if train_task_id:
+                try:
+                    train_task_id = int(train_task_id)
+                    logger.info(f"Setting best checkpoint from training task id: {train_task_id}")
+                    experiment_info = self.api.nn.get_experiment_info(train_task_id)
+                    self._set_checkpoint_from_experiment_info(experiment_info)
+                    self.gui.deploy_with_current_params()
+                except Exception as e:
+                    logger.warning(f"Failed to set checkpoint from training task id: {repr(e)}")
+                    logger.info("Resetting UI to default state")
+                    self._reset_gui_state()
+
         self._inference_requests = {}
         max_workers = 1 if not multithread_inference else None
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -293,6 +317,97 @@ class Inference:
         )
 
         self.inference_requests_manager = InferenceRequestsManager(executor=self._executor)
+        if _deploy_model is not None and not self._model_served:
+            self._is_quick_deploy = True
+            self.serve()
+            self._deploy_headless(_deploy_model, _deploy_device, _deploy_runtime)
+
+    def __call__(
+        self,
+        input: Union[np.ndarray, str, os.PathLike, list] = None,
+        image_id: Union[List[int], int] = None,
+        video_id: Union[List[int], int] = None,
+        dataset_id: Union[List[int], int] = None,
+        project_id: Union[List[int], int] = None,
+        batch_size: int = None,
+        conf: float = None,
+        img_size: int = None,
+        classes: List[str] = None,
+        upload_mode: str = None,
+        recursive: bool = None,
+        **kwargs,
+    ):
+        return ModelAPI(api=self._api, url="http://0.0.0.0:8000").predict(
+            input,
+            image_id,
+            video_id,
+            dataset_id,
+            project_id,
+            batch_size,
+            conf,
+            img_size,
+            classes,
+            upload_mode,
+            recursive,
+            **kwargs,
+        )
+
+    def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
+        """Deploy model immediately from constructor arguments."""
+        # Clean model_dir before deploying
+        sly_fs.mkdir(self._model_dir, True)
+
+        def get_runtime(runtime: Optional[str]) -> str:
+            if runtime is None:
+                runtime = RuntimeType.PYTORCH
+            else:
+                if runtime.lower() in ["torch", RuntimeType.PYTORCH.lower()]:
+                    runtime = RuntimeType.PYTORCH
+                elif runtime.lower() in ["onnx", RuntimeType.ONNXRUNTIME.lower()]:
+                    runtime = RuntimeType.ONNXRUNTIME
+                elif runtime.lower() in ["trt", RuntimeType.TENSORRT.lower()]:
+                    runtime = RuntimeType.TENSORRT
+                else:
+                    raise ValueError(f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}.")
+            return runtime
+
+        def get_pretrained_model(model: str) -> dict:
+            if self.pretrained_models is not None:
+                for m in self.pretrained_models:
+                    m_name = _get_model_name(m)
+                    if m_name and m_name.lower() == model.lower():
+                        return m
+            return None
+        
+        runtime = get_runtime(runtime)
+        logger.debug(f"Runtime: {runtime}")
+
+        # Pretrained models
+        selected_pretrained = get_pretrained_model(model)
+        if selected_pretrained is not None:
+            logger.debug("Pretrained model found")
+            model_files_remote = selected_pretrained["meta"]["model_files"]
+            model_files_local = self._download_pretrained_model(model_files_remote, headless=True)
+
+            deploy_params = {
+                "model_source": ModelSource.PRETRAINED,
+                "model_files": model_files_local,
+                "model_info": selected_pretrained,
+                "device": device,
+                "runtime": runtime,
+            }
+            logger.debug(f"Deploying pretrained model '{model}' ...")
+            logger.debug(f"Deploy parameters: {deploy_params}")
+            self._load_model_headless(**deploy_params)
+            return self
+
+        # Custom Models
+        checkpoint_path = model
+        checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
+        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
+        logger.debug(f"Deploying custom model '{checkpoint_name}'...")
+        self._load_model_headless(**deploy_params)
+        return self
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -748,7 +863,10 @@ class Inference:
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-        for file in model_files:
+        
+        # Sort files to download 'checkpoint' first
+        files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
+        for file in files_order:
             file_url = model_files[file]
             file_info = self.api.file.get_info_by_path(team_id, file_url)
             if file_info is None:
@@ -773,10 +891,159 @@ class Inference:
                     )
             else:
                 self.api.file.download(team_id, file_url, file_path)
+
+            if file == "checkpoint":
+                try:
+                    extracted_files = self._extract_model_files_from_checkpoint(file_path)
+                    local_model_files.update(extracted_files)
+                    if extracted_files:
+                        local_model_files[file] = file_path
+                        return local_model_files
+                except Exception as e:
+                    logger.debug(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
+                    logger.debug("Model files will be downloaded from Team Files")
+                    local_model_files[file] = file_path
+                    continue
+            
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
+    
+    def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
+        def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
+            exp_path = os.path.join(artifacts_dir, "experiment_info.json")
+            if sly_fs.file_exists(exp_path):
+                return self._load_json_file(exp_path)
+            return None
+
+        def _compose_model_files(artifacts_dir: str, checkpoint_path: str, files_map: dict) -> dict:
+            model_files = {k: os.path.join(artifacts_dir, v) for k, v in files_map.items()}
+            model_files["checkpoint"] = checkpoint_path
+            return model_files
+
+        is_local = sly_fs.file_exists(checkpoint_path)
+        if not is_local:
+            team_id = sly_env.team_id()
+            if self.api is None:
+                raise ValueError(
+                    f"File: '{checkpoint_path}' not found in local storage. "
+                    "Initialize API by providing 'API_TOKEN' and 'SERVER_ADDRESS' "
+                    "environment variables to use remote checkpoint."
+                )
+            if not self.api.file.exists(team_id, checkpoint_path):
+                raise FileNotFoundError(
+                    f"Checkpoint '{checkpoint_path}' not found locally and remotely. "
+                    "Make sure you have provided correct checkpoint path."
+                )
+
+        artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+        if not is_local:
+            logger.debug("Remote checkpoint found")
+            # --- REMOTE ---
+            # experiment_info.json
+            logger.debug("Getting experiment_info.json...")
+            remote_exp_info = os.path.join(artifacts_dir, "experiment_info.json")
+            local_exp_info = os.path.join(self.model_dir, "experiment_info.json")
+            self.download(remote_exp_info, local_exp_info)
+            experiment_info = self._load_json_file(local_exp_info)
+
+            # model_meta.json
+            logger.debug("Getting model_meta.json...")
+            meta_name = experiment_info.get("model_meta") or "model_meta.json"
+            remote_meta = os.path.join(artifacts_dir, meta_name)
+            local_meta = os.path.join(self.model_dir, meta_name)
+            self.download(remote_meta, local_meta)
+            model_meta = self._load_json_file(local_meta)
+            experiment_info["model_meta"] = model_meta
+
+            # model files
+            logger.debug("Getting model files...")
+            remote_files_rel = experiment_info.get("model_files", {})
+            remote_files_full = _compose_model_files(artifacts_dir, checkpoint_path, remote_files_rel)
+            local_model_files = self._download_custom_model(remote_files_full, False)
+            model_files = local_model_files
+            model_info = experiment_info
+            logger.debug("Deploy parameters extracted from remote checkpoint successfully")
+        else:
+            logger.debug("Local checkpoint found")
+            # --- LOCAL ---
+            try:
+                logger.debug("Reading state dict...")
+                import torch  # pylint: disable=import-error
+                ckpt = torch.load(checkpoint_path, map_location="cpu")
+                model_info = ckpt.get("model_info", {})
+                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_files["checkpoint"] = checkpoint_path
+                meta_path = os.path.join(self.model_dir, "model_meta.json")
+                if sly_fs.file_exists(meta_path):
+                    model_info["model_meta"] = self._load_json_file(meta_path)
+                logger.debug("Deploy parameters extracted from state dict successfully")
+            except:
+                logger.debug(f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files...")
+                experiment_info = _read_experiment_info(artifacts_dir)
+                if experiment_info:
+                    logger.debug("Reading experiment_info.json...")
+                    model_files = _compose_model_files(artifacts_dir, checkpoint_path, experiment_info.get("model_files", {}))
+                    meta_name = experiment_info.get("model_meta") or "model_meta.json"
+                    meta_path = os.path.join(artifacts_dir, meta_name)
+                    if not sly_fs.file_exists(meta_path):
+                        raise FileNotFoundError(f"Model meta file not found: '{meta_path}'")
+                    experiment_info["model_meta"] = self._load_json_file(meta_path)
+                    model_info = experiment_info
+                    logger.debug("Deploy parameters extracted from experiment_info.json successfully")
+                else:
+                    raise FileNotFoundError(f"'experiment_info.json' not found in '{artifacts_dir}'")
+
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": model_files,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+        }
+        logger.debug(f"Deploy parameters: {deploy_params}")
+        return deploy_params
+
+    def _extract_model_files_from_checkpoint(self, checkpoint_path: str) -> dict:
+        extracted_files: dict = {}
+        file_ext = sly_fs.get_file_ext(checkpoint_path)
+        if file_ext not in (".pth", ".pt"):
+            return extracted_files
+
+        import torch  # pylint: disable=import-error
+        logger.debug(f"Reading checkpoint: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+
+        # 1. Extract additional model files embedded into checkpoint (if any)
+        ckpt_files = checkpoint.get("model_files", None)
+        if ckpt_files and isinstance(ckpt_files, dict):
+            for file_key, file_info in ckpt_files.items():
+                try:
+                    content = file_info["content"]
+                    fname = file_info.get("name", f"{file_key}.txt")
+                    dst_path = os.path.join(self.model_dir, fname)
+                    # Overwrite if exists
+                    if os.path.exists(dst_path):
+                        sly_fs.silent_remove(dst_path)
+                    with open(dst_path, "w") as f:
+                        f.write(content)
+                    extracted_files[file_key] = dst_path
+                except Exception as e:
+                    logger.debug(f"Failed to write '{file_key}' from checkpoint to disk: {repr(e)}")
+
+        # 2. Extract project meta (if present)
+        model_meta = checkpoint.get("model_meta", None)
+        if model_meta is not None:
+            try:
+                meta_path = os.path.join(self.model_dir, "model_meta.json")
+                if os.path.exists(meta_path):
+                    sly_fs.silent_remove(meta_path)
+                sly_json.dump_json_file(model_meta, meta_path)
+            except Exception as e:
+                logger.debug(f"Failed to dump model_meta from checkpoint: {repr(e)}")
+
+        return extracted_files
 
     def _load_model(self, deploy_params: dict):
         self.model_source = deploy_params.get("model_source")
@@ -910,11 +1177,20 @@ class Inference:
         if isinstance(model_meta, dict):
             self._model_meta = ProjectMeta.from_json(model_meta)
         elif isinstance(model_meta, str):
-            remote_artifacts_dir = model_info["artifacts_dir"]
-            model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
-            model_meta_path = self.download(model_meta_url)
-            model_meta = sly_json.load_json_file(model_meta_path)
-            self._model_meta = ProjectMeta.from_json(model_meta)
+            model_meta_path = os.path.join(self.model_dir, "model_meta.json")
+            if os.path.exists(model_meta_path):
+                logger.debug("Reading model meta from checkpoint")
+                model_meta = sly_json.load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                sly_fs.silent_remove(model_meta_path)
+            else:
+                remote_artifacts_dir = model_info["artifacts_dir"]
+                model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
+                model_meta_path = self.download(model_meta_url)
+                model_meta = sly_json.load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                sly_fs.silent_remove(model_meta_path)
+
         else:
             raise ValueError(
                 "model_meta should be a dict or a name of '.json' file in experiment artifacts folder in Team Files"
@@ -927,11 +1203,12 @@ class Inference:
         model_files = deploy_params.get("model_files", {})
         if model_info:
             checkpoint_name = os.path.basename(model_files.get("checkpoint"))
-            checkpoint_file_path = os.path.join(
-                model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
-            )
+            artifacts_dir = model_info.get("artifacts_dir")
+            if artifacts_dir is None:
+                artifacts_dir = os.path.dirname(os.path.dirname(model_files.get("checkpoint")))
+            checkpoint_file_path = os.path.join(artifacts_dir, "checkpoints", checkpoint_name)
             checkpoint_file_info = None
-            if not self._is_local_deploy:
+            if not self._is_cli_deploy:
                 checkpoint_file_info = self.api.file.get_info_by_path(
                     sly_env.team_id(), checkpoint_file_path
                 )
@@ -1034,7 +1311,7 @@ class Inference:
     def api(self) -> Api:
         if self._api is None:
             if (
-                self._is_local_deploy
+                self._is_cli_deploy
                 and os.getenv("SERVER_ADDRESS") is None
                 and os.getenv("API_TOKEN") is None
             ):
@@ -2457,7 +2734,7 @@ class Inference:
         inference_request.done(len(results))
 
     def serve(self):
-        if not self._use_gui and not self._is_local_deploy:
+        if not self._use_gui and not self._is_cli_deploy:
             Progress("Deploying model ...", 1)
 
         if is_debug_with_sly_net():
@@ -2472,30 +2749,31 @@ class Inference:
             self._task_id = task["id"]
             os.environ["TASK_ID"] = str(self._task_id)
         else:
-            if not self._is_local_deploy:
+            if not self._is_cli_deploy:
                 self._task_id = sly_env.task_id() if is_production() else None
 
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             # Predict and shutdown
-            if self._args.mode == "predict" and any(
+            if self._args.mode == "predict":
+                if any(
                 [
                     self._args.input,
                     self._args.project_id,
                     self._args.dataset_id,
                     self._args.image_id,
                 ]
-            ):
-
-                self._parse_inference_settings_from_args()
-                self._inference_by_local_deploy_args()
-                exit(0)
+                ):
+                    self._parse_inference_settings_from_args()
+                    self._inference_by_cli_deploy_args()
+                    exit(0)
+                else:
+                    logger.error("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
+                    exit(0)
 
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             self._app = Application(layout=self._app_layout)
-        # elif isinstance(self.gui, GUI.InferenceGUI):
-        #     self._app = Application(layout=self.get_ui())
         else:
             self._app = Application(layout=self.get_ui())
 
@@ -3202,10 +3480,12 @@ class Inference:
             }
 
         # Local deploy without predict args
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             self._run_server()
+        elif self._is_quick_deploy:
+            self._run_server_in_thread()
 
-    def _parse_local_deploy_args(self):
+    def _parse_cli_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
@@ -3322,6 +3602,7 @@ class Inference:
         return args, True
 
     def _parse_inference_settings_from_args(self):
+        logger.debug("Parsing inference settings from args")
         def parse_value(value: str):
             if value.lower() in ("true", "false"):
                 return value.lower() == "true"
@@ -3357,6 +3638,7 @@ class Inference:
                 args.settings = settings_dict
         args.settings = self._read_settings(args.settings)
         self._validate_settings(args.settings)
+        logger.debug("Inference settings were successfully parsed from args")
 
     def _get_pretrained_model_params_from_args(self):
         model_files = None
@@ -3392,8 +3674,12 @@ class Inference:
     def _get_custom_model_params_from_args(self):
         def _load_experiment_info(artifacts_dir):
             experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
+            if not os.path.exists(experiment_path):
+                raise ValueError(f"Experiment info file not found in {artifacts_dir}")
             model_info = self._load_json_file(experiment_path)
             model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
+            if not os.path.exists(model_meta_path):
+                raise ValueError(f"Model meta file not found in {artifacts_dir}")
             model_info["model_meta"] = self._load_json_file(model_meta_path)
             original_model_files = model_info.get("model_files")
             return model_info, original_model_files
@@ -3419,6 +3705,7 @@ class Inference:
             else:
                 loop.run_until_complete(coro)
 
+        logger.debug("Getting custom model params from args")
         model_source = ModelSource.CUSTOM
         need_download = False
         checkpoint_path = self._args.model
@@ -3429,6 +3716,8 @@ class Inference:
                 raise ValueError(
                     "Team ID not found in env. Required for remote custom checkpoints."
                 )
+            if self.api is None:
+                raise ValueError("API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables.")
             file_info = self.api.file.get_info_by_path(team_id, checkpoint_path)
             if not file_info:
                 raise ValueError(
@@ -3436,26 +3725,46 @@ class Inference:
                 )
             need_download = True
 
+        if not need_download:
+            try:
+                # Read data from checkpoint
+                logger.debug(f"Reading data from checkpoint: {checkpoint_path}")
+                import torch  # pylint: disable=import-error
+                checkpoint = torch.load(checkpoint_path)
+                model_info = checkpoint["model_info"]
+                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_meta = os.path.join(self.model_dir, "model_meta.json")
+                model_info["model_meta"] = self._load_json_file(model_meta)
+                model_files["checkpoint"] = checkpoint_path
+                need_download = False
+                return model_files, model_source, model_info, need_download
+            except Exception as e:
+                logger.debug(f"Failed to read data from checkpoint: {repr(e)}")
+
         artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
         if not need_download:
+            logger.debug(f"Looking for data in artifacts: '{artifacts_dir}'")
             model_info, original_model_files = _load_experiment_info(artifacts_dir)
             model_files = _prepare_local_model_files(
                 artifacts_dir, checkpoint_path, original_model_files
             )
-
+            logger.debug(f"Data was found in artifacts directory: '{artifacts_dir}'")
         else:
+            logger.debug(f"Downloading data from remote directory: '{artifacts_dir}'")
             local_artifacts_dir = os.path.join(
-                self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
+                self.model_dir, "cli_deploy", os.path.basename(artifacts_dir)
             )
             _download_remote_files(team_id, artifacts_dir, local_artifacts_dir)
-
             model_info, original_model_files = _load_experiment_info(local_artifacts_dir)
             model_files = _prepare_local_model_files(
                 local_artifacts_dir, checkpoint_path, original_model_files
             )
+            logger.debug(f"Data was downloaded from remote directory: '{artifacts_dir}'")
+        logger.debug("Custom model params were successfully parsed from args")
         return model_files, model_source, model_info, need_download
 
     def _get_deploy_params_from_args(self):
+        logger.debug("Getting deploy params from args")
         # Ensure model directory exists
         device = self._args.device if self._args.device else "cuda:0"
         runtime = self._args.runtime if self._args.runtime else RuntimeType.PYTORCH
@@ -3482,7 +3791,6 @@ class Inference:
             "device": device,
             "runtime": runtime,
         }
-
         logger.debug(f"Deploy parameters: {deploy_params}")
         return deploy_params, need_download
 
@@ -3490,6 +3798,18 @@ class Inference:
         config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
+
+    def _run_server_in_thread(self):
+        """Run Uvicorn server in a separate thread so that this method doesn't block the caller."""
+        import threading
+
+        def _serve():
+            config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
+            self._uvicorn_server = uvicorn.Server(config)
+            self._uvicorn_server.run()
+
+        self._server_thread = threading.Thread(target=_serve, daemon=True)
+        self._server_thread.start()
 
     def _read_settings(self, settings: Union[str, Dict[str, Any]]):
         if isinstance(settings, dict):
@@ -3517,7 +3837,8 @@ class Inference:
                     f"Inference settings doesn't have key: '{key}'. Available keys are: '{acceptable_keys}'"
                 )
 
-    def _inference_by_local_deploy_args(self):
+    def _inference_by_cli_deploy_args(self):
+        logger.debug("Starting inference by CLI deploy args")
         missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
 
         def predict_project_id_by_args(
@@ -3531,14 +3852,13 @@ class Inference:
         ):
             if self.api is None:
                 raise ValueError(missing_env_message)
-
-            if dataset_ids:
-                logger.info(f"Predicting datasets: '{dataset_ids}'")
-            else:
-                logger.info(f"Predicting project: '{project_id}'")
-
             if draw:
                 raise ValueError("Draw visualization is not supported for project inference")
+
+            if dataset_ids:
+                logger.info(f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'")
+            else:
+                logger.info(f"Predicting Project by ID: {project_id}")
 
             state = {
                 "projectId": project_id,
@@ -3578,6 +3898,7 @@ class Inference:
             draw: bool = False,
             upload: bool = False,
         ):
+            logger.info(f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}")
             if draw:
                 raise ValueError("Draw visualization is not supported for dataset inference")
             if self.api is None:
@@ -3601,7 +3922,7 @@ class Inference:
             if self.api is None:
                 raise ValueError(missing_env_message)
 
-            logger.info(f"Predicting image: '{image_id}'")
+            logger.info(f"Predicting Image by ID: {image_id}")
 
             def predict_image_np(image_np):
                 anns, _ = self._inference_auto([image_np], settings)
@@ -3638,8 +3959,7 @@ class Inference:
             output_dir: str = "./predictions",
             draw: bool = False,
         ):
-            logger.info(f"Predicting '{input_path}'")
-
+            logger.info(f"Predicting Local Data: {input_path}")
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
                 if pred_dir is not None:
@@ -3741,6 +4061,27 @@ class Inference:
                     f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
                 )
 
+    def _set_checkpoint_from_experiment_info(self, experiment_info: ExperimentInfo):
+        try:
+            if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+                return
+
+            task_id = experiment_info.task_id
+            self.gui.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
+            self.gui.experiment_selector.set_by_task_id(task_id)
+
+            best_ckpt = experiment_info.best_checkpoint
+            if best_ckpt:
+                row = self.gui.experiment_selector.get_by_task_id(task_id)
+                if row is not None:
+                    row.set_selected_checkpoint_by_name(best_ckpt)
+        except Exception as e:
+            logger.warning(f"Failed to set checkpoint from experiment info: {repr(e)}")
+
+    def _reset_gui_state(self):
+        if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+            return
+        self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
 
 def _exclude_duplicated_predictions(
     api: Api,

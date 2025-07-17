@@ -7,10 +7,10 @@ training workflows in a Supervisely application.
 
 import shutil
 import subprocess
+import time
 from datetime import datetime
 from os import getcwd, listdir, walk
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
-from time import sleep
 from typing import Any, Dict, List, Literal, Optional, Union
 from urllib.request import urlopen
 
@@ -46,6 +46,7 @@ from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
 from supervisely.app.widgets import Progress
+from supervisely.decorators.profile import timeit_with_result
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
     InstanceSegmentationEvaluator,
@@ -70,6 +71,7 @@ from supervisely.project.download import (
     get_dataset_path,
     is_cached,
 )
+from supervisely.template.experiment.experiment_generator import ExperimentGenerator
 
 
 class TrainApp:
@@ -184,6 +186,7 @@ class TrainApp:
         self.app = Application(layout=self.gui.layout)
         self._server = self.app.get_server()
         self._train_func = None
+        self._training_duration = None
 
         self._onnx_supported = self._app_options.get("export_onnx_supported", False)
         self._tensorrt_supported = self._app_options.get("export_tensorrt_supported", False)
@@ -396,6 +399,20 @@ class TrainApp:
         :rtype: str
         """
         return self.gui.training_process.get_device()
+    
+    @property
+    def base_checkpoint(self) -> str:
+        """
+        Returns the name of the base checkpoint.
+        """
+        return self.gui.model_selector.get_checkpoint_name()
+    
+    @property
+    def base_checkpoint_link(self) -> str:
+        """
+        Returns the link to the base checkpoint.
+        """
+        return self.gui.model_selector.get_checkpoint_link()
 
     # Classes
     @property
@@ -528,7 +545,7 @@ class TrainApp:
         """
 
         def decorator(func):
-            self._train_func = func
+            self._train_func = timeit_with_result(func)
             self.gui.training_process.start_button.click(self._wrapped_start_training)
             return func
 
@@ -574,9 +591,17 @@ class TrainApp:
             self._workflow_input()
         # Step 2. Download Project
         self._download_project()
-        # Step 3. Split Project
+        # Step 3. Convert Project to Task
+        if self.gui.need_convert_shapes:
+            if self.gui.classes_selector is not None:
+                if self.gui.classes_selector.is_convert_class_shapes_enabled():
+                    self._convert_project_to_model_task()
+        # Step 4. Split Project
         self._split_project()
-        # Step 4. Download Model files
+        # Step 5. Remove classes except selected
+        if self.sly_project.type == ProjectType.IMAGES.value:
+            self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
+        # Step 6. Download Model files
         self._download_model()
 
     def _finalize(self, experiment_info: dict) -> None:
@@ -618,8 +643,8 @@ class TrainApp:
                 # Convert GT project
                 gt_project_id, bm_splits_data = None, train_splits_data
                 # @TODO: check with anyshape classes
-                if self._app_options.get("auto_convert_classes", True):
-                    if self.gui.need_convert_shapes_for_bm:
+                if self.gui.need_convert_shapes:
+                    if self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value():
                         self._set_text_status("convert_gt_project")
                         gt_project_id, bm_splits_data = self._convert_and_split_gt_project(
                             experiment_info["task_type"]
@@ -675,18 +700,31 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-        # Step 10. Set output widgets
+        # Step 10. Generate training output
+        need_generate_report = self._app_options.get("generate_report", True)
+        if need_generate_report:
+            output_file_info = self._generate_experiment_report(experiment_info, model_meta)
+        else:  # output artifacts directory
+            output_file_info = session_link_file_info
+
+        # Step 11. Set output widgets
         self._set_text_status("reset")
         self._set_training_output(
-            experiment_info, remote_dir, session_link_file_info, mb_eval_report
+            experiment_info,
+            remote_dir,
+            output_file_info,
+            mb_eval_report,
         )
         self._set_ws_progress_status("completed")
 
-        # Step 11. Workflow output
+        # Step 12. Workflow output
         if is_production():
             best_checkpoint_file_info = self._get_best_checkpoint_info(experiment_info, remote_dir)
             self._workflow_output(
-                remote_dir, best_checkpoint_file_info, mb_eval_lnk_file_info, mb_eval_report_id
+                remote_dir,
+                best_checkpoint_file_info,
+                mb_eval_lnk_file_info,
+                mb_eval_report_id,
             )
 
     def _get_best_checkpoint_info(self, experiment_info: dict, remote_dir: str) -> FileInfo:
@@ -718,11 +756,6 @@ class TrainApp:
         :param inference_settings: Settings for the inference class.
         :type inference_settings: dict
         """
-        # if not self.is_model_benchmark_enabled:
-        #     raise ValueError(
-        #         "Enable 'model_benchmark' in app_options.yaml to register an inference class."
-        #     )
-
         self._is_inference_class_regirested = True
         self._inference_class = inference_class
         self._inference_settings = None
@@ -746,15 +779,25 @@ class TrainApp:
         classes = self.classes
         tags = self.tags
 
-        model = self._get_model_config_for_app_state(experiment_info)
+        convert_class_shapes = False
+        if self.gui.classes_selector is not None:
+            convert_class_shapes = self.gui.classes_selector.is_convert_class_shapes_enabled()
+
         options = {
+            "cache_project": self.gui.input_selector.get_cache_value(),
+            "convert_class_shapes": convert_class_shapes,
             "model_benchmark": {
                 "enable": self.gui.hyperparameters_selector.get_model_benchmark_checkbox_value(),
                 "speed_test": self.gui.hyperparameters_selector.get_speedtest_checkbox_value(),
             },
-            "cache_project": self.gui.input_selector.get_cache_value(),
+            "export": {
+                "enable": self.gui.hyperparameters_selector.is_export_required(),
+                "ONNXRuntime": self.gui.hyperparameters_selector.get_export_onnx_checkbox_value(),
+                "TensorRT": self.gui.hyperparameters_selector.get_export_tensorrt_checkbox_value(),
+            },
         }
 
+        model = self._get_model_config_for_app_state(experiment_info)
         app_state = {
             "model": model,
             "hyperparameters": self.hyperparameters_yaml,
@@ -766,36 +809,48 @@ class TrainApp:
         app_state["tags"] = tags
         return app_state
 
-    def load_app_state(self, app_state: dict) -> None:
+    def load_app_state(self, app_state: Union[str, dict]) -> None:
         """
         Load the GUI state from app state dictionary.
 
-        :param app_state: The state dictionary.
-        :type app_state: dict
+        :param app_state: The state dictionary or path to the state file.
+        :type app_state: Union[str, dict]
 
         app_state example:
 
             app_state = {
-                "input": {"project_id": 55555},
                 "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
                 },
                 "classes": ["apple"],
-                "tags": ["green", "red"],
+                # Pretrained model
                 "model": {
                     "source": "Pretrained models",
                     "model_name": "rtdetr_r50vd_coco_objects365"
                 },
+                # Custom model
+                # "model": {
+                #     "source": "Custom models",
+                #     "task_id": 555,
+                #     "checkpoint": "checkpoint_10.pth"
+                # },
                 "hyperparameters": hyperparameters, # yaml string
                 "options": {
+                    "convert_class_shapes": True,
                     "model_benchmark": {
                         "enable": True,
                         "speed_test": True
                     },
-                    "cache_project": True
-                }
+                    "cache_project": True,
+                    "export": {
+                        "enable": True,
+                        "ONNXRuntime": True,
+                        "TensorRT": True
+                    },
+                },
+                "experiment_name": "my_experiment",
             }
         """
         self.gui.load_from_app_state(app_state)
@@ -910,23 +965,60 @@ class TrainApp:
 
     # Preprocess
     # Download Project
-    def _read_project(self, remove_unselected_classes: bool = True) -> None:
+    def _read_project(self) -> None:
         """
         Reads the project data from Supervisely.
-
-        :param remove_unselected_classes: Whether to remove unselected classes from the project.
-        :type remove_unselected_classes: bool
         """
         if self.project_info.type == ProjectType.IMAGES.value:
             self.sly_project = Project(self.project_dir, OpenMode.READ)
-            if remove_unselected_classes:
-                self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
         elif self.project_info.type == ProjectType.VIDEOS.value:
             self.sly_project = VideoProject(self.project_dir, OpenMode.READ)
         else:
             raise ValueError(
                 f"Unsupported project type: {self.project_info.type}. Only images and videos are supported."
             )
+
+    def _convert_project_to_model_task(self) -> None:
+        """
+        Converts the project to the appropriate type.
+        """
+        if not self.project_info.type == ProjectType.IMAGES.value:
+            logger.info("Class shape conversion supported only for images projects")
+            return
+
+        task_type = self.gui.model_selector.get_selected_task_type()
+        if task_type not in [
+            TaskType.OBJECT_DETECTION,
+            TaskType.INSTANCE_SEGMENTATION,
+            TaskType.SEMANTIC_SEGMENTATION,
+        ]:
+            logger.info(f"Class shape conversion for {task_type} task is not supported")
+            return
+
+        logger.info(f"Converting project for {task_type} task")
+        with self.progress_bar_main(
+            message=f"Converting project to {task_type} task",
+            total=len(self.sly_project.datasets),
+        ) as pbar:
+            if task_type == TaskType.OBJECT_DETECTION:
+                self.sly_project.to_detection_task(
+                    self.project_dir, inplace=True, progress_cb=pbar.update
+                )
+            elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                self.sly_project.to_segmentation_task(
+                    self.project_dir,
+                    inplace=True,
+                    segmentation_type="instance",
+                    progress_cb=pbar.update,
+                )
+            elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+                self.sly_project.to_segmentation_task(
+                    self.project_dir,
+                    inplace=True,
+                    segmentation_type="semantic",
+                    progress_cb=pbar.update,
+                )
+        self.sly_project = Project(self.project_dir, OpenMode.READ)
 
     def _download_project(self) -> None:
         """
@@ -1161,7 +1253,7 @@ class TrainApp:
 
         # Clean up temporary directory
         sly_fs.remove_dir(project_split_path)
-        self._read_project(False)
+        self._read_project()
 
     # ----------------------------------------- #
 
@@ -1559,40 +1651,41 @@ class TrainApp:
         new_checkpoint_paths = []
         best_checkpoints_name = experiment_info["best_checkpoint"]
 
-        # Prepare model files
+        # Prepare checkpoint files
         try:
-            model_files = {}
+            # need to save original key names
+            ckpt_files = {}
             for file in experiment_info["model_files"]:
+                file_name = sly_fs.get_file_name_with_ext(experiment_info["model_files"][file])
                 with open(experiment_info["model_files"][file], "r") as f:
-                    model_files[file] = f.read()
+                    ckpt_files[file] = {"name": file_name, "content": f.read()}
         except Exception as e:
             logger.warning(f"Error loading model files: {e}")
-            model_files = {}
+            ckpt_files = {}
 
         for checkpoint_path in checkpoint_paths:
             checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
             new_checkpoint_path = join(self._output_checkpoints_dir, checkpoint_name)
             shutil.move(checkpoint_path, new_checkpoint_path)
-            if len(model_files) > 0:
-                try:
-                    # pylint: disable=import-error
-                    import torch
-
-                    state_dict = torch.load(new_checkpoint_path)
-                    state_dict["model_info"] = {
-                        "model_name": experiment_info["model_name"],
-                        "framework": self.framework_name,
-                        "checkpoint": checkpoint_name,
-                        "experiment": self.gui.training_process.get_experiment_name(),
-                    }
-                    state_dict["model_meta"] = model_meta.to_json()
-                    state_dict["model_files"] = model_files
-                    torch.save(state_dict, new_checkpoint_path)
-                except Exception as e:
-                    logger.warning(
-                        f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}"
-                    )
-                    continue
+            try:
+                # pylint: disable=import-error
+                import torch
+                state_dict = torch.load(new_checkpoint_path)
+                state_dict["model_info"] = {
+                    "task_id": self.task_id,
+                    "model_name": experiment_info["model_name"],
+                    "framework": self.framework_name,
+                    "checkpoint": checkpoint_name,
+                    "experiment": self.gui.training_process.get_experiment_name(),
+                }
+                state_dict["model_meta"] = model_meta.to_json()
+                state_dict["model_files"] = ckpt_files
+                torch.save(state_dict, new_checkpoint_path)
+            except Exception as e:
+                logger.warning(
+                    f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}"
+                )
+                continue
 
             new_checkpoint_paths.append(new_checkpoint_path)
             if sly_fs.get_file_name_with_ext(checkpoint_path) == best_checkpoints_name:
@@ -1622,7 +1715,11 @@ class TrainApp:
         logger.debug(f"Uploading '{local_path}' to Supervisely")
         total_size = sly_fs.get_file_size(local_path)
         with self.progress_bar_main(
-            message=message, total=total_size, unit="B", unit_scale=True, unit_divisor=1024
+            message=message,
+            total=total_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
         ) as upload_artifacts_pbar:
             self.progress_bar_main.show()
             file_info = self._api.file.upload(
@@ -1728,6 +1825,8 @@ class TrainApp:
             "experiment_name": self.gui.training_process.get_experiment_name(),
             "framework_name": self.framework_name,
             "model_name": experiment_info["model_name"],
+            "base_checkpoint": self.base_checkpoint,
+            "base_checkpoint_link": self.base_checkpoint_link,
             "task_type": experiment_info["task_type"],
             "project_id": self.project_info.id,
             "task_id": self.task_id,
@@ -1743,7 +1842,10 @@ class TrainApp:
             "evaluation_report_id": evaluation_report_id,
             "evaluation_report_link": evaluation_report_link,
             "evaluation_metrics": eval_metrics,
+            "primary_metric": primary_metric_name,
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
+            "device": self.gui.training_process.get_device_name(),
+            "training_duration": self._training_duration,
         }
 
         if self._has_splits_selector:
@@ -1778,9 +1880,31 @@ class TrainApp:
         )
 
         # Do not include this fields to uploaded file:
-        experiment_info["primary_metric"] = primary_metric_name
         experiment_info["project_preview"] = self.project_info.image_preview_url
         return experiment_info
+
+    def _generate_experiment_report(
+        self, experiment_info: dict, model_meta: ProjectMeta
+    ) -> FileInfo:
+        """
+        Generates and uploads the experiment report to the output directory.
+        """
+        # @TODO: add report to workflow output
+        experiment = ExperimentGenerator(
+            api=self._api,
+            experiment_info=experiment_info,
+            hyperparameters=self.hyperparameters_yaml,
+            model_meta=model_meta,
+            serving_class=self._inference_class,
+            team_id=self.team_id,
+            output_dir=join(self.work_dir, "experiment_report"),
+            app_options=self._app_options,
+        )
+        experiment.generate()
+
+        experiment.upload_to_artifacts()
+        file_info = experiment.get_report()
+        return file_info
 
     def _generate_hyperparameters(self, remote_dir: str, experiment_info: Dict) -> None:
         """
@@ -2001,7 +2125,7 @@ class TrainApp:
         experiment_info: dict,
         remote_dir: str,
         file_info: FileInfo,
-        mb_eval_report=None,
+        mb_eval_report: Optional[FileInfo] = None,
     ) -> None:
         """
         Sets the training output in the GUI.
@@ -2016,8 +2140,10 @@ class TrainApp:
         if is_production():
             self._api.task.set_output_experiment(self.task_id, experiment_info)
         set_directory(remote_dir)
+        # Set artifacts thumbnail to GUI
         self.gui.training_artifacts.artifacts_thumbnail.set(file_info)
         self.gui.training_artifacts.artifacts_thumbnail.show()
+        # Set experiment report thumbnail to GUI
         self.gui.training_artifacts.artifacts_field.show()
         # ---------------------------- #
 
@@ -2343,7 +2469,13 @@ class TrainApp:
                 if diff_project_info:
                     self._api.project.remove(diff_project_info.id)
             except Exception as e2:
-                return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
+                return (
+                    lnk_file_info,
+                    report,
+                    report_id,
+                    eval_metrics,
+                    primary_metric_name,
+                )
         return lnk_file_info, report, report_id, eval_metrics, primary_metric_name
 
     # ----------------------------------------- #
@@ -2445,7 +2577,7 @@ class TrainApp:
                 self._api.app.workflow.add_output_folder(remote_checkpoint_dir, meta=meta)
             else:
                 logger.debug(
-                    f"File with checkpoints not found in Team Files. Cannot set workflow output."
+                    "File with checkpoints not found in Team Files. Cannot set workflow output."
                 )
 
             if self.is_model_benchmark_enabled:
@@ -2466,7 +2598,7 @@ class TrainApp:
                     self._api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
                 else:
                     logger.debug(
-                        f"File with model benchmark report not found in Team Files. Cannot set workflow output."
+                        "File with model benchmark report not found in Team Files. Cannot set workflow output."
                     )
         except Exception as e:
             logger.debug(f"Failed to add output to the workflow: {repr(e)}")
@@ -2603,6 +2735,7 @@ class TrainApp:
             message = f"Error occurred during training initialization. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
+            self.app.shutdown()
             raise e
 
         try:
@@ -2619,7 +2752,9 @@ class TrainApp:
             self._set_text_status("training")
             if self._app_options.get("train_logger", None) is None:
                 self._set_ws_progress_status("training")
+
             experiment_info = self._train_func()
+            self._training_duration = self._train_func.elapsed
         except ZeroDivisionError as e:
             message = (
                 "'ZeroDivisionError' occurred during training. "
@@ -2645,13 +2780,14 @@ class TrainApp:
                 self.gui.training_logs.tensorboard_button.hide()
                 self.gui.training_logs.tensorboard_offline_button.show()
 
-            sleep(1)
-            self.app.shutdown()
+            time.sleep(1)
         except Exception as e:
             message = f"Error occurred during finalizing and uploading training artifacts. {check_logs_text}"
             self._show_error(message, e)
             self._set_ws_progress_status("reset")
             raise e
+        finally:
+            self.app.shutdown()
 
     def _show_error(self, message: str, e=None):
         if e is not None:
@@ -2718,41 +2854,53 @@ class TrainApp:
             "export_onnx",
             "export_trt",
             "convert_gt_project",
+            "experiment_report",
         ],
     ):
-
         if status == "reset":
-            self.gui.training_process.validator_text.set("", "text")
+            message = ""
+            status = "text"
+            self.gui.training_process.validator_text.set(message, status)
+            return
         elif status == "completed":
-            self.gui.training_process.validator_text.set("Training completed", "success")
+            message = "Training completed"
+            status = "success"
         elif status == "training":
-            self.gui.training_process.validator_text.set("Training is in progress...", "info")
+            message = "Training is in progress..."
+            status = "info"
         elif status == "finalizing":
-            self.gui.training_process.validator_text.set(
-                "Finalizing and preparing training artifacts...", "info"
-            )
+            message = "Finalizing and preparing training artifacts..."
+            status = "info"
         elif status == "preparing":
-            self.gui.training_process.validator_text.set("Preparing data for training...", "info")
+            message = "Preparing data for training..."
+            status = "info"
         elif status == "export_onnx":
-            self.gui.training_process.validator_text.set(
-                f"Converting to {RuntimeType.ONNXRUNTIME}", "info"
-            )
+            message = f"Converting to {RuntimeType.ONNXRUNTIME}"
+            status = "info"
         elif status == "export_trt":
-            self.gui.training_process.validator_text.set(
-                f"Converting to {RuntimeType.TENSORRT}", "info"
-            )
+            message = f"Converting to {RuntimeType.TENSORRT}"
+            status = "info"
         elif status == "uploading":
-            self.gui.training_process.validator_text.set("Uploading training artifacts...", "info")
+            message = "Uploading training artifacts..."
+            status = "info"
         elif status == "benchmark":
-            self.gui.training_process.validator_text.set(
-                "Running Model Benchmark evaluation...", "info"
-            )
+            message = "Running Model Benchmark evaluation..."
+            status = "info"
         elif status == "validating":
-            self.gui.training_process.validator_text.set("Validating experiment...", "info")
+            message = "Validating experiment..."
+            status = "info"
         elif status == "metadata":
-            self.gui.training_process.validator_text.set("Generating training metadata...", "info")
+            message = "Generating training metadata..."
+            status = "info"
         elif status == "convert_gt_project":
-            self.gui.training_process.validator_text.set("Converting GT project...", "info")
+            message = "Converting GT project..."
+            status = "info"
+        elif status == "experiment_report":
+            message = "Generating experiment report..."
+            status = "info"
+
+        message = f"Status: {message}"
+        self.gui.training_process.validator_text.set(message, status)
 
     def _set_ws_progress_status(
         self,
@@ -2861,17 +3009,22 @@ class TrainApp:
             save_image_info=True,
         )
         project = Project("tmp_project", OpenMode.READ)
+        project.remove_classes_except(project.directory, self.classes, True)
 
         pr_prefix = ""
         if task_type == TaskType.OBJECT_DETECTION:
             Project.to_detection_task(project.directory, inplace=True)
             pr_prefix = "[detection]: "
-        elif (
-            task_type == TaskType.INSTANCE_SEGMENTATION
-            or task_type == TaskType.SEMANTIC_SEGMENTATION
-        ):
-            Project.to_segmentation_task(project.directory, inplace=True)
-            pr_prefix = "[segmentation]: "
+        elif task_type == TaskType.INSTANCE_SEGMENTATION:
+            Project.to_segmentation_task(
+                project.directory, segmentation_type="instance", inplace=True
+            )
+            pr_prefix = "[instance segmentation]: "
+        elif task_type == TaskType.SEMANTIC_SEGMENTATION:
+            Project.to_segmentation_task(
+                project.directory, segmentation_type="semantic", inplace=True
+            )
+            pr_prefix = "[semantic segmentation]: "
 
         gt_project_info = self._api.project.create(
             self.workspace_id,
@@ -2904,4 +3057,5 @@ class TrainApp:
 
         # 4. Match splits with original project
         gt_split_data = self._postprocess_splits(gt_project_info.id)
+        return gt_project_info.id, gt_split_data
         return gt_project_info.id, gt_split_data

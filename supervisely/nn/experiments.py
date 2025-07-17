@@ -38,6 +38,10 @@ class ExperimentInfo:
     """Path to .yaml file with hyperparameters used in the experiment"""
     artifacts_dir: str
     """Path to the directory with artifacts"""
+    base_checkpoint: Optional[str] = None
+    """Name of the base checkpoint used for training"""
+    base_checkpoint_link: Optional[str] = None
+    """Link to the base checkpoint used for training. URL in case of pretrained model, or Team Files path in case of custom model."""
     export: Optional[dict] = None
     """Dictionary with exported weights in different formats"""
     app_state: Optional[str] = None
