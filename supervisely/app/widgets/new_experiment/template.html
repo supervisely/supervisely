@@ -1,10 +1,20 @@
 <div>
     <sly-new-experiment-wizard :visible="state.{{{widget.widget_id}}}.visible"
         :team-id="data.{{{widget.widget_id}}}.teamId" :workspace-id="data.{{{widget.widget_id}}}.workspaceId" {% if
-        widget._changes_handled==true %}
+        widget._visible_handled==true %}
         @update:visible="state.{{{widget.widget_id}}}.visible = $event; post('/{{{widget.widget_id}}}/visible_changed_cb')"
-        {% else %} @update:visible="state.{{{widget.widget_id}}}.visible = $event" {% endif %}
-        :options="data.{{{widget.widget_id}}}.options" @click.native.stop>
+        {% else %} @update:visible="state.{{{widget.widget_id}}}.visible = $event" {% endif %} {% if
+        widget._app_starting_handled==true %} @app-starting="({ appId, taskId, modelId }) => {
+            state.{{{widget.widget_id}}}.appId = appId;
+            state.{{{widget.widget_id}}}.taskId = taskId;
+            state.{{{widget.widget_id}}}.modelId = modelId;
+        }" {% else %} @app-starting="({ appId, taskId, modelId }) => {
+            state.{{{widget.widget_id}}}.appId = appId;
+            state.{{{widget.widget_id}}}.taskId = taskId;
+            state.{{{widget.widget_id}}}.modelId = modelId;
+            post('/{{{widget.widget_id}}}/app_starting_cb');
+        }" {% endif %} :options="data.{{{widget.widget_id}}}.options" :form="data.{{{widget.widget_id}}}.form"
+        @click.native.stop>
     </sly-new-experiment-wizard>
 
 </div>
