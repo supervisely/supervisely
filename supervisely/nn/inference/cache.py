@@ -18,7 +18,7 @@ from fastapi import BackgroundTasks, FastAPI, Form, Request, UploadFile
 import supervisely as sly
 import supervisely.io.env as env
 from supervisely._utils import batched
-from supervisely.io.fs import silent_remove
+from supervisely.io.fs import list_files, silent_remove
 from supervisely.video.video import VideoFrameReader
 
 
@@ -101,6 +101,10 @@ class PersistentImageTTLCache(TTLCache):
             silent_remove(filepath)
         except TypeError:
             pass
+        except:
+            sly.logger.debug(f"File {filepath} was not deleted from cache", exc_info=True)
+        else:
+            sly.logger.debug(f"File {filepath} was deleted from cache")
 
     def __update_timer(self, key):
         try:
@@ -135,6 +139,7 @@ class PersistentImageTTLCache(TTLCache):
                 except TypeError:
                     pass
             sly.logger.debug(f"Deleted keys: {deleted}")
+            sly.logger.trace(f"Existing files: {list_files(str(self._base_dir))}")
 
     def clear(self, rm_base_folder=True) -> None:
         while self.currsize > 0:
