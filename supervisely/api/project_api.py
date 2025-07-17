@@ -100,6 +100,8 @@ class ProjectInfo(NamedTuple):
     embeddings_enabled: Optional[bool] = None
     embeddings_updated_at: Optional[str] = None
     embeddings_in_progress: Optional[bool] = None
+    local_entities_count: Optional[int] = None
+    remote_entities_count: Optional[int] = None
 
     @property
     def image_preview_url(self):
@@ -177,6 +179,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         team_id=2,
                         import_settings={}
                         version={'id': 260, 'version': 3}
+                        created_by_id=7,
+                        embeddings_enabled=False,
+                        embeddings_updated_at=None,
+                        embeddings_in_progress=False,
+                        local_entities_count=10,
+                        remote_entities_count=0
                         )
         """
         return [
@@ -203,6 +211,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.EMBEDDINGS_ENABLED,
             ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.EMBEDDINGS_IN_PROGRESS,
+            ApiField.LOCAL_ENTITIES_COUNT,
+            ApiField.REMOTE_ENTITIES_COUNT,
         ]
 
     @staticmethod
