@@ -3538,12 +3538,16 @@ class Inference:
             # self._load_model(deploy_params)
             if isinstance(self.gui, GUI.ServingGUITemplate):
                 deploy_params = self.get_params_from_gui()
+                if deploy_params.get("device") == "cpu":
+                    return {"message": "Model is already on CPU, cannot freeze."}
                 model_files = self._download_model_files(deploy_params)
                 deploy_params["model_files"] = model_files
                 deploy_params["device"] = "cpu"
                 self._load_model_headless(**deploy_params)
             elif isinstance(self.gui, GUI.ServingGUI):
                 deploy_params = self.get_params_from_gui()
+                if deploy_params.get("device") == "cpu":
+                    return {"message": "Model is already on CPU, cannot freeze."}
                 deploy_params["device"] = "cpu"
                 self._load_model(deploy_params)
             else:
