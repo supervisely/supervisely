@@ -2449,6 +2449,7 @@ class Inference:
 
     def _unfreeze_model(self):
         logger.debug("Unfreezing model...")
+        self._model_frozen = False
         if isinstance(self.gui, GUI.ServingGUITemplate):
             deploy_params = self.get_params_from_gui()
             model_files = self._download_model_files(deploy_params)
@@ -2461,8 +2462,7 @@ class Inference:
             raise RuntimeError(
                 "Cannot unfreeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
             )
-        self._model_frozen = False
-
+        clean_up_cuda()
         logger.debug("Model is unfrozen and ready for inference.")
 
     def _set_served_callback(self):
@@ -3515,22 +3515,27 @@ class Inference:
             # deploy_params = self.autorestart.deploy_params
             # deploy_params["device"] = "cpu"
             # self._load_model(deploy_params)
-            clean_up_cuda()
             if isinstance(self.gui, GUI.ServingGUITemplate):
                 deploy_params = self.get_params_from_gui()
+                if deploy_params.get("device") == "cpu":
+                    return {"message": "Model is already on CPU, cannot freeze."}
                 model_files = self._download_model_files(deploy_params)
                 deploy_params["model_files"] = model_files
                 deploy_params["device"] = "cpu"
                 self._load_model_headless(**deploy_params)
             elif isinstance(self.gui, GUI.ServingGUI):
                 deploy_params = self.get_params_from_gui()
+                if deploy_params.get("device") == "cpu":
+                    return {"message": "Model is already on CPU, cannot freeze."}
                 deploy_params["device"] = "cpu"
                 self._load_model(deploy_params)
             else:
                 raise RuntimeError(
                     "Cannot freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
                 )
+            clean_up_cuda()
             self._model_frozen = True
+            logger.debug("Model has been successfully frozen.")
             return {"message": "Model is frozen."}
 
         # Local deploy without predict args
