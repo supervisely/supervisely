@@ -9,7 +9,6 @@ from supervisely.project.project_type import ProjectType
 
 
 class NewExperiment(Widget):
-
     class SplitMode:
         DATASETS = "datasets"
         COLLECTIONS = "collections"
@@ -26,13 +25,13 @@ class NewExperiment(Widget):
 
     def __init__(
         self,
-        workspace_id: Optional[int] = None,
         team_id: Optional[int] = None,
+        workspace_id: Optional[int] = None,
+        project_id: Optional[int] = None,
         redirect_to_session: bool = False,
         filter_projects_by_workspace: bool = False,
         project_types: Optional[List[ProjectType]] = None,
         cv_task: Optional[str] = None,
-        project_id: Optional[int] = None,
         classes: Optional[Union[List[str], List[int]]] = None,
         model_id: Optional[str] = None,
         agent_id: Optional[int] = None,
@@ -40,12 +39,12 @@ class NewExperiment(Widget):
         run_evaluation: bool = True,
         run_speed_test: bool = False,
         experiment_name: Optional[str] = None,
+        train_val_split_mode: Literal["datasets", "collections", "random"] = SplitMode.RANDOM,
         training_datasets: Optional[Union[List[int], List[str]]] = None,
         val_datasets: Optional[Union[List[int], List[str]]] = None,
         train_collections: Optional[List[int]] = None,
         val_collections: Optional[List[int]] = None,
         random_train_percentage: int = 80,
-        train_val_split_mode: Literal["datasets", "collections", "random"] = SplitMode.RANDOM,
         selected_frameworks: Optional[List[str]] = None,
         selected_architectures: Optional[List[str]] = None,
         cv_task_selection_disabled: bool = False,
@@ -73,11 +72,11 @@ class NewExperiment(Widget):
         self._filter_projects_by_workspace = filter_projects_by_workspace if workspace_id else False
         if not isinstance(project_types, list):
             raise TypeError("project_types must be a list of ProjectType.")
-        self._project_types = project_types
+        self._project_types = [type.value for type in project_types]
         self._cv_task = cv_task
         self._project_id = project_id
         if classes is not None and all(isinstance(name, str) for name in classes):
-            meta = ProjectMeta.from_json(self._api.project.get_meta_by_id(project_id))
+            meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
             classes = [obj_cls.sly_id for obj_cls in meta.obj_classes if obj_cls.name in classes]
         self._classes = classes
         self._agent_id = agent_id
@@ -147,8 +146,10 @@ class NewExperiment(Widget):
                     ApiField.VALUE: collections,
                 }
             ]
+            if collections == []:
+                filters = None
             collections = self._api.entities_collection.get_list(
-                parent_id=self._project_id, filters=filters
+                project_id=self._project_id, filters=filters
             )
             return [collection.id for collection in collections]
         elif all(isinstance(item, int) for item in collections):
@@ -178,6 +179,8 @@ class NewExperiment(Widget):
 
     def get_json_data(self):
         return {
+            "teamId": self._team_id,
+            "workspaceId": self._workspace_id,
             "options": {
                 "redirectToSession": self._redirect_to_session,
                 "filterProjectsByWorkspace": self._filter_projects_by_workspace,
@@ -194,8 +197,6 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
             },
-            "workspaceId": self._workspace_id,
-            "teamId": self._team_id,
             "form": {
                 "cvTask": self._cv_task,
                 "selectedProjectId": self._project_id,
