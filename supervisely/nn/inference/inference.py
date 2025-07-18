@@ -2486,10 +2486,15 @@ class Inference:
             elif isinstance(self.gui, GUI.ServingGUI):
                 self._load_model(deploy_params)
             else:
-                logger.warning(
-                    "Failed to freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
-                )
-                return
+                try:
+                    # @TODO
+                    if "model_files" in deploy_params: # v2 serving
+                        self._load_model_headless(**deploy_params)
+                    else: # v1 serving
+                        self._load_model(deploy_params)
+                except Exception as e:
+                    logger.warning(f"Failed to freeze model: {e}", exc_info=True)
+                    return
             self._model_frozen = True
             logger.debug("Model has been successfully frozen.")
         finally:
@@ -2504,9 +2509,15 @@ class Inference:
         elif isinstance(self.gui, GUI.ServingGUI):
             self._load_model(self._deploy_params)
         else:
-            raise RuntimeError(
-                "Cannot unfreeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
-            )
+            try:
+                # @TODO
+                if "model_files" in self._deploy_params: # v2 serving
+                    self._load_model_headless(**self._deploy_params)
+                else: # v1 serving
+                    self._load_model(self._deploy_params)
+            except Exception as e:
+                logger.warning(f"Failed to freeze model: {e}", exc_info=True)
+                return
         clean_up_cuda()
         logger.debug("Model is unfrozen and ready for inference.")
 
