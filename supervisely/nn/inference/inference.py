@@ -182,6 +182,7 @@ class Inference:
         self._model_dir = model_dir
         self._model_served = False
         self._model_frozen = False
+        self._inactivity_timeout = 3600  # 1 hour
         self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
@@ -306,6 +307,9 @@ class Inference:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
+        self.predict_batch = self._check_serve_before_call(self.predict_batch)
+        self.predict_batch_raw = self._check_serve_before_call(self.predict_batch_raw)
+        self.predict_benchmark = self._check_serve_before_call(self.predict_benchmark)
         self.get_info = self._check_serve_before_call(self.get_info)
 
         self.cache = InferenceImageCache(
@@ -2443,9 +2447,54 @@ class Inference:
                 raise RuntimeError(msg)
             elif self._model_frozen is True:
                 self._unfreeze_model()
-            return func(*args, **kwargs)
+
+            result = func(*args, **kwargs)
+
+            if hasattr(self, "_freeze_timer"):
+                self._freeze_timer.cancel()
+
+            timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+            timer.daemon = True
+            timer.start()
+            self._freeze_timer = timer
+
+            return result
 
         return wrapper
+
+    def _freeze_model(self):
+        if self._model_frozen:
+            logger.debug("Model is already frozen, no need to freeze again.")
+            return
+
+        try:
+            self._check_serve_before_call(lambda: None)()
+        except RuntimeError as e:
+            logger.warning(f"Cannot freeze model: {e}", exc_info=True)
+            return
+
+        logger.debug("Freezing model...")
+        deploy_params = self._deploy_params.copy()
+        previous_device = deploy_params.get("device")
+        if previous_device == "cpu":
+            logger.debug("Model is already running on CPU, cannot freeze.")
+            return
+        deploy_params["device"] = "cpu"
+        try:
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                self._load_model_headless(**deploy_params)
+            elif isinstance(self.gui, GUI.ServingGUI):
+                self._load_model(deploy_params)
+            else:
+                logger.warning(
+                    "Failed to freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
+                )
+                return
+            self._model_frozen = True
+            logger.debug("Model has been successfully frozen.")
+        finally:
+            self._deploy_params["device"] = previous_device
+            clean_up_cuda()
 
     def _unfreeze_model(self):
         logger.debug("Unfreezing model...")
@@ -3499,31 +3548,10 @@ class Inference:
         def _freeze_model(request: Request):
             if self._model_frozen:
                 return {"message": "Model is already frozen."}
-            
-            try:
-                self._check_serve_before_call(lambda: None)()
-            except RuntimeError as e:
-                return {"message": str(e), "success": False}
-            
-            deploy_params = self._deploy_params.copy()
-            previous_device = deploy_params.get("device")
-            if previous_device == "cpu":
-                return {"message": "Model is already on CPU, cannot freeze."}
-            deploy_params["device"] = "cpu"
-            try:
-                if isinstance(self.gui, GUI.ServingGUITemplate):
-                    self._load_model_headless(**deploy_params)
-                elif isinstance(self.gui, GUI.ServingGUI):
-                    self._load_model(deploy_params)
-                else:
-                    raise RuntimeError(
-                        "Cannot freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
-                    )
-                self._model_frozen = True
-                logger.debug("Model has been successfully frozen.")
-            finally:
-                self._deploy_params["device"] = previous_device
-                clean_up_cuda()
+
+            self._freeze_model()
+            if not self._model_frozen:
+                return {"message": "Failed to freeze model. Check the logs for details."}
             return {"message": "Model is frozen."}
 
         # Local deploy without predict args
