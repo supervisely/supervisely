@@ -3499,42 +3499,31 @@ class Inference:
         def _freeze_model(request: Request):
             if self._model_frozen:
                 return {"message": "Model is already frozen."}
-
-            previous_frozen_state = self._model_frozen
-            self._model_frozen = False
+            
             try:
-                self._check_serve_before_call(lambda: None)
+                self._check_serve_before_call(lambda: None)()
             except RuntimeError as e:
-                self._model_frozen = previous_frozen_state
-                raise e
-
-            if isinstance(self.gui, GUI.ServingGUITemplate):
-                deploy_params = self.get_params_from_gui()
-                if deploy_params.get("device") == "cpu":
-                    return {"message": "Model is already on CPU, cannot freeze."}
-                model_files = self._deploy_params.get("model_files", None)
-                if model_files is None:
-                    model_files = self._download_model_files(deploy_params)
-                deploy_params["model_files"] = model_files
-                previous_device = deploy_params.get("device")
-                deploy_params["device"] = "cpu"
-                self._load_model_headless(**deploy_params)
+                return {"message": str(e), "success": False}
+            
+            deploy_params = self._deploy_params.copy()
+            previous_device = deploy_params.get("device")
+            if previous_device == "cpu":
+                return {"message": "Model is already on CPU, cannot freeze."}
+            deploy_params["device"] = "cpu"
+            try:
+                if isinstance(self.gui, GUI.ServingGUITemplate):
+                    self._load_model_headless(**deploy_params)
+                elif isinstance(self.gui, GUI.ServingGUI):
+                    self._load_model(deploy_params)
+                else:
+                    raise RuntimeError(
+                        "Cannot freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
+                    )
+                self._model_frozen = True
+                logger.debug("Model has been successfully frozen.")
+            finally:
                 self._deploy_params["device"] = previous_device
-            elif isinstance(self.gui, GUI.ServingGUI):
-                deploy_params = self.get_params_from_gui()
-                if deploy_params.get("device") == "cpu":
-                    return {"message": "Model is already on CPU, cannot freeze."}
-                previous_device = deploy_params.get("device")
-                deploy_params["device"] = "cpu"
-                self._load_model(deploy_params)
-                self._deploy_params["device"] = previous_device
-            else:
-                raise RuntimeError(
-                    "Cannot freeze model: GUI is not set or is not of type 'ServingGUITemplate' or 'ServingGUI'."
-                )
-            clean_up_cuda()
-            self._model_frozen = True
-            logger.debug("Model has been successfully frozen.")
+                clean_up_cuda()
             return {"message": "Model is frozen."}
 
         # Local deploy without predict args
