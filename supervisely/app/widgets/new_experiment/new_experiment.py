@@ -32,13 +32,14 @@ class NewExperiment(Widget):
         filter_projects_by_workspace: bool = False,
         project_types: Optional[List[ProjectType]] = None,
         cv_task: Optional[str] = None,
-        classes: Optional[Union[List[str], List[int]]] = None,
+        classes: Optional[List[str]] = None,
         model_id: Optional[str] = None,
         agent_id: Optional[int] = None,
         export: List[Literal["pytorch", "onnx", "tensorrt"]] = [ExportType.PYTORCH],
         run_evaluation: bool = True,
         run_speed_test: bool = False,
         experiment_name: Optional[str] = None,
+        step: Optional[str] = "1",
         train_val_split_mode: Literal["datasets", "collections", "random"] = SplitMode.RANDOM,
         training_datasets: Optional[Union[List[int], List[str]]] = None,
         val_datasets: Optional[Union[List[int], List[str]]] = None,
@@ -78,12 +79,15 @@ class NewExperiment(Widget):
         if classes is not None and all(isinstance(name, str) for name in classes):
             meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
             classes = [obj_cls.sly_id for obj_cls in meta.obj_classes if obj_cls.name in classes]
+        if classes is None:
+            classes = []
         self._classes = classes
         self._agent_id = agent_id
         self._export = export
         self._run_evaluation = run_evaluation
         self._run_speed_test = run_speed_test
         self._experiment_name = experiment_name
+        self._step = step
         self._model_id = model_id
         self._selected_frameworks = selected_frameworks
         self._selected_architectures = selected_architectures
@@ -197,6 +201,15 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
             },
+        }
+
+    def get_json_state(self):
+        return {
+            "visible": False,
+            "appId": None,
+            "modelId": None,
+            "taskId": None,
+            "step": self._step,
             "form": {
                 "cvTask": self._cv_task,
                 "selectedProjectId": self._project_id,
@@ -222,14 +235,6 @@ class NewExperiment(Widget):
             },
         }
 
-    def get_json_state(self):
-        return {
-            "visible": False,
-            "appId": None,
-            "modelId": None,
-            "taskId": None,
-        }
-
     @property
     def visible(self) -> bool:
         return StateJson()[self.widget_id]["visible"]
@@ -239,6 +244,17 @@ class NewExperiment(Widget):
         if not isinstance(value, bool):
             raise ValueError("Visible must be a boolean value.")
         StateJson()[self.widget_id]["visible"] = value
+        StateJson().send_changes()
+
+    @property
+    def step(self) -> Optional[str]:
+        self._step = StateJson()[self.widget_id]["step"]
+        return self._step
+
+    @step.setter
+    def step(self, value: Optional[str]):
+        self._step = value
+        StateJson()[self.widget_id]["step"] = value
         StateJson().send_changes()
 
     @property

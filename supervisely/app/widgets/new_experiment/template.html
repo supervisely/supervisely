@@ -13,8 +13,7 @@
             state.{{{widget.widget_id}}}.taskId = taskId;
             state.{{{widget.widget_id}}}.modelId = modelId;
             post('/{{{widget.widget_id}}}/app_starting_cb');
-        }" {% endif %} :options="data.{{{widget.widget_id}}}.options" :form="data.{{{widget.widget_id}}}.form"
+        }" {% endif %} :options="data.{{{widget.widget_id}}}.options" :initial-form="state.{{{widget.widget_id}}}.form" :step="state.{{{widget.widget_id}}}.step"
         @click.native.stop>
     </sly-new-experiment-wizard>
-
 </div>
