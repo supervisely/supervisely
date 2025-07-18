@@ -28,7 +28,7 @@ class NewExperiment(Widget):
         team_id: Optional[int] = None,
         workspace_id: Optional[int] = None,
         project_id: Optional[int] = None,
-        redirect_to_session: bool = False,
+        redirect_to_session: bool = True,
         filter_projects_by_workspace: bool = False,
         project_types: Optional[List[ProjectType]] = None,
         cv_task: Optional[str] = None,
@@ -157,7 +157,7 @@ class NewExperiment(Widget):
             )
             return [collection.id for collection in collections]
         elif all(isinstance(item, int) for item in collections):
-            return [collections]
+            return collections
         else:
             raise TypeError("collections must be a list of integers or strings.")
 
@@ -177,7 +177,7 @@ class NewExperiment(Widget):
             datasets = self._api.dataset.get_list(parent_id=self._project_id, filters=filters)
             return [dataset.id for dataset in datasets]
         elif all(isinstance(item, int) for item in datasets):
-            return [datasets]
+            return datasets
         else:
             raise TypeError("datasets must be a list of integers or strings.")
 

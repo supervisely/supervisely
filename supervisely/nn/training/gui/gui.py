@@ -789,11 +789,31 @@ class TrainGUI:
         app_state example:
 
             app_state = {
+                # random
                 "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
                 },
+                # datasets
+                # "train_val_split": {
+                #    "method": "datasets",
+                #     "train_datasets": [123, 456],
+                #    "val_datasets": [789, 101]
+                #},
+                # tags
+                # "train_val_split": {
+                #     "method": "tags",
+                #     "train_tag": "train",
+                #     "val_tag": "val",
+                #     "untagged_action": "ignore"
+                # },
+                # collections
+                # "train_val_split": {
+                #    "method": "collections",
+                #    "train_collections": [123, 456],
+                #    "val_collections": [789, 101]
+                # },
                 "classes": ["apple"],
                 # Pretrained model
                 "model": {
@@ -821,6 +841,7 @@ class TrainGUI:
                     },
                 },
                 "experiment_name": "my_experiment",
+                "start_training": False,
             }
         """
         if isinstance(app_state, str):
