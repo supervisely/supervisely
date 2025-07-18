@@ -49,7 +49,7 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     if "annotation" in ann_json:
         ann_json = ann_json["annotation"]
     if not all(key in ann_json for key in SLY_ANN_KEYS):
-        logger.warn(
+        logger.warning(
             f"VideoAnnotation file {ann_path} is not in Supervisely format. "
             "Check the annotation format documentation at: "
             "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
@@ -59,7 +59,7 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
     object_key_to_name = {}
     for object in ann_json[OBJECTS]:
         if not all(key in object for key in SLY_VIDEO_OBJECT_KEYS):
-            logger.warn(
+            logger.warning(
                 f"Object in annotation file is not in Supervisely format: {object}. "
                 "Read more about the Supervisely JSON format of objects in the documentation at: "
                 "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
@@ -69,7 +69,7 @@ def get_meta_from_annotation(ann_path: str, meta: ProjectMeta) -> ProjectMeta:
         object_key_to_name[object[KEY]] = object[LabelJsonFields.OBJ_CLASS_NAME]
     for frame in ann_json[FRAMES]:
         if not all(key in frame for key in SLY_FRAME_KEYS):
-            logger.warn(
+            logger.warning(
                 f"Frame in annotation file is not in Supervisely format: {frame}."
                 "Read more about the Supervisely JSON format of frames in the documentation at: "
                 "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
@@ -103,7 +103,7 @@ def create_classes_from_annotation(
 ) -> ProjectMeta:
     for fig in frame[FIGURES]:
         if not all(key in fig for key in SLY_FIGURE_KEYS):
-            logger.warn(
+            logger.warning(
                 f"Figure in annotation file is not in Supervisely format: {fig}. "
                 "Read more about the Supervisely JSON format of figures in the documentation at: "
                 "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/06_supervisely_format_videos"
@@ -142,7 +142,7 @@ def create_classes_from_annotation(
 
         existing_class = meta.get_obj_class(class_name)
         if obj_class is None:
-            logger.warn(f"Object class {class_name} is not in Supervisely format.")
+            logger.warning(f"Object class {class_name} is not in Supervisely format.")
             continue
         if existing_class is None:
             meta = meta.add_obj_class(obj_class)

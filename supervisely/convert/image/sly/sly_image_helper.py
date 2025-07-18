@@ -33,7 +33,7 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
         ann_json = ann_json.get("annotation", {})
 
     if not all(key in ann_json for key in SLY_IMAGE_ANN_KEYS):
-        logger.warn(
+        logger.warning(
             f"Some keys are missing in the annotation file. "
             "Check the annotation format documentation at: "
             "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/05_supervisely_format_images"
@@ -44,7 +44,7 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
     for object in ann_objects:
         obj_tags = object.get(LabelJsonFields.TAGS, None)
         if obj_tags is None:
-            logger.warn(
+            logger.warning(
                 f"Key '{LabelJsonFields.TAGS}' for object tags is missing in the annotation file. Tags will not be added to the meta."
             )
             obj_tags = []
@@ -52,7 +52,7 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
         meta = create_classes_from_annotation(object, meta)
     img_tags = ann_json.get(AnnotationJsonFields.IMG_TAGS, None)
     if img_tags is None:
-        logger.warn(
+        logger.warning(
             f"Key '{AnnotationJsonFields.IMG_TAGS}' for image tags is missing in the annotation file. Tags will not be added to the meta."
         )
         img_tags = []
@@ -63,7 +63,7 @@ def get_meta_from_annotation(ann_json: dict, meta: ProjectMeta) -> ProjectMeta:
 def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectMeta:
     for tag in tags:
         if not all(key in tag for key in SLY_TAG_KEYS):
-            logger.warn(
+            logger.warning(
                 f"Tag in annotation file is not in Supervisely format. "
                 "Read more about the Supervisely JSON format of tags in the documentation at: "
                 "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/03_supervisely_format_tags"
@@ -87,7 +87,7 @@ def create_tags_from_annotation(tags: List[dict], meta: ProjectMeta) -> ProjectM
 
 def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMeta:
     if not all(key in object for key in SLY_OBJECT_KEYS):
-        logger.warn(
+        logger.warning(
             f"Object in annotation file is not in Supervisely format: {object}. "
             "Read more about the Supervisely JSON format of objects in the documentation at: "
             "https://docs.supervisely.com/customization-and-integration/00_ann_format_navi/04_supervisely_format_objects"
@@ -100,7 +100,7 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
     try:
         geometry_type = GET_GEOMETRY_FROM_STR(geometry_type_str)
     except KeyError:
-        logger.warn(f"Unknown geometry type {geometry_type_str} for class {class_name}")
+        logger.warning(f"Unknown geometry type {geometry_type_str} for class {class_name}")
         return meta
 
     obj_class = None
@@ -117,7 +117,7 @@ def create_classes_from_annotation(object: dict, meta: ProjectMeta) -> ProjectMe
     existing_class = meta.get_obj_class(class_name)
 
     if obj_class is None:
-        logger.warn(
+        logger.warning(
             f"Failed to create object class for {class_name} with geometry type {geometry_type_str}"
         )
         return meta
