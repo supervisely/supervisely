@@ -2335,7 +2335,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if method is not None:
             request_body[ApiField.METHOD] = method
 
-        response = self._api.post("projects.send-ai-search", request_body)
+        response = self._api.post("embeddings.send-ai-search", request_body)
         return response.json().get(ApiField.COLLECTION_ID, None)
 
     def calculate_embeddings(self, id: int) -> None:
@@ -2359,4 +2359,4 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # Calculate embeddings for the project
             api.project.calculate_embeddings(project_id)
         """
-        self._api.post("projects.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
+        self._api.post("embeddings.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
