@@ -547,6 +547,7 @@ class InferenceImageCache:
                     f"Video #{video_id} downloaded to cache in {download_time:.2f} sec",
                     extra={"video_id": video_id, "download_time": download_time},
                 )
+                silent_remove(temp_video_path)
             except Exception as e:
                 self._load_queue.delete(video_id)
                 raise e
@@ -624,14 +625,9 @@ class InferenceImageCache:
                 self.add_frame_to_cache(frame, video_id, frame_index)
         elif task_type is InferenceImageCache._LoadType.Video:
             video_id = image_ids
-            temp_video_path = Path("/tmp/smart_cache").joinpath(
-                f"_{sly.rand_str(6)}_" + files[0].file.name
-            )
-            with open(temp_video_path, "wb") as f:
-                shutil.copyfileobj(files[0].file, f)
             self._wait_if_in_queue(video_id, sly.logger)
             self._load_queue.set(video_id, video_id)
-            self.add_video_to_cache(video_id, str(temp_video_path))
+            self.add_video_to_cache(video_id, files[0].file)
 
     def run_cache_task_manually(
         self,
