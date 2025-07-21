@@ -671,3 +671,19 @@ def supervisely_skip_https_user_helper_check() -> bool:
         default=False,
         raise_not_found=False,
     )
+
+
+def multithread_inference_max_workers() -> int:
+    """Returns maximum number of workers for multithread inference from environment variable using following
+        - SUPERVISELY_MULTITHREAD_INFERENCE_MAX_WORKERS
+
+    :return: maximum number of workers for multithread inference
+    :rtype: int
+    """
+    return _parse_from_env(
+        name="multithread_inference_max_workers",
+        keys=["SUPERVISELY_MULTITHREAD_INFERENCE_MAX_WORKERS"],
+        postprocess_fn=lambda x: int(x),
+        default=4,
+        raise_not_found=False,
+    )
