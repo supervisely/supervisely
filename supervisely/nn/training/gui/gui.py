@@ -6,6 +6,7 @@ training workflows in Supervisely.
 """
 
 import os
+import json
 from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -254,6 +255,7 @@ class TrainGUI:
         self.app_options = app_options
         self.collapsable = self.app_options.get("collapsable", False)
         self.need_convert_shapes = False
+        self._start_training = False
 
         self.team_id = sly_env.team_id(raise_not_found=False)
         self.workspace_id = sly_env.workspace_id(raise_not_found=False)
@@ -845,8 +847,11 @@ class TrainGUI:
             }
         """
         if isinstance(app_state, str):
-            app_state = sly_json.load_json_file(app_state)
-            
+            if os.path.exists(app_state):
+                app_state = sly_json.load_json_file(app_state)
+            else:
+                app_state = json.loads(app_state)
+
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
         
@@ -880,6 +885,8 @@ class TrainGUI:
                 logger.info(f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully")
         if validate_steps:
             logger.info(f"All steps have been validated successfully")
+
+        self._start_training = app_state.get("start_training", False)
         # ------------------------------------------------------------------ #
 
     def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True, validate: bool = True) -> bool:
@@ -968,8 +975,16 @@ class TrainGUI:
         if convert_class_shapes:
             self.classes_selector.convert_class_shapes_checkbox.check()
 
+        classes = []
+        if all(isinstance(c, int) for c in classes_settings):
+            classes = [c.name for c in self.project_meta.obj_classes if c.sly_id in classes_settings]
+        elif all(isinstance(c, str) for c in classes_settings):
+            classes = [c.name for c in self.project_meta.obj_classes if c.name in classes_settings]
+        else:
+            raise ValueError("Classes must be a list of integers (sly_ids) or strings (names)")
+
         # Set Classes
-        self.classes_selector.set_classes(classes_settings)
+        self.classes_selector.set_classes(classes)
         is_valid = True
         if validate:
             is_valid = self.classes_selector.validate_step()

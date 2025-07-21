@@ -9,9 +9,9 @@ import shutil
 import subprocess
 import time
 from datetime import datetime
-from os import getcwd, listdir, walk
+from os import getcwd, listdir, walk, getenv
 from os.path import basename, dirname, exists, expanduser, isdir, isfile, join
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 from urllib.request import urlopen
 
 import httpx
@@ -45,7 +45,7 @@ from supervisely import (
 from supervisely._utils import abs_url, get_filename_from_headers
 from supervisely.api.file_api import FileInfo
 from supervisely.app import get_synced_data_dir, show_dialog
-from supervisely.app.widgets import Progress
+from supervisely.app.widgets import Button, Progress
 from supervisely.decorators.profile import timeit_with_result
 from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
@@ -100,6 +100,7 @@ class TrainApp:
         hyperparameters: str,
         app_options: Optional[Union[str, Dict[str, Any]]] = None,
         work_dir: Optional[str] = None,
+        inference_class: Optional[Type[Inference]] = None,
     ):
 
         # Init
@@ -196,6 +197,10 @@ class TrainApp:
             self._convert_tensorrt_func = None
 
         # Benchmark parameters
+        if inference_class is not None:
+            self.register_inference_class(inference_class)
+
+        self._benchmark_params = {}
         if self.is_model_benchmark_enabled:
             self._benchmark_params = {
                 "model_files": {},
@@ -246,6 +251,14 @@ class TrainApp:
         #             pass
         #     return {"status": status}
 
+        gui_state_raw = getenv("guiState")
+        if gui_state_raw is not None:
+            try:
+                self.gui.load_from_app_state(gui_state_raw)
+                logger.info("Successfully loaded GUI from state")
+            except Exception as e:
+                raise e
+
     def _register_routes(self):
         """
         Registers API routes for TensorBoard and training endpoints.
@@ -285,6 +298,20 @@ class TrainApp:
     # Properties
     # General
     # ----------------------------------------- #
+
+    @property
+    def quick_training(self) -> bool:
+        """
+        If True, the training will start automatically after the GUI is loaded and train server is started.
+        """
+        return self.gui._start_training
+    
+    @property
+    def start_button(self) -> Button:
+        """
+        Returns the start button widget.
+        """
+        return self.gui.training_process.start_button
 
     # Input Data
     @property
@@ -2718,6 +2745,12 @@ class TrainApp:
         train_logger.add_on_step_finished_callback(step_callback)
 
     # ----------------------------------------- #
+    def start_in_thread(self):
+        def auto_train():
+            import threading
+            threading.Thread(target=self._wrapped_start_training, daemon=True).start()
+        self._server.add_event_handler("startup", auto_train)
+
     def _wrapped_start_training(self):
         """
         Wrapper function to wrap the training process.
