@@ -220,63 +220,64 @@ class BBoxTracking(BaseTracking):
                 "request_uuid": inference_request.uuid,
             },
         )
-        for box_i, input_geom in enumerate(input_bboxes, 1):
-            input_bbox = input_geom["data"]
-            bbox = Rectangle.from_json(input_bbox)
-            predictions_for_object = []
-            init = False
-            frame_t = time.monotonic()
-            for frame_i, _ in enumerate(video_interface.frames_loader_generator(), 1):
-                imgs = video_interface.frames
-                target = PredictionBBox(
-                    "",  # TODO: can this be useful?
-                    [bbox.top, bbox.left, bbox.bottom, bbox.right],
-                    None,
-                )
+        with self._gpu_mem_manager():
+            for box_i, input_geom in enumerate(input_bboxes, 1):
+                input_bbox = input_geom["data"]
+                bbox = Rectangle.from_json(input_bbox)
+                predictions_for_object = []
+                init = False
+                frame_t = time.monotonic()
+                for frame_i, _ in enumerate(video_interface.frames_loader_generator(), 1):
+                    imgs = video_interface.frames
+                    target = PredictionBBox(
+                        "",  # TODO: can this be useful?
+                        [bbox.top, bbox.left, bbox.bottom, bbox.right],
+                        None,
+                    )
 
-                if not init:
-                    self.initialize(imgs[0], target)
-                    init = True
+                    if not init:
+                        self.initialize(imgs[0], target)
+                        init = True
 
-                geometry = self.predict(
-                    rgb_image=imgs[-1],
-                    prev_rgb_image=imgs[0],
-                    target_bbox=target,
-                    settings=self.custom_inference_settings_dict,
-                )
-                sly_geometry = self._to_sly_geometry(geometry)
+                    geometry = self.predict(
+                        rgb_image=imgs[-1],
+                        prev_rgb_image=imgs[0],
+                        target_bbox=target,
+                        settings=self.custom_inference_settings_dict,
+                    )
+                    sly_geometry = self._to_sly_geometry(geometry)
 
-                predictions_for_object.append(
-                    {"type": sly_geometry.geometry_name(), "data": sly_geometry.to_json()}
-                )
-                inference_request.done()
-                api.logger.debug(
-                    "Frame processed. Geometry: [%d / %d]. Frame: [%d / %d]",
+                    predictions_for_object.append(
+                        {"type": sly_geometry.geometry_name(), "data": sly_geometry.to_json()}
+                    )
+                    inference_request.done()
+                    api.logger.debug(
+                        "Frame processed. Geometry: [%d / %d]. Frame: [%d / %d]",
+                        box_i,
+                        box_n,
+                        frame_i,
+                        frames_n,
+                        extra={
+                            "geometry_index": box_i,
+                            "frame_index": frame_i,
+                            "processing_time": time.monotonic() - frame_t,
+                            "inference_request_uuid": inference_request.uuid,
+                        },
+                    )
+                    frame_t = time.monotonic()
+
+                predictions.append(predictions_for_object)
+                api.logger.info(
+                    "Geometry processed. Progress: [%d / %d]",
                     box_i,
                     box_n,
-                    frame_i,
-                    frames_n,
                     extra={
                         "geometry_index": box_i,
-                        "frame_index": frame_i,
-                        "processing_time": time.monotonic() - frame_t,
+                        "processing_time": time.monotonic() - geom_t,
                         "inference_request_uuid": inference_request.uuid,
                     },
                 )
-                frame_t = time.monotonic()
-
-            predictions.append(predictions_for_object)
-            api.logger.info(
-                "Geometry processed. Progress: [%d / %d]",
-                box_i,
-                box_n,
-                extra={
-                    "geometry_index": box_i,
-                    "processing_time": time.monotonic() - geom_t,
-                    "inference_request_uuid": inference_request.uuid,
-                },
-            )
-            geom_t = time.monotonic()
+                geom_t = time.monotonic()
 
         # predictions must be NxK bboxes: N=number of frames, K=number of objects
         predictions = list(map(list, zip(*predictions)))

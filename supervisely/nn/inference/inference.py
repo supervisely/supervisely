@@ -140,6 +140,7 @@ class GpuMemContextManager:
             import torch
 
             self.stream = self.stream_queue.get()
+            logger.debug(f"Using CUDA stream: {self.stream}")
             self.cuda_context = torch.cuda.stream(self.stream)
             return self.cuda_context.__enter__()
 
@@ -147,6 +148,7 @@ class GpuMemContextManager:
             import torch
 
             try:
+                logger.debug(f"Exiting CUDA stream: {self.stream}")
                 result = self.cuda_context.__exit__(exc_type, exc_val, exc_tb)
                 self.stream.synchronize()
                 torch.cuda.empty_cache()
