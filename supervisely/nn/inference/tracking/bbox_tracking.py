@@ -96,70 +96,73 @@ class BBoxTracking(BaseTracking):
         api.logger.info("Start tracking.")
         total_progress = video_interface.frames_count * len(video_interface.figure_ids)
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, total_progress)
-        with Uploader(
-            upload_f=_upload_f,
-            notify_f=_notify_f,
-            exception_handler=_exception_handler,
-            logger=api.logger,
-        ) as uploader:
-            for fig_id, obj_id in zip(
-                video_interface.geometries.keys(),
-                video_interface.object_ids,
-            ):
-                init = False
-                for _ in video_interface.frames_loader_generator():
-                    geom = video_interface.geometries[fig_id]
-                    if not isinstance(geom, Rectangle):
-                        raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
+        with self._gpu_mem_manager():
+            with Uploader(
+                upload_f=_upload_f,
+                notify_f=_notify_f,
+                exception_handler=_exception_handler,
+                logger=api.logger,
+            ) as uploader:
+                for fig_id, obj_id in zip(
+                    video_interface.geometries.keys(),
+                    video_interface.object_ids,
+                ):
+                    init = False
+                    for _ in video_interface.frames_loader_generator():
+                        geom = video_interface.geometries[fig_id]
+                        if not isinstance(geom, Rectangle):
+                            raise TypeError(f"Tracking does not work with {geom.geometry_name()}.")
 
-                    imgs = video_interface.frames
-                    target = PredictionBBox(
-                        "",  # TODO: can this be useful?
-                        [geom.top, geom.left, geom.bottom, geom.right],
-                        None,
-                    )
-
-                    if not init:
-                        self.initialize(imgs[0], target)
-                        init = True
-
-                    geometry = self.predict(
-                        rgb_image=imgs[-1],
-                        prev_rgb_image=imgs[0],
-                        target_bbox=target,
-                        settings=self.custom_inference_settings_dict,
-                    )
-                    sly_geometry = self._to_sly_geometry(geometry)
-
-                    uploader.put([(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])])
-
-                    if inference_request.is_stopped() or video_interface.global_stop_indicatior:
-                        api.logger.info(
-                            "Inference request stopped.",
-                            extra={"inference_request_uuid": inference_request.uuid},
+                        imgs = video_interface.frames
+                        target = PredictionBBox(
+                            "",  # TODO: can this be useful?
+                            [geom.top, geom.left, geom.bottom, geom.right],
+                            None,
                         )
-                        video_interface._notify(True, task="Stop tracking")
-                        return
-                    if uploader.has_exception():
-                        exception = uploader.exception
-                        if not isinstance(exception, Exception):
-                            raise RuntimeError(
-                                f"Uploader exception is not an instance of Exception: {str(exception)}"
-                            )
-                        raise uploader.exception
 
+                        if not init:
+                            self.initialize(imgs[0], target)
+                            init = True
+
+                        geometry = self.predict(
+                            rgb_image=imgs[-1],
+                            prev_rgb_image=imgs[0],
+                            target_bbox=target,
+                            settings=self.custom_inference_settings_dict,
+                        )
+                        sly_geometry = self._to_sly_geometry(geometry)
+
+                        uploader.put(
+                            [(sly_geometry, obj_id, video_interface._cur_frames_indexes[-1])]
+                        )
+
+                        if inference_request.is_stopped() or video_interface.global_stop_indicatior:
+                            api.logger.info(
+                                "Inference request stopped.",
+                                extra={"inference_request_uuid": inference_request.uuid},
+                            )
+                            video_interface._notify(True, task="Stop tracking")
+                            return
+                        if uploader.has_exception():
+                            exception = uploader.exception
+                            if not isinstance(exception, Exception):
+                                raise RuntimeError(
+                                    f"Uploader exception is not an instance of Exception: {str(exception)}"
+                                )
+                            raise uploader.exception
+
+                    api.logger.info(
+                        f"Figure #{fig_id} tracked.",
+                        extra={
+                            "figure_id": fig_id,
+                            "object_id": obj_id,
+                            "inference_request_uuid": inference_request.uuid,
+                        },
+                    )
                 api.logger.info(
-                    f"Figure #{fig_id} tracked.",
-                    extra={
-                        "figure_id": fig_id,
-                        "object_id": obj_id,
-                        "inference_request_uuid": inference_request.uuid,
-                    },
+                    "Finished tracking.", extra={"inference_request_uuid": inference_request.uuid}
                 )
-            api.logger.info(
-                "Finished tracking.", extra={"inference_request_uuid": inference_request.uuid}
-            )
-            video_interface._notify(True, task="Finished tracking")
+                video_interface._notify(True, task="Finished tracking")
 
     def _track_api(self, api: Api, context: dict, inference_request: InferenceRequest):
         track_t = time.monotonic()
