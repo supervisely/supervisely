@@ -857,7 +857,7 @@ class TrainGUI:
         
         # Set experiment name
         experiment_name = app_state.get("experiment_name")
-        if experiment_name is not None:
+        if experiment_name is not None and experiment_name != "":
             self.training_process.set_experiment_name(experiment_name)
 
         # Run init-steps and stop on validation failure

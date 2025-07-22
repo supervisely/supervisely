@@ -200,6 +200,9 @@ class NewExperiment(Widget):
                 "architectureSelectionDisabled": self._architecture_selection_disabled,
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
+                "allowEmptyExperimentName": True,
+                "version": "solutions-train-test",
+                "isBranch": True,
             },
         }
 
