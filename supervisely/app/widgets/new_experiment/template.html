@@ -4,12 +4,12 @@
         widget._visible_handled==true %}
         @update:visible="state.{{{widget.widget_id}}}.visible = $event; post('/{{{widget.widget_id}}}/visible_changed_cb')"
         {% else %} @update:visible="state.{{{widget.widget_id}}}.visible = $event" {% endif %} {% if
-        widget._app_starting_handled==true %} @app-starting="({ appId, taskId, modelId }) => {
+        widget._app_started_handled==true %} @app-started="({ appId, taskId, modelId }) => {
             state.{{{widget.widget_id}}}.appId = appId;
             state.{{{widget.widget_id}}}.taskId = taskId;
             state.{{{widget.widget_id}}}.modelId = modelId;
-            post('/{{{widget.widget_id}}}/app_starting_cb');
-        }" {% else %} @app-starting="({ appId, taskId, modelId }) => {
+            post('/{{{widget.widget_id}}}/app_started_cb');
+        }" {% else %} @app-started="({ appId, taskId, modelId }) => {
             state.{{{widget.widget_id}}}.appId = appId;
             state.{{{widget.widget_id}}}.taskId = taskId;
             state.{{{widget.widget_id}}}.modelId = modelId;

@@ -21,7 +21,7 @@ class NewExperiment(Widget):
 
     class Routes:
         VISIBLE_CHANGED = "visible_changed_cb"
-        APP_STARTING = "app_starting_cb"
+        APP_STARTED = "app_started_cb"
 
     def __init__(
         self,
@@ -112,7 +112,7 @@ class NewExperiment(Widget):
         self._architecture_selection_disabled = architecture_selection_disabled
 
         self._visible_handled = False
-        self._app_starting_handled = False
+        self._app_started_handled = False
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -508,13 +508,13 @@ class NewExperiment(Widget):
     def model_id(self) -> Optional[int]:
         return StateJson()[self.widget_id].get("modelId", None)
 
-    def app_starting(self, func):
-        route_path = self.get_route_path(NewExperiment.Routes.APP_STARTING)
+    def app_started(self, func):
+        route_path = self.get_route_path(NewExperiment.Routes.APP_STARTED)
         server = self._sly_app.get_server()
-        self._app_starting_handled = True
+        self._app_started_handled = True
 
         @server.post(route_path)
-        def _app_starting():
+        def _app_started():
             func(self.app_id, self.model_id, self.task_id)
 
-        return _app_starting
+        return _app_started
