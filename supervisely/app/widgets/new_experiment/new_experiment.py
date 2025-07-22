@@ -28,7 +28,7 @@ class NewExperiment(Widget):
         team_id: Optional[int] = None,
         workspace_id: Optional[int] = None,
         project_id: Optional[int] = None,
-        redirect_to_session: bool = True,
+        redirect_to_session: bool = False,
         filter_projects_by_workspace: bool = False,
         project_types: Optional[List[ProjectType]] = None,
         cv_task: Optional[str] = None,
@@ -201,6 +201,7 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
                 "allowEmptyExperimentName": True,
+                # @TODO: remove this before the branch is merged
                 "version": "solutions-train-test",
                 "isBranch": True,
             },
