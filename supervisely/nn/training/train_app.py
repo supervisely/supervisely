@@ -251,13 +251,19 @@ class TrainApp:
         #             pass
         #     return {"status": status}
 
-        gui_state_raw = getenv("guiState")
+        logger.info("Loading GUI from state")
+        state = self.gui._extract_state_from_env()
+        logger.info(f"State: {state}")
+        gui_state_raw = state.get("guiState")
+        logger.info(f"GUI State: {gui_state_raw}")
         if gui_state_raw is not None:
             try:
                 self.gui.load_from_app_state(gui_state_raw)
                 logger.info("Successfully loaded GUI from state")
             except Exception as e:
                 raise e
+        else:
+            logger.info("No GUI state found")
 
     def _register_routes(self):
         """
