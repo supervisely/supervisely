@@ -140,7 +140,7 @@ class GpuMemContextManager:
             import torch
 
             self.stream = self.stream_queue.get()
-            logger.debug(f"Using CUDA stream: {self.stream}")
+            logger.debug(f"Using CUDA stream: {self.stream}, id: {id(self.stream)}")
             self.cuda_context = torch.cuda.stream(self.stream)
             return self.cuda_context.__enter__()
 
@@ -148,7 +148,7 @@ class GpuMemContextManager:
             import torch
 
             try:
-                logger.debug(f"Exiting CUDA stream: {self.stream}")
+                logger.debug(f"Exiting CUDA stream: {self.stream}, id: {id(self.stream)}")
                 result = self.cuda_context.__exit__(exc_type, exc_val, exc_tb)
                 self.stream.synchronize()
                 torch.cuda.empty_cache()
@@ -414,18 +414,6 @@ class Inference:
             recursive,
             **kwargs,
         )
-
-    def _get_stream(self):
-        if self._streams_queue is None:
-            return None
-        return self._streams_queue.get()
-
-    def _release_stream(self, stream):
-        if stream is None:
-            return
-        if self._streams_queue is None:
-            return
-        self._streams_queue.put(stream)
 
     def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
         """Deploy model immediately from constructor arguments."""
