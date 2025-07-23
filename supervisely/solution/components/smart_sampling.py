@@ -793,6 +793,9 @@ class SmartSampling(SolutionElement):
         self.card = self._create_card()
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 
+        self.on_start_callbacks = []
+        self.on_finish_callbacks = []
+
         self.modals = [self.tasks_modal, self.main_modal, self.automation_modal]
         self.update_sampling_widgets()
 
@@ -804,6 +807,10 @@ class SmartSampling(SolutionElement):
         @self.automation_btn.click
         def on_automation_btn_click():
             self.apply_automation()
+
+        @self.run_btn.click
+        def on_run_btn_click():
+            self.run()
 
         super().__init__(*args, **kwargs)
 
@@ -845,9 +852,17 @@ class SmartSampling(SolutionElement):
     def automation_btn(self) -> Button:
         """Get the apply annotations button"""
         return self.automation.apply_btn
-    
+
     def run(self):
-        self.main_widget.run()
+        for callback in self.on_start_callbacks:
+            callback()
+        res = self.main_widget.run()
+        for callback in self.on_finish_callbacks:
+            if callable(callback):
+                if callback.__code__.co_argcount == 0:
+                    callback()
+                else:
+                    callback(res)
 
     def apply_automation(self):
         enabled, _, _, sec = self.automation.get_automation_details()
@@ -1013,3 +1028,21 @@ class SmartSampling(SolutionElement):
             self.card.update_property("Prompt", prompt)
             self.card.update_property("Limit", str(limit))
             self.card.update_property("Threshold", f"{threshold:.2f}")
+
+    def on_start(self, func: Callable):
+        """
+        Decorator to register a callback function to be called when the sampling starts.
+        :param func: Callable, function to be called on start
+        :return: Callable, the same function
+        """
+        self.on_start_callbacks.append(func)
+        return func
+
+    def on_finish(self, func: Callable):
+        """
+        Decorator to register a callback function to be called when the sampling finishes.
+        :param func: Callable, function to be called on finish
+        :return: Callable, the same function
+        """
+        self.on_finish_callbacks.append(func)
+        return func

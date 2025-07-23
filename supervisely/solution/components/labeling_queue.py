@@ -343,7 +343,7 @@ class LabelingQueue(SolutionElement):
         return pending, annotating, reviewing, finished, rejected
 
     def get_labeled_images_count(self) -> int:
-        _, _, _, _, finished = self.get_labeling_stats()
+        _, _, _, finished, _ = self.get_labeling_stats()
         return finished
 
     def refresh_info(self):
@@ -365,12 +365,13 @@ class LabelingQueue(SolutionElement):
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
 
-    def set_callback(self, func: Callable[[], None]) -> None:
+    def on_refresh(self, func: Callable[[], None]) -> None:
         """
         Set a callback function to be called after refreshing the labeling queue info.
         :param callback: Function to call after refreshing.
         """
         self._callbacks.append(func)
+        return func
 
     def get_new_accepted_images(self) -> List[int]:
         """Get all labeled images from labeling queue with status accepted"""
