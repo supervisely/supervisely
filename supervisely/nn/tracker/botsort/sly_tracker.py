@@ -11,8 +11,8 @@ from supervisely.nn.tracker.tracker import BaseDetection as Detection
 from supervisely.nn.tracker.tracker import BaseTrack, BaseTracker
 from supervisely.sly_logger import logger
 
-from . import matching
-from botsort.tracker.mc_bot_sort import (
+from .tracker import matching
+from .tracker.mc_bot_sort import (
     BoTSORT,
     STrack,
     TrackState,
