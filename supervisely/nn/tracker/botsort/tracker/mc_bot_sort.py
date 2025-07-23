@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
 
+import sys
+sys.path.append("../botsort")
 from tracker import matching
 from tracker.gmc import GMC
 from tracker.basetrack import BaseTrack, TrackState
