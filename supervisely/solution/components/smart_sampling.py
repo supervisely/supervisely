@@ -856,7 +856,6 @@ class SmartSampling(SolutionElement):
 
     # UI CREATION METHODS
     def _create_main_modal(self) -> Widget:
-
         return Dialog(title="Sampling Settings", content=self.main_widget.content, size="tiny")
 
     def _create_tasks_table(self) -> FastTable:

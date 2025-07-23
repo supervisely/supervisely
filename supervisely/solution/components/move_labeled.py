@@ -239,13 +239,6 @@ class MoveLabeled(SolutionElement):
 
         return btn
 
-    def apply_automation(self, func: Callable[[], None], *args) -> None:
-        """
-        Apply the automation function to the MoveLabeled node.
-        """
-        self.automation.apply(func, *args)
-        self.update_automation_details()
-
     def _create_automation_modal(self):
         # self.automation.apply_btn.click(self.update_automation_details())
         return Dialog(
@@ -286,6 +279,9 @@ class MoveLabeled(SolutionElement):
             self.card.remove_property_by_key("Min batch size")
 
     def apply_automation(self, func: Callable[[], None], *args) -> None:
+        """
+        Apply the automation function to the MoveLabeled node.
+        """
         self.automation.apply(func, *args)
         self.update_automation_details()
 

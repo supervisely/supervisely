@@ -518,3 +518,25 @@ class NewExperiment(Widget):
             func(self.app_id, self.model_id, self.task_id)
 
         return _app_started
+
+    def get_train_settings(self):
+        train_settings = {
+                "cvTask": self.cv_task,
+                "projectId": self.project_id,
+                "classes": self.classes,
+                "trainValSplit": {
+                    "mode": self.train_val_split_mode,
+                    "randomTrainPercentage": self.random_train_percentage,
+                    "trainDatasets": self.training_datasets,
+                    "valDatasets": self.val_datasets,
+                    "trainCollections": self.train_collections,
+                    "valCollections": self.val_collections,
+                },
+                "modelId": self.model_id,
+                "agentId": self.agent_id,
+                "export": self.export,
+                "runEvaluation": self.run_evaluation,
+                "runSpeedTest": self.run_speed_test,
+                "experimentName": self.experiment_name,
+            }
+        return train_settings
