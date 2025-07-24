@@ -34,7 +34,6 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely.nn.experiments import ExperimentInfo
 from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
@@ -69,13 +68,14 @@ from supervisely.decorators.inference import (
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
 from supervisely.nn.inference.uploader import Uploader
-from supervisely.nn.model.model_api import Prediction
+from supervisely.nn.model.model_api import ModelAPI, Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
@@ -93,7 +93,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
-from supervisely.nn.model.model_api import ModelAPI
 
 try:
     from typing import Literal
@@ -182,6 +181,8 @@ class Inference:
         self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
+        self._model_frozen = False
+        self._inactivity_timeout = 3600  # 1 hour
         self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
@@ -306,6 +307,9 @@ class Inference:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
+        self.predict_batch = self._check_serve_before_call(self.predict_batch)
+        self.predict_batch_raw = self._check_serve_before_call(self.predict_batch_raw)
+        self.predict_benchmark = self._check_serve_before_call(self.predict_benchmark)
         self.get_info = self._check_serve_before_call(self.get_info)
 
         self.cache = InferenceImageCache(
@@ -378,7 +382,7 @@ class Inference:
                     if m_name and m_name.lower() == model.lower():
                         return m
             return None
-        
+
         runtime = get_runtime(runtime)
         logger.debug(f"Runtime: {runtime}")
 
@@ -863,7 +867,7 @@ class Inference:
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-        
+
         # Sort files to download 'checkpoint' first
         files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
         for file in files_order:
@@ -904,12 +908,12 @@ class Inference:
                     logger.debug("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
-            
+
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
-    
+
     def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
         def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
             exp_path = os.path.join(artifacts_dir, "experiment_info.json")
@@ -1228,6 +1232,7 @@ class Inference:
 
     def shutdown_model(self):
         self._model_served = False
+        self._model_frozen = False
         self.device = None
         self.runtime = None
         self.model_precision = None
@@ -2432,9 +2437,7 @@ class Inference:
     def _check_serve_before_call(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if self._model_served is True:
-                return func(*args, **kwargs)
-            else:
+            if self._model_served is False:
                 msg = (
                     "The model has not yet been deployed. "
                     "Please select the appropriate model in the UI and press the 'Serve' button. "
@@ -2442,8 +2445,81 @@ class Inference:
                 )
                 # raise DialogWindowError(title="Call undeployed model.", description=msg)
                 raise RuntimeError(msg)
+            elif self._model_frozen is True:
+                self._unfreeze_model()
+
+            result = func(*args, **kwargs)
+
+            if hasattr(self, "_freeze_timer"):
+                self._freeze_timer.cancel()
+
+            timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+            timer.daemon = True
+            timer.start()
+            self._freeze_timer = timer
+
+            return result
 
         return wrapper
+
+    def _freeze_model(self):
+        if self._model_frozen:
+            logger.debug("Model is already frozen, no need to freeze again.")
+            return
+
+        try:
+            self._check_serve_before_call(lambda: None)()
+        except RuntimeError as e:
+            logger.warning(f"Cannot freeze model: {e}", exc_info=True)
+            return
+
+        logger.debug("Freezing model...")
+        deploy_params = self._deploy_params.copy()
+        previous_device = deploy_params.get("device")
+        if previous_device == "cpu":
+            logger.debug("Model is already running on CPU, cannot freeze.")
+            return
+        deploy_params["device"] = "cpu"
+        try:
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                self._load_model_headless(**deploy_params)
+            elif isinstance(self.gui, GUI.ServingGUI):
+                self._load_model(deploy_params)
+            else:
+                try:
+                    # @TODO
+                    if "model_files" in deploy_params: # v2 serving
+                        self._load_model_headless(**deploy_params)
+                    else: # v1 serving
+                        self._load_model(deploy_params)
+                except Exception as e:
+                    logger.warning(f"Failed to freeze model: {e}", exc_info=True)
+                    return
+            self._model_frozen = True
+            logger.debug("Model has been successfully frozen.")
+        finally:
+            self._deploy_params["device"] = previous_device
+            clean_up_cuda()
+
+    def _unfreeze_model(self):
+        logger.debug("Unfreezing model...")
+        self._model_frozen = False
+        if isinstance(self.gui, GUI.ServingGUITemplate):
+            self._load_model_headless(**self._deploy_params)
+        elif isinstance(self.gui, GUI.ServingGUI):
+            self._load_model(self._deploy_params)
+        else:
+            try:
+                # @TODO
+                if "model_files" in self._deploy_params: # v2 serving
+                    self._load_model_headless(**self._deploy_params)
+                else: # v1 serving
+                    self._load_model(self._deploy_params)
+            except Exception as e:
+                logger.warning(f"Failed to freeze model: {e}", exc_info=True)
+                return
+        clean_up_cuda()
+        logger.debug("Model is unfrozen and ready for inference.")
 
     def _set_served_callback(self):
         self._model_served = True
@@ -3478,6 +3554,16 @@ class Inference:
                     "total": ram_total,
                 },
             }
+
+        @server.post("/freeze_model")
+        def _freeze_model(request: Request):
+            if self._model_frozen:
+                return {"message": "Model is already frozen."}
+
+            self._freeze_model()
+            if not self._model_frozen:
+                return {"message": "Failed to freeze model. Check the logs for details."}
+            return {"message": "Model is frozen."}
 
         # Local deploy without predict args
         if self._is_cli_deploy:
