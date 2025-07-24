@@ -723,6 +723,7 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         use_public_api: Optional[bool] = True,
+        data: Optional[Dict] = None,
     ) -> requests.Response:
         """
         Performs GET request to server with given parameters.
@@ -756,7 +757,9 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                response = requests.get(
+                    url, params=json_body, data=data, headers=self.headers, stream=stream
+                )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
