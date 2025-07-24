@@ -628,6 +628,7 @@ class TrainApp:
         # Step 5. Remove classes except selected
         if self.sly_project.type == ProjectType.IMAGES.value:
             self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
+            self._read_project()
         # Step 6. Download Model files
         self._download_model()
 
