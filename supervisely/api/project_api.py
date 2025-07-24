@@ -100,6 +100,8 @@ class ProjectInfo(NamedTuple):
     embeddings_enabled: Optional[bool] = None
     embeddings_updated_at: Optional[str] = None
     embeddings_in_progress: Optional[bool] = None
+    local_entities_count: Optional[int] = None
+    remote_entities_count: Optional[int] = None
 
     @property
     def image_preview_url(self):
@@ -177,6 +179,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         team_id=2,
                         import_settings={}
                         version={'id': 260, 'version': 3}
+                        created_by_id=7,
+                        embeddings_enabled=False,
+                        embeddings_updated_at=None,
+                        embeddings_in_progress=False,
+                        local_entities_count=10,
+                        remote_entities_count=0
                         )
         """
         return [
@@ -203,6 +211,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.EMBEDDINGS_ENABLED,
             ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.EMBEDDINGS_IN_PROGRESS,
+            ApiField.LOCAL_ENTITIES_COUNT,
+            ApiField.REMOTE_ENTITIES_COUNT,
         ]
 
     @staticmethod
@@ -337,6 +347,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         id: int,
         expected_type: Optional[str] = None,
         raise_error: bool = False,
+        extra_fields: Optional[List[str]] = None
     ) -> ProjectInfo:
         """
         Get Project information by ID.
@@ -347,6 +358,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type expected_type: ProjectType, optional
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
+        :param extra_fields: List of extra fields to include in the response.
+        :type extra_fields: list[str], optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
@@ -384,7 +397,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 
         """
-        info = self._get_info_by_id(id, "projects.info")
+        fields = None
+        if extra_fields is not None:
+            fields = {ApiField.EXTRA_FIELDS: extra_fields}
+        info = self._get_info_by_id(id, "projects.info", fields=fields)
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
@@ -445,7 +461,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         fields = [
             x
             for x in self.info_sequence()
-            if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS, ApiField.CREATED_BY_ID)
+            if x
+            not in (
+                ApiField.ITEMS_COUNT,
+                ApiField.SETTINGS,
+                ApiField.CREATED_BY_ID,
+                ApiField.LOCAL_ENTITIES_COUNT,
+                ApiField.REMOTE_ENTITIES_COUNT,
+            )
         ]
 
         info = super().get_info_by_name(parent_id, name, fields)
@@ -1231,7 +1254,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             incorrect_entities = api.project.validate_entities_schema(project_id)
 
             for entity in incorrect_entities:
-                print(entity.id, entity.name) # Output: 123456, 'image.jpg'
+                print(entity["entity_id"], entity["entity_name"]) # Output: 123456, 'image.jpg'
         """
         validation_schema = self.get_validation_schema(id)
         if not validation_schema:
