@@ -347,7 +347,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         id: int,
         expected_type: Optional[str] = None,
         raise_error: bool = False,
-        extra_fields: Optional[list[str]] = None
+        extra_fields: Optional[List[str]] = None
     ) -> ProjectInfo:
         """
         Get Project information by ID.
