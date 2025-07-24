@@ -9,7 +9,10 @@ def get_interval_period(sec: int) -> Tuple[str, int]:
     """
     if sec is None:
         return None, None
-    if sec // 60 < 60:
+    if sec < 60:
+        period = "s"
+        interval = sec
+    elif sec // 60 < 60:
         period = "min"
         interval = sec // 60
     elif sec // 3600 < 24:

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Callable, List, Optional
 from venv import logger
 
 from supervisely.api.api import Api
@@ -18,7 +18,7 @@ class CloudImport(Widget):
     and manage import tasks.
     """
 
-    APP_SLUG = "supervisely-ecosystem/cloud-storage-data-synchronizer"
+    APP_SLUG = "e9b5a1d81aa98072cd77b402fdc122d7/cloud-storage-data-synchronizer"
     JOB_ID = "cloud_import_job"
 
     def __init__(
@@ -36,6 +36,8 @@ class CloudImport(Widget):
         self.project = self.api.project.get_info_by_id(project_id)
         self.one_at_a_time = one_at_a_time
         self.workspace_id = self.project.workspace_id
+        self.on_start_callbacks = []
+        self.on_finish_callbacks = []
         self._init_tasks_history()
         self._create_gui()
 
@@ -117,6 +119,8 @@ class CloudImport(Widget):
         :return: Task ID of the import task
         :rtype: int
         """
+        for callback in self.on_start_callbacks:
+            callback()
         logger.info(f"Starting import from cloud storage: {path}")
 
         # Get the module ID for importing from cloud
@@ -139,6 +143,14 @@ class CloudImport(Widget):
         logger.info(f"Cloud import started on agent {agent_id} (task_id: {session.task_id})")
         task_info = self.api.task.get_info_by_id(session.task_id)
         self.tasks_history.add_task(task_info)
+
+        for callback in self.on_finish_callbacks:
+            # if the callback expects arguments, pass the task_id
+            if callable(callback):
+                if callback.__code__.co_argcount == 0:
+                    callback()
+                else:
+                    callback(session.task_id)
 
         return session.task_id
 
@@ -176,3 +188,19 @@ class CloudImport(Widget):
 
     def to_html(self) -> str:
         return self.content.to_html()
+
+    def on_finish(self, func: Callable[[], None]) -> None:
+        """
+        Set a callback function to be called after the import task is finished.
+        :param func: Function to call after the import task is finished.
+        """
+        self.on_finish_callbacks.append(func)
+        return func
+
+    def on_start(self, func: Callable[[], None]) -> None:
+        """
+        Set a callback function to be called before the import task starts.
+        :param func: Function to call before the import task starts.
+        """
+        self.on_start_callbacks.append(func)
+        return func

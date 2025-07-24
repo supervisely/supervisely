@@ -309,7 +309,7 @@ class MoveLabeled(SolutionElement):
         for collection in collections:
             if collection.name == main_collection_name:
                 main_collection = collection
-            elif collection.name.startswith(batch_collection_name):
+            elif collection.name.startswith(f"{split_name}_"):
                 last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
 
         if main_collection is None:

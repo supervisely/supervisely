@@ -298,3 +298,17 @@ class CloudImport(SolutionElement):
                     plain=True,
                 )
             )
+
+    def on_finish(self, func: Callable[[], None]) -> None:
+        """
+        Set a callback function to be called after the import task is finished.
+        :param func: Function to call after the import task is finished.
+        """
+        return self.main_widget.on_finish(func)
+    
+    def on_start(self, func: Callable[[], None]) -> None:
+        """
+        Set a callback function to be called before the import task starts.
+        :param func: Function to call before the import task starts.
+        """
+        return self.main_widget.on_start(func)

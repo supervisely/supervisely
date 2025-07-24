@@ -147,7 +147,7 @@ class TrainValSplit(SolutionElement):
         DataJson()[self.widget_id]["split_settings"] = settings.to_json()
         DataJson().send_changes()
 
-    def split(self, items: list, random: bool = True) -> Dict[str, list]:
+    def split(self, items: list, random_selection: bool = True) -> Dict[str, list]:
         """
         Split the given items into train and validation sets.
 
@@ -157,7 +157,7 @@ class TrainValSplit(SolutionElement):
         settings = self.get_split_settings()
         train_count = int(len(items) * settings.train_percent / 100)
         val_count = len(items) - train_count
-        if random:
+        if random_selection:
             random.shuffle(items)
         train_items = items[:train_count]
         val_items = items[train_count : train_count + val_count]
