@@ -691,6 +691,10 @@ class ApiField:
     """"""
     UPDATE_STRATEGY = "updateStrategy"
     """"""
+    LOCAL_ENTITIES_COUNT = "localEntitiesCount"
+    """"""
+    REMOTE_ENTITIES_COUNT = "remoteEntitiesCount"
+    """"""
 
 
 def _get_single_item(items):
