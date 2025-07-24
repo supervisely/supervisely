@@ -12,7 +12,7 @@ from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.editor.editor import Editor
-from supervisely.app.widgets.experiment_selector.experiment_selectorv2 import (
+from supervisely.app.widgets.experiment_selector.experiment_selector import (
     ExperimentSelector,
 )
 from supervisely.app.widgets.fast_table.fast_table import FastTable
