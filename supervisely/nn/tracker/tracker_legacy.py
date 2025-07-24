@@ -74,64 +74,78 @@ class BaseDetection:
         ret[2] /= ret[3]
         return ret
 
-
-class BaseTrack:
-    _count = 0
-
-    track_id = 0
-    is_activated = False
-    state = "new"
-    history = {}
-
-    features = []
-    curr_feature = None
-    score = 0
-    start_frame = 0
-    frame_id = 0
-    time_since_update = 0
-
-    # multi-camera
-    location = (np.inf, np.inf)
-
     @property
-    def end_frame(self):
-        return self.frame_id
+    def sly_label(self):
+        return self._sly_label
 
-    @staticmethod
-    def next_id():
-        BaseTrack._count += 1
-        return BaseTrack._count
-
-    def activate(self, *args):
-        raise NotImplementedError
-
-    def predict(self):
-        raise NotImplementedError
-
-    def update(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def mark_lost(self):
-        self.state = "lost"
-
-    def mark_removed(self):
-        self.state = "removed"
+    @sly_label.setter
+    def sly_label(self, sly_label: Label):
+        self._sly_label = sly_label
 
     def get_sly_label(self):
-        raise NotImplementedError
+        return self.sly_label
+
+    def set_sly_label(self, sly_label: Label):
+        self.sly_label = sly_label
+
+    def clean_sly_label(self):
+        self.sly_label = None
+
+
+class BaseTrack:
+    def __init__(self, track_id, *args, **kwargs):
+        self.track_id = track_id
+
+    def get_sly_label(self):
+        raise NotImplementedError()
 
 
 class BaseTracker:
-    def __init__(self, settings=None):
-        if settings is None:
-            settings = {}
+    def __init__(self, settings: Dict):
+        self.settings = settings
+        self.args = self.parse_settings(settings)
+        self.device = self.select_device(device=self.args.device)
 
-        default_settings = self.default_settings()
-        default_settings.update(settings)
+    def select_device(self, device="", batch_size=None):
+        import torch  # pylint: disable=import-error
 
-        self.args = argparse.Namespace(**default_settings)
+        # device = 'cpu' or '0' or '0,1,2,3'
+        cpu_request = device.lower() == "cpu"
+        if device and not cpu_request:  # if device requested other than 'cpu'
+            os.environ["CUDA_VISIBLE_DEVICES"] = device  # set environment variable
+            assert (
+                torch.cuda.is_available()
+            ), f"CUDA unavailable, invalid device {device} requested"  # check availablity
+
+        cuda = False if cpu_request else torch.cuda.is_available()
+        if cuda:
+            c = 1024**2  # bytes to MB
+            ng = torch.cuda.device_count()
+            if ng > 1 and batch_size:  # check that batch_size is compatible with device_count
+                assert (
+                    batch_size % ng == 0
+                ), f"batch-size {batch_size} not multiple of GPU count {ng}"
+            x = [torch.cuda.get_device_properties(i) for i in range(ng)]
+            s = f"Using torch {torch.__version__} "
+            for i, d in enumerate((device or "0").split(",")):
+                if i == 1:
+                    s = " " * len(s)
+                logger.info(f"{s}CUDA:{d} ({x[i].name}, {x[i].total_memory / c}MB)")
+        else:
+            logger.info(f"Using torch {torch.__version__} CPU")
+
+        logger.info("")  # skip a line
+        return torch.device("cuda:0" if cuda else "cpu")
+
+    def parse_settings(self, settings: Dict) -> argparse.Namespace:
+        _settings = self.default_settings()
+        _settings.update(settings)
+        if "device" not in _settings:
+            _settings["device"] = ""
+        return argparse.Namespace(**_settings)
 
     def default_settings(self):
+        """To be overridden by subclasses."""
         return {}
 
     @contextmanager
@@ -170,10 +184,6 @@ class BaseTracker:
         raise NotImplementedError()
 
     def convert_annotation(self, annotation_for_frame: Annotation):
-        """
-        ИСПРАВЛЕННАЯ ВЕРСИЯ: Правильный порядок координат для tlwh формата
-        tlwh = [left, top, width, height] = [x, y, w, h]
-        """
         formatted_predictions = []
         sly_labels = []
 
@@ -185,13 +195,11 @@ class BaseTracker:
                 confidence = label.tags.get("conf").value
 
             rectangle: Rectangle = label.geometry.to_bbox()
-            
-            # ИСПРАВЛЕНИЕ: Правильный порядок tlwh = [x, y, w, h] = [left, top, width, height]
             tlwh = [
-                rectangle.left,    # x (left coordinate)
-                rectangle.top,     # y (top coordinate)  
-                rectangle.width,   # w (width)
-                rectangle.height,  # h (height)
+                rectangle.top,
+                rectangle.left,
+                rectangle.height,
+                rectangle.width,
                 confidence,
             ]
 
@@ -275,3 +283,4 @@ class BaseTracker:
             objects=VideoObjectCollection(objects),
             frames=FrameCollection(frames),
         )
+
