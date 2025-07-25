@@ -182,6 +182,8 @@ class Inference:
         self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
+        self._model_frozen = False
+        self._inactivity_timeout = 3600  # 1 hour
         self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
@@ -1438,6 +1440,44 @@ class Inference:
             api = self.api
         return api
 
+    def _freeze_on_inactivity(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if self._model_frozen:
+                self._unfreeze_model()
+
+            result = func(*args, **kwargs)
+
+            if hasattr(self, "_freeze_timer"):
+                self._freeze_timer.cancel()
+
+            timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+            timer.daemon = True
+            timer.start()
+            self._freeze_timer = timer
+            return result
+
+    def _freeze_model(self):
+        self._check_serve_before_call(lambda: None)
+        if self._model_frozen:
+            logger.debug("Model is already frozen.")
+            return
+        logger.debug("Freezing model...")
+        self.shutdown_model()
+        self._model_served = True
+        self._model_frozen = True
+        logger.debug("Model has been successfully frozen.")
+
+    def _unfreeze_model(self):
+        if not self._model_frozen:
+            logger.debug("Model is not frozen.")
+            return
+        logger.debug("Unfreezing model...")
+        self._load_model(self._deploy_params)
+        self._model_frozen = False
+        logger.debug("Model is unfrozen and ready for inference.")
+
+    @_freeze_on_inactivity
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
