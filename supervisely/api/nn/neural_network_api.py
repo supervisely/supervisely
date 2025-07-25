@@ -23,9 +23,11 @@ class NeuralNetworkApi:
 
     def __init__(self, api: "Api"):
         from supervisely.api.nn.deploy_api import DeployApi
+        from supervisely.api.nn.models_api import ModelsApi
 
         self._api = api
         self._deploy_api = DeployApi(api)
+        self.models_api = ModelsApi(api)
 
     def deploy(
         self,
@@ -168,7 +170,7 @@ class NeuralNetworkApi:
             workspaces = [workspace_id]
         elif team_id is not None:
             workspaces = self._api.workspace.get_list(team_id)
-            workspaces = [workspace["id"] for workspace in workspaces]
+            workspaces = [workspace.id for workspace in workspaces]
         else:
             workspace_id = env.workspace_id(raise_not_found=False)
             if workspace_id is None:
@@ -178,7 +180,7 @@ class NeuralNetworkApi:
                         "Workspace ID and Team ID are not specified and cannot be found in the environment."
                     )
                 workspaces = self._api.workspace.get_list(team_id)
-                workspaces = [workspace["id"] for workspace in workspaces]
+                workspaces = [workspace.id for workspace in workspaces]
             else:
                 workspaces = [workspace_id]
 
