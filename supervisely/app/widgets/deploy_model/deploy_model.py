@@ -9,6 +9,7 @@ import yaml
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.api.app_api import ModuleInfo
+from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.editor.editor import Editor
@@ -28,7 +29,8 @@ from supervisely.nn.model.model_api import ModelAPI
 class DeployModel(Widget):
 
     class DeployMode:
-        def deploy(self) -> ModelAPI:
+
+        def deploy(self, agent_id: int = None) -> ModelAPI:
             raise NotImplementedError("This method should be implemented in subclasses.")
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
@@ -106,7 +108,8 @@ class DeployModel(Widget):
             finally:
                 self.sessions_table.loading = False
 
-        def deploy(self, deploy_parameters: Dict[str, Any]) -> ModelAPI:
+        def deploy(self, agent_id: int = None) -> ModelAPI:
+            deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Connecting to model with parameters:", extra=deploy_parameters)
             session_id = deploy_parameters["session_id"]
             model_api = self.api.nn.connect(task_id=session_id)
@@ -203,11 +206,12 @@ class DeployModel(Widget):
                 "model_name": selected_row.row[self.COLUMNS.index(str(self.COLUMN.MODEL_NAME))],
             }
 
-        def deploy(self, deploy_parameters: Dict[str, Any]) -> ModelAPI:
+        def deploy(self, agent_id: int = None) -> ModelAPI:
+            deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Deploying pretrained model with parameters:", extra=deploy_parameters)
             framework = deploy_parameters["framework"]
             model_name = deploy_parameters["model_name"]
-            model_api = self.api.nn.deploy(model=f"{framework}/{model_name}")
+            model_api = self.api.nn.deploy(model=f"{framework}/{model_name}", agent_id=agent_id)
             return model_api
 
     class Custom(DeployMode):
@@ -244,11 +248,12 @@ class DeployModel(Widget):
                 "experiment_info": experiment_info,
             }
 
-        def deploy(self, deploy_parameters: Dict[str, Any]) -> ModelAPI:
+        def deploy(self, agent_id: int) -> ModelAPI:
+            deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Deploying custom model with parameters:", extra=deploy_parameters)
             experiment_info = deploy_parameters["experiment_info"]
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
-                experiment_info
+                agent_id=agent_id, experiment_info=experiment_info
             )
             model_api = ModelAPI(api=self.api, task_id=task_info["id"])
             return model_api
@@ -418,6 +423,8 @@ class DeployModel(Widget):
         self.status.hide()
         self.sesson_link.hide()
 
+        self.select_agent = AgentSelector(self.team_id)
+
         self.deploy_button = Button("Deploy", icon="zmdi zmdi-play")
         self.stop_button = Button("Stop", icon="zmdi zmdi-stop", button_type="danger")
         self.stop_button.hide()
@@ -440,7 +447,9 @@ class DeployModel(Widget):
             self.stop()
             self.tabs.enable()
 
-        widgets.append(self.status, self.sesson_link)
+        deploy_stop_buttons = Container(widgets=[self.deploy_button, self.stop_button], gap=0)
+
+        widgets.append(self.select_agent, deploy_stop_buttons, self.status, self.sesson_link)
         self.layout = Container(
             widgets=widgets,
         )
@@ -508,7 +517,8 @@ class DeployModel(Widget):
         for mode, label in self.modes_labels.items():
             if label == mode_label:
                 break
-        self.model_api = self.modes[mode].deploy()
+        agent_id = self.select_agent.get_value()
+        self.model_api = self.modes[mode].deploy(agent_id=agent_id)
         return self.model_api
 
     def stop(self) -> None:
