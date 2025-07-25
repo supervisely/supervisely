@@ -671,3 +671,53 @@ def supervisely_skip_https_user_helper_check() -> bool:
         default=False,
         raise_not_found=False,
     )
+
+
+def get_latest_instance_version_from_json() -> Optional[str]:
+    """
+    Get the latest (last) instance version from versions.json file.
+
+    The versions.json file should contain a mapping of SDK versions to instance versions.
+    This function returns the instance version from the last entry in the file.
+
+    :return: Latest instance version or None if not found
+    :rtype: Optional[str]
+    """
+    import json
+
+    try:
+        # Get the path to versions.json relative to this file
+        # supervisely/io/env.py -> supervisely/versions.json
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        versions_file = os.path.join(os.path.dirname(os.path.dirname(current_dir)), "versions.json")
+
+        if not os.path.exists(versions_file):
+            return None
+
+        with open(versions_file, "r", encoding="utf-8") as f:
+            versions_mapping = json.load(f)
+
+        if not versions_mapping:
+            return None
+
+        # Get the last (latest) entry from the versions mapping
+        # Since JSON preserves order in Python 3.7+, the last item is the latest
+        latest_instance_version = list(versions_mapping.keys())[-1]
+        return latest_instance_version
+
+    except Exception:
+        # Silently fail - don't break the import if versions.json is missing or malformed
+        return None
+
+
+def configure_minimum_instance_version() -> None:
+    """
+    Configure MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable
+    from the latest entry in versions.json file.
+
+    This function should be called during SDK initialization to automatically
+    set the minimum required instance version based on the versions.json file.
+    """
+    latest_version = get_latest_instance_version_from_json()
+    if latest_version:
+        os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = latest_version
