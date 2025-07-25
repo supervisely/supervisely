@@ -14,7 +14,10 @@
   :data="data.{{{widget.widget_id}}}.data"
   :show-header="data.{{{widget.widget_id}}}.showHeader"
   :selected-rows="state.{{{widget.widget_id}}}.selectedRows"
-  @update:selected-rows="data.{{{widget.widget_id}}}.selectionChangedHandled && post('/{{{widget.widget_id}}}/selection_changed_cb')"
+  @update:selected-rows="(rows) => {
+    state.{{{widget.widget_id}}}.selectedRows = rows;
+    data.{{{widget.widget_id}}}.selectionChangedHandled && post('/{{{widget.widget_id}}}/selection_changed_cb');
+  }"
   {%
   if
   widget._row_click_handled
