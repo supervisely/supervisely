@@ -216,6 +216,39 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         ]
 
     @staticmethod
+    def info_sequence_for_listing():
+        """
+        NamedTuple ProjectInfo fields available for listing operations.
+
+        This subset includes only fields that are available in the `projects.list` API endpoint.
+        For complete project information, use `get_info_by_id()`.
+
+        :return: List of API field names available for listing
+        :rtype: List[str]
+        """
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.SIZE,
+            ApiField.README,
+            ApiField.WORKSPACE_ID,
+            ApiField.IMAGES_COUNT,  # for compatibility with existing code
+            ApiField.DATASETS_COUNT,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.TYPE,
+            ApiField.REFERENCE_IMAGE_URL,
+            ApiField.CUSTOM_DATA,
+            ApiField.BACKUP_ARCHIVE,
+            ApiField.TEAM_ID,
+            ApiField.IMPORT_SETTINGS,
+            ApiField.EMBEDDINGS_ENABLED,
+            ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.EMBEDDINGS_IN_PROGRESS,
+        ]
+
+    @staticmethod
     def info_tuple_name():
         """
         NamedTuple name - **ProjectInfo**.
@@ -457,21 +490,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     import_settings={}
             #                   )
         """
-
-        fields = [
-            x
-            for x in self.info_sequence()
-            if x
-            not in (
-                ApiField.ITEMS_COUNT,
-                ApiField.SETTINGS,
-                ApiField.CREATED_BY_ID,
-                ApiField.LOCAL_ENTITIES_COUNT,
-                ApiField.REMOTE_ENTITIES_COUNT,
+        try:
+            fields = self.info_sequence_for_listing()
+            info = super().get_info_by_name(parent_id, name, fields)
+        except Exception as e:
+            logger.trace(
+                f"Failed to get info by name with all available fields for 'projects.list' endpoint: {e} "
+                "Falling back to minimal fields (id) and get_info_by_id()."
             )
-        ]
-
-        info = super().get_info_by_name(parent_id, name, fields)
+            fields = [ApiField.ID]
+            info = super().get_info_by_name(parent_id, name, fields)
+            if info is None:
+                if raise_error:
+                    raise ProjectNotFound(
+                        f"Project with name {name!r} not found in workspace {parent_id!r}."
+                    )
+                else:
+                    return None
+            info = self.get_info_by_id(info.id)
         self._check_project_info(
             info, name=name, expected_type=expected_type, raise_error=raise_error
         )
