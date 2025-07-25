@@ -1,3 +1,4 @@
+
 import argparse
 import os
 from contextlib import contextmanager
@@ -102,8 +103,30 @@ class BaseTrack:
         BaseTrack._count += 1
         return BaseTrack._count
 
-    def activate(self, *args):
-        raise NotImplementedError
+
+    def activate(self, kalman_filter, frame_id):
+        """
+        Activate this track.
+        Default implementation for BaseDetection objects.
+        """
+        # Initialize track-related attributes
+        self.kalman_filter = kalman_filter
+        self.track_id = self.next_id()
+        
+        # For BaseDetection objects, convert tlwh to xywh for Kalman filter
+        if hasattr(self, 'tlwh'):
+            tlwh = self.tlwh
+            xywh = [tlwh[0] + tlwh[2]/2, tlwh[1] + tlwh[3]/2, tlwh[2], tlwh[3]]
+            self.mean, self.covariance = kalman_filter.initiate(xywh)
+        
+        self.state = TrackState.Tracked if hasattr(self, 'TrackState') else 1
+        self.is_activated = True
+        self.frame_id = frame_id
+        self.start_frame = frame_id
+        
+        # Set score from confidence if available
+        if hasattr(self, 'confidence') and not hasattr(self, 'score'):
+            self.score = self.confidence
 
     def predict(self):
         raise NotImplementedError

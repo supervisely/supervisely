@@ -111,7 +111,7 @@ class _BoTSORT(BoTSORT):
         if len(detections_):
             scores = np.array([det.confidence for det in detections_])
             bboxes = np.array([det.tlbr()[:4] for det in detections_])
-            labels = np.array([det.sly_label for det in detections_])
+            labels = np.array([det._sly_label for det in detections_])
             features = np.array([det.feature for det in detections_])
 
             # Remove bad detections
