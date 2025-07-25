@@ -79,7 +79,7 @@ class DeployModel(Widget):
             return self.sessions_table
 
         @property
-        def layout(self) -> Container:
+        def layout(self) -> FastTable:
             return self._layout
 
         def _data_from_session(self, session: Dict) -> Dict[str, Any]:
@@ -125,22 +125,30 @@ class DeployModel(Widget):
         class COLUMN:
             FRAMEWORK = "Framework"
             MODEL_NAME = "Model"
+            PARAMETERS = "Parameters (M)"
+            MAP = "mAP"
 
         COLUMNS = [
             str(COLUMN.FRAMEWORK),
             str(COLUMN.MODEL_NAME),
+            str(COLUMN.PARAMETERS),
+            str(COLUMN.MAP),
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
-            self.parent = deploy_model
+            self.deploy_model = deploy_model
             self._model_api = None
             self._last_selected_framework = None
             self._load_models()
-            self.layout = self._create_layout()
+            self._layout = self._create_layout()
             self._update_pretrained_models()
+
+        @property
+        def layout(self) -> FastTable:
+            return self._layout
 
         def _create_layout(self) -> Container:
             self.inference_settings_editor = Editor(language_mode="yaml", height_lines=10)
@@ -166,12 +174,18 @@ class DeployModel(Widget):
             models = self._cache["pretrained_models"].get(framework, [])
             return models
 
+        def _map_from_model(self, model: Dict):
+            try:
+                return model.get("evaluation", {}).get("metrics", {}).get("mAP", "N/A")
+            except:
+                return "N/A"
+
         def _update_pretrained_models(self) -> None:
             self.pretrained_table.loading = True
             try:
                 self.pretrained_table.clear()
                 models_data = []
-                for framework in self.parent.get_frameworks():
+                for framework in self.deploy_model.get_frameworks():
                     try:
                         framework_models = self._list_pretrained_models(framework)
                         models_data.extend(
@@ -186,6 +200,8 @@ class DeployModel(Widget):
                     {
                         self.COLUMN.FRAMEWORK: model_data["framework"],
                         self.COLUMN.MODEL_NAME: model_data["model"]["name"],
+                        self.COLUMN.PARAMETERS: model_data["model"].get("paramsM", "N/A"),
+                        self.COLUMN.MAP: self._map_from_model(model_data["model"]),
                     }
                     for model_data in models_data
                 ]
@@ -221,7 +237,11 @@ class DeployModel(Widget):
             self._cache = deploy_model._cache
             self.deploy_model = deploy_model
             self._model_api = None
-            self.layout = self._create_layout()
+            self._layout = self._create_layout()
+
+        @property
+        def layout(self) -> ExperimentSelector:
+            return self._layout
 
         def _create_layout(self) -> Container:
             self.inference_settings_editor = Editor(language_mode="yaml", height_lines=10)
@@ -281,21 +301,20 @@ class DeployModel(Widget):
         if modes is None:
             modes = self.MODES.copy()
         self._validate_modes(modes)
-        self._init_modes(modes)
         if api is None:
             api = Api()
         self.api = api
         if team_id is None:
             team_id = env.team_id()
         self.team_id = team_id
+        self._cache = {}
+        self._init_modes(modes)
 
         self.modes_labels = {
             self.MODE.CONNECT: "Connect",
             self.MODE.PRETRAINED: "Pretrained",
             self.MODE.CUSTOM: "Custom",
         }
-
-        self._cache = {}
 
         # GUI
         self.layout: Widget = None
@@ -424,6 +443,7 @@ class DeployModel(Widget):
         self.sesson_link.hide()
 
         self.select_agent = AgentSelector(self.team_id)
+        self.select_agent_field = Field(content=self.select_agent, title="Select Agent")
 
         self.deploy_button = Button("Deploy", icon="zmdi zmdi-play")
         self.stop_button = Button("Stop", icon="zmdi zmdi-stop", button_type="danger")
@@ -449,7 +469,13 @@ class DeployModel(Widget):
 
         deploy_stop_buttons = Container(widgets=[self.deploy_button, self.stop_button], gap=0)
 
-        widgets.append(self.select_agent, deploy_stop_buttons, self.status, self.sesson_link)
+        widgets = [
+            *widgets,
+            self.select_agent_field,
+            deploy_stop_buttons,
+            self.status,
+            self.sesson_link,
+        ]
         self.layout = Container(
             widgets=widgets,
         )
