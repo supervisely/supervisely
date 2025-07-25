@@ -3508,6 +3508,7 @@ class Inference:
             gpu_allocated, gpu_total = get_gpu_usage()
             return {
                 "is_deployed": self.is_model_deployed(),
+                "is_frozen": self._model_frozen,
                 "progress": progress,
                 "gpu_memory": {
                     "allocated": gpu_allocated,
@@ -3518,6 +3519,15 @@ class Inference:
                     "total": ram_total,
                 },
             }
+
+        @server.post("/freeze_model")
+        def _freeze_model_cb():
+            try:
+                self._freeze_model()
+            except Exception as e:
+                logger.error(f"Error while freezing model: {e}")
+                return {"message": f"Error while freezing model: {e}", "success": False}
+            return {"message": "Model is frozen"}
 
         # Local deploy without predict args
         if self._is_cli_deploy:

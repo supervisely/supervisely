@@ -191,6 +191,11 @@ class ModelAPI:
         }
         return deploy_params
 
+    def freeze(self) -> None:
+        resp = self.api.task.send_request(self.task_id, "freeze_model", {})
+        if resp.get("success") is False:
+            raise RuntimeError(resp.get("message", "Failed to freeze model"))
+
     # --------------------------------- #
 
     # region Predict
