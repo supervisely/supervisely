@@ -2,11 +2,7 @@
 import logging
 import pprint
 import sys
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
-from collections import OrderedDict
+from collections import Mapping, OrderedDict
 
 import numpy as np
 from tabulate import tabulate

@@ -18,4 +18,4 @@ except ImportError:
 
     import fastreid
 
-from supervisely.nn.tracker.bot_sort.sly_tracker import BoTTracker
+from supervisely.nn.tracker.bot_sort_legacy.sly_tracker import BoTTracker

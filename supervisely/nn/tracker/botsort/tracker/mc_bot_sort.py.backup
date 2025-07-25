@@ -4,18 +4,7 @@ import numpy as np
 from collections import deque
 
 import sys
-# sys.path.append("../botsort")
-import os
-from pathlib import Path
-
-# Get the directory where this file is located
-current_dir = Path(__file__).parent.absolute()
-botsort_dir = current_dir.parent  # Go up one level to botsort directory
-
-# Add the botsort directory to sys.path so we can import tracker modules
-if str(botsort_dir) not in sys.path:
-    sys.path.insert(0, str(botsort_dir))
-    
+sys.path.append("../botsort")
 from tracker import matching
 from tracker.gmc import GMC
 from tracker.basetrack import BaseTrack, TrackState
@@ -32,7 +21,7 @@ class STrack(BaseTrack):
     def __init__(self, tlwh, score, cls, feat=None, feat_history=50):
 
         # wait activate
-        self._tlwh = np.asarray(tlwh, dtype=float)
+        self._tlwh = np.asarray(tlwh, dtype=np.float)
         self.kalman_filter = None
         self.mean, self.covariance = None, None
         self.is_activated = False
@@ -267,7 +256,7 @@ class BoTSORT(object):
             if args.reid_model == 'fast_reid':
                 self.encoder = FastReIDInterface(args.fast_reid_config, args.fast_reid_weights, args.device)
                 print('model resnset')
-            elif args.reid_model == 'osnet_reid':
+            elif args.reid_model == 'osnet':
                 print('model osnet')
                 self.encoder = OsnetReIDInterface(args.reid_weights, args.device, args.fp16)
 
