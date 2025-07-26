@@ -1,7 +1,7 @@
 import datetime
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Tuple, Union
 
 import pandas as pd
 import yaml
@@ -9,6 +9,7 @@ import yaml
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.api.app_api import ModuleInfo
+from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.editor.editor import Editor
@@ -17,6 +18,7 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 )
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
+from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -27,7 +29,19 @@ from supervisely.nn.model.model_api import ModelAPI
 
 class DeployModel(Widget):
 
-    class Connect:
+    class DeployMode:
+
+        def deploy(self, agent_id: int = None) -> ModelAPI:
+            raise NotImplementedError("This method should be implemented in subclasses.")
+
+        def get_deploy_parameters(self) -> Dict[str, Any]:
+            raise NotImplementedError("This method should be implemented in subclasses.")
+
+        @property
+        def layout(self) -> Widget:
+            raise NotImplementedError("This property should be implemented in subclasses.")
+
+    class Connect(DeployMode):
 
         class COLUMN:
             SESSION_ID = "Session ID"
@@ -46,16 +60,11 @@ class DeployModel(Widget):
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
-            self.parent = deploy_model
-            self._model_api = None
-            self.layout = self._create_layout()
+            self.deploy_model = deploy_model
+            self._layout = self._create_layout()
             self._update_sessions()
 
         def _create_layout(self) -> Container:
-            self.inference_settings_editor = Editor(language_mode="yaml")
-            self.inference_settings_editor_field = Field(
-                content=self.inference_settings_editor, title="Inference Settings"
-            )
             self.refresh_button = Button("", icon="zmdi zmdi-refresh")
             self.sessions_table = FastTable(
                 columns=self.COLUMNS,
@@ -63,42 +72,16 @@ class DeployModel(Widget):
                 is_radio=True,
                 header_left_content=self.refresh_button,
             )
-            self.deploy_button = Button("Connect")
 
             @self.refresh_button.click
             def _refresh_button_clicked():
                 self._update_sessions()
 
-            @self.deploy_button.click
-            def _connect_button_clicked():
-                self._connect()
+            return self.sessions_table
 
-            @self.sessions_table.selection_changed
-            def _selection_changed(row):
-                session_id = row.row[0]
-                self._update_inference_settings(session_id)
-
-            return Container(
-                widgets=[
-                    self.sessions_table,
-                    self.inference_settings_editor_field,
-                    self.deploy_button,
-                ]
-            )
-
-        def _framework_from_task_info(self, task_info: Dict) -> str:
-            module_id = task_info["meta"]["app"]["moduleId"]
-            module = None
-            for m in self.parent.get_modules():
-                if m.id == module_id:
-                    module = m
-            if module is None:
-                module = self.api.app.get_ecosystem_module_info(module_id=module_id)
-                self._cache.setdefault("modules", []).append(module)
-            for cat in module.config["categories"]:
-                if cat.startswith("framework:"):
-                    return cat[len("framework:") :]
-            return "unknown"
+        @property
+        def layout(self) -> FastTable:
+            return self._layout
 
         def _data_from_session(self, session: Dict) -> Dict[str, Any]:
             task_info = session["task_info"]
@@ -106,7 +89,7 @@ class DeployModel(Widget):
             return {
                 self.COLUMN.SESSION_ID: task_info["id"],
                 self.COLUMN.APP_NAME: task_info["meta"]["app"]["name"],
-                self.COLUMN.FRAMEWORK: self._framework_from_task_info(task_info),
+                self.COLUMN.FRAMEWORK: self.deploy_model._framework_from_task_info(task_info),
                 self.COLUMN.MODEL: deploy_info["model_name"],
             }
 
@@ -118,6 +101,10 @@ class DeployModel(Widget):
                 data = [self._data_from_session(session) for session in sessions]
                 df = pd.DataFrame.from_records(data=data, columns=self.COLUMNS)
                 self.sessions_table.read_pandas(df)
+                if len(data) == 0:
+                    self.deploy_model.connect_button.disable()
+                else:
+                    self.deploy_model.connect_button.enable()
             except Exception as e:
                 logger.error(
                     f"Failed to load deployed models: {e}",
@@ -126,56 +113,12 @@ class DeployModel(Widget):
             finally:
                 self.sessions_table.loading = False
 
-        def _update_inference_settings(self, session_id: int) -> None:
-            self.inference_settings_editor.loading = True
-            try:
-                model_api = self.api.nn.connect(session_id)
-                settings = model_api.get_settings()
-                settings = yaml.safe_dump(settings)
-                self.inference_settings_editor.set_text(settings)
-            except Exception as e:
-                logger.error(
-                    f"Failed to load inference settings for session {session_id}: {e}",
-                    exc_info=True,
-                )
-                self.inference_settings_editor.set_text("")
-            finally:
-                self.inference_settings_editor.loading = False
-
-        def connect(self, deploy_parameters: Dict[str, Any]) -> ModelAPI:
+        def deploy(self, agent_id: int = None) -> ModelAPI:
+            deploy_parameters = self.get_deploy_parameters()
+            logger.info(f"Connecting to model with parameters:", extra=deploy_parameters)
             session_id = deploy_parameters["session_id"]
             model_api = self.api.nn.connect(task_id=session_id)
-            task_info = self.api.task.get_info_by_id(model_api.task_id)
-            model_info = model_api.get_info()
-            model_name = model_info["model_name"]
-            framework = self._framework_from_task_info(task_info)
-            logger.info(
-                f"Model {model_name} from framework {framework} deployed with session ID {model_api.task_id}."
-            )
-            self.parent.update_model_task_texts(task_info)
             return model_api
-
-        def _connect(self) -> None:
-            self.parent.status.text = "Connecting to model..."
-            self.parent.status.status = "info"
-            self.parent.status.show()
-            try:
-                deploy_parameters = self.get_deploy_parameters()
-                logger.info(f"Connecting to model with parameters:", extra=deploy_parameters)
-                model_api = self.connect(deploy_parameters)
-                self._model_api = model_api
-                self.parent.status.text = "Model connected successfully!"
-                self.parent.status.status = "success"
-                self.parent.sesson_link.show()
-                return model_api
-            except Exception as e:
-                logger.error(f"Failed to connect to model: {e}", exc_info=True)
-                self.parent.status.text = f"Error: {e}"
-                self.parent.status.status = "error"
-                self.parent.sesson_link.hide()
-
-        def _deploy(self):
-            return self._connect()
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             selected_row = self.sessions_table.get_selected_row()
@@ -183,29 +126,37 @@ class DeployModel(Widget):
                 "session_id": selected_row.row[self.COLUMNS.index(str(self.COLUMN.SESSION_ID))],
             }
 
-    class Pretrained:
+    class Pretrained(DeployMode):
         class COLUMN:
             FRAMEWORK = "Framework"
             MODEL_NAME = "Model"
+            PARAMETERS = "Parameters (M)"
+            MAP = "mAP"
 
         COLUMNS = [
             str(COLUMN.FRAMEWORK),
             str(COLUMN.MODEL_NAME),
+            str(COLUMN.PARAMETERS),
+            str(COLUMN.MAP),
         ]
 
         def __init__(self, deploy_model: "DeployModel"):
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
-            self.parent = deploy_model
+            self.deploy_model = deploy_model
             self._model_api = None
             self._last_selected_framework = None
             self._load_models()
-            self.layout = self._create_layout()
+            self._layout = self._create_layout()
             self._update_pretrained_models()
 
+        @property
+        def layout(self) -> FastTable:
+            return self._layout
+
         def _create_layout(self) -> Container:
-            self.inference_settings_editor = Editor(language_mode="yaml")
+            self.inference_settings_editor = Editor(language_mode="yaml", height_lines=10)
             self.inference_settings_editor_field = Field(
                 content=self.inference_settings_editor, title="Inference Settings"
             )
@@ -214,42 +165,11 @@ class DeployModel(Widget):
                 page_size=10,
                 is_radio=True,
             )
-            self.deploy_button = Button("Deploy")
 
-            @self.deploy_button.click
-            def _deploy_button_clicked():
-                self._deploy()
-
-            @self.pretrained_table.selection_changed
-            def _selection_changed(row):
-                self.inference_settings_editor.loading = True
-                try:
-                    framework = row[0] if row else None
-                    if self._last_selected_framework == framework:
-                        return
-                    inference_settings = self.parent._get_inference_settings_for_framework(
-                        framework
-                    )
-                    self.inference_settings_editor.set_text(inference_settings)
-                    self._last_selected_framework = framework
-                except Exception as e:
-                    self.inference_settings_editor.set_text("")
-                    raise
-                finally:
-                    self.inference_settings_editor.loading = False
-
-            return Container(
-                widgets=[
-                    self.pretrained_table,
-                    self.inference_settings_editor_field,
-                    self.deploy_button,
-                    self.parent.status,
-                    self.parent.sesson_link,
-                ]
-            )
+            return self.pretrained_table
 
         def _load_models(self):
-            models = self.api.nn._model_api.list_models(local=True)
+            models = self.api.nn.models_api.list_models()
             for model in models:
                 self._cache.setdefault("pretrained_models", {}).setdefault(
                     model["framework"], []
@@ -259,12 +179,18 @@ class DeployModel(Widget):
             models = self._cache["pretrained_models"].get(framework, [])
             return models
 
+        def _map_from_model(self, model: Dict):
+            try:
+                return model.get("evaluation", {}).get("metrics", {}).get("mAP", "N/A")
+            except:
+                return "N/A"
+
         def _update_pretrained_models(self) -> None:
             self.pretrained_table.loading = True
             try:
                 self.pretrained_table.clear()
                 models_data = []
-                for framework in self.parent.get_frameworks():
+                for framework in self.deploy_model.get_frameworks():
                     try:
                         framework_models = self._list_pretrained_models(framework)
                         models_data.extend(
@@ -279,6 +205,8 @@ class DeployModel(Widget):
                     {
                         self.COLUMN.FRAMEWORK: model_data["framework"],
                         self.COLUMN.MODEL_NAME: model_data["model"]["name"],
+                        self.COLUMN.PARAMETERS: model_data["model"].get("paramsM", "N/A"),
+                        self.COLUMN.MAP: self._map_from_model(model_data["model"]),
                     }
                     for model_data in models_data
                 ]
@@ -299,51 +227,33 @@ class DeployModel(Widget):
                 "model_name": selected_row.row[self.COLUMNS.index(str(self.COLUMN.MODEL_NAME))],
             }
 
-        def deploy(self, deploy_parameters: Dict[str, Any]) -> ModelAPI:
+        def deploy(self, agent_id: int = None) -> ModelAPI:
+            deploy_parameters = self.get_deploy_parameters()
+            logger.info(f"Deploying pretrained model with parameters:", extra=deploy_parameters)
             framework = deploy_parameters["framework"]
             model_name = deploy_parameters["model_name"]
-            model_api = self.api.nn.deploy(model=f"{framework}/{model_name}")
-            logger.info(
-                f"Model {model_name} from framework {framework} deployed with session ID {model_api.task_id}."
-            )
+            model_api = self.api.nn.deploy(model=f"{framework}/{model_name}", agent_id=agent_id)
             return model_api
 
-        def _deploy(self) -> None:
-            self.parent.status.text = "Deploying pretrained model..."
-            self.parent.status.status = "info"
-            self.parent.status.show()
-            try:
-                deploy_parameters = self.get_deploy_parameters()
-                logger.info(f"Deploying model with parameters:", extra=deploy_parameters)
-                model_api = self.deploy(deploy_parameters)
-                self._model_api = model_api
-                self.parent.status.text = "Model deployed successfully!"
-                self.parent.status.status = "success"
-                task_info = self.api.task.get_info_by_id(model_api.task_id)
-                self.parent.update_model_task_texts(task_info)
-                self.parent.sesson_link.show()
-                return model_api
-            except Exception as e:
-                logger.error(f"Failed to deploy model: {e}", exc_info=True)
-                self.parent.status.text = f"Error: {e}"
-                self.parent.status.status = "error"
-                self.parent.sesson_link.hide()
-
-    class Custom:
+    class Custom(DeployMode):
         def __init__(self, deploy_model: "DeployModel"):
             self.api = deploy_model.api
             self.team_id = deploy_model.team_id
             self._cache = deploy_model._cache
-            self.parent = deploy_model
+            self.deploy_model = deploy_model
             self._model_api = None
-            self.layout = self._create_layout()
+            self._layout = self._create_layout()
+
+        @property
+        def layout(self) -> ExperimentSelector:
+            return self._layout
 
         def _create_layout(self) -> Container:
-            self.inference_settings_editor = Editor(language_mode="yaml")
+            self.inference_settings_editor = Editor(language_mode="yaml", height_lines=10)
             self.inference_settings_editor_field = Field(
                 content=self.inference_settings_editor, title="Inference Settings"
             )
-            frameworks = self.parent.get_frameworks()
+            frameworks = self.deploy_model.get_frameworks()
             experiment_infos = []
             for framework_name in frameworks:
                 experiment_infos.extend(
@@ -354,31 +264,8 @@ class DeployModel(Widget):
                 team_id=self.team_id,
                 api=self.api,
             )
-            self.deploy_button = Button("Deploy")
 
-            @self.deploy_button.click
-            def _deploy_button_clicked():
-                self._deploy()
-
-            @self.experiment_table.selection_changed
-            def _selection_changed(experiment_info: ExperimentInfo):
-                self.inference_settings_editor.loading = True
-                try:
-                    task_id = experiment_info.task_id
-                    train_task_info = self.api.task.get_info_by_id(task_id)
-                    train_module_id = train_task_info["meta"]["app"]["moduleId"]
-                    module = self.api.nn._deploy_api.get_serving_app_by_train_app(
-                        module_id=train_module_id
-                    )
-                    inference_settings = self.parent._get_inference_settings_by_module(module)
-                    self.inference_settings_editor.set_text(inference_settings)
-                except Exception as e:
-                    self.inference_settings_editor.set_text("")
-                    raise
-                finally:
-                    self.inference_settings_editor.loading = False
-
-            return Container(widgets=[self.experiment_table, self.inference_settings_editor_field])
+            return self.experiment_table
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
@@ -386,54 +273,15 @@ class DeployModel(Widget):
                 "experiment_info": experiment_info,
             }
 
-        def _framework_from_task_info(self, task_info: Dict) -> str:
-            module_id = task_info["meta"]["app"]["moduleId"]
-            module = None
-            for m in self.parent.get_modules():
-                if m.id == module_id:
-                    module = m
-            if module is None:
-                module = self.api.app.get_ecosystem_module_info(module_id=module_id)
-                self._cache.setdefault("modules", []).append(module)
-            for cat in module.config["categories"]:
-                if cat.startswith("framework:"):
-                    return cat[len("framework:") :]
-            return "unknown"
-
-        def deploy(self, deploy_parameters: Dict[str, Any]) -> ModelAPI:
+        def deploy(self, agent_id: int) -> ModelAPI:
+            deploy_parameters = self.get_deploy_parameters()
+            logger.info(f"Deploying custom model with parameters:", extra=deploy_parameters)
             experiment_info = deploy_parameters["experiment_info"]
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
-                experiment_info
+                agent_id=agent_id, experiment_info=experiment_info, log_level="debug"
             )
             model_api = ModelAPI(api=self.api, task_id=task_info["id"])
-            model_info = model_api.get_info()
-            model_name = model_info["model_name"]
-            framework = self._framework_from_task_info(task_info)
-            logger.info(
-                f"Model {model_name} from framework {framework} deployed with session ID {model_api.task_id}."
-            )
             return model_api
-
-        def _deploy(self) -> None:
-            self.parent.status.text = "Deploying custom model..."
-            self.parent.status.status = "info"
-            self.parent.status.show()
-            try:
-                deploy_parameters = self.get_deploy_parameters()
-                logger.info(f"Deploying model with parameters:", extra=deploy_parameters)
-                model_api = self.deploy(deploy_parameters)
-                self._model_api = model_api
-                self.parent.status.text = "Model deployed successfully!"
-                self.parent.status.status = "success"
-                task_info = self.api.task.get_info_by_id(model_api.task_id)
-                self.parent.update_model_task_texts(task_info)
-                self.parent.sesson_link.show()
-                return model_api
-            except Exception as e:
-                logger.error(f"Failed to deploy model: {e}", exc_info=True)
-                self.parent.status.text = f"Error: {e}"
-                self.parent.status.status = "error"
-                self.parent.sesson_link.hide()
 
     class MODE:
         CONNECT = "connect"
@@ -449,42 +297,45 @@ class DeployModel(Widget):
 
     def __init__(
         self,
-        modes: List[Literal["connect", "pretrained", "custom"]] = None,
         api: Api = None,
         team_id: int = None,
+        modes: List[Literal["connect", "pretrained", "custom"]] = None,
         widget_id: str = None,
     ):
+        self.modes: Dict[str, DeployModel.DeployMode] = {}
         if modes is None:
             modes = self.MODES.copy()
-        self.modes = modes
-        self._validate_modes()
+        self._validate_modes(modes)
         if api is None:
             api = Api()
         self.api = api
         if team_id is None:
             team_id = env.team_id()
         self.team_id = team_id
-
         self._cache = {}
 
+        self.modes_labels = {
+            self.MODE.CONNECT: "Connect",
+            self.MODE.PRETRAINED: "Pretrained",
+            self.MODE.CUSTOM: "Custom",
+        }
+
         # GUI
-        self._modes_layouts = {}
-        self.tabs: Tabs = None
         self.layout: Widget = None
-        self._init_gui()
+        self._init_gui(modes)
+
+        self.model_api: ModelAPI = None
 
         super().__init__(widget_id=widget_id)
 
-    def _validate_modes(self) -> None:
-        if len(self.modes) < 0 or len(self.modes) > 3:
+    def _validate_modes(self, modes) -> None:
+        if len(modes) < 1 or len(modes) > len(self.MODES):
             raise ValueError(
-                "Modes must be a list containing 1 to 3 of the following: 'connect', 'pretrained', 'custom'."
+                f"Modes must be a list containing 1 to {len(self.MODES)} of the following: {', '.join(self.MODES)}."
             )
-        for mode in self.modes:
+        for mode in modes:
             if mode not in self.MODES:
-                raise ValueError(
-                    f"Invalid mode '{mode}'. Valid modes are 'connect', 'pretrained', 'custom'."
-                )
+                raise ValueError(f"Invalid mode '{mode}'. Valid modes are {', '.join(self.MODES)}.")
 
     def get_modules(self) -> List[ModuleInfo]:
         modules = self._cache.setdefault("modules", [])
@@ -516,17 +367,9 @@ class DeployModel(Widget):
         self._cache["frameworks"] = frameworks
         return frameworks
 
-    @property
-    def tabs_labels_dict(self) -> Dict:
-        return {
-            self.MODE.CONNECT: "Connect",
-            self.MODE.PRETRAINED: "Pretrained",
-            self.MODE.CUSTOM: "Custom",
-        }
-
-    def _init_modes(self) -> None:
-        for mode in self.modes:
-            self._modes_layouts[mode] = self.MODE_TO_CLASS[mode](self)
+    def _init_modes(self, modes: str) -> None:
+        for mode in modes:
+            self.modes[mode] = self.MODE_TO_CLASS[mode](self)
 
     def _create_task_link(self, task_id: int) -> str:
         return f"{self.api.server_address}/apps/sessions/{task_id}"
@@ -543,7 +386,6 @@ class DeployModel(Widget):
             module_id=module["id"],
             file_path=inference_settings_path,
             save_path=save_path,
-            version="model-files-in-configasd",
         )
         inference_settings = Path(save_path).read_text()
         return inference_settings
@@ -551,9 +393,7 @@ class DeployModel(Widget):
     def _get_inference_settings_for_framework(self, framework: str) -> str:
         inference_settings_cache = self._cache.setdefault("inference_settings", {})
         if framework not in inference_settings_cache:
-            module = self.api.nn._deploy_api.find_serving_app_by_framework(
-                framework, version="model-files-in-config"  # TODO: remove version
-            )
+            module = self.api.nn._deploy_api.find_serving_app_by_framework(framework)
             if module is None:
                 raise ValueError(f"No serving app found for framework {framework}.")
             config = module["config"]
@@ -565,25 +405,26 @@ class DeployModel(Widget):
                 module_id=module["id"],
                 file_path=inference_settings_path,
                 save_path=save_path,
-                version="model-files-in-configasd",
             )
             inference_settings = Path(save_path).read_text()
             inference_settings_cache[framework] = inference_settings
         return inference_settings_cache[framework]
 
-    def update_model_task_texts(self, task_info: Dict):
-        task_id = task_info["id"]
-        task_link = self._create_task_link(task_id)
-        task_date = task_info["startedAt"]
-        task_date = datetime.datetime.fromisoformat(task_date.replace("Z", "+00:00"))
-        task_date = task_date.strftime("%Y-%m-%d %H:%M:%S")
-        task_name = task_info["meta"]["app"]["name"]
-        self.session_text_1.text = f"<i class='zmdi zmdi-link' style='color: #7f858e'></i> <a href='{task_link}' target='_blank'>{task_name}: {task_id}</a>"
-        self.session_text_2.text = (
-            f"<span class='field-description text-muted' style='color: #7f858e'>{task_date}</span>"
-        )
+    def _framework_from_task_info(self, task_info: Dict) -> str:
+        module_id = task_info["meta"]["app"]["moduleId"]
+        module = None
+        for m in self.get_modules():
+            if m.id == module_id:
+                module = m
+        if module is None:
+            module = self.api.app.get_ecosystem_module_info(module_id=module_id)
+            self._cache.setdefault("modules", []).append(module)
+        for cat in module.config["categories"]:
+            if cat.startswith("framework:"):
+                return cat[len("framework:") :]
+        return "unknown"
 
-    def _init_gui(self) -> None:
+    def _init_gui(self, modes: List[str]) -> None:
         self.status = Text("Deploying model...", status="info")
         self.session_text_1 = Text(
             "",
@@ -605,28 +446,206 @@ class DeployModel(Widget):
         self.status.hide()
         self.sesson_link.hide()
 
-        self._init_modes()
-        _labels = [self.tabs_labels_dict[mode] for mode in self.modes]
-        _contents = [self._modes_layouts[mode].layout for mode in self.modes]
-        self.tabs = Tabs(labels=_labels, contents=_contents)
-        widgets = []
-        if len(self.modes) == 1:
-            widgets.append(_contents[0])
-        else:
-            widgets.append(self.tabs)
+        self.select_agent = AgentSelector(self.team_id)
+        self.select_agent_field = Field(content=self.select_agent, title="Select Agent")
 
-        self.layout = Container(
-            widgets=widgets,
+        self.deploy_button = Button("Deploy", icon="zmdi zmdi-play")
+        self.connect_button = Button("Connect", icon="zmdi zmdi-link")
+        self.stop_button = Button("Stop", icon="zmdi zmdi-stop", button_type="danger")
+        self.stop_button.hide()
+        self.disconnect_button = Button("Disconnect", icon="zmdi zmdi-close", button_type="warning")
+        self.disconnect_button.hide()
+        self.deploy_stop_buttons = Flexbox(
+            widgets=[self.deploy_button, self.stop_button, self.disconnect_button], gap=10
         )
+        self.connect_stop_buttons = Flexbox(
+            widgets=[self.connect_button, self.stop_button, self.disconnect_button],
+            gap=10,
+        )
+
+        self._init_modes(modes)
+        _labels = []
+        _contents = []
+        for mode_name, mode in self.modes.items():
+            label = self.modes_labels[mode_name]
+            if mode_name == str(self.MODE.CONNECT):
+                widgets = [mode.layout, self.connect_stop_buttons, self.status, self.sesson_link]
+            else:
+                widgets = [
+                    mode.layout,
+                    self.select_agent_field,
+                    self.deploy_stop_buttons,
+                    self.status,
+                    self.sesson_link,
+                ]
+            content = Container(widgets=widgets, gap=20)
+            _labels.append(label)
+            _contents.append(content)
+
+        self.tabs = Tabs(labels=_labels, contents=_contents)
+        if len(self.modes) == 1:
+            self.layout = _contents[0]
+        else:
+            self.layout = self.tabs
+
+        @self.deploy_button.click
+        def _deploy_button_clicked():
+            self._deploy()
+
+        @self.stop_button.click
+        def _stop_button_clicked():
+            self.stop()
+
+        @self.connect_button.click
+        def _connect_button_clicked():
+            self._connect()
+
+        @self.disconnect_button.click
+        def _disconnect_button_clicked():
+            self.disconnect()
+
+    def set_model_status(
+        self,
+        status: Literal["deployed", "stopped", "deploying", "connecting", "error", "hide"],
+        extra_text: str = None,
+    ) -> None:
+        if status == "hide":
+            self.status.hide()
+            return
+        status_args = {
+            "deployed": {"text": "Model deployed successfully!", "status": "success"},
+            "stopped": {"text": "Model stopped", "status": "info"},
+            "deploying": {"text": "Deploying model...", "status": "info"},
+            "connecting": {"text": "Connecting to model...", "status": "info"},
+            "connected": {"text": "Model connected successfully!", "status": "success"},
+            "error": {"text": "Error occurred during model deployment.", "status": "error"},
+        }
+        args = status_args[status]
+        if extra_text:
+            args["text"] += f" {extra_text}"
+        self.status.set(**args)
+        self.status.show()
+
+    def set_session_info(self, task_info: Dict):
+        if task_info is None:
+            self.sesson_link.hide()
+            return
+        task_id = task_info["id"]
+        task_link = self._create_task_link(task_id)
+        task_date = task_info["startedAt"]
+        task_date = datetime.datetime.fromisoformat(task_date.replace("Z", "+00:00"))
+        task_date = task_date.strftime("%Y-%m-%d %H:%M:%S")
+        task_name = task_info["meta"]["app"]["name"]
+        self.session_text_1.text = f"<i class='zmdi zmdi-link' style='color: #7f858e'></i> <a href='{task_link}' target='_blank'>{task_name}: {task_id}</a>"
+        self.session_text_2.text = f"<span class='field-description text-muted' style='color: #7f858e'>{task_date} (UTC)</span>"
+        self.sesson_link.show()
+
+    def disable_modes(self) -> None:
+        for mode_name, mode in self.modes.items():
+            mode.layout.disable()
+            label = self.modes_labels[mode_name]
+            self.tabs.disable_tab(label)
+        self.select_agent.disable()
+
+    def enable_modes(self) -> None:
+        for mode_name, mode in self.modes.items():
+            mode.layout.enable()
+            label = self.modes_labels[mode_name]
+            self.tabs.enable_tab(label)
+        self.select_agent.enable()
+
+    def show_deploy_button(self) -> None:
+        self.stop_button.hide()
+        self.disconnect_button.hide()
+        self.connect_button.show()
+        self.deploy_button.show()
+
+    def show_stop(self) -> None:
+        self.connect_button.hide()
+        self.deploy_button.hide()
+        self.stop_button.show()
+        self.disconnect_button.show()
+
+    def _connect(self) -> None:
+        self.set_model_status("connecting")
+        self.set_session_info(None)
+        try:
+            self.disable_modes()
+            model_api = self.deploy()
+            task_info = self.api.task.get_info_by_id(model_api.task_id)
+            model_info = model_api.get_info()
+            model_name = model_info["model_name"]
+            framework = self._framework_from_task_info(task_info)
+            logger.info(
+                f"Model {framework}: {model_name} deployed with session ID {model_api.task_id}."
+            )
+            self.model_api = model_api
+            self.set_model_status("connected")
+            self.set_session_info(task_info)
+            self.show_stop()
+        except Exception as e:
+            logger.error(f"Failed to deploy model: {e}", exc_info=True)
+            self.set_model_status("error", str(e))
+            self.set_session_info(None)
+            self.enable_modes()
+            self.show_deploy_button()
+
+    def _deploy(self) -> None:
+        self.set_model_status("deploying")
+        self.set_session_info(None)
+        try:
+            self.disable_modes()
+            model_api = self.deploy()
+            task_info = self.api.task.get_info_by_id(model_api.task_id)
+            model_info = model_api.get_info()
+            model_name = model_info["model_name"]
+            framework = self._framework_from_task_info(task_info)
+            logger.info(
+                f"Model {framework}: {model_name} deployed with session ID {model_api.task_id}."
+            )
+            self.model_api = model_api
+            self.set_model_status("deployed")
+            self.set_session_info(task_info)
+            self.show_stop()
+        except Exception as e:
+            logger.error(f"Failed to deploy model: {e}", exc_info=True)
+            self.set_model_status("error", str(e))
+            self.set_session_info(None)
+            self.enable_modes()
+            self.show_deploy_button()
+        else:
+            if str(self.MODE.CONNECT) in self.modes:
+                self.modes[str(self.MODE.CONNECT)]._update_sessions()
 
     def deploy(self) -> ModelAPI:
         mode_label = self.tabs.get_active_tab()
         mode = None
-        for mode, label in self.tabs_labels_dict.items():
+        for mode, label in self.modes_labels.items():
             if label == mode_label:
                 break
-        self._modes_layouts[mode]._deploy()
-        return self._modes_layouts[mode]._model_api
+        agent_id = self.select_agent.get_value()
+        self.model_api = self.modes[mode].deploy(agent_id=agent_id)
+        return self.model_api
+
+    def stop(self) -> None:
+        if self.model_api is None:
+            return
+        self.model_api.shutdown()
+        self.model_api = None
+        self.set_model_status("stopped")
+        self.enable_modes()
+        self.show_deploy_button()
+        if str(self.MODE.CONNECT) in self.modes:
+            self.modes[str(self.MODE.CONNECT)]._update_sessions()
+
+    def disconnect(self) -> None:
+        if self.model_api is None:
+            return
+        self.model_api = None
+        self.set_model_status("hide")
+        self.set_session_info(None)
+        self.show_deploy_button()
+        self.enable_modes()
 
     def load_from_json(self, data: Dict[str, Any]) -> None:
         """
@@ -638,13 +657,13 @@ class DeployModel(Widget):
     def get_deploy_parameters(self) -> Dict[str, Any]:
         mode_label = self.tabs.get_active_tab()
         mode = None
-        for mode, label in self.tabs_labels_dict.items():
+        for mode, label in self.modes_labels.items():
             if label == mode_label:
                 break
         parameters = {
             "mode": mode,
         }
-        parameters.update(self._modes_layouts[mode].get_deploy_parameters())
+        parameters.update(self.modes[mode].get_deploy_parameters())
         return parameters
 
     def get_json_data(self) -> Dict[str, Any]:

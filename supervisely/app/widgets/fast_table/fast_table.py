@@ -474,6 +474,8 @@ class FastTable(Widget):
         """
         if self._is_radio or self._is_selectable:
             selected_rows = StateJson()[self.widget_id]["selectedRows"]
+            if selected_rows is None:
+                return None
             if len(selected_rows) == 0:
                 return None
             if len(selected_rows) > 1:
@@ -482,7 +484,7 @@ class FastTable(Widget):
                 )
             row = selected_rows[0]
             row_index = row["idx"]
-            row = row["row"]
+            row = row.get("row", row.get("items", None))
             if row_index is None or row is None:
                 return None
             return self.ClickedRow(row, row_index)
@@ -1047,7 +1049,6 @@ class FastTable(Widget):
         :rtype: Callable[[], None]
         """
         selection_changed_route_path = self.get_route_path(FastTable.Routes.SELECTION_CHANGED)
-        self._selection_changed_handled = True
         server = self._sly_app.get_server()
 
         @server.post(selection_changed_route_path)
@@ -1055,4 +1056,7 @@ class FastTable(Widget):
             selected_row = self.get_selected_row()
             func(selected_row)
 
+        self._selection_changed_handled = True
+        DataJson()[self.widget_id]["selectionChangedHandled"] = True
+        DataJson().send_changes()
         return _selection_changed
