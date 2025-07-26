@@ -1394,9 +1394,53 @@ class AppApi(TaskApi):
         """get_url"""
         return f"/apps/sessions/{task_id}"
 
-    def download_git_file(self, app_id, version, file_path, save_path):
+    def download_git_file(
+        self,
+        module_id,
+        save_path,
+        app_id=None,
+        version=None,
+        file_path=None,
+        file_key=None,
+        log_progress=True,
+        ext_logger=None,
+    ):
         """download_git_file"""
-        raise NotImplementedError()
+        if file_path is None and file_key is None:
+            raise ValueError("Either file_path or file_key must be provided")
+        payload = {
+            ApiField.MODULE_ID: module_id,
+        }
+        if version is not None:
+            payload[ApiField.VERSION] = version
+        if app_id is not None:
+            payload[ApiField.APP_ID] = app_id
+        if file_path is not None:
+            payload[ApiField.FILE_PATH] = file_path
+        if file_key is not None:
+            payload[ApiField.FILE_KEY] = file_key
+
+        response = self._api.post("ecosystem.file.download", payload, stream=True)
+        if log_progress:
+            if ext_logger is None:
+                ext_logger = logger
+
+            length = None
+            # Content-Length
+            if "Content-Length" in response.headers:
+                length = int(response.headers["Content-Length"])
+            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+
+        mb1 = 1024 * 1024
+        ensure_base_path(save_path)
+        with open(save_path, "wb") as fd:
+            log_size = 0
+            for chunk in response.iter_content(chunk_size=mb1):
+                fd.write(chunk)
+                log_size += len(chunk)
+                if log_progress and log_size > mb1:
+                    progress.iters_done_report(log_size)
+                    log_size = 0
 
     def download_git_archive(
         self,

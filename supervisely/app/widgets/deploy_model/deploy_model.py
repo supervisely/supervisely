@@ -18,6 +18,7 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 )
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
+from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -100,6 +101,10 @@ class DeployModel(Widget):
                 data = [self._data_from_session(session) for session in sessions]
                 df = pd.DataFrame.from_records(data=data, columns=self.COLUMNS)
                 self.sessions_table.read_pandas(df)
+                if len(data) == 0:
+                    self.deploy_model.connect_button.disable()
+                else:
+                    self.deploy_model.connect_button.enable()
             except Exception as e:
                 logger.error(
                     f"Failed to load deployed models: {e}",
@@ -273,7 +278,7 @@ class DeployModel(Widget):
             logger.info(f"Deploying custom model with parameters:", extra=deploy_parameters)
             experiment_info = deploy_parameters["experiment_info"]
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
-                agent_id=agent_id, experiment_info=experiment_info
+                agent_id=agent_id, experiment_info=experiment_info, log_level="debug"
             )
             model_api = ModelAPI(api=self.api, task_id=task_info["id"])
             return model_api
@@ -308,7 +313,6 @@ class DeployModel(Widget):
             team_id = env.team_id()
         self.team_id = team_id
         self._cache = {}
-        self._init_modes(modes)
 
         self.modes_labels = {
             self.MODE.CONNECT: "Connect",
@@ -318,7 +322,7 @@ class DeployModel(Widget):
 
         # GUI
         self.layout: Widget = None
-        self._init_gui()
+        self._init_gui(modes)
 
         self.model_api: ModelAPI = None
 
@@ -420,7 +424,7 @@ class DeployModel(Widget):
                 return cat[len("framework:") :]
         return "unknown"
 
-    def _init_gui(self) -> None:
+    def _init_gui(self, modes: List[str]) -> None:
         self.status = Text("Deploying model...", status="info")
         self.session_text_1 = Text(
             "",
@@ -446,17 +450,43 @@ class DeployModel(Widget):
         self.select_agent_field = Field(content=self.select_agent, title="Select Agent")
 
         self.deploy_button = Button("Deploy", icon="zmdi zmdi-play")
+        self.connect_button = Button("Connect", icon="zmdi zmdi-link")
         self.stop_button = Button("Stop", icon="zmdi zmdi-stop", button_type="danger")
         self.stop_button.hide()
+        self.disconnect_button = Button("Disconnect", icon="zmdi zmdi-close", button_type="warning")
+        self.disconnect_button.hide()
+        self.deploy_stop_buttons = Flexbox(
+            widgets=[self.deploy_button, self.stop_button, self.disconnect_button], gap=10
+        )
+        self.connect_stop_buttons = Flexbox(
+            widgets=[self.connect_button, self.stop_button, self.disconnect_button],
+            gap=10,
+        )
 
-        _labels = [self.modes_labels[mode] for mode in self.modes]
-        _contents = [self.modes[mode].layout for mode in self.modes]
+        self._init_modes(modes)
+        _labels = []
+        _contents = []
+        for mode_name, mode in self.modes.items():
+            label = self.modes_labels[mode_name]
+            if mode_name == str(self.MODE.CONNECT):
+                widgets = [mode.layout, self.connect_stop_buttons, self.status, self.sesson_link]
+            else:
+                widgets = [
+                    mode.layout,
+                    self.select_agent_field,
+                    self.deploy_stop_buttons,
+                    self.status,
+                    self.sesson_link,
+                ]
+            content = Container(widgets=widgets, gap=20)
+            _labels.append(label)
+            _contents.append(content)
+
         self.tabs = Tabs(labels=_labels, contents=_contents)
-        widgets = []
         if len(self.modes) == 1:
-            widgets.append(_contents[0])
+            self.layout = _contents[0]
         else:
-            widgets.append(self.tabs)
+            self.layout = self.tabs
 
         @self.deploy_button.click
         def _deploy_button_clicked():
@@ -465,20 +495,14 @@ class DeployModel(Widget):
         @self.stop_button.click
         def _stop_button_clicked():
             self.stop()
-            self.tabs.enable()
 
-        deploy_stop_buttons = Container(widgets=[self.deploy_button, self.stop_button], gap=0)
+        @self.connect_button.click
+        def _connect_button_clicked():
+            self._connect()
 
-        widgets = [
-            *widgets,
-            self.select_agent_field,
-            deploy_stop_buttons,
-            self.status,
-            self.sesson_link,
-        ]
-        self.layout = Container(
-            widgets=widgets,
-        )
+        @self.disconnect_button.click
+        def _disconnect_button_clicked():
+            self.disconnect()
 
     def set_model_status(
         self,
@@ -493,6 +517,7 @@ class DeployModel(Widget):
             "stopped": {"text": "Model stopped", "status": "info"},
             "deploying": {"text": "Deploying model...", "status": "info"},
             "connecting": {"text": "Connecting to model...", "status": "info"},
+            "connected": {"text": "Model connected successfully!", "status": "success"},
             "error": {"text": "Error occurred during model deployment.", "status": "error"},
         }
         args = status_args[status]
@@ -515,11 +540,61 @@ class DeployModel(Widget):
         self.session_text_2.text = f"<span class='field-description text-muted' style='color: #7f858e'>{task_date} (UTC)</span>"
         self.sesson_link.show()
 
-    def _deploy(self) -> None:
+    def disable_modes(self) -> None:
+        for mode_name, mode in self.modes.items():
+            mode.layout.disable()
+            label = self.modes_labels[mode_name]
+            self.tabs.disable_tab(label)
+        self.select_agent.disable()
+
+    def enable_modes(self) -> None:
+        for mode_name, mode in self.modes.items():
+            mode.layout.enable()
+            label = self.modes_labels[mode_name]
+            self.tabs.enable_tab(label)
+        self.select_agent.enable()
+
+    def show_deploy_button(self) -> None:
+        self.stop_button.hide()
+        self.disconnect_button.hide()
+        self.connect_button.show()
+        self.deploy_button.show()
+
+    def show_stop(self) -> None:
+        self.connect_button.hide()
+        self.deploy_button.hide()
+        self.stop_button.show()
+        self.disconnect_button.show()
+
+    def _connect(self) -> None:
         self.set_model_status("connecting")
         self.set_session_info(None)
         try:
-            self.tabs.disable()
+            self.disable_modes()
+            model_api = self.deploy()
+            task_info = self.api.task.get_info_by_id(model_api.task_id)
+            model_info = model_api.get_info()
+            model_name = model_info["model_name"]
+            framework = self._framework_from_task_info(task_info)
+            logger.info(
+                f"Model {framework}: {model_name} deployed with session ID {model_api.task_id}."
+            )
+            self.model_api = model_api
+            self.set_model_status("connected")
+            self.set_session_info(task_info)
+            self.show_stop()
+        except Exception as e:
+            logger.error(f"Failed to deploy model: {e}", exc_info=True)
+            self.set_model_status("error", str(e))
+            self.set_session_info(None)
+            self.enable_modes()
+            self.show_deploy_button()
+
+    def _deploy(self) -> None:
+        self.set_model_status("deploying")
+        self.set_session_info(None)
+        try:
+            self.disable_modes()
             model_api = self.deploy()
             task_info = self.api.task.get_info_by_id(model_api.task_id)
             model_info = model_api.get_info()
@@ -531,11 +606,16 @@ class DeployModel(Widget):
             self.model_api = model_api
             self.set_model_status("deployed")
             self.set_session_info(task_info)
+            self.show_stop()
         except Exception as e:
-            logger.error(f"Failed to connect to model: {e}", exc_info=True)
+            logger.error(f"Failed to deploy model: {e}", exc_info=True)
             self.set_model_status("error", str(e))
             self.set_session_info(None)
-            self.tabs.enable()
+            self.enable_modes()
+            self.show_deploy_button()
+        else:
+            if str(self.MODE.CONNECT) in self.modes:
+                self.modes[str(self.MODE.CONNECT)]._update_sessions()
 
     def deploy(self) -> ModelAPI:
         mode_label = self.tabs.get_active_tab()
@@ -548,12 +628,24 @@ class DeployModel(Widget):
         return self.model_api
 
     def stop(self) -> None:
-        if self.model_api is not None:
-            self.model_api.shutdown()
-            self.model_api = None
-            self.set_model_status("stopped")
-            self.stop_button.hide()
-            self.tabs.enable()
+        if self.model_api is None:
+            return
+        self.model_api.shutdown()
+        self.model_api = None
+        self.set_model_status("stopped")
+        self.enable_modes()
+        self.show_deploy_button()
+        if str(self.MODE.CONNECT) in self.modes:
+            self.modes[str(self.MODE.CONNECT)]._update_sessions()
+
+    def disconnect(self) -> None:
+        if self.model_api is None:
+            return
+        self.model_api = None
+        self.set_model_status("hide")
+        self.set_session_info(None)
+        self.show_deploy_button()
+        self.enable_modes()
 
     def load_from_json(self, data: Dict[str, Any]) -> None:
         """

@@ -691,6 +691,9 @@ class ApiField:
     """"""
     UPDATE_STRATEGY = "updateStrategy"
     """"""
+    FILE_PATH = "filePath"
+    """"""
+    FILE_KEY = "fileKey"
 
 
 def _get_single_item(items):
