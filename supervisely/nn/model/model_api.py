@@ -111,6 +111,12 @@ class ModelAPI:
         response = self._post("tasks.stop", {ApiField.ID: id})
         return TaskApi.Status(response[ApiField.STATUS])
 
+    def freeze(self):
+        """Freeze the model to prevent further changes."""
+        if self.task_id is not None:
+            return self.api.task.send_request(self.task_id, "freeze", {})
+        return self._post("freeze", {})
+
     # --------------------- #
 
     # region Load

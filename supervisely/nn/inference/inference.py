@@ -307,9 +307,6 @@ class Inference:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self.predict = self._check_serve_before_call(self.predict)
         self.predict_raw = self._check_serve_before_call(self.predict_raw)
-        self.predict_batch = self._check_serve_before_call(self.predict_batch)
-        self.predict_batch_raw = self._check_serve_before_call(self.predict_batch_raw)
-        self.predict_benchmark = self._check_serve_before_call(self.predict_benchmark)
         self.get_info = self._check_serve_before_call(self.get_info)
 
         self.cache = InferenceImageCache(
@@ -2445,14 +2442,20 @@ class Inference:
                 )
                 # raise DialogWindowError(title="Call undeployed model.", description=msg)
                 raise RuntimeError(msg)
-            elif self._model_frozen is True:
-                self._unfreeze_model()
+            return func(*args, **kwargs)
+        return wrapper
 
+    @_check_serve_before_call
+    def _freeze_on_inactivity(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if self._model_frozen:
+                logger.debug("Model is frozen, unfreezing before function call.")
+                self._unfreeze_model()
             result = func(*args, **kwargs)
 
             if hasattr(self, "_freeze_timer"):
                 self._freeze_timer.cancel()
-
             timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
             timer.daemon = True
             timer.start()
@@ -2462,15 +2465,10 @@ class Inference:
 
         return wrapper
 
+    @_check_serve_before_call
     def _freeze_model(self):
         if self._model_frozen:
             logger.debug("Model is already frozen, no need to freeze again.")
-            return
-
-        try:
-            self._check_serve_before_call(lambda: None)()
-        except RuntimeError as e:
-            logger.warning(f"Cannot freeze model: {e}", exc_info=True)
             return
 
         logger.debug("Freezing model...")
@@ -2521,12 +2519,14 @@ class Inference:
         clean_up_cuda()
         logger.debug("Model is unfrozen and ready for inference.")
 
+    @_freeze_on_inactivity
     def _set_served_callback(self):
         self._model_served = True
 
     def is_model_deployed(self):
         return self._model_served
 
+    @_freeze_on_inactivity
     def _on_inference_start(self, inference_request_uuid):
         inference_request = {
             "progress": Progress("Inferring model...", total_cnt=1),
@@ -2539,6 +2539,7 @@ class Inference:
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
+    @_freeze_on_inactivity
     def _on_inference_end(self, future, inference_request_uuid):
         logger.debug("callback: on_inference_end()")
         inference_request = self._inference_requests.get(inference_request_uuid)
