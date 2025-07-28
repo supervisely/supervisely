@@ -100,6 +100,26 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 
+def _freeze_on_inactivity(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if self._model_frozen:
+            logger.debug("Model is frozen, unfreezing before function call.")
+            self._unfreeze_model()
+        result = func(self, *args, **kwargs)
+
+        if hasattr(self, "_freeze_timer"):
+            self._freeze_timer.cancel()
+        timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+        timer.daemon = True
+        timer.start()
+        self._freeze_timer = timer
+        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
+
+        return result
+
+    return wrapper
+
 
 @dataclass
 class AutoRestartInfo:
@@ -214,8 +234,8 @@ class Inference:
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
-
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
+        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if self._is_cli_deploy:
             self._use_gui = False
@@ -1440,6 +1460,8 @@ class Inference:
             api = self.api
         return api
 
+        
+    @_freeze_on_inactivity
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
@@ -2445,30 +2467,17 @@ class Inference:
             return func(*args, **kwargs)
         return wrapper
 
-    @_check_serve_before_call
-    def _freeze_on_inactivity(self, func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if self._model_frozen:
-                logger.debug("Model is frozen, unfreezing before function call.")
-                self._unfreeze_model()
-            result = func(*args, **kwargs)
 
-            if hasattr(self, "_freeze_timer"):
-                self._freeze_timer.cancel()
-            timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
-            timer.daemon = True
-            timer.start()
-            self._freeze_timer = timer
 
-            return result
-
-        return wrapper
-
-    @_check_serve_before_call
     def _freeze_model(self):
         if self._model_frozen:
             logger.debug("Model is already frozen, no need to freeze again.")
+            return
+        
+        try:
+            self._check_serve_before_call(lambda: None)()
+        except RuntimeError as e:
+            logger.warning(f"Cannot freeze model: {e}", exc_info=True)
             return
 
         logger.debug("Freezing model...")
@@ -2546,6 +2555,7 @@ class Inference:
         if inference_request is not None:
             inference_request["is_inferring"] = False
 
+    @_freeze_on_inactivity
     def schedule_task(self, func, *args, **kwargs):
         inference_request_uuid = kwargs.get("inference_request_uuid", None)
         if inference_request_uuid is None:
@@ -2565,6 +2575,7 @@ class Inference:
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
+    @_freeze_on_inactivity
     def _deploy_on_autorestart(self):
         try:
             self._api_request_model_layout._title = (
@@ -2928,6 +2939,7 @@ class Inference:
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
+        @_freeze_on_inactivity
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
             state = request.state.state
@@ -2993,6 +3005,7 @@ class Inference:
                 )
 
         @server.post("/inference_image_url")
+        @_freeze_on_inactivity
         def inference_image_url(request: Request):
             state = request.state.state
             logger.debug("Received a request to 'inference_image_url'", extra={"state": state})
@@ -3008,6 +3021,7 @@ class Inference:
             return self.inference_requests_manager.run(self._inference_images, [image], state)[0]
 
         @server.post("/inference_batch_ids")
+        @_freeze_on_inactivity
         def inference_batch_ids(request: Request):
             state = request.state.state
             logger.debug("Received a request to  'inference_batch_ids'", extra={"state": state})
@@ -3928,6 +3942,7 @@ class Inference:
         logger.debug("Starting inference by CLI deploy args")
         missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
 
+        @_freeze_on_inactivity
         def predict_project_id_by_args(
             api: Api,
             project_id: int,
