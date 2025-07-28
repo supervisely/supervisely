@@ -597,3 +597,43 @@ def remove_non_printable(text: str) -> str:
     :rtype: str
     """
     return "".join(char for char in text if char.isprintable()).strip()
+
+
+def get_latest_instance_version_from_json() -> Optional[str]:
+    """
+    Get the latest (last) instance version from versions.json file.
+
+    The versions.json file should contain a mapping of SDK versions to instance versions.
+    This function returns the instance version from the last entry in the file.
+
+    :return: Latest instance version or None if not found
+    :rtype: Optional[str]
+    """
+    import json
+
+    try:
+        # Get the path to versions.json relative to this file
+        # supervisely/io/env.py -> supervisely/versions.json
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        versions_file = os.path.join(os.path.dirname(current_dir), "versions.json")
+
+        if not os.path.exists(versions_file):
+            logger.debug(f"versions.json file not found at {versions_file}")
+            return None
+
+        with open(versions_file, "r", encoding="utf-8") as f:
+            versions_mapping = json.load(f)
+
+        if not versions_mapping:
+            return None
+
+        # Get the last (latest) entry from the versions mapping
+        # Since JSON preserves order in Python 3.7+, the last item is the latest
+        latest_instance_version = list(versions_mapping.keys())[-1]
+        logger.debug(f"Latest instance version found: {latest_instance_version}")
+        return latest_instance_version
+
+    except Exception:
+        # Silently fail - don't break the import if versions.json is missing or malformed
+        logger.debug("Failed to get latest instance version from versions.json")
+        return None
