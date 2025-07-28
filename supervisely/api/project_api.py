@@ -2407,7 +2407,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 image_id = [image_id]
             if not isinstance(image_id, list):
                 raise ValueError("image_id must be a list of image IDs.")
-            request_body[ApiField.IMAGE_ID] = image_id
+            request_body[ApiField.IMAGE_IDS] = image_id
 
         if method is not None:
             if image_id is not None or prompt is not None:
