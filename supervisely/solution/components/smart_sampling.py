@@ -12,7 +12,7 @@ import supervisely.app.widgets as w
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 
-# from supervisely.api.entities_collection_api import CollectionTypeFilter, AiSearchThresholdDirection
+from supervisely.api.entities_collection_api import CollectionTypeFilter, AiSearchThresholdDirection
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import (
@@ -284,8 +284,8 @@ class SmartSamplingGUI(Widget):
                 infos.extend(imgs)
             urls = [img.full_storage_url for img in infos]
 
-            # ai_metas = [img.ai_search_meta for img in infos]
-            ai_metas = [None for img in infos]
+            ai_metas = [img.ai_search_meta for img in infos]
+            # ai_metas = [None for img in infos]
             self.preview_gallery.clean_up()
 
             for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
@@ -385,7 +385,7 @@ class SmartSamplingGUI(Widget):
 
     def _sample(self, settings: SamplingSettings) -> Optional[Dict[int, List[ImageInfo]]]:
         try:
-            diffs = self.calculate_differences()
+            diffs = self.calculate_differences()  # dict with diffs by datasets
             total_diffs = self.calculate_diff_count(diffs)
 
             # If there are no differences
@@ -439,74 +439,72 @@ class SmartSamplingGUI(Widget):
                 for ds_id, imgs in diffs.items():
                     all_diffs_flat.extend([img.id for img in imgs])
                 logger.info(f"Sample mode: {mode}. Settings: {settings}")
-
-                method = "diverse" if mode == SamplingMode.DIVERSE.value else "search"
-                data = {"project_id": self.project_id}
-                data["image_ids"] = all_diffs_flat
-
+                sampling_method = None
+                clustering_method = None
+                num_clusters = None
+                prompt = settings.get("prompt", None)
+                limit = settings.get("limit", None)
+                threshold = settings.get("threshold", 0.05)
                 if mode == SamplingMode.AI_SEARCH.value:
                     # AI search mode
-                    prompt = settings.get("prompt", None)
                     if prompt is None:
                         logger.error("Prompt is required for AI search mode.")
                         return None
-                    data["prompt"] = prompt
-                    data["limit"] = settings.get("limit", None)
-                    data["threshold"] = settings.get("threshold", 0.05)
                 elif mode == SamplingMode.DIVERSE.value:
                     # Diverse mode
-                    data["sample_size"] = sample_size
-                    data["num_clusters"] = sample_size
-                    data["clustering_method"] = "kmeans"
-                    data["sampling_method"] = "centroids"
+                    clustering_method = "kmeans"
+                    if clustering_method == "kmeans":
+                        num_clusters = 8
+                    sampling_method = "centroids"
                 else:
                     logger.error(f"Unknown sampling mode: {mode}")
                     return None
-                # Send request to the API
-                module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
-                sessions = self.api.app.get_sessions(
-                    self.team_id, module_info.id, statuses=[self.api.task.Status.STARTED]
-                )
-                if len(sessions) == 0:
-                    logger.error("No active sessions found for embeddings generator.")
-                    return None
-                session = sessions[0]
-                # api.app.wait(session.task_id, target_status=api.task.Status.STARTED)
-                logger.info(f"Embeddings generator session: {session.task_id}")
-                res = self.api.app.send_request(session.task_id, method, data=data)
-                if isinstance(res, dict):
-                    if "collection_id" in res:
-                        collection_id = res["collection_id"]
 
-                        # if mode == SamplingMode.AI_SEARCH.value:
-                        #     all_sampled_images = self.api.entities_collection.get_items(
-                        #         collection_id=collection_id,
-                        #         collection_type=CollectionTypeFilter.AI_SEARCH,
-                        #         ai_search_threshold=data.get("threshold", 0.05),
-                        #         ai_search_threshold_direction=AiSearchThresholdDirection.ABOVE,
-                        #     )
-                        # else:
-                        #     all_sampled_images = self.api.entities_collection.get_items(
-                        #         collection_id=collection_id,
-                        #         collection_type=CollectionTypeFilter.DEFAULT,
-                        #     )
-                        new_sampled_images = {}
-                        # for img in all_sampled_images:
-                        #     ds_id = img.dataset_id
-                        #     if ds_id not in new_sampled_images:
-                        #         new_sampled_images[ds_id] = []
-                        #     new_sampled_images[ds_id].append(img)
-                    elif "message" in res:
-                        logger.error(f"Error during sampling: {res['message']}")
-                        return None
-                elif isinstance(res, list):
-                    res_ids = {img["id"] for img in res}
-                    new_sampled_images = {
-                        ds_id: [img for img in diffs[ds_id] if img.id in res_ids]
-                        for ds_id in diffs.keys()
-                    }
+                # Send request to the API
+                collection_id = self.api.project.perform_ai_search(
+                    project_id=self.project_id,
+                    prompt=prompt,
+                    method=sampling_method,
+                    limit=limit or sample_size,
+                    clustering_method=clustering_method,
+                    num_clusters=num_clusters,
+                    image_id_scope=all_diffs_flat,
+                    threshold=threshold,
+                )
+                # module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
+                # sessions = self.api.app.get_sessions(
+                #     self.team_id, module_info.id, statuses=[self.api.task.Status.STARTED]
+                # )
+                # if len(sessions) == 0:
+                #     logger.error("No active sessions found for embeddings generator.")
+                #     return None
+                # session = sessions[0]
+                # # api.app.wait(session.task_id, target_status=api.task.Status.STARTED)
+                # logger.info(f"Embeddings generator session: {session.task_id}")
+                # res = self.api.app.send_request(session.task_id, method, data=data)
+                if isinstance(collection_id, int):
+                    all_sampled_images = self.api.entities_collection.get_items(
+                        collection_id=collection_id,
+                        collection_type=CollectionTypeFilter.AI_SEARCH,
+                        project_id=self.project_id,
+                    )
+                    new_sampled_images = {}
+                    for img in all_sampled_images:
+                        ds_id = img.dataset_id
+                        if ds_id not in new_sampled_images:
+                            new_sampled_images[ds_id] = []
+                        new_sampled_images[ds_id].append(img)
+                # elif collection_id is None:
+                #     logger.error(f"Error during sampling")
+                #     return None
+                # elif isinstance(res, list):
+                #     res_ids = {img["id"] for img in res}
+                #     new_sampled_images = {
+                #         ds_id: [img for img in diffs[ds_id] if img.id in res_ids]
+                #         for ds_id in diffs.keys()
+                #     }
                 else:
-                    logger.error(f"Error during sampling: {res}")
+                    logger.error(f"Error during sampling")
                     return None
 
             else:
