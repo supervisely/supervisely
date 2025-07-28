@@ -691,6 +691,15 @@ class ApiField:
     """"""
     UPDATE_STRATEGY = "updateStrategy"
     """"""
+    LOCAL_ENTITIES_COUNT = "localEntitiesCount"
+    """"""
+    REMOTE_ENTITIES_COUNT = "remoteEntitiesCount"
+    """"""
+    RESTRICTED_IMAGE_IDS = "restrictedImageIds"
+    """"""
+    NUMBER_OF_CLUSTERS = "numberOfClusters"
+    """"""
+    CLUSTERING_METHOD = "clusteringMethod"
 
 
 def _get_single_item(items):
