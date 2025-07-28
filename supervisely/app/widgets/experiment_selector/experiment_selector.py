@@ -1,42 +1,46 @@
+import json
 import os
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict
-from typing import Any, Callable, Dict, List, Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Union
 
-from supervisely import env, logger
-from supervisely._utils import abs_url, is_development
+import pandas as pd
+
+from supervisely._utils import abs_url, is_development, logger
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
-from supervisely.app.content import DataJson, StateJson
-from supervisely.app.widgets import (
-    Container,
-    Flexbox,
-    ProjectThumbnail,
-    Select,
-    Text,
-    Widget,
-)
+from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.fast_table.fast_table import FastTable
+from supervisely.app.widgets.flexbox.flexbox import Flexbox
+from supervisely.app.widgets.project_thumbnail.project_thumbnail import ProjectThumbnail
+from supervisely.app.widgets.select.select import Select
+from supervisely.app.widgets.text.text import Text
+from supervisely.app.widgets.widget import Widget
+from supervisely.io import env
 from supervisely.io.fs import get_file_name_with_ext
 from supervisely.nn.experiments import ExperimentInfo
-from supervisely.nn.utils import ModelSource
-
-WEIGHTS_DIR = "weights"
-
-COL_ID = "task id".upper()
-COL_MODEL = "model".upper()
-COL_PROJECT = "training data".upper()
-COL_CHECKPOINTS = "checkpoints".upper()
-COL_SESSION = "session".upper()
-COL_BENCHMARK = "benchmark".upper()
-
-columns = [COL_ID, COL_MODEL, COL_PROJECT, COL_CHECKPOINTS, COL_SESSION, COL_BENCHMARK]
 
 
 class ExperimentSelector(Widget):
-    class Routes:
-        TASK_TYPE_CHANGED = "task_type_changed"
-        VALUE_CHANGED = "value_changed"
+    """
+    Widget for selecting experiments from a team.
+    """
+
+    class COLUMN:
+        NAME = "TASK ID"
+        MODEL = "MODEL"
+        TRAINING_DATA = "TRAINING DATA"
+        CHECKPOINTS = "CHECKPOINTS"
+        SESSION = "SESSION"
+        BENCHMARK = "BENCHMARK"
+
+    COLUMNS = [
+        COLUMN.NAME,
+        COLUMN.MODEL,
+        COLUMN.TRAINING_DATA,
+        COLUMN.CHECKPOINTS,
+        COLUMN.SESSION,
+        COLUMN.BENCHMARK,
+    ]
 
     class ModelRow:
         def __init__(
@@ -144,14 +148,6 @@ class ExperimentSelector(Widget):
             return self._checkpoints_widget
 
         @property
-        def experiment_info(self) -> ExperimentInfo:
-            return self._experiment_info
-
-        @property
-        def best_checkpoint(self) -> str:
-            return self.experiment_info.best_checkpoint
-
-        @property
         def session_link(self) -> str:
             return self._session_link
 
@@ -234,17 +230,21 @@ class ExperimentSelector(Widget):
             return model_widget
 
         def _create_training_project_widget(self) -> Union[ProjectThumbnail, Text]:
+            training_project_thumbnail = ProjectThumbnail(
+                self._training_project_info, remove_margins=True
+            )
+            training_project_text = Text(
+                f"<span class='field-description text-muted' style='color: #7f858e'>Project was deleted</span>",
+                "text",
+                font_size=13,
+            )
             if self.training_project_info is not None:
-                training_project_widget = ProjectThumbnail(
-                    self._training_project_info, remove_margins=True
-                )
+                training_project_thumbnail.show()
+                training_project_text.hide()
             else:
-                training_project_widget = Text(
-                    f"<span class='field-description text-muted' style='color: #7f858e'>Project was deleted</span>",
-                    "text",
-                    font_size=13,
-                )
-            return training_project_widget
+                training_project_thumbnail.hide()
+                training_project_text.show()
+            return Container(widgets=[training_project_thumbnail, training_project_text], gap=0)
 
         def _create_checkpoints_widget(self) -> Select:
             checkpoint_selector_items = []
@@ -284,102 +284,169 @@ class ExperimentSelector(Widget):
                 )
             return benchmark_widget
 
+        def _widget_to_cell_value(self, widget: Widget) -> str:
+            if isinstance(widget, Container):
+                return json.dumps(
+                    {
+                        "widget_id": widget.widget_id,
+                        "widgets": [w.widget_id for w in widget._widgets],
+                    }
+                )
+            else:
+                return json.dumps({"widget_id": widget.widget_id, "widgets": []})
+
+        def to_table_row(self):
+            return [
+                self._widget_to_cell_value(w)
+                for w in [
+                    self._task_widget,
+                    self._model_wiget,
+                    self._training_project_widget,
+                    self._checkpoints_widget,
+                    self._session_widget,
+                    self._benchmark_widget,
+                ]
+            ]
+
+        @classmethod
+        def widgets_templates(cls):
+            return [
+                # _task_widget
+                Container(widgets=[Text(""), Text("")], gap=0),
+                # _model_wiget
+                Text(""),
+                # _training_project_widget
+                Container(widgets=[ProjectThumbnail(remove_margins=True), Text("")], gap=0),
+                # _checkpoints_widget
+                Select(items=[]),
+                # _session_widget
+                Text(""),
+                # _benchmark_widget
+                Text(""),
+            ]
+
+        def search_text(self) -> str:
+            text = ""
+            text += str(self._task_id)
+            text += str(self._task_date)
+            text += str(self._model_name)
+            if self._training_project_info is not None:
+                text += str(self._training_project_info.name)
+            else:
+                text += "Project was deleted"
+            return text
+
+        def sort_values(self) -> List[int]:
+            training_project_name = None
+            if self._training_project_info is not None:
+                training_project_name = self._training_project_info.name.capitalize()
+            else:
+                training_project_name = "Project was deleted"
+
+            return [
+                self._task_id,
+                self._model_name.capitalize(),
+                int(pd.to_datetime(self._task_date).timestamp()),
+                training_project_name,
+                0,
+                0,
+                0,
+            ]
+
     def __init__(
         self,
-        team_id: int,
         experiment_infos: List[ExperimentInfo] = [],
+        team_id: int = None,
+        api: Api = None,
         widget_id: str = None,
     ):
-        self._api = Api.from_env()
+        if team_id is None:
+            team_id = env.team_id()
+        self.team_id = team_id
+        if api is None:
+            api = Api()
+        self.api = api
+        self._experiment_infos = experiment_infos
 
-        self._team_id = team_id
-        self.__debug_row = None
+        self._rows = []
+        self.table = self._create_table()
+        self._rows_search_texts = []
+        self._rows_sort_values = []
+        self.set_experiment_infos(experiment_infos)
+        super().__init__(widget_id=widget_id)
 
-        with ThreadPoolExecutor() as executor:
-            future = executor.submit(self._generate_table_rows, experiment_infos)
-            table_rows = future.result()
+    def _search_function(self, data: pd.DataFrame, search_value: str) -> List[ModelRow]:
+        search_texts = []
+        for idx in data.index:
+            first_col_value = data.loc[idx, self.COLUMNS[0]]
+            if isinstance(first_col_value, pd.Series):
+                first_col_value = first_col_value.iloc[0]
+            original_idx = self._first_column_value_to_index[first_col_value]
+            search_texts.append(self._rows_search_texts[original_idx])
 
-        self._columns = columns
-        self._rows = table_rows
-        # self._rows_html = #[row.to_html() for row in self._rows]
+        search_series = pd.Series(search_texts, index=data.index)
+        mask = search_series.str.contains(search_value, case=False, na=False)
+        return data[mask]
 
-        task_types = [task_type for task_type in table_rows]
-        self._rows_html = defaultdict(list)
-        for task_type in table_rows:
-            self._rows_html[task_type].extend(
-                [model_row.to_html() for model_row in table_rows[task_type]]
+    def _sort_function(
+        self, data: pd.DataFrame, column_idx: int, order: str = "asc"
+    ) -> List[ModelRow]:
+        data = data.copy()
+        if column_idx >= len(self._rows_sort_values[0]) if self._rows_sort_values else True:
+            raise IndexError(
+                f"Sorting by column idx = {column_idx} is not possible, your sort values have only {len(self._rows_sort_values[0]) if self._rows_sort_values else 0} columns with idx from 0 to {len(self._rows_sort_values[0]) - 1 if self._rows_sort_values else -1}"
             )
 
-        self._task_types = self._filter_task_types(task_types)
-        if len(self._task_types) == 0:
-            self.__default_selected_task_type = None
+        if order == "asc":
+            ascending = True
         else:
-            self.__default_selected_task_type = self._task_types[0]
+            ascending = False
 
-        self._changes_handled = False
-        self._task_type_changes_handled = False
-        super().__init__(widget_id=widget_id, file_path=__file__)
+        try:
+            sort_values = []
+            for idx in data.index:
+                first_col_value = data.loc[idx, self.COLUMNS[0]]
+                if isinstance(first_col_value, pd.Series):
+                    first_col_value = first_col_value.iloc[0]
+                original_idx = self._first_column_value_to_index[first_col_value]
+                sort_values.append(self._rows_sort_values[original_idx][column_idx])
 
-    @property
-    def columns(self) -> List[str]:
-        return self._columns
+            sort_series = pd.Series(sort_values, index=data.index)
+            sorted_indices = sort_series.sort_values(ascending=ascending).index
+            data = data.loc[sorted_indices]
+            data.reset_index(inplace=True, drop=True)
 
-    @property
-    def rows(self) -> Dict[str, List[ModelRow]]:
-        return self._rows
+        except IndexError as e:
+            e.args = (
+                f"Sorting by column idx = {column_idx} is not possible, your sort values have only {len(self._rows_sort_values[0]) if self._rows_sort_values else 0} columns with idx from 0 to {len(self._rows_sort_values[0]) - 1 if self._rows_sort_values else -1}",
+            )
+            raise e
 
-    def get_json_data(self) -> Dict:
-        return {
-            "columns": self._columns,
-            "rowsHtml": self._rows_html,
-            "taskTypes": self._task_types,
-        }
+        return data
 
-    def get_json_state(self) -> Dict:
-        return {
-            "selectedRow": 0,
-            "selectedTaskType": self.__default_selected_task_type,
-        }
+    def _create_table(self) -> FastTable:
+        widgets = self.ModelRow.widgets_templates()
+        columns = []
+        columns_options = []
+        for column_name, widget in zip(self.COLUMNS, widgets):
+            columns.append((column_name, widget))
+            columns_options.append({"customCell": True})
+        columns_options[3].update({"classes": "border border-gray-200 px-2"})
+        table = FastTable(
+            columns=columns, columns_options=columns_options, is_radio=True, page_size=10
+        )
+        table.set_search(self._search_function)
+        table.set_sort(self._sort_function)
+        return table
 
-    def set_active_task_type(self, task_type: str):
-        if task_type not in self._task_types:
-            raise ValueError(f'Task Type "{task_type}" does not exist')
-        StateJson()[self.widget_id]["selectedTaskType"] = task_type
-        StateJson().send_changes()
-
-    def get_available_task_types(self) -> List[str]:
-        return self._task_types
-
-    def disable_table(self) -> None:
-        for task_type in self._rows:
-            for row in self._rows[task_type]:
-                row.checkpoints_selector.disable()
-        super().disable()
-
-    def enable_table(self) -> None:
-        for task_type in self._rows:
-            for row in self._rows[task_type]:
-                row.checkpoints_selector.enable()
-        super().enable()
-
-    def enable(self):
-        self.enable_table()
-        super().enable()
-
-    def disable(self) -> None:
-        self.disable_table()
-        super().disable()
-
-    def _generate_table_rows(
-        self, experiment_infos: List[ExperimentInfo]
-    ) -> Dict[str, List[ModelRow]]:
+    def _generate_table_rows(self, experiment_infos: List[ExperimentInfo]) -> List[ModelRow]:
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_experiment_info(experiment_info: ExperimentInfo):
             try:
                 model_row = ExperimentSelector.ModelRow(
-                    api=self._api,
-                    team_id=self._team_id,
+                    api=self.api,
+                    team_id=self.team_id,
                     task_type=experiment_info.task_type,
                     experiment_info=experiment_info,
                 )
@@ -388,161 +455,66 @@ class ExperimentSelector(Widget):
                 logger.debug(f"Failed to process experiment info: {experiment_info}")
                 return None, None
 
-        table_rows = defaultdict(list)
+        table_rows = []
         with ThreadPoolExecutor() as executor:
-            futures = {
-                executor.submit(process_experiment_info, experiment_info): experiment_info
+            futures = [
+                executor.submit(process_experiment_info, experiment_info)
                 for experiment_info in experiment_infos
-            }
+            ]
 
-            for future in as_completed(futures):
+            for future in futures:
                 result = future.result()
                 if result:
                     task_type, model_row = result
                     if task_type is not None and model_row is not None:
-                        if model_row.task_id == "debug-session" or model_row.task_id == -1:
-                            self.__debug_row = (task_type, model_row)
-                            continue
-                        table_rows[task_type].append(model_row)
-        self._sort_table_rows(table_rows)
-        if self.__debug_row and is_development():
-            task_type, model_row = self.__debug_row
-            table_rows[task_type].insert(0, model_row)
+                        table_rows.append(model_row)
         return table_rows
 
-    def _sort_table_rows(self, table_rows: Dict[str, List[ModelRow]]) -> None:
-        for task_type in table_rows:
-            table_rows[task_type].sort(key=lambda row: int(row.task_id), reverse=True)
+    def _update_search_text(self):
+        self._rows_search_texts = [row.search_text() for row in self._rows]
 
-    def _filter_task_types(self, task_types: List[str]):
-        sorted_tt = []
-        if "object detection" in task_types:
-            sorted_tt.append("object detection")
-        if "instance segmentation" in task_types:
-            sorted_tt.append("instance segmentation")
-        if "pose estimation" in task_types:
-            sorted_tt.append("pose estimation")
-        other_tasks = sorted(
-            set(task_types)
-            - set(
-                [
-                    "object detection",
-                    "instance segmentation",
-                    "semantic segmentation",
-                    "pose estimation",
-                ]
-            )
-        )
-        sorted_tt.extend(other_tasks)
-        return sorted_tt
+    def _update_sort_values(self):
+        self._rows_sort_values = [row.sort_values() for row in self._rows]
 
-    def get_selected_row(self, state=StateJson()) -> Union[ModelRow, None]:
-        if len(self._rows) == 0:
-            return
-        widget_actual_state = state[self.widget_id]
-        widget_actual_data = DataJson()[self.widget_id]
-        task_type = widget_actual_state["selectedTaskType"]
-        if widget_actual_state is not None and widget_actual_data is not None:
-            selected_row_index = int(widget_actual_state["selectedRow"])
-            return self._rows[task_type][selected_row_index]
+    def _update_value_index_map(self):
+        self._first_column_value_to_index = {}
+        for i, row in self.table._source_data.iterrows():
+            value = row.iloc[0]
+            self._first_column_value_to_index[value] = i
 
-    def get_selected_row_index(self, state=StateJson()) -> Union[int, None]:
-        widget_actual_state = state[self.widget_id]
-        widget_actual_data = DataJson()[self.widget_id]
-        if widget_actual_state is not None and widget_actual_data is not None:
-            return widget_actual_state["selectedRow"]
-
-    def get_selected_task_type(self) -> str:
-        return StateJson()[self.widget_id]["selectedTaskType"]
-
-    def get_selected_experiment_info(self) -> Dict[str, Any]:
-        if len(self._rows) == 0:
-            return
-        selected_row = self.get_selected_row()
-        selected_row_json = asdict(selected_row._experiment_info)
-        return selected_row_json
-
-    def get_selected_checkpoint_path(self) -> str:
-        if len(self._rows) == 0:
-            return
-        selected_row = self.get_selected_row()
-        return selected_row.get_selected_checkpoint_path()
-
-    def get_selected_checkpoint_name(self) -> str:
-        if len(self._rows) == 0:
-            return
-        selected_row = self.get_selected_row()
-        return selected_row.get_selected_checkpoint_name()
-
-    def get_model_files(self) -> Dict[str, str]:
+    def set_experiment_infos(self, experiment_infos: List[ExperimentInfo]) -> None:
         """
-        Returns a dictionary with full paths to model files in Supervisely Team Files.
+        Updates the experiment infos and regenerates the table rows.
         """
-        experiment_info = self.get_selected_experiment_info()
-        artifacts_dir = experiment_info.get("artifacts_dir")
-        model_files = experiment_info.get("model_files", {})
+        table_rows = self._generate_table_rows(experiment_infos)
+        self._rows = table_rows
+        for row in table_rows:
+            self.table.insert_row(row.to_table_row())
+        self._update_value_index_map()
+        self._update_search_text()
+        self._update_sort_values()
 
-        full_model_files = {
-            name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
-        }
-        full_model_files["checkpoint"] = self.get_selected_checkpoint_path()
-        return full_model_files
+    def get_selected_experiment_info(self) -> Union[ExperimentInfo, None]:
+        selected_row = self.table.get_selected_row()
+        if selected_row is None:
+            return None
+        return self._rows[selected_row.row_index]._experiment_info
 
-    def get_deploy_params(self) -> Dict[str, Any]:
-        """
-        Returns a dictionary with deploy parameters except runtime and device keys.
-        """
-        deploy_params = {
-            "model_source": ModelSource.CUSTOM,
-            "model_files": self.get_model_files(),
-            "model_info": self.get_selected_experiment_info(),
-        }
-        return deploy_params
+    def selection_changed(self, func):
+        def f(selected_row: FastTable.ClickedRow):
+            if selected_row is None:
+                return
+            idx = selected_row.row_index
+            experiment_info = self._rows[idx]._experiment_info
+            func(experiment_info)
 
-    def set_active_row(self, row_index: int, task_type: str = None) -> None:
-        if task_type is None:
-            task_type = self.get_selected_task_type()
-            self.set_active_task_type(task_type)
-        if row_index < 0 or row_index > len(self._rows[task_type]) - 1:
-            raise ValueError(f'Row with index "{row_index}" does not exist')
-        StateJson()[self.widget_id]["selectedRow"] = row_index
-        StateJson().send_changes()
+        return self.table.selection_changed(f)
 
-    def set_by_task_id(self, task_id: int) -> None:
-        for task_type in self._rows:
-            for i, row in enumerate(self._rows[task_type]):
-                if row.task_id == task_id:
-                    self.set_active_task_type(task_type)
-                    self.set_active_row(i, task_type)
-                    return
+    def get_json_data(self):
+        return {}
 
-    def get_by_task_id(self, task_id: int) -> Union[ModelRow, None]:
-        for task_type in self._rows:
-            for row in self._rows[task_type]:
-                if row.task_id == task_id:
-                    return row
-        return None
+    def get_json_state(self):
+        return {}
 
-    def task_type_changed(self, func: Callable):
-        route_path = self.get_route_path(ExperimentSelector.Routes.TASK_TYPE_CHANGED)
-        server = self._sly_app.get_server()
-        self._task_type_changes_handled = True
-
-        @server.post(route_path)
-        def _task_type_changed():
-            res = self.get_selected_task_type()
-            func(res)
-
-        return _task_type_changed
-
-    def value_changed(self, func: Callable):
-        route_path = self.get_route_path(ExperimentSelector.Routes.VALUE_CHANGED)
-        server = self._sly_app.get_server()
-        self._changes_handled = True
-
-        @server.post(route_path)
-        def _value_changed():
-            res = self.get_selected_row()
-            func(res)
-
-        return _value_changed
+    def to_html(self):
+        return self.table.to_html()

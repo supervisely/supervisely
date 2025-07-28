@@ -72,6 +72,7 @@ class FastTable(Widget):
     """
 
     class Routes:
+        SELECTION_CHANGED = "selection_changed_cb"
         ROW_CLICKED = "row_clicked_cb"
         CELL_CLICKED = "cell_clicked_cb"
         UPDATE_DATA = "update_data_cb"
@@ -100,6 +101,29 @@ class FastTable(Widget):
             self.column_name = column_name
             self.column_value = column_value
 
+    class ColumnData:
+        def __init__(self, name, is_widget=False, widget: Widget = None):
+            self.name = name
+            self.is_widget = is_widget
+            self.widget = widget
+
+        @property
+        def widget_html(self):
+            html = self.widget.to_html()
+            html = html.replace(f".{self.widget.widget_id}", "[JSON.parse(cellValue).widget_id]")
+            html = html.replace(
+                f"/{self.widget.widget_id}", "/' + JSON.parse(cellValue).widget_id + '"
+            )
+            if hasattr(self.widget, "_widgets"):
+                for i, widget in enumerate(self.widget._widgets):
+                    html = html.replace(
+                        f".{widget.widget_id}", f"[JSON.parse(cellValue).widgets[{i}]]"
+                    )
+                    html = html.replace(
+                        f"/{widget.widget_id}", f"/' + JSON.parse(cellValue).widgets[{i}] + '"
+                    )
+            return html
+
     def __init__(
         self,
         data: Optional[Union[pd.DataFrame, List]] = None,
@@ -113,23 +137,45 @@ class FastTable(Widget):
         width: Optional[str] = "auto",
         widget_id: Optional[str] = None,
         show_header: bool = True,
+        is_radio: bool = False,
+        is_selectable: bool = False,
+        header_left_content: Optional[Widget] = None,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
         self._cell_click_handled = False
-        self._columns_first_idx = columns
+        self._selection_changed_handled = False
+        self._columns = columns
+        self._columns_data = []
+        if columns is None:
+            self._columns_first_idx = None
+        else:
+            self._columns_first_idx = []
+            for col in columns:
+                if isinstance(col, str):
+                    self._columns_first_idx.append(col)
+                    self._columns_data.append(self.ColumnData(name=col))
+                elif isinstance(col, tuple):
+                    self._columns_first_idx.append(col[0])
+                    self._columns_data.append(
+                        self.ColumnData(name=col[0], is_widget=True, widget=col[1])
+                    )
+                else:
+                    raise TypeError(f"Column name must be a string or a tuple, got {type(col)}")
+
         self._columns_options = columns_options
         self._sorted_data = None
         self._filtered_data = None
         self._active_page = 1
         self._width = width
-        self._selected_row = None
+        self._selected_rows = None
         self._selected_cell = None
-        self._clickable_rows = False
-        self._clickable_cells = False
+        self._is_row_clickable = False
+        self._is_cell_clickable = False
         self._search_str = ""
         self._show_header = show_header
         self._project_meta = self._unpack_project_meta(project_meta)
+        self._header_left_content = header_left_content
 
         # table_options
         self._page_size = page_size
@@ -137,6 +183,10 @@ class FastTable(Widget):
         self._sort_column_idx = sort_column_idx
         self._sort_order = sort_order
         self._validate_sort_attrs()
+        self._is_radio = is_radio
+        self._is_selectable = is_selectable
+        self._search_function = self._search
+        self._sort_function = self._sort
 
         # to avoid errors with the duplicated names in columns
         self._multi_idx_columns = None
@@ -154,6 +204,9 @@ class FastTable(Widget):
 
         self._rows_total = len(self._parsed_source_data["data"])
 
+        if self._is_radio and self._rows_total > 0:
+            self._selected_rows = [self._parsed_source_data["data"][0]]
+
         super().__init__(widget_id=widget_id, file_path=__file__)
 
         script_path = "./sly/css/app/widgets/fast_table/script.js"
@@ -164,6 +217,7 @@ class FastTable(Widget):
 
         @server.post(filter_changed_route_path)
         def _filter_changed():
+            # TODO sort widgets
             self._active_page = StateJson()[self.widget_id]["page"]
             self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
             self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
@@ -171,7 +225,9 @@ class FastTable(Widget):
             self._filtered_data = self.search(search_value)
             self._rows_total = len(self._filtered_data)
 
-            if self._rows_total > 0 and self._active_page == 0: # if previous filtered data was empty
+            if (
+                self._rows_total > 0 and self._active_page == 0
+            ):  # if previous filtered data was empty
                 self._active_page = 1
                 StateJson()[self.widget_id]["page"] = self._active_page
 
@@ -180,9 +236,11 @@ class FastTable(Widget):
                 self._sorted_data, actual_page=self._active_page
             )
             self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+            StateJson().send_changes()
             DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
             DataJson()[self.widget_id]["total"] = self._rows_total
             DataJson().send_changes()
+            StateJson()["reactToChanges"] = True
             StateJson().send_changes()
 
     def get_json_data(self) -> Dict[str, Any]:
@@ -209,12 +267,14 @@ class FastTable(Widget):
             "columnsOptions": self._columns_options,
             "total": self._rows_total,
             "options": {
-                "isRowClickable": self._clickable_rows,
-                "isCellClickable": self._clickable_cells,
+                "isRowClickable": self._is_row_clickable,
+                "isCellClickable": self._is_cell_clickable,
                 "fixColumns": self._fix_columns,
+                "isRadio": self._is_radio,
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
+            "selectionChangedHandled": self._selection_changed_handled,
         }
 
     def get_json_state(self) -> Dict[str, Any]:
@@ -233,7 +293,7 @@ class FastTable(Widget):
         """
         return {
             "search": self._search_str,
-            "selectedRow": self._selected_row,
+            "selectedRows": self._selected_rows,
             "selectedCell": self._selected_cell,
             "page": self._active_page,
             "sort": {
@@ -289,6 +349,24 @@ class FastTable(Widget):
         self._page_size = size
         DataJson()[self.widget_id]["pageSize"] = self._page_size
 
+    def set_sort(
+        self, func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]
+    ) -> None:
+        """Sets custom sort function for the table.
+
+        :param func: Custom sort function
+        :type func: Callable[[pd.DataFrame, int, Optional[Literal["asc", "desc"]]], pd.DataFrame]
+        """
+        self._sort_function = func
+
+    def set_search(self, func: Callable[[pd.DataFrame, str], pd.DataFrame]) -> None:
+        """Sets custom search function for the table.
+
+        :param func: Custom search function
+        :type func: Callable[[pd.DataFrame, str], pd.DataFrame]
+        """
+        self._search_function = func
+
     def read_json(self, data: Dict, meta: Dict = None) -> None:
         """Replace table data with options and project meta in the widget
 
@@ -305,6 +383,7 @@ class FastTable(Widget):
         self._source_data = self._prepare_input_data(self._parsed_source_data)
         self._sliced_data = self._slice_table_data(self._source_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        self._rows_total = len(self._parsed_source_data["data"])
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
@@ -332,6 +411,7 @@ class FastTable(Widget):
         self._sliced_data = self._slice_table_data(self._sorted_data)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         self._parsed_source_data = self._unpack_pandas_table_data(self._source_data)
+        self._rows_total = len(self._parsed_source_data["data"])
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["total"] = len(self._source_data)
@@ -381,9 +461,10 @@ class FastTable(Widget):
 
     def clear_selection(self) -> None:
         """Clears the selection of the table."""
-        StateJson()[self.widget_id]["selectedRow"] = None
+        StateJson()[self.widget_id]["selectedRows"] = None
         StateJson()[self.widget_id]["selectedCell"] = None
         StateJson().send_changes()
+        self._maybe_update_selected_row()
 
     def get_selected_row(self) -> ClickedRow:
         """Returns the selected row.
@@ -391,20 +472,56 @@ class FastTable(Widget):
         :return: Selected row
         :rtype: ClickedRow
         """
-        row_data = StateJson()[self.widget_id]["selectedRow"]
-        row_index = row_data["idx"]
-        row = row_data["row"]
+        if self._is_radio or self._is_selectable:
+            selected_rows = StateJson()[self.widget_id]["selectedRows"]
+            if selected_rows is None:
+                return None
+            if len(selected_rows) == 0:
+                return None
+            if len(selected_rows) > 1:
+                raise ValueError(
+                    "Multiple rows selected. Use get_selected_rows() method to get all selected rows."
+                )
+            row = selected_rows[0]
+            row_index = row["idx"]
+            row = row.get("row", row.get("items", None))
+            if row_index is None or row is None:
+                return None
+            return self.ClickedRow(row, row_index)
+        return self.get_clicked_row()
+
+    def get_selected_rows(self) -> List[ClickedRow]:
+        if self._is_radio or self._is_selectable:
+            selected_rows = StateJson()[self.widget_id]["selectedRows"]
+            rows = []
+            for row in selected_rows:
+                row_index = row["idx"]
+                row_data = row["row"]
+                if row_index is None or row_data is None:
+                    continue
+                rows.append(self.ClickedRow(row_data, row_index))
+            return rows
+        return [self.get_clicked_row()]
+
+    def get_clicked_row(self) -> ClickedRow:
+        clicked_row = StateJson()[self.widget_id]["clickedRow"]
+        if clicked_row is None:
+            return None
+        row_index = clicked_row["idx"]
+        row = clicked_row["row"]
         if row_index is None or row is None:
             return None
         return self.ClickedRow(row, row_index)
 
-    def get_selected_cell(self) -> ClickedCell:
+    def get_clicked_cell(self) -> ClickedCell:
         """Returns the selected cell.
 
         :return: Selected cell
         :rtype: ClickedCell
         """
-        cell_data = StateJson()[self.widget_id]["selectedCell"]
+        cell_data = StateJson()[self.widget_id]["clickedCell"]
+        if cell_data is None:
+            return None
         row_index = cell_data["idx"]
         row = cell_data["row"]
         column_index = cell_data["column"]
@@ -413,6 +530,31 @@ class FastTable(Widget):
         if column_index is None or row is None:
             return None
         return self.ClickedCell(row, column_index, row_index, column_name, column_value)
+
+    def get_selected_cell(self) -> ClickedCell:
+        """Alias for get_clicked_cell method.
+        Will be removed in future versions.
+        """
+        return self.get_clicked_cell()
+
+    def _maybe_update_selected_row(self) -> None:
+        if not (self._is_radio or self._is_selectable):
+            return
+        if self._rows_total > 0:
+            for rows in self._parsed_source_data["data"]:
+                if rows["items"] == self._selected_rows:
+                    return
+            self._selected_rows = [
+                {
+                    "idx": self._parsed_source_data["data"][0]["idx"],
+                    "row": self._parsed_source_data["data"][0]["items"],
+                }
+            ]
+        elif self._selected_rows is None:
+            return
+        else:
+            self._selected_rows = None
+        StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
 
     def insert_row(self, row: List, index: Optional[int] = -1) -> None:
         """Inserts a row into the table to the specified position.
@@ -424,8 +566,7 @@ class FastTable(Widget):
         """
         self._validate_table_sizes(row)
         self._validate_row_values_types(row)
-        table_data = self._parsed_source_data
-        index = len(table_data) if index > len(table_data) or index < 0 else index
+        index = len(self._source_data) if index > len(self._source_data) or index < 0 else index
 
         self._source_data = pd.concat(
             [
@@ -443,6 +584,7 @@ class FastTable(Widget):
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
+        self._maybe_update_selected_row()
 
     def pop_row(self, index: Optional[int] = -1) -> List:
         """Removes a row from the table at the specified position and returns it.
@@ -469,7 +611,7 @@ class FastTable(Widget):
             self._rows_total = len(self._parsed_source_data["data"])
             DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
             DataJson()[self.widget_id]["total"] = self._rows_total
-            DataJson().send_changes()
+            self._maybe_update_selected_row()
             return popped_row
 
     def clear(self) -> None:
@@ -482,6 +624,7 @@ class FastTable(Widget):
         DataJson()[self.widget_id]["data"] = []
         DataJson()[self.widget_id]["total"] = 0
         DataJson().send_changes()
+        self._maybe_update_selected_row()
 
     def row_click(self, func: Callable[[ClickedRow], Any]) -> Callable[[], None]:
         """Decorator for function that handles row click event.
@@ -495,8 +638,8 @@ class FastTable(Widget):
         server = self._sly_app.get_server()
 
         self._row_click_handled = True
-        self._clickable_rows = True
-        DataJson()[self.widget_id]["options"]["isRowClickable"] = self._clickable_rows
+        self._is_row_clickable = True
+        DataJson()[self.widget_id]["options"]["isRowClickable"] = self._is_row_clickable
         DataJson().send_changes()
 
         if self._cell_click_handled is True:
@@ -528,8 +671,8 @@ class FastTable(Widget):
         server = self._sly_app.get_server()
 
         self._cell_click_handled = True
-        self._clickable_cells = True
-        DataJson()[self.widget_id]["options"]["isCellClickable"] = self._clickable_cells
+        self._is_cell_clickable = True
+        DataJson()[self.widget_id]["options"]["isCellClickable"] = self._is_cell_clickable
         DataJson().send_changes()
 
         if self._row_click_handled is True:
@@ -549,6 +692,10 @@ class FastTable(Widget):
 
         return _click
 
+    def _search(self, data: pd.DataFrame, search_value: str) -> pd.DataFrame:
+        data = data[data.applymap(lambda x: search_value in str(x)).any(axis=1)]
+        return data
+
     def search(self, search_value: str) -> pd.DataFrame:
         """Search source data for search value.
 
@@ -560,16 +707,32 @@ class FastTable(Widget):
         filtered_data = self._source_data.copy()
         if search_value == "":
             return filtered_data
-        else:
-            if self._search_str != search_value:
-                self._active_page = 1
-                StateJson()[self.widget_id]["page"] = self._active_page
-                StateJson().send_changes()
-            filtered_data = filtered_data[
-                filtered_data.applymap(lambda x: search_value in str(x)).any(axis=1)
-            ]
-            self._search_str = search_value
+        if self._search_str != search_value:
+            self._active_page = 1
+            StateJson()[self.widget_id]["page"] = self._active_page
+            StateJson().send_changes()
+        filtered_data = self._search_function(filtered_data, search_value)
+        self._search_str = search_value
         return filtered_data
+
+    def _sort(
+        self,
+        data: pd.DataFrame,
+        column_idx: Optional[int],
+        order: Optional[Literal["asc", "desc"]],
+    ) -> pd.DataFrame:
+        if order == "asc":
+            ascending = True
+        else:
+            ascending = False
+        try:
+            data = data.sort_values(by=data.columns[column_idx], ascending=ascending)
+        except IndexError as e:
+            e.args = (
+                f"Sorting by column idx = {column_idx} is not possible, your table has only {len(data.columns)} columns with idx from 0 to {len(data.columns) - 1}",
+            )
+            raise e
+        return data
 
     def sort(
         self, column_idx: Optional[int] = None, order: Optional[Literal["asc", "desc"]] = None
@@ -746,28 +909,29 @@ class FastTable(Widget):
             data = data.iloc[start_idx:end_idx]
         return data
 
-    def _sort_table_data(self, input_data: pd.DataFrame) -> pd.DataFrame:
+    def _sort_table_data(
+        self,
+        input_data: pd.DataFrame,
+        column_index: Optional[int] = None,
+        sort_order: Optional[Literal["asc", "desc"]] = None,
+    ) -> pd.DataFrame:
         """
         Apply sorting to received data
 
         """
-        if self._sort_order is None or self._sort_column_idx is None:
+        if column_index is None:
+            column_index = self._sort_column_idx
+        if sort_order is None:
+            sort_order = self._sort_order
+
+        if sort_order is None or column_index is None:
             return input_data  # unsorted
 
-        if input_data is not None:
-            if self._sort_order == "asc":
-                ascending = True
-            else:
-                ascending = False
-            data: pd.DataFrame = copy.deepcopy(input_data)
-            try:
-                data = data.sort_values(by=data.columns[self._sort_column_idx], ascending=ascending)
-            except IndexError as e:
-                e.args = (
-                    f"Sorting by column idx = {self._sort_column_idx} is not possible, your table has only {len(data.columns)} columns with idx from 0 to {len(data.columns) - 1}",
-                )
-                raise e
+        data = copy.deepcopy(input_data)
+        if input_data is None:
+            return data
 
+        data = self._sort_function(data=input_data, column_idx=column_index, order=sort_order)
         return data
 
     def _unpack_project_meta(self, project_meta: Union[ProjectMeta, dict]) -> dict:
@@ -863,7 +1027,9 @@ class FastTable(Widget):
 
         increment = 0 if self._rows_total % self._page_size == 0 else 1
         max_page = self._rows_total // self._page_size + increment
-        if self._active_page > max_page: # active page is out of range (in case of the filtered data)
+        if (
+            self._active_page > max_page
+        ):  # active page is out of range (in case of the filtered data)
             self._active_page = max_page
             StateJson()[self.widget_id]["page"] = self._active_page
 
@@ -873,3 +1039,24 @@ class FastTable(Widget):
         DataJson()[self.widget_id]["total"] = self._rows_total
         DataJson().send_changes()
         StateJson().send_changes()
+
+    def selection_changed(self, func):
+        """Decorator for function that handles selection change event.
+
+        :param func: Function that handles selection change event
+        :type func: Callable[[], Any]
+        :return: Decorated function
+        :rtype: Callable[[], None]
+        """
+        selection_changed_route_path = self.get_route_path(FastTable.Routes.SELECTION_CHANGED)
+        server = self._sly_app.get_server()
+
+        @server.post(selection_changed_route_path)
+        def _selection_changed():
+            selected_row = self.get_selected_row()
+            func(selected_row)
+
+        self._selection_changed_handled = True
+        DataJson()[self.widget_id]["selectionChangedHandled"] = True
+        DataJson().send_changes()
+        return _selection_changed
