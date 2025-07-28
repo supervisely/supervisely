@@ -330,15 +330,24 @@ class ExperimentSelector(Widget):
             text += str(self._task_id)
             text += str(self._task_date)
             text += str(self._model_name)
-            text += str(self._training_project_info.name)
+            if self._training_project_info is not None:
+                text += str(self._training_project_info.name)
+            else:
+                text += "Project was deleted"
             return text
 
         def sort_values(self) -> List[int]:
+            training_project_name = None
+            if self._training_project_info is not None:
+                training_project_name = self._training_project_info.name.capitalize()
+            else:
+                training_project_name = "Project was deleted"
+
             return [
                 self._task_id,
                 self._model_name.capitalize(),
                 int(pd.to_datetime(self._task_date).timestamp()),
-                self._training_project_info.name.capitalize(),
+                training_project_name,
                 0,
                 0,
                 0,
