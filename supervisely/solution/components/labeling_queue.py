@@ -351,7 +351,7 @@ class LabelingQueue(SolutionElement):
         Refresh the labeling queue info and update the GUI.
         """
         try:
-            pending, annotating, reviewing, rejected, finished = self.get_labeling_stats()
+            pending, annotating, reviewing, finished, rejected = self.get_labeling_stats()
             self.update_pending(pending)
             self.update_annotation(annotating)
             self.update_review(reviewing)
