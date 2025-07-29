@@ -2460,20 +2460,24 @@ class Inference:
         if self._model_frozen or not self._model_served:
             return
         logger.debug("Freezing model...")
-        deploy_params = self._deploy_params.copy()
-        previous_device = deploy_params.get("device")
-        if previous_device == "cpu":
-            logger.debug("Model is already running on CPU, cannot freeze.")
-            return
-        runtime = deploy_params.get("runtime")
+        runtime = self._deploy_params.get("runtime")
         if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():
             logger.debug("Model is not running in PyTorch runtime, cannot freeze.")
             return
+        previous_device = self._deploy_params.get("device")
+        if previous_device == "cpu":
+            logger.debug("Model is already running on CPU, cannot freeze.")
+            return
+
+        deploy_params = self._deploy_params.copy()
         deploy_params["device"] = "cpu"
         try:
             self._load_model(deploy_params)
             self._model_frozen = True
-            logger.debug("Model has been successfully frozen.")
+            logger.info(
+                "Model has been re-deployed to CPU for resource optimization. "
+                "It will be loaded back to the original device on the next inference request."
+            )
         finally:
             self._deploy_params["device"] = previous_device
             clean_up_cuda()
