@@ -186,6 +186,8 @@ class CloudImport(Widget):
         :return: Task ID of the import task
         :rtype: int
         """
+        self.status_text.show()
+        self.status_text.set("Importing from cloud storage...", status="info")
         for callback in self.on_start_callbacks:
             callback()
         logger.info(f"Starting import from cloud storage: {path}")
@@ -219,6 +221,7 @@ class CloudImport(Widget):
                 else:
                     callback(session.task_id)
 
+        self.status_text.hide()
         return session.task_id
 
     def wait_import_completion(self, task_id: int) -> bool:
