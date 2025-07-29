@@ -680,6 +680,9 @@ class DeployModel(Widget):
         mode = data["mode"]
         label = self.modes_labels[mode]
         self.tabs.set_active_tab(label)
+        agent_id = data.get("agent_id", None)
+        if agent_id is not None:
+            self.select_agent.set_value(agent_id)
         self.modes[mode].load_from_json(data)
 
     def get_deploy_parameters(self) -> Dict[str, Any]:
@@ -688,9 +691,8 @@ class DeployModel(Widget):
         for mode, label in self.modes_labels.items():
             if label == mode_label:
                 break
-        parameters = {
-            "mode": mode,
-        }
+        agent_id = self.select_agent.get_value()
+        parameters = {"mode": mode, "agent_id": agent_id}
         parameters.update(self.modes[mode].get_deploy_parameters())
         return parameters
 

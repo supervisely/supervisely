@@ -155,14 +155,14 @@ class SelectItem:
             }
 
     def load_from_json(self, data):
-        if "project" in data:
-            self.select_project.set_project_id(data["project"])
-        if "dataset" in data:
-            self.select_dataset.set_dataset_id(data["dataset"])
-        if "video" in data:
-            self.select_video.select_row_by_value("id", data["video"])
-        if "images" in data:
-            self.select_images.select_rows_by_value("id", data["images"])
+        if "project_id" in data:
+            self.select_project.set_project_id(data["project_id"])
+        if "dataset_ids" in data:
+            self.select_dataset.set_dataset_ids(data["dataset_ids"])
+        if "video_id" in data:
+            self.select_video.select_row_by_value("id", data["video_id"])
+        if "image_ids" in data:
+            self.select_images.select_rows_by_value("id", data["image_ids"])
 
 
 class SelectOutput:
