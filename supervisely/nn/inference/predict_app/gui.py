@@ -1,9 +1,14 @@
+import os
+import random
+import tempfile
 from typing import Any, Dict, List
 
 import yaml
 
+from supervisely.annotation.annotation import Annotation, Label, ObjClass
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
+from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
     Card,
     Container,
@@ -11,6 +16,7 @@ from supervisely.app.widgets import (
     Editor,
     FastTable,
     Field,
+    GridGallery,
     Input,
     InputNumber,
     OneOf,
@@ -24,6 +30,9 @@ from supervisely.app.widgets import (
 from supervisely.app.widgets.button.button import Button
 from supervisely.io import env
 from supervisely.project.project import ProjectType
+from supervisely.project.project_meta import ProjectMeta
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
 def fetch_frameworks(api: Api) -> List[str]:
@@ -122,7 +131,7 @@ class SelectItem:
                 RadioGroup.Item("project", "Project", content=self.select_project),
                 RadioGroup.Item("dataset", "Dataset", content=self.select_dataset),
                 RadioGroup.Item("video", "Video", content=self.select_video_container),
-                RadioGroup.Item("images", "Images", content=self.select_images_container),
+                # RadioGroup.Item("images", "Images", content=self.select_images_container),
             ],
         )
         self.one_of = OneOf(conditional_widget=self.radio)
@@ -259,9 +268,113 @@ class SelectOutput:
             self.iou_merge_threshold.value = data.get("iou_merge_threshold", 0)
 
 
+class Preview:
+    def __init__(self, gui: "PredictAppGui"):
+        self.gui = gui
+        self._preview_dir = os.path.join(self.gui.static_dir, "preview")
+        os.makedirs(self._preview_dir, exist_ok=True)
+        self._preview_path = os.path.join(self._preview_dir, "preview.jpg")
+        self._peview_url = f"/static/preview/preview.jpg"
+
+        self.preview_button = Button("Preview", icon="zmdi zmdi-eye")
+
+        self.gallery = GridGallery(
+            2,
+            sync_views=True,
+            enable_zoom=True,
+            resize_on_zoom=True,
+            empty_message="Click 'Preview' to see the model output.",
+        )
+        self.container = Container(
+            widgets=[self.preview_button, self.gallery],
+            direction="vertical",
+            gap=20,
+        )
+        self.card = Card(title="Preview", content=self.container)
+
+        @self.preview_button.click
+        def preview_button_click():
+            self.run_preview()
+
+    def _get_frame_annotation(
+        self, video_info: VideoInfo, frame_index: int, project_meta: ProjectMeta
+    ) -> Annotation:
+        video_annotation = VideoAnnotation.from_json(
+            self.gui.api.video.annotation.download(video_info.id, frame_index),
+            project_meta=project_meta,
+            key_id_map=KeyIdMap(),
+        )
+        frame = video_annotation.frames.get(frame_index)
+        img_size = (video_info.frame_height, video_info.frame_width)
+        if frame is None:
+            return Annotation(img_size)
+        labels = []
+        for figure in frame.figures:
+            labels.append(Label(figure.geometry, figure.video_object.obj_class))
+        ann = Annotation(img_size, labels=labels)
+        return ann
+
+    def run_preview(self):
+        self.gallery.clean_up()
+        self.gallery.loading = True
+        try:
+            items_settings = self.gui.items.get_item_settings()
+            if "video_id" in items_settings:
+                video_id = items_settings["video_id"]
+                video_info = self.gui.api.video.get_info_by_id(video_id)
+                video_frame = random.randint(0, video_info.frames_count - 1)
+                self.gui.api.video.frame.download_path(
+                    video_info.id, video_frame, self._preview_path
+                )
+                img_url = self._peview_url
+                project_meta = ProjectMeta.from_json(
+                    self.gui.api.project.get_meta(video_info.project_id)
+                )
+                input_ann = self._get_frame_annotation(video_info, video_frame, project_meta)
+                output_ann = self.gui.model.model_api.predict(
+                    input=self._preview_path, **self.gui.get_inference_settings()
+                )[0].annotation
+            else:
+                if "project_id" in items_settings:
+                    project_id = items_settings["project_id"]
+                    dataset_infos = self.gui.api.dataset.get_list(project_id)
+                    dataset_info = random.choice(dataset_infos)
+                elif "dataset_ids" in items_settings:
+                    dataset_ids = items_settings["dataset_ids"]
+                    dataset_id = random.choice(dataset_ids)
+                    dataset_info = self.gui.api.dataset.get_info_by_id(dataset_id)
+                else:
+                    raise ValueError("No valid item settings found for preview.")
+                images = self.gui.api.image.get_list(dataset_info.id)
+                image_info = random.choice(images)
+                img_url = image_info.preview_url
+                # for testing
+                self.gui.api.image.download_path(image_info.id, self._preview_path)
+                img_url = self._peview_url
+                ##
+                project_meta = ProjectMeta.from_json(
+                    self.gui.api.project.get_meta(dataset_info.project_id)
+                )
+                input_ann = Annotation.from_json(
+                    self.gui.api.annotation.download(image_info.id).annotation,
+                    project_meta=project_meta,
+                )
+                prediction = self.gui.model.model_api.predict(
+                    image_id=image_info.id, **self.gui.get_inference_settings()
+                )[0]
+                output_ann = prediction.annotation
+
+            self.gallery.append(img_url, input_ann, "Input")
+            self.gallery.append(img_url, output_ann, "Output")
+        finally:
+            self.gallery.loading = False
+
+
 class PredictAppGui:
-    def __init__(self, api: Api):
+
+    def __init__(self, api: Api, static_dir: str = "static"):
         self.api = api
+        self.static_dir = static_dir
         self.team_id = env.team_id()
         self.model = DeployModel(api=self.api, team_id=self.team_id)
         self.model.deploy = self._deploy_model
@@ -273,6 +386,7 @@ class PredictAppGui:
         )
         self.items = SelectItem(self)
         self.output = SelectOutput(self)
+        self.preview = Preview(self)
         self.progress = Progress()
         self.run_button = Button("Run", icon="zmdi zmdi-play")
 
@@ -280,6 +394,8 @@ class PredictAppGui:
             widgets=[
                 self.model_card,
                 self.items.card,
+                self.inference_settings_card,
+                self.preview.card,
                 self.output.card,
                 self.run_button,
                 self.progress,

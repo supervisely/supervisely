@@ -6,9 +6,10 @@ from supervisely.nn.inference.predict_app.gui import PredictAppGui
 
 class PredictApp:
     def __init__(self, api: Api):
+        _static_dir = "static"
         self.api = api
-        self.gui = PredictAppGui(api)
-        self.app = Application(self.gui.layout)
+        self.gui = PredictAppGui(api, static_dir=_static_dir)
+        self.app = Application(self.gui.layout, static_dir=_static_dir)
 
         @self.gui.run_button.click
         def run_button_click():
