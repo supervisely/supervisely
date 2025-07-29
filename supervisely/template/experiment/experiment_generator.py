@@ -811,8 +811,8 @@ class ExperimentGenerator(BaseGenerator):
         )
 
         apply_nn_images_app = {
-            "slug": apply_nn_images_slug,
-            "module_id": apply_nn_images_module_id,
+            "slug": "b2db364195caccd9e94d63646b6edb8f/apply-neural-networks",
+            "module_id": 513,
         }
         apply_nn_videos_app = {
             "slug": apply_nn_videos_slug,
