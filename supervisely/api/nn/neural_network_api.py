@@ -204,7 +204,14 @@ class NeuralNetworkApi:
         # get deploy infos and filter results
         result = []
         for task in all_tasks:
-            deploy_info = self._deploy_api.get_deploy_info(task["id"])
+            try:
+                deploy_info = self._deploy_api.get_deploy_info(task["id"])
+            except Exception as e:
+                logger.warning(
+                    f"Failed to get deploy info for task {task['id']}: {e}",
+                    exc_info=True,
+                )
+                continue
             if model is not None:
                 checkpoint = deploy_info["checkpoint_name"]
                 deployed_model = deploy_info["model_name"]
