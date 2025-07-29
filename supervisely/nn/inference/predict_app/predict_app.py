@@ -21,7 +21,7 @@ class PredictApp:
             run_parameters = config
 
         if self.gui.model.model_api is None:
-            self.gui.model.deploy()
+            self.gui.model._deploy()
 
         model_api = self.gui.model.model_api
         if model_api is None:
