@@ -246,6 +246,7 @@ class Inference:
                 deploy_params["model_files"] = local_model_files
             logger.debug("Loading model...")
             self._load_model_headless(**deploy_params)
+            _freeze_on_inactivity(lambda x: None)(self)
 
         if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -294,6 +295,7 @@ class Inference:
                     self.device = device
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
+                _freeze_on_inactivity(lambda x: None)(self)
 
             def on_change_model_callback(
                 gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
@@ -373,6 +375,7 @@ class Inference:
             **kwargs,
         )
 
+    @_freeze_on_inactivity
     def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
         """Deploy model immediately from constructor arguments."""
         # Clean model_dir before deploying
@@ -2488,20 +2491,7 @@ class Inference:
             return
         deploy_params["device"] = "cpu"
         try:
-            if isinstance(self.gui, GUI.ServingGUITemplate):
-                self._load_model_headless(**deploy_params)
-            elif isinstance(self.gui, GUI.ServingGUI):
-                self._load_model(deploy_params)
-            else:
-                try:
-                    # @TODO
-                    if "model_files" in deploy_params: # v2 serving
-                        self._load_model_headless(**deploy_params)
-                    else: # v1 serving
-                        self._load_model(deploy_params)
-                except Exception as e:
-                    logger.warning(f"Failed to freeze model: {e}", exc_info=True)
-                    return
+            self._load_model(deploy_params)
             self._model_frozen = True
             logger.debug("Model has been successfully frozen.")
         finally:
@@ -2511,24 +2501,10 @@ class Inference:
     def _unfreeze_model(self):
         logger.debug("Unfreezing model...")
         self._model_frozen = False
-        if isinstance(self.gui, GUI.ServingGUITemplate):
-            self._load_model_headless(**self._deploy_params)
-        elif isinstance(self.gui, GUI.ServingGUI):
-            self._load_model(self._deploy_params)
-        else:
-            try:
-                # @TODO
-                if "model_files" in self._deploy_params: # v2 serving
-                    self._load_model_headless(**self._deploy_params)
-                else: # v1 serving
-                    self._load_model(self._deploy_params)
-            except Exception as e:
-                logger.warning(f"Failed to freeze model: {e}", exc_info=True)
-                return
+        self._load_model(self._deploy_params)
         clean_up_cuda()
         logger.debug("Model is unfrozen and ready for inference.")
 
-    @_freeze_on_inactivity
     def _set_served_callback(self):
         self._model_served = True
 
@@ -2572,6 +2548,7 @@ class Inference:
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
+    @_freeze_on_inactivity
     def _deploy_on_autorestart(self):
         try:
             self._api_request_model_layout._title = (
@@ -3436,6 +3413,7 @@ class Inference:
             return args_details
 
         @server.post("/deploy_from_api")
+        @_freeze_on_inactivity
         def _deploy_from_api(response: Response, request: Request):
             try:
                 if self._model_served:
