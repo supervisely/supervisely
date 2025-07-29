@@ -292,6 +292,7 @@ class PredictAppGui:
         model_api = type(self.model).deploy(self.model)
         inference_settings = model_api.get_settings()
         self.set_inference_settings(inference_settings)
+        return model_api
 
     def get_inference_settings(self):
         return yaml.safe_load(self.inference_settings.get_text())
