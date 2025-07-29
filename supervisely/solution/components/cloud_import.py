@@ -304,11 +304,30 @@ class CloudImport(SolutionElement):
         Set a callback function to be called after the import task is finished.
         :param func: Function to call after the import task is finished.
         """
-        return self.main_widget.on_finish(func)
-    
+
+        def wrapped_finish_func(task_id: int):
+            if func:
+                # Check if func expects task_id parameter
+                import inspect
+
+                sig = inspect.signature(func)
+                if len(sig.parameters) > 0:
+                    func(task_id)
+                else:
+                    func()
+            self.node.hide_in_progress_badge("Import")
+
+        return self.main_widget.on_finish(wrapped_finish_func)
+
     def on_start(self, func: Callable[[], None]) -> None:
         """
         Set a callback function to be called before the import task starts.
         :param func: Function to call before the import task starts.
         """
-        return self.main_widget.on_start(func)
+
+        def wrapped_start_func():
+            self.node.show_in_progress_badge("Import")
+            if func:
+                func()
+
+        return self.main_widget.on_start(wrapped_start_func)

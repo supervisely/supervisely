@@ -96,17 +96,84 @@ class CloudImport(Widget):
         )
         self.path_input = Input(placeholder="provider://bucket-name/path/to/folder")
         self.agent_select = AgentSelector(self.project.team_id, compact=True)
+        self.status_text = Text("", status="text")
+        self.status_text.hide()
         self.run_btn = Button("Run", plain=True)
         run_btn_cont = Container([self.run_btn], style="align-items: flex-end")
-        self.content = Container([text, self.path_input, self.agent_select, run_btn_cont])
+        self.content = Container(
+            [text, self.path_input, self.agent_select, self.status_text, run_btn_cont]
+        )
 
         @self.run_btn.click
         def _on_run_btn_click():
             self.run()
 
+    def _validate_path(self, path: str) -> bool:
+        """
+        Validate a cloud storage path and set error message if validation fails.
+        Expected format: provider://bucket-name/path/to/folder
+        Example: s3://my-bucket/my-folder/my-dataset/img/
+        :param path: Cloud storage path to validate
+        :return: True if path is valid, False otherwise
+        """
+        if path is None or path.strip() == "":
+            self.status_text.set("Path cannot be empty", status="error")
+            self.status_text.show()
+            return False
+
+        path = path.strip()
+
+        if "://" not in path:
+            self.status_text.set(
+                "Invalid cloud path format. Expected format: provider://bucket-name/path/to/folder",
+                status="error",
+            )
+            self.status_text.show()
+            return False
+
+        try:
+            provider, rest = path.split("://", 1)
+        except ValueError:
+            self.status_text.set(
+                "Invalid cloud path format. Expected format: provider://bucket-name/path/to/folder",
+                status="error",
+            )
+            self.status_text.show()
+            return False
+
+        if not provider:
+            self.status_text.set(
+                "Cloud provider is required (e.g., s3, gcs, azure)", status="error"
+            )
+            self.status_text.show()
+            return False
+
+        if not rest:
+            self.status_text.set("Bucket name and path are required", status="error")
+            self.status_text.show()
+            return False
+
+        # Check if bucket name exists (first part before /)
+        if "/" not in rest:
+            self.status_text.set("Path must include bucket name and folder path", status="error")
+            self.status_text.show()
+            return False
+
+        bucket_name = rest.split("/")[0]
+        if not bucket_name:
+            self.status_text.set("Bucket name cannot be empty", status="error")
+            self.status_text.show()
+            return False
+        return True
+
     def run(self, path: Optional[str] = None) -> int:
+        self.status_text.hide()
         if path is None:
             path = self.path_input.get_value().strip()
+
+        is_valid_path = self._validate_path(path)
+        if not is_valid_path:
+            return None
         agent_id = self.agent_select.get_value()
         return self._run(path, agent_id)
 

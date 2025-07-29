@@ -244,6 +244,8 @@ class SmartSamplingGUI(Widget):
             )
             tabs.append(ai_search_tab_cont)
 
+        self.status_text = Text("", status="text")
+        self.status_text.hide()
         self.save_settings_btn = Button("Confirm settings", plain=True)
         self.run_btn = Button("Run sampling", plain=True, icon="zmdi zmdi-play")
         sample_btn_cont = Container(
@@ -257,7 +259,7 @@ class SmartSamplingGUI(Widget):
             contents=tabs,
             type="card",
         )
-        self.content = Container([self.sampling_tabs, sample_btn_cont])
+        self.content = Container([self.sampling_tabs, self.status_text, sample_btn_cont])
 
         @self.sampling_tabs.click
         def on_sampling_tabs_click(value: str):
@@ -808,7 +810,10 @@ class SmartSampling(SolutionElement):
 
         @self.run_btn.click
         def on_run_btn_click():
+            self.main_widget.status_text.show()
+            self.main_widget.status_text.set("Sampling is in progress...", status="info")
             self.run()
+            self.main_widget.status_text.hide()
 
         super().__init__(*args, **kwargs)
 
@@ -852,6 +857,7 @@ class SmartSampling(SolutionElement):
         return self.automation.apply_btn
 
     def run(self):
+        self.node.show_in_progress_badge("Sampling")
         for callback in self.on_start_callbacks:
             callback()
         res = self.main_widget.run()
@@ -861,6 +867,7 @@ class SmartSampling(SolutionElement):
                     callback()
                 else:
                     callback(res)
+        self.node.hide_in_progress_badge("Sampling")
 
     def apply_automation(self):
         enabled, _, _, sec = self.automation.get_automation_details()
@@ -999,8 +1006,14 @@ class SmartSampling(SolutionElement):
         self,
         diff: Optional[int] = None,
         sampling_settings: Optional[dict] = None,
+        updated_project_info: Optional[ProjectInfo] = None,
     ):
         """Update the sampling inputs based on the difference."""
+        if updated_project_info:
+            self.project = updated_project_info
+            self.items_count = self.project.items_count
+            self.main_widget.total_num_text.text = f"{self.items_count} images"
+
         if diff is None:
             diff = self.main_widget.calculate_diff_count()
 
