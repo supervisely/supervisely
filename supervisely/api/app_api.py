@@ -11,7 +11,7 @@ from typing_extensions import Literal
 
 from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
-from supervisely.api.task_api import TaskApi
+from supervisely.api.task_api import KubernetesSettings, TaskApi
 
 # from supervisely.app.constants import DATA, STATE, CONTEXT, TEMPLATE
 STATE = "state"
@@ -1682,6 +1682,7 @@ class AppApi(TaskApi):
         proxy_keep_url: bool = False,
         module_id: Optional[int] = None,
         redirect_requests: Dict[str, int] = {},
+        kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
     ) -> SessionInfo:
         """Start a new application session (task).
 
@@ -1713,6 +1714,8 @@ class AppApi(TaskApi):
         :type module_id: Optional[int]
         :param redirect_requests: For internal usage only in Develop and Debug mode.
         :type redirect_requests: dict
+        :param kubernetes_settings: Kubernetes settings for the task. If not specified, default settings will be used.
+        :type kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]]
         :return: SessionInfo object with information about the started task.
         :rtype: SessionInfo
         :raises ValueError: If both app_id and module_id are not provided.
@@ -1747,6 +1750,7 @@ class AppApi(TaskApi):
             proxy_keep_url=proxy_keep_url,
             module_id=module_id,
             redirect_requests=redirect_requests,
+            kubernetes_settings=kubernetes_settings,
         )
         if type(result) is not list:
             result = [result]
