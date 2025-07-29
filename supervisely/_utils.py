@@ -615,7 +615,7 @@ def get_latest_instance_version_from_json() -> Optional[str]:
         # Get the path to versions.json relative to this file
         # supervisely/io/env.py -> supervisely/versions.json
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        versions_file = os.path.join(os.path.dirname(current_dir), "versions.json")
+        versions_file = os.path.join(current_dir, "versions.json")
 
         if not os.path.exists(versions_file):
             logger.debug(f"versions.json file not found at {versions_file}")
