@@ -289,7 +289,7 @@ class PredictAppGui:
         )
 
     def _deploy_model(self) -> None:
-        model_api = self.model.deploy()
+        model_api = type(self.model).deploy(self.model)
         inference_settings = model_api.get_settings()
         self.set_inference_settings(inference_settings)
 
