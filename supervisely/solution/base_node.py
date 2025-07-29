@@ -256,6 +256,16 @@ class SolutionCardNode(SolutionGraph.Node):
         """Updates the card to show that automation is disabled."""
         self.update_automation_badge(False)
 
+    def show_in_progress_badge(self, key: Optional[str] = None):
+        """Updates the card to show that the main task is in progress."""
+        key = key or "⏳"
+        self.content.update_badge_by_key(key=key, label="In progress", badge_type="info")
+
+    def hide_in_progress_badge(self, key: Optional[str] = None):
+        """Hides the in-progress badge from the card."""
+        key = key or "⏳"
+        self.content.remove_badge_by_key(key=key)
+
     def show_finished_badge(self):
         """Updates the card to show that main task is finished."""
         self.content.update_badge_by_key(
