@@ -2535,7 +2535,6 @@ class Inference:
     def is_model_deployed(self):
         return self._model_served
 
-    @_freeze_on_inactivity
     def _on_inference_start(self, inference_request_uuid):
         inference_request = {
             "progress": Progress("Inferring model...", total_cnt=1),
@@ -2548,14 +2547,12 @@ class Inference:
         }
         self._inference_requests[inference_request_uuid] = inference_request
 
-    @_freeze_on_inactivity
     def _on_inference_end(self, future, inference_request_uuid):
         logger.debug("callback: on_inference_end()")
         inference_request = self._inference_requests.get(inference_request_uuid)
         if inference_request is not None:
             inference_request["is_inferring"] = False
 
-    @_freeze_on_inactivity
     def schedule_task(self, func, *args, **kwargs):
         inference_request_uuid = kwargs.get("inference_request_uuid", None)
         if inference_request_uuid is None:
@@ -2575,7 +2572,6 @@ class Inference:
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
-    @_freeze_on_inactivity
     def _deploy_on_autorestart(self):
         try:
             self._api_request_model_layout._title = (
@@ -2939,7 +2935,6 @@ class Inference:
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
-        @_freeze_on_inactivity
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
             state = request.state.state
@@ -3005,7 +3000,6 @@ class Inference:
                 )
 
         @server.post("/inference_image_url")
-        @_freeze_on_inactivity
         def inference_image_url(request: Request):
             state = request.state.state
             logger.debug("Received a request to 'inference_image_url'", extra={"state": state})
@@ -3021,7 +3015,6 @@ class Inference:
             return self.inference_requests_manager.run(self._inference_images, [image], state)[0]
 
         @server.post("/inference_batch_ids")
-        @_freeze_on_inactivity
         def inference_batch_ids(request: Request):
             state = request.state.state
             logger.debug("Received a request to  'inference_batch_ids'", extra={"state": state})
@@ -3942,7 +3935,6 @@ class Inference:
         logger.debug("Starting inference by CLI deploy args")
         missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
 
-        @_freeze_on_inactivity
         def predict_project_id_by_args(
             api: Api,
             project_id: int,
