@@ -47,3 +47,6 @@ class PredictApp:
         model_api.predict(
             **item_prameters, **inference_settings, **upload_parameters, tqdm=self.gui.progress()
         )
+
+    def load_from_json(self, data):
+        self.gui.load_from_json(data)
