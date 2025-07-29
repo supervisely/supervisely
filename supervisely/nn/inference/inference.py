@@ -100,26 +100,6 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 
-def _freeze_on_inactivity(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if self._model_frozen:
-            logger.debug("Model is frozen, unfreezing before function call.")
-            self._unfreeze_model()
-        result = func(self, *args, **kwargs)
-
-        if hasattr(self, "_freeze_timer"):
-            self._freeze_timer.cancel()
-        timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
-        timer.daemon = True
-        timer.start()
-        self._freeze_timer = timer
-        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
-
-        return result
-
-    return wrapper
-
 
 @dataclass
 class AutoRestartInfo:
@@ -201,6 +181,7 @@ class Inference:
         self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
+        self._freeze_timer = None
         self._model_frozen = False
         self._inactivity_timeout = 3600  # 1 hour
         self._deploy_params: dict = None
@@ -1462,14 +1443,13 @@ class Inference:
         if api is None:
             api = self.api
         return api
-
         
-    @_freeze_on_inactivity
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
         settings: Dict[str, Any],
     ) -> Tuple[List[Annotation], List[dict]]:
+        self._unfreeze_model()
         inference_mode = settings.get("inference_mode", "full_image")
         use_raw = (
             inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
@@ -1480,9 +1460,11 @@ class Inference:
         if (not use_raw and self.is_batch_inference_supported()) or (
             use_raw and is_predict_batch_raw_implemented
         ):
-            return self._inference_batched_wrapper(source, settings)
+            result = self._inference_batched_wrapper(source, settings)
         else:
-            return self._inference_one_by_one_wrapper(source, settings)
+            result = self._inference_one_by_one_wrapper(source, settings)
+        self._schedule_freeze_on_inactivity()
+        return result
 
     def inference(
         self,
@@ -2470,22 +2452,18 @@ class Inference:
             return func(*args, **kwargs)
         return wrapper
 
-
-
     def _freeze_model(self):
-        if self._model_frozen:
-            logger.debug("Model is already frozen, no need to freeze again.")
+        if self._model_frozen or not self._model_served:
             return
-        
-        if not self._model_served:
-            logger.debug("Tried to freeze model before serving, skipping.")
-            return
-        
         logger.debug("Freezing model...")
         deploy_params = self._deploy_params.copy()
         previous_device = deploy_params.get("device")
         if previous_device == "cpu":
             logger.debug("Model is already running on CPU, cannot freeze.")
+            return
+        runtime = deploy_params.get("runtime")
+        if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():
+            logger.debug("Model is not running in PyTorch runtime, cannot freeze.")
             return
         deploy_params["device"] = "cpu"
         try:
@@ -2497,11 +2475,22 @@ class Inference:
             clean_up_cuda()
 
     def _unfreeze_model(self):
+        if not self._model_frozen:
+            return
         logger.debug("Unfreezing model...")
         self._model_frozen = False
         self._load_model(self._deploy_params)
         clean_up_cuda()
         logger.debug("Model is unfrozen and ready for inference.")
+
+    def _schedule_freeze_on_inactivity(self):
+        if self._freeze_timer is not None:
+            self._freeze_timer.cancel()
+        timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+        timer.daemon = True
+        timer.start()
+        self._freeze_timer = timer
+        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
 
     def _set_served_callback(self):
         self._model_served = True
