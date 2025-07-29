@@ -538,15 +538,20 @@ class FastTable(Widget):
         return self.get_clicked_cell()
 
     def _maybe_update_selected_row(self) -> None:
+        if self._is_radio:
+            if self._rows_total != 0:
+                self.select_row(0)
+            else:
+                self._selected_rows = None
+                StateJson()[self.widget_id]["selectedRows"] = None
+                StateJson().send_changes()
+            return
         if not self._selected_rows:
             return
         if self._rows_total == 0:
             self._selected_rows = None
             StateJson()[self.widget_id]["selectedRows"] = None
             StateJson().send_changes()
-            return
-        if self._is_radio:
-            self.select_row(0)
             return
         if self._is_selectable:
             updated_selected_rows = []
