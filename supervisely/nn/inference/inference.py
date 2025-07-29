@@ -34,6 +34,7 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
@@ -68,14 +69,13 @@ from supervisely.decorators.inference import (
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
-from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
 from supervisely.nn.inference.uploader import Uploader
-from supervisely.nn.model.model_api import ModelAPI, Prediction
+from supervisely.nn.model.model_api import Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
@@ -234,8 +234,8 @@ class Inference:
 
         self.load_on_device = LOAD_ON_DEVICE_DECORATOR(self.load_on_device)
         self.load_on_device = add_callback(self.load_on_device, self._set_served_callback)
+
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
-        self.load_model = add_callback(self.load_model, self._set_served_callback)
 
         if self._is_cli_deploy:
             self._use_gui = False
@@ -887,7 +887,7 @@ class Inference:
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-
+        
         # Sort files to download 'checkpoint' first
         files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
         for file in files_order:
@@ -928,12 +928,12 @@ class Inference:
                     logger.debug("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
-
+            
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
-
+    
     def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
         def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
             exp_path = os.path.join(artifacts_dir, "experiment_info.json")
@@ -2477,12 +2477,10 @@ class Inference:
             logger.debug("Model is already frozen, no need to freeze again.")
             return
         
-        try:
-            self._check_serve_before_call(lambda: None)()
-        except RuntimeError as e:
-            logger.warning(f"Cannot freeze model: {e}", exc_info=True)
+        if not self._model_served:
+            logger.debug("Tried to freeze model before serving, skipping.")
             return
-
+        
         logger.debug("Freezing model...")
         deploy_params = self._deploy_params.copy()
         previous_device = deploy_params.get("device")
@@ -3413,7 +3411,6 @@ class Inference:
             return args_details
 
         @server.post("/deploy_from_api")
-        @_freeze_on_inactivity
         def _deploy_from_api(response: Response, request: Request):
             try:
                 if self._model_served:
@@ -3462,6 +3459,8 @@ class Inference:
                 if self.gui is not None:
                     self.gui._success_label.hide()
                 raise e
+            finally:
+                _freeze_on_inactivity(lambda x: None)(self)
 
         @server.post("/list_pretrained_models")
         def _list_pretrained_models():
