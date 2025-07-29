@@ -157,12 +157,8 @@ class DeployApi:
             "device": device,
             "model_source": ModelSource.CUSTOM,
             "model_files": {
-                "checkpoint": Path(
-                    experiment_info.artifacts_dir, "checkpoints", checkpoint_name
-                ).as_posix(),
-                "config": Path(
-                    experiment_info.artifacts_dir, experiment_info.model_files["config"]
-                ).as_posix(),
+                key: Path(experiment_info.artifacts_dir, value).as_posix()
+                for key, value in experiment_info.model_files.items()
             },
             "model_info": experiment_info.to_json(),
             "runtime": runtime,
@@ -768,10 +764,14 @@ class DeployApi:
         for file_key, file_path in experiment_info.model_files.items():
             full_file_path = os.path.join(experiment_info.artifacts_dir, file_path)
             if not self._api.file.exists(team_id, full_file_path):
-                logger.debug(f"Model file not found: '{full_file_path}'. Trying to find it by checkpoint path.")
+                logger.debug(
+                    f"Model file not found: '{full_file_path}'. Trying to find it by checkpoint path."
+                )
                 full_file_path = os.path.join(artifacts_dir, file_path)
                 if not self._api.file.exists(team_id, full_file_path):
-                    raise ValueError(f"Model file not found: '{full_file_path}'. Make sure that the file exists in the artifacts directory.")
+                    raise ValueError(
+                        f"Model file not found: '{full_file_path}'. Make sure that the file exists in the artifacts directory."
+                    )
             deploy_params["model_files"][file_key] = full_file_path
             logger.debug(f"Model file added: {full_file_path}")
         return module_id, serve_app_name, deploy_params
