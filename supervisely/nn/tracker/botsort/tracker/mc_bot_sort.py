@@ -15,13 +15,11 @@ botsort_dir = current_dir.parent  # Go up one level to botsort directory
 # Add the botsort directory to sys.path so we can import tracker modules
 if str(botsort_dir) not in sys.path:
     sys.path.insert(0, str(botsort_dir))
-    
 from tracker import matching
 from tracker.gmc import GMC
 from tracker.basetrack import BaseTrack, TrackState
 from tracker.kalman_filter import KalmanFilter
 
-from fast_reid.fast_reid_interfece import FastReIDInterface
 from osnet_reid.osnet_reid_interface import OsnetReIDInterface
 
 
@@ -264,12 +262,7 @@ class BoTSORT(object):
         self.appearance_thresh = args.appearance_thresh
 
         if args.with_reid:
-            if args.reid_model == 'fast_reid':
-                self.encoder = FastReIDInterface(args.fast_reid_config, args.fast_reid_weights, args.device)
-                print('model resnset')
-            elif args.reid_model == 'osnet_reid':
-                print('model osnet')
-                self.encoder = OsnetReIDInterface(args.reid_weights, args.device, args.fp16)
+            self.encoder = OsnetReIDInterface(args.reid_weights, args.device, args.fp16)
 
         self.gmc = GMC(method=args.cmc_method, verbose=[args.name, args.ablation])
 

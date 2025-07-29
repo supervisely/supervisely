@@ -428,7 +428,7 @@ class BoTTracker(BaseTracker):
                 rectangle.left,    # x1
                 rectangle.top,     # y1 
                 rectangle.right,   # x2
-                rectangle.bottom,  # y2
+                rectangle.bottom,  # y23.   
                 confidence,        # score
                 class_id,         # class
             ]
