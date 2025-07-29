@@ -295,6 +295,7 @@ class DeployModel(Widget):
             deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Deploying custom model with parameters:", extra=deploy_parameters)
             experiment_info = deploy_parameters["experiment_info"]
+            experiment_info = ExperimentInfo(**experiment_info)
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
                 agent_id=agent_id, experiment_info=experiment_info, log_level="debug"
             )
