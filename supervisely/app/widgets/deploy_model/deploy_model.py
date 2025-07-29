@@ -37,6 +37,9 @@ class DeployModel(Widget):
         def get_deploy_parameters(self) -> Dict[str, Any]:
             raise NotImplementedError("This method should be implemented in subclasses.")
 
+        def load_from_json(self, data: Dict[str, Any]) -> None:
+            raise NotImplementedError("This method should be implemented in subclasses.")
+
         @property
         def layout(self) -> Widget:
             raise NotImplementedError("This property should be implemented in subclasses.")
@@ -65,7 +68,9 @@ class DeployModel(Widget):
             self._update_sessions()
 
         def _create_layout(self) -> Container:
-            self.refresh_button = Button("", icon="zmdi zmdi-refresh")
+            self.refresh_button = Button(
+                "", icon="zmdi zmdi-refresh", style="background-color: #20a0ff;"
+            )
             self.sessions_table = FastTable(
                 columns=self.COLUMNS,
                 page_size=10,
@@ -125,6 +130,9 @@ class DeployModel(Widget):
             return {
                 "session_id": selected_row.row[self.COLUMNS.index(str(self.COLUMN.SESSION_ID))],
             }
+
+        def load_from_json(self, data: Dict):
+            self.sessions_table.select_row_by_value(str(self.COLUMN.SESSION_ID), data["session_id"])
 
     class Pretrained(DeployMode):
         class COLUMN:
@@ -227,6 +235,16 @@ class DeployModel(Widget):
                 "model_name": selected_row.row[self.COLUMNS.index(str(self.COLUMN.MODEL_NAME))],
             }
 
+        def load_from_json(self, data: Dict[str, Any]) -> None:
+            framework = data["framework"]
+            model_name = data["model_name"]
+            idxs = []
+            for idx, row in enumerate(self.pretrained_table._parsed_source_data["data"]):
+                row_data = row.get("row", row.get("items", []))
+                if row_data[0] == framework and row_data[1] == model_name:
+                    idxs.append(idx)
+            self.pretrained_table.select_rows(idxs)
+
         def deploy(self, agent_id: int = None) -> ModelAPI:
             deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Deploying pretrained model with parameters:", extra=deploy_parameters)
@@ -270,7 +288,7 @@ class DeployModel(Widget):
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
             return {
-                "experiment_info": experiment_info,
+                "experiment_info": experiment_info.to_json() if experiment_info else None,
             }
 
         def deploy(self, agent_id: int) -> ModelAPI:
@@ -282,6 +300,11 @@ class DeployModel(Widget):
             )
             model_api = ModelAPI(api=self.api, task_id=task_info["id"])
             return model_api
+
+        def load_from_json(self, data: Dict):
+            experiment_info_json = data["experiment_info"]
+            experiment_info = ExperimentInfo(**experiment_info_json)
+            self.experiment_table.select_experiment_info(experiment_info)
 
     class MODE:
         CONNECT = "connect"
@@ -652,7 +675,10 @@ class DeployModel(Widget):
         Load widget state from JSON data.
         :param data: Dictionary with widget data.
         """
-        pass
+        mode = data["mode"]
+        label = self.modes_labels[mode]
+        self.tabs.set_active_tab(label)
+        self.modes[mode].load_from_json(data)
 
     def get_deploy_parameters(self) -> Dict[str, Any]:
         mode_label = self.tabs.get_active_tab()

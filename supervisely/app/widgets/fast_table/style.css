@@ -704,11 +704,17 @@
 	border-width: 1px;
 }
 
-.isolated-styles {
-	isolation: isolate;
-	contain: style;
+.header-left-side-start-cls {
+	color: black;
 }
 
-.isolated-styles * {
-	all: revert;
+.sly-fast-table-disable-overlay {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	right: 0px;
+	bottom: 0px;
+	z-index: 2000;
+	background-color: rgba(227, 230, 236, 0.5);
+	border-radius: 0.5rem;
 }

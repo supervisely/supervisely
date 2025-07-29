@@ -500,6 +500,13 @@ class ExperimentSelector(Widget):
             return None
         return self._rows[selected_row.row_index]._experiment_info
 
+    def select_experiment_info(self, experiment_info: ExperimentInfo) -> None:
+        for idx, row in enumerate(self._rows):
+            if row._experiment_info.task_id == experiment_info.task_id:
+                self.table.select_row(idx)
+                return
+        raise ValueError(f"Experiment info {experiment_info} not found in the table rows.")
+
     def selection_changed(self, func):
         def f(selected_row: FastTable.ClickedRow):
             if selected_row is None:

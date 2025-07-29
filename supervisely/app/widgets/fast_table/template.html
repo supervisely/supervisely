@@ -14,6 +14,7 @@
   :data="data.{{{widget.widget_id}}}.data"
   :show-header="data.{{{widget.widget_id}}}.showHeader"
   :selected-rows="state.{{{widget.widget_id}}}.selectedRows"
+  :disabled="data.{{{widget.widget_id}}}.disabled"
   @update:selected-rows="(rows) => {
     state.{{{widget.widget_id}}}.selectedRows = rows;
     data.{{{widget.widget_id}}}.selectionChangedHandled && post('/{{{widget.widget_id}}}/selection_changed_cb');
@@ -37,8 +38,8 @@
   @filters-changed="state.reactToChanges = false; post('/{{{widget.widget_id}}}/update_data_cb');"
 >
   {% if widget._header_left_content %}
-  <span slot="header-left-side-start">
-    <div class="isolated-styles" style="padding-right: 10px">
+  <span slot="header-left-side-start" class="header-left-side-start-cls">
+    <div style="padding-right: 10px">
       {{{ widget._header_left_content }}}
     </div>
   </span>

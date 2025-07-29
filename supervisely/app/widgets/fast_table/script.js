@@ -1,8 +1,8 @@
 Vue.component('fast-table', {
   template: `
     <!-- eslint-disable vue/no-v-html -->
-
-    <div class="sly-ninja-table">
+    <div class="sly-ninja-table" :disabled="disabled" style="position: relative;">
+    <div v-if="disabled" class="sly-fast-table-disable-overlay"></div>
       <div class=" tailwind fast-table">
         <div
           ref="wrapper"
@@ -309,6 +309,10 @@ Vue.component('fast-table', {
     name: {
       type: String,
       default: '',
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
     },
   },
 

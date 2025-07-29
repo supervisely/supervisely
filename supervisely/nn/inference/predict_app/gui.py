@@ -1,11 +1,14 @@
 from typing import Any, Dict, List
 
+import yaml
+
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.app.widgets import (
     Card,
     Container,
     DeployModel,
+    Editor,
     FastTable,
     Field,
     Input,
@@ -151,6 +154,16 @@ class SelectItem:
                 "image_ids": [row["id"] for row in self.select_images.get_selected_rows()],
             }
 
+    def load_from_json(self, data):
+        if "project" in data:
+            self.select_project.set_project_id(data["project"])
+        if "dataset" in data:
+            self.select_dataset.set_dataset_id(data["dataset"])
+        if "video" in data:
+            self.select_video.select_row_by_value("id", data["video"])
+        if "images" in data:
+            self.select_images.select_rows_by_value("id", data["images"])
+
 
 class SelectOutput:
     def __init__(self, gui: "PredictAppGui"):
@@ -235,17 +248,27 @@ class SelectOutput:
         settings["mode"] = mode
         return settings
 
+    def load_from_json(self, data):
+        mode = data["mode"]
+        self.radio.set_value("create")
+        if mode == "create":
+            self.new_project_name.set_value(data.get("project_name", ""))
+        elif mode == "iou_merge":
+            self.iou_merge_threshold.value = data.get("iou_merge_threshold", 0)
+
 
 class PredictAppGui:
     def __init__(self, api: Api):
         self.api = api
         self.team_id = env.team_id()
         self.model = DeployModel(api=self.api, team_id=self.team_id)
-        for layout in self.model._modes_layouts.values():
-            layout.deploy_button.hide()
-        self.model.status
+        self.model.deploy = self._deploy_model
 
         self.model_card = Card(title="Select Model", description="", content=self.model)
+        self.inference_settings = Editor("", language_mode="yaml", height_lines=10)
+        self.inference_settings_card = Card(
+            title="Inference Settings", content=self.inference_settings
+        )
         self.items = SelectItem(self)
         self.output = SelectOutput(self)
         self.progress = Progress()
@@ -263,9 +286,31 @@ class PredictAppGui:
             gap=10,
         )
 
+    def _deploy_model(self) -> None:
+        model_api = self.model.deploy()
+        inference_settings = model_api.get_settings()
+        self.set_inference_settings(inference_settings)
+
+    def get_inference_settings(self):
+        return yaml.safe_load(self.inference_settings.get_text())
+
+    def set_inference_settings(self, settings: Dict[str, Any]):
+        if isinstance(settings, str):
+            self.inference_settings.set_text(settings)
+        else:
+            self.inference_settings.set_text(yaml.safe_dump(settings))
+
     def get_run_parameters(self) -> Dict[str, Any]:
         return {
             "model": self.model.get_deploy_parameters(),
+            "inference_settings": self.get_inference_settings(),
             "item": self.items.get_item_settings(),
             "output": self.output.get_output_settings(),
         }
+
+    def load_from_json(self, data):
+        self.model.load_from_json(data.get("model", {}))
+        inference_settings = data.get("inference_settings", "")
+        self.set_inference_settings(inference_settings)
+        self.items.load_from_json(data.get("items", {}))
+        self.output.load_from_json(data.get("output", {}))

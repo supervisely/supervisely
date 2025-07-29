@@ -11,6 +11,19 @@ import supervisely.io.json as sly_json
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
+from supervisely.geometry.any_geometry import AnyGeometry
+from supervisely.geometry.bitmap import Bitmap
+from supervisely.geometry.cuboid import Cuboid
+from supervisely.geometry.cuboid_3d import Cuboid3d
+from supervisely.geometry.graph import GraphNodes
+from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
+from supervisely.geometry.point import Point
+from supervisely.geometry.point_3d import Point3d
+from supervisely.geometry.pointcloud import Pointcloud
+from supervisely.geometry.polygon import Polygon
+from supervisely.geometry.polyline import Polyline
+from supervisely.geometry.rectangle import Rectangle
+from supervisely.imaging.color import rgb2hex
 from supervisely.nn.benchmark.object_detection.metric_provider import (
     METRIC_NAMES as OBJECT_DETECTION_METRIC_NAMES,
 )
@@ -22,21 +35,6 @@ from supervisely.nn.task_type import TaskType
 from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
 from supervisely.template.base_generator import BaseGenerator
-
-from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.geometry.cuboid_3d import Cuboid3d
-from supervisely.geometry.point_3d import Point3d
-from supervisely.geometry.pointcloud import Pointcloud
-from supervisely.geometry.multichannel_bitmap import MultichannelBitmap
-from supervisely.geometry.cuboid import Cuboid
-from supervisely.geometry.graph import GraphNodes
-from supervisely.geometry.bitmap import Bitmap
-from supervisely.geometry.point import Point
-from supervisely.geometry.polyline import Polyline
-from supervisely.geometry.polygon import Polygon
-from supervisely.geometry.rectangle import Rectangle
-
-from supervisely.imaging.color import rgb2hex
 
 
 # @TODO: Partly supports unreleased apps
@@ -87,9 +85,7 @@ class ExperimentGenerator(BaseGenerator):
         remote_report_path = os.path.join(
             self.info["artifacts_dir"], "visualization", "template.vue"
         )
-        experiment_report = self.api.file.get_info_by_path(
-            self.team_id, remote_report_path
-        )
+        experiment_report = self.api.file.get_info_by_path(self.team_id, remote_report_path)
         if experiment_report is None:
             raise ValueError("Generate and upload report first")
         return experiment_report
@@ -121,12 +117,14 @@ class ExperimentGenerator(BaseGenerator):
         train_app, serve_app = self._get_app_train_serve_app_info()
         apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
         log_viewer_app = self._get_log_viewer_app_info()
+        predict_app_info = self._get_predict_app_info()
         return {
             "train": train_app,
             "serve": serve_app,
             "log_viewer": log_viewer_app,
             "apply_nn_to_images": apply_images_app,
             "apply_nn_to_videos": apply_videos_app,
+            "predict": predict_app_info,
         }
 
     def _get_links_context(self):
@@ -141,12 +139,8 @@ class ExperimentGenerator(BaseGenerator):
             "docker": {"image": docker_image, "deploy": f"{docker_image}-deploy"},
             "local_prediction": {
                 "repo": repo_info,
-                "serving_module": (
-                    self.serving_class.__module__ if self.serving_class else None
-                ),
-                "serving_class": (
-                    self.serving_class.__name__ if self.serving_class else None
-                ),
+                "serving_module": (self.serving_class.__module__ if self.serving_class else None),
+                "serving_class": (self.serving_class.__name__ if self.serving_class else None),
             },
             "demo": {
                 "pytorch": pytorch_demo,
@@ -186,10 +180,7 @@ class ExperimentGenerator(BaseGenerator):
         html.append("<thead><tr><th>Metrics</th><th>Value</th></tr></thead>")
         html.append("<tbody>")
 
-        if (
-            task_type == TaskType.OBJECT_DETECTION
-            or task_type == TaskType.INSTANCE_SEGMENTATION
-        ):
+        if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
             metric_names = OBJECT_DETECTION_METRIC_NAMES
         elif task_type == TaskType.SEMANTIC_SEGMENTATION:
             metric_names = SEMANTIC_SEGMENTATION_METRIC_NAMES
@@ -313,9 +304,7 @@ class ExperimentGenerator(BaseGenerator):
         primary_metric_value = eval_metrics.get(primary_metric_name)
 
         if primary_metric_name is None or primary_metric_value is None:
-            logger.debug(
-                f"Primary metric is not found in evaluation metrics: {eval_metrics}"
-            )
+            logger.debug(f"Primary metric is not found in evaluation metrics: {eval_metrics}")
             return primary_metric
 
         primary_metric = {
@@ -339,10 +328,7 @@ class ExperimentGenerator(BaseGenerator):
             return display_metrics
 
         main_metrics = []
-        if (
-            task_type == TaskType.OBJECT_DETECTION
-            or task_type == TaskType.INSTANCE_SEGMENTATION
-        ):
+        if task_type == TaskType.OBJECT_DETECTION or task_type == TaskType.INSTANCE_SEGMENTATION:
             main_metrics = ["mAP", "AP75", "AP50", "precision", "recall"]
         elif task_type == TaskType.SEMANTIC_SEGMENTATION:
             main_metrics = ["mIoU", "mPixel", "mPrecision", "mRecall", "mF1"]
@@ -384,29 +370,20 @@ class ExperimentGenerator(BaseGenerator):
             if trt_checkpoint is not None:
                 checkpoints.append(trt_checkpoint)
 
-        checkpoint_paths = [
-            os.path.join(self.artifacts_dir, ckpt) for ckpt in checkpoints
-        ]
+        checkpoint_paths = [os.path.join(self.artifacts_dir, ckpt) for ckpt in checkpoints]
         checkpoint_infos = [
-            self.api.file.get_info_by_path(self.team_id, path)
-            for path in checkpoint_paths
+            self.api.file.get_info_by_path(self.team_id, path) for path in checkpoint_paths
         ]
-        checkpoint_sizes = [
-            f"{info.sizeb / 1024 / 1024:.2f} MB" for info in checkpoint_infos
-        ]
+        checkpoint_sizes = [f"{info.sizeb / 1024 / 1024:.2f} MB" for info in checkpoint_infos]
         checkpoint_dl_links = [
             f"<a href='{info.full_storage_url}' download='{sly_fs.get_file_name_with_ext(info.path)}'>Download</a>"
             for info in checkpoint_infos
         ]
 
         html = ['<table class="table">']
-        html.append(
-            "<thead><tr><th>Checkpoint</th><th>Size</th><th> </th></tr></thead>"
-        )
+        html.append("<thead><tr><th>Checkpoint</th><th>Size</th><th> </th></tr></thead>")
         html.append("<tbody>")
-        for checkpoint, size, dl_link in zip(
-            checkpoints, checkpoint_sizes, checkpoint_dl_links
-        ):
+        for checkpoint, size, dl_link in zip(checkpoints, checkpoint_sizes, checkpoint_dl_links):
             if isinstance(checkpoint, str):
                 html.append(
                     f"<tr><td>{os.path.basename(checkpoint)}</td><td>{size}</td><td>{dl_link}</td></tr>"
@@ -517,9 +494,7 @@ class ExperimentGenerator(BaseGenerator):
         best_checkpoint_path = os.path.join(
             self.artifacts_dir, "checkpoints", self.info["best_checkpoint"]
         )
-        best_checkpoint_info = self.api.file.get_info_by_path(
-            self.team_id, best_checkpoint_path
-        )
+        best_checkpoint_info = self.api.file.get_info_by_path(self.team_id, best_checkpoint_path)
         best_checkpoint = {
             "name": self.info["best_checkpoint"],
             "path": best_checkpoint_path,
@@ -560,9 +535,7 @@ class ExperimentGenerator(BaseGenerator):
                 self.team_id,
                 os.path.join(os.path.dirname(onnx_checkpoint_path), "classes.json"),
             )
-            onnx_file_info = self.api.file.get_info_by_path(
-                self.team_id, onnx_checkpoint_path
-            )
+            onnx_file_info = self.api.file.get_info_by_path(self.team_id, onnx_checkpoint_path)
             onnx_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.ONNXRUNTIME)),
                 "path": onnx_checkpoint_path,
@@ -572,16 +545,12 @@ class ExperimentGenerator(BaseGenerator):
             }
         trt_checkpoint = export.get(RuntimeType.TENSORRT)
         if trt_checkpoint is not None:
-            trt_checkpoint_path = os.path.join(
-                self.artifacts_dir, export.get(RuntimeType.TENSORRT)
-            )
+            trt_checkpoint_path = os.path.join(self.artifacts_dir, export.get(RuntimeType.TENSORRT))
             classes_file = self.api.file.get_info_by_path(
                 self.team_id,
                 os.path.join(os.path.dirname(trt_checkpoint_path), "classes.json"),
             )
-            trt_file_info = self.api.file.get_info_by_path(
-                self.team_id, trt_checkpoint_path
-            )
+            trt_file_info = self.api.file.get_info_by_path(self.team_id, trt_checkpoint_path)
             trt_checkpoint_data = {
                 "name": os.path.basename(export.get(RuntimeType.TENSORRT)),
                 "path": trt_checkpoint_path,
@@ -638,9 +607,7 @@ class ExperimentGenerator(BaseGenerator):
             root_dir = current_dir
 
             while root_dir.parent != root_dir:
-                config_path = (
-                    root_dir / "supervisely_integration" / "train" / "config.json"
-                )
+                config_path = root_dir / "supervisely_integration" / "train" / "config.json"
                 if config_path.exists():
                     break
                 root_dir = root_dir.parent
@@ -748,9 +715,7 @@ class ExperimentGenerator(BaseGenerator):
         :rtype: Tuple[str, str]
         """
 
-        def find_app_by_framework(
-            api: Api, framework: str, action: Literal["train", "serve"]
-        ):
+        def find_app_by_framework(api: Api, framework: str, action: Literal["train", "serve"]):
             try:
                 modules = api.app.get_list_ecosystem_modules(
                     categories=[action, f"framework:{framework}"],
@@ -763,26 +728,18 @@ class ExperimentGenerator(BaseGenerator):
                 logger.warning(f"Failed to find {action} app by framework: {e}")
                 return None
 
-        train_app_info = find_app_by_framework(
-            self.api, self.info["framework_name"], "train"
-        )
-        serve_app_info = find_app_by_framework(
-            self.api, self.info["framework_name"], "serve"
-        )
+        train_app_info = find_app_by_framework(self.api, self.info["framework_name"], "train")
+        serve_app_info = find_app_by_framework(self.api, self.info["framework_name"], "serve")
 
         if train_app_info is not None:
-            train_app_slug = train_app_info["slug"].replace(
-                "supervisely-ecosystem/", ""
-            )
+            train_app_slug = train_app_info["slug"].replace("supervisely-ecosystem/", "")
             train_app_id = train_app_info["id"]
         else:
             train_app_slug = None
             train_app_id = None
 
         if serve_app_info is not None:
-            serve_app_slug = serve_app_info["slug"].replace(
-                "supervisely-ecosystem/", ""
-            )
+            serve_app_slug = serve_app_info["slug"].replace("supervisely-ecosystem/", "")
             serve_app_id = serve_app_info["id"]
         else:
             serve_app_slug = None
@@ -814,9 +771,7 @@ class ExperimentGenerator(BaseGenerator):
         if task_info is not None:
             agent_info["name"] = task_info["agentName"]
             agent_info["id"] = task_info["agentId"]
-            agent_info["link"] = (
-                f"{self.api.server_address}/nodes/{agent_info['id']}/info"
-            )
+            agent_info["link"] = f"{self.api.server_address}/nodes/{agent_info['id']}/info"
         return agent_info
 
     def _get_class_names(self, model_classes: list) -> dict:
@@ -897,10 +852,14 @@ class ExperimentGenerator(BaseGenerator):
         base_checkpoint_path = None
         if base_checkpoint_link is not None:
             if base_checkpoint_link.startswith("/experiments/"):
-                base_checkpoint_info = self.api.file.get_info_by_path(self.team_id, base_checkpoint_link)
+                base_checkpoint_info = self.api.file.get_info_by_path(
+                    self.team_id, base_checkpoint_link
+                )
                 base_checkpoint_name = base_checkpoint_info.name
                 base_checkpoint_link = base_checkpoint_info.full_storage_url
-                base_checkpoint_path = f"{self.api.server_address}/files/?path={base_checkpoint_info.path}"
+                base_checkpoint_path = (
+                    f"{self.api.server_address}/files/?path={base_checkpoint_info.path}"
+                )
 
         base_checkpoint = {
             "name": base_checkpoint_name,
@@ -930,9 +889,7 @@ class ExperimentGenerator(BaseGenerator):
         onnx_checkpoint, trt_checkpoint = self._get_optimized_checkpoints()
 
         logs_path = self.info.get("logs", {}).get("link")
-        logs_url = (
-            f"{self.api.server_address}/files/?path={logs_path}" if logs_path else None
-        )
+        logs_url = f"{self.api.server_address}/files/?path={logs_path}" if logs_path else None
 
         primary_metric = self._get_primary_metric()
         display_metrics = self._get_display_metrics(self.info["task_type"])

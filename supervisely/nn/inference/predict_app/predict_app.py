@@ -14,14 +14,23 @@ class PredictApp:
         def run_button_click():
             self.run()
 
-    def run(self):
-        run_parameters = self.gui.get_run_parameters()
-        model_parameters = run_parameters["model"]
-        params = model_parameters.get("params", {})
-        model_api = self.gui.model.deploy()
+    def run(self, config=None):
+        if config is None:
+            run_parameters = self.gui.get_run_parameters()
+        else:
+            run_parameters = config
+
+        if self.gui.model.model_api is None:
+            self.gui.model.deploy()
+
+        model_api = self.gui.model.model_api
         if model_api is None:
             logger.error("Model Deployed with an error")
             return
+
+        inference_settings = run_parameters["inference_settings"]
+        if not inference_settings:
+            inference_settings = {}
 
         item_prameters = run_parameters["item"]
 
@@ -35,4 +44,6 @@ class PredictApp:
                 "iou_merge_threshold"
             ]
 
-        model_api.predict(**item_prameters, **params, **upload_parameters, tqdm=self.gui.progress())
+        model_api.predict(
+            **item_prameters, **inference_settings, **upload_parameters, tqdm=self.gui.progress()
+        )

@@ -538,23 +538,27 @@ class FastTable(Widget):
         return self.get_clicked_cell()
 
     def _maybe_update_selected_row(self) -> None:
-        if not (self._is_radio or self._is_selectable):
+        if not self._selected_rows:
             return
-        if self._rows_total > 0:
-            for rows in self._parsed_source_data["data"]:
-                if rows["items"] == self._selected_rows:
-                    return
-            self._selected_rows = [
-                {
-                    "idx": self._parsed_source_data["data"][0]["idx"],
-                    "row": self._parsed_source_data["data"][0]["items"],
-                }
-            ]
-        elif self._selected_rows is None:
-            return
-        else:
+        if self._rows_total == 0:
             self._selected_rows = None
-        StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
+            StateJson()[self.widget_id]["selectedRows"] = None
+            StateJson().send_changes()
+            return
+        if self._is_radio:
+            self.select_row(0)
+            return
+        if self._is_selectable:
+            updated_selected_rows = []
+            for row in self._parsed_source_data["data"]:
+                items = row.get("items", row.get("row", None))
+                if items is not None:
+                    for selected_row in self._selected_rows:
+                        if selected_row.get("row", selected_row.get("items", None)) == items:
+                            updated_selected_rows.append(row)
+            self._selected_rows = updated_selected_rows
+            StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
+            StateJson().send_changes()
 
     def insert_row(self, row: List, index: Optional[int] = -1) -> None:
         """Inserts a row into the table to the specified position.
@@ -758,6 +762,7 @@ class FastTable(Widget):
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["total"] = self._rows_total
+        self._maybe_update_selected_row()
         StateJson().send_changes()
 
     def _prepare_json_data(self, data: dict, key: str):
@@ -1060,3 +1065,78 @@ class FastTable(Widget):
         DataJson()[self.widget_id]["selectionChangedHandled"] = True
         DataJson().send_changes()
         return _selection_changed
+
+    def select_row(self, idx: int):
+        if not self._is_selectable and not self._is_radio:
+            raise ValueError(
+                "Table is not selectable. Set 'is_selectable' or 'is_radio' to True to use this method."
+            )
+        if idx < 0 or idx >= len(self._parsed_source_data["data"]):
+            raise IndexError(
+                f"Row index {idx} is out of range. Valid range is 0 to {len(self._parsed_source_data['data']) - 1}."
+            )
+        selected_row = self._parsed_source_data["data"][idx]
+        self._selected_rows = [
+            {"idx": idx, "row": selected_row.get("items", selected_row.get("row", None))}
+        ]
+        StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
+        StateJson().send_changes()
+
+    def select_rows(self, idxs: List[int]):
+        if not self._is_selectable:
+            raise ValueError(
+                "Table is not selectable. Set 'is_selectable' to True to use this method."
+            )
+        selected_rows = [
+            self._parsed_source_data["data"][idx]
+            for idx in idxs
+            if 0 <= idx < len(self._parsed_source_data["data"])
+        ]
+        self._selected_rows = [
+            {"idx": row["idx"], "row": row.get("items", row.get("row", None))}
+            for row in selected_rows
+        ]
+        StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
+        StateJson().send_changes()
+
+    def select_row_by_value(self, column, value: Any):
+        """Selects a row by value in a specific column.
+
+        :param column: Column name to filter by
+        :type column: str
+        :param value: Value to select row by
+        :type value: Any
+        """
+        if not self._is_selectable and not self._is_radio:
+            raise ValueError(
+                "Table is not selectable. Set 'is_selectable' to True to use this method."
+            )
+        if column not in self._columns_first_idx:
+            raise ValueError(f"Column '{column}' does not exist in the table.")
+
+        idx = self._source_data[self._source_data[column] == value].index.tolist()
+        if not idx:
+            raise ValueError(f"No rows found with {column} = {value}.")
+        if len(idx) > 1:
+            raise ValueError(
+                f"Multiple rows found with {column} = {value}. Please use select_rows_by_value method."
+            )
+        self.select_row(idx[0])
+
+    def select_rows_by_value(self, column, values: List):
+        """Selects rows by value in a specific column.
+
+        :param column: Column name to filter by
+        :type column: str
+        :param values: List of values to select rows by
+        :type values: List
+        """
+        if not self._is_selectable:
+            raise ValueError(
+                "Table is not selectable. Set 'is_selectable' to True to use this method."
+            )
+        if column not in self._columns_first_idx:
+            raise ValueError(f"Column '{column}' does not exist in the table.")
+
+        idxs = self._source_data[self._source_data[column].isin(values)].index.tolist()
+        self.select_rows(idxs)
