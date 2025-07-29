@@ -382,7 +382,7 @@ class Inference:
                     if m_name and m_name.lower() == model.lower():
                         return m
             return None
-
+        
         runtime = get_runtime(runtime)
         logger.debug(f"Runtime: {runtime}")
 
@@ -1234,6 +1234,9 @@ class Inference:
     def shutdown_model(self):
         self._model_served = False
         self._model_frozen = False
+        if self._freeze_timer is not None:
+            self._freeze_timer.cancel()
+            self._freeze_timer = None
         self.device = None
         self.runtime = None
         self.model_precision = None
