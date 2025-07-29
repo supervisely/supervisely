@@ -227,7 +227,7 @@ class Inference:
                 deploy_params["model_files"] = local_model_files
             logger.debug("Loading model...")
             self._load_model_headless(**deploy_params)
-            _freeze_on_inactivity(lambda x: None)(self)
+            self._schedule_freeze_on_inactivity()
 
         if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -276,7 +276,7 @@ class Inference:
                     self.device = device
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
-                _freeze_on_inactivity(lambda x: None)(self)
+                self._schedule_freeze_on_inactivity()
 
             def on_change_model_callback(
                 gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
@@ -356,7 +356,6 @@ class Inference:
             **kwargs,
         )
 
-    @_freeze_on_inactivity
     def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
         """Deploy model immediately from constructor arguments."""
         # Clean model_dir before deploying
@@ -412,6 +411,7 @@ class Inference:
         deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
         logger.debug(f"Deploying custom model '{checkpoint_name}'...")
         self._load_model_headless(**deploy_params)
+        self._schedule_freeze_on_inactivity()
         return self
 
     def get_batch_size(self):
@@ -2535,7 +2535,6 @@ class Inference:
             future.add_done_callback(end_callback)
         logger.debug("Scheduled task.", extra={"inference_request_uuid": inference_request_uuid})
 
-    @_freeze_on_inactivity
     def _deploy_on_autorestart(self):
         try:
             self._api_request_model_layout._title = (
@@ -2554,6 +2553,7 @@ class Inference:
             # update to set correct device
             device = deploy_params.get("device", "cpu")
             self.gui.set_deployed(device)
+            self._schedule_freeze_on_inactivity()
             return {"result": "model was successfully deployed"}
         except Exception as e:
             self.gui._success_label.hide()
@@ -3449,7 +3449,7 @@ class Inference:
                     self.gui._success_label.hide()
                 raise e
             finally:
-                _freeze_on_inactivity(lambda x: None)(self)
+                self._schedule_freeze_on_inactivity()
 
         @server.post("/list_pretrained_models")
         def _list_pretrained_models():
