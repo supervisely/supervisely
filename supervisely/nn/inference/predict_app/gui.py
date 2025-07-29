@@ -249,6 +249,8 @@ class SelectOutput:
         return settings
 
     def load_from_json(self, data):
+        if not data:
+            return
         mode = data["mode"]
         self.radio.set_value("create")
         if mode == "create":

@@ -675,6 +675,8 @@ class DeployModel(Widget):
         Load widget state from JSON data.
         :param data: Dictionary with widget data.
         """
+        if not data:
+            return
         mode = data["mode"]
         label = self.modes_labels[mode]
         self.tabs.set_active_tab(label)
