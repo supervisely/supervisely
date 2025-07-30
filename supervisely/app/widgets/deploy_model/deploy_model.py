@@ -188,7 +188,7 @@ class DeployModel(Widget):
                 ).append(model)
 
         def _list_pretrained_models(self, framework: str):
-            models = self._cache.setdefault("pretrained_models").get(framework, [])
+            models = self._cache.setdefault("pretrained_models", {}).get(framework, [])
             return models
 
         def _map_from_model(self, model: Dict):
