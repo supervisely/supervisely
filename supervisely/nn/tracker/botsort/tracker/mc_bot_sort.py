@@ -1,24 +1,10 @@
-import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
 
-import sys
-# sys.path.append("../botsort")
-import os
-from pathlib import Path
-
-# Get the directory where this file is located
-current_dir = Path(__file__).parent.absolute()
-botsort_dir = current_dir.parent  # Go up one level to botsort directory
-
-# Add the botsort directory to sys.path so we can import tracker modules
-if str(botsort_dir) not in sys.path:
-    sys.path.insert(0, str(botsort_dir))
-from tracker import matching
-from tracker.gmc import GMC
-from tracker.basetrack import BaseTrack, TrackState
-from tracker.kalman_filter import KalmanFilter
+from . import matching
+from .gmc import GMC
+from .basetrack import BaseTrack, TrackState
+from .kalman_filter import KalmanFilter
 
 from supervisely.nn.tracker.botsort.osnet_reid.osnet_reid_interface import OsnetReIDInterface
 
