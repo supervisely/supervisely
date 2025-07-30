@@ -2,6 +2,7 @@ import supervisely as sly
 from supervisely.nn.tracker.base_tracker import BaseTracker
 from supervisely.nn.tracker.botsort.tracker.mc_bot_sort import BoTSORT
 from supervisely import Annotation, VideoAnnotation
+
 from types import SimpleNamespace
 from typing import List, Dict, Tuple, Any
 import numpy as np

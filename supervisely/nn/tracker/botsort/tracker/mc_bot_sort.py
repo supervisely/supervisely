@@ -20,7 +20,7 @@ from tracker.gmc import GMC
 from tracker.basetrack import BaseTrack, TrackState
 from tracker.kalman_filter import KalmanFilter
 
-from osnet_reid.osnet_reid_interface import OsnetReIDInterface
+from supervisely.nn.tracker.botsort.osnet_reid.osnet_reid_interface import OsnetReIDInterface
 
 
 class STrack(BaseTrack):
