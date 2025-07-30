@@ -314,6 +314,7 @@ class DeployModel(Widget):
             elif "train_task_id" in data:
                 task_id = data["train_task_id"]
                 self.experiment_table.select_experiment_info_by_task_id(task_id)
+                self.experiment_table.search(str(task_id))
             else:
                 raise ValueError("Invalid data format for loading custom model.")
 

@@ -524,6 +524,9 @@ class ExperimentSelector(Widget):
 
         return self.table.selection_changed(f)
 
+    def search(self, search_value: str):
+        self.table.search(search_value)
+
     def get_json_data(self):
         return {}
 
