@@ -416,6 +416,7 @@ class PredictAppGui:
         except:
             self.run_button.disable()
             self.preview.preview_button.disable()
+            raise
         else:
             self.run_button.enable()
             self.preview.preview_button.enable()
