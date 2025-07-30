@@ -271,6 +271,7 @@ class SmartSamplingGUI(Widget):
             Show or hide the preview modal.
             :param active: bool, True if the preview is shown, False otherwise
             """
+            self.status_text.hide()
             self.preview_gallery.loading = True
             self.preview_collapse.set_active_panel(["preview"])
             sampling_settings = self.get_sample_settings()
@@ -280,6 +281,9 @@ class SmartSamplingGUI(Widget):
                 sampling_settings["limit"] = 6
 
             sampled_images = self._sample(sampling_settings)
+            if sampled_images is None:
+                self.preview_gallery.loading = False
+                return
 
             infos = []
             for _, imgs in sampled_images.items():
@@ -463,6 +467,9 @@ class SmartSamplingGUI(Widget):
                     return None
 
                 # Send request to the API
+                self.api.project.enable_embeddings(self.project_id)
+                self.api.project.calculate_embeddings(self.project_id)
+
                 collection_id = self.api.project.perform_ai_search(
                     project_id=self.project_id,
                     prompt=prompt,
@@ -506,6 +513,11 @@ class SmartSamplingGUI(Widget):
                 #         for ds_id in diffs.keys()
                 #     }
                 else:
+                    self.status_text.show()
+                    self.status_text.set(
+                        "Error during sampling. Check that AI Search have calculated embeddings and is ready to use on project page.",
+                        status="error",
+                    )
                     logger.error(f"Error during sampling")
                     return None
 
