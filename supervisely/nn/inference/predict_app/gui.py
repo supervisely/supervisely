@@ -5,7 +5,6 @@ from typing import Any, Dict, List
 
 import yaml
 
-from build.lib.supervisely.nn.model.model_api import ModelAPI
 from supervisely.annotation.annotation import Annotation, Label, ObjClass
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
@@ -30,6 +29,7 @@ from supervisely.app.widgets import (
 )
 from supervisely.app.widgets.button.button import Button
 from supervisely.io import env
+from supervisely.nn.model.model_api import ModelAPI
 from supervisely.project.project import ProjectType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
