@@ -700,6 +700,9 @@ class ApiField:
     NUMBER_OF_CLUSTERS = "numberOfClusters"
     """"""
     CLUSTERING_METHOD = "clusteringMethod"
+    """"""
+    ERROR_MESSAGE = "errorMessage"
+    """"""
 
 
 def _get_single_item(items):

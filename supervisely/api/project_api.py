@@ -2249,7 +2249,21 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
         )
 
-    def set_embeddings_in_progress(self, id: int, in_progress: bool) -> None:
+    def is_embeddings_enabled(self, id: int) -> bool:
+        """
+        Check if embeddings are enabled for the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: True if embeddings are enabled, False otherwise.
+        :rtype: bool
+        """
+        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_ENABLED])
+        return info.embeddings_enabled
+
+    def set_embeddings_in_progress(
+        self, id: int, in_progress: bool, error_message: Optional[str] = None
+    ) -> None:
         """
         Set embeddings in progress status for the project.
         This method is used to indicate whether embeddings are currently being created for the project.
@@ -2258,13 +2272,38 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param in_progress: Status to set. If True, embeddings are in progress right now.
         :type in_progress: bool
+        :param error_message: Optional error message to provide additional context.
+        :type error_message: Optional[str]
         :return: None
         :rtype: :class:`NoneType`
         """
         self._api.post(
             "projects.embeddings-in-progress.update",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress},
+            {
+                ApiField.ID: id,
+                ApiField.EMBEDDINGS_IN_PROGRESS: in_progress,
+                ApiField.ERROR_MESSAGE: error_message,
+            },
         )
+
+    def get_embeddings_in_progress(self, id: int) -> bool:
+        """
+        Get the embeddings in progress status for the project.
+        This method checks whether embeddings are currently being created for the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: True if embeddings are in progress, False otherwise.
+        :rtype: bool
+        """
+        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_IN_PROGRESS])
+        if info is None:
+            raise RuntimeError(f"Project with ID {id} not found.")
+        if not hasattr(info, "embeddings_in_progress"):
+            raise RuntimeError(
+                f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
+            )
+        return info.embeddings_in_progress
 
     def set_embeddings_updated_at(
         self, id: int, timestamp: Optional[str] = None, silent: bool = True
@@ -2302,6 +2341,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             "projects.editInfo",
             {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp, ApiField.SILENT: silent},
         )
+
+    def get_embeddings_updated_at(self, id: int) -> Optional[str]:
+        """
+        Get the timestamp when embeddings were last updated for the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffZ) or None if not set.
+        :rtype: Optional[str]
+        :Usage example:
+
+         .. code-block:: python
+
+            api = sly.Api.from_env()
+            project_id = 123
+
+            # Get embeddings updated timestamp
+            updated_at = api.project.get_embeddings_updated_at(project_id)
+            print(updated_at)  # Output: "2025-06-01T10:30:45.123Z" or None
+        """
+        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT])
+        if info is None:
+            raise RuntimeError(f"Project with ID {id} not found.")
+        if not hasattr(info, "embeddings_updated_at"):
+            raise RuntimeError(
+                f"Project with ID {id} does not have 'embeddings_updated_at' field in its info."
+            )
+        return info.embeddings_updated_at
 
     def perform_ai_search(
         self,
@@ -2443,6 +2510,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         Calculate embeddings for the project.
         This method is used to calculate embeddings for all images in the project.
+
+        To check status of embeddings calculation, use :meth:`get_embeddings_in_progress`
 
         :param id: Project ID
         :type id: int
