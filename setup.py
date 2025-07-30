@@ -274,6 +274,7 @@ setup(
             "tabulate",
             "tensorboard",
             "decord",
+            "gdown",
         ],
         "model-benchmark": [
             "pycocotools",
