@@ -29,10 +29,11 @@ class BotSortTracker(BaseTracker):
         self.device = device
         
         # State for accumulating results
-        self.frame_tracks = {}  # frame_index -> list of track dicts
+        self.frame_tracks = []
         self.obj_classes = {}   # class_id -> ObjClass
         self.current_frame = 0
         self.class_ids = {}  # class_name -> class_id mapping
+        self.frame_shape = () 
 
     def _load_default_settings(self) -> dict:
         """Load default settings from YAML file in the same directory."""
@@ -44,6 +45,7 @@ class BotSortTracker(BaseTracker):
 
     def update(self, frame: np.ndarray, annotation: Annotation) -> List[Dict[str, Any]]:
         """Update tracker and return tracks for current frame."""
+        self.frame_shape = frame.shape[:2]
         self._update_obj_classes(annotation)
         detections = self._convert_annotation(annotation)
         output_stracks = self.tracker.update(detections, frame)
@@ -51,17 +53,18 @@ class BotSortTracker(BaseTracker):
         
         # Store tracks for VideoAnnotation creation
         if tracks:
-            self.frame_tracks[self.current_frame] = tracks
+            self.frame_tracks.append(tracks)
         
         self.current_frame += 1
         return tracks
     
     def reset(self):
         super().reset()
-        self.frame_tracks = {}
+        self.frame_tracks = []
         self.obj_classes = {}
         self.current_frame = 0
         self.class_ids = {}
+        self.frame_shape = ()
 
     def track(self, frames: List[np.ndarray], annotations: List[Annotation]) -> VideoAnnotation:
         """Track objects through sequence of frames and return VideoAnnotation."""
@@ -69,7 +72,6 @@ class BotSortTracker(BaseTracker):
             raise ValueError("Number of frames and annotations must match")
         
         self.reset()
-        frame_shape = frames[0].shape[:2]
         
         # Process each frame
         for frame_idx, (frame, annotation) in enumerate(zip(frames, annotations)):
@@ -77,7 +79,7 @@ class BotSortTracker(BaseTracker):
             self.update(frame, annotation)
         
         # Convert accumulated tracks to VideoAnnotation
-        return self._create_video_annotation(frame_shape)
+        return self._create_video_annotation()
         
     def _convert_annotation(self, annotation: Annotation) -> np.ndarray:
         """Convert Supervisely annotation to BoTSORT detection format."""
@@ -147,9 +149,9 @@ class BotSortTracker(BaseTracker):
             self.obj_classes[class_id] = label.obj_class
             self.class_ids[class_name] = class_id
 
-    def _create_video_annotation(self, frame_shape: Tuple[int, int]) -> VideoAnnotation:
+    def _create_video_annotation(self) -> VideoAnnotation:
         """Convert accumulated tracking results to Supervisely VideoAnnotation."""
-        img_h, img_w = frame_shape
+        img_h, img_w = self.frame_shape
         video_objects = {}  # track_id -> VideoObject
         frames = []
         
@@ -183,7 +185,7 @@ class BotSortTracker(BaseTracker):
         frames_count = max(self.frame_tracks.keys()) + 1 if self.frame_tracks else 0
         
         return VideoAnnotation(
-            img_size=frame_shape,
+            img_size=self.frame_shape,
             frames_count=frames_count,
             objects=sly.VideoObjectCollection(objects),
             frames=sly.FrameCollection(frames)
