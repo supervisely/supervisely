@@ -163,6 +163,9 @@ class DeployApi:
             "model_info": experiment_info.to_json(),
             "runtime": runtime,
         }
+        deploy_params["model_files"]["checkpoint"] = Path(
+            experiment_info.artifacts_dir, "checkpoints", checkpoint_name
+        )
         self._load_model_from_api(session_id, deploy_params)
 
     def _find_agent(self, team_id: int = None, public=True, gpu=True):
