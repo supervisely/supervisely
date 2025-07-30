@@ -694,3 +694,21 @@
 		 padding-right: 1.5rem;
 	}
 }
+
+.ellipsis {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.row-radio .el-radio__inner {
+	border-width: 1px;
+}
+
+.isolated-styles {
+	isolation: isolate;
+	contain: style;
+}
+
+.isolated-styles * {
+	all: revert;
+}
