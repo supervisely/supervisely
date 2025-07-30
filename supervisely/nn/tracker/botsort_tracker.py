@@ -39,7 +39,7 @@ class BotSortTracker(BaseTracker):
     def _load_default_settings(self) -> dict:
         """Load default settings from YAML file in the same directory."""
         current_dir = Path(__file__).parent
-        config_path = current_dir / "botsort_config.yaml"
+        config_path = current_dir / "botsort/botsort_config.yaml"
         
         with open(config_path, 'r', encoding='utf-8') as file:
             return yaml.safe_load(file)

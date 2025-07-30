@@ -200,9 +200,8 @@ setup(
             "video/*.sh",
             "app/development/*.sh",
             "imaging/colors.json.gz",
-            "nn/tracker/bot_sort/configs/MOT17/*.yml",
-            "nn/tracker/bot_sort/configs/MOT20/*.yml",
             "nn/benchmark/*/*.yaml",
+            "nn/tracker/botsort/botsort_config.yaml"
         ],
     },
     entry_points={
