@@ -389,6 +389,8 @@ class PredictAppGui:
         self.preview = Preview(self)
         self.progress = Progress()
         self.run_button = Button("Run", icon="zmdi zmdi-play")
+        self.run_button.disable()
+        self.preview.preview_button.disable()
 
         self.layout = Container(
             widgets=[
@@ -405,9 +407,16 @@ class PredictAppGui:
         )
 
     def _deploy_model(self) -> None:
-        model_api = type(self.model).deploy(self.model)
-        inference_settings = model_api.get_settings()
-        self.set_inference_settings(inference_settings)
+        try:
+            model_api = type(self.model).deploy(self.model)
+            inference_settings = model_api.get_settings()
+            self.set_inference_settings(inference_settings)
+        except:
+            self.run_button.disable()
+            self.preview.preview_button.disable()
+        else:
+            self.run_button.enable()
+            self.preview.preview_button.enable()
         return model_api
 
     def get_inference_settings(self):

@@ -177,7 +177,11 @@ class DeployModel(Widget):
             return self.pretrained_table
 
         def _load_models(self):
-            models = self.api.nn.models_api.list_models()
+            try:
+                models = self.api.nn.models_api.list_models()
+            except:
+                logger.error("Failed to load pretrained models from API.")
+                models = []
             for model in models:
                 self._cache.setdefault("pretrained_models", {}).setdefault(
                     model["framework"], []
