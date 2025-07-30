@@ -1,4 +1,4 @@
- from typing import Any, Callable
+from typing import Any, Callable
 
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.tracking.boxmot import apply_boxmot
