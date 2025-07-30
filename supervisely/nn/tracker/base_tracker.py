@@ -6,20 +6,21 @@ class BaseTracker:
 
     def __init__(self):
         self.settings = {}
-        self.result_video_annotation = None
 
     def update(self, frame, detections):
         raise NotImplementedError("This method should be overridden by subclasses.")
 
     def reset(self):
         """Reset tracker state."""
-        self.frame_tracks = {}
-        self.current_frame = 0
-        self.obj_classes = {}
+        raise NotImplementedError("This method should be overridden by subclasses.")
     
     def track(self, frames: list, annotations: list):
         raise NotImplementedError("This method should be overridden by subclasses.")
     
+    @property
+    def video_annotation(self) -> VideoAnnotation:
+        """Return the accumulated VideoAnnotation."""
+        raise NotImplementedError("This method should be overridden by subclasses.")
 
 
     ### methods from another script:

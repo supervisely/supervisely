@@ -8,6 +8,7 @@ import numpy as np
 import yaml
 import os
 from pathlib import Path
+from supervisely import logger
 
 
 class BotSortTracker(BaseTracker):
@@ -22,11 +23,7 @@ class BotSortTracker(BaseTracker):
         if settings:
             self.settings.update(settings)
         
-        # Convert to namespace for BoTSORT
-        if isinstance(self.settings, dict):
-            args = SimpleNamespace(**self.settings)
-        else:
-            args = self.settings
+        args = SimpleNamespace(**self.settings)
             
         self.tracker = BoTSORT(args=args)
         self.device = device
@@ -35,7 +32,7 @@ class BotSortTracker(BaseTracker):
         self.frame_tracks = {}  # frame_index -> list of track dicts
         self.obj_classes = {}   # class_id -> ObjClass
         self.current_frame = 0
-        self._class_id_to_name = {}  # class_id -> class_name mapping
+        self.class_ids = {}  # class_name -> class_id mapping
 
     def _load_default_settings(self) -> dict:
         """Load default settings from YAML file in the same directory."""
@@ -57,14 +54,14 @@ class BotSortTracker(BaseTracker):
             self.frame_tracks[self.current_frame] = tracks
         
         self.current_frame += 1
-        return tracks   
+        return tracks
     
     def reset(self):
         super().reset()
         self.frame_tracks = {}
         self.obj_classes = {}
         self.current_frame = 0
-        self._class_id_to_name = {}  # Reset class mapping
+        self.class_ids = {}
 
     def track(self, frames: List[np.ndarray], annotations: List[Annotation]) -> VideoAnnotation:
         """Track objects through sequence of frames and return VideoAnnotation."""
@@ -72,7 +69,7 @@ class BotSortTracker(BaseTracker):
             raise ValueError("Number of frames and annotations must match")
         
         self.reset()
-        frame_shape = frames[0].shape[:2] if frames else (0, 0)
+        frame_shape = frames[0].shape[:2]
         
         # Process each frame
         for frame_idx, (frame, annotation) in enumerate(zip(frames, annotations)):
@@ -87,21 +84,20 @@ class BotSortTracker(BaseTracker):
         detections_list = []
 
         for label in annotation.labels:
-            confidence = 1.0
             if label.tags.get("confidence", None) is not None:
                 confidence = label.tags.get("confidence").value
             elif label.tags.get("conf", None) is not None:
                 confidence = label.tags.get("conf").value
+            else:
+                confidence = 1.0
+                logger.debug(
+                    f"Label {label.obj_class.name} does not have confidence tag, using default value 1.0"
+                )
 
             rectangle = label.geometry.to_bbox()
             
-            # Store class name for later mapping, but use hash ID for BoTSORT
             class_name = label.obj_class.name
-            class_id = hash(class_name) % 1000
-            
-            # Store mapping for reverse lookup
-            self._class_id_to_name = getattr(self, '_class_id_to_name', {})
-            self._class_id_to_name[class_id] = class_name
+            class_id = self.class_ids[class_name]
             
             detection = [
                 rectangle.left,    # x1
@@ -147,9 +143,10 @@ class BotSortTracker(BaseTracker):
         """Extract and store object classes from annotation."""
         for label in annotation.labels:
             class_name = label.obj_class.name
-            class_id = hash(class_name) % 1000  # Keep hash for consistency with tracks
+            class_id = len(self.class_ids)
             self.obj_classes[class_id] = label.obj_class
-            
+            self.class_ids[class_name] = class_id
+
     def _create_video_annotation(self, frame_shape: Tuple[int, int]) -> VideoAnnotation:
         """Convert accumulated tracking results to Supervisely VideoAnnotation."""
         img_h, img_w = frame_shape
