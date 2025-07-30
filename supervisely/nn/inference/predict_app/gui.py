@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 import yaml
 
+from build.lib.supervisely.nn.model.model_api import ModelAPI
 from supervisely.annotation.annotation import Annotation, Label, ObjClass
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
@@ -406,7 +407,8 @@ class PredictAppGui:
             gap=10,
         )
 
-    def _deploy_model(self) -> None:
+    def _deploy_model(self) -> ModelAPI:
+        model_api = None
         try:
             model_api = type(self.model).deploy(self.model)
             inference_settings = model_api.get_settings()
