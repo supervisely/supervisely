@@ -117,14 +117,12 @@ class ExperimentGenerator(BaseGenerator):
         train_app, serve_app = self._get_app_train_serve_app_info()
         apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
         log_viewer_app = self._get_log_viewer_app_info()
-        predict_app_info = self._get_predict_app_info()
         return {
             "train": train_app,
             "serve": serve_app,
             "log_viewer": log_viewer_app,
             "apply_nn_to_images": apply_images_app,
             "apply_nn_to_videos": apply_videos_app,
-            "predict": predict_app_info,
         }
 
     def _get_links_context(self):
