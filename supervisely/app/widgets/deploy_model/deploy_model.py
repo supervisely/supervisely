@@ -303,9 +303,15 @@ class DeployModel(Widget):
             return model_api
 
         def load_from_json(self, data: Dict):
-            experiment_info_json = data["experiment_info"]
-            experiment_info = ExperimentInfo(**experiment_info_json)
-            self.experiment_table.select_experiment_info(experiment_info)
+            if "experiment_info" in data:
+                experiment_info_json = data["experiment_info"]
+                experiment_info = ExperimentInfo(**experiment_info_json)
+                self.experiment_table.select_experiment_info(experiment_info)
+            elif "train_task_id" in data:
+                task_id = data["train_task_id"]
+                self.experiment_table.select_experiment_info_by_task_id(task_id)
+            else:
+                raise ValueError("Invalid data format for loading custom model.")
 
     class MODE:
         CONNECT = "connect"

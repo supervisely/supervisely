@@ -63,6 +63,7 @@
                 :moduleId="{{ resources.apps.apply_nn_to_images.module_id }}"
                 :openInNewWindow="true"
                 :command="command">
+                :state="{ 'trainTaskId': {{ experiment.task_id }} }"
                 <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA50lEQVR4nO3YOw6CQBSF4bHQwIJ9VEYL3JisQtgFBQ3JbyaimcoMxuEOer6aCedyCAnXORH5PUAJnIEWGLAzjBlOPtOU8DX5qYEiZgD/5HN1jBnAV/a0BdbOCLAGdkGeW8yh8J3fzJL0DZ8hyDPEHHhxmWBKJg2QAGrAGGrAGGrAGGrAGGrAGGrAGGrAGGrAGP/WwLD0n/o2OLC3HIJH+MPUtYpf4y16sVVmulq8Rq0WxyEKPy3QZLDcbcYsceE/Ed7xm9fORgNYUwNzAi5An+CL0wNV6vAroCOdLukA4xDVYhsQEZedOy9lmdD5aZkaAAAAAElFTkSuQmCC" alt="monitor--v1">
                 <span>Apply Model</span>
             </sly-iw-launch-button>
