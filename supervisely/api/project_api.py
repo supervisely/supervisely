@@ -2277,14 +2277,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :return: None
         :rtype: :class:`NoneType`
         """
-        self._api.post(
-            "projects.embeddings-in-progress.update",
-            {
-                ApiField.ID: id,
-                ApiField.EMBEDDINGS_IN_PROGRESS: in_progress,
-                ApiField.ERROR_MESSAGE: error_message,
-            },
-        )
+        data = {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress}
+        if error_message is not None:
+            data[ApiField.ERROR_MESSAGE] = error_message
+        self._api.post("projects.embeddings-in-progress.update", data)
 
     def get_embeddings_in_progress(self, id: int) -> bool:
         """
