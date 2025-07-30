@@ -12,7 +12,7 @@ class BaseTracker:
 
     def reset(self):
         """Reset tracker state."""
-        raise NotImplementedError("This method should be overridden by subclasses.")
+        pass
     
     def track(self, frames: list, annotations: list):
         raise NotImplementedError("This method should be overridden by subclasses.")

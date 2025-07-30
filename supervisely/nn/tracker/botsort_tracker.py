@@ -155,7 +155,7 @@ class BotSortTracker(BaseTracker):
         video_objects = {}  # track_id -> VideoObject
         frames = []
         
-        for frame_idx, tracks in self.frame_tracks.items():
+        for frame_idx, tracks in enumerate(self.frame_tracks):
             frame_figures = []
             
             for track in tracks:
@@ -182,11 +182,11 @@ class BotSortTracker(BaseTracker):
             frames.append(sly.Frame(frame_idx, frame_figures))
 
         objects = list(video_objects.values())
-        frames_count = max(self.frame_tracks.keys()) + 1 if self.frame_tracks else 0
+
         
         return VideoAnnotation(
             img_size=self.frame_shape,
-            frames_count=frames_count,
+            frames_count=len(self.frame_tracks),
             objects=sly.VideoObjectCollection(objects),
             frames=sly.FrameCollection(frames)
         )
