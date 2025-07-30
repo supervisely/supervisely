@@ -190,4 +190,17 @@ class BotSortTracker(BaseTracker):
             objects=sly.VideoObjectCollection(objects),
             frames=sly.FrameCollection(frames)
         )
+        
+    @property
+    def video_annotation(self) -> VideoAnnotation:
+        """Return the accumulated VideoAnnotation."""
+        if not self.frame_tracks:
+            error_msg = (
+                "No tracking data available. "
+                "Please run tracking first using track() method or process frames with update()."
+            )
+            raise ValueError(error_msg)
+                
+        return self._create_video_annotation()
+    
 

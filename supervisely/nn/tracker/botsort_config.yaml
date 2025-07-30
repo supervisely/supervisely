@@ -1,4 +1,9 @@
 # botsort_default_config.yaml
+
+name: "BotSORT"
+device: "cuda"
+fp16: false
+
 # BoTSORT tracking parameters
 track_high_thresh: 0.6
 track_low_thresh: 0.1
@@ -9,7 +14,7 @@ min_box_area: 10.0
 
 # Appearance model (ReID)
 with_reid: true
-reid_weights: "../weights/osnet_x1_0_msmt17.pt"
+reid_weights: null
 proximity_thresh: 0.5
 appearance_thresh: 0.25
 
@@ -23,3 +28,4 @@ cmc_method: "sparseOptFlow"
 
 # Performance
 fps: 30
+
