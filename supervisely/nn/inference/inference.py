@@ -182,6 +182,9 @@ class Inference:
         self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
+        self._freeze_timer = None
+        self._model_frozen = False
+        self._inactivity_timeout = 3600  # 1 hour
         self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
@@ -225,6 +228,7 @@ class Inference:
                 deploy_params["model_files"] = local_model_files
             logger.debug("Loading model...")
             self._load_model_headless(**deploy_params)
+            self._schedule_freeze_on_inactivity()
 
         if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -273,6 +277,7 @@ class Inference:
                     self.device = device
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
+                self._schedule_freeze_on_inactivity()
 
             def on_change_model_callback(
                 gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
@@ -407,6 +412,7 @@ class Inference:
         deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
         logger.debug(f"Deploying custom model '{checkpoint_name}'...")
         self._load_model_headless(**deploy_params)
+        self._schedule_freeze_on_inactivity()
         return self
 
     def get_batch_size(self):
@@ -1228,6 +1234,10 @@ class Inference:
 
     def shutdown_model(self):
         self._model_served = False
+        self._model_frozen = False
+        if self._freeze_timer is not None:
+            self._freeze_timer.cancel()
+            self._freeze_timer = None
         self.device = None
         self.runtime = None
         self.model_precision = None
@@ -1437,12 +1447,13 @@ class Inference:
         if api is None:
             api = self.api
         return api
-
+        
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
         settings: Dict[str, Any],
     ) -> Tuple[List[Annotation], List[dict]]:
+        self._unfreeze_model()
         inference_mode = settings.get("inference_mode", "full_image")
         use_raw = (
             inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
@@ -1453,9 +1464,11 @@ class Inference:
         if (not use_raw and self.is_batch_inference_supported()) or (
             use_raw and is_predict_batch_raw_implemented
         ):
-            return self._inference_batched_wrapper(source, settings)
+            result = self._inference_batched_wrapper(source, settings)
         else:
-            return self._inference_one_by_one_wrapper(source, settings)
+            result = self._inference_one_by_one_wrapper(source, settings)
+        self._schedule_freeze_on_inactivity()
+        return result
 
     def inference(
         self,
@@ -2432,9 +2445,7 @@ class Inference:
     def _check_serve_before_call(self, func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if self._model_served is True:
-                return func(*args, **kwargs)
-            else:
+            if self._model_served is False:
                 msg = (
                     "The model has not yet been deployed. "
                     "Please select the appropriate model in the UI and press the 'Serve' button. "
@@ -2442,8 +2453,52 @@ class Inference:
                 )
                 # raise DialogWindowError(title="Call undeployed model.", description=msg)
                 raise RuntimeError(msg)
-
+            return func(*args, **kwargs)
         return wrapper
+
+    def _freeze_model(self):
+        if self._model_frozen or not self._model_served:
+            return
+        logger.debug("Freezing model...")
+        runtime = self._deploy_params.get("runtime")
+        if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():
+            logger.debug("Model is not running in PyTorch runtime, cannot freeze.")
+            return
+        previous_device = self._deploy_params.get("device")
+        if previous_device == "cpu":
+            logger.debug("Model is already running on CPU, cannot freeze.")
+            return
+
+        deploy_params = self._deploy_params.copy()
+        deploy_params["device"] = "cpu"
+        try:
+            self._load_model(deploy_params)
+            self._model_frozen = True
+            logger.info(
+                "Model has been re-deployed to CPU for resource optimization. "
+                "It will be loaded back to the original device on the next inference request."
+            )
+        finally:
+            self._deploy_params["device"] = previous_device
+            clean_up_cuda()
+
+    def _unfreeze_model(self):
+        if not self._model_frozen:
+            return
+        logger.debug("Unfreezing model...")
+        self._model_frozen = False
+        self._load_model(self._deploy_params)
+        clean_up_cuda()
+        logger.debug("Model is unfrozen and ready for inference.")
+
+    def _schedule_freeze_on_inactivity(self):
+        if self._freeze_timer is not None:
+            self._freeze_timer.cancel()
+        timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+        timer.daemon = True
+        timer.start()
+        self._freeze_timer = timer
+        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
 
     def _set_served_callback(self):
         self._model_served = True
@@ -2506,6 +2561,7 @@ class Inference:
             # update to set correct device
             device = deploy_params.get("device", "cpu")
             self.gui.set_deployed(device)
+            self._schedule_freeze_on_inactivity()
             return {"result": "model was successfully deployed"}
         except Exception as e:
             self.gui._success_label.hide()
@@ -3400,6 +3456,8 @@ class Inference:
                 if self.gui is not None:
                     self.gui._success_label.hide()
                 raise e
+            finally:
+                self._schedule_freeze_on_inactivity()
 
         @server.post("/list_pretrained_models")
         def _list_pretrained_models():
@@ -3478,6 +3536,16 @@ class Inference:
                     "total": ram_total,
                 },
             }
+
+        @server.post("/freeze_model")
+        def _freeze_model(request: Request):
+            if self._model_frozen:
+                return {"message": "Model is already frozen."}
+
+            self._freeze_model()
+            if not self._model_frozen:
+                return {"message": "Failed to freeze model. Check the logs for details."}
+            return {"message": "Model is frozen."}
 
         # Local deploy without predict args
         if self._is_cli_deploy:

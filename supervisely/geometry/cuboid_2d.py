@@ -89,6 +89,7 @@ class Cuboid2d(GraphNodes):
         position: Optional[Dict] = None,
         rotation: Optional[Dict] = None,
         dimensions: Optional[Dict] = None,
+        face: Optional[List[str]] = None,
     ):
         super().__init__(
             nodes=nodes,
@@ -101,6 +102,7 @@ class Cuboid2d(GraphNodes):
         self._position = position
         self._rotation = rotation
         self._dimensions = dimensions
+        self._face = face
 
         if len(self._nodes) != 8:
             raise ValueError("Cuboid2d must have exactly 8 vertices")
@@ -148,6 +150,17 @@ class Cuboid2d(GraphNodes):
         if isinstance(self._dimensions, dict):
             return self._dimensions.copy()
 
+    @property
+    def face(self) -> Optional[List[str]]:
+        """
+        Copy of the face of the Cuboid2d.
+
+        :return: Face of the Cuboid2d
+        :rtype: Optional[List[str]]
+        """
+        if isinstance(self._face, list):
+            return self._face.copy()
+
     @classmethod
     def from_json(cls, data: Dict[str, Dict]) -> Cuboid2d:
         """
@@ -182,7 +195,13 @@ class Cuboid2d(GraphNodes):
                         "x": 0.1425456564648202,
                         "y": 0.1,
                         "z": 0.36738880874660756
-                    }
+                    },
+                    "face": [
+                        "face2-topleft",
+                        "face2-topright",
+                        "face2-bottomright",
+                        "face2-bottomleft"
+                    ]
                 }
             }
             from supervisely.geometry.graph import Cuboid2d
@@ -200,6 +219,7 @@ class Cuboid2d(GraphNodes):
         position = data.get("position", None)
         rotation = data.get("rotation", None)
         dimensions = data.get("dimensions", None)
+        face = data.get("face", None)
         return cls(
             nodes=nodes,
             sly_id=sly_id,
@@ -210,6 +230,7 @@ class Cuboid2d(GraphNodes):
             position=position,
             rotation=rotation,
             dimensions=dimensions,
+            face=face,
         )
 
     def to_json(self) -> Dict[str, Dict]:
@@ -255,8 +276,13 @@ class Cuboid2d(GraphNodes):
             #         "x": 0.1425456564648202,
             #         "y": 0.1,
             #         "z": 0.36738880874660756
-            #     }
-
+            #     },
+            #     "face": [
+            #         "face2-topleft",
+            #         "face2-topright",
+            #         "face2-bottomright",
+            #         "face2-bottomleft"
+            #     ],
             # }
         """
         res = {
@@ -270,6 +296,8 @@ class Cuboid2d(GraphNodes):
             res["rotation"] = self._rotation
         if self._dimensions is not None:
             res["dimensions"] = self._dimensions
+        if self._face is not None:
+            res["face"] = self._face
 
         self._add_creation_info(res)
         return res
