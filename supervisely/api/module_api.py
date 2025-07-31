@@ -695,6 +695,14 @@ class ApiField:
     """"""
     REMOTE_ENTITIES_COUNT = "remoteEntitiesCount"
     """"""
+    RESTRICTED_IMAGE_IDS = "restrictedImageIds"
+    """"""
+    NUMBER_OF_CLUSTERS = "numberOfClusters"
+    """"""
+    CLUSTERING_METHOD = "clusteringMethod"
+    """"""
+    ERROR_MESSAGE = "errorMessage"
+    """"""
 
 
 def _get_single_item(items):
