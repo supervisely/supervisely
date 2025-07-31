@@ -265,7 +265,7 @@ class SelectOutput:
         if not data:
             return
         mode = data["mode"]
-        self.radio.set_value("create")
+        self.radio.set_value(mode)
         if mode == "create":
             self.new_project_name.set_value(data.get("project_name", ""))
         elif mode == "iou_merge":
