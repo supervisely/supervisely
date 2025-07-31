@@ -537,7 +537,11 @@ class PredictionSession:
         return self._predict_images_bytes(images, batch_size=batch_size)
 
     def _predict_images_ids(
-        self, images: List[int], batch_size: int = None, upload_mode: str = None
+        self,
+        images: List[int],
+        batch_size: int = None,
+        upload_mode: str = None,
+        output_project_id: int = None,
     ):
         method = "inference_batch_ids_async"
         json_body = self._get_json_body()
@@ -547,6 +551,8 @@ class PredictionSession:
             state["batch_size"] = batch_size
         if upload_mode is not None:
             state["upload_mode"] = upload_mode
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_videos(
@@ -620,6 +626,7 @@ class PredictionSession:
         upload_mode: str = None,
         iou_merge_threshold: float = None,
         cache_project_on_model: bool = None,
+        output_project_id: int = None,
     ):
         if len(project_ids) != 1:
             raise ValueError("Only one project can be processed at a time.")
@@ -637,6 +644,8 @@ class PredictionSession:
             state["iou_merge_threshold"] = iou_merge_threshold
         if cache_project_on_model is not None:
             state["cache_project_on_model"] = cache_project_on_model
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
 
         return self._start_inference(method, json=json_body)
 

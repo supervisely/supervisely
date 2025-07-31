@@ -1,10 +1,11 @@
+import json
 import os
 import random
-import tempfile
 from typing import Any, Dict, List
 
 import yaml
 
+from supervisely._utils import logger
 from supervisely.annotation.annotation import Annotation, Label, ObjClass
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
@@ -21,6 +22,7 @@ from supervisely.app.widgets import (
     InputNumber,
     OneOf,
     Progress,
+    ProjectThumbnail,
     RadioGroup,
     RadioTable,
     SelectDataset,
@@ -30,6 +32,7 @@ from supervisely.app.widgets import (
 from supervisely.app.widgets.button.button import Button
 from supervisely.io import env
 from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project import ProjectType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
@@ -286,8 +289,13 @@ class Preview:
             resize_on_zoom=True,
             empty_message="Click 'Preview' to see the model output.",
         )
+        self.error_message = Text("Error during preview", status="error")
+        self.error_message.hide()
         self.container = Container(
-            widgets=[self.preview_button, self.gallery],
+            widgets=[
+                self.preview_button,
+                Container(widgets=[self.error_message, self.gallery], gap=0),
+            ],
             direction="vertical",
             gap=20,
         )
@@ -316,7 +324,9 @@ class Preview:
         return ann
 
     def run_preview(self):
+        self.error_message.hide()
         self.gallery.clean_up()
+        self.gallery.show()
         self.gallery.loading = True
         try:
             items_settings = self.gui.items.get_item_settings()
@@ -338,12 +348,21 @@ class Preview:
             else:
                 if "project_id" in items_settings:
                     project_id = items_settings["project_id"]
-                    dataset_infos = self.gui.api.dataset.get_list(project_id)
+                    dataset_infos = self.gui.api.dataset.get_list(project_id, recursive=True)
+                    dataset_infos = [ds for ds in dataset_infos if ds.items_count > 0]
+                    if not dataset_infos:
+                        raise ValueError("No datasets with items found in the project.")
                     dataset_info = random.choice(dataset_infos)
                 elif "dataset_ids" in items_settings:
                     dataset_ids = items_settings["dataset_ids"]
-                    dataset_id = random.choice(dataset_ids)
-                    dataset_info = self.gui.api.dataset.get_info_by_id(dataset_id)
+                    dataset_infos = [
+                        self.gui.api.dataset.get_info_by_id(dataset_id)
+                        for dataset_id in dataset_ids
+                    ]
+                    dataset_infos = [ds for ds in dataset_infos if ds.items_count > 0]
+                    if not dataset_infos:
+                        raise ValueError("No items in selected datasets.")
+                    dataset_info = random.choice(dataset_infos)
                 else:
                     raise ValueError("No valid item settings found for preview.")
                 images = self.gui.api.image.get_list(dataset_info.id)
@@ -367,6 +386,14 @@ class Preview:
 
             self.gallery.append(img_url, input_ann, "Input")
             self.gallery.append(img_url, output_ann, "Output")
+        except Exception as e:
+            self.gallery.hide()
+            self.error_message.text = f"Error during preview: {str(e)}"
+            self.error_message.show()
+            self.gallery.clean_up()
+        else:
+            self.error_message.hide()
+            self.gallery.show()
         finally:
             self.gallery.loading = False
 
@@ -392,6 +419,8 @@ class PredictAppGui:
         self.run_button = Button("Run", icon="zmdi zmdi-play")
         self.run_button.disable()
         self.preview.preview_button.disable()
+        self.result = ProjectThumbnail()
+        self.result.hide()
 
         self.layout = Container(
             widgets=[
@@ -402,10 +431,82 @@ class PredictAppGui:
                 self.output.card,
                 self.run_button,
                 self.progress,
+                self.result,
             ],
             direction="vertical",
             gap=10,
         )
+
+        @self.run_button.click
+        def run_button_click():
+            self._run()
+
+    def _set_result_thumbnail(self, project_id: int):
+        try:
+            project_info = self.api.project.get_info_by_id(project_id)
+            self.result.set(project_info)
+            self.result.show()
+        except Exception as e:
+            logger.error(f"Failed to set result thumbnail: {str(e)}")
+            self.result.hide()
+
+    def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
+        if run_parameters is None:
+            run_parameters = self.get_run_parameters()
+
+        if self.model.model_api is None:
+            self.model._deploy()
+
+        model_api = self.model.model_api
+        if model_api is None:
+            logger.error("Model Deployed with an error")
+            return
+
+        inference_settings = run_parameters["inference_settings"]
+        if not inference_settings:
+            inference_settings = {}
+
+        item_prameters = run_parameters["item"]
+
+        output_parameters = run_parameters["output"]
+        upload_parameters = {}
+        upload_mode = output_parameters["mode"]
+
+        upload_parameters["upload_mode"] = upload_mode
+        if upload_mode == "iou_merge":
+            upload_parameters["existing_objects_iou_thresh"] = output_parameters[
+                "iou_merge_threshold"
+            ]
+
+        if upload_mode == "create":
+            project_name = output_parameters["project_name"]
+            if not project_name:
+                raise ValueError("Project name cannot be empty when creating a new project.")
+            created_project = self.api.project.create(
+                env.workspace_id(), project_name, type=ProjectType.IMAGES
+            )
+            upload_parameters["output_project_id"] = created_project.id
+            upload_parameters["upload_mode"] = "append"
+
+        predictions = model_api.predict(
+            **item_prameters, **inference_settings, **upload_parameters, tqdm=self.progress()
+        )
+        if "output_project_id" in upload_parameters:
+            for prediction in predictions:
+                prediction.extra_data["output_project_id"] = upload_parameters["output_project_id"]
+        return predictions
+
+    def _run(self):
+        predictions = self.run(self.get_run_parameters())
+        if predictions:
+            # TODO: remove
+            print(json.dumps(predictions[0].to_json(), indent=2))
+            ##
+            if "output_project_id" in predictions[0].extra_data:
+                project_id = predictions[0].extra_data["output_project_id"]
+            else:
+                project_id = predictions[0].project_id
+            self._set_result_thumbnail(project_id)
 
     def _deploy_model(self) -> ModelAPI:
         model_api = None

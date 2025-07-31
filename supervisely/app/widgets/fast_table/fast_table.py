@@ -216,32 +216,31 @@ class FastTable(Widget):
         server = self._sly_app.get_server()
 
         @server.post(filter_changed_route_path)
-        def _filter_changed():
-            # TODO sort widgets
-            self._active_page = StateJson()[self.widget_id]["page"]
-            self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
-            self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
-            search_value = StateJson()[self.widget_id]["search"]
-            self._filtered_data = self.search(search_value)
-            self._rows_total = len(self._filtered_data)
+        def _filter_changed_handler():
+            self._filter_changed()
 
-            if (
-                self._rows_total > 0 and self._active_page == 0
-            ):  # if previous filtered data was empty
-                self._active_page = 1
-                StateJson()[self.widget_id]["page"] = self._active_page
+    def _filter_changed(self):
+        # TODO sort widgets
+        self._active_page = StateJson()[self.widget_id]["page"]
+        self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
+        self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
+        search_value = StateJson()[self.widget_id]["search"]
+        self._filtered_data = self.search(search_value)
+        self._rows_total = len(self._filtered_data)
 
-            self._sorted_data = self._sort_table_data(self._filtered_data)
-            self._sliced_data = self._slice_table_data(
-                self._sorted_data, actual_page=self._active_page
-            )
-            self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
-            StateJson().send_changes()
-            DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
-            DataJson()[self.widget_id]["total"] = self._rows_total
-            DataJson().send_changes()
-            StateJson()["reactToChanges"] = True
-            StateJson().send_changes()
+        if self._rows_total > 0 and self._active_page == 0:  # if previous filtered data was empty
+            self._active_page = 1
+            StateJson()[self.widget_id]["page"] = self._active_page
+
+        self._sorted_data = self._sort_table_data(self._filtered_data)
+        self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
+        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        StateJson().send_changes()
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
+        StateJson()["reactToChanges"] = True
+        StateJson().send_changes()
 
     def get_json_data(self) -> Dict[str, Any]:
         """Returns dictionary with widget data, which defines the appearance and behavior of the widget.
@@ -723,6 +722,11 @@ class FastTable(Widget):
         filtered_data = self._search_function(filtered_data, search_value)
         self._search_str = search_value
         return filtered_data
+
+    def do_search(self, search_value: str) -> None:
+        StateJson()[self.widget_id]["search"] = search_value
+        StateJson().send_changes()
+        self._filter_changed()
 
     def _sort(
         self,
