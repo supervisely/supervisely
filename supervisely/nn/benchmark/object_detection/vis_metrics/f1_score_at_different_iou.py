@@ -57,6 +57,9 @@ class F1ScoreAtDifferentIOU(DetectionVisMetric):
 
         # add annotations for maximum F1-Score for each IoU threshold
         for i, iou in enumerate(iou_names):
+            # Skip if all F1 scores are NaN for this IoU threshold
+            if np.isnan(f1s[i]).all():
+                continue
             argmax_f1 = np.nanargmax(f1s[i])
             max_f1 = f1s[i][argmax_f1]
             score = self.eval_result.mp.m_full.score_profile["scores"][argmax_f1]
