@@ -323,7 +323,7 @@ class Preview:
         ann = Annotation(img_size, labels=labels)
         return ann
 
-    def run_preview(self):
+    def run_preview(self) -> Prediction:
         self.error_message.hide()
         self.gallery.clean_up()
         self.gallery.show()
@@ -342,9 +342,10 @@ class Preview:
                     self.gui.api.project.get_meta(video_info.project_id)
                 )
                 input_ann = self._get_frame_annotation(video_info, video_frame, project_meta)
-                output_ann = self.gui.model.model_api.predict(
+                prediction = self.gui.model.model_api.predict(
                     input=self._preview_path, **self.gui.get_inference_settings()
-                )[0].annotation
+                )[0]
+                output_ann = prediction.annotation
             else:
                 if "project_id" in items_settings:
                     project_id = items_settings["project_id"]
@@ -386,14 +387,14 @@ class Preview:
 
             self.gallery.append(img_url, input_ann, "Input")
             self.gallery.append(img_url, output_ann, "Output")
+            self.error_message.hide()
+            self.gallery.show()
+            return prediction
         except Exception as e:
             self.gallery.hide()
             self.error_message.text = f"Error during preview: {str(e)}"
             self.error_message.show()
             self.gallery.clean_up()
-        else:
-            self.error_message.hide()
-            self.gallery.show()
         finally:
             self.gallery.loading = False
 
@@ -499,14 +500,12 @@ class PredictAppGui:
     def _run(self):
         predictions = self.run(self.get_run_parameters())
         if predictions:
-            # TODO: remove
-            print(json.dumps(predictions[0].to_json(), indent=2))
-            ##
             if "output_project_id" in predictions[0].extra_data:
                 project_id = predictions[0].extra_data["output_project_id"]
             else:
                 project_id = predictions[0].project_id
             self._set_result_thumbnail(project_id)
+        return predictions
 
     def _deploy_model(self) -> ModelAPI:
         model_api = None
