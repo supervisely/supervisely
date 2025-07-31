@@ -14,6 +14,7 @@
   :data="data.{{{widget.widget_id}}}.data"
   :show-header="data.{{{widget.widget_id}}}.showHeader"
   :selected-rows="state.{{{widget.widget_id}}}.selectedRows"
+  :selected-radio-idx="state.{{{widget.widget_id}}}.selectedRows && state.{{{widget.widget_id}}}.selectedRows.length > 0 ? state.{{{widget.widget_id}}}.selectedRows[0].idx : null"
   :disabled="data.{{{widget.widget_id}}}.disabled"
   @update:selected-rows="(rows) => {
     state.{{{widget.widget_id}}}.selectedRows = rows;

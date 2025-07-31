@@ -438,6 +438,7 @@ Vue.component('fast-table', {
 
     updateSelectedRadio(row) {
       console.log('updateSelectedRadio', row);
+      row = _.cloneDeep(row)
       this.$emit('update:selected-rows', [row])
     },
 
