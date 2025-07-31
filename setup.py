@@ -194,9 +194,9 @@ setup(
             "*.css",
             "*.js",
             "*.md",
-            "versions.json",
         ],
         "supervisely": [
+            "versions.json",
             "video/*.sh",
             "app/development/*.sh",
             "imaging/colors.json.gz",
