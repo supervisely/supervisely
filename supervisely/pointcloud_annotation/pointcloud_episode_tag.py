@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple, Union
 from supervisely._utils import take_with_default
 from supervisely.annotation.tag_meta import TagMeta
 from supervisely.annotation.tag_meta_collection import TagMetaCollection
+from supervisely.api.module_api import ApiField
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_tag import VideoTag
 
@@ -129,7 +130,8 @@ class PointcloudEpisodeTag(VideoTag):
 
             tag_car_color = sly.PointcloudEpisodeTag.from_json(tag_car_color_json, meta_car_collection)
         """
-
+        is_finished = data.get(ApiField.IS_FINISHED, True)
+        non_final_value = data.get(ApiField.NON_FINAL_VALUE, False)
         temp = super(PointcloudEpisodeTag, cls).from_json(data, tag_meta_collection, key_id_map)
 
         return cls(
@@ -141,6 +143,8 @@ class PointcloudEpisodeTag(VideoTag):
             labeler_login=temp.labeler_login,
             updated_at=temp.updated_at,
             created_at=temp.created_at,
+            is_finished=is_finished,
+            non_final_value=non_final_value,
         )
 
     def __eq__(self, other: PointcloudEpisodeTag) -> bool:
