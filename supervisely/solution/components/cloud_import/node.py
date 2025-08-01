@@ -1,18 +1,17 @@
 from typing import Callable, Optional, Tuple
 
-from supervisely._utils import abs_url, logger
 from supervisely.api.api import Api
-from supervisely.app.widgets import Dialog
+from supervisely.app.widgets import SolutionCard
 from supervisely.solution.base_node import SolutionCardNode
-from supervisely.solution.components.base import BaseNode
+from supervisely.solution.components.base import SolutionElement
 
-from .automation import CloudImportAuto
+from .automation import CloudImportAutomation
 from .gui import CloudImportGUI
 from .history import CloudImportHistory
 
 
-class CloudImportNode(BaseNode):
-    """Aggregate class that wires GUI, history and automation components together."""
+class CloudImportNode(SolutionElement):
+    progress_badge_key = "Import"
 
     def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
         self.api = api
@@ -20,54 +19,61 @@ class CloudImportNode(BaseNode):
 
         # --- core blocks --------------------------------------------------------
         self.gui = CloudImportGUI(project_id=project_id)
-        self.history = CloudImportHistory(api)
-        self.automation = CloudImportAuto(self.gui.run)
+        self.history = self.gui.task_history  # CloudImportHistory(api)
+        self.automation = CloudImportAutomation(self.gui.widget.run)
 
-        # --- UI -----------------------------------------------------------------
+        # --- card ---------------------------------------------------------------
         tooltip_desc = (
             "Each import creates a dataset folder in the Input Project, centralising all "
             "incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
         )
         self.card = self._build_card(title="Import from Cloud", tooltip_description=tooltip_desc)
+        # --- node ---------------------------------------------------------------
         self.node = SolutionCardNode(x=x, y=y, content=self.card)
-        self.run_modal = Dialog(title="Import from Cloud Storage", content=self.gui, size="tiny")
-
-        # Modals coming from sub-components + run modal
         self.modals = [
             self.automation.modal,
-            self.history.tasks_modal,
+            self.history.modal,
             self.history.logs_modal,
-            self.run_modal,
+            self.gui.modal,
         ]
 
-        # Show run settings on card click
         @self.card.click
         def _on_card_click():
-            self.run_modal.show()
+            self.gui.modal.show()
 
         super().__init__(*args, **kwargs)
 
-    # Public API helpers
     # ------------------------------------------------------------------
+    # Automation -------------------------------------------------------
+    # ------------------------------------------------------------------
+    def show_automation_badge(self, card: SolutionCard):
+        sec, interval, period, path = self.automation.get_details()
+        if path is not None and sec is not None:
+            card.update_property("Sync", f"Every {interval} {period}", highlight=True)
+            card.update_property("Path", path)
+            self.node.show_automation_badge()
+        else:
+            card.remove_property_by_key("Sync")
+            card.remove_property_by_key("Path")
+            self.node.hide_automation_badge()
+
     def apply_automation(self, func: Optional[Callable] = None) -> None:
-        """Apply (or remove) scheduling and reflect it on the card."""
         self.automation.apply(func)
-        self._reflect_automation_on_card(self.card)
+        self.show_automation_badge(self.card)
 
     # ------------------------------------------------------------------
-    # Callbacks
+    # Callbacks --------------------------------------------------------
     # ------------------------------------------------------------------
-    def on_finish(self, func: Callable[[int], None]):
-        return self.gui.on_finish(self._wrap_finish(self.node, func))
-
     def on_start(self, func: Callable[[], None]):
         return self.gui.on_start(self._wrap_start(self.node, func))
 
+    def on_finish(self, func: Callable[[int], None]):
+        return self.gui.on_finish(self._wrap_finish(self.node, func))
+
     # ------------------------------------------------------------------
-    # Data helpers
+    # Node Updates -----------------------------------------------------
     # ------------------------------------------------------------------
     def update_after_import(self, task_id: Optional[int] = None) -> Tuple[int, str]:
-        """Refresh card stats after import is finished."""
         tasks = self.gui.tasks
         self.card.update_property("Tasks", str(len(tasks)))
         if not tasks:

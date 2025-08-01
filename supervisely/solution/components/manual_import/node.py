@@ -19,12 +19,12 @@ class ManualImportNode(BaseNode):
         self.api = api
         self.project_id = project_id
 
-        # helpers -------------------------------------------------------
+        # --- core blocks --------------------------------------------------------
         self.gui = None
         self.history = ManualImportHistory(api)
         self.automation = None
 
-        # card ----------------------------------------------------------
+        # --- card ---------------------------------------------------------------
         tooltip = (
             "Each import creates a dataset folder in the Input Project, centralising all "
             "incoming data and easily managing it over time."
@@ -34,17 +34,16 @@ class ManualImportNode(BaseNode):
             f"/import-wizard/project/{self.project_id}/dataset?moduleId=435&nodeId=41"
         )
 
-        # node ----------------------------------------------------------
+        # --- node ---------------------------------------------------------------
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
         self.modals = [self.history.tasks_modal, self.history.logs_modal]
 
         super().__init__(**kwargs)
 
     # ------------------------------------------------------------------
-    # Data helpers ------------------------------------------------------
+    # Node Updates -----------------------------------------------------
     # ------------------------------------------------------------------
     def update_after_import(self) -> Tuple[int, str]:
-        """Refresh card after manual import finished."""
         project = self.api.project.get_info_by_id(self.project_id)
         import_history = project.custom_data.get("import_history", {}).get("tasks", [])
         tasks_count = len(import_history)

@@ -210,6 +210,8 @@ class CloudImport(Widget):
         )
 
         logger.info(f"Cloud import started on agent {agent_id} (task_id: {session.task_id})")
+
+        # @TODO: filter out only useful task info fields
         task_info = self.api.task.get_info_by_id(session.task_id)
         self.tasks_history.add_task(task_info)
 

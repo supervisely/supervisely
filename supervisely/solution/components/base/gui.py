@@ -1,33 +1,37 @@
 from __future__ import annotations
-
-from abc import ABC, abstractmethod
-from typing import Callable
-
-from supervisely.app.widgets import Widget
+from typing import Callable, Optional
+from supervisely.app.widgets import Dialog, Widget
 
 
-class BaseGUI(Widget, ABC):
-    """Every node-specific GUI class should inherit from this template."""
-
-    # ------------------------------------------------------------------
-    # Required API ------------------------------------------------------
-    # ------------------------------------------------------------------
-
-    @abstractmethod
-    def run(self):  # noqa: D401 – imperative; starts main action
-        """Trigger the widget's primary action (import, sampling, etc.)."""
-
-    # Optional convenience wrappers – concrete GUI may override ---------
-
-    def on_start(self, func: Callable):  # noqa: D401 – simple passthrough
-        """Connect callback executed *before* `.run()` logic starts."""
-        return func
-
-    def on_finish(self, func: Callable[[int], None]):  # noqa: D401 – simple passthrough
-        """Connect callback executed after `.run()` logic ends."""
-        return func
+class BaseGUI(Widget):
+    def __init__(self):
+        super().__init__()
+        self._modal: Optional[Dialog] = None
+        self.widget: Widget = self
 
     @property
-    def tasks(self):  # type: ignore[override]
-        """Return list of underlying task IDs (if applicable)."""
-        return []
+    def modal(self) -> Dialog:
+        if self._modal is None:
+            self._modal = Dialog(title="Node GUI", content=self.widget, size="tiny")
+        return self._modal
+
+    @property
+    def tasks(self):
+        if hasattr(self.widget, "tasks"):
+            return self.widget.tasks
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def on_start(self, func: Callable):
+        if hasattr(self.widget, "on_start"):
+            return self.widget.on_start(func)
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def on_finish(self, func: Callable[[int], None]):
+        if hasattr(self.widget, "on_finish"):
+            return self.widget.on_finish(func)
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def run(self, *args, **kwargs):
+        if hasattr(self.widget, "run"):
+            return self.widget.run(*args, **kwargs)
+        raise NotImplementedError("Subclasses must implement this method")
