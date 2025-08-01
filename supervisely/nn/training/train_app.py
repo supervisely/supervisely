@@ -701,8 +701,15 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
+
         # Step 10. Generate training output
         need_generate_report = self._app_options.get("generate_report", True)
+            
+        # @TODO: temporary code to generate report for dev only
+        is_dev = "dev.internal" in self._api.server_address
+        if not is_dev:
+            need_generate_report = False
+
         if need_generate_report:
             output_file_info = self._generate_experiment_report(experiment_info, model_meta)
         else:  # output artifacts directory

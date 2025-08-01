@@ -48,7 +48,7 @@ class HyperparametersSelector:
             self.run_model_benchmark_checkbox = Checkbox(
                 content="Run Model Benchmark evaluation", checked=True
             )
-            self.run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
+            self.run_speedtest_checkbox = Checkbox(content="Run speed test", checked=False)
 
             self.model_benchmark_field = Field(
                 title="Model Evaluation Benchmark",
