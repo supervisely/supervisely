@@ -1862,7 +1862,7 @@ class Inference:
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
             if tracker is not None:
-                for frame, ann in (frames, anns):
+                for frame, ann in zip(frames, anns):
                     tracker.update(frame, ann)
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
@@ -2117,17 +2117,15 @@ class Inference:
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
             if tracker is not None:
-                for frame_index, frame, ann in zip(batch, frames, anns):
-                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+                for frame, ann in zip(frames, anns):
+                    tracker.update(frame, ann)
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = tracker.get_annotation(
-                tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
-            ).to_json()
+            video_ann_json = tracker.video_annotation.to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
