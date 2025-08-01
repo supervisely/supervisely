@@ -701,12 +701,9 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
+
         # Step 10. Generate training output
-        need_generate_report = self._app_options.get("generate_report", True)
-        if need_generate_report:
-            output_file_info = self._generate_experiment_report(experiment_info, model_meta)
-        else:  # output artifacts directory
-            output_file_info = session_link_file_info
+        output_file_info, experiment_info = self._generate_experiment_output(experiment_info, model_meta, session_link_file_info)
 
         # Step 11. Set output widgets
         self._set_text_status("reset")
@@ -1985,6 +1982,40 @@ class TrainApp:
             )
 
             self.progress_bar_main.hide()
+
+    def _generate_experiment_output(self, experiment_info: dict, model_meta: ProjectMeta, session_link_file_info: FileInfo) -> tuple:
+        """
+        Generates and uploads the experiment page to the output directory, if report generation is successful.
+        Otherwise, artifacts directory link will be used for output.
+
+        :param experiment_info: Information about the experiment results.
+        :type experiment_info: dict
+        :param model_meta: Model meta with object classes.
+        :type model_meta: ProjectMeta
+        :param session_link_file_info: Artifacts directory link, used if report is not generated.
+        :type session_link_file_info: FileInfo
+        :return: Output file info and experiment info.
+        :rtype: tuple
+        """
+        need_generate_report = self._app_options.get("generate_report", True)
+        # @TODO: temporary code to generate report for dev only
+        is_dev = "dev.internal" in self._api.server_address
+        if not is_dev:
+            need_generate_report = False
+        # ------------------------------------------------------------ #
+
+        if need_generate_report: # link to experiment page
+            try:
+                output_file_info = self._generate_experiment_report(experiment_info, model_meta)
+                experiment_info["has_report"] = True
+            except Exception as e:
+                logger.error(f"Error generating experiment report: {e}")
+                output_file_info = session_link_file_info
+                experiment_info["has_report"] = False
+        else: # link to artifacts directory
+            output_file_info = session_link_file_info
+            experiment_info["has_report"] = False
+        return output_file_info, experiment_info
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
         """

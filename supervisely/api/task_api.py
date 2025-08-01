@@ -1046,6 +1046,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     'type': 'tensorboard',
                     'link': '/experiments/76_Lemons/247_RT-DETRv2/logs/'
                 },
+                # These fields are present only in task_info
+                'project_preview': 'https://app.supervisely.com/...',
+                'has_report': True,
             }
         """
         output = {
