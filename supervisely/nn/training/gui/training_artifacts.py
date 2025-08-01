@@ -64,7 +64,14 @@ class TrainingArtifacts:
         self.display_widgets.extend([self.validator_text])
 
         # Outputs
-        need_generate_report = self.app_options.get("generate_report", True)
+        need_generate_report = self.app_options.get("generate_report", False)
+
+        # @TODO: temporary code to generate report for dev only
+        is_dev = "dev.internal" in api.server_address
+        if not is_dev:
+            need_generate_report = False
+        # ------------------------------------------------------------ #
+
         if need_generate_report:
             self.artifacts_thumbnail = ReportThumbnail(
                 title="Experiment Report",
