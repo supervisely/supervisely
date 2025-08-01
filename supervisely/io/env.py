@@ -36,6 +36,12 @@ def _int_from_env(value):
     return int(value)
 
 
+def _parse_list_from_env(value: str) -> List[str]:
+    import ast
+
+    return [str(x).strip() for x in ast.literal_eval(value)]
+
+
 def _parse_from_env(
     name: str,
     keys: List[str],
@@ -50,7 +56,7 @@ def _parse_from_env(
     # env not found
     if raise_not_found is True:
         raise KeyError(
-            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervise.ly/getting-started/environment-variables"
+            f"{name} is not defined as environment variable. One of the envs has to be defined: {keys}. Learn more in developer portal: https://developer.supervisely.com/getting-started/environment-variables"
         )
 
     return default
@@ -214,6 +220,32 @@ def team_files_folder(raise_not_found: Optional[bool] = True) -> str:
     )
 
 
+def team_files_folders(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the team files folders from environment variable using following keys:
+        - CONTEXT_SLYFOLDERS
+        - context.slyFolders
+        - modal.state.slyFolders
+        - FOLDERS
+    NOTE: same as team_files_folders
+    :param raise_not_found: if True, raises KeyError if team files folders are not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the team files folders
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="team_files_folders",
+        keys=[
+            "CONTEXT_SLYFOLDERS",
+            "context.slyFolders",
+            "modal.state.slyFolders",
+            "FOLDERS",
+        ],
+        postprocess_fn=_parse_list_from_env,
+        default=[],
+        raise_not_found=raise_not_found,
+    )
+
+
 def folder(raise_not_found: Optional[bool] = True) -> str:
     """Returns path to the team files folder from environment variable using following keys:
         - CONTEXT_SLYFOLDER
@@ -227,6 +259,21 @@ def folder(raise_not_found: Optional[bool] = True) -> str:
     :rtype: str
     """
     return team_files_folder(raise_not_found)
+
+
+def folders(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the team files folders from environment variable using following keys:
+        - CONTEXT_SLYFOLDERS
+        - context.slyFolders
+        - modal.state.slyFolders
+        - FOLDERS
+    NOTE: Same as team_files_folders
+    :param raise_not_found: if True, raises KeyError if team files folders are not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the team files folders
+    :rtype: str
+    """
+    return team_files_folders(raise_not_found)
 
 
 def team_files_file(raise_not_found: Optional[bool] = True) -> str:
@@ -247,6 +294,28 @@ def team_files_file(raise_not_found: Optional[bool] = True) -> str:
         keys=["CONTEXT_SLYFILE", "context.slyFile", "modal.state.slyFile", "FILE"],
         postprocess_fn=lambda x: str(x),
         default=None,
+        raise_not_found=raise_not_found,
+    )
+
+
+def team_files_files(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the files in the team files from environment variable using following keys:
+        - CONTEXT_SLYFILES
+        - context.slyFiles
+        - modal.state.slyFiles
+        - FILES
+
+    NOTE: same as team_files_file
+    :param raise_not_found: if True, raises KeyError if file is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the file in the team files
+    :rtype: str
+    """
+    return _parse_from_env(
+        name="team_files_files",
+        keys=["CONTEXT_SLYFILES", "context.slyFiles", "modal.state.slyFiles", "FILES"],
+        postprocess_fn=_parse_list_from_env,
+        default=[],
         raise_not_found=raise_not_found,
     )
 
@@ -319,6 +388,22 @@ def file(raise_not_found: Optional[bool] = True) -> str:
     :rtype: str
     """
     return team_files_file(raise_not_found)
+
+
+def files(raise_not_found: Optional[bool] = True) -> List[str]:
+    """Returns paths to the files in the team files from environment variable using following keys:
+        - CONTEXT_SLYFILES
+        - context.slyFiles
+        - modal.state.slyFiles
+        - FILES
+
+    NOTE: Same as team_files_files
+    :param raise_not_found: if True, raises KeyError if file is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: path to the file in the team files
+    :rtype: str
+    """
+    return team_files_files(raise_not_found)
 
 
 def task_id(raise_not_found: Optional[bool] = True) -> int:
@@ -571,6 +656,7 @@ def supervisely_server_path_prefix() -> str:
         raise_not_found=False,
     )
 
+
 def supervisely_skip_https_user_helper_check() -> bool:
     """Returns decision to skip `_check_https_redirect` for API from environment variable using following
         - SUPERVISELY_SKIP_HTTPS_USER_HELPER_CHECK"
@@ -585,3 +671,18 @@ def supervisely_skip_https_user_helper_check() -> bool:
         default=False,
         raise_not_found=False,
     )
+
+
+def configure_minimum_instance_version() -> None:
+    """
+    Configure MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable
+    from the latest entry in versions.json file.
+
+    This function should be called during SDK initialization to automatically
+    set the minimum required instance version based on the versions.json file.
+    """
+    from supervisely._utils import get_latest_instance_version_from_json
+
+    latest_version = get_latest_instance_version_from_json()
+    if latest_version:
+        os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = latest_version

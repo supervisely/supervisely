@@ -301,6 +301,22 @@ class VolumeProject(VideoProject):
         )
 
     @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for VolumeProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for VolumeProject class now."
+        )
+
+    @staticmethod
     async def download_async(*args, **kwargs):
         raise NotImplementedError(
             f"Static method 'download_async()' is not supported for VolumeProject class now."
@@ -353,7 +369,7 @@ def download_volume_project(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
@@ -461,6 +477,13 @@ def download_volume_project(
                         mesh_ids.append(figure_id)
                         figure_path = dataset_fs.get_interpolation_path(volume_name, sf)
                         mesh_paths.append(figure_path)
+                
+                figs = api.volume.figure.download(dataset.id, [volume_id], skip_geometry=True)
+                figs = figs.get(volume_id, {})
+                figs_ids_map = {fig.id: fig for fig in figs}
+                for ann_fig in ann.figures + ann.spatial_figures:
+                    fig = figs_ids_map.get(ann_fig.geometry.sly_id)
+                    ann_fig.custom_data.update(fig.custom_data)
 
                 api.volume.figure.download_stl_meshes(mesh_ids, mesh_paths)
                 api.volume.figure.download_sf_geometries(mask_ids, mask_paths)

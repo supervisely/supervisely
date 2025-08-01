@@ -71,7 +71,7 @@ def download(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
@@ -322,6 +322,8 @@ def download_fast(
     :type download_blob_files: :class:`bool`, optional
     :param project_info: Project info object. To avoid additional API requests.
     :type project_info: :class:`ProjectInfo`, optional
+    :param skip_create_readme: Skip creating README.md file. Default is False.
+    :type skip_create_readme: bool, optional
     :return: None
     :rtype: NoneType
 
@@ -407,12 +409,22 @@ def _project_meta_changed(meta1: ProjectMeta, meta2: ProjectMeta) -> bool:
     return False
 
 
+def _get_ds_full_name(
+    dataset_info: DatasetInfo, all_ds_infos: List[DatasetInfo], suffix: str = ""
+) -> str:
+    if dataset_info.parent_id is None:
+        return dataset_info.name + suffix
+    parent = next((ds_info for ds_info in all_ds_infos if ds_info.id == dataset_info.parent_id))
+    return _get_ds_full_name(parent, all_ds_infos, "/" + dataset_info.name + suffix)
+
+
 def _validate_dataset(
     api: Api,
     project_id: int,
     project_type: str,
     project_meta: ProjectMeta,
     dataset_info: DatasetInfo,
+    all_ds_infos: List[DatasetInfo] = None,
 ):
     try:
         project_class = get_project_class(project_type)
@@ -428,10 +440,12 @@ def _validate_dataset(
     except:
         logger.debug("Validating dataset failed. Unable to download items infos.", exc_info=True)
         return False
+    if all_ds_infos is None:
+        all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     project_meta_changed = _project_meta_changed(project_meta, project.meta)
     for dataset in project.datasets:
         dataset: Dataset
-        if dataset.name.endswith(dataset_info.name):  # TODO: fix it later
+        if dataset.name == _get_ds_full_name(dataset_info, all_ds_infos):
             diff = set(items_infos_dict.keys()).difference(set(dataset.get_items_names()))
             if diff:
                 logger.debug(
@@ -479,15 +493,19 @@ def _validate_dataset(
 
 
 def _validate(
-    api: Api, project_info: ProjectInfo, project_meta: ProjectMeta, dataset_infos: List[DatasetInfo]
+    api: Api,
+    project_info: ProjectInfo,
+    project_meta: ProjectMeta,
+    dataset_infos: List[DatasetInfo],
+    all_ds_infos: List[DatasetInfo] = None,
 ):
     project_id = project_info.id
     to_download, cached = _split_by_cache(
-        project_id, [_get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
+        project_id, [get_dataset_path(api, dataset_infos, info.id) for info in dataset_infos]
     )
     to_download, cached = set(to_download), set(cached)
     for dataset_info in dataset_infos:
-        ds_path = _get_dataset_path(api, dataset_infos, dataset_info.id)
+        ds_path = get_dataset_path(api, dataset_infos, dataset_info.id)
         if ds_path in to_download:
             continue
         if not _validate_dataset(
@@ -496,6 +514,7 @@ def _validate(
             project_info.type,
             project_meta,
             dataset_info,
+            all_ds_infos,
         ):
             to_download.add(ds_path)
             cached.remove(ds_path)
@@ -518,7 +537,7 @@ def _add_save_items_infos_to_kwargs(kwargs: dict, project_type: str):
 
 
 def _add_resume_download_to_kwargs(kwargs: dict, project_type: str):
-    supported_force_projects = (str(ProjectType.IMAGES),)
+    supported_force_projects = (str(ProjectType.IMAGES), (str(ProjectType.VIDEOS)))
     if project_type in supported_force_projects:
         kwargs["resume_download"] = True
     return kwargs
@@ -590,13 +609,14 @@ def download_to_cache(
     project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
     if dataset_infos is not None and dataset_ids is not None:
         raise ValueError("dataset_infos and dataset_ids cannot be specified at the same time")
+    all_ds_infos = api.dataset.get_list(project_id, recursive=True)
     if dataset_infos is None:
         if dataset_ids is None:
-            dataset_infos = api.dataset.get_list(project_id, recursive=True)
+            dataset_infos = all_ds_infos
         else:
-            dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
-    path_to_info = {_get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
-    to_download, cached = _validate(api, project_info, project_meta, dataset_infos)
+            dataset_infos = [ds_info for ds_info in all_ds_infos if ds_info.id in dataset_ids]
+    path_to_info = {get_dataset_path(api, dataset_infos, info.id): info for info in dataset_infos}
+    to_download, cached = _validate(api, project_info, project_meta, dataset_infos, all_ds_infos)
     if progress_cb is not None:
         cached_items_n = sum(path_to_info[ds_path].items_count for ds_path in cached)
         progress_cb(cached_items_n)
@@ -612,24 +632,28 @@ def download_to_cache(
     return to_download, cached
 
 
-def _get_dataset_parents(api, dataset_infos, dataset_id):
+def _get_dataset_parents(api: Api, dataset_infos: List[DatasetInfo], dataset_id):
     dataset_infos_dict = {info.id: info for info in dataset_infos}
-    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    this_dataset_info = dataset_infos_dict.get(dataset_id, None)
+    if this_dataset_info is None:
+        this_dataset_info = api.dataset.get_info_by_id(dataset_id)
     if this_dataset_info.parent_id is None:
         return []
     parent = _get_dataset_parents(
         api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
     )
-    this_parent_name = dataset_infos_dict.get(
-        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
-    ).name
-    return [*parent, this_parent_name]
+    this_parent = dataset_infos_dict.get(this_dataset_info.parent_id, None)
+    if this_parent is None:
+        this_parent = api.dataset.get_info_by_id(this_dataset_info.parent_id)
+    return [*parent, this_parent.name]
 
 
-def _get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
+def get_dataset_path(api: Api, dataset_infos: List[DatasetInfo], dataset_id: int) -> str:
     parents = _get_dataset_parents(api, dataset_infos, dataset_id)
     dataset_infos_dict = {info.id: info for info in dataset_infos}
-    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    this_dataset_info = dataset_infos_dict.get(dataset_id, None)
+    if this_dataset_info is None:
+        this_dataset_info = api.dataset.get_info_by_id(dataset_id)
     return Dataset._get_dataset_path(this_dataset_info.name, parents)
 
 

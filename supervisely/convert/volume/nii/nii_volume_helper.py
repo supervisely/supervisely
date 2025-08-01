@@ -1,20 +1,23 @@
 import os
-from typing import Generator
+from collections import defaultdict, namedtuple
+from pathlib import Path
+from typing import Generator, List, Union
 
 import nrrd
 import numpy as np
-from pathlib import Path
-from collections import defaultdict, namedtuple
 
 from supervisely import Api
 from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, get_file_ext, get_file_name
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.volume.volume import convert_3d_nifti_to_nrrd
 
 VOLUME_NAME = "anatomic"
+SCORE_NAME = "score"
 LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
+MASK_PIXEL_VALUE = "Mask pixel value: "
 
 
 class PlanePrefix(str, StrEnum):
@@ -72,6 +75,7 @@ def read_cls_color_map(path: str) -> dict:
         return None
     return cls_color_map
 
+
 def read_json_map(path: str) -> dict:
     import json
 
@@ -106,23 +110,130 @@ def nifti_to_nrrd(nii_file_path: str, converted_dir: str) -> str:
 def get_annotation_from_nii(path: str) -> Generator[Mask3D, None, None]:
     """Get annotation from NIfTI 3D volume file."""
 
-    data, _ = convert_3d_nifti_to_nrrd(path)
+    data, header = convert_3d_nifti_to_nrrd(path)
     unique_classes = np.unique(data)
 
     for class_id in unique_classes:
         if class_id == 0:
             continue
-        mask = Mask3D(data == class_id)
+        mask = Mask3D(data == class_id, volume_header=header)
         yield mask, class_id
+
+
+def get_scores_from_table(csv_file_path: str, plane: str) -> dict:
+    """Get scores from CSV table and return nested dictionary structure.
+
+    Args:
+        csv_file_path: Path to the CSV file containing layer scores
+
+    Returns:
+        Nested dictionary with structure:
+        {
+            "label_index": {
+                "slice_index": {
+                    "127": {
+                        "score": float_value,
+                        "comment": ""
+                    }
+                }
+            }
+        }
+    """
+    import csv
+
+    if plane == PlanePrefix.CORONAL:
+        plane = "0-1-0"
+    elif plane == PlanePrefix.SAGITTAL:
+        plane = "1-0-0"
+    elif plane == PlanePrefix.AXIAL:
+        plane = "0-0-1"
+
+    result = defaultdict(lambda: defaultdict(dict))
+
+    if not os.path.exists(csv_file_path):
+        logger.warning(f"CSV file not found: {csv_file_path}")
+        return result
+
+    try:
+        with open(csv_file_path, "r") as file:
+            reader = csv.DictReader(file)
+            label_columns = [col for col in reader.fieldnames if col.startswith("Label-")]
+
+            for row in reader:
+                frame_idx = int(row["Layer"]) - 1  # Assuming Layer is 1-indexed in CSV
+
+                for label_col in label_columns:
+                    label_index = int(label_col.split("-")[1])
+                    score = f"{float(row[label_col]):.2f}"
+                    result[label_index][plane][frame_idx] = {"score": score, "comment": None}
+
+    except Exception as e:
+        logger.warning(f"Failed to read CSV file {csv_file_path}: {e}")
+        return {}
+
+    return result
+
+
+def _find_pixel_values(descr: str) -> int:
+    """
+    Find the pixel value in the description string.
+    """
+    lines = descr.split("\n")
+    for line in lines:
+        if line.strip().startswith(MASK_PIXEL_VALUE):
+            try:
+                value_part = line.strip().split(MASK_PIXEL_VALUE)[1]
+                return int(value_part.strip())
+            except (IndexError, ValueError):
+                continue
+    return None
+
+
+def get_class_id_to_pixel_value_map(meta: ProjectMeta) -> dict:
+    class_id_to_pixel_value = {}
+    for obj_class in meta.obj_classes.items():
+        pixel_value = _find_pixel_values(obj_class.description)
+        if pixel_value is not None:
+            class_id_to_pixel_value[obj_class.sly_id] = pixel_value
+        elif "Segment_" in obj_class.name:
+            try:
+                pixel_value = int(obj_class.name.split("_")[-1])
+                class_id_to_pixel_value[obj_class.sly_id] = pixel_value
+            except (ValueError, IndexError):
+                logger.warning(
+                    f"Failed to parse pixel value from class name: {obj_class.name}. "
+                    "Please ensure the class name ends with a valid integer."
+                )
+        else:
+            logger.warning(
+                f"Class {obj_class.name} does not have a pixel value defined in its description. "
+                "Please update the class description to include 'Mask pixel value: <value>'."
+            )
+    return class_id_to_pixel_value
+
 
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
-        self._items = items
-        self._ds_id = dataset_id
         self._ann_paths = defaultdict(list)
-
         self._item_by_filename = {}
         self._item_by_path = {}
+
+        self.items = items
+        self._ds_id = dataset_id
+
+        self._project_wide = False
+        self._volumes = None
+
+    @property
+    def items(self):
+        return self._items
+
+    @items.setter
+    def items(self, items):
+        self._items = items
+        self._ann_paths.clear()
+        self._item_by_filename.clear()
+        self._item_by_path.clear()
 
         for item in items:
             path = Path(item.ann_data)
@@ -133,17 +244,16 @@ class AnnotationMatcher:
             self._item_by_filename[filename] = item
             self._item_by_path[(dataset_name, filename)] = item
 
-        self._project_wide = False
-        self._volumes = None
-
     def get_volumes(self, api: Api):
         dataset_info = api.dataset.get_info_by_id(self._ds_id)
-        datasets = {dataset_info.name: dataset_info}
-        project_id = dataset_info.project_id
-        if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
+        if dataset_info.items_count > 0:
+            datasets = {dataset_info.name: dataset_info}
             self._project_wide = False
         else:
-            datasets = {dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)}
+            datasets = {
+                dsinfo.name: dsinfo
+                for dsinfo in api.dataset.get_list(dataset_info.project_id, recursive=True)
+            }
             self._project_wide = True
 
         volumes = defaultdict(lambda: {})
@@ -162,88 +272,55 @@ class AnnotationMatcher:
 
     def match_items(self):
         """Match annotation files with corresponding volumes using regex-based matching."""
-        import re
-
-        def extract_prefix(ann_file):
-            import re
-            pattern = r'^(?P<prefix>cor|sag|axl).*?(?:' + "|".join(LABEL_NAME) + r')'
-            m = re.match(pattern, ann_file, re.IGNORECASE)
-            if m:
-                return m.group("prefix").lower()
-            return None
-
-        def is_volume_match(volume_name, prefix):
-            pattern = r'^' + re.escape(prefix) + r'.*?anatomic'
-            return re.match(pattern, volume_name, re.IGNORECASE) is not None
-
-        def find_best_volume_match(prefix, available_volumes):
-            candidates = {name: volume for name, volume in available_volumes.items() if is_volume_match(name, prefix)}
-            if not candidates:
-                return None, None
-
-            # Prefer an exact candidate
-            ann_name_no_ext = ann_file.split(".")[0]
-            exact_candidate = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_name_no_ext, flags=re.IGNORECASE)
-            for name in candidates:
-                if re.fullmatch(re.escape(exact_candidate), name, re.IGNORECASE):
-                    return name, candidates[name]
-
-            # Otherwise, choose the candidate with the shortest name
-            best_match = sorted(candidates.keys(), key=len)[0]
-            return best_match, candidates[best_match]
-
         item_to_volume = {}
 
-        def process_annotation_file(ann_file, dataset_name, volumes):
-            prefix = extract_prefix(ann_file)
-            if prefix is None:
-                logger.warning(f"Failed to extract prefix from annotation file {ann_file}. Skipping.")
-                return
-
-            matched_name, matched_volume = find_best_volume_match(prefix, volumes)
-            if not matched_volume:
-                logger.warning(f"No matching volume found for annotation with prefix '{prefix}' in dataset {dataset_name}.")
-                return
-
-            # Retrieve the correct item based on matching mode.
-            item = (
-                self._item_by_path.get((dataset_name, ann_file))
-                if self._project_wide
-                else self._item_by_filename.get(ann_file)
-            )
-            if not item:
-                logger.warning(f"Item not found for annotation file {ann_file} in {'dataset ' + dataset_name if self._project_wide else 'single dataset mode'}.")
-                return
-
-            item_to_volume[item] = matched_volume
-            ann_file = ann_file.split(".")[0]
-            ann_supposed_match = re.sub(r'(' + '|'.join(LABEL_NAME) + r')', 'anatomic', ann_file, flags=re.IGNORECASE)
-            if matched_name.lower() != ann_supposed_match:
-                logger.debug(f"Fuzzy matched {ann_file} to volume {matched_name} using prefix '{prefix}'.")
-
-        # Perform matching
         for dataset_name, volumes in self._volumes.items():
-            ann_files = self._ann_paths.get(dataset_name, []) if self._project_wide else list(self._ann_paths.values())[0]
-            for ann_file in ann_files:
-                process_annotation_file(ann_file, dataset_name, volumes)
+            volume_names = [parse_name_parts(name) for name in list(volumes.keys())]
+            _volume_names = [vol for vol in volume_names if vol is not None]
+            if len(_volume_names) == 0:
+                logger.warning(f"No valid volume names found in dataset {dataset_name}.")
+                continue
+            elif len(_volume_names) != len(volume_names):
+                logger.debug(f"Some volume names in dataset {dataset_name} could not be parsed.")
+            volume_names = _volume_names
 
-        # Mark volumes having only one matching item as semantic and validate shape.
+            ann_files = (
+                self._ann_paths.get(dataset_name, [])
+                if self._project_wide
+                else list(self._ann_paths.values())[0]
+            )
+            for ann_file in ann_files:
+                ann_name = parse_name_parts(ann_file)
+                if ann_name is None:
+                    logger.warning(f"Failed to parse annotation name: {ann_file}")
+                    continue
+                match = find_best_name_match(ann_name, volume_names)
+                if match is not None:
+                    if match.plane != ann_name.plane:
+                        logger.warning(
+                            f"Plane mismatch: {match.plane} != {ann_name.plane} for {ann_file}. Skipping."
+                        )
+                        continue
+                    item_to_volume[self._item_by_filename[ann_file]] = volumes[match.full_name]
+
         volume_to_items = defaultdict(list)
         for item, volume in item_to_volume.items():
             volume_to_items[volume.id].append(item)
-        
+
         for volume_id, items in volume_to_items.items():
             if len(items) == 1:
                 items[0].is_semantic = True
 
-        items_to_remove = []
+        # items_to_remove = []
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
+            if item.shape is None:
+                continue
             if item.shape != volume_shape:
                 logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}")
                 # items_to_remove.append(item)
-        for item in items_to_remove:
-            del item_to_volume[item]
+        # for item in items_to_remove:
+        # del item_to_volume[item]
 
         return item_to_volume
 
@@ -304,3 +381,149 @@ class AnnotationMatcher:
                 items[0].is_semantic = True
 
         return item_to_volume
+
+
+NameParts = namedtuple(
+    "NameParts",
+    [
+        "full_name",
+        "name_no_ext",
+        "type",
+        "plane",
+        "is_ann",
+        "patient_uuid",
+        "case_uuid",
+        "ending_idx",
+    ],
+)
+
+
+def parse_name_parts(full_name: str) -> NameParts:
+    from uuid import UUID
+
+    name = get_file_name(full_name)
+    if name.endswith(".nii"):
+        name = get_file_name(name)
+    name_no_ext = name
+
+    type = None
+    is_ann = False
+    if VOLUME_NAME in full_name:
+        type = VOLUME_NAME
+    elif SCORE_NAME in full_name and full_name.endswith(".csv"):
+        type = SCORE_NAME
+    else:
+        type = next((part for part in LABEL_NAME if part in full_name), None)
+        is_ann = type is not None
+
+    if type is None:
+        return
+
+    plane = None
+    tokens = name_no_ext.lower().split("_")
+    for part in PlanePrefix.values():
+        if part in tokens:
+            plane = part
+            break
+
+    if plane is None:
+        return
+
+    patient_uuid = None
+    case_uuid = None
+
+    if len(name_no_ext) > 73:
+        try:
+            uuids = name_no_ext[:73].split("_")
+            if len(uuids) != 2:
+                raise ValueError("Invalid UUID format")
+            patient_uuid = UUID(name_no_ext[:36])
+            case_uuid = UUID(name_no_ext[37:73])
+        except ValueError:
+            logger.debug(
+                f"Failed to parse UUIDs from name: {name_no_ext}.",
+                extra={"full_name": full_name},
+            )
+            patient_uuid = None
+            case_uuid = None
+
+    try:
+        ending_idx = name_no_ext.split("_")[-1]
+        if ending_idx.isdigit():
+            ending_idx = int(ending_idx)
+        else:
+            ending_idx = None
+    except ValueError:
+        ending_idx = None
+        logger.debug(
+            f"Failed to parse ending index from name: {name_no_ext}.",
+            extra={"full_name": full_name},
+        )
+
+    return NameParts(
+        full_name=full_name,
+        name_no_ext=name_no_ext,
+        type=type,
+        plane=plane,
+        is_ann=is_ann,
+        patient_uuid=patient_uuid,
+        case_uuid=case_uuid,
+        ending_idx=ending_idx,
+    )
+
+
+def find_best_name_match(item: NameParts, pool: List[NameParts]) -> Union[NameParts, None]:
+    """
+    Finds the best matching NameParts object from `pool` for the given annotation NameParts `item`.
+    Prefers an exact match where all fields except `type` are the same, and `type` is 'anatomic'.
+    Returns the matched NameParts object or None if not found.
+    """
+    pool_item_names = [i.full_name for i in pool]
+    item_name = item.full_name
+    # Prefer exact match except for type
+    for i in pool:
+        if i.name_no_ext == item.name_no_ext.replace(item.type, i.type):
+            logger.debug(
+                "Found exact match.",
+                extra={"item": item_name, "pool_item": i.full_name},
+            )
+            return i
+
+    logger.debug(
+        "Failed to find exact match, trying to find a fallback match UUIDs.",
+        extra={"item": item_name, "pool_items": pool_item_names},
+    )
+
+    # Fallback: match by plane and patient_uuid, type='anatomic'
+    for i in pool:
+        if (
+            i.plane == item.plane
+            and i.patient_uuid == item.patient_uuid
+            and i.case_uuid == item.case_uuid
+        ):
+            logger.debug(
+                "Found fallback match for item by UUIDs.",
+                extra={"item": item_name, "i": i.full_name},
+            )
+            return i
+
+    logger.debug(
+        "Failed to find fallback match, trying to find a fallback match by plane.",
+        extra={"item": item_name, "pool_items": pool_item_names},
+    )
+
+    # Fallback: match by plane and type='anatomic'
+    for i in pool:
+        if i.plane == item.plane:
+            logger.debug(
+                "Found fallback match for item by plane.",
+                extra={"item": item_name, "i": i.full_name},
+            )
+            return i
+
+    logger.debug(
+        "Failed to find any match for item.",
+        extra={"item": item_name, "pool_items": pool_item_names},
+    )
+
+    return None

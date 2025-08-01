@@ -58,11 +58,10 @@ def validate_mimetypes(name: str, path: str) -> list:
     if new_img_ext == ".bin" or new_img_ext is None:
         new_img_ext = ".jpeg"
     new_img_name = f"{get_file_name(name)}{new_img_ext}"
-    logger.info(
-        f"Image {name} with mimetype {mimetype} will be converted to {new_img_ext}"
-    )
+    logger.info(f"Image {name} with mimetype {mimetype} will be converted to {new_img_ext}")
 
     return new_img_name
+
 
 def convert_to_jpg(path) -> tuple:
     """Convert image to jpg."""
@@ -78,6 +77,7 @@ def convert_to_jpg(path) -> tuple:
         image.convert("RGB").save(new_path)
     silent_remove(path)
     return new_path
+
 
 def read_tiff_image(path: str) -> Union[np.ndarray, None]:
     """
@@ -95,9 +95,7 @@ def read_tiff_image(path: str) -> Union[np.ndarray, None]:
         if image.ndim == 3:
             if tiff_shape[0] < tiff_shape[1] and tiff_shape[0] < tiff_shape[2]:
                 image = image.transpose(1, 2, 0)
-                logger.warning(
-                    f"{name}: transposed shape from {tiff_shape} to {image.shape}"
-                )
+                logger.warning(f"{name}: transposed shape from {tiff_shape} to {image.shape}")
 
     return image
 

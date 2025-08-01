@@ -1,7 +1,15 @@
 import os
+from collections import defaultdict
 from typing import Dict, Optional, Set, Union
 
-from supervisely import Annotation, ProjectMeta, logger
+from supervisely import (
+    Annotation,
+    ProjectMeta,
+    TagApplicableTo,
+    TagMeta,
+    TagValueType,
+    logger,
+)
 from supervisely.convert.base_converter import AvailableImageConverters
 from supervisely.convert.image.image_converter import ImageConverter
 from supervisely.convert.image.pascal_voc import pascal_voc_helper
@@ -139,6 +147,7 @@ class PascalVOCConverter(ImageConverter):
 
     def _create_items(self, possible_pascal_voc_dir: str) -> int:
         existing_cls_names = set([cls.name for cls in self._meta.obj_classes])
+        tags_to_values = defaultdict(set)
         detected_ann_cnt = 0
 
         images_list = list_files_recursively(self._imgs_dir, valid_extensions=self.allowed_exts)
@@ -153,13 +162,41 @@ class PascalVOCConverter(ImageConverter):
             item_name_noext = get_file_name(item.name)
             item = self._scan_for_item_segm_paths(item, item_name_noext)
             ann_path = img_ann_map.get(item_name_noext) or img_ann_map.get(item.name)
-            item = self._scan_for_item_ann_path_and_update_meta(item, ann_path, existing_cls_names)
+            item = self._scan_for_item_ann_path_and_update_meta(
+                item, ann_path, existing_cls_names, tags_to_values
+            )
 
             if item.ann_data or item.segm_path:
                 detected_ann_cnt += 1
             self._items.append(item)
+        self._meta = self._update_meta_with_tags(tags_to_values)
         return detected_ann_cnt
 
+    def _update_meta_with_tags(self, tags_to_values: Dict[str, Set[str]]) -> ProjectMeta:
+        meta = self._meta
+        object_class_names = set(meta.obj_classes.keys())
+        for tag_name, values in tags_to_values.items():
+            tag_meta = meta.get_tag_meta(tag_name)
+            if tag_meta is not None:
+                continue
+            if tag_name in pascal_voc_helper.DEFAULT_SUBCLASSES:
+                if values.difference({"0", "1"}):
+                    logger.warning(
+                        f"Tag '{tag_name}' has non-binary values.", extra={"values": values}
+                    )
+                tag_meta = TagMeta(tag_name, TagValueType.NONE)
+            elif tag_name in object_class_names:
+                tag_meta = TagMeta(
+                    tag_name,
+                    TagValueType.ONEOF_STRING,
+                    possible_values=list(values),
+                    applicable_to=TagApplicableTo.OBJECTS_ONLY,
+                    applicable_classes=[tag_name],
+                )
+            else:
+                tag_meta = TagMeta(tag_name, TagValueType.ANY_STRING)
+            meta = meta.add_tag_meta(tag_meta)
+        return meta
 
     def _scan_for_item_segm_paths(self, item: Item, item_name_noext: str) -> Item:
         if self._segm_dir is not None:
@@ -170,22 +207,25 @@ class PascalVOCConverter(ImageConverter):
             inst_path = os.path.join(self._inst_dir, f"{item_name_noext}.png")
             if file_exists(inst_path):
                 item.inst_path = inst_path
-        
+
         return item
 
     def _scan_for_item_ann_path_and_update_meta(
-            self, item: Item, ann_path: Optional[str], existing_cls_names: Set[str]
+        self,
+        item: Item,
+        ann_path: Optional[str],
+        existing_cls_names: Set[str],
+        tags_to_values: Dict[str, Set[str]],
     ) -> Item:
         if ann_path is None:
             return item
         if not file_exists(ann_path):
             return item
         self._meta = pascal_voc_helper.update_meta_from_xml(
-            ann_path, self._meta, existing_cls_names, self._bbox_classes_map
+            ann_path, self._meta, existing_cls_names, self._bbox_classes_map, tags_to_values
         )
         item.ann_data = ann_path
         return item
-
 
     def to_supervisely(
         self,
@@ -200,7 +240,12 @@ class PascalVOCConverter(ImageConverter):
         try:
             item.set_shape()
             return pascal_voc_helper.get_ann(
-                item, self.color2class_name, meta, self._bbox_classes_map, renamed_classes
+                item,
+                self.color2class_name,
+                meta,
+                self._bbox_classes_map,
+                renamed_classes,
+                renamed_tags,
             )
         except Exception as e:
             logger.warn(f"Failed to convert annotation: {repr(e)}")

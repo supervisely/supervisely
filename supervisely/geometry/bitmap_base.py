@@ -1,20 +1,34 @@
 # coding: utf-8
 from __future__ import annotations
-import numpy as np
-from typing import Tuple, Dict, Optional
 
-from supervisely.geometry.constants import DATA, ORIGIN, GEOMETRY_SHAPE, GEOMETRY_TYPE, \
-                                               LABELER_LOGIN, UPDATED_AT, CREATED_AT, ID, CLASS_ID
+from typing import Dict, Optional, Tuple
+
+import numpy as np
+
+from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
+    DATA,
+    GEOMETRY_SHAPE,
+    GEOMETRY_TYPE,
+    ID,
+    LABELER_LOGIN,
+    ORIGIN,
+    UPDATED_AT,
+)
 from supervisely.geometry.geometry import Geometry
 from supervisely.geometry.point_location import PointLocation
 from supervisely.geometry.rectangle import Rectangle
 from supervisely.imaging.image import resize_inter_nearest, restore_proportional_size
 
+if not hasattr(np, "bool"):
+    np.bool = np.bool_
 
-if not hasattr(np, 'bool'): np.bool = np.bool_
 
 # TODO: rename to resize_bitmap_and_origin
-def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size: Tuple[int, int], out_size: Tuple[int, int]) -> Tuple[PointLocation, np.ndarray]:
+def resize_origin_and_bitmap(
+    origin: PointLocation, bitmap: np.ndarray, in_size: Tuple[int, int], out_size: Tuple[int, int]
+) -> Tuple[PointLocation, np.ndarray]:
     """
     Change PointLocation and resize numpy array to match a certain size.
 
@@ -46,7 +60,9 @@ def resize_origin_and_bitmap(origin: PointLocation, bitmap: np.ndarray, in_size:
     scaled_rows = max(round(bitmap.shape[0] * row_scale), 1)
     scaled_cols = max(round(bitmap.shape[1] * col_scale), 1)
 
-    scaled_origin = PointLocation(row=round(origin.row * row_scale), col=round(origin.col * col_scale))
+    scaled_origin = PointLocation(
+        row=round(origin.row * row_scale), col=round(origin.col * col_scale)
+    )
     scaled_bitmap = resize_inter_nearest(bitmap, (scaled_rows, scaled_cols))
     return scaled_origin, scaled_bitmap
 
@@ -74,6 +90,7 @@ class BitmapBase(Geometry):
 
     :Usage example: Example of creating and using see in :class:`Bitmap<supervisely.geometry.bitmap.Bitmap>`.
     """
+
     def __init__(
         self,
         data: np.ndarray,
@@ -85,7 +102,13 @@ class BitmapBase(Geometry):
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
     ):
-        super().__init__(sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        super().__init__(
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
         if origin is None:
             origin = PointLocation(row=0, col=0)
 
@@ -111,19 +134,17 @@ class BitmapBase(Geometry):
 
     @staticmethod
     def base64_2_data(s: str) -> np.ndarray:
-        """
-        """
+        """ """
         raise NotImplementedError()
 
     @staticmethod
     def data_2_base64(data: np.ndarray) -> str:
-        """
-        """
+        """ """
         raise NotImplementedError()
 
     def to_json(self) -> Dict:
         """
-        Convert the BitmapBase to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the BitmapBase to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -154,7 +175,7 @@ class BitmapBase(Geometry):
         res = {
             self._impl_json_class_name(): {
                 ORIGIN: [self.origin.col, self.origin.row],
-                DATA: self.data_2_base64(self.data)
+                DATA: self.data_2_base64(self.data),
             },
             GEOMETRY_SHAPE: self.geometry_name(),
             GEOMETRY_TYPE: self.geometry_name(),
@@ -165,7 +186,7 @@ class BitmapBase(Geometry):
     @classmethod
     def from_json(cls, json_data: Dict) -> BitmapBase:
         """
-        Convert a json dict to BitmapBase. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to BitmapBase. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Bitmap in json format as a dict.
         :type data: dict
@@ -191,11 +212,17 @@ class BitmapBase(Geometry):
         json_root_key = cls._impl_json_class_name()
         if json_root_key not in json_data:
             raise ValueError(
-                'Data must contain {} field to create MultichannelBitmap object.'.format(json_root_key))
+                "Data must contain {} field to create MultichannelBitmap object.".format(
+                    json_root_key
+                )
+            )
 
         if ORIGIN not in json_data[json_root_key] or DATA not in json_data[json_root_key]:
-            raise ValueError('{} field must contain {} and {} fields to create MultichannelBitmap object.'.format(
-                json_root_key, ORIGIN, DATA))
+            raise ValueError(
+                "{} field must contain {} and {} fields to create MultichannelBitmap object.".format(
+                    json_root_key, ORIGIN, DATA
+                )
+            )
 
         col, row = json_data[json_root_key][ORIGIN]
         data = cls.base64_2_data(json_data[json_root_key][DATA])
@@ -205,8 +232,15 @@ class BitmapBase(Geometry):
         created_at = json_data.get(CREATED_AT, None)
         sly_id = json_data.get(ID, None)
         class_id = json_data.get(CLASS_ID, None)
-        return cls(data=data, origin=PointLocation(row=row, col=col),
-                   sly_id=sly_id, class_id=class_id, labeler_login=labeler_login, updated_at=updated_at, created_at=created_at)
+        return cls(
+            data=data,
+            origin=PointLocation(row=row, col=col),
+            sly_id=sly_id,
+            class_id=class_id,
+            labeler_login=labeler_login,
+            updated_at=updated_at,
+            created_at=created_at,
+        )
 
     @property
     def origin(self) -> PointLocation:
@@ -267,7 +301,9 @@ class BitmapBase(Geometry):
             fliplr_figure = figure.fliplr((height, width))
         """
         flipped_mask = np.flip(self.data, axis=1)
-        flipped_origin = PointLocation(row=self.origin.row, col=(img_size[1] - flipped_mask.shape[1] - self.origin.col))
+        flipped_origin = PointLocation(
+            row=self.origin.row, col=(img_size[1] - flipped_mask.shape[1] - self.origin.col)
+        )
         return self.__class__(data=flipped_mask, origin=flipped_origin)
 
     def flipud(self, img_size: Tuple[int, int]) -> BitmapBase:
@@ -288,7 +324,9 @@ class BitmapBase(Geometry):
             flipud_figure = figure.flipud((height, width))
         """
         flipped_mask = np.flip(self.data, axis=0)
-        flipped_origin = PointLocation(row=(img_size[0] - flipped_mask.shape[0] - self.origin.row), col=self.origin.col)
+        flipped_origin = PointLocation(
+            row=(img_size[0] - flipped_mask.shape[0] - self.origin.row), col=self.origin.col
+        )
         return self.__class__(data=flipped_mask, origin=flipped_origin)
 
     def scale(self, factor: float) -> BitmapBase:
@@ -315,8 +353,7 @@ class BitmapBase(Geometry):
 
     @staticmethod
     def _resize_mask(mask, out_rows, out_cols):
-        """
-        """
+        """ """
         return resize_inter_nearest(mask.astype(np.uint8), (out_rows, out_cols)).astype(np.bool)
 
     def to_bbox(self) -> Rectangle:
@@ -332,4 +369,6 @@ class BitmapBase(Geometry):
 
             rectangle = figure.to_bbox()
         """
-        return Rectangle.from_array(self._data).translate(drow=self._origin.row, dcol=self._origin.col)
+        return Rectangle.from_array(self._data).translate(
+            drow=self._origin.row, dcol=self._origin.col
+        )

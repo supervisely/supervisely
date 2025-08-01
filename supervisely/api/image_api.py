@@ -17,7 +17,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 from math import ceil
 from pathlib import Path
@@ -58,6 +58,10 @@ from supervisely.annotation.tag import Tag
 from supervisely.annotation.tag_meta import TagApplicableTo, TagMeta, TagValueType
 from supervisely.api.constants import DOWNLOAD_BATCH_SIZE
 from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.entities_collection_api import (
+    AiSearchThresholdDirection,
+    CollectionTypeFilter,
+)
 from supervisely.api.entity_annotation.figure_api import FigureApi
 from supervisely.api.entity_annotation.tag_api import TagApi
 from supervisely.api.file_api import FileInfo
@@ -291,7 +295,7 @@ class ImageInfo(NamedTuple):
             updated_at='2021-03-02T10:04:33.973Z',
             meta={},
             path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             tags=[],
             created_by='admin'
             related_data_id=None,
@@ -356,7 +360,7 @@ class ImageInfo(NamedTuple):
     path_original: str
 
     #: :class:`str`: Full storage URL to image. e.g.
-    #: "http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
+    #: "http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg".
     full_storage_url: str
 
     #: :class:`str`: Image :class:`Tags<supervisely.annotation.tag.Tag>` list.
@@ -379,6 +383,15 @@ class ImageInfo(NamedTuple):
 
     #: :class:`int`: Bytes offset of the blob file that points to the end of the image data.
     offset_end: Optional[int] = None
+
+    #: :class:`dict`: Image meta that could have the confidence level of the image in Enntities Collection of type AI Search.
+    ai_search_meta: Optional[dict] = None
+
+    #: :class:`str`: Timestamp of the last update of the embeddings for the image.
+    #: This field is used to track when the embeddings were last updated.
+    #: It is set to None if the embeddings have never been computed for the image.
+    #: Format: "YYYY-MM-DDTHH:MM:SS.sssZ"
+    embeddings_updated_at: Optional[str] = None
 
     # DO NOT DELETE THIS COMMENT
     #! New fields must be added with default values to keep backward compatibility.
@@ -416,7 +429,7 @@ class ImageApi(RemoveableBulkModuleApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         image_info = api.image.get_info_by_id(image_id) # api usage example
     """
@@ -457,6 +470,8 @@ class ImageApi(RemoveableBulkModuleApi):
             ApiField.DOWNLOAD_ID,
             ApiField.OFFSET_START,
             ApiField.OFFSET_END,
+            ApiField.AI_SEARCH_META,
+            ApiField.EMBEDDINGS_UPDATED_AT,
         ]
 
     @staticmethod
@@ -602,6 +617,11 @@ class ImageApi(RemoveableBulkModuleApi):
         only_labelled: Optional[bool] = False,
         fields: Optional[List[str]] = None,
         recursive: Optional[bool] = False,
+        entities_collection_id: Optional[int] = None,
+        ai_search_collection_id: Optional[int] = None,
+        ai_search_threshold: Optional[float] = None,
+        ai_search_threshold_direction: AiSearchThresholdDirection = AiSearchThresholdDirection.ABOVE,
+        extra_fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         List of Images in the given :class:`Dataset<supervisely.project.project.Dataset>`.
@@ -628,6 +648,16 @@ class ImageApi(RemoveableBulkModuleApi):
         :type fields: List[str], optional
         :param recursive: If True, returns all images from dataset recursively (including images in nested datasets).
         :type recursive: bool, optional
+        :param entities_collection_id: :class:`EntitiesCollection` ID of `Default` type to which the images belong.
+        :type entities_collection_id: int, optional
+        :param ai_search_collection_id: :class:`EntitiesCollection` ID of type `AI Search` to which the images belong.
+        :type ai_search_collection_id: int, optional
+        :param ai_search_threshold: Confidence level to filter images in AI Search collection.
+        :type ai_search_threshold: float, optional
+        :param ai_search_threshold_direction: Direction of the confidence level filter. One of {'above' (default), 'below'}.
+        :type ai_search_threshold_direction: str, optional
+        :param extra_fields: List of extra fields to return. If None, returns no extra fields.
+        :type extra_fields: List[str], optional
         :return: Objects with image information from Supervisely.
         :rtype: :class:`List[ImageInfo]<ImageInfo>`
         :Usage example:
@@ -658,7 +688,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #                    updated_at='2021-03-02T10:04:33.973Z',
             #                    meta={},
             #                    path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg',
-            #                    full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
+            #                    full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/7/h/Vo/...jpg'),
             #                    tags=[],
             # ImageInfo(id=770916,
             #           name='IMG_1836.jpeg',
@@ -675,7 +705,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #           updated_at='2021-03-02T10:04:33.973Z',
             #           meta={},
             #           path_original='/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg',
-            #           full_storage_url='http://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
+            #           full_storage_url='http://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/C/Y/Hq/...jpg'),
             #           tags=[]
             # ]
         """
@@ -701,8 +731,44 @@ class ImageApi(RemoveableBulkModuleApi):
                     },
                 }
             ]
+        # Handle collection filtering
+        collection_info = None
+        if entities_collection_id is not None and ai_search_collection_id is not None:
+            raise ValueError(
+                "You can use only one of entities_collection_id or ai_search_collection_id"
+            )
+        elif entities_collection_id is not None:
+            collection_info = (CollectionTypeFilter.DEFAULT, entities_collection_id)
+        elif ai_search_collection_id is not None:
+            collection_info = (CollectionTypeFilter.AI_SEARCH, ai_search_collection_id)
+
+        if collection_info is not None:
+            collection_type, collection_id = collection_info
+            if ApiField.FILTERS not in data:
+                data[ApiField.FILTERS] = []
+
+            collection_filter_data = {
+                ApiField.COLLECTION_ID: collection_id,
+                ApiField.INCLUDE: True,
+            }
+            if ai_search_threshold is not None:
+                if collection_type != CollectionTypeFilter.AI_SEARCH:
+                    raise ValueError(
+                        "ai_search_threshold is only available for AI Search collection"
+                    )
+                collection_filter_data[ApiField.THRESHOLD] = ai_search_threshold
+                collection_filter_data[ApiField.THRESHOLD_DIRECTION] = ai_search_threshold_direction
+            data[ApiField.FILTERS].append(
+                {
+                    ApiField.TYPE: collection_type,
+                    ApiField.DATA: collection_filter_data,
+                }
+            )
+
         if fields is not None:
             data[ApiField.FIELDS] = fields
+        if extra_fields is not None:
+            data[ApiField.EXTRA_FIELDS] = extra_fields
         return self.get_list_all_pages(
             "images.list",
             data=data,
@@ -860,6 +926,7 @@ class ImageApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         force_metadata_for_links=True,
+        fields: Optional[List[str]] = None,
     ) -> List[ImageInfo]:
         """
         Get Images information by ID.
@@ -898,13 +965,16 @@ class ImageApi(RemoveableBulkModuleApi):
             dataset_id = image_info.dataset_id
             for batch in batched(ids):
                 filters = [{"field": ApiField.ID, "operator": "in", "value": batch}]
+                data = {
+                    ApiField.DATASET_ID: dataset_id,
+                    ApiField.FILTER: filters,
+                    ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
+                }
+                if fields is not None:
+                    data[ApiField.FIELDS] = fields
                 temp_results = self.get_list_all_pages(
                     "images.list",
-                    {
-                        ApiField.DATASET_ID: dataset_id,
-                        ApiField.FILTER: filters,
-                        ApiField.FORCE_METADATA_FOR_LINKS: force_metadata_for_links,
-                    },
+                    data,
                 )
                 results.extend(temp_results)
                 if progress_cb is not None and len(temp_results) > 0:
@@ -1273,7 +1343,7 @@ class ImageApi(RemoveableBulkModuleApi):
         :type progress_cb: tqdm or callable, optional
         :return: List of existing hashes
         :rtype: :class:`List[str]`
-        :Usage example: Checkout detailed example `here <https://app.supervise.ly/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
+        :Usage example: Checkout detailed example `here <https://app.supervisely.com/explore/notebooks/guide-10-check-existing-images-and-upload-only-the-new-ones-1545/overview>`_ (you must be logged into your Supervisely account)
 
          .. code-block:: python
 
@@ -1939,7 +2009,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #         "1": "meta_example"
             #     },
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0.jpg",
-            #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
+            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435hiHJAPgMU.jpg"
             # ]
 
             # Add custom sort parameter for image
@@ -2104,7 +2174,7 @@ class ImageApi(RemoveableBulkModuleApi):
             #         "1": "meta_example"
             #     },
             #     "/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/W2mzMQg435d6wG0AJGJTOsL1FqMUNOPqu4VdzFAN36LqtGwBIE4AmLOQ1BAxuIyB0bHJAPgMU.jpg",
-            #     "https://app.supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
+            #     "https://app.supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/images/original/P/a/kn/iEaDEkejnfnb1Tz56ka0hiHJAPgMU.jpg"
             # ]
 
             # Add custom sort parameter for image
@@ -3150,7 +3220,7 @@ class ImageApi(RemoveableBulkModuleApi):
 
             img_url = api.image.url(team_id, workspace_id, project_id, dataset_id, image_id)
             print(url)
-            # Output: https://app.supervise.ly/app/images/16087/23821/53939/254737#image-121236920
+            # Output: https://app.supervisely.com/app/images/16087/23821/53939/254737#image-121236920
         """
         result = urllib.parse.urljoin(
             self._api.server_address,
@@ -3651,6 +3721,84 @@ class ImageApi(RemoveableBulkModuleApi):
             self._api.post("image-tags.bulk.add-to-image", data)
             if progress_cb is not None:
                 progress_cb(len(batch_ids))
+
+    def add_tags_batch(
+        self,
+        image_ids: List[int],
+        tag_ids: Union[int, List[int]],
+        values: Optional[Union[str, int, List[Union[str, int, None]]]] = None,
+        log_progress: bool = False,
+        batch_size: Optional[int] = 100,
+        tag_metas: Optional[Union[TagMeta, List[TagMeta]]] = None,
+    ) -> List[int]:
+        """
+        Add tag with given ID to Images by IDs with different values.
+
+        :param image_ids: List of Images IDs in Supervisely.
+        :type image_ids: List[int]
+        :param tag_ids: Tag IDs in Supervisely.
+        :type tag_ids: int or List[int]
+        :param values: List of tag values for each image or single value for all images.
+        :type values: List[str] or List[int] or str or int, optional
+        :param log_progress: If True, will log progress.
+        :type log_progress: bool, optional
+        :param batch_size: Batch size
+        :type batch_size: int, optional
+        :param tag_metas: Tag Metas. Needed for values validation, omit to skip validation
+        :type tag_metas: TagMeta or List[TagMeta], optional
+        :return: List of tags IDs.
+        :rtype: List[int]
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+            image_ids = [2389126, 2389127]
+            tag_ids = 277083
+            values = ['value1', 'value2']
+            api.image.add_tags_batch(image_ids, tag_ids, values)
+        """
+        if len(image_ids) == 0:
+            return []
+
+        if isinstance(tag_ids, int):
+            tag_ids = [tag_ids] * len(image_ids)
+
+        if isinstance(tag_metas, TagMeta):
+            tag_metas = [tag_metas] * len(image_ids)
+
+        if values is None:
+            values = [None] * len(image_ids)
+        elif isinstance(values, (str, int)):
+            values = [values] * len(image_ids)
+
+        if len(values) != len(image_ids):
+            raise ValueError("Length of image_ids and values should be the same")
+
+        if len(tag_ids) != len(image_ids):
+            raise ValueError("Length of image_ids and tag_ids should be the same")
+
+        if tag_metas and len(tag_metas) != len(image_ids):
+            raise ValueError("Length of image_ids and tag_metas should be the same")
+
+        if tag_metas:
+            for tag_meta, tag_id, value in zip(tag_metas, tag_ids, values):
+                if not (tag_meta.sly_id == tag_id):
+                    raise ValueError(f"{tag_meta.name = } and {tag_id = } should be same")
+                if not tag_meta.is_valid_value(value):
+                    raise ValueError(f"{tag_meta.name = } can not have value {value = }")
+
+        project_id = self.get_project_id(image_ids[0])
+        data = [
+            {ApiField.ENTITY_ID: image_id, ApiField.TAG_ID: tag_id, ApiField.VALUE: value}
+            for image_id, tag_id, value in zip(image_ids, tag_ids, values)
+        ]
+
+        return self.tag.add_to_entities_json(project_id, data, batch_size, log_progress)
 
     def update_tag_value(self, tag_id: int, value: Union[str, float]) -> Dict:
         """
@@ -4383,11 +4531,14 @@ class ImageApi(RemoveableBulkModuleApi):
 
     def set_remote(self, images: List[int], links: List[str]):
         """
-        This method helps to change local source to remote for images without re-uploading them as new.
+        Updates the source of existing images by setting new remote links.
+        This method is used when an image was initially uploaded as a file or added via a link,
+        but later it was decided to change its location (e.g., moved to another storage or re-uploaded elsewhere).
+        By updating the link, the image source can be redirected to the new location.
 
         :param images: List of image ids.
         :type images: List[int]
-        :param links: List of remote links.
+        :param links: List of new remote links.
         :type links: List[str]
         :return: json-encoded content of a response.
 
@@ -4395,17 +4546,17 @@ class ImageApi(RemoveableBulkModuleApi):
 
             .. code-block:: python
 
-                    import supervisely as sly
+                import supervisely as sly
 
-                    api = sly.Api.from_env()
+                api = sly.Api.from_env()
 
-                    images = [123, 124, 125]
-                    links = [
-                        "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
-                        "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
-                        "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
-                    ]
-                    result = api.image.set_remote(images, links)
+                images = [123, 124, 125]
+                links = [
+                    "s3://bucket/lemons/ds1/img/IMG_444.jpeg",
+                    "s3://bucket/lemons/ds1/img/IMG_445.jpeg",
+                    "s3://bucket/lemons/ds1/img/IMG_446.jpeg",
+                ]
+                result = api.image.set_remote(images, links)
         """
 
         if len(images) == 0:
@@ -5383,3 +5534,47 @@ class ImageApi(RemoveableBulkModuleApi):
             )
             tasks.append(task)
         await asyncio.gather(*tasks)
+
+    def set_embeddings_updated_at(self, ids: List[int], timestamps: Optional[List[str]] = None):
+        """
+        Updates the `updated_at` field of images with the timestamp of the embeddings were created.
+
+        :param ids: List of Image IDs in Supervisely.
+        :type ids: List[int]
+        :param timestamps: List of timestamps in ISO format. If None, uses current time.
+                            You could set timestamps to [None, ..., None] if you need to recreate embeddings for images.
+        :type timestamps: List[str], optional
+        :return: None
+        :rtype: NoneType
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+            import datetime
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            image_ids = [123, 456, 789]
+            timestamps = [datetime.datetime.now().isoformat() for _ in image_ids]
+            api.image.set_embeddings_updated_at(image_ids, timestamps)
+        """
+        method = "images.embeddings-updated-at.update"
+
+        if timestamps is None:
+            timestamps = [datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") for _ in ids]
+
+        if len(ids) != len(timestamps):
+            raise ValueError(
+                f"Length of ids and timestamps should be equal. {len(ids)} != {len(timestamps)}"
+            )
+        images = [
+            {ApiField.ID: image_id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp}
+            for image_id, timestamp in zip(ids, timestamps)
+        ]
+        self._api.post(
+            method,
+            {ApiField.IMAGES: images},
+        )

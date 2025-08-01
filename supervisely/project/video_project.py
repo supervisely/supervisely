@@ -16,7 +16,7 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import ApiField
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
-from supervisely.io.fs import mkdir, touch, touch_async
+from supervisely.io.fs import clean_dir, mkdir, touch, touch_async
 from supervisely.io.json import dump_json_file, dump_json_file_async, load_json_file
 from supervisely.project.project import Dataset, OpenMode, Project
 from supervisely.project.project import read_single_project as read_project_wrapper
@@ -1036,6 +1036,22 @@ class VideoProject(Project):
         raise NotImplementedError(
             f"Static method 'get_train_val_splits_by_tag()' is not supported for VideoProject class now."
         )
+    
+    @staticmethod
+    def get_train_val_splits_by_collections(
+        project_dir: str,
+        train_collections: List[int],
+        val_collections: List[int],
+        project_id: int,
+        api: Api,
+    ) -> None:
+        """
+        Not available for VideoProject class.
+        :raises: :class:`NotImplementedError` in all cases.
+        """
+        raise NotImplementedError(
+            f"Static method 'get_train_val_splits_by_collections()' is not supported for VideoProject class now."
+        )
 
     @classmethod
     def read_single(cls, dir):
@@ -1056,6 +1072,7 @@ class VideoProject(Project):
         save_video_info: bool = False,
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
+        resume_download: Optional[bool] = False,
     ) -> None:
         """
         Download video project from Supervisely to the given directory.
@@ -1109,6 +1126,7 @@ class VideoProject(Project):
             save_video_info=save_video_info,
             log_progress=log_progress,
             progress_cb=progress_cb,
+            resume_download=resume_download,
         )
 
     @staticmethod
@@ -1182,6 +1200,8 @@ class VideoProject(Project):
         log_progress: bool = True,
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         include_custom_data: bool = False,
+        resume_download: Optional[bool] = False,
+        **kwargs,
     ) -> None:
         """
         Download video project from Supervisely to the given directory asynchronously.
@@ -1224,7 +1244,7 @@ class VideoProject(Project):
 
             coroutine = sly.VideoProject.download_async(api, project_id, save_directory)
             run_coroutine(coroutine)
-            
+
         """
         await download_video_project_async(
             api=api,
@@ -1237,6 +1257,8 @@ class VideoProject(Project):
             log_progress=log_progress,
             progress_cb=progress_cb,
             include_custom_data=include_custom_data,
+            resume_download=resume_download,
+            **kwargs,
         )
 
 
@@ -1250,6 +1272,7 @@ def download_video_project(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
+    resume_download: Optional[bool] = False,
 ) -> None:
     """
     Download video project to the local directory.
@@ -1290,7 +1313,7 @@ def download_video_project(
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         dest_dir = 'your/local/dest/dir'
 
@@ -1310,19 +1333,37 @@ def download_video_project(
     LOG_BATCH_SIZE = 1
 
     key_id_map = KeyIdMap()
-    project_fs = VideoProject(dest_dir, OpenMode.CREATE)
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+
+    project_fs = None
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        try:
+            project_fs = VideoProject(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
+    if project_fs is None:
+        project_fs = VideoProject(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
+
     if progress_cb is not None:
         log_progress = False
 
     dataset_ids = set(dataset_ids) if (dataset_ids is not None) else None
+    existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
     for parents, dataset in api.dataset.tree(project_id):
         if dataset_ids is not None and dataset.id not in dataset_ids:
             continue
 
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         ds_progress = progress_cb
@@ -1468,7 +1509,7 @@ def upload_video_project(
             parent_id = dataset_map.get(parent)
         else:
             parent = ""
-            parent_id = None      
+            parent_id = None
         dataset = api.dataset.create(project.id, dataset_fs.short_name, parent_id=parent_id)
         dataset_map[os.path.join(parent, dataset.name)] = dataset.id
 
@@ -1478,6 +1519,9 @@ def upload_video_project(
             names.append(item_name)
             item_paths.append(video_path)
             ann_paths.append(ann_path)
+
+        if len(item_paths) == 0:
+            continue
 
         ds_progress = progress_cb
         if log_progress is True:
@@ -1547,6 +1591,8 @@ async def download_video_project_async(
     log_progress: bool = True,
     progress_cb: Optional[Union[tqdm, Callable]] = None,
     include_custom_data: Optional[bool] = False,
+    resume_download: Optional[bool] = False,
+    **kwargs,
 ) -> None:
     """
     Download video project to the local directory.
@@ -1600,9 +1646,20 @@ async def download_video_project_async(
 
     key_id_map = KeyIdMap()
 
-    project_fs = VideoProject(dest_dir, OpenMode.CREATE)
-
-    meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+    project_fs = None
+    meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+    if os.path.exists(dest_dir) and resume_download:
+        dump_json_file(meta.to_json(), os.path.join(dest_dir, "meta.json"))
+        try:
+            project_fs = VideoProject(dest_dir, OpenMode.READ)
+        except RuntimeError as e:
+            if "Project is empty" in str(e):
+                clean_dir(dest_dir)
+                project_fs = None
+            else:
+                raise
+    if project_fs is None:
+        project_fs = VideoProject(dest_dir, OpenMode.CREATE)
     project_fs.set_meta(meta)
 
     if progress_cb is not None:
@@ -1615,7 +1672,11 @@ async def download_video_project_async(
 
         dataset_path = Dataset._get_dataset_path(dataset.name, parents)
 
-        dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
+        existing_datasets = {dataset.path: dataset for dataset in project_fs.datasets}
+        if dataset_path in existing_datasets:
+            dataset_fs = existing_datasets[dataset_path]
+        else:
+            dataset_fs = project_fs.create_dataset(dataset.name, dataset_path)
         videos = api.video.get_list(dataset.id)
 
         if log_progress is True:
@@ -1737,7 +1798,7 @@ async def _download_project_item_async(
     try:
         await dataset_fs.add_item_file_async(
             video.name,
-            video_file_path,
+            None,
             ann=video_ann,
             _validate_item=False,
             _use_hardlink=True,

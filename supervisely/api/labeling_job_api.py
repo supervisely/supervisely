@@ -88,6 +88,7 @@ class LabelingJobInfo(NamedTuple):
     include_images_with_tags: list
     exclude_images_with_tags: list
     entities: list
+    priority: int
 
 
 class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
@@ -112,7 +113,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         jobs = api.labeling_job.get_list(9) # api usage example
     """
@@ -179,7 +180,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
                              filter_images_by_tags=[],
                              include_images_with_tags=[],
                              exclude_images_with_tags=[],
-                             entities=None)
+                             entities=None,
+                             priority=2)
         """
         return [
             ApiField.ID,
@@ -220,6 +222,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             ApiField.INCLUDE_IMAGES_WITH_TAGS,
             ApiField.EXCLUDE_IMAGES_WITH_TAGS,
             ApiField.ENTITIES,
+            ApiField.PRIORITY,
         ]
 
     @staticmethod
@@ -337,6 +340,7 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         disable_confirm: Optional[bool] = None,
         disable_submit: Optional[bool] = None,
         toolbox_settings: Optional[Dict] = None,
+        enable_quality_check: Optional[bool] = None,
     ) -> List[LabelingJobInfo]:
         """
         Creates Labeling Job and assigns given Users to it.
@@ -379,6 +383,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
         :type disable_submit: bool, optional
         :param toolbox_settings: Settings for the labeling tool. Only video projects are supported.
         :type toolbox_settings: Dict, optional
+        :param enable_quality_check: If True, adds an intermediate step between "review" and completing the Labeling Job.
+        :type enable_quality_check: bool, optional
         :return: List of information about new Labeling Job. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[LabelingJobInfo]`
         :Usage example:
@@ -496,6 +502,8 @@ class LabelingJobApi(RemoveableBulkModuleApi, ModuleWithStatus):
             meta.update({"disableConfirm": disable_confirm})
         if disable_submit is not None:
             meta.update({"disableSubmit": disable_submit})
+        if enable_quality_check is not None:
+            meta.update({"enableIntermediateReview": enable_quality_check})
 
         data = {
             ApiField.NAME: name,

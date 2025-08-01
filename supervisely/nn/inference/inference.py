@@ -1,21 +1,22 @@
+from __future__ import annotations
+
 import argparse
 import asyncio
 import inspect
 import json
 import os
 import re
+import shutil
 import subprocess
-import sys
+import tempfile
 import threading
 import time
-import uuid
 from collections import OrderedDict, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from pathlib import Path
-from queue import Queue
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
 import numpy as np
@@ -25,6 +26,7 @@ import yaml
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from requests.structures import CaseInsensitiveDict
+from tqdm import tqdm
 
 import supervisely.app.development as sly_app_development
 import supervisely.imaging.image as sly_image
@@ -32,7 +34,8 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely import DatasetInfo, ProjectInfo, VideoAnnotation, batched
+from supervisely.nn.experiments import ExperimentInfo
+from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
     get_filename_from_headers,
@@ -49,8 +52,7 @@ from supervisely.annotation.tag_meta import TagMeta, TagValueType
 from supervisely.api.api import Api, ApiField
 from supervisely.api.app_api import WorkflowMeta, WorkflowSettings
 from supervisely.api.image_api import ImageInfo
-from supervisely.app.content import StateJson, get_data_dir
-from supervisely.app.exceptions import DialogWindowError
+from supervisely.app.content import get_data_dir
 from supervisely.app.fastapi.subapp import (
     Application,
     call_on_autostart,
@@ -68,7 +70,13 @@ from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
 from supervisely.nn.inference.cache import InferenceImageCache
-from supervisely.nn.prediction_dto import Prediction
+from supervisely.nn.inference.inference_request import (
+    InferenceRequest,
+    InferenceRequestsManager,
+)
+from supervisely.nn.inference.uploader import Uploader
+from supervisely.nn.model.model_api import Prediction
+from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
     DeployInfo,
@@ -76,13 +84,16 @@ from supervisely.nn.utils import (
     ModelSource,
     RuntimeType,
     _get_model_name,
+    get_gpu_usage,
+    get_ram_usage,
 )
 from supervisely.project import ProjectType
 from supervisely.project.download import download_to_cache, read_from_cached_project
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
-from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS
+from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
+from supervisely.nn.model.model_api import ModelAPI
 
 try:
     from typing import Literal
@@ -140,12 +151,15 @@ class Inference:
         use_gui: Optional[bool] = False,
         multithread_inference: Optional[bool] = True,
         use_serving_gui_template: Optional[bool] = False,
+        model: Optional[str] = None,
+        device: Optional[str] = None,
+        runtime: Optional[str] = None,
     ):
 
         self.pretrained_models = self._load_models_json_file(self.MODELS) if self.MODELS else None
-        self._args, self._is_local_deploy = self._parse_local_deploy_args()
+        self._args, self._is_cli_deploy = self._parse_cli_deploy_args()
         if model_dir is None:
-            if self._is_local_deploy is True:
+            if self._is_cli_deploy is True:
                 try:
                     model_dir = get_data_dir()
                 except:
@@ -155,8 +169,12 @@ class Inference:
         sly_fs.mkdir(model_dir)
 
         self.autorestart = None
+        _deploy_model = model
+        _deploy_device = device
+        _deploy_runtime = runtime
         self.device: str = None
         self.runtime: str = None
+        self._is_quick_deploy = False
         self.model_precision: str = None
         self.model_source: str = None
         self.checkpoint_info: CheckpointInfo = None
@@ -164,6 +182,9 @@ class Inference:
         self.classes: List[str] = None
         self._model_dir = model_dir
         self._model_served = False
+        self._freeze_timer = None
+        self._model_frozen = False
+        self._inactivity_timeout = 3600  # 1 hour
         self._deploy_params: dict = None
         self._model_meta = None
         self._confidence = "confidence"
@@ -198,13 +219,16 @@ class Inference:
 
         self.load_model = LOAD_MODEL_DECORATOR(self.load_model)
 
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             self._use_gui = False
             deploy_params, need_download = self._get_deploy_params_from_args()
             if need_download:
+                logger.debug("Downloading model files")
                 local_model_files = self._download_model_files(deploy_params, False)
                 deploy_params["model_files"] = local_model_files
+            logger.debug("Loading model...")
             self._load_model_headless(**deploy_params)
+            self._schedule_freeze_on_inactivity()
 
         if self._use_gui:
             initialize_custom_gui_method = getattr(self, "initialize_custom_gui", None)
@@ -253,6 +277,7 @@ class Inference:
                     self.device = device
                     self.load_on_device(self._model_dir, device)
                     gui.show_deployed_model_info(self)
+                self._schedule_freeze_on_inactivity()
 
             def on_change_model_callback(
                 gui: Union[GUI.InferenceGUI, GUI.ServingGUI, GUI.ServingGUITemplate],
@@ -268,6 +293,19 @@ class Inference:
             self.gui.on_serve_callbacks.append(on_serve_callback)
             self._initialize_app_layout()
 
+            train_task_id = os.getenv("modal.state.trainTaskId")
+            if train_task_id:
+                try:
+                    train_task_id = int(train_task_id)
+                    logger.info(f"Setting best checkpoint from training task id: {train_task_id}")
+                    experiment_info = self.api.nn.get_experiment_info(train_task_id)
+                    self._set_checkpoint_from_experiment_info(experiment_info)
+                    self.gui.deploy_with_current_params()
+                except Exception as e:
+                    logger.warning(f"Failed to set checkpoint from training task id: {repr(e)}")
+                    logger.info("Resetting UI to default state")
+                    self._reset_gui_state()
+
         self._inference_requests = {}
         max_workers = 1 if not multithread_inference else None
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -282,6 +320,100 @@ class Inference:
             base_folder=sly_env.smart_cache_container_dir(),
             log_progress=True,
         )
+
+        self.inference_requests_manager = InferenceRequestsManager(executor=self._executor)
+        if _deploy_model is not None and not self._model_served:
+            self._is_quick_deploy = True
+            self.serve()
+            self._deploy_headless(_deploy_model, _deploy_device, _deploy_runtime)
+
+    def __call__(
+        self,
+        input: Union[np.ndarray, str, os.PathLike, list] = None,
+        image_id: Union[List[int], int] = None,
+        video_id: Union[List[int], int] = None,
+        dataset_id: Union[List[int], int] = None,
+        project_id: Union[List[int], int] = None,
+        batch_size: int = None,
+        conf: float = None,
+        img_size: int = None,
+        classes: List[str] = None,
+        upload_mode: str = None,
+        recursive: bool = None,
+        **kwargs,
+    ):
+        return ModelAPI(api=self._api, url="http://0.0.0.0:8000").predict(
+            input,
+            image_id,
+            video_id,
+            dataset_id,
+            project_id,
+            batch_size,
+            conf,
+            img_size,
+            classes,
+            upload_mode,
+            recursive,
+            **kwargs,
+        )
+
+    def _deploy_headless(self, model: str, device: str, runtime: Optional[str] = None):
+        """Deploy model immediately from constructor arguments."""
+        # Clean model_dir before deploying
+        sly_fs.mkdir(self._model_dir, True)
+
+        def get_runtime(runtime: Optional[str]) -> str:
+            if runtime is None:
+                runtime = RuntimeType.PYTORCH
+            else:
+                if runtime.lower() in ["torch", RuntimeType.PYTORCH.lower()]:
+                    runtime = RuntimeType.PYTORCH
+                elif runtime.lower() in ["onnx", RuntimeType.ONNXRUNTIME.lower()]:
+                    runtime = RuntimeType.ONNXRUNTIME
+                elif runtime.lower() in ["trt", RuntimeType.TENSORRT.lower()]:
+                    runtime = RuntimeType.TENSORRT
+                else:
+                    raise ValueError(f"Invalid runtime: {runtime}. Please use one of the following values: {RuntimeType.PYTORCH}, {RuntimeType.ONNXRUNTIME}, {RuntimeType.TENSORRT}.")
+            return runtime
+
+        def get_pretrained_model(model: str) -> dict:
+            if self.pretrained_models is not None:
+                for m in self.pretrained_models:
+                    m_name = _get_model_name(m)
+                    if m_name and m_name.lower() == model.lower():
+                        return m
+            return None
+        
+        runtime = get_runtime(runtime)
+        logger.debug(f"Runtime: {runtime}")
+
+        # Pretrained models
+        selected_pretrained = get_pretrained_model(model)
+        if selected_pretrained is not None:
+            logger.debug("Pretrained model found")
+            model_files_remote = selected_pretrained["meta"]["model_files"]
+            model_files_local = self._download_pretrained_model(model_files_remote, headless=True)
+
+            deploy_params = {
+                "model_source": ModelSource.PRETRAINED,
+                "model_files": model_files_local,
+                "model_info": selected_pretrained,
+                "device": device,
+                "runtime": runtime,
+            }
+            logger.debug(f"Deploying pretrained model '{model}' ...")
+            logger.debug(f"Deploy parameters: {deploy_params}")
+            self._load_model_headless(**deploy_params)
+            return self
+
+        # Custom Models
+        checkpoint_path = model
+        checkpoint_name = sly_fs.get_file_name_with_ext(checkpoint_path)
+        deploy_params = self._get_deploy_parameters_from_custom_checkpoint(checkpoint_path, device, runtime)
+        logger.debug(f"Deploying custom model '{checkpoint_name}'...")
+        self._load_model_headless(**deploy_params)
+        self._schedule_freeze_on_inactivity()
+        return self
 
     def get_batch_size(self):
         if self.max_batch_size is not None:
@@ -595,26 +727,80 @@ class Inference:
     def _checkpoints_cache_dir(self):
         return os.path.join(os.path.expanduser("~"), ".cache", "supervisely", "checkpoints")
 
+    def _build_deploy_params_from_api(self, model_name: str, deploy_params: dict = None) -> dict:
+        if deploy_params is None:
+            deploy_params = {}
+        selected_model = None
+        for model in self.pretrained_models:
+            model_meta = model.get("meta")
+            if model_meta is not None:
+                model_name = model_meta.get("model_name")
+                if model_name is not None:
+                    if model_name.lower() == model_name.lower():
+                        selected_model = model
+                        break
+                else:
+                    model_name = model.get("model_name")
+                    if model_name is not None:
+                        if model_name.lower() == model_name.lower():
+                            selected_model = model
+                            break
+
+        if selected_model is None:
+            raise ValueError(f"Model {model_name} not found in models.json of serving app")
+        deploy_params["model_files"] = selected_model["meta"]["model_files"]
+        deploy_params["model_info"] = selected_model
+        return deploy_params
+
+    def _build_legacy_deploy_params_from_api(self, model_name: str) -> dict:
+        selected_model = None
+        if hasattr(self, "pretrained_models_table"):
+            selected_model = self.pretrained_models_table.get_by_model_name(model_name)
+            if selected_model is None:
+                # @TODO: Improve error message
+                raise ValueError("This app doesn't support new deploy api")
+
+            self.pretrained_models_table.set_by_model_name(model_name)
+            deploy_params = self.pretrained_models_table.get_selected_model_params()
+            return deploy_params
+
+    # @TODO: method name should be better?
+    def _set_common_deploy_params(self, deploy_params: dict) -> dict:
+        load_model_params = inspect.signature(self.load_model).parameters
+        has_runtime_param = "runtime" in load_model_params
+
+        if has_runtime_param:
+            if deploy_params.get("runtime", None) is None:
+                deploy_params["runtime"] = RuntimeType.PYTORCH
+        if deploy_params.get("device", None) is None:
+            deploy_params["device"] = "cuda:0" if get_gpu_count() > 0 else "cpu"
+        return deploy_params
+
     def _download_model_files(self, deploy_params: dict, log_progress: bool = True) -> dict:
-        if deploy_params["runtime"] != RuntimeType.PYTORCH:
-            export = deploy_params["model_info"].get("export", {})
-            if export is not None:
+        if deploy_params["model_source"] == ModelSource.PRETRAINED:
+            headless = self.gui is None
+            return self._download_pretrained_model(
+                deploy_params["model_files"], log_progress, headless
+            )
+        elif deploy_params["model_source"] == ModelSource.CUSTOM:
+            if deploy_params["runtime"] != RuntimeType.PYTORCH:
+                export = deploy_params["model_info"].get("export", {})
+                if export is None:
+                    export = {}
                 export_model = export.get(deploy_params["runtime"], None)
                 if export_model is not None:
-                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(
-                        deploy_params["model_files"]["checkpoint"]
-                    ):
+                    checkpoint = deploy_params["model_files"]["checkpoint"]
+                    artifacts_dir = deploy_params["model_info"]["artifacts_dir"].rstrip("/")
+                    if sly_fs.get_file_name(export_model) == sly_fs.get_file_name(checkpoint):
                         deploy_params["model_files"]["checkpoint"] = (
-                            deploy_params["model_info"]["artifacts_dir"] + export_model
+                            artifacts_dir + "/" + export_model
                         )
                         logger.info(f"Found model checkpoint for '{deploy_params['runtime']}'")
-
-        if deploy_params["model_source"] == ModelSource.PRETRAINED:
-            return self._download_pretrained_model(deploy_params["model_files"], log_progress)
-        elif deploy_params["model_source"] == ModelSource.CUSTOM:
             return self._download_custom_model(deploy_params["model_files"], log_progress)
 
-    def _download_pretrained_model(self, model_files: dict, log_progress: bool = True):
+    def _download_pretrained_model(
+        self, model_files: dict, log_progress: bool = True, headless: bool = False
+    ):
         """
         Downloads the pretrained model data.
         """
@@ -642,26 +828,39 @@ class Inference:
                         continue
 
                     if log_progress:
-                        with self.gui.download_progress(
-                            message=f"Downloading: '{file_name}'",
-                            total=file_size,
-                            unit="bytes",
-                            unit_scale=True,
-                        ) as download_pbar:
-                            self.gui.download_progress.show()
-                            sly_fs.download(
-                                url=file_url,
-                                save_path=file_path,
-                                progress=download_pbar.update,
-                            )
+                        if not headless:
+                            with self.gui.download_progress(
+                                message=f"Downloading: '{file_name}'",
+                                total=file_size,
+                                unit="bytes",
+                                unit_scale=True,
+                            ) as download_pbar:
+                                self.gui.download_progress.show()
+                                sly_fs.download(
+                                    url=file_url,
+                                    save_path=file_path,
+                                    progress=download_pbar.update,
+                                )
+                        else:
+                            with tqdm(
+                                total=file_size,
+                                unit="bytes",
+                                unit_scale=True,
+                            ) as download_pbar:
+                                logger.info(f"Downloading: '{file_name}'")
+                                sly_fs.download(
+                                    url=file_url, save_path=file_path, progress=download_pbar.update
+                                )
                     else:
+                        logger.info(f"Downloading: '{file_name}'")
                         sly_fs.download(url=file_url, save_path=file_path)
                     local_model_files[file] = file_path
             else:
                 local_model_files[file] = file_url
 
         if log_progress:
-            self.gui.download_progress.hide()
+            if self.gui is not None:
+                self.gui.download_progress.hide()
         return local_model_files
 
     def _download_custom_model(self, model_files: dict, log_progress: bool = True):
@@ -670,7 +869,10 @@ class Inference:
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-        for file in model_files:
+        
+        # Sort files to download 'checkpoint' first
+        files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
+        for file in files_order:
             file_url = model_files[file]
             file_info = self.api.file.get_info_by_path(team_id, file_url)
             if file_info is None:
@@ -695,10 +897,159 @@ class Inference:
                     )
             else:
                 self.api.file.download(team_id, file_url, file_path)
+
+            if file == "checkpoint":
+                try:
+                    extracted_files = self._extract_model_files_from_checkpoint(file_path)
+                    local_model_files.update(extracted_files)
+                    if extracted_files:
+                        local_model_files[file] = file_path
+                        return local_model_files
+                except Exception as e:
+                    logger.debug(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
+                    logger.debug("Model files will be downloaded from Team Files")
+                    local_model_files[file] = file_path
+                    continue
+            
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
+    
+    def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
+        def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
+            exp_path = os.path.join(artifacts_dir, "experiment_info.json")
+            if sly_fs.file_exists(exp_path):
+                return self._load_json_file(exp_path)
+            return None
+
+        def _compose_model_files(artifacts_dir: str, checkpoint_path: str, files_map: dict) -> dict:
+            model_files = {k: os.path.join(artifacts_dir, v) for k, v in files_map.items()}
+            model_files["checkpoint"] = checkpoint_path
+            return model_files
+
+        is_local = sly_fs.file_exists(checkpoint_path)
+        if not is_local:
+            team_id = sly_env.team_id()
+            if self.api is None:
+                raise ValueError(
+                    f"File: '{checkpoint_path}' not found in local storage. "
+                    "Initialize API by providing 'API_TOKEN' and 'SERVER_ADDRESS' "
+                    "environment variables to use remote checkpoint."
+                )
+            if not self.api.file.exists(team_id, checkpoint_path):
+                raise FileNotFoundError(
+                    f"Checkpoint '{checkpoint_path}' not found locally and remotely. "
+                    "Make sure you have provided correct checkpoint path."
+                )
+
+        artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
+        if not is_local:
+            logger.debug("Remote checkpoint found")
+            # --- REMOTE ---
+            # experiment_info.json
+            logger.debug("Getting experiment_info.json...")
+            remote_exp_info = os.path.join(artifacts_dir, "experiment_info.json")
+            local_exp_info = os.path.join(self.model_dir, "experiment_info.json")
+            self.download(remote_exp_info, local_exp_info)
+            experiment_info = self._load_json_file(local_exp_info)
+
+            # model_meta.json
+            logger.debug("Getting model_meta.json...")
+            meta_name = experiment_info.get("model_meta") or "model_meta.json"
+            remote_meta = os.path.join(artifacts_dir, meta_name)
+            local_meta = os.path.join(self.model_dir, meta_name)
+            self.download(remote_meta, local_meta)
+            model_meta = self._load_json_file(local_meta)
+            experiment_info["model_meta"] = model_meta
+
+            # model files
+            logger.debug("Getting model files...")
+            remote_files_rel = experiment_info.get("model_files", {})
+            remote_files_full = _compose_model_files(artifacts_dir, checkpoint_path, remote_files_rel)
+            local_model_files = self._download_custom_model(remote_files_full, False)
+            model_files = local_model_files
+            model_info = experiment_info
+            logger.debug("Deploy parameters extracted from remote checkpoint successfully")
+        else:
+            logger.debug("Local checkpoint found")
+            # --- LOCAL ---
+            try:
+                logger.debug("Reading state dict...")
+                import torch  # pylint: disable=import-error
+                ckpt = torch.load(checkpoint_path, map_location="cpu")
+                model_info = ckpt.get("model_info", {})
+                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_files["checkpoint"] = checkpoint_path
+                meta_path = os.path.join(self.model_dir, "model_meta.json")
+                if sly_fs.file_exists(meta_path):
+                    model_info["model_meta"] = self._load_json_file(meta_path)
+                logger.debug("Deploy parameters extracted from state dict successfully")
+            except:
+                logger.debug(f"Failed to read model metadata from checkpoint '{checkpoint_path}'. Trying to find local files...")
+                experiment_info = _read_experiment_info(artifacts_dir)
+                if experiment_info:
+                    logger.debug("Reading experiment_info.json...")
+                    model_files = _compose_model_files(artifacts_dir, checkpoint_path, experiment_info.get("model_files", {}))
+                    meta_name = experiment_info.get("model_meta") or "model_meta.json"
+                    meta_path = os.path.join(artifacts_dir, meta_name)
+                    if not sly_fs.file_exists(meta_path):
+                        raise FileNotFoundError(f"Model meta file not found: '{meta_path}'")
+                    experiment_info["model_meta"] = self._load_json_file(meta_path)
+                    model_info = experiment_info
+                    logger.debug("Deploy parameters extracted from experiment_info.json successfully")
+                else:
+                    raise FileNotFoundError(f"'experiment_info.json' not found in '{artifacts_dir}'")
+
+        deploy_params = {
+            "model_source": ModelSource.CUSTOM,
+            "model_files": model_files,
+            "model_info": model_info,
+            "device": device,
+            "runtime": runtime,
+        }
+        logger.debug(f"Deploy parameters: {deploy_params}")
+        return deploy_params
+
+    def _extract_model_files_from_checkpoint(self, checkpoint_path: str) -> dict:
+        extracted_files: dict = {}
+        file_ext = sly_fs.get_file_ext(checkpoint_path)
+        if file_ext not in (".pth", ".pt"):
+            return extracted_files
+
+        import torch  # pylint: disable=import-error
+        logger.debug(f"Reading checkpoint: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+
+        # 1. Extract additional model files embedded into checkpoint (if any)
+        ckpt_files = checkpoint.get("model_files", None)
+        if ckpt_files and isinstance(ckpt_files, dict):
+            for file_key, file_info in ckpt_files.items():
+                try:
+                    content = file_info["content"]
+                    fname = file_info.get("name", f"{file_key}.txt")
+                    dst_path = os.path.join(self.model_dir, fname)
+                    # Overwrite if exists
+                    if os.path.exists(dst_path):
+                        sly_fs.silent_remove(dst_path)
+                    with open(dst_path, "w") as f:
+                        f.write(content)
+                    extracted_files[file_key] = dst_path
+                except Exception as e:
+                    logger.debug(f"Failed to write '{file_key}' from checkpoint to disk: {repr(e)}")
+
+        # 2. Extract project meta (if present)
+        model_meta = checkpoint.get("model_meta", None)
+        if model_meta is not None:
+            try:
+                meta_path = os.path.join(self.model_dir, "model_meta.json")
+                if os.path.exists(meta_path):
+                    sly_fs.silent_remove(meta_path)
+                sly_json.dump_json_file(model_meta, meta_path)
+            except Exception as e:
+                logger.debug(f"Failed to dump model_meta from checkpoint: {repr(e)}")
+
+        return extracted_files
 
     def _load_model(self, deploy_params: dict):
         self.model_source = deploy_params.get("model_source")
@@ -732,7 +1083,7 @@ class Inference:
             self.gui.show_deployed_model_info(self)
 
     def load_custom_checkpoint(
-        self, model_files: dict, model_meta: dict, device: str = "cuda", **kwargs
+        self, model_files: dict, model_meta: dict, device: Optional[str] = None, **kwargs
     ):
         """
         Loads local custom model checkpoint.
@@ -811,9 +1162,15 @@ class Inference:
 
         try:
             if is_production():
-                self._add_workflow_input(model_source, model_files, model_info)
+                without_workflow = deploy_params.get("without_workflow", False)
+                if without_workflow is False:
+                    self._add_workflow_input(model_source, model_files, model_info)
         except Exception as e:
             logger.warning(f"Failed to add input to the workflow: {repr(e)}")
+
+        # remove is_benchmark from deploy_params
+        if "without_workflow" in deploy_params:
+            deploy_params.pop("without_workflow")
 
         self._load_model(deploy_params)
         if self._model_meta is None:
@@ -826,11 +1183,20 @@ class Inference:
         if isinstance(model_meta, dict):
             self._model_meta = ProjectMeta.from_json(model_meta)
         elif isinstance(model_meta, str):
-            remote_artifacts_dir = model_info["artifacts_dir"]
-            model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
-            model_meta_path = self.download(model_meta_url)
-            model_meta = sly_json.load_json_file(model_meta_path)
-            self._model_meta = ProjectMeta.from_json(model_meta)
+            model_meta_path = os.path.join(self.model_dir, "model_meta.json")
+            if os.path.exists(model_meta_path):
+                logger.debug("Reading model meta from checkpoint")
+                model_meta = sly_json.load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                sly_fs.silent_remove(model_meta_path)
+            else:
+                remote_artifacts_dir = model_info["artifacts_dir"]
+                model_meta_url = os.path.join(remote_artifacts_dir, model_meta)
+                model_meta_path = self.download(model_meta_url)
+                model_meta = sly_json.load_json_file(model_meta_path)
+                self._model_meta = ProjectMeta.from_json(model_meta)
+                sly_fs.silent_remove(model_meta_path)
+
         else:
             raise ValueError(
                 "model_meta should be a dict or a name of '.json' file in experiment artifacts folder in Team Files"
@@ -843,11 +1209,12 @@ class Inference:
         model_files = deploy_params.get("model_files", {})
         if model_info:
             checkpoint_name = os.path.basename(model_files.get("checkpoint"))
-            checkpoint_file_path = os.path.join(
-                model_info.get("artifacts_dir"), "checkpoints", checkpoint_name
-            )
+            artifacts_dir = model_info.get("artifacts_dir")
+            if artifacts_dir is None:
+                artifacts_dir = os.path.dirname(os.path.dirname(model_files.get("checkpoint")))
+            checkpoint_file_path = os.path.join(artifacts_dir, "checkpoints", checkpoint_name)
             checkpoint_file_info = None
-            if not self._is_local_deploy:
+            if not self._is_cli_deploy:
                 checkpoint_file_info = self.api.file.get_info_by_path(
                     sly_env.team_id(), checkpoint_file_path
                 )
@@ -867,6 +1234,10 @@ class Inference:
 
     def shutdown_model(self):
         self._model_served = False
+        self._model_frozen = False
+        if self._freeze_timer is not None:
+            self._freeze_timer.cancel()
+            self._freeze_timer = None
         self.device = None
         self.runtime = None
         self.model_precision = None
@@ -886,7 +1257,8 @@ class Inference:
         classes = None
         try:
             classes = self.get_classes()
-            num_classes = len(classes)
+            if classes is not None:
+                num_classes = len(classes)
         except NotImplementedError:
             logger.warn(f"get_classes() function not implemented for {type(self)} object.")
         except AttributeError:
@@ -949,7 +1321,7 @@ class Inference:
     def api(self) -> Api:
         if self._api is None:
             if (
-                self._is_local_deploy
+                self._is_cli_deploy
                 and os.getenv("SERVER_ADDRESS") is None
                 and os.getenv("API_TOKEN") is None
             ):
@@ -1002,13 +1374,13 @@ class Inference:
             self._model_meta = self._model_meta.add_tag_meta(tag_meta)
         return tag_meta
 
-    def _create_label(self, dto: Prediction) -> Label:
+    def _create_label(self, dto: PredictionDTO) -> Label:
         raise NotImplementedError("Have to be implemented in child class")
 
     def _predictions_to_annotation(
         self,
         image_path: Union[str, np.ndarray],
-        predictions: List[Prediction],
+        predictions: List[PredictionDTO],
         classes_whitelist: Optional[List[str]] = None,
     ) -> Annotation:
         labels = []
@@ -1067,11 +1439,21 @@ class Inference:
             logger.error(f"Error in {func.__name__} function: {e}", exc_info=True)
             raise e
 
+    def api_from_request(self, request) -> Api:
+        """
+        Get API from request. If not found, use self.api.
+        """
+        api = request.state.api
+        if api is None:
+            api = self.api
+        return api
+        
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
         settings: Dict[str, Any],
     ) -> Tuple[List[Annotation], List[dict]]:
+        self._unfreeze_model()
         inference_mode = settings.get("inference_mode", "full_image")
         use_raw = (
             inference_mode == "sliding_window" and settings["sliding_window_mode"] == "advanced"
@@ -1082,9 +1464,11 @@ class Inference:
         if (not use_raw and self.is_batch_inference_supported()) or (
             use_raw and is_predict_batch_raw_implemented
         ):
-            return self._inference_batched_wrapper(source, settings)
+            result = self._inference_batched_wrapper(source, settings)
         else:
-            return self._inference_one_by_one_wrapper(source, settings)
+            result = self._inference_one_by_one_wrapper(source, settings)
+        self._schedule_freeze_on_inactivity()
+        return result
 
     def inference(
         self,
@@ -1117,10 +1501,12 @@ class Inference:
             settings = self._get_inference_settings({})
 
         if isinstance(source[0], int):
-            ann_jsons = self._inference_batch_ids(
-                self.api, {"batch_ids": source, "settings": settings}
+            results = self.inference_requests_manager.run(
+                self._inference_image_ids, self.api, {"batch_ids": source, "settings": settings}
             )
-            anns = [Annotation.from_json(ann_json, self.model_meta) for ann_json in ann_jsons]
+            anns = [
+                Annotation.from_json(result["annotation"], self.model_meta) for result in results
+            ]
         else:
             anns, _ = self._inference_auto(source, settings)
         if not input_is_list:
@@ -1240,17 +1626,17 @@ class Inference:
         return anns, benchmark
 
     # pylint: disable=method-hidden
-    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+    def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionDTO]:
         raise NotImplementedError("Have to be implemented in child class")
 
-    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[Prediction]:
+    def predict_raw(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionDTO]:
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
         )
 
     def predict_batch(
         self, images_np: List[np.ndarray], settings: Dict[str, Any]
-    ) -> List[List[Prediction]]:
+    ) -> List[List[PredictionDTO]]:
         """Predict batch of images. `images_np` is a list of numpy arrays in RGB format
 
         If this method is not overridden in a subclass, the following fallback logic works:
@@ -1267,7 +1653,7 @@ class Inference:
 
     def predict_batch_raw(
         self, images_np: List[np.ndarray], settings: Dict[str, Any]
-    ) -> List[List[Prediction]]:
+    ) -> List[List[PredictionDTO]]:
         """Predict batch of images. `source` is a list of numpy arrays in RGB format"""
         raise NotImplementedError(
             "Have to be implemented in child class If sliding_window_mode is 'advanced'."
@@ -1275,7 +1661,7 @@ class Inference:
 
     def predict_benchmark(
         self, images_np: List[np.ndarray], settings: dict
-    ) -> Tuple[List[List[Prediction]], dict]:
+    ) -> Tuple[List[List[PredictionDTO]], dict]:
         """
         Inference a batch of images with speedtest benchmarking.
 
@@ -1318,15 +1704,24 @@ class Inference:
         )
         return is_predict_batch_overridden or is_predict_benchmark_overridden
 
+    def set_conf_auto(self, conf: float, inference_settings: dict):
+        conf_names = ["conf", "confidence", "confidence_threshold", "confidence_thresh"]
+        for name in conf_names:
+            if name in inference_settings:
+                inference_settings[name] = conf
+        return inference_settings
+
     # pylint: enable=method-hidden
     def _get_inference_settings(self, state: dict):
-        settings = state.get("settings", {})
+        settings = state.get("settings")
         if settings is None:
             settings = {}
         if "rectangle" in state.keys():
             settings["rectangle"] = state["rectangle"]
+        conf = settings.get("conf", None)
+        if conf is not None:
+            settings = self.set_conf_auto(conf, settings)
         settings["sliding_window_mode"] = self.sliding_window_mode
-
         for key, value in self.custom_inference_settings_dict.items():
             if key not in settings:
                 logger.debug(
@@ -1335,13 +1730,19 @@ class Inference:
                 settings[key] = value
         return settings
 
+    def _get_batch_size_from_state(self, state: dict):
+        batch_size = state.get("batch_size", None)
+        if batch_size is None:
+            batch_size = self.get_batch_size()
+        return batch_size
+
     @property
     def app(self) -> Application:
         return self._app
 
     def visualize(
         self,
-        predictions: List[Prediction],
+        predictions: List[PredictionDTO],
         image_path: str,
         vis_path: str,
         thickness: Optional[int] = None,
@@ -1358,194 +1759,79 @@ class Inference:
 
     def _format_output(
         self,
-        anns: List[Annotation],
-        slides_data: List[dict] = None,
+        predictions: List[Prediction],
     ) -> List[dict]:
-        if not slides_data:
-            slides_data = [{} for _ in range(len(anns))]
-        assert len(anns) == len(slides_data)
-        return [{"annotation": ann.to_json(), "data": data} for ann, data in zip(anns, slides_data)]
+        output = [
+            {
+                **pred.to_json(),
+                "data": pred.extra_data.get("slides_data", {}),
+            }
+            for pred in predictions
+        ]
+        return output
 
-    def _inference_image(self, state: dict, file: UploadFile):
-        logger.debug("Inferring image...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        image_np = sly_image.read_bytes(file.file.read())
-        logger.debug("Inference settings:", extra=settings)
-        logger.debug("Image info:", extra={"w": image_np.shape[1], "h": image_np.shape[0]})
-        anns, slides_data = self._inference_auto(
-            [image_np],
-            settings=settings,
-        )
-        results = self._format_output(anns, slides_data)
-        return results[0]
-
-    def _inference_batch(self, state: dict, files: List[UploadFile]):
+    def _inference_images(
+        self,
+        images: Iterable[Union[np.ndarray, str]],
+        state: dict,
+        inference_request: InferenceRequest,
+    ):
         logger.debug("Inferring batch...", extra={"state": state})
         settings = self._get_inference_settings(state)
-        images = [sly_image.read_bytes(file.file.read()) for file in files]
-        anns, slides_data = self._inference_auto(
-            images,
-            settings=settings,
-        )
-        return self._format_output(anns, slides_data)
+        logger.debug("Inference settings:", extra={"inference_settings": settings})
+        batch_size = self._get_batch_size_from_state(state)
 
-    def _inference_batch_ids(self, api: Api, state: dict):
-        logger.debug("Inferring batch_ids...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        ids = state["batch_ids"]
-        infos = api.image.get_info_by_id_batch(ids)
-        datasets = defaultdict(list)
-        for info in infos:
-            datasets[info.dataset_id].append(info.id)
-        results = []
-        for dataset_id, ids in datasets.items():
-            images_np = api.image.download_nps(dataset_id, ids)
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(images))
+        for batch in batched_iter(images, batch_size=batch_size):
+            batch = [
+                self.cache.get_image_path(image) if isinstance(image, str) else image
+                for image in batch
+            ]
             anns, slides_data = self._inference_auto(
-                source=images_np,
+                batch,
                 settings=settings,
             )
-            anns = self._exclude_duplicated_predictions(api, anns, settings, dataset_id, ids)
-            results.extend(self._format_output(anns, slides_data))
-        return results
+            predictions = [Prediction(ann, model_meta=self.model_meta) for ann in anns]
+            for pred, this_slides_data in zip(predictions, slides_data):
+                pred.extra_data["slides_data"] = this_slides_data
+            batch_results = self._format_output(predictions)
+            inference_request.add_results(batch_results)
+            inference_request.done(len(batch_results))
 
-    def _inference_image_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
-        logger.debug("Inferring image_id...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        upload = state.get("upload", False)
-        image_id = state["image_id"]
-        image_info = api.image.get_info_by_id(image_id)
-        image_np = api.image.download_np(image_id)
-        logger.debug("Inference settings:", extra=settings)
-        logger.debug(
-            "Image info:",
-            extra={"id": image_id, "w": image_info.width, "h": image_info.height},
-        )
-
-        inference_request = {}
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-
-        anns, slides_data = self._inference_auto(
-            [image_np],
-            settings=settings,
-        )
-        ann = anns[0]
-
-        if upload:
-            ds_info = api.dataset.get_info_by_id(image_info.dataset_id, raise_error=True)
-            output_project_id = ds_info.project_id
-            output_project_meta = self.cache.get_project_meta(api, output_project_id)
-            logger.debug("Merging project meta...")
-
-            output_project_meta, ann, meta_changed = update_meta_and_ann(output_project_meta, ann)
-            if meta_changed:
-                output_project_meta = api.project.update_meta(
-                    output_project_id, output_project_meta
-                )
-                self.cache.set_project_meta(output_project_id, output_project_meta)
-
-            ann = self._exclude_duplicated_predictions(
-                api, anns, settings, ds_info.id, [image_id], output_project_meta
-            )[0]
-
-            logger.debug(
-                "Uploading annotation...",
-                extra={
-                    "image_id": image_id,
-                    "dataset_id": ds_info.id,
-                    "project_id": output_project_id,
-                },
-            )
-            api.annotation.upload_ann(image_id, ann)
-        else:
-            ann = self._exclude_duplicated_predictions(
-                api, anns, settings, image_info.dataset_id, [image_id]
-            )[0]
-
-        result = self._format_output(anns, slides_data)[0]
-        if async_inference_request_uuid is not None and ann is not None:
-            inference_request["result"] = result
-        return result
-
-    def _inference_image_url(self, api: Api, state: dict):
-        logger.debug("Inferring image_url...", extra={"state": state})
-        settings = self._get_inference_settings(state)
-        image_url = state["image_url"]
-        ext = sly_fs.get_file_ext(image_url)
-        if ext == "":
-            ext = ".jpg"
-        image_path = os.path.join(get_data_dir(), rand_str(15) + ext)
-        sly_fs.download(image_url, image_path)
-        logger.debug("Inference settings:", extra=settings)
-        logger.debug(f"Downloaded path: {image_path}")
-        anns, slides_data = self._inference_auto(
-            [image_path],
-            settings=settings,
-        )
-        sly_fs.silent_remove(image_path)
-        return self._format_output(anns, slides_data)[0]
-
-    def _inference_video_id(self, api: Api, state: dict, async_inference_request_uuid: str = None):
-        from supervisely.nn.inference.video_inference import InferenceVideoInterface
-
-        logger.debug("Inferring video_id...", extra={"state": state})
-        video_info = api.video.get_info_by_id(state["videoId"])
-        n_frames = state.get("framesCount", video_info.frames_count)
+    def _inference_video(
+        self,
+        path: str,
+        state: Dict,
+        inference_request: InferenceRequest,
+    ):
+        logger.debug("Inferring video...", extra={"path": path, "state": state})
+        inference_settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=inference_settings)
+        batch_size = self._get_batch_size_from_state(state)
         start_frame_index = state.get("startFrameIndex", 0)
-        direction = state.get("direction", "forward")
-        logger.debug(
-            f"Video info:",
-            extra=dict(
-                w=video_info.frame_width,
-                h=video_info.frame_height,
-                start_frame_index=start_frame_index,
-                n_frames=n_frames,
-            ),
-        )
+        step = state.get("stride", None)
+        if step is None:
+            step = state.get("step", None)
+        if step is None:
+            step = 1
+        end_frame_index = state.get("endFrameIndex", None)
+        duration = state.get("duration", None)
+        frames_count = state.get("framesCount", None)
         tracking = state.get("tracker", None)
+        direction = state.get("direction", "forward")
+        direction = 1 if direction == "forward" else -1
 
-        preparing_progress = {"current": 0, "total": 1}
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-
-            sly_progress.total = n_frames
-            inference_request["preparing_progress"]["total"] = n_frames
-            preparing_progress = inference_request["preparing_progress"]
-
-        # progress
-        preparing_progress["status"] = "download_video"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = int(video_info.file_meta["size"])
-
-        def _progress_cb(chunk_size):
-            preparing_progress["current"] += chunk_size
-
-        self.cache.download_video(api, video_info.id, return_images=False, progress_cb=_progress_cb)
-        preparing_progress["status"] = "inference"
-
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-
-        logger.debug(f"Total frames to infer: {n_frames}")
+        frames_reader = VideoFrameReader(path)
+        video_height, video_witdth = frames_reader.frame_size()
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index + 1
+        elif duration is not None:
+            fps = frames_reader.fps()
+            n_frames = int(duration * fps)
+        else:
+            n_frames = frames_reader.frames_count()
 
         if tracking == "bot":
             from supervisely.nn.tracker import BoTTracker
@@ -1557,28 +1843,270 @@ class Inference:
             tracker = DeepSortTracker(state)
         else:
             if tracking is not None:
-                logger.warn(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
             tracker = None
 
+        progress_total = (n_frames + step - 1) // step
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
+
         results = []
-        batch_size = state.get("batch_size", None)
-        if batch_size is None:
-            batch_size = self.get_batch_size()
         tracks_data = {}
-        direction = 1 if direction == "forward" else -1
         for batch in batched(
-            range(start_frame_index, start_frame_index + direction * n_frames, direction),
+            range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
         ):
-            if (
-                async_inference_request_uuid is not None
-                and inference_request["cancel_inference"] is True
-            ):
+            if inference_request.is_stopped():
                 logger.debug(
-                    f"Cancelling inference video...",
-                    extra={"inference_request_uuid": async_inference_request_uuid},
+                    f"Cancelling inference...",
+                    extra={"inference_request_uuid": inference_request.uuid},
                 )
                 results = []
+                break
+            logger.debug(
+                f"Inferring frames {batch[0]}-{batch[-1]}:",
+            )
+            frames = frames_reader.read_frames(batch)
+            anns, slides_data = self._inference_auto(
+                source=frames,
+                settings=inference_settings,
+            )
+            predictions = [
+                Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
+                for ann, frame_index in zip(anns, batch)
+            ]
+            for pred, this_slides_data in zip(predictions, slides_data):
+                pred.extra_data["slides_data"] = this_slides_data
+            batch_results = self._format_output(predictions)
+            if tracker is not None:
+                for frame_index, frame, ann in zip(batch, frames, anns):
+                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+            inference_request.add_results(batch_results)
+            inference_request.done(len(batch_results))
+            logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
+        video_ann_json = None
+        if tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, 1)
+            video_ann_json = tracker.get_annotation(
+                tracks_data, (video_height, video_witdth), n_frames
+            ).to_json()
+            inference_request.done()
+        result = {"ann": results, "video_ann": video_ann_json}
+        inference_request.final_result = result.copy()
+
+    def _inference_image_ids(
+        self,
+        api: Api,
+        state: dict,
+        inference_request: InferenceRequest,
+    ):
+        """Inference images by ids.
+        If "output_project_id" in state, upload images and annotations to the output project.
+        If "output_project_id" equal to source project id, upload annotations to the source project.
+        If "output_project_id" is None, write annotations to inference request object.
+        """
+        logger.debug("Inferring batch_ids", extra={"state": state})
+        inference_settings = self._get_inference_settings(state)
+        logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
+        batch_size = self._get_batch_size_from_state(state)
+        image_ids = get_value_for_keys(
+            state, ["batch_ids", "image_ids", "images_ids", "imageIds", "image_id", "imageId"]
+        )
+        if image_ids is None:
+            raise ValueError("Image ids are not provided")
+        if not isinstance(image_ids, list):
+            image_ids = [image_ids]
+        upload_mode = state.get("upload_mode", None)
+        iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
+        if upload_mode == "iou_merge" and iou_merge_threshold is None:
+            iou_merge_threshold = 0.7
+
+        images_infos = api.image.get_info_by_id_batch(image_ids)
+        images_infos_dict = {im_info.id: im_info for im_info in images_infos}
+        inference_request.context.setdefault("image_info", {}).update(images_infos_dict)
+
+        dataset_infos_dict = {
+            ds_id: api.dataset.get_info_by_id(ds_id)
+            for ds_id in set([im_info.dataset_id for im_info in images_infos])
+        }
+        inference_request.context.setdefault("dataset_info", {}).update(dataset_infos_dict)
+
+        output_project_id = state.get("output_project_id", None)
+        output_dataset_id = None
+        inference_request.context.setdefault("project_meta", {})
+        if output_project_id is not None:
+            if upload_mode is None:
+                upload_mode = "append"
+        if output_project_id is None and upload_mode == "create":
+            image_info = images_infos[0]
+            dataset_info = dataset_infos_dict[image_info.dataset_id]
+            output_project_info = api.project.create(
+                dataset_info.workspace_id,
+                name=f"Predictions from task #{self.task_id}",
+                description=f"Auto created project from inference request {inference_request.uuid}",
+                change_name_if_conflict=True,
+            )
+            output_project_id = output_project_info.id
+            inference_request.context.setdefault("project_info", {})[
+                output_project_id
+            ] = output_project_info
+            output_dataset_info = api.dataset.create(
+                output_project_id,
+                "Predictions",
+                description=f"Auto created dataset from inference request {inference_request.uuid}",
+                change_name_if_conflict=True,
+            )
+            output_dataset_id = output_dataset_info.id
+            inference_request.context.setdefault("dataset_info", {})[
+                output_dataset_id
+            ] = output_dataset_info
+
+        # start download to cache in background
+        dataset_image_infos: Dict[int, List[ImageInfo]] = defaultdict(list)
+        for image_info in images_infos:
+            dataset_image_infos[image_info.dataset_id].append(image_info)
+        for dataset_id, ds_image_infos in dataset_image_infos.items():
+            self.cache.run_cache_task_manually(
+                api, [info.id for info in ds_image_infos], dataset_id=dataset_id
+            )
+
+        _upload_predictions = partial(
+            self.upload_predictions,
+            api=api,
+            upload_mode=upload_mode,
+            context=inference_request.context,
+            dst_dataset_id=output_dataset_id,
+            dst_project_id=output_project_id,
+            progress_cb=inference_request.done,
+            iou_merge_threshold=iou_merge_threshold,
+            inference_request=inference_request,
+        )
+
+        _add_results_to_request = partial(
+            self.add_results_to_request, inference_request=inference_request
+        )
+
+        if upload_mode is None:
+            upload_f = _add_results_to_request
+        else:
+            upload_f = _upload_predictions
+
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, len(image_ids))
+        with Uploader(upload_f, logger=logger) as uploader:
+            for image_ids_batch in batched(image_ids, batch_size=batch_size):
+                if uploader.has_exception():
+                    exception = uploader.exception()
+                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                if inference_request.is_stopped():
+                    logger.debug(
+                        f"Cancelling inference project...",
+                        extra={"inference_request_uuid": inference_request.uuid},
+                    )
+                    break
+
+                images_nps = [self.cache.download_image(api, img_id) for img_id in image_ids_batch]
+                anns, slides_data = self._inference_auto(
+                    source=images_nps,
+                    settings=inference_settings,
+                )
+
+                batch_predictions = []
+                for image_id, ann, this_slides_data in zip(image_ids_batch, anns, slides_data):
+                    image_info: ImageInfo = images_infos_dict[image_id]
+                    dataset_info = dataset_infos_dict[image_info.dataset_id]
+                    prediction = Prediction(
+                        ann,
+                        model_meta=self.model_meta,
+                        name=image_info.name,
+                        image_id=image_info.id,
+                        dataset_id=image_info.dataset_id,
+                        project_id=dataset_info.project_id,
+                    )
+                    prediction.extra_data["slides_data"] = this_slides_data
+                    batch_predictions.append(prediction)
+
+                uploader.put(batch_predictions)
+
+    def _inference_video_id(
+        self,
+        api: Api,
+        state: dict,
+        inference_request: InferenceRequest,
+    ):
+        logger.debug("Inferring video_id...", extra={"state": state})
+        inference_settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=inference_settings)
+        batch_size = self._get_batch_size_from_state(state)
+        video_id = get_value_for_keys(state, ["videoId", "video_id"], ignore_none=True)
+        if video_id is None:
+            raise ValueError("Video id is not provided")
+        video_info = api.video.get_info_by_id(video_id)
+        start_frame_index = get_value_for_keys(
+            state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        step = get_value_for_keys(state, ["stride", "step"], ignore_none=True)
+        if step is None:
+            step = 1
+        end_frame_index = get_value_for_keys(
+            state, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+        )
+        duration = state.get("duration", None)
+        frames_count = get_value_for_keys(
+            state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
+        )
+        tracking = state.get("tracker", None)
+        direction = state.get("direction", "forward")
+        direction = 1 if direction == "forward" else -1
+
+        if frames_count is not None:
+            n_frames = frames_count
+        elif end_frame_index is not None:
+            n_frames = end_frame_index - start_frame_index
+        elif duration is not None:
+            fps = video_info.frames_count / video_info.duration
+            n_frames = int(duration * fps)
+        else:
+            n_frames = video_info.frames_count
+
+        if tracking == "bot":
+            from supervisely.nn.tracker import BoTTracker
+
+            tracker = BoTTracker(state)
+        elif tracking == "deepsort":
+            from supervisely.nn.tracker import DeepSortTracker
+
+            tracker = DeepSortTracker(state)
+        else:
+            if tracking is not None:
+                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+            tracker = None
+        logger.debug(
+            f"Video info:",
+            extra=dict(
+                w=video_info.frame_width,
+                h=video_info.frame_height,
+                start_frame_index=start_frame_index,
+                n_frames=n_frames,
+            ),
+        )
+
+        # start downloading video in background
+        self.cache.run_cache_task_manually(api, None, video_id=video_id)
+
+        progress_total = (n_frames + step - 1) // step
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
+
+        tracks_data = {}
+        for batch in batched(
+            range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
+            batch_size,
+        ):
+            if inference_request.is_stopped():
+                logger.debug(
+                    f"Cancelling inference video...",
+                    extra={"inference_request_uuid": inference_request.uuid},
+                )
                 break
             logger.debug(
                 f"Inferring frames {batch[0]}-{batch[-1]}:",
@@ -1586,415 +2114,102 @@ class Inference:
             frames = self.cache.download_frames(api, video_info.id, batch, redownload_video=True)
             anns, slides_data = self._inference_auto(
                 source=frames,
-                settings=settings,
+                settings=inference_settings,
             )
+            predictions = [
+                Prediction(
+                    ann,
+                    model_meta=self.model_meta,
+                    frame_index=frame_index,
+                    video_id=video_info.id,
+                    dataset_id=video_info.dataset_id,
+                    project_id=video_info.project_id,
+                )
+                for ann, frame_index in zip(anns, batch)
+            ]
+            for pred, this_slides_data in zip(predictions, slides_data):
+                pred.extra_data["slides_data"] = this_slides_data
+            batch_results = self._format_output(predictions)
             if tracker is not None:
                 for frame_index, frame, ann in zip(batch, frames, anns):
                     tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
-            batch_results = self._format_output(anns, slides_data)
-            results.extend(batch_results)
-            if async_inference_request_uuid is not None:
-                sly_progress.iters_done(len(batch))
-                inference_request["pending_results"].extend(batch_results)
+            inference_request.add_results(batch_results)
+            inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if tracker is not None:
+            inference_request.set_stage("Postprocess...", 0, 1)
             video_ann_json = tracker.get_annotation(
                 tracks_data, (video_info.frame_height, video_info.frame_width), n_frames
             ).to_json()
-        result = {"ann": results, "video_ann": video_ann_json}
-        if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = result.copy()
-        return result
+            inference_request.done()
+        inference_request.final_result = {"video_ann": video_ann_json}
 
-    def _inference_images_ids(
-        self,
-        api: Api,
-        state: dict,
-        images_ids: List[int],
-        async_inference_request_uuid: str = None,
-    ):
-        """Inference images by ids.
-        If "output_project_id" in state, upload images and annotations to the output project.
-        If "output_project_id" equal to source project id, upload annotations to the source project.
-        If "output_project_id" is None, write annotations to inference request object.
-        """
-        logger.debug("Inferring images...", extra={"state": state})
-        batch_size = state.get("batch_size", None)
-        if batch_size is None:
-            batch_size = self.get_batch_size()
-        output_project_id = state.get("output_project_id", None)
-        images_infos = api.image.get_info_by_id_batch(images_ids)
-        images_infos_dict = {im_info.id: im_info for im_info in images_infos}
-        dataset_infos_dict = {
-            ds_id: api.dataset.get_info_by_id(ds_id)
-            for ds_id in set([im_info.dataset_id for im_info in images_infos])
-        }
-
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = len(images_ids)
-
-        def _download_images(images_ids):
-            with ThreadPoolExecutor(max(8, min(batch_size, 64))) as executor:
-                for image_id in images_ids:
-                    executor.submit(
-                        self.cache.download_image,
-                        api,
-                        image_id,
-                    )
-
-        # start downloading in parallel
-        threading.Thread(target=_download_images, args=[images_ids], daemon=True).start()
-
-        output_project_metas_dict = {}
-
-        def _upload_results_to_source(results: List[Dict]):
-            nonlocal output_project_metas_dict
-            for result in results:
-                image_id = result["image_id"]
-                image_info: ImageInfo = images_infos_dict[image_id]
-                dataset_info: DatasetInfo = dataset_infos_dict[image_info.dataset_id]
-                project_id = dataset_info.project_id
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta = output_project_metas_dict.get(project_id, None)
-                if output_project_meta is None:
-                    output_project_meta = ProjectMeta.from_json(
-                        api.project.get_meta(output_project_id)
-                    )
-                output_project_meta, ann, meta_changed = update_meta_and_ann(
-                    output_project_meta, ann
-                )
-                output_project_metas_dict[project_id] = output_project_meta
-                if meta_changed:
-                    output_project_meta = api.project.update_meta(project_id, output_project_meta)
-                ann = update_classes(api, ann, output_project_meta, project_id)
-                api.annotation.append_labels(image_id, ann.labels)
-                if async_inference_request_uuid is not None:
-                    sly_progress.iters_done(1)
-                    inference_request["pending_results"].append(
-                        {
-                            "annotation": None,  # to less response size
-                            "data": None,  # to less response size
-                            "image_id": image_id,
-                            "image_name": result["image_name"],
-                            "dataset_id": result["dataset_id"],
-                        }
-                    )
-
-        def _add_results_to_request(results: List[Dict]):
-            if async_inference_request_uuid is None:
-                return
-            inference_request["pending_results"].extend(results)
-            sly_progress.iters_done(len(results))
-
-        new_dataset_id = {}
-
-        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
-            """Copy dataset in output project if not exists and return its id"""
-            if src_dataset_id in new_dataset_id:
-                return new_dataset_id[src_dataset_id]
-            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-
-            def _create_parent_recursively(output_project_id, src_parent_id):
-                """Create parent datasets recursively and return the ID of the top-level parent"""
-                if src_parent_id in new_dataset_id:
-                    return new_dataset_id[src_parent_id]
-                src_parent_info = dataset_infos_dict.get(src_parent_id)
-                if src_parent_info is None:
-                    src_parent_info = api.dataset.get_info_by_id(src_parent_id)
-                if src_parent_info.parent_id is not None:
-                    parent_id = _create_parent_recursively(
-                        output_project_id, src_parent_info.parent_id
-                    )
-                else:
-                    parent_id = None
-                dst_parent = api.dataset.create(
-                    output_project_id,
-                    src_parent_info.name,
-                    change_name_if_conflict=True,
-                    parent_id=parent_id,
-                )
-                new_dataset_id[src_parent_info.id] = dst_parent.id
-                return dst_parent.id
-
-            parent_id = None
-            if dataset_info.parent_id is not None:
-                parent_id = _create_parent_recursively(output_project_id, dataset_info.parent_id)
-
-            output_dataset_id = api.dataset.create(
-                output_project_id,
-                dataset_info.name,
-                change_name_if_conflict=True,
-                parent_id=parent_id,
-            ).id
-            new_dataset_id[src_dataset_id] = output_dataset_id
-            return output_dataset_id
-
-        def _copy_images_to_dst(
-            src_dataset_id, dst_dataset_id, image_infos, dst_names
-        ) -> List[ImageInfo]:
-            return api.image.copy_batch_optimized(
-                src_dataset_id,
-                image_infos,
-                dst_dataset_id,
-                dst_names=dst_names,
-                with_annotations=False,
-                skip_validation=True,
-            )
-
-        def _upload_results_to_other(results: List[Dict]):
-            nonlocal output_project_metas_dict
-            if len(results) == 0:
-                return
-            src_dataset_id = results[0]["dataset_id"]
-            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
-            src_image_infos = [images_infos_dict[result["image_id"]] for result in results]
-            image_names = [result["image_name"] for result in results]
-            image_infos = _copy_images_to_dst(
-                src_dataset_id, dataset_id, src_image_infos, image_names
-            )
-            image_infos.sort(key=lambda x: image_names.index(x.name))
-            api.logger.debug(
-                "Uploading results to other project...",
-                extra={
-                    "src_dataset_id": src_dataset_id,
-                    "dst_project_id": output_project_id,
-                    "dst_dataset_id": dataset_id,
-                    "items_count": len(image_infos),
-                },
-            )
-            meta_changed = False
-            anns = []
-            for result in results:
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta = output_project_metas_dict.get(output_project_id, None)
-                if output_project_meta is None:
-                    output_project_meta = ProjectMeta.from_json(
-                        api.project.get_meta(output_project_id)
-                    )
-                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
-                output_project_metas_dict[output_project_id] = output_project_meta
-                meta_changed = meta_changed or c
-                anns.append(ann)
-            if meta_changed:
-                api.project.update_meta(output_project_id, output_project_meta)
-
-            # upload in batches to update progress with each batch
-            # api.annotation.upload_anns() uploads in same batches anyways
-            for batch in batched(list(zip(anns, results, image_infos))):
-                batch_anns, batch_results, batch_image_infos = zip(*batch)
-                api.annotation.upload_anns(
-                    img_ids=[info.id for info in batch_image_infos],
-                    anns=batch_anns,
-                )
-                if async_inference_request_uuid is not None:
-                    sly_progress.iters_done(len(batch_results))
-                    inference_request["pending_results"].extend(
-                        [{**result, "annotation": None, "data": None} for result in batch_results]
-                    )
-
-        def upload_results_to_source_or_other(results: List[Dict]):
-            if len(results) == 0:
-                return
-            dataset_id = results[0]["dataset_id"]
-            dataset_info: DatasetInfo = dataset_infos_dict[dataset_id]
-            project_id = dataset_info.project_id
-            if project_id == output_project_id:
-                _upload_results_to_source(results)
-            else:
-                _upload_results_to_other(results)
-
-        if output_project_id is None:
-            upload_f = _add_results_to_request
-        else:
-            upload_f = upload_results_to_source_or_other
-
-        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
-            try:
-                while True:
-                    items = []
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        ds_batches = {}
-                        for batch in items:
-                            if len(batch) == 0:
-                                continue
-                            for each in batch:
-                                ds_batches.setdefault(each["dataset_id"], []).append(each)
-                        for _, joined_batch in ds_batches.items():
-                            upload_f(joined_batch)
-                        continue
-                    if stop_event.is_set():
-                        self._on_inference_end(None, async_inference_request_uuid)
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                raise
-
-        upload_queue = Queue()
-        stop_upload_event = threading.Event()
-        upload_thread = threading.Thread(
-            target=_upload_loop,
-            args=[upload_queue, stop_upload_event, api, upload_f],
-            daemon=True,
-        )
-        upload_thread.start()
-
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-
-        results = []
-        stop = False
-        try:
-            for image_ids_batch in batched(images_ids, batch_size=batch_size):
-                if stop:
-                    break
-                if (
-                    async_inference_request_uuid is not None
-                    and inference_request["cancel_inference"] is True
-                ):
-                    logger.debug(
-                        f"Cancelling inference project...",
-                        extra={"inference_request_uuid": async_inference_request_uuid},
-                    )
-                    results = []
-                    stop = True
-                    break
-
-                images_nps = [self.cache.download_image(api, img_id) for img_id in image_ids_batch]
-                anns, slides_data = self._inference_auto(
-                    source=images_nps,
-                    settings=settings,
-                )
-                batch_results = []
-                for i, ann in enumerate(anns):
-                    image_info: ImageInfo = images_infos_dict[image_ids_batch[i]]
-                    ds_info = dataset_infos_dict[image_info.dataset_id]
-                    meta = output_project_metas_dict.get(ds_info.project_id, None)
-                    iou = settings.get("existing_objects_iou_thresh")
-                    if meta is None and isinstance(iou, float) and iou > 0:
-                        meta = ProjectMeta.from_json(api.project.get_meta(ds_info.project_id))
-                        output_project_metas_dict[ds_info.project_id] = meta
-                    ann = self._exclude_duplicated_predictions(
-                        api, [ann], settings, ds_info.id, [image_info.id], meta
-                    )[0]
-                    batch_results.append(
-                        {
-                            "annotation": ann.to_json(),
-                            "data": slides_data[i],
-                            "image_id": image_info.id,
-                            "image_name": image_info.name,
-                            "dataset_id": image_info.dataset_id,
-                        }
-                    )
-                results.extend(batch_results)
-                upload_queue.put(batch_results)
-        except Exception:
-            stop_upload_event.set()
-            upload_thread.join()
-            raise
-        if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = {"ann": results}
-        stop_upload_event.set()
-        upload_thread.join()
-        return results
-
-    def _inference_project_id(
-        self,
-        api: Api,
-        state: dict,
-        project_info: ProjectInfo = None,
-        async_inference_request_uuid: str = None,
-    ):
+    def _inference_project_id(self, api: Api, state: dict, inference_request: InferenceRequest):
         """Inference project images.
         If "output_project_id" in state, upload images and annotations to the output project.
         If "output_project_id" equal to source project id, upload annotations to the source project.
         If "output_project_id" is None, write annotations to inference request object.
         """
         logger.debug("Inferring project...", extra={"state": state})
-        if project_info is None:
-            project_info = api.project.get_info_by_id(state["projectId"])
-        dataset_ids = state.get("dataset_ids", None)
+        inference_settings = self._get_inference_settings(state)
+        logger.debug("Inference settings:", extra={"inference_settings": inference_settings})
+        batch_size = self._get_batch_size_from_state(state)
+        project_id = get_value_for_keys(state, keys=["projectId", "project_id"])
+        if project_id is None:
+            raise ValueError("Project id is not provided")
+        project_info = api.project.get_info_by_id(project_id)
+        if project_info.type != str(ProjectType.IMAGES):
+            raise ValueError("Only images projects are supported.")
+        upload_mode = state.get("upload_mode", None)
+        iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
+        if upload_mode == "iou_merge" and iou_merge_threshold is None:
+            iou_merge_threshold = 0.7
         cache_project_on_model = state.get("cache_project_on_model", False)
-        batch_size = state.get("batch_size", None)
-        if batch_size is None:
-            batch_size = self.get_batch_size()
 
+        project_info = api.project.get_info_by_id(project_id)
+        inference_request.context.setdefault("project_info", {})[project_id] = project_info
+        dataset_ids = state.get("dataset_ids", None)
+        if dataset_ids is None:
+            dataset_ids = state.get("datasetIds", None)
         datasets_infos = api.dataset.get_list(project_info.id, recursive=True)
+        inference_request.context.setdefault("dataset_info", {}).update(
+            {ds_info.id: ds_info for ds_info in datasets_infos}
+        )
         if dataset_ids is not None:
             datasets_infos = [ds_info for ds_info in datasets_infos if ds_info.id in dataset_ids]
 
-        # progress
-        preparing_progress = {"current": 0, "total": 1}
-        preparing_progress["status"] = "download_info"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
-        progress_cb = None
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
-
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = sum([ds_info.items_count for ds_info in datasets_infos])
-
-            inference_request["preparing_progress"]["total"] = len(datasets_infos)
-            preparing_progress = inference_request["preparing_progress"]
-
-            if cache_project_on_model:
-                progress_cb = sly_progress.iters_done
-                preparing_progress["total"] = sly_progress.total
-                preparing_progress["status"] = "download_project"
+        preparing_progress_total = sum([ds_info.items_count for ds_info in datasets_infos])
+        inference_progress_total = preparing_progress_total
+        inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, preparing_progress_total)
 
         output_project_id = state.get("output_project_id", None)
-        output_project_meta = None
+        inference_request.context.setdefault("project_meta", {})
         if output_project_id is not None:
-            logger.debug("Merging project meta...")
-            output_project_meta = ProjectMeta.from_json(api.project.get_meta(output_project_id))
-            changed = False
-            for obj_class in self.model_meta.obj_classes:
-                if output_project_meta.obj_classes.get(obj_class.name, None) is None:
-                    output_project_meta = output_project_meta.add_obj_class(obj_class)
-                    changed = True
-            for tag_meta in self.model_meta.tag_metas:
-                if output_project_meta.tag_metas.get(tag_meta.name, None) is None:
-                    output_project_meta = output_project_meta.add_tag_meta(tag_meta)
-                    changed = True
-            if changed:
-                output_project_meta = api.project.update_meta(
-                    output_project_id, output_project_meta
-                )
+            if upload_mode is None:
+                upload_mode = "append"
+        if output_project_id is None and upload_mode == "create":
+            output_project_info = api.project.create(
+                project_info.workspace_id,
+                name=f"Predictions from task #{self.task_id}",
+                description=f"Auto created project from inference request {inference_request.uuid}",
+                change_name_if_conflict=True,
+            )
+            output_project_id = output_project_info.id
+            inference_request.context.setdefault("project_info", {})[
+                output_project_id
+            ] = output_project_info
 
         if cache_project_on_model:
-            download_to_cache(api, project_info.id, datasets_infos, progress_cb=progress_cb)
+            download_to_cache(
+                api, project_info.id, datasets_infos, progress_cb=inference_request.done
+            )
 
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
             if not cache_project_on_model:
-                preparing_progress["current"] += 1
-
-        preparing_progress["status"] = "inference"
-        preparing_progress["current"] = 0
+                inference_request.done(dataset_info.items_count)
 
         def _download_images(datasets_infos: List[DatasetInfo]):
             for dataset_info in datasets_infos:
@@ -2011,166 +2226,41 @@ class Inference:
             # start downloading in parallel
             threading.Thread(target=_download_images, args=[datasets_infos], daemon=True).start()
 
-        def _upload_results_to_source(results: List[Dict]):
-            nonlocal output_project_meta
-            for result in results:
-                image_id = result["image_id"]
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta, ann, meta_changed = update_meta_and_ann(
-                    output_project_meta, ann
-                )
-                if meta_changed:
-                    output_project_meta = api.project.update_meta(
-                        project_info.id, output_project_meta
-                    )
-                ann = update_classes(api, ann, output_project_meta, output_project_id)
-                api.annotation.append_labels(image_id, ann.labels)
-                if async_inference_request_uuid is not None:
-                    sly_progress.iters_done(1)
-                    inference_request["pending_results"].append(
-                        {
-                            "annotation": None,  # to less response size
-                            "data": None,  # to less response size
-                            "image_id": image_id,
-                            "image_name": result["image_name"],
-                            "dataset_id": result["dataset_id"],
-                        }
-                    )
-
-        new_dataset_id = {}
-
-        def _get_or_create_new_dataset(output_project_id, src_dataset_id):
-            """Copy dataset in output project if not exists and return its id"""
-            if src_dataset_id in new_dataset_id:
-                return new_dataset_id[src_dataset_id]
-            dataset_info = api.dataset.get_info_by_id(src_dataset_id)
-            if dataset_info.parent_id is None:
-                output_dataset_id = api.dataset.copy(
-                    output_project_id,
-                    src_dataset_id,
-                    dataset_info.name,
-                    change_name_if_conflict=True,
-                ).id
-            else:
-                parent_dataset_id = _get_or_create_new_dataset(
-                    output_project_id, dataset_info.parent_id
-                )
-                output_dataset_info = api.dataset.create(
-                    output_project_id, dataset_info.name, parent_id=parent_dataset_id
-                )
-                api.image.copy_batch_optimized(
-                    dataset_info.id,
-                    images_infos_dict[dataset_info.id],
-                    output_dataset_info.id,
-                    with_annotations=False,
-                )
-                output_dataset_id = output_dataset_info.id
-            new_dataset_id[src_dataset_id] = output_dataset_id
-            return output_dataset_id
-
-        def _upload_results_to_other(results: List[Dict]):
-            nonlocal output_project_meta
-            if len(results) == 0:
-                return
-            src_dataset_id = results[0]["dataset_id"]
-            dataset_id = _get_or_create_new_dataset(output_project_id, src_dataset_id)
-            image_names = [result["image_name"] for result in results]
-            image_infos = api.image.get_list(
-                dataset_id,
-                filters=[{"field": "name", "operator": "in", "value": image_names}],
-            )
-            meta_changed = False
-            anns = []
-            for result in results:
-                ann = Annotation.from_json(result["annotation"], self.model_meta)
-                output_project_meta, ann, c = update_meta_and_ann(output_project_meta, ann)
-                meta_changed = meta_changed or c
-                anns.append(ann)
-            if meta_changed:
-                api.project.update_meta(output_project_id, output_project_meta)
-
-            # upload in batches to update progress with each batch
-            # api.annotation.upload_anns() uploads in same batches anyways
-            for batch in batched(list(zip(anns, results, image_infos))):
-                batch_anns, batch_results, batch_image_infos = zip(*batch)
-                api.annotation.upload_anns(
-                    img_ids=[info.id for info in batch_image_infos],
-                    anns=batch_anns,
-                )
-                if async_inference_request_uuid is not None:
-                    sly_progress.iters_done(len(batch_results))
-                    inference_request["pending_results"].extend(
-                        [{**result, "annotation": None, "data": None} for result in batch_results]
-                    )
-
-        def _add_results_to_request(results: List[Dict]):
-            if async_inference_request_uuid is None:
-                return
-            inference_request["pending_results"].extend(results)
-            sly_progress.iters_done(len(results))
-
-        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
-            try:
-                while True:
-                    items = []
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        ds_batches = {}
-                        for batch in items:
-                            if len(batch) == 0:
-                                continue
-                            ds_batches.setdefault(batch[0].get("dataset_id"), []).extend(batch)
-                        for _, joined_batch in ds_batches.items():
-                            upload_f(joined_batch)
-                        continue
-                    if stop_event.is_set():
-                        self._on_inference_end(None, async_inference_request_uuid)
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                raise
-
-        if output_project_id is None:
-            upload_f = _add_results_to_request
-        elif output_project_id != project_info.id:
-            upload_f = _upload_results_to_other
-        else:
-            upload_f = _upload_results_to_source
-
-        upload_queue = Queue()
-        stop_upload_event = threading.Event()
-        upload_thread = threading.Thread(
-            target=_upload_loop,
-            args=[upload_queue, stop_upload_event, api, upload_f],
-            daemon=True,
+        _upload_predictions = partial(
+            self.upload_predictions,
+            api=api,
+            upload_mode=upload_mode,
+            context=inference_request.context,
+            dst_project_id=output_project_id,
+            progress_cb=inference_request.done,
+            iou_merge_threshold=iou_merge_threshold,
+            inference_request=inference_request,
         )
-        upload_thread.start()
 
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-        results = []
-        data_to_return = {}
-        stop = False
-        try:
+        _add_results_to_request = partial(
+            self.add_results_to_request, inference_request=inference_request
+        )
+
+        if upload_mode is None:
+            upload_f = _add_results_to_request
+        else:
+            upload_f = _upload_predictions
+
+        inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
+        with Uploader(upload_f, logger=logger) as uploader:
             for dataset_info in datasets_infos:
-                if stop:
-                    break
                 for images_infos_batch in batched(
                     images_infos_dict[dataset_info.id], batch_size=batch_size
                 ):
-                    if (
-                        async_inference_request_uuid is not None
-                        and inference_request["cancel_inference"] is True
-                    ):
+                    if inference_request.is_stopped():
                         logger.debug(
                             f"Cancelling inference project...",
-                            extra={"inference_request_uuid": async_inference_request_uuid},
+                            extra={"inference_request_uuid": inference_request.uuid},
                         )
-                        results = []
-                        stop = True
-                        break
+                        return
+                    if uploader.has_exception():
+                        exception = uploader.exception
+                        raise RuntimeError(f"Error in upload loop: {exception}") from exception
                     if cache_project_on_model:
                         images_paths, _ = zip(
                             *read_from_cached_project(
@@ -2189,52 +2279,36 @@ class Inference:
                         )
                     anns, slides_data = self._inference_auto(
                         source=images_nps,
-                        settings=settings,
+                        settings=inference_settings,
                     )
-                    iou = settings.get("existing_objects_iou_thresh")
-                    if output_project_meta is None and isinstance(iou, float) and iou > 0:
-                        output_project_meta = ProjectMeta.from_json(
-                            api.project.get_meta(project_info.id)
+                    predictions = [
+                        Prediction(
+                            ann,
+                            model_meta=self.model_meta,
+                            image_id=image_info.id,
+                            name=image_info.name,
+                            dataset_id=dataset_info.id,
+                            project_id=dataset_info.project_id,
+                            image_name=image_info.name,
                         )
-                    anns = self._exclude_duplicated_predictions(
-                        api,
-                        anns,
-                        settings,
-                        dataset_info.id,
-                        [ii.id for ii in images_infos_batch],
-                        output_project_meta,
-                    )
-                    batch_results = []
-                    for i, ann in enumerate(anns):
-                        batch_results.append(
-                            {
-                                "annotation": ann.to_json(),
-                                "data": slides_data[i],
-                                "image_id": images_infos_batch[i].id,
-                                "image_name": images_infos_batch[i].name,
-                                "dataset_id": dataset_info.id,
-                            }
-                        )
-                    results.extend(batch_results)
-                    upload_queue.put(batch_results)
-        except Exception:
-            stop_upload_event.set()
-            upload_thread.join()
-            raise
-        if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = {"ann": results}
-        stop_upload_event.set()
-        upload_thread.join()
-        return results
+                        for ann, image_info in zip(anns, images_infos_batch)
+                    ]
+                    for pred, this_slides_data in zip(predictions, slides_data):
+                        pred.extra_data["slides_data"] = this_slides_data
+
+                    uploader.put(predictions)
 
     def _run_speedtest(
         self,
         api: Api,
         state: dict,
-        async_inference_request_uuid: str = None,
+        inference_request: InferenceRequest,
     ):
         """Run speedtest on project images."""
         logger.debug("Running speedtest...", extra={"state": state})
+        settings = self._get_inference_settings(state)
+        logger.debug(f"Inference settings:", extra=settings)
+
         project_id = state["projectId"]
         batch_size = state["batch_size"]
         num_iterations = state["num_iterations"]
@@ -2252,49 +2326,22 @@ class Inference:
                 if dataset_id in datasets_infos_dict
             ]
 
-        # progress
-        preparing_progress = {"current": 0, "total": 1}
-        if async_inference_request_uuid is not None:
-            try:
-                inference_request = self._inference_requests[async_inference_request_uuid]
-            except Exception as ex:
-                import traceback
+        preparing_progress_total = len(datasets_infos)
+        if cache_project_on_model:
+            preparing_progress_total += sum(
+                dataset_info.items_count for dataset_info in datasets_infos
+            )
+        inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, preparing_progress_total)
 
-                logger.error(traceback.format_exc())
-                raise RuntimeError(
-                    f"async_inference_request_uuid {async_inference_request_uuid} was given, "
-                    f"but there is no such uuid in 'self._inference_requests' ({len(self._inference_requests)} items)"
-                )
-            sly_progress: Progress = inference_request["progress"]
-            sly_progress.total = num_iterations
-            sly_progress.current = 0
-
-            preparing_progress = inference_request["preparing_progress"]
-
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = len(datasets_infos)
-        preparing_progress["status"] = "download_info"
         images_infos_dict = {}
         for dataset_info in datasets_infos:
             images_infos_dict[dataset_info.id] = api.image.get_list(dataset_info.id)
-            if not cache_project_on_model:
-                preparing_progress["current"] += 1
+            inference_request.done()
 
         if cache_project_on_model:
+            download_to_cache(api, project_id, datasets_infos, progress_cb=inference_request.done)
 
-            def _progress_cb(count: int = 1):
-                preparing_progress["current"] += count
-
-            preparing_progress["current"] = 0
-            preparing_progress["total"] = sum(
-                dataset_info.items_count for dataset_info in datasets_infos
-            )
-            preparing_progress["status"] = "download_project"
-            download_to_cache(api, project_id, datasets_infos, progress_cb=_progress_cb)
-
-        preparing_progress["status"] = "warmup"
-        preparing_progress["current"] = 0
-        preparing_progress["total"] = num_warmup
+        inference_request.set_stage("warmup", 0, num_warmup)
 
         images_infos: List[ImageInfo] = [
             image_info for infos in images_infos_dict.values() for image_info in infos
@@ -2313,44 +2360,9 @@ class Inference:
             # start downloading in parallel
             threading.Thread(target=_download_images, daemon=True).start()
 
-        def _add_results_to_request(results: List[Dict]):
-            if async_inference_request_uuid is None:
-                return
-            inference_request["pending_results"].append(results)
-            sly_progress.iters_done(1)
-
-        def _upload_loop(q: Queue, stop_event: threading.Event, api: Api, upload_f: Callable):
-            try:
-                while True:
-                    items = []
-                    while not q.empty():
-                        items.append(q.get_nowait())
-                    if len(items) > 0:
-                        for batch in items:
-                            upload_f(batch)
-                        continue
-                    if stop_event.is_set():
-                        self._on_inference_end(None, async_inference_request_uuid)
-                        return
-                    time.sleep(1)
-            except Exception as e:
-                api.logger.error("Error in upload loop: %s", str(e), exc_info=True)
-                raise
-
-        upload_f = _add_results_to_request
-
-        upload_queue = Queue()
-        stop_upload_event = threading.Event()
-        threading.Thread(
-            target=_upload_loop,
-            args=[upload_queue, stop_upload_event, api, upload_f],
-            daemon=True,
-        ).start()
-
-        settings = self._get_inference_settings(state)
-        logger.debug(f"Inference settings:", extra=settings)
-        results = []
-        stop = False
+        def upload_f(benchmarks: List):
+            inference_request.add_results(benchmarks)
+            inference_request.done(len(benchmarks))
 
         def image_batch_generator(batch_size):
             logger.debug(
@@ -2366,23 +2378,20 @@ class Inference:
                         batch = []
 
         batch_generator = image_batch_generator(batch_size)
-        try:
+
+        with Uploader(upload_f=upload_f, logger=logger) as uploader:
             for i in range(num_iterations + num_warmup):
-                if stop:
-                    break
-                if (
-                    async_inference_request_uuid is not None
-                    and inference_request["cancel_inference"] is True
-                ):
+                if inference_request.is_stopped():
                     logger.debug(
                         f"Cancelling inference project...",
-                        extra={"inference_request_uuid": async_inference_request_uuid},
+                        extra={"inference_request_uuid": inference_request.uuid},
                     )
-                    results = []
-                    stop = True
-                    break
+                    return
+                if uploader.has_exception():
+                    exception = uploader.exception
+                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
                 if i == num_warmup:
-                    preparing_progress["status"] = "inference"
+                    inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, num_iterations)
 
                 images_infos_batch: List[ImageInfo] = next(batch_generator)
 
@@ -2429,17 +2438,73 @@ class Inference:
                 )
                 # Collect results if warmup is done
                 if i >= num_warmup:
-                    results.append(benchmark)
-                    upload_queue.put(benchmark)
+                    uploader.put([benchmark])
                 else:
-                    preparing_progress["current"] += 1
-        except Exception:
-            stop_upload_event.set()
-            raise
-        if async_inference_request_uuid is not None and len(results) > 0:
-            inference_request["result"] = results
-        stop_upload_event.set()
-        return results
+                    inference_request.done()
+
+    def _check_serve_before_call(self, func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if self._model_served is False:
+                msg = (
+                    "The model has not yet been deployed. "
+                    "Please select the appropriate model in the UI and press the 'Serve' button. "
+                    "If this app has no GUI, it signifies that 'load_on_device' was never called."
+                )
+                # raise DialogWindowError(title="Call undeployed model.", description=msg)
+                raise RuntimeError(msg)
+            return func(*args, **kwargs)
+        return wrapper
+
+    def _freeze_model(self):
+        if self._model_frozen or not self._model_served:
+            return
+        logger.debug("Freezing model...")
+        runtime = self._deploy_params.get("runtime")
+        if runtime and runtime.lower() != RuntimeType.PYTORCH.lower():
+            logger.debug("Model is not running in PyTorch runtime, cannot freeze.")
+            return
+        previous_device = self._deploy_params.get("device")
+        if previous_device == "cpu":
+            logger.debug("Model is already running on CPU, cannot freeze.")
+            return
+
+        deploy_params = self._deploy_params.copy()
+        deploy_params["device"] = "cpu"
+        try:
+            self._load_model(deploy_params)
+            self._model_frozen = True
+            logger.info(
+                "Model has been re-deployed to CPU for resource optimization. "
+                "It will be loaded back to the original device on the next inference request."
+            )
+        finally:
+            self._deploy_params["device"] = previous_device
+            clean_up_cuda()
+
+    def _unfreeze_model(self):
+        if not self._model_frozen:
+            return
+        logger.debug("Unfreezing model...")
+        self._model_frozen = False
+        self._load_model(self._deploy_params)
+        clean_up_cuda()
+        logger.debug("Model is unfrozen and ready for inference.")
+
+    def _schedule_freeze_on_inactivity(self):
+        if self._freeze_timer is not None:
+            self._freeze_timer.cancel()
+        timer = threading.Timer(self._inactivity_timeout, self._freeze_model)
+        timer.daemon = True
+        timer.start()
+        self._freeze_timer = timer
+        logger.debug("Model will be frozen in %s seconds due to inactivity.", self._inactivity_timeout)
+
+    def _set_served_callback(self):
+        self._model_served = True
+
+    def is_model_deployed(self):
+        return self._model_served
 
     def _on_inference_start(self, inference_request_uuid):
         inference_request = {
@@ -2458,28 +2523,6 @@ class Inference:
         inference_request = self._inference_requests.get(inference_request_uuid)
         if inference_request is not None:
             inference_request["is_inferring"] = False
-
-    def _check_serve_before_call(self, func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if self._model_served is True:
-                return func(*args, **kwargs)
-            else:
-                msg = (
-                    "The model has not yet been deployed. "
-                    "Please select the appropriate model in the UI and press the 'Serve' button. "
-                    "If this app has no GUI, it signifies that 'load_on_device' was never called."
-                )
-                # raise DialogWindowError(title="Call undeployed model.", description=msg)
-                raise RuntimeError(msg)
-
-        return wrapper
-
-    def _set_served_callback(self):
-        self._model_served = True
-
-    def is_model_deployed(self):
-        return self._model_served
 
     def schedule_task(self, func, *args, **kwargs):
         inference_request_uuid = kwargs.get("inference_request_uuid", None)
@@ -2518,13 +2561,236 @@ class Inference:
             # update to set correct device
             device = deploy_params.get("device", "cpu")
             self.gui.set_deployed(device)
+            self._schedule_freeze_on_inactivity()
             return {"result": "model was successfully deployed"}
         except Exception as e:
             self.gui._success_label.hide()
             raise e
 
+    def validate_inference_state(self, state: Union[Dict, str], log_error=True):
+        try:
+            if isinstance(state, str):
+                try:
+                    state = json.loads(state)
+                except (json.decoder.JSONDecodeError, TypeError) as e:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Cannot decode settings: {e}",
+                    )
+            if not isinstance(state, dict):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="Settings is not json object"
+                )
+            batch_size = state.get("batch_size", None)
+            if batch_size is None:
+                batch_size = self.get_batch_size()
+            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
+                )
+        except Exception as e:
+            if log_error:
+                logger.error(f"Error validating request state: {e}", exc_info=True)
+            raise
+
+    def upload_predictions(
+        self,
+        predictions: List[Prediction],
+        api: Api,
+        upload_mode: str,
+        context: Dict = None,
+        dst_dataset_id: int = None,
+        dst_project_id: int = None,
+        progress_cb=None,
+        iou_merge_threshold: float = None,
+        inference_request: InferenceRequest = None,
+    ):
+        ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
+        for prediction in predictions:
+            ds_predictions[prediction.dataset_id].append(prediction)
+
+        def _new_name(image_info: ImageInfo):
+            name = Path(image_info.name)
+            stem = name.stem
+            parent = name.parent
+            suffix = name.suffix
+            return str(parent / f"{stem}(dataset_id:{image_info.dataset_id}){suffix}")
+
+        def _get_or_create_dataset(src_dataset_id, dst_project_id):
+            if src_dataset_id is None:
+                return None
+            created_dataset_id = context.setdefault("created_dataset", {}).get(src_dataset_id, None)
+            if created_dataset_id is not None:
+                return created_dataset_id
+            src_dataset_info: DatasetInfo = context.setdefault("dataset_info", {}).get(
+                src_dataset_id
+            )
+            if src_dataset_info is None:
+                src_dataset_info = api.dataset.get_info_by_id(src_dataset_id)
+                context["dataset_info"][src_dataset_id] = src_dataset_info
+            src_parent_id = src_dataset_info.parent_id
+            dst_parent_id = _get_or_create_dataset(src_parent_id, dst_project_id)
+            created_dataset = api.dataset.create(
+                dst_project_id,
+                src_dataset_info.name,
+                description=f"Auto created dataset from inference request {inference_request.uuid if inference_request is not None else ''}",
+                change_name_if_conflict=True,
+                parent_id=dst_parent_id,
+            )
+            context["dataset_info"][created_dataset.id] = created_dataset
+            context.setdefault("created_dataset", {})[src_dataset_id] = created_dataset.id
+            return created_dataset.id
+
+        created_names = []
+        if context is None:
+            context = {}
+        for dataset_id, preds in ds_predictions.items():
+            if dst_project_id is not None:
+                # upload to the destination project
+                dst_dataset_id = _get_or_create_dataset(
+                    src_dataset_id=dataset_id, dst_project_id=dst_project_id
+                )
+            if dst_dataset_id is not None:
+                # upload to the destination dataset
+                dataset_info = context.setdefault("dataset_info", {}).get(dst_dataset_id, None)
+                if dataset_info is None:
+                    dataset_info = api.dataset.get_info_by_id(dst_dataset_id)
+                    context["dataset_info"][dst_dataset_id] = dataset_info
+                project_id = dataset_info.project_id
+                project_meta = context.setdefault("project_meta", {}).get(project_id, None)
+                if project_meta is None:
+                    project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+                    context["project_meta"][project_id] = project_meta
+
+                meta_changed = False
+                for pred in preds:
+                    ann = pred.annotation
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    meta_changed = meta_changed or meta_changed_
+                    pred.annotation = ann
+                    prediction.model_meta = project_meta
+
+                if meta_changed:
+                    project_meta = api.project.update_meta(project_id, project_meta)
+                    context["project_meta"][project_id] = project_meta
+
+                anns = _exclude_duplicated_predictions(
+                    api,
+                    [pred.annotation for pred in preds],
+                    dataset_id,
+                    [pred.image_id for pred in preds],
+                    iou=iou_merge_threshold,
+                    meta=project_meta,
+                )
+                for pred, ann in zip(preds, anns):
+                    pred.annotation = ann
+
+                context.setdefault("image_info", {})
+                missing = [
+                    pred.image_id for pred in preds if pred.image_id not in context["image_info"]
+                ]
+                if missing:
+                    context["image_info"].update(
+                        {
+                            image_info.id: image_info
+                            for image_info in api.image.get_info_by_id_batch(missing)
+                        }
+                    )
+                image_infos: List[ImageInfo] = [
+                    context["image_info"][pred.image_id] for pred in preds
+                ]
+                dst_names = [
+                    _new_name(image_info) if image_info.name in created_names else image_info.name
+                    for image_info in image_infos
+                ]
+                dst_image_infos = api.image.copy_batch_optimized(
+                    dataset_id,
+                    image_infos,
+                    dst_dataset_id,
+                    dst_names=dst_names,
+                    with_annotations=False,
+                    save_source_date=False,
+                )
+                created_names.extend([image_info.name for image_info in dst_image_infos])
+                api.annotation.upload_anns([image_info.id for image_info in dst_image_infos], anns)
+            else:
+                # upload to the source dataset
+                ds_info = context.setdefault("dataset_info", {}).get(dataset_id, None)
+                if ds_info is None:
+                    ds_info = api.dataset.get_info_by_id(dataset_id)
+                    context["dataset_info"][dataset_id] = ds_info
+                project_id = ds_info.project_id
+
+                project_meta = context.setdefault("project_meta", {}).get(project_id, None)
+                if project_meta is None:
+                    project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+                    context["project_meta"][project_id] = project_meta
+
+                meta_changed = False
+                for pred in preds:
+                    ann = pred.annotation
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    meta_changed = meta_changed or meta_changed_
+                    pred.annotation = ann
+                    prediction.model_meta = project_meta
+
+                if meta_changed:
+                    project_meta = api.project.update_meta(project_id, project_meta)
+                    context["project_meta"][project_id] = project_meta
+
+                anns = _exclude_duplicated_predictions(
+                    api,
+                    [pred.annotation for pred in preds],
+                    dataset_id,
+                    [pred.image_id for pred in preds],
+                    iou=iou_merge_threshold,
+                    meta=project_meta,
+                )
+                for pred, ann in zip(preds, anns):
+                    pred.annotation = ann
+
+                if upload_mode in ["iou_merge", "append"]:
+                    context.setdefault("annotation", {})
+                    missing = []
+                    for pred in preds:
+                        if pred.image_id not in context["annotation"]:
+                            missing.append(pred.image_id)
+                    for image_id, ann_info in zip(
+                        missing, api.annotation.download_batch(dataset_id, missing)
+                    ):
+                        context["annotation"][image_id] = Annotation.from_json(
+                            ann_info.annotation, project_meta
+                        )
+                    for pred in preds:
+                        pred.annotation = context["annotation"][pred.image_id].merge(
+                            pred.annotation
+                        )
+
+                api.annotation.upload_anns(
+                    [pred.image_id for pred in preds],
+                    [pred.annotation for pred in preds],
+                )
+
+            if progress_cb is not None:
+                progress_cb(len(preds))
+
+        if inference_request is not None:
+            results = self._format_output(predictions)
+            for result in results:
+                result["annotation"] = None
+                result["data"] = None
+            inference_request.add_results(results)
+
+    def add_results_to_request(
+        self, predictions: List[Prediction], inference_request: InferenceRequest
+    ):
+        results = self._format_output(predictions)
+        inference_request.add_results(results)
+        inference_request.done(len(results))
+
     def serve(self):
-        if not self._use_gui and not self._is_local_deploy:
+        if not self._use_gui and not self._is_cli_deploy:
             Progress("Deploying model ...", 1)
 
         if is_debug_with_sly_net():
@@ -2539,30 +2805,31 @@ class Inference:
             self._task_id = task["id"]
             os.environ["TASK_ID"] = str(self._task_id)
         else:
-            if not self._is_local_deploy:
+            if not self._is_cli_deploy:
                 self._task_id = sly_env.task_id() if is_production() else None
 
-        if self._is_local_deploy:
+        if self._is_cli_deploy:
             # Predict and shutdown
-            if self._args.mode == "predict" and any(
+            if self._args.mode == "predict":
+                if any(
                 [
                     self._args.input,
                     self._args.project_id,
                     self._args.dataset_id,
                     self._args.image_id,
                 ]
-            ):
-
-                self._parse_inference_settings_from_args()
-                self._inference_by_local_deploy_args()
-                exit(0)
+                ):
+                    self._parse_inference_settings_from_args()
+                    self._inference_by_cli_deploy_args()
+                    exit(0)
+                else:
+                    logger.error("Predict mode requires one of the following arguments: --input, --project_id, --dataset_id, --image_id")
+                    exit(0)
 
         if isinstance(self.gui, GUI.InferenceGUI):
             self._app = Application(layout=self.get_ui())
         elif isinstance(self.gui, GUI.ServingGUI):
             self._app = Application(layout=self._app_layout)
-        # elif isinstance(self.gui, GUI.InferenceGUI):
-        #     self._app = Application(layout=self.get_ui())
         else:
             self._app = Application(layout=self.get_ui())
 
@@ -2583,27 +2850,45 @@ class Inference:
         server = self._app.get_server()
         self._app.set_ready_check_function(self.is_model_deployed)
 
-        @call_on_autostart()
-        def autostart_func():
-            gpu_count = get_gpu_count()
-            if gpu_count > 1:
-                # run autostart after 5 min
-                def delayed_autostart():
-                    logger.debug("Found more than one GPU, autostart will be delayed.")
-                    time.sleep(self._autostart_delay_time)
-                    if not self._model_served:
-                        logger.debug("Deploying the model via autostart...")
-                        self.gui.deploy_with_current_params()
+        if self.api is not None:
 
-                self._executor.submit(delayed_autostart)
-            else:
-                # run autostart immediately
-                self.gui.deploy_with_current_params()
+            @call_on_autostart()
+            def autostart_func():
+                gpu_count = get_gpu_count()
+                if gpu_count > 1:
+                    # run autostart after 5 min
+                    def delayed_autostart():
+                        logger.debug("Found more than one GPU, autostart will be delayed.")
+                        time.sleep(self._autostart_delay_time)
+                        if not self._model_served:
+                            logger.debug("Deploying the model via autostart...")
+                            self.gui.deploy_with_current_params()
+
+                    self._executor.submit(delayed_autostart)
+                else:
+                    # run autostart immediately
+                    self.gui.deploy_with_current_params()
 
         if not self._use_gui:
             Progress("Model deployed", 1).iter_done_report()
         else:
             autostart_func()
+
+        @server.exception_handler(HTTPException)
+        def http_exception_handler(request: Request, exc: HTTPException):
+            response_content = {
+                "detail": exc.detail,
+                "success": False,
+            }
+            if isinstance(exc.detail, dict):
+                if "message" in exc.detail:
+                    response_content["message"] = exc.detail["message"]
+                if "success" in exc.detail:
+                    response_content["success"] = exc.detail["success"]
+            elif isinstance(exc.detail, str):
+                response_content["message"] = exc.detail
+
+            return JSONResponse(status_code=exc.status_code, content=response_content)
 
         self.cache.add_cache_endpoint(server)
         self.cache.add_cache_files_endpoint(server)
@@ -2617,311 +2902,353 @@ class Inference:
         def get_custom_inference_settings():
             return {"settings": self.custom_inference_settings}
 
+        @server.post("/get_model_meta")
         @server.post("/get_output_classes_and_tags")
         def get_output_classes_and_tags():
             return self.model_meta.to_json()
 
         @server.post("/inference_image_id")
         def inference_image_id(request: Request):
-            logger.debug(f"'inference_image_id' request in json format:{request.state.state}")
-            return self._inference_image_id(request.state.api, request.state.state)
-
-        @server.post("/inference_image_url")
-        def inference_image_url(request: Request):
-            logger.debug(f"'inference_image_url' request in json format:{request.state.state}")
-            return self._inference_image_url(request.state.api, request.state.state)
-
-        @server.post("/inference_batch_ids")
-        def inference_batch_ids(response: Response, request: Request):
-            # check batch size
-            batch_size = len(request.state.state["batch_ids"])
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            logger.debug(f"'inference_batch_ids' request in json format:{request.state.state}")
-            return self._inference_batch_ids(request.state.api, request.state.state)
-
-        @server.post("/inference_batch_ids_async")
-        def inference_batch_ids_async(response: Response, request: Request):
-            logger.debug(
-                f"'inference_batch_ids_async' request in json format:{request.state.state}"
-            )
-            images_ids = request.state.state["images_ids"]
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._inference_images_ids,
-                request.state.api,
-                request.state.state,
-                images_ids,
-                inference_request_uuid,
-            )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
-            logger.debug(
-                "Inference has scheduled from 'inference_batch_ids_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
-            )
-            return {
-                "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
-            }
-
-        @server.post("/inference_video_id")
-        def inference_video_id(response: Response, request: Request):
-            logger.debug(f"'inference_video_id' request in json format:{request.state.state}")
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            return self._inference_video_id(request.state.api, request.state.state)
-
-        @server.post("/inference_image")
-        def inference_image(
-            response: Response, files: List[UploadFile], settings: str = Form("{}")
-        ):
-            if len(files) != 1:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"Only one file expected but got {len(files)}"
-            try:
-                state = json.loads(settings)
-                if type(state) != dict:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return "Settings is not json object"
-                return self._inference_image(state, files[0])
-            except (json.decoder.JSONDecodeError, TypeError) as e:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"Cannot decode settings: {e}"
-            except sly_image.UnsupportedImageFormat:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
-
-        @server.post("/inference_batch")
-        def inference_batch(
-            response: Response, files: List[UploadFile], settings: str = Form("{}")
-        ):
-            try:
-                state = json.loads(settings)
-                if type(state) != dict:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return "Settings is not json object"
-                # check batch size
-                batch_size = len(files)
-                if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                    response.status_code = status.HTTP_400_BAD_REQUEST
-                    return {
-                        "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                        "success": False,
-                    }
-                return self._inference_batch(state, files)
-            except (json.decoder.JSONDecodeError, TypeError) as e:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"Cannot decode settings: {e}"
-            except sly_image.UnsupportedImageFormat:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
+            state = request.state.state
+            logger.debug("Received a request to '/inference_image_id'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            return self.inference_requests_manager.run(self._inference_image_ids, api, state)[0]
 
         @server.post("/inference_image_id_async")
         def inference_image_id_async(request: Request):
-            logger.debug(f"'inference_image_id_async' request in json format:{request.state.state}")
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._inference_image_id,
-                request.state.api,
-                request.state.state,
-                inference_request_uuid,
-            )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
+            state = request.state.state
             logger.debug(
-                "Inference has scheduled from 'inference_image_id_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+                "Received a request to 'inference_image_id_async'",
+                extra={"state": state},
+            )
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_image_ids,
+                api,
+                state,
             )
             return {
-                "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "message": "Scheduled inference task.",
+                "inference_request_uuid": inference_request.uuid,
+            }
+
+        @server.post("/inference_image")
+        def inference_image(
+            files: List[UploadFile], settings: str = Form("{}"), state: str = Form("{}")
+        ):
+            if state == "{}" or not state:
+                state = settings
+            state = str(state)
+            logger.debug("Received a request to 'inference_image'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+            if len(files) != 1:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Only one file expected but got {len(files)}",
+                )
+            try:
+                file = files[0]
+                inference_request = self.inference_requests_manager.create()
+                inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file.size)
+
+                img_bytes = b""
+                while buf := file.file.read(64 * 1024 * 1024):
+                    img_bytes += buf
+                    inference_request.done(len(buf))
+
+                image = sly_image.read_bytes(img_bytes)
+                inference_request, future = self.inference_requests_manager.schedule_task(
+                    self._inference_images, [image], state, inference_request=inference_request
+                )
+                future.result()
+                return inference_request.pop_pending_results()[0]
+            except sly_image.UnsupportedImageFormat:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}",
+                )
+
+        @server.post("/inference_image_url")
+        def inference_image_url(request: Request):
+            state = request.state.state
+            logger.debug("Received a request to 'inference_image_url'", extra={"state": state})
+            self.validate_inference_state(state)
+            image_url = state["image_url"]
+            ext = sly_fs.get_file_ext(image_url)
+            if ext == "":
+                ext = ".jpg"
+            with requests.get(image_url, stream=True) as response:
+                response.raise_for_status()
+                response.raw.decode_content = True
+                image = self.cache.add_image_to_cache(image_url, response.raw, ext=ext)
+            return self.inference_requests_manager.run(self._inference_images, [image], state)[0]
+
+        @server.post("/inference_batch_ids")
+        def inference_batch_ids(request: Request):
+            state = request.state.state
+            logger.debug("Received a request to  'inference_batch_ids'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            return self.inference_requests_manager.run(self._inference_image_ids, api, state)
+
+        @server.post("/inference_batch_ids_async")
+        def inference_batch_ids_async(request: Request):
+            state = request.state.state
+            logger.debug(
+                f"Received a request to 'inference_batch_ids_async'", extra={"state": state}
+            )
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_image_ids, api, state
+            )
+            return {
+                "message": "Scheduled inference task.",
+                "inference_request_uuid": inference_request.uuid,
+            }
+
+        @server.post("/inference_batch")
+        def inference_batch(
+            response: Response,
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+            state: str = Form("{}"),
+        ):
+            if state == "{}" or not state:
+                state = settings
+            state = str(state)
+            logger.debug("Received a request to 'inference_batch'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+            if len(files) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"At least one file is expected but got {len(files)}",
+                )
+            try:
+                inference_request = self.inference_requests_manager.create()
+                inference_request.set_stage(
+                    InferenceRequest.Stage.PREPARING, 0, sum([file.size for file in files])
+                )
+
+                names = []
+                for file in files:
+                    name = file.filename
+                    if name is None or name == "":
+                        name = rand_str(10)
+                    ext = Path(name).suffix
+                    img_bytes = b""
+                    while buf := file.file.read(64 * 1024 * 1024):
+                        img_bytes += buf
+                        inference_request.done(len(buf))
+                    self.cache.add_image_to_cache(name, img_bytes, ext=ext)
+                    names.append(name)
+
+                inference_request, future = self.inference_requests_manager.schedule_task(
+                    self._inference_images, names, state, inference_request=inference_request
+                )
+                future.result()
+                return inference_request.pop_pending_results()
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
+
+        @server.post("/inference_batch_async")
+        def inference_batch_async(
+            response: Response,
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+            state: str = Form("{}"),
+        ):
+            if state == "{}" or not state:
+                state = settings
+            state = str(state)
+            logger.debug("Received a request to 'inference_batch'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+            if len(files) == 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"At least one file is expected but got {len(files)}",
+                )
+            try:
+                inference_request = self.inference_requests_manager.create()
+                inference_request.set_stage(
+                    InferenceRequest.Stage.PREPARING, 0, sum([file.size for file in files])
+                )
+
+                names = []
+                for file in files:
+                    name = file.filename
+                    if name is None or name == "":
+                        name = rand_str(10)
+                    ext = Path(name).suffix
+                    img_bytes = b""
+                    while buf := file.file.read(64 * 1024 * 1024):
+                        img_bytes += buf
+                        inference_request.done(len(buf))
+                    self.cache.add_image_to_cache(name, img_bytes, ext=ext)
+                    names.append(name)
+
+                inference_request, _ = self.inference_requests_manager.schedule_task(
+                    self._inference_images, names, state, inference_request=inference_request
+                )
+                return {
+                    "message": "Scheduled inference task.",
+                    "inference_request_uuid": inference_request.uuid,
+                }
+            except sly_image.UnsupportedImageFormat:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return f"File has unsupported format. Supported formats: {sly_image.SUPPORTED_IMG_EXTS}"
+
+        @server.post("/inference_video_id")
+        def inference_video_id(request: Request):
+            state = request.state.state
+            logger.debug(f"Received a request to 'inference_video_id'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, future = self.inference_requests_manager.schedule_task(
+                self._inference_video_id, api, state
+            )
+            future.result()
+            results = {"ann": inference_request.pop_pending_results()}
+            final_result = inference_request.final_result
+            if final_result is not None:
+                results.update(final_result)
+            return results
+
+        @server.post("/inference_video_async")
+        def inference_video_async(
+            files: List[UploadFile],
+            settings: str = Form("{}"),
+            state: str = Form("{}"),
+        ):
+            if state == "{}" or not state:
+                state = settings
+            state = str(state)
+            logger.debug("Received a request to 'inference_video_async'", extra={"state": state})
+            self.validate_inference_state(state)
+            state = json.loads(state)
+
+            file = files[0]
+            video_name = files[0].filename
+            video_source = files[0].file
+            file_size = file.size
+
+            inference_request = self.inference_requests_manager.create()
+            inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file_size)
+
+            video_source.read = progress_wrapper(
+                video_source.read, inference_request.progress.iters_done_report
+            )
+
+            if self.cache.is_persistent:
+                self.cache.add_video_to_cache(video_name, video_source)
+                video_path = self.cache.get_video_path(video_name)
+            else:
+                video_path = os.path.join(tempfile.gettempdir(), video_name)
+                with open(video_path, "wb") as video_file:
+                    shutil.copyfileobj(
+                        video_source, open(video_path, "wb"), length=(64 * 1024 * 1024)
+                    )
+
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_video,
+                path=video_path,
+                state=state,
+                inference_request=inference_request,
+            )
+
+            return {
+                "message": "Scheduled inference task.",
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post("/inference_video_id_async")
         def inference_video_id_async(response: Response, request: Request):
-            logger.debug(f"'inference_video_id_async' request in json format:{request.state.state}")
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._inference_video_id,
-                request.state.api,
-                request.state.state,
-                inference_request_uuid,
-            )
-            end_callback = partial(
-                self._on_inference_end, inference_request_uuid=inference_request_uuid
-            )
-            future.add_done_callback(end_callback)
-            logger.debug(
-                "Inference has scheduled from 'inference_video_id_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+            state = request.state.state
+            logger.debug("Received a request to 'inference_video_id_async'", extra={"state": state})
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_video_id, api, state
             )
             return {
                 "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post("/inference_project_id_async")
         def inference_project_id_async(response: Response, request: Request):
+            state = request.state.state
             logger.debug(
-                f"'inference_project_id_async' request in json format:{request.state.state}"
+                "Received a request to 'inference_project_id_async'", extra={"state": state}
             )
-            project_id = request.state.state["projectId"]
-            project_info = request.state.api.project.get_info_by_id(project_id)
-            if project_info.type != str(ProjectType.IMAGES):
-                raise ValueError("Only images projects are supported.")
-            # check batch size
-            batch_size = request.state.state.get("batch_size", None)
-            if batch_size is None:
-                batch_size = self.get_batch_size()
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._inference_project_id,
-                request.state.api,
-                request.state.state,
-                project_info,
-                inference_request_uuid,
-            )
-            logger.debug(
-                "Inference has scheduled from 'inference_project_id_async' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._inference_project_id, api, state
             )
             return {
                 "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post("/run_speedtest")
         def run_speedtest(response: Response, request: Request):
-            logger.debug(f"'run_speedtest' request in json format:{request.state.state}")
-            project_id = request.state.state["projectId"]
-            project_info = request.state.api.project.get_info_by_id(project_id)
-            if project_info.type != str(ProjectType.IMAGES):
-                response.status_code = status.HTTP_400_BAD_REQUEST
-                response.body = {"message": "Only images projects are supported."}
-                raise ValueError("Only images projects are supported.")
-            batch_size = request.state.state["batch_size"]
+            state = request.state.state
+            logger.debug(f"'run_speedtest' request in json format:{state}")
+
+            batch_size = state["batch_size"]
             if batch_size > 1 and not self.is_batch_inference_supported():
                 response.status_code = status.HTTP_501_NOT_IMPLEMENTED
                 return {
                     "message": "Batch inference is not implemented for this model.",
                     "success": False,
                 }
-            # check batch size
-            if self.max_batch_size is not None and batch_size > self.max_batch_size:
+
+            self.validate_inference_state(state)
+            api = self.api_from_request(request)
+
+            project_id = state["projectId"]
+            project_info = api.project.get_info_by_id(project_id)
+            if project_info.type != str(ProjectType.IMAGES):
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {
-                    "message": f"Batch size should be less than or equal to {self.max_batch_size} for this model.",
-                    "success": False,
-                }
-            inference_request_uuid = uuid.uuid5(
-                namespace=uuid.NAMESPACE_URL, name=f"{time.time()}"
-            ).hex
-            self._on_inference_start(inference_request_uuid)
-            future = self._executor.submit(
-                self._handle_error_in_async,
-                inference_request_uuid,
-                self._run_speedtest,
-                request.state.api,
-                request.state.state,
-                inference_request_uuid,
-            )
-            logger.debug(
-                "Speedtest has scheduled from 'run_speedtest' endpoint",
-                extra={"inference_request_uuid": inference_request_uuid},
+                response.body = {"message": "Only images projects are supported."}
+                raise ValueError("Only images projects are supported.")
+
+            inference_request, _ = self.inference_requests_manager.schedule_task(
+                self._run_speedtest, api, state
             )
             return {
                 "message": "Inference has started.",
-                "inference_request_uuid": inference_request_uuid,
+                "inference_request_uuid": inference_request.uuid,
             }
 
         @server.post(f"/get_inference_progress")
         def get_inference_progress(response: Response, request: Request):
-            inference_request_uuid = request.state.state.get("inference_request_uuid")
+            state = request.state.state
+            logger.debug("Received a request to '/get_inference_progress'", extra={"state": state})
+            inference_request_uuid = state.get("inference_request_uuid")
             if inference_request_uuid is None:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
-
-            # Logging
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
+                inference_request.uuid, inference_request
             )
+            data = {**inference_request.to_json(), **log_extra}
+            if inference_request.stage != InferenceRequest.Stage.INFERENCE:
+                data["progress"] = {"current": 0, "total": 1}
             logger.debug(
                 f"Sending inference progress with uuid:",
-                extra=log_extra,
+                extra=data,
             )
-
-            # Ger rid of `pending_results` to less response size
-            inference_request["pending_results"] = []
-            inference_request.pop("lock", None)
-            return inference_request
+            return data
 
         @server.post(f"/pop_inference_results")
         def pop_inference_results(response: Response, request: Request):
@@ -2930,23 +3257,34 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            # Copy results
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-            inference_request["pending_results"] = inference_request["pending_results"].copy()
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid].copy()
+                inference_request["pending_results"] = inference_request["pending_results"].copy()
 
-            # Clear the queue `pending_results`
-            self._inference_requests[inference_request_uuid]["pending_results"].clear()
+                # Clear the queue `pending_results`
+                self._inference_requests[inference_request_uuid]["pending_results"].clear()
 
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
+                inference_request["progress"] = _convert_sly_progress_to_dict(
+                    inference_request["progress"]
+                )
+                log_extra = _get_log_extra_for_inference_request(
+                    inference_request_uuid, inference_request
+                )
+                logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
+                return inference_request
 
-            # Logging
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
+                inference_request.uuid, inference_request
             )
+            data = {
+                **inference_request.to_json(),
+                **log_extra,
+                "pending_results": inference_request.pop_pending_results(),
+            }
+
             logger.debug(f"Sending inference delta results with uuid:", extra=log_extra)
-            return inference_request
+            return data
 
         @server.post(f"/get_inference_result")
         def get_inference_result(response: Response, request: Request):
@@ -2955,22 +3293,34 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self._inference_requests[inference_request_uuid].copy()
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid].copy()
 
-            inference_request["progress"] = _convert_sly_progress_to_dict(
-                inference_request["progress"]
-            )
+                inference_request["progress"] = _convert_sly_progress_to_dict(
+                    inference_request["progress"]
+                )
 
-            # Logging
+                # Logging
+                log_extra = _get_log_extra_for_inference_request(
+                    inference_request_uuid, inference_request
+                )
+
+                logger.debug(
+                    f"Sending inference result with uuid:",
+                    extra=log_extra,
+                )
+                return inference_request["result"]
+
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
             log_extra = _get_log_extra_for_inference_request(
-                inference_request_uuid, inference_request
+                inference_request.uuid, inference_request
             )
             logger.debug(
                 f"Sending inference result with uuid:",
                 extra=log_extra,
             )
 
-            return inference_request["result"]
+            return inference_request.final_result
 
         @server.post(f"/stop_inference")
         def stop_inference(response: Response, request: Request):
@@ -2981,8 +3331,12 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            inference_request = self._inference_requests[inference_request_uuid]
-            inference_request["cancel_inference"] = True
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid]
+                inference_request["cancel_inference"] = True
+            else:
+                inference_request = self.inference_requests_manager.get(inference_request_uuid)
+                inference_request.stop()
             return {"message": "Inference will be stopped.", "success": True}
 
         @server.post(f"/clear_inference_request")
@@ -2994,7 +3348,10 @@ class Inference:
                     "message": "Error: 'inference_request_uuid' is required.",
                     "success": False,
                 }
-            del self._inference_requests[inference_request_uuid]
+            if inference_request_uuid in self._inference_requests:
+                del self._inference_requests[inference_request_uuid]
+            else:
+                self.inference_requests_manager.remove_after(inference_request_uuid, 60)
             logger.debug("Removed an inference request:", extra={"uuid": inference_request_uuid})
             return {"success": True}
 
@@ -3005,8 +3362,13 @@ class Inference:
                 response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message": "Error: 'inference_request_uuid' is required."}
 
-            inference_request = self._inference_requests[inference_request_uuid].copy()
-            return inference_request["preparing_progress"]
+            if inference_request_uuid in self._inference_requests:
+                inference_request = self._inference_requests[inference_request_uuid].copy()
+                return inference_request["preparing_progress"]
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
+            return _get_log_extra_for_inference_request(inference_request.uuid, inference_request)[
+                "preparing_progress"
+            ]
 
         @server.post("/get_deploy_settings")
         def _get_deploy_settings(response: Response, request: Request):
@@ -3052,21 +3414,85 @@ class Inference:
                     self.shutdown_model()
                 state = request.state.state
                 deploy_params = state["deploy_params"]
+                model_name = state.get("model_name", None)
                 if isinstance(self.gui, GUI.ServingGUITemplate):
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
+                        deploy_params = self._build_deploy_params_from_api(
+                            model_name, deploy_params
+                        )
                     model_files = self._download_model_files(deploy_params)
                     deploy_params["model_files"] = model_files
+                    deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model_headless(**deploy_params)
                 elif isinstance(self.gui, GUI.ServingGUI):
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
+                        deploy_params = self._build_legacy_deploy_params_from_api(model_name)
+                    deploy_params = self._set_common_deploy_params(deploy_params)
                     self._load_model(deploy_params)
+                elif self.gui is None and self.api is None:
+                    if deploy_params["model_source"] == ModelSource.PRETRAINED and model_name:
+                        deploy_params = self._build_deploy_params_from_api(
+                            model_name, deploy_params
+                        )
+                        model_files = self._download_model_files(deploy_params)
+                        deploy_params["model_files"] = model_files
 
-                self.set_params_to_gui(deploy_params)
-                # update to set correct device
-                device = deploy_params.get("device", "cpu")
-                self.gui.set_deployed(device)
+                    deploy_params = self._set_common_deploy_params(deploy_params)
+                    self._load_model_headless(**deploy_params)
+                    logger.info(
+                        f"Model has been successfully loaded on {deploy_params['device']} device"
+                    )
+                    return {"result": "model was successfully deployed"}
+
+                else:
+                    raise ValueError("Unknown GUI type")
+                if self.gui is not None:
+                    self.set_params_to_gui(deploy_params)
+                    # update to set correct device
+                    device = deploy_params.get("device", "cpu")
+                    self.gui.set_deployed(device)
                 return {"result": "model was successfully deployed"}
             except Exception as e:
-                self.gui._success_label.hide()
+                if self.gui is not None:
+                    self.gui._success_label.hide()
                 raise e
+            finally:
+                self._schedule_freeze_on_inactivity()
+
+        @server.post("/list_pretrained_models")
+        def _list_pretrained_models():
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                return [
+                    _get_model_name(model) for model in self._gui.pretrained_models_table._models
+                ]
+            elif hasattr(self, "pretrained_models"):
+                return [_get_model_name(model) for model in self.pretrained_models]
+            else:
+                if hasattr(self, "pretrained_models_table"):
+                    return [
+                        _get_model_name(model)
+                        for model in self.pretrained_models_table._models  # pylint: disable=no-member
+                    ]
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Pretrained models table is not available in this app.",
+                    )
+
+        @server.post("/list_pretrained_model_infos")
+        def _list_pretrained_model_infos():
+            if isinstance(self.gui, GUI.ServingGUITemplate):
+                return self._gui.pretrained_models_table._models
+            elif hasattr(self, "pretrained_models"):
+                return self.pretrained_models
+            else:
+                if hasattr(self, "pretrained_models_table"):
+                    return self.pretrained_models_table._models
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Pretrained models table is not available in this app.",
+                    )
 
         @server.post("/is_deployed")
         def _is_deployed(response: Response, request: Request):
@@ -3080,11 +3506,54 @@ class Inference:
         def _get_deploy_info():
             return asdict(self._get_deploy_info())
 
-        # Local deploy without predict args
-        if self._is_local_deploy:
-            self._run_server()
+        @server.post("/get_inference_status")
+        def _get_inference_status(request: Request, response: Response):
+            state = request.state.state
+            inference_request_uuid = state.get("inference_request_uuid")
+            if inference_request_uuid is None:
+                response.status_code = status.HTTP_400_BAD_REQUEST
+                return {"message": "Error: 'inference_request_uuid' is required."}
+            inference_request = self.inference_requests_manager.get(inference_request_uuid)
+            if inference_request is None:
+                response.status_code = status.HTTP_404_NOT_FOUND
+                return {"message": "Error: 'inference_request_uuid' is not found."}
+            return inference_request.status()
 
-    def _parse_local_deploy_args(self):
+        @server.post("/get_status")
+        def _get_status(request: Request):
+            progress = self.inference_requests_manager.global_progress.to_json()
+            ram_allocated, ram_total = get_ram_usage()
+            gpu_allocated, gpu_total = get_gpu_usage()
+            return {
+                "is_deployed": self.is_model_deployed(),
+                "progress": progress,
+                "gpu_memory": {
+                    "allocated": gpu_allocated,
+                    "total": gpu_total,
+                },
+                "ram_memory": {
+                    "allocated": ram_allocated,
+                    "total": ram_total,
+                },
+            }
+
+        @server.post("/freeze_model")
+        def _freeze_model(request: Request):
+            if self._model_frozen:
+                return {"message": "Model is already frozen."}
+
+            self._freeze_model()
+            if not self._model_frozen:
+                return {"message": "Failed to freeze model. Check the logs for details."}
+            return {"message": "Model is frozen."}
+
+        # Local deploy without predict args
+        if self._is_cli_deploy:
+            self._run_server()
+        elif self._is_quick_deploy:
+            self._run_server_in_thread()
+
+    def _parse_cli_deploy_args(self):
         parser = argparse.ArgumentParser(description="Run Inference Serving")
 
         # Positional args
@@ -3201,6 +3670,7 @@ class Inference:
         return args, True
 
     def _parse_inference_settings_from_args(self):
+        logger.debug("Parsing inference settings from args")
         def parse_value(value: str):
             if value.lower() in ("true", "false"):
                 return value.lower() == "true"
@@ -3236,6 +3706,7 @@ class Inference:
                 args.settings = settings_dict
         args.settings = self._read_settings(args.settings)
         self._validate_settings(args.settings)
+        logger.debug("Inference settings were successfully parsed from args")
 
     def _get_pretrained_model_params_from_args(self):
         model_files = None
@@ -3271,8 +3742,12 @@ class Inference:
     def _get_custom_model_params_from_args(self):
         def _load_experiment_info(artifacts_dir):
             experiment_path = os.path.join(artifacts_dir, "experiment_info.json")
+            if not os.path.exists(experiment_path):
+                raise ValueError(f"Experiment info file not found in {artifacts_dir}")
             model_info = self._load_json_file(experiment_path)
             model_meta_path = os.path.join(artifacts_dir, "model_meta.json")
+            if not os.path.exists(model_meta_path):
+                raise ValueError(f"Model meta file not found in {artifacts_dir}")
             model_info["model_meta"] = self._load_json_file(model_meta_path)
             original_model_files = model_info.get("model_files")
             return model_info, original_model_files
@@ -3298,6 +3773,7 @@ class Inference:
             else:
                 loop.run_until_complete(coro)
 
+        logger.debug("Getting custom model params from args")
         model_source = ModelSource.CUSTOM
         need_download = False
         checkpoint_path = self._args.model
@@ -3308,6 +3784,8 @@ class Inference:
                 raise ValueError(
                     "Team ID not found in env. Required for remote custom checkpoints."
                 )
+            if self.api is None:
+                raise ValueError("API is not initialized. Please provide .env file with 'API_TOKEN' and 'SERVER_ADDRESS' environment variables.")
             file_info = self.api.file.get_info_by_path(team_id, checkpoint_path)
             if not file_info:
                 raise ValueError(
@@ -3315,26 +3793,46 @@ class Inference:
                 )
             need_download = True
 
+        if not need_download:
+            try:
+                # Read data from checkpoint
+                logger.debug(f"Reading data from checkpoint: {checkpoint_path}")
+                import torch  # pylint: disable=import-error
+                checkpoint = torch.load(checkpoint_path)
+                model_info = checkpoint["model_info"]
+                model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
+                model_meta = os.path.join(self.model_dir, "model_meta.json")
+                model_info["model_meta"] = self._load_json_file(model_meta)
+                model_files["checkpoint"] = checkpoint_path
+                need_download = False
+                return model_files, model_source, model_info, need_download
+            except Exception as e:
+                logger.debug(f"Failed to read data from checkpoint: {repr(e)}")
+
         artifacts_dir = os.path.dirname(os.path.dirname(checkpoint_path))
         if not need_download:
+            logger.debug(f"Looking for data in artifacts: '{artifacts_dir}'")
             model_info, original_model_files = _load_experiment_info(artifacts_dir)
             model_files = _prepare_local_model_files(
                 artifacts_dir, checkpoint_path, original_model_files
             )
-
+            logger.debug(f"Data was found in artifacts directory: '{artifacts_dir}'")
         else:
+            logger.debug(f"Downloading data from remote directory: '{artifacts_dir}'")
             local_artifacts_dir = os.path.join(
-                self.model_dir, "local_deploy", os.path.basename(artifacts_dir)
+                self.model_dir, "cli_deploy", os.path.basename(artifacts_dir)
             )
             _download_remote_files(team_id, artifacts_dir, local_artifacts_dir)
-
             model_info, original_model_files = _load_experiment_info(local_artifacts_dir)
             model_files = _prepare_local_model_files(
                 local_artifacts_dir, checkpoint_path, original_model_files
             )
+            logger.debug(f"Data was downloaded from remote directory: '{artifacts_dir}'")
+        logger.debug("Custom model params were successfully parsed from args")
         return model_files, model_source, model_info, need_download
 
     def _get_deploy_params_from_args(self):
+        logger.debug("Getting deploy params from args")
         # Ensure model directory exists
         device = self._args.device if self._args.device else "cuda:0"
         runtime = self._args.runtime if self._args.runtime else RuntimeType.PYTORCH
@@ -3361,7 +3859,6 @@ class Inference:
             "device": device,
             "runtime": runtime,
         }
-
         logger.debug(f"Deploy parameters: {deploy_params}")
         return deploy_params, need_download
 
@@ -3369,6 +3866,18 @@ class Inference:
         config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
         self._uvicorn_server = uvicorn.Server(config)
         self._uvicorn_server.run()
+
+    def _run_server_in_thread(self):
+        """Run Uvicorn server in a separate thread so that this method doesn't block the caller."""
+        import threading
+
+        def _serve():
+            config = uvicorn.Config(app=self._app, host="0.0.0.0", port=8000, ws="websockets")
+            self._uvicorn_server = uvicorn.Server(config)
+            self._uvicorn_server.run()
+
+        self._server_thread = threading.Thread(target=_serve, daemon=True)
+        self._server_thread.start()
 
     def _read_settings(self, settings: Union[str, Dict[str, Any]]):
         if isinstance(settings, dict):
@@ -3396,7 +3905,8 @@ class Inference:
                     f"Inference settings doesn't have key: '{key}'. Available keys are: '{acceptable_keys}'"
                 )
 
-    def _inference_by_local_deploy_args(self):
+    def _inference_by_cli_deploy_args(self):
+        logger.debug("Starting inference by CLI deploy args")
         missing_env_message = "Set 'SERVER_ADDRESS' and 'API_TOKEN' environment variables to predict data on Supervisely platform."
 
         def predict_project_id_by_args(
@@ -3410,14 +3920,13 @@ class Inference:
         ):
             if self.api is None:
                 raise ValueError(missing_env_message)
-
-            if dataset_ids:
-                logger.info(f"Predicting datasets: '{dataset_ids}'")
-            else:
-                logger.info(f"Predicting project: '{project_id}'")
-
             if draw:
                 raise ValueError("Draw visualization is not supported for project inference")
+
+            if dataset_ids:
+                logger.info(f"Predicting Dataset(s) by ID(s): '{', '.join(str(dataset_id) for dataset_id in dataset_ids)}'")
+            else:
+                logger.info(f"Predicting Project by ID: {project_id}")
 
             state = {
                 "projectId": project_id,
@@ -3433,7 +3942,7 @@ class Inference:
                     change_name_if_conflict=True,
                 )
                 state["output_project_id"] = output_project.id
-            results = self._inference_project_id(api=self.api, state=state)
+            results = self.inference_requests_manager.run(self._inference_project_id, api, state)
 
             dataset_infos = api.dataset.get_list(project_id)
             datasets_map = {dataset_info.id: dataset_info.name for dataset_info in dataset_infos}
@@ -3457,6 +3966,7 @@ class Inference:
             draw: bool = False,
             upload: bool = False,
         ):
+            logger.info(f"Predicting Dataset(s) by ID(s): {', '.join(str(dataset_id) for dataset_id in dataset_ids)}")
             if draw:
                 raise ValueError("Draw visualization is not supported for dataset inference")
             if self.api is None:
@@ -3480,7 +3990,7 @@ class Inference:
             if self.api is None:
                 raise ValueError(missing_env_message)
 
-            logger.info(f"Predicting image: '{image_id}'")
+            logger.info(f"Predicting Image by ID: {image_id}")
 
             def predict_image_np(image_np):
                 anns, _ = self._inference_auto([image_np], settings)
@@ -3517,8 +4027,7 @@ class Inference:
             output_dir: str = "./predictions",
             draw: bool = False,
         ):
-            logger.info(f"Predicting '{input_path}'")
-
+            logger.info(f"Predicting Local Data: {input_path}")
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
                 if pred_dir is not None:
@@ -3605,148 +4114,193 @@ class Inference:
             )
 
         app_name = sly_env.app_name()
-        meta = WorkflowMeta(node_settings=WorkflowSettings(title=f"Serve {app_name}"))
+        meta = WorkflowMeta(node_settings=WorkflowSettings(title=app_name))
 
         logger.debug(
             f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}"
         )
-        if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
-            self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-        else:
-            logger.debug(
-                f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
-            )
-
-    def _exclude_duplicated_predictions(
-        self,
-        api: Api,
-        pred_anns: List[Annotation],
-        settings: dict,
-        dataset_id: int,
-        gt_image_ids: List[int],
-        meta: Optional[ProjectMeta] = None,
-    ):
-        """
-        Filter out predictions that significantly overlap with ground truth (GT) objects.
-
-        This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
-        - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
-        - Gets ProjectMeta object if not provided
-        - Downloads GT annotations for the specified image IDs
-        - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
-
-        :param api: Supervisely API object
-        :type api: Api
-        :param pred_anns: List of Annotation objects containing predictions
-        :type pred_anns: List[Annotation]
-        :param settings: Inference settings
-        :type settings: dict
-        :param dataset_id: ID of the dataset containing the images
-        :type dataset_id: int
-        :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
-        :type gt_image_ids: List[int]
-        :param meta: ProjectMeta object
-        :type meta: Optional[ProjectMeta]
-        :return: List of Annotation objects containing filtered predictions
-        :rtype: List[Annotation]
-
-        Notes:
-        ------
-        - Requires PyTorch and torchvision for IoU calculations
-        - This method is useful for identifying new objects that aren't already annotated in the ground truth
-        """
-        iou = settings.get("existing_objects_iou_thresh")
-        if isinstance(iou, float) and 0 < iou <= 1:
-            if meta is None:
-                ds = api.dataset.get_info_by_id(dataset_id)
-                meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
-            gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
-            gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
-            for i in range(0, len(pred_anns)):
-                before = len(pred_anns[i].labels)
-                with Timer() as timer:
-                    pred_anns[i] = self._filter_duplicated_predictions_from_ann(
-                        gt_anns[i], pred_anns[i], iou
-                    )
-                after = len(pred_anns[i].labels)
+        if model_source == ModelSource.CUSTOM:
+            if checkpoint_url and self.api.file.exists(sly_env.team_id(), checkpoint_url):
+                # self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+                remote_checkpoint_dir = os.path.dirname(checkpoint_url)
+                self.api.app.workflow.add_input_folder(remote_checkpoint_dir, meta=meta)
+            else:
                 logger.debug(
-                    f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+                    f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input"
                 )
-        return pred_anns
 
-    def _filter_duplicated_predictions_from_ann(
-        self, gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
-    ) -> Annotation:
-        """
-        Filter out predictions that significantly overlap with ground truth annotations.
-
-        This function compares each prediction with ground truth annotations of the same class
-        and removes predictions that have an IoU (Intersection over Union) greater than or equal
-        to the specified threshold with any ground truth annotation. This is useful for identifying
-        new objects that aren't already annotated in the ground truth.
-
-        :param gt_ann: Annotation object containing ground truth labels
-        :type gt_ann: Annotation
-        :param pred_ann: Annotation object containing prediction labels to be filtered
-        :type pred_ann: Annotation
-        :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
-                                ground truth box of the same class will be removed
-        :type iou_threshold: float
-        :return: A new annotation object containing only predictions that don't significantly
-                 overlap with ground truth annotations
-        :rtype: Annotation
-
-
-        Notes:
-        ------
-        - Predictions with classes not present in ground truth will be kept
-        - Requires PyTorch and torchvision for IoU calculations
-        """
-
+    def _set_checkpoint_from_experiment_info(self, experiment_info: ExperimentInfo):
         try:
-            import torch
-            from torchvision.ops import box_iou
+            if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+                return
 
-        except ImportError:
-            raise ImportError("Please install PyTorch and torchvision to use this feature.")
+            task_id = experiment_info.task_id
+            self.gui.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
+            self.gui.experiment_selector.set_by_task_id(task_id)
 
-        def _to_tensor(geom):
-            return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+            best_ckpt = experiment_info.best_checkpoint
+            if best_ckpt:
+                row = self.gui.experiment_selector.get_by_task_id(task_id)
+                if row is not None:
+                    row.set_selected_checkpoint_by_name(best_ckpt)
+        except Exception as e:
+            logger.warning(f"Failed to set checkpoint from experiment info: {repr(e)}")
 
-        new_labels = []
-        pred_cls_bboxes = defaultdict(list)
-        for label in pred_ann.labels:
-            pred_cls_bboxes[label.obj_class.name].append(label)
+    def _reset_gui_state(self):
+        if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
+            return
+        self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
 
-        gt_cls_bboxes = defaultdict(list)
-        for label in gt_ann.labels:
-            if label.obj_class.name not in pred_cls_bboxes:
-                continue
-            gt_cls_bboxes[label.obj_class.name].append(label)
+def _exclude_duplicated_predictions(
+    api: Api,
+    pred_anns: List[Annotation],
+    dataset_id: int,
+    gt_image_ids: List[int],
+    iou: float = None,
+    meta: Optional[ProjectMeta] = None,
+):
+    """
+    Filter out predictions that significantly overlap with ground truth (GT) objects.
 
-        for name, pred in pred_cls_bboxes.items():
-            gt = gt_cls_bboxes[name]
-            if len(gt) == 0:
-                new_labels.extend(pred)
-                continue
-            pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
-            gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
-            iou_matrix = box_iou(pred_bboxes, gt_bboxes)
-            iou_matrix = iou_matrix.cpu().numpy()
-            keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
-            new_labels.extend([pred[i] for i in keep_indices])
+    This is a wrapper around the `_filter_duplicated_predictions_from_ann` method that does the following:
+    - Checks inference settings for the IoU threshold (`existing_objects_iou_thresh`)
+    - Gets ProjectMeta object if not provided
+    - Downloads GT annotations for the specified image IDs
+    - Filters out predictions that have an IoU greater than or equal to the specified threshold with any GT object
 
-        return pred_ann.clone(labels=new_labels)
+    :param api: Supervisely API object
+    :type api: Api
+    :param pred_anns: List of Annotation objects containing predictions
+    :type pred_anns: List[Annotation]
+    :param dataset_id: ID of the dataset containing the images
+    :type dataset_id: int
+    :param gt_image_ids: List of image IDs to filter predictions. All images should belong to the same dataset
+    :type gt_image_ids: List[int]
+    :param iou: IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                    ground truth box of the same class will be removed. None if no filtering is needed
+    :type iou: Optional[float]
+    :param meta: ProjectMeta object
+    :type meta: Optional[ProjectMeta]
+    :return: List of Annotation objects containing filtered predictions
+    :rtype: List[Annotation]
+
+    Notes:
+    ------
+    - Requires PyTorch and torchvision for IoU calculations
+    - This method is useful for identifying new objects that aren't already annotated in the ground truth
+    """
+    if isinstance(iou, float) and 0 < iou <= 1:
+        if meta is None:
+            ds = api.dataset.get_info_by_id(dataset_id)
+            meta = ProjectMeta.from_json(api.project.get_meta(ds.project_id))
+        gt_anns = api.annotation.download_json_batch(dataset_id, gt_image_ids)
+        gt_anns = [Annotation.from_json(ann, meta) for ann in gt_anns]
+        for i in range(0, len(pred_anns)):
+            before = len(pred_anns[i].labels)
+            with Timer() as timer:
+                pred_anns[i] = _filter_duplicated_predictions_from_ann(
+                    gt_anns[i], pred_anns[i], iou
+                )
+            after = len(pred_anns[i].labels)
+            logger.debug(
+                f"{[i]}: applied NMS with IoU={iou}. Before: {before}, After: {after}. Time: {timer.get_time():.3f}ms"
+            )
+    return pred_anns
 
 
-def _get_log_extra_for_inference_request(inference_request_uuid, inference_request: dict):
+def _filter_duplicated_predictions_from_ann(
+    gt_ann: Annotation, pred_ann: Annotation, iou_threshold: float
+) -> Annotation:
+    """
+    Filter out predictions that significantly overlap with ground truth annotations.
+
+    This function compares each prediction with ground truth annotations of the same class
+    and removes predictions that have an IoU (Intersection over Union) greater than or equal
+    to the specified threshold with any ground truth annotation. This is useful for identifying
+    new objects that aren't already annotated in the ground truth.
+
+    :param gt_ann: Annotation object containing ground truth labels
+    :type gt_ann: Annotation
+    :param pred_ann: Annotation object containing prediction labels to be filtered
+    :type pred_ann: Annotation
+    :param iou_threshold:   IoU threshold (0.0-1.0). Predictions with IoU >= threshold with any
+                            ground truth box of the same class will be removed
+    :type iou_threshold: float
+    :return: A new annotation object containing only predictions that don't significantly
+                overlap with ground truth annotations
+    :rtype: Annotation
+
+
+    Notes:
+    ------
+    - Predictions with classes not present in ground truth will be kept
+    - Requires PyTorch and torchvision for IoU calculations
+    """
+
+    try:
+        import torch
+        from torchvision.ops import box_iou
+
+    except ImportError:
+        raise ImportError("Please install PyTorch and torchvision to use this feature.")
+
+    def _to_tensor(geom):
+        return torch.tensor([geom.left, geom.top, geom.right, geom.bottom]).float()
+
+    new_labels = []
+    pred_cls_bboxes = defaultdict(list)
+    for label in pred_ann.labels:
+        pred_cls_bboxes[label.obj_class.name].append(label)
+
+    gt_cls_bboxes = defaultdict(list)
+    for label in gt_ann.labels:
+        if label.obj_class.name not in pred_cls_bboxes:
+            continue
+        gt_cls_bboxes[label.obj_class.name].append(label)
+
+    for name, pred in pred_cls_bboxes.items():
+        gt = gt_cls_bboxes[name]
+        if len(gt) == 0:
+            new_labels.extend(pred)
+            continue
+        pred_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in pred]).float()
+        gt_bboxes = torch.stack([_to_tensor(l.geometry.to_bbox()) for l in gt]).float()
+        iou_matrix = box_iou(pred_bboxes, gt_bboxes)
+        iou_matrix = iou_matrix.cpu().numpy()
+        keep_indices = np.where(np.all(iou_matrix < iou_threshold, axis=1))[0]
+        new_labels.extend([pred[i] for i in keep_indices])
+
+    return pred_ann.clone(labels=new_labels)
+
+
+def _get_log_extra_for_inference_request(
+    inference_request_uuid, inference_request: Union[InferenceRequest, dict]
+):
+    if isinstance(inference_request, dict):
+        log_extra = {
+            "uuid": inference_request_uuid,
+            "progress": inference_request["progress"],
+            "is_inferring": inference_request["is_inferring"],
+            "cancel_inference": inference_request["cancel_inference"],
+            "has_result": inference_request["result"] is not None,
+            "pending_results": len(inference_request["pending_results"]),
+        }
+        return log_extra
+
+    progress = inference_request.progress_json()
+    del progress["message"]
     log_extra = {
-        "uuid": inference_request_uuid,
-        "progress": inference_request["progress"],
-        "is_inferring": inference_request["is_inferring"],
-        "cancel_inference": inference_request["cancel_inference"],
-        "has_result": inference_request["result"] is not None,
-        "pending_results": len(inference_request["pending_results"]),
+        "uuid": inference_request.uuid,
+        "progress": progress,
+        "is_inferring": inference_request.is_inferring(),
+        "stopped": inference_request.is_stopped(),
+        "finished": inference_request.is_finished(),
+        "cancel_inference": inference_request.is_stopped(),
+        "has_result": inference_request.final_result is not None,
+        "pending_results": inference_request.pending_num(),
+        "exception": inference_request.exception_json(),
+        "result": inference_request._final_result,
+        "preparing_progress": progress,
     }
     return log_extra
 
@@ -4059,3 +4613,33 @@ def get_hardware_info(device: str) -> str:
     except Exception as e:
         logger.error("Error while getting hardware info", exc_info=True)
     return "Unknown"
+
+
+def progress_wrapper(func, progress_cb):
+    @wraps(func)
+    def wrapped_func(*args, **kwargs):
+        result = func(*args, **kwargs)
+        progress_cb(len(result))
+        return result
+
+    return wrapped_func
+
+
+def batched_iter(iterable, batch_size):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) == batch_size:
+            yield batch
+            batch = []
+    if batch:
+        yield batch
+
+
+def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
+    for key in keys:
+        if key in data:
+            if ignore_none and data[key] is None:
+                continue
+            return data[key]
+    return None

@@ -10,12 +10,16 @@ This is a general information about the project.<br>
 In this section, you can find information about the dataset structure. Dataset names are clickable and will redirect you to the corresponding folder.<br><br>
 {{dataset_structure_info}}<br>
 
+## Additional information (descriptions and custom data for datasets)
+
+{{dataset_description_info}}
+
 ## Useful links
 
 Please, visit the [Supervisely blog](https://supervisely.com/blog) to keep up with the latest news, updates, and tutorials and subscribe to [our YouTube channel](https://www.youtube.com/c/Supervisely) to watch video tutorials.<br>
 
 -   [Supervisely Developer Portal](https://developer.supervisely.com/)
--   [Supervisely JSON format](https://docs.supervise.ly/data-organization/00_ann_format_navi)
+-   [Supervisely JSON format](https://docs.supervisely.com/data-organization/00_ann_format_navi)
 -   [Intro to Python SDK](https://developer.supervisely.com/getting-started/intro-to-python-sdk)
 -   [Python SDK reference](https://supervisely.readthedocs.io/en/latest/sdk_packages.html)
 -   [API documentnation](https://api.docs.supervisely.com/)

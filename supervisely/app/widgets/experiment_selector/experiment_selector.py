@@ -52,7 +52,7 @@ class ExperimentSelector(Widget):
             self._experiment_info = experiment_info
 
             task_id = experiment_info.task_id
-            if task_id == "debug-session":
+            if task_id == "debug-session" or task_id == -1:
                 pass
             elif type(task_id) is str:
                 if task_id.isdigit():
@@ -142,6 +142,14 @@ class ExperimentSelector(Widget):
         @property
         def checkpoints_selector(self) -> Select:
             return self._checkpoints_widget
+
+        @property
+        def experiment_info(self) -> ExperimentInfo:
+            return self._experiment_info
+
+        @property
+        def best_checkpoint(self) -> str:
+            return self.experiment_info.best_checkpoint
 
         @property
         def session_link(self) -> str:
@@ -392,7 +400,7 @@ class ExperimentSelector(Widget):
                 if result:
                     task_type, model_row = result
                     if task_type is not None and model_row is not None:
-                        if model_row.task_id == "debug-session":
+                        if model_row.task_id == "debug-session" or model_row.task_id == -1:
                             self.__debug_row = (task_type, model_row)
                             continue
                         table_rows[task_type].append(model_row)
@@ -460,6 +468,12 @@ class ExperimentSelector(Widget):
         selected_row = self.get_selected_row()
         return selected_row.get_selected_checkpoint_path()
 
+    def get_selected_checkpoint_name(self) -> str:
+        if len(self._rows) == 0:
+            return
+        selected_row = self.get_selected_row()
+        return selected_row.get_selected_checkpoint_name()
+
     def get_model_files(self) -> Dict[str, str]:
         """
         Returns a dictionary with full paths to model files in Supervisely Team Files.
@@ -485,8 +499,11 @@ class ExperimentSelector(Widget):
         }
         return deploy_params
 
-    def set_active_row(self, row_index: int) -> None:
-        if row_index < 0 or row_index > len(self._rows) - 1:
+    def set_active_row(self, row_index: int, task_type: str = None) -> None:
+        if task_type is None:
+            task_type = self.get_selected_task_type()
+            self.set_active_task_type(task_type)
+        if row_index < 0 or row_index > len(self._rows[task_type]) - 1:
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
@@ -495,7 +512,8 @@ class ExperimentSelector(Widget):
         for task_type in self._rows:
             for i, row in enumerate(self._rows[task_type]):
                 if row.task_id == task_id:
-                    self.set_active_row(i)
+                    self.set_active_task_type(task_type)
+                    self.set_active_row(i, task_type)
                     return
 
     def get_by_task_id(self, task_id: int) -> Union[ModelRow, None]:

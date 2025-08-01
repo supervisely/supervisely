@@ -38,7 +38,7 @@ class StorageApi(FileApi):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         team_id = 8
         file_path = "/999_App_Test/"
@@ -117,7 +117,7 @@ class StorageApi(FileApi):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 8
 
@@ -317,7 +317,7 @@ class StorageApi(FileApi):
             #                  sizeb=261,
             #                  created_at='2021-01-11T09:04:17.959Z',
             #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         dir_path = os.path.dirname(remote_path.rstrip("/"))
         path_infos = self.list(team_id, dir_path, recursive=False)
