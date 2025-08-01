@@ -99,7 +99,7 @@ class PredictApp:
                     "inference_settings": {
                         "conf": 0.6,
                     },
-                    "items": {
+                    "item": {
                         # "project_id": ...,
                         # "dataset_ids": [...],
                         "image_ids": [1148679, 1148675],
@@ -109,7 +109,7 @@ class PredictApp:
             """
             state = request.state.state
             run_parameters = {
-                "items": state["items"],
+                "item": state["item"],
             }
             if "inference_settings" in state:
                 run_parameters["inference_settings"] = state["inference_settings"]
