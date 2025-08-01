@@ -13,6 +13,7 @@ from typing import (
     Dict,
     Generator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Tuple,
@@ -645,7 +646,7 @@ class FigureApi(RemoveableBulkModuleApi):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        for batch_ids in batched(ids):
+        for batch_ids in batched(ids, 100):
             async with semaphore:
                 response = await self._api.post_async(
                     "figures.bulk.download.geometry", {ApiField.IDS: batch_ids}
@@ -663,6 +664,7 @@ class FigureApi(RemoveableBulkModuleApi):
         ids: List[int],
         progress_cb: Optional[Union[tqdm, Callable]] = None,
         semaphore: Optional[asyncio.Semaphore] = None,
+        progress_cb_type: Literal["number", "size"] = "size",
     ) -> List[dict]:
         """
         Download figure geometries with given IDs from storage asynchronously.
@@ -673,6 +675,10 @@ class FigureApi(RemoveableBulkModuleApi):
         :type progress_cb: Union[tqdm, Callable], optional
         :param semaphore: Semaphore to limit the number of concurrent downloads.
         :type semaphore: Optional[asyncio.Semaphore], optional
+        :param progress_cb_type: Type of progress callback.
+                                Can be "number" of items or transferred bytes "size".
+                                Default is "size".
+        :type progress_cb_type: Literal["number", "size"], optional
         :return: List of figure geometries in Supervisely JSON format.
         :rtype: List[dict]
 
@@ -700,7 +706,10 @@ class FigureApi(RemoveableBulkModuleApi):
         geometries = {}
         async for idx, part in self._download_geometries_generator_async(ids, semaphore):
             if progress_cb is not None:
-                progress_cb(len(part))
+                if progress_cb_type == "size":
+                    progress_cb(len(part))
+                elif progress_cb_type == "number":
+                    progress_cb(1)
             geometry_json = json.loads(part)
             geometries[idx] = geometry_json
 
@@ -832,6 +841,8 @@ class FigureApi(RemoveableBulkModuleApi):
             download_coroutine = api.image.figure.download_async(dataset_id)
             figures = sly.run_coroutine(download_coroutine)
         """
+        method = "figures.list"
+
         fields = [
             ApiField.ID,
             ApiField.CREATED_AT,
@@ -853,71 +864,94 @@ class FigureApi(RemoveableBulkModuleApi):
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
 
-        if image_ids is None:
-            filters = []
-        else:
-            filters = [
-                {
-                    ApiField.FIELD: ApiField.ENTITY_ID,
-                    ApiField.OPERATOR: "in",
-                    ApiField.VALUE: image_ids,
-                }
-            ]
-
-        data = {
-            ApiField.DATASET_ID: dataset_id,
-            ApiField.FIELDS: fields,
-            ApiField.FILTER: filters,
-        }
-
-        # Get first page to determine total pages
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
         images_figures = defaultdict(list)
-        pages_count = None
-        total = 0
         tasks = []
 
-        async def _get_page(page_data, page_num):
-            async with semaphore:
-                response = await self._api.post_async("figures.list", page_data)
-                response_json = response.json()
-                nonlocal pages_count, total
-                pages_count = response_json["pagesCount"]
-                if page_num == 1:
-                    total = response_json["total"]
+        async def _get_all_pages(batch_filters):
+            page_data = {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FIELDS: fields,
+                ApiField.FILTER: batch_filters,
+                ApiField.PAGE: 1,
+            }
 
-                page_figures = []
+            async with semaphore:
+                response = await self._api.post_async(method, page_data)
+                response_json = response.json()
+
+                pages_count = response_json["pagesCount"]
+                total = response_json["total"]
+
+                batch_figures = []
+                # Process first page
                 for info in response_json["entities"]:
                     figure_info = self._convert_json_info(info, True)
-                    page_figures.append(figure_info)
-                return page_figures
+                    batch_figures.append(figure_info)
 
-        # Get first page
-        data[ApiField.PAGE] = 1
-        first_page_figures = await _get_page(data, 1)
+                # Get remaining pages if they exist
+                page_tasks = []
+                if pages_count > 1:
+                    for page in range(2, pages_count + 1):
+                        page_data = {
+                            ApiField.DATASET_ID: dataset_id,
+                            ApiField.FIELDS: fields,
+                            ApiField.FILTER: batch_filters,
+                            ApiField.PAGE: page,
+                        }
+                        page_tasks.append(self._api.post_async("figures.list", page_data))
+
+                    responses = await asyncio.gather(*page_tasks)
+                    for resp in responses:
+                        resp_json = resp.json()
+                        for info in resp_json["entities"]:
+                            figure_info = self._convert_json_info(info, True)
+                            batch_figures.append(figure_info)
+
+                return batch_figures, total
+
+        if image_ids is None:
+            # If no image IDs specified, get all figures in dataset
+            tasks.append(asyncio.create_task(_get_all_pages([])))
+        else:
+            # Process image IDs in batches of 50
+            for batch in batched(image_ids):
+                batch_filters = [
+                    {
+                        ApiField.FIELD: ApiField.ENTITY_ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: batch,
+                    }
+                ]
+                tasks.append(asyncio.create_task(_get_all_pages(batch_filters)))
+                await asyncio.sleep(0.02)  # Small delay to avoid overwhelming the server
+
+        # Create progress bar if needed
+        progress_cb = None
+        total_figures = 0
 
         if log_progress:
-            progress_cb = tqdm(total=total, desc="Downloading figures")
+            # Initialize progress bar with an estimated count that will be updated
+            progress_cb = tqdm(total=None, desc="Downloading figures")
 
-        for figure in first_page_figures:
-            images_figures[figure.entity_id].append(figure)
-            if log_progress:
-                progress_cb.update(1)
+        # Process all tasks
+        for task in asyncio.as_completed(tasks):
+            batch_figures, batch_total = await task
 
-        # Get rest of the pages in parallel
-        if pages_count > 1:
-            for page in range(2, pages_count + 1):
-                page_data = data.copy()
-                page_data[ApiField.PAGE] = page
-                tasks.append(asyncio.create_task(_get_page(page_data, page)))
+            # Update progress bar total on first batch
+            if log_progress and progress_cb.total is None:
+                total_figures += batch_total
+                progress_cb.total = total_figures
 
-            for task in asyncio.as_completed(tasks):
-                page_figures = await task
-                for figure in page_figures:
-                    images_figures[figure.entity_id].append(figure)
-                    if log_progress:
-                        progress_cb.update(1)
+            # Add figures to result dictionary
+            for figure in batch_figures:
+                images_figures[figure.entity_id].append(figure)
+                if log_progress:
+                    progress_cb.update(1)
+
+        if log_progress:
+            progress_cb.close()
 
         return dict(images_figures)
 

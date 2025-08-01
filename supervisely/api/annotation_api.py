@@ -2098,3 +2098,261 @@ class AnnotationApi(ModuleApi):
             log_progress=log_progress,
         )
         run_coroutine(upload_coroutine)
+
+    async def download_anns_async(
+        self,
+        image_ids: List[int],
+        dataset_id: Optional[int] = None,
+        log_progress: bool = True,
+        semaphore: Optional[asyncio.Semaphore] = None,
+    ) -> List[Annotation]:
+        """
+        Optimized method for downloading annotations from images.
+        This approach is significantly faster than traditional methods, especially for
+        large numbers of small annotation files.
+
+        The method works by:
+        1. Fetching figures (labels) in bulk
+        2. Downloading figure tags separately
+        3. Processing alpha mask geometries in dedicated batches
+        4. Assembling complete annotations from these components
+
+        :param image_ids: List of image IDs in Supervisely.
+        :type image_ids: List[int]
+        :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
+        :type dataset_id: int, optional
+        :param log_progress: Whether to log progress information.
+        :type log_progress: bool, optional
+        :param semaphore: Semaphore to control concurrency level. If None, a default will be used.
+        :type semaphore: asyncio.Semaphore, optional
+        :return: List of Annotation objects
+        :rtype: :class:`List[Annotation]`
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import asyncio
+            import supervisely as sly
+            from tqdm import tqdm
+
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            # Prepare your image IDs
+            dataset_id = 254737
+            image_ids = [121236918, 121236919, ...]  # potentially thousands of IDs
+
+            # Option 1: Using the synchronous wrapper
+            anns = api.annotation.download_anns_fast(image_ids, dataset_id)
+
+            # Option 2: Using the async method directly
+            download_task = api.annotation.download_anns_async(
+                image_ids,
+                dataset_id,
+                semaphore=asyncio.Semaphore(10)  # Control concurrency
+            )
+
+            anns = sly.run_coroutine(download_task)
+        """
+        if len(image_ids) == 0:
+            return []
+
+        if semaphore is None:
+            semaphore = self._api.get_default_semaphore()
+
+        # Handle context and dataset_id
+        context = self._api.optimization_context
+        context_dataset_id = context.get("dataset_id")
+        project_id = context.get("project_id")
+        project_meta = context.get("project_meta")
+
+        if dataset_id is None:
+            dataset_id = context_dataset_id
+            if dataset_id is None:
+                dataset_id = self._api.image.get_info_by_id(
+                    image_ids[0], force_metadata_for_links=False
+                ).dataset_id
+                context["dataset_id"] = dataset_id
+                project_id, project_meta = None, None
+
+        elif dataset_id != context_dataset_id or context_dataset_id is None:
+            context["dataset_id"] = dataset_id
+            project_id, project_meta = None, None
+
+        # Get project meta if needed
+        if not isinstance(project_meta, ProjectMeta):
+            if project_id is None:
+                project_id = self._api.dataset.get_info_by_id(dataset_id).project_id
+                context["project_id"] = project_id
+            project_meta = ProjectMeta.from_json(self._api.project.get_meta(project_id))
+            context["project_meta"] = project_meta
+
+        # 1. Get all figures (labels) for all images
+        alpha_mask_ids = []
+        all_figures_ids = []
+        figures_by_image = await self._api.image.figure.download_async(
+            dataset_id=dataset_id,
+            image_ids=image_ids,
+            semaphore=semaphore,
+            log_progress=log_progress,
+        )
+        total_figures = 0
+        for figures in figures_by_image.values():
+            for figure in figures:
+                total_figures += 1
+                all_figures_ids.append(figure.id)
+                if figure.geometry_type == AlphaMask.name():
+                    alpha_mask_ids.append(figure.id)
+
+        # 2. Download alpha mask geometries if needed
+        alpha_mask_geometries = {}
+        # Setup progress tracking
+        if log_progress:
+            pbar_alpha_masks = tqdm(desc="Downloading alpha masks", total=len(alpha_mask_ids))
+        else:
+            pbar_alpha_masks = None
+        if alpha_mask_ids:
+            alpha_mask_geometrie_result = (
+                await self._api.image.figure.download_geometries_batch_async(
+                    ids=alpha_mask_ids,
+                    progress_cb=pbar_alpha_masks.update,
+                    semaphore=semaphore,
+                    progress_cb_type="number",
+                )
+            )
+            alpha_mask_geometries = {
+                fig_id: geometry
+                for fig_id, geometry in zip(alpha_mask_ids, alpha_mask_geometrie_result)
+            }
+
+        # 3. Get image tags
+        if log_progress:
+            pbar_img_inf = tqdm(desc="Getting image infos", total=len(image_ids))
+        else:
+            pbar_img_inf = None
+        image_infos = await self._api.image.get_info_by_ids_async(
+            image_ids, progress_cb=pbar_img_inf
+        )
+
+        # 5. Assemble annotations
+        result_annotations = []
+        class_id_to_name = {cls.sly_id: cls.name for cls in project_meta.obj_classes}
+        tag_id_to_meta = {tag_meta.sly_id: tag_meta for tag_meta in project_meta.tag_metas}
+
+        def _create_tags(
+            tags: List[Dict[str, Any]], tag_id_to_meta: Dict[int, TagMeta]
+        ) -> List[Tag]:
+            """
+            Create tags from JSON data
+            """
+            return [
+                Tag(
+                    meta=tag_id_to_meta[tag_json[ApiField.TAG_ID]],
+                    value=tag_json.get(ApiField.VALUE, None),
+                    sly_id=tag_json.get(ApiField.TAG_ID, None),
+                    labeler_login=tag_json.get(ApiField.ASSIGNED_TO_LOGIN[0][0], None),
+                    created_at=tag_json.get(ApiField.CREATED_AT, None),
+                    updated_at=tag_json.get(ApiField.UPDATED_AT, None),
+                )
+                for tag_json in tags
+            ]
+
+        for info in image_infos:
+
+            # Build annotation labels
+            labels = []
+            for figure in figures_by_image.get(info.id, []):
+                class_name = class_id_to_name.get(figure.class_id)
+
+                if class_name is None:
+                    logger.warning(
+                        f"Class ID {figure.class_id} not found in project meta. Skipping figure {figure.id}."
+                    )
+                    continue
+
+                obj_class = project_meta.get_obj_class(class_name)
+
+                # Handle alpha masks
+                if figure.geometry_type == AlphaMask.geometry_name():
+                    if figure.id in alpha_mask_geometries:
+                        # Add bitmap data to geometry json
+                        figure.geometry["bitmap"] = alpha_mask_geometries[figure.id]
+                        geometry = AlphaMask.from_json(figure.geometry)
+                    else:
+                        logger.warning(
+                            f"Alpha mask geometry for figure {figure.id} not found. Skipping."
+                        )
+                        continue
+                else:
+                    # For non-alpha mask geometries
+                    try:
+                        geometry = obj_class.geometry_type.from_json(figure.geometry)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to create geometry for figure {figure.id}: {str(e)}. Skipping."
+                        )
+                        continue
+
+                # Build tags for figure
+                obj_tags = _create_tags(figure.tags, tag_id_to_meta)
+
+                # Create label with all components
+                label = Label(geometry=geometry, obj_class=obj_class, tags=obj_tags)
+                labels.append(label)
+
+            # Build image tags
+            img_tags = _create_tags(info.tags, tag_id_to_meta)
+
+            # Create annotation with all components
+            annotation = Annotation(
+                img_size=(info.height, info.width),
+                labels=labels,
+                img_tags=img_tags,
+                image_id=info.id,
+            )
+            result_annotations.append(annotation)
+
+        return result_annotations
+
+    def download_fast(
+        self,
+        image_ids: List[int],
+        dataset_id: Optional[int] = None,
+        log_progress: bool = True,
+    ) -> List[Annotation]:
+        """
+        Download annotations from images in a dataset using optimized bulk method.
+        Significantly faster than standard methods for large numbers of small annotation files.
+
+        :param image_ids: List of image IDs in Supervisely.
+        :type image_ids: List[int]
+        :param dataset_id: Dataset ID. If None, will be determined from image IDs or context.
+        :type dataset_id: int, optional
+        :param log_progress: Whether to log progress information.
+        :type log_progress: bool, optional
+        :return: List of Annotation objects
+        :rtype: :class:`List[Annotation]`
+
+        :Usage example:
+
+            .. code-block:: python
+
+            import supervisely as sly
+            os.environ['SERVER_ADDRESS'] = 'https://app.supervisely.com'
+            os.environ['API_TOKEN'] = 'Your Supervisely API Token'
+            api = sly.Api.from_env()
+
+            dataset_id = 254737
+            image_ids = [121236918, 121236919, ...]  # potentially thousands of IDs
+
+            # Download all annotations at once with optimized performance
+            annotations = api.annotation.download_anns_fast(image_ids, dataset_id)
+        """
+        download_coroutine = self.download_anns_async(
+            image_ids=image_ids,
+            dataset_id=dataset_id,
+            log_progress=log_progress,
+        )
+        return run_coroutine(download_coroutine)
