@@ -1823,7 +1823,7 @@ class Inference:
         if tracking == "bot":
             from supervisely.nn.tracker.botsort_tracker import BotSortTracker
             tracker_settings = state.get("tracker_settings", {})
-            device = state.get("device", None)
+            device = state.get("device", "cuda")
             tracker = BotSortTracker(settings=tracker_settings, device=device)
             
         else:
@@ -1835,7 +1835,6 @@ class Inference:
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
         results = []
-        tracks_data = {}
         for batch in batched(
             range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
@@ -1876,6 +1875,7 @@ class Inference:
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
+        return video_ann_json
         
 
     def _inference_image_ids(
@@ -2084,7 +2084,6 @@ class Inference:
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
-        tracks_data = {}
         for batch in batched(
             range(start_frame_index, start_frame_index + direction * n_frames, direction * step),
             batch_size,
@@ -2131,6 +2130,7 @@ class Inference:
             ).to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
+        return video_ann_json
 
     def _inference_project_id(self, api: Api, state: dict, inference_request: InferenceRequest):
         """Inference project images.
