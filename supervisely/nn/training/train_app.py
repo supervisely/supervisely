@@ -733,7 +733,6 @@ class TrainApp:
         self._generate_model_meta(remote_dir, model_meta)
         self._upload_demo_files(remote_dir)
 
-
         # Step 10. Generate training output
         output_file_info, experiment_info = self._generate_experiment_output(experiment_info, model_meta, session_link_file_info)
 
@@ -2029,7 +2028,7 @@ class TrainApp:
         :return: Output file info and experiment info.
         :rtype: tuple
         """
-        need_generate_report = self._app_options.get("generate_report", True)
+        need_generate_report = self._app_options.get("generate_report", False)
         # @TODO: temporary code to generate report for dev only
         is_dev = "dev.internal" in self._api.server_address
         if not is_dev:
