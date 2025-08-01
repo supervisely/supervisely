@@ -1821,13 +1821,11 @@ class Inference:
             n_frames = frames_reader.frames_count()
 
         if tracking == "bot":
-            from supervisely.nn.tracker import BoTTracker
-
-            tracker = BoTTracker(state)
-        elif tracking == "deepsort":
-            from supervisely.nn.tracker import DeepSortTracker
-
-            tracker = DeepSortTracker(state)
+            from supervisely.nn.tracker.botsort_tracker import BotSortTracker
+            tracker_settings = state.get("tracker_settings", {})
+            device = state.get("device", None)
+            tracker = BotSortTracker(settings=tracker_settings, device=device)
+            
         else:
             if tracking is not None:
                 logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
@@ -1865,20 +1863,20 @@ class Inference:
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
             if tracker is not None:
-                for frame_index, frame, ann in zip(batch, frames, anns):
-                    tracks_data = tracker.update(frame, ann, frame_index, tracks_data)
+                for frame, ann in (frames, anns):
+                    tracker.update(frame, ann)
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
         if tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = tracker.get_annotation(
-                tracks_data, (video_height, video_witdth), n_frames
-            ).to_json()
+            
+            video_ann_json = tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
+        
 
     def _inference_image_ids(
         self,
@@ -2057,9 +2055,11 @@ class Inference:
             n_frames = video_info.frames_count
 
         if tracking == "bot":
-            from supervisely.nn.tracker import BoTTracker
-
-            tracker = BoTTracker(state)
+            from supervisely.nn.tracker import BotSortTracker
+            tracker_settings = state.get("tracker_settings", {})
+            device = state.get("device", None)
+            tracker = BotSortTracker(settings=tracker_settings, device=device)
+            
         elif tracking == "deepsort":
             from supervisely.nn.tracker import DeepSortTracker
 

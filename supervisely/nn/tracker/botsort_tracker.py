@@ -25,10 +25,8 @@ class BotSortTracker(BaseTracker):
             self.settings.update(settings)
         
         args = SimpleNamespace(**self.settings)
-            
+        args.device = device
         self.tracker = BoTSORT(args=args)
-        self.device = device
-        
         # State for accumulating results
         self.frame_tracks = []
         self.obj_classes = {}   # class_id -> ObjClass
