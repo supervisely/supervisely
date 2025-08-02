@@ -671,3 +671,18 @@ def supervisely_skip_https_user_helper_check() -> bool:
         default=False,
         raise_not_found=False,
     )
+
+
+def configure_minimum_instance_version() -> None:
+    """
+    Configure MINIMUM_INSTANCE_VERSION_FOR_SDK environment variable
+    from the latest entry in versions.json file.
+
+    This function should be called during SDK initialization to automatically
+    set the minimum required instance version based on the versions.json file.
+    """
+    from supervisely._utils import get_latest_instance_version_from_json
+
+    latest_version = get_latest_instance_version_from_json()
+    if latest_version:
+        os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = latest_version

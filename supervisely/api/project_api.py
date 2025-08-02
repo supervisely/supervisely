@@ -100,6 +100,8 @@ class ProjectInfo(NamedTuple):
     embeddings_enabled: Optional[bool] = None
     embeddings_updated_at: Optional[str] = None
     embeddings_in_progress: Optional[bool] = None
+    local_entities_count: Optional[int] = None
+    remote_entities_count: Optional[int] = None
 
     @property
     def image_preview_url(self):
@@ -177,6 +179,12 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                         team_id=2,
                         import_settings={}
                         version={'id': 260, 'version': 3}
+                        created_by_id=7,
+                        embeddings_enabled=False,
+                        embeddings_updated_at=None,
+                        embeddings_in_progress=False,
+                        local_entities_count=10,
+                        remote_entities_count=0
                         )
         """
         return [
@@ -200,6 +208,41 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.IMPORT_SETTINGS,
             ApiField.VERSION,
             ApiField.CREATED_BY_ID,
+            ApiField.EMBEDDINGS_ENABLED,
+            ApiField.EMBEDDINGS_UPDATED_AT,
+            ApiField.EMBEDDINGS_IN_PROGRESS,
+            ApiField.LOCAL_ENTITIES_COUNT,
+            ApiField.REMOTE_ENTITIES_COUNT,
+        ]
+
+    @staticmethod
+    def info_sequence_for_listing():
+        """
+        NamedTuple ProjectInfo fields available for listing operations.
+
+        This subset includes only fields that are available in the `projects.list` API endpoint.
+        For complete project information, use `get_info_by_id()`.
+
+        :return: List of API field names available for listing
+        :rtype: List[str]
+        """
+        return [
+            ApiField.ID,
+            ApiField.NAME,
+            ApiField.DESCRIPTION,
+            ApiField.SIZE,
+            ApiField.README,
+            ApiField.WORKSPACE_ID,
+            ApiField.IMAGES_COUNT,  # for compatibility with existing code
+            ApiField.DATASETS_COUNT,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.TYPE,
+            ApiField.REFERENCE_IMAGE_URL,
+            ApiField.CUSTOM_DATA,
+            ApiField.BACKUP_ARCHIVE,
+            ApiField.TEAM_ID,
+            ApiField.IMPORT_SETTINGS,
             ApiField.EMBEDDINGS_ENABLED,
             ApiField.EMBEDDINGS_UPDATED_AT,
             ApiField.EMBEDDINGS_IN_PROGRESS,
@@ -337,6 +380,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         id: int,
         expected_type: Optional[str] = None,
         raise_error: bool = False,
+        extra_fields: Optional[List[str]] = None,
     ) -> ProjectInfo:
         """
         Get Project information by ID.
@@ -347,6 +391,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type expected_type: ProjectType, optional
         :param raise_error: If True raise error if given name is missing in the Project, otherwise skips missing names.
         :type raise_error: bool, optional
+        :param extra_fields: List of extra fields to include in the response.
+        :type extra_fields: list[str], optional
         :raises: Error if type of project is not None and != expected type
         :return: Information about Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`ProjectInfo`
@@ -384,7 +430,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
 
         """
-        info = self._get_info_by_id(id, "projects.info")
+        fields = None
+        if extra_fields is not None:
+            fields = {ApiField.EXTRA_FIELDS: extra_fields}
+        info = self._get_info_by_id(id, "projects.info", fields=fields)
         self._check_project_info(info, id=id, expected_type=expected_type, raise_error=raise_error)
         return info
 
@@ -441,14 +490,24 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                     import_settings={}
             #                   )
         """
-
-        fields = [
-            x
-            for x in self.info_sequence()
-            if x not in (ApiField.ITEMS_COUNT, ApiField.SETTINGS, ApiField.CREATED_BY_ID)
-        ]
-
-        info = super().get_info_by_name(parent_id, name, fields)
+        try:
+            fields = self.info_sequence_for_listing()
+            info = super().get_info_by_name(parent_id, name, fields)
+        except Exception as e:
+            logger.trace(
+                f"Failed to get info by name with all available fields for 'projects.list' endpoint: {e} "
+                "Falling back to minimal fields (id) and get_info_by_id()."
+            )
+            fields = [ApiField.ID]
+            info = super().get_info_by_name(parent_id, name, fields)
+            if info is None:
+                if raise_error:
+                    raise ProjectNotFound(
+                        f"Project with name {name!r} not found in workspace {parent_id!r}."
+                    )
+                else:
+                    return None
+            info = self.get_info_by_id(info.id)
         self._check_project_info(
             info, name=name, expected_type=expected_type, raise_error=raise_error
         )
@@ -1231,7 +1290,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             incorrect_entities = api.project.validate_entities_schema(project_id)
 
             for entity in incorrect_entities:
-                print(entity.id, entity.name) # Output: 123456, 'image.jpg'
+                print(entity["entity_id"], entity["entity_name"]) # Output: 123456, 'image.jpg'
         """
         validation_schema = self.get_validation_schema(id)
         if not validation_schema:
@@ -2190,7 +2249,21 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ID: id, ApiField.EMBEDDINGS_ENABLED: False, ApiField.SILENT: silent},
         )
 
-    def set_embeddings_in_progress(self, id: int, in_progress: bool) -> None:
+    def is_embeddings_enabled(self, id: int) -> bool:
+        """
+        Check if embeddings are enabled for the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: True if embeddings are enabled, False otherwise.
+        :rtype: bool
+        """
+        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_ENABLED])
+        return info.embeddings_enabled
+
+    def set_embeddings_in_progress(
+        self, id: int, in_progress: bool, error_message: Optional[str] = None
+    ) -> None:
         """
         Set embeddings in progress status for the project.
         This method is used to indicate whether embeddings are currently being created for the project.
@@ -2199,13 +2272,34 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type id: int
         :param in_progress: Status to set. If True, embeddings are in progress right now.
         :type in_progress: bool
+        :param error_message: Optional error message to provide additional context.
+        :type error_message: Optional[str]
         :return: None
         :rtype: :class:`NoneType`
         """
-        self._api.post(
-            "projects.embeddings-in-progress.update",
-            {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress},
-        )
+        data = {ApiField.ID: id, ApiField.EMBEDDINGS_IN_PROGRESS: in_progress}
+        if error_message is not None:
+            data[ApiField.ERROR_MESSAGE] = error_message
+        self._api.post("projects.embeddings-in-progress.update", data)
+
+    def get_embeddings_in_progress(self, id: int) -> bool:
+        """
+        Get the embeddings in progress status for the project.
+        This method checks whether embeddings are currently being created for the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: True if embeddings are in progress, False otherwise.
+        :rtype: bool
+        """
+        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_IN_PROGRESS])
+        if info is None:
+            raise RuntimeError(f"Project with ID {id} not found.")
+        if not hasattr(info, "embeddings_in_progress"):
+            raise RuntimeError(
+                f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
+            )
+        return info.embeddings_in_progress
 
     def set_embeddings_updated_at(
         self, id: int, timestamp: Optional[str] = None, silent: bool = True
@@ -2244,14 +2338,46 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             {ApiField.ID: id, ApiField.EMBEDDINGS_UPDATED_AT: timestamp, ApiField.SILENT: silent},
         )
 
+    def get_embeddings_updated_at(self, id: int) -> Optional[str]:
+        """
+        Get the timestamp when embeddings were last updated for the project.
+
+        :param id: Project ID
+        :type id: int
+        :return: ISO format timestamp (YYYY-MM-DDTHH:MM:SS.fffZ) or None if not set.
+        :rtype: Optional[str]
+        :Usage example:
+
+         .. code-block:: python
+
+            api = sly.Api.from_env()
+            project_id = 123
+
+            # Get embeddings updated timestamp
+            updated_at = api.project.get_embeddings_updated_at(project_id)
+            print(updated_at)  # Output: "2025-06-01T10:30:45.123Z" or None
+        """
+        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_UPDATED_AT])
+        if info is None:
+            raise RuntimeError(f"Project with ID {id} not found.")
+        if not hasattr(info, "embeddings_updated_at"):
+            raise RuntimeError(
+                f"Project with ID {id} does not have 'embeddings_updated_at' field in its info."
+            )
+        return info.embeddings_updated_at
+
     def perform_ai_search(
         self,
         project_id: int,
         dataset_id: Optional[int] = None,
-        image_id: Optional[int] = None,
+        image_id: Optional[Union[int, List[int]]] = None,
         prompt: Optional[str] = None,
         method: Optional[Literal["centroids", "random"]] = None,
         limit: int = 100,
+        clustering_method: Optional[Literal["kmeans", "dbscan"]] = None,
+        num_clusters: Optional[int] = None,
+        image_id_scope: Optional[List[int]] = None,
+        threshold: Optional[float] = None,
     ) -> Optional[int]:
         """
         Send AI search request to initiate search process.
@@ -2262,14 +2388,22 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :type project_id: int
         :param dataset_id: ID of the Dataset. If not None - search will be limited to this dataset.
         :type dataset_id: Optional[int]
-        :param image_id: ID of the Image. Searches for images similar to the specified image.
-        :type image_id: Optional[int]
+        :param image_id: ID(s) of the Image(s). Searches for images similar to the specified image(s).
+        :type image_id: Optional[Union[int, List[int]]]
         :param prompt: Text prompt for search request. Searches for similar images based on a text description.
         :type prompt: Optional[str]
         :param method: Activates diverse search using one of the following methods: "centroids", "random".
         :type method: Optional[Literal["centroids", "random"]]
         :param limit: Limit for search request
         :type limit: int
+        :param clustering_method: Method for clustering results. Can be "kmeans" or "dbscan". If None, no clustering is applied.
+        :type clustering_method: Optional[Literal["kmeans", "dbscan"]]
+        :param num_clusters: Number of clusters to create if clustering_method is specified. Required for "kmeans" method.
+        :type num_clusters: Optional[int]
+        :param image_id_scope: List of image IDs to limit the search scope. If None, the search will be performed across all images in the project if other filters are not set.
+        :type image_id_scope: Optional[List[int]]
+        :param threshold: Threshold for similarity. If provided, only images with similarity above this threshold will be returned.
+        :type threshold: Optional[float]
         :return: Entitites Collection ID of the search results, or None if no collection was created.
         :rtype: Optional[int]
         :raises ValueError: only one of `prompt`, `image_id` or `method`must be provided, and `method` must be one of the allowed values.
@@ -2326,14 +2460,44 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         if dataset_id is not None:
             request_body[ApiField.DATASET_ID] = dataset_id
 
-        if image_id is not None:
-            request_body[ApiField.IMAGE_ID] = image_id
-
         if prompt is not None:
             request_body[ApiField.PROMPT] = prompt
 
+        if image_id is not None:
+            if prompt is not None or method is not None:
+                raise ValueError("If 'image_id' is provided, 'prompt' and 'method' must be None.")
+            if isinstance(image_id, int):
+                image_id = [image_id]
+            if not isinstance(image_id, list):
+                raise ValueError("image_id must be a list of image IDs.")
+            request_body[ApiField.IMAGE_IDS] = image_id
+
         if method is not None:
+            if image_id is not None or prompt is not None:
+                raise ValueError("If 'method' is provided, 'image_id' and 'prompt' must be None.")
             request_body[ApiField.METHOD] = method
+
+        if clustering_method is not None:
+            if clustering_method not in ["kmeans", "dbscan"]:
+                raise ValueError("Clustering method must be either 'kmeans' or 'dbscan'.")
+            request_body[ApiField.CLUSTERING_METHOD] = clustering_method
+
+        if num_clusters is not None:
+            if clustering_method != "kmeans":
+                raise ValueError(
+                    "Number of clusters is only applicable for 'kmeans' clustering method."
+                )
+            request_body[ApiField.NUMBER_OF_CLUSTERS] = num_clusters
+
+        if image_id_scope is not None:
+            if not isinstance(image_id_scope, list):
+                raise ValueError("image_id_scope must be a list of image IDs.")
+            request_body[ApiField.RESTRICTED_IMAGE_IDS] = image_id_scope
+
+        if threshold is not None:
+            if not isinstance(threshold, (int, float)):
+                raise ValueError("Threshold must be a number.")
+            request_body[ApiField.THRESHOLD] = threshold
 
         response = self._api.post("embeddings.send-ai-search", request_body)
         return response.json().get(ApiField.COLLECTION_ID, None)
@@ -2342,6 +2506,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         Calculate embeddings for the project.
         This method is used to calculate embeddings for all images in the project.
+
+        To check status of embeddings calculation, use :meth:`get_embeddings_in_progress`
 
         :param id: Project ID
         :type id: int
