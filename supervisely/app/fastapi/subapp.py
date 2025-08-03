@@ -905,6 +905,7 @@ class Application(metaclass=Singleton):
             Callable
         ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
         show_header: bool = True,
+        hide_health_check_logs: bool = True,  # whether to hide health check logs in info level
     ):
         self._favicon = os.environ.get("icon", "https://cdn.supervisely.com/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
@@ -980,6 +981,11 @@ class Application(metaclass=Singleton):
             hot_reload=hot_reload,
             before_shutdown_callbacks=self._before_shutdown_callbacks,
         )
+
+        # add filter to hide health check logs for info level
+        if hide_health_check_logs:
+            self._setup_health_check_filter()
+
         self.test_client = TestClient(self._fastapi)
 
         if not headless:
@@ -1125,6 +1131,35 @@ class Application(metaclass=Singleton):
 
     def set_ready_check_function(self, func: Callable):
         self._ready_check_function = func
+
+    def _setup_health_check_filter(self):
+        """Setup filter to hide health check logs in production"""
+
+        class HealthCheckFilter(logging.Filter):
+            def __init__(self, app_instance):
+                super().__init__()
+                self.app = app_instance
+
+            def filter(self, record):
+                # Hide health check requests if NOT in debug mode
+                if not self.app.debug and hasattr(record, "getMessage"):
+                    message = record.getMessage()
+                    # Check if the message contains health check paths
+                    health_paths = ["/health", "/is_ready"]
+                    if any(path in message for path in health_paths):
+                        return False
+                return True
+
+        # Apply filter to uvicorn access logger
+        health_filter = HealthCheckFilter(self._fastapi)
+        uvicorn_logger = logging.getLogger("uvicorn.access")
+
+        # Remove old filters of this type, if any (for safety)
+        uvicorn_logger.filters = [
+            f for f in uvicorn_logger.filters if not isinstance(f, HealthCheckFilter)
+        ]
+
+        uvicorn_logger.addFilter(health_filter)
 
 
 def set_autostart_flag_from_state(default: Optional[str] = None):
