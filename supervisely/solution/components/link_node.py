@@ -1,7 +1,8 @@
 from typing import Literal, Optional
 
 from supervisely.app.widgets import Icons, SolutionCard
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 
 
 class LinkNode(SolutionElement):

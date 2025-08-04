@@ -6,17 +6,14 @@ from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.dialog.dialog import Dialog
-from supervisely.app.widgets.empty.empty import Empty
 from supervisely.app.widgets.notification_box.notification_box import NotificationBox
 from supervisely.app.widgets.sampling.sampling import Sampling, SamplingSettings
+from supervisely.app.widgets.solution_card.solution_card import SolutionCard
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.text.text import Text
-from supervisely.solution.base_node import (
-    AutomationWidget,
-    SolutionCard,
-    SolutionCardNode,
-    SolutionElement,
-)
+from supervisely.solution.components.base.automation import AutomationWidget
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 
 
 class VideoSampling(SolutionElement):

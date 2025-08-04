@@ -3,14 +3,14 @@ from typing import Tuple
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
 from supervisely.app.widgets import Dialog
-from supervisely.solution.base_node import SolutionCardNode
-from supervisely.solution.components.base import BaseNode
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 
 
 from .history import ManualImportHistory
 
 
-class ManualImportNode(BaseNode):
+class ManualImportNode(SolutionElement):
     """Node that exposes Manual Drag-and-Drop import and its history."""
 
     APP_SLUG = "supervisely-ecosystem/main-import"

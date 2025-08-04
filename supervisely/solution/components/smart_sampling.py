@@ -39,7 +39,9 @@ from supervisely.project.image_transfer_utils import (
     copy_structured_images,
 )
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import Automation, SolutionCardNode, SolutionElement
+from supervisely.solution.components.base.automation import Automation
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 from supervisely.solution.utils import get_interval_period
 
 # from supervisely.solution.components.card import Card

@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional
 from venv import logger
 
 from supervisely._utils import abs_url
@@ -12,10 +12,11 @@ from supervisely.app.widgets import (
     SolutionCard,
     SolutionGraph,
     Text,
-    Widget,
 )
 from supervisely.labeling_jobs.utils import Status
-from supervisely.solution.base_node import Automation, SolutionCardNode, SolutionElement
+from supervisely.solution.components.base.automation import Automation
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 from supervisely.solution.scheduler import TasksScheduler
 
 

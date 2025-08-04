@@ -10,7 +10,8 @@ from supervisely.app.widgets import (
     RandomSplitsTable,
     SolutionCard,
 )
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 
 
 @dataclass

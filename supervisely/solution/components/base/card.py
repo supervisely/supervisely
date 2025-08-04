@@ -24,10 +24,12 @@ class SolutionCardNode(SolutionGraph.Node):
     # Base Widget Settings ---------------------------------------------
     # ------------------------------------------------------------------
     def disable(self):
+        """Disables the card widget."""
         self.content.disable()
         super().disable()
 
     def enable(self):
+        """Enables the card widget."""
         self.content.enable()
         super().enable()
 
@@ -35,6 +37,18 @@ class SolutionCardNode(SolutionGraph.Node):
     # Tooltip Methods --------------------------------------------------
     # ------------------------------------------------------------------
     def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
+        """
+        Updates the property of the card.
+
+        :param key: Key of the property.
+        :type key: str
+        :param value: Value of the property.
+        :type value: str
+        :param link: Link of the property.
+        :type link: str
+        :param highlight: Whether to highlight the property.
+        :type highlight: bool
+        """
         for prop in self.content.tooltip_properties:
             if prop["key"] == key:
                 self.content.update_property(key, value, link, highlight)
@@ -42,15 +56,33 @@ class SolutionCardNode(SolutionGraph.Node):
         self.content.add_property(key, value, link, highlight)
 
     def remove_property_by_key(self, key: str):
+        """
+        Removes the property by key of the card.
+
+        :param key: Key of the property.
+        :type key: str
+        """
         self.content.remove_property_by_key(key)
 
     # ------------------------------------------------------------------
     # Badge Methods ----------------------------------------------------
     # ------------------------------------------------------------------
     def add_badge(self, badge):
+        """
+        Adds a badge to the card.
+
+        :param badge: Badge to add.
+        :type badge: Badge
+        """
         self.content.add_badge(badge)
 
     def remove_badge(self, idx: int):
+        """
+        Removes the badge by index of the card.
+
+        :param idx: Index of the badge.
+        :type idx: int
+        """
         self.content.remove_badge(idx)
 
     def update_badge(
@@ -60,6 +92,18 @@ class SolutionCardNode(SolutionGraph.Node):
         on_hover: str = None,
         badge_type: Literal["info", "success", "warning", "error"] = "info",
     ):
+        """
+        Updates the badge by index of the card.
+
+        :param idx: Index of the badge.
+        :type idx: int
+        :param label: Label of the badge.
+        :type label: str
+        :param on_hover: On hover text of the badge.
+        :type on_hover: str
+        :param badge_type: Type of the badge.
+        :type badge_type: Literal["info", "success", "warning", "error"]
+        """
         self.content.update_badge(idx, label, on_hover, badge_type)
 
     def update_badge_by_key(
@@ -70,6 +114,14 @@ class SolutionCardNode(SolutionGraph.Node):
         new_key: str = None,
         plain: Optional[bool] = None,
     ):
+        """
+        Updates the badge by key of the card.
+
+        :param key: Key of the badge.
+        :type key: str
+        :param label: Label of the badge.
+        :type label: str
+        """
         self.content.update_badge_by_key(
             key=key,
             label=label,
@@ -79,12 +131,24 @@ class SolutionCardNode(SolutionGraph.Node):
         )
 
     def remove_badge_by_key(self, key: str):
+        """
+        Removes the badge by key from the card.
+
+        :param key: Key of the badge.
+        :type key: str
+        """
         self.content.remove_badge_by_key(key)
 
     # ------------------------------------------------------------------
     # Automation Badge Methods -----------------------------------------
     # ------------------------------------------------------------------
     def update_automation_badge(self, enable: bool) -> None:
+        """
+        Updates the automation badge of the card.
+
+        :param enable: Whether to enable the automation.
+        :type enable: bool
+        """
         for idx, prop in enumerate(self.content.badges):
             if prop["on_hover"] == "Automation":
                 if enable:
@@ -115,12 +179,22 @@ class SolutionCardNode(SolutionGraph.Node):
     # In Progress Badge Methods ----------------------------------------
     # ------------------------------------------------------------------
     def show_in_progress_badge(self, key: Optional[str] = None):
-        """Updates the card to show that the main task is in progress."""
+        """
+        Updates the card to show that the main task is in progress.
+
+        :param key: Key of the badge.
+        :type key: Optional[str]
+        """
         key = key or "⏳"
         self.content.update_badge_by_key(key=key, label="In progress", badge_type="info")
 
     def hide_in_progress_badge(self, key: Optional[str] = None):
-        """Hides the in-progress badge from the card."""
+        """
+        Hides the in-progress badge from the card.
+
+        :param key: Key of the badge.
+        :type key: Optional[str]
+        """
         key = key or "⏳"
         self.content.remove_badge_by_key(key=key)
 
@@ -158,10 +232,42 @@ class SolutionProjectNode(SolutionCardNode):
             raise TypeError("Content must be an instance of SolutionProject")
         return super().__new__(cls, content, x, y, *args, **kwargs)
 
+    # ------------------------------------------------------------------
+    # Preview Methods --------------------------------------------------
+    # ------------------------------------------------------------------
     def update_preview(self, imgs: List[str], counts: List[int]):
+        """
+        Updates the preview of the project.
+
+        :param imgs: List of image urls.
+        :type imgs: List[str]
+        :param counts: List of counts.
+        :type counts: List[int]
+        """
         self.content.update_preview_url(imgs)
         self.content.update_items_count(counts)
 
+    def update_preview_url(self, imgs: List[str]):
+        """
+        Updates the preview url of the project.
+
+        :param imgs: List of image urls.
+        :type imgs: List[str]
+        """
+        self.content.update_preview_url(imgs)
+
+    def update_items_count(self, counts: List[int]):
+        """
+        Updates the items count of the project.
+
+        :param counts: List of counts.
+        :type counts: List[int]
+        """
+        self.content.update_items_count(counts)
+
+    # ------------------------------------------------------------------
+    # Update Methods ---------------------------------------------------
+    # ------------------------------------------------------------------
     def update(
         self,
         project: ProjectInfo = None,
@@ -169,6 +275,18 @@ class SolutionProjectNode(SolutionCardNode):
         urls: List[Union[int, str, None]] = None,
         counts: List[Union[int, None]] = None,
     ):
+        """
+        Updates the node with the new project.
+
+        :param project: Project info.
+        :type project: ProjectInfo
+        :param new_items_count: New items count.
+        :type new_items_count: int
+        :param urls: List of image urls.
+        :type urls: List[Union[int, str, None]]
+        :param counts: List of counts.
+        :type counts: List[Union[int, None]]
+        """
         if project is not None:
             self.project = project
         if new_items_count is not None:

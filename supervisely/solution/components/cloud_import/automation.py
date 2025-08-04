@@ -7,12 +7,13 @@ from supervisely.app.widgets import (
     Text,
     Dialog,
 )
-from supervisely.solution.components.base import BaseAutomation
+from supervisely.solution.components.base.automation import AutomationWidget
 
 
-class CloudImportAutomation(BaseAutomation):
-    def __init__(self, func: Callable):
-        super().__init__(func)
+class CloudImportAutomation(AutomationWidget):
+    def __init__(self, description: str, func: Callable):
+        super().__init__(description, func)
+        self._description = description
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
@@ -31,7 +32,7 @@ class CloudImportAutomation(BaseAutomation):
     # ------------------------------------------------------------------
     def _create_custom_widget(self):
         description = Text(
-            "Schedule synchronization from the Cloud Storage to the Input Project. Specify the folder path and the time interval for synchronization.",
+            self._description,
             status="text",
             color="gray",
         )

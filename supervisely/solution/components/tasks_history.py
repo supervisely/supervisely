@@ -3,7 +3,8 @@ from typing import Any, Dict, List
 from supervisely.api.api import Api
 from supervisely.app.widgets.dialog.dialog import Dialog
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
-from supervisely.solution.base_node import SolutionElement, TasksScheduler
+from supervisely.solution.components.base.node import SolutionElement
+from supervisely.solution.scheduler import TasksScheduler
 
 
 class SolutionTasksHistory(SolutionElement, TasksScheduler):

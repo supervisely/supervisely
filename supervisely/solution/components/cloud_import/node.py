@@ -2,8 +2,8 @@ from typing import Callable, Optional, Tuple
 
 from supervisely.api.api import Api
 from supervisely.app.widgets import SolutionCard
-from supervisely.solution.base_node import SolutionCardNode
-from supervisely.solution.components.base import SolutionElement
+from supervisely.solution.components.base.card import SolutionCardNode
+from supervisely.solution.components.base.node import SolutionElement
 
 from .automation import CloudImportAutomation
 from .gui import CloudImportGUI
@@ -18,21 +18,30 @@ class CloudImportNode(SolutionElement):
         self.project_id = project_id
 
         # --- core blocks --------------------------------------------------------
-        self.gui = CloudImportGUI(project_id=project_id)
-        self.history = self.gui.task_history  # CloudImportHistory(api)
-        self.automation = CloudImportAutomation(self.gui.widget.run)
+        self.gui = CloudImportGUI(project_id=project_id).widget
+        self.history = self.gui.tasks_history  # CloudImportHistory(api)
+        self.automation = CloudImportAutomation(
+            "Schedule synchronization from the Cloud Storage to the Input Project. Specify the folder path and the time interval for synchronization.",
+            self.gui.run,
+        )
 
         # --- card ---------------------------------------------------------------
         tooltip_desc = (
             "Each import creates a dataset folder in the Input Project, centralising all "
             "incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
         )
-        self.card = self._build_card(title="Import from Cloud", tooltip_description=tooltip_desc)
+        card_buttons = [self.history.open_modal_button, self.automation.open_modal_button]
+        self.card = self._build_card(
+            title="Import from Cloud",
+            tooltip_description=tooltip_desc,
+            buttons=card_buttons,
+        )
+
         # --- node ---------------------------------------------------------------
         self.node = SolutionCardNode(x=x, y=y, content=self.card)
         self.modals = [
             self.automation.modal,
-            self.history.modal,
+            self.history.tasks_modal,
             self.history.logs_modal,
             self.gui.modal,
         ]

@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Literal, Union
 
 from supervisely.app.widgets import Container, SolutionGraph
-from supervisely.solution.base_node import SolutionElement
+from supervisely.solution.components.base.node import SolutionElement
 
 
 class SolutionGraphBuilder:

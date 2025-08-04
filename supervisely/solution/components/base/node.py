@@ -1,28 +1,25 @@
 from __future__ import annotations
-from typing import Callable, Optional, List
-from supervisely.app.widgets import SolutionCard
-from supervisely.solution.base_node import SolutionElement
-
-from .automation import BaseAutomation
-from .history import BaseHistory
-from .gui import BaseGUI
-
-
 from typing import Callable, Dict, List, Optional
-
 from supervisely.app import DataJson
 from supervisely.app.widgets import (
     SolutionCard,
     Widget,
 )
 from supervisely.app.widgets_context import JinjaWidgets
+from .automation import AutomationWidget
+from .card import SolutionCardNode
+from .gui import BaseGUI
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .history import BaseHistory
 
 
 class SolutionElement(Widget):
     progress_badge_key = "Task"
     gui: Optional[BaseGUI] = None
     history: Optional[BaseHistory] = None
-    automation: Optional[BaseAutomation] = None
+    automation: Optional[AutomationWidget] = None
 
     def __new__(cls, *args, **kwargs):
         JinjaWidgets().incremental_widget_id_mode = True
@@ -38,6 +35,32 @@ class SolutionElement(Widget):
         if not hasattr(self, "widget_id"):
             self.widget_id = widget_id
         Widget.__init__(self, widget_id=self.widget_id)
+
+        # Automatically wire common sub-components if the subclass didn't
+        # explicitly set them yet.
+        self._autowire_subcomponents()
+
+        # ------------------------------------------------------------------
+
+    # Autowiring --------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _autowire_subcomponents(self):
+        """Detect common sub-widgets (history / automation) automatically.
+
+        This lets child nodes provide those objects in *any* of three ways:
+        1. By setting `self.history` / `self.automation` directly BEFORE calling `super().__init__()`
+        2. By putting an attribute `tasks_history` on the GUI widget
+        3. By not providing them at all – they will simply be missing.
+        """
+        # Wire history from GUI → node, if not explicitly set yet.
+        if self.history is None and getattr(self, "gui", None) is not None:
+            maybe_hist = getattr(self.gui, "tasks_history", None)
+            if maybe_hist is not None:
+                self.history = maybe_hist
+
+        # Nothing extra to autowire for automation (child nodes usually
+        # instantiate AutomationWidget explicitly), but keep for symmetry
+        # in case we want to introspect self.gui in the future.
 
     # ------------------------------------------------------------------
     # Base Widget Methods ----------------------------------------------
@@ -61,13 +84,18 @@ class SolutionElement(Widget):
     # Card  ------------------------------------------------------------
     # ------------------------------------------------------------------
     def _build_card(
-        self, *, title: str, tooltip_description: str, width: int = 250
+        self,
+        title: str,
+        tooltip_description: str,
+        width: int = 250,
+        buttons: Optional[List] = None,
     ) -> SolutionCard:
-        buttons: List = []
-        if self.history is not None:
-            buttons.append(self.history.open_modal_button)
-        if self.automation is not None:
-            buttons.append(self.automation.open_modal_button)
+        if buttons is None:
+            buttons = []
+            if self.history is not None:
+                buttons.append(self.history.open_modal_button)
+            if self.automation is not None:
+                buttons.append(self.automation.open_modal_button)
 
         return SolutionCard(
             title=title,

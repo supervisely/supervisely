@@ -6,11 +6,9 @@ from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Button, SolutionProject
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import (
-    Automation,
-    SolutionElement,
-    SolutionProjectNode,
-)
+from supervisely.solution.components.base.automation import Automation
+from supervisely.solution.components.base.card import SolutionProjectNode
+from supervisely.solution.components.base.node import SolutionElement
 
 
 class ProjectRefresh(Automation):
@@ -166,7 +164,7 @@ class ProjectNode(SolutionElement):
         self.dataset = None
         if self.dataset_id is not None:
             self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
-            
+
         self.title = title
         self.description = description
         self.is_training = is_training
