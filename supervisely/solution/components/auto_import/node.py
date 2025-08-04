@@ -7,12 +7,8 @@ from supervisely.app.widgets import Button, Dialog, FastTable, SolutionCard, Tas
 from supervisely.solution.base_node import SolutionElement, SolutionCardNode
 
 
-class ManualImport(SolutionElement):
-    """
-    GUI for Manual Import node.
-    This widget is used to create a simple drag-and-drop interface for importing data.
-    """
-
+class AutoImportNode(SolutionElement):
+    progress_badge_key = "Import"
     APP_SLUG = "supervisely-ecosystem/main-import"
 
     def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
@@ -24,12 +20,35 @@ class ManualImport(SolutionElement):
         """
         self.api = api
         self.project_id = project_id
-        self.card = self._create_card()
+
+        # --- core blocks --------------------------------------------------------
+        node_id = 41  # 49
+        autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
+        autoimport_link += f"?moduleId=435&nodeId={node_id}&appVersion=test-env&appIsBranch=true"
+        self.card = self._build_card(
+            title="Drag & Drop Import",
+            tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
+            buttons=[self._create_tasks_button()],
+            link=autoimport_link,
+        )
+        self.node = SolutionCardNode(content=self.card, x=x, y=y)
+
         self.modals = [self.logs_modal, self.tasks_modal]
         self._tasks = []
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
         super().__init__(*args, **kwargs)
 
+    def get_json_data(self) -> dict:
+        """
+        Returns the current data of the Manual Import widget.
+        """
+        return {
+            "project_id": self.project_id,
+            "tasks": self._tasks,
+        }
+
+    # ------------------------------------------------------------------
+    # Tasks History ----------------------------------------------------
+    # ------------------------------------------------------------------
     @property
     def logs(self) -> TaskLogs:
         """
@@ -47,27 +66,6 @@ class ManualImport(SolutionElement):
         if not hasattr(self, "_logs_modal"):
             self._logs_modal = Dialog(title="Task logs", content=self.logs)
         return self._logs_modal
-
-    @property
-    def tasks_table(self) -> FastTable:
-        if not hasattr(self, "_tasks_table"):
-            self._tasks_table = self._create_tasks_table()
-        return self._tasks_table
-
-    @property
-    def tasks_modal(self) -> Dialog:
-        """
-        Returns the modal dialog for displaying import tasks history.
-        """
-        if not hasattr(self, "_tasks_modal"):
-            self._tasks_modal = self._create_tasks_modal(self.tasks_table)
-        return self._tasks_modal
-
-    def _create_tasks_modal(self, tasks_table: FastTable) -> Dialog:
-        """
-        Creates and returns the modal dialog for displaying import tasks history.
-        """
-        return Dialog(title="Import tasks history", content=tasks_table)
 
     def _create_tasks_table(self) -> FastTable:
         """
@@ -95,28 +93,26 @@ class ManualImport(SolutionElement):
 
         return tasks_table
 
-    def _create_card(self) -> SolutionCard:
-        """
-        Creates and returns the SolutionCard for the Manual Import widget.
-        """
-        autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
-        autoimport_link += f"?moduleId=435&nodeId=49&appVersion=test-env&appIsBranch=true"
-        return SolutionCard(
-            title="Manual Drag & Drop Import",
-            tooltip=self._create_tooltip(),
-            width=250,
-            tooltip_position="right",
-            link=autoimport_link,
-        )
+    @property
+    def tasks_table(self) -> FastTable:
+        if not hasattr(self, "_tasks_table"):
+            self._tasks_table = self._create_tasks_table()
+        return self._tasks_table
 
-    def _create_tooltip(self) -> SolutionCard.Tooltip:
+    def _create_tasks_modal(self, tasks_table: FastTable) -> Dialog:
         """
-        Creates and returns the tooltip for the Manual Import widget.
+        Creates and returns the modal dialog for displaying import tasks history.
         """
-        return SolutionCard.Tooltip(
-            description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time.",
-            content=[self._create_tasks_button()],
-        )
+        return Dialog(title="Import tasks history", content=tasks_table)
+
+    @property
+    def tasks_modal(self) -> Dialog:
+        """
+        Returns the modal dialog for displaying import tasks history.
+        """
+        if not hasattr(self, "_tasks_modal"):
+            self._tasks_modal = self._create_tasks_modal(self.tasks_table)
+        return self._tasks_modal
 
     def _create_tasks_button(self) -> Button:
         """
@@ -138,15 +134,6 @@ class ManualImport(SolutionElement):
             self.tasks_modal.show()
 
         return btn
-
-    def get_json_data(self) -> dict:
-        """
-        Returns the current data of the Manual Import widget.
-        """
-        return {
-            "project_id": self.project_id,
-            "tasks": self._tasks,
-        }
 
     def _get_table_data(self) -> List[List]:
         """
@@ -191,8 +178,13 @@ class ManualImport(SolutionElement):
 
         return data
 
-    def update_after_import(self) -> Tuple[int, str]:
-        """Updates the card after an import task is completed.
+    # ------------------------------------------------------------------
+    # Events -----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def update_card_after_import(self) -> Tuple[int, str]:
+        """
+        Updates the card after an import task is completed.
+
         :param task_id: Optional task ID to update the card with. If not provided, the last task will be used.
         :return: Tuple containing the number of items imported and the project image preview URL.
         """
