@@ -1269,7 +1269,7 @@ class Inference:
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
-            "tracking_algorithms": ["bot", "deepsort"],
+            "tracking_algorithms": ["botsort", "boxmot"],
             "batch_inference_support": self.is_batch_inference_supported(),
             "max_batch_size": self.max_batch_size,
         }
@@ -1820,7 +1820,7 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        if tracking == "bot":
+        if tracking == "botsort":
             from supervisely.nn.tracker import BotSortTracker
             tracker_settings = state.get("tracker_settings", {})
             device = tracker_settings.get("device", self.device) 
@@ -2054,7 +2054,7 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        if tracking == "bot":
+        if tracking == "botsort":
             from supervisely.nn.tracker import BotSortTracker
             tracker_settings = state.get("tracker_settings", {})
             device = tracker_settings.get("device", self.device) 

@@ -53,9 +53,7 @@ class BotSortTracker(BaseTracker):
         tracks = self._stracks_to_tracks(output_stracks)
         
         # Store tracks for VideoAnnotation creation
-        if tracks:
-            self.frame_tracks.append(tracks)
-        
+        self.frame_tracks.append(tracks)
         self.current_frame += 1
         return tracks
     

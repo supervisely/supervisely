@@ -36,7 +36,7 @@ class BaseTracker:
         raise NotImplementedError("This method should be overridden by subclasses.")
 
     def _validate_device(self):
-        if self.device != 'cpu' or not self.device.startswith('cuda'):
+        if self.device != 'cpu' and not self.device.startswith('cuda'):
             raise ValueError(
                 f"Invalid device '{self.device}'. Supported devices are 'cpu' or 'cuda'."
             )

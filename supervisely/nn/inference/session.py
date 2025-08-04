@@ -271,7 +271,7 @@ class SessionJSON:
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort", "boxmot"] = None,
         batch_size: int = None,
     ) -> Dict[str, Any]:
         endpoint = "inference_video_id"
@@ -295,7 +295,7 @@ class SessionJSON:
         frames_direction: Literal["forward", "backward"] = None,
         process_fn=None,
         preparing_cb=None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort", "boxmot"] = None,
         batch_size: int = None,
     ) -> Iterator:
         if self._async_inference_uuid:
@@ -795,7 +795,7 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort", "boxmot"] = None,
         batch_size: int = None,
     ) -> List[sly.Annotation]:
         pred_list_raw = super().inference_video_id(
@@ -811,7 +811,7 @@ class Session(SessionJSON):
         start_frame_index: int = None,
         frames_count: int = None,
         frames_direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort", "boxmot"] = None,
         batch_size: int = None,
         preparing_cb=None,
     ) -> AsyncInferenceIterator:
