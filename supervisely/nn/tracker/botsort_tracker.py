@@ -15,7 +15,7 @@ from supervisely import logger
 class BotSortTracker(BaseTracker):
     
     def __init__(self, settings: dict = None, device: str = None):
-        super().__init__()
+        super().__init__(settings=settings, device=device)
         
         # Load default settings from YAML file
         self.settings = self._load_default_settings()
@@ -25,8 +25,10 @@ class BotSortTracker(BaseTracker):
             self.settings.update(settings)
         
         args = SimpleNamespace(**self.settings)
-        args.device = device
+        args.device = self.device
+            
         self.tracker = BoTSORT(args=args)
+        
         # State for accumulating results
         self.frame_tracks = []
         self.obj_classes = {}   # class_id -> ObjClass

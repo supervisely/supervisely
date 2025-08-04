@@ -1,7 +1,7 @@
 # botsort_default_config.yaml
 
 name: "BotSORT"
-device: "cuda"
+device: "auto" # "cuda" or "cpu", "auto" will use cuda if available
 fp16: false
 
 # BoTSORT tracking parameters

@@ -1,11 +1,24 @@
 import supervisely as sly
 from supervisely import VideoAnnotation
 import numpy as np
+import torch
 
 class BaseTracker:
 
-    def __init__(self):
-        self.settings = {}
+    def __init__(self, settings: dict = None, device: str = None):
+        self.settings = settings or {}
+        if self.settings.get("device") is None:
+            if device is not None:
+                self.device = device
+            else:
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        else:
+            if self.settings["device"] == "auto":
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            else:
+                self.device = self.settings["device"]
+                
+        self._validate_device()
 
     def update(self, frame, detections):
         raise NotImplementedError("This method should be overridden by subclasses.")
@@ -22,6 +35,11 @@ class BaseTracker:
         """Return the accumulated VideoAnnotation."""
         raise NotImplementedError("This method should be overridden by subclasses.")
 
+    def _validate_device(self):
+        if self.device != 'cpu' or not self.device.startswith('cuda'):
+            raise ValueError(
+                f"Invalid device '{self.device}'. Supported devices are 'cpu' or 'cuda'."
+            )
 
     ### methods from another script:
 

@@ -1821,9 +1821,9 @@ class Inference:
             n_frames = frames_reader.frames_count()
 
         if tracking == "bot":
-            from supervisely.nn.tracker.botsort_tracker import BotSortTracker
+            from supervisely.nn.tracker import BotSortTracker
             tracker_settings = state.get("tracker_settings", {})
-            device = state.get("device", "cuda")
+            device = tracker_settings.get("device", self.device) 
             tracker = BotSortTracker(settings=tracker_settings, device=device)
             
         else:
@@ -2057,7 +2057,7 @@ class Inference:
         if tracking == "bot":
             from supervisely.nn.tracker import BotSortTracker
             tracker_settings = state.get("tracker_settings", {})
-            device = state.get("device", None)
+            device = tracker_settings.get("device", self.device) 
             tracker = BotSortTracker(settings=tracker_settings, device=device)
             
         elif tracking == "deepsort":
