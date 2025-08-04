@@ -61,6 +61,7 @@ SUPERVISELY_SERVER_PATH_PREFIX = sly_env.supervisely_server_path_prefix()
 if SUPERVISELY_SERVER_PATH_PREFIX and not SUPERVISELY_SERVER_PATH_PREFIX.startswith("/"):
     SUPERVISELY_SERVER_PATH_PREFIX = f"/{SUPERVISELY_SERVER_PATH_PREFIX}"
 
+HEALTH_ENDPOINTS = ["/health", "/is_ready"]
 
 class ReadyzFilter(logging.Filter):
     def filter(self, record):
@@ -906,7 +907,32 @@ class Application(metaclass=Singleton):
         ] = None,  # function to check if the app is ready for requests (e.g serving app: model is served and ready)
         show_header: bool = True,
         hide_health_check_logs: bool = True,  # whether to hide health check logs in info level
+        health_check_endpoints: Optional[List[str]] = None,  # endpoints to check health of the app
     ):
+        """Initialize the Supervisely Application.
+
+        :param layout: Main layout of the application.
+        :type layout: Widget
+        :param templates_dir: Directory with Jinja2 templates. It is preferred to use `layout` instead of `templates_dir`.
+        :type templates_dir: str, optional
+        :param static_dir: Directory with static files (e.g. CSS, JS), used for serving static content.
+        :type static_dir: str, optional
+        :param hot_reload: Whether to enable hot reload during development (default is False).
+        :type hot_reload: bool, optional
+        :param session_info_extra_content: Additional content to be displayed in the session info area.
+        :type session_info_extra_content: Widget, optional
+        :param session_info_solid: Whether to use solid background for the session info area.
+        :type session_info_solid: bool, optional
+        :param ready_check_function: Function to check if the app is ready for requests.
+        :type ready_check_function: Callable, optional
+        :param show_header: Whether to show the header in the application.
+        :type show_header: bool, optional
+        :param hide_health_check_logs: Whether to hide health check logs in info level.
+        :type hide_health_check_logs: bool, optional
+        :param health_check_endpoints: List of additional endpoints to check health of the app.
+            Add your custom endpoints here to be able to manage logging of health check requests on info level with `hide_health_check_logs`.
+        :type health_check_endpoints: List[str], optional
+        """
         self._favicon = os.environ.get("icon", "https://cdn.supervisely.com/favicon.ico")
         JinjaWidgets().context["__favicon__"] = self._favicon
         JinjaWidgets().context["__no_html_mode__"] = True
@@ -983,6 +1009,12 @@ class Application(metaclass=Singleton):
         )
 
         # add filter to hide health check logs for info level
+        if health_check_endpoints is None or len(health_check_endpoints) == 0:
+            self._health_check_endpoints = HEALTH_ENDPOINTS
+        else:
+            health_check_endpoints = [endpoint.strip() for endpoint in health_check_endpoints]
+            self._health_check_endpoints = HEALTH_ENDPOINTS + health_check_endpoints
+
         if hide_health_check_logs:
             self._setup_health_check_filter()
 
@@ -1133,25 +1165,24 @@ class Application(metaclass=Singleton):
         self._ready_check_function = func
 
     def _setup_health_check_filter(self):
-        """Setup filter to hide health check logs in production"""
+        """Setup filter to hide health check logs for info level."""
 
         class HealthCheckFilter(logging.Filter):
             def __init__(self, app_instance):
                 super().__init__()
-                self.app = app_instance
+                self.app: Application = app_instance
 
             def filter(self, record):
                 # Hide health check requests if NOT in debug mode
-                if not self.app.debug and hasattr(record, "getMessage"):
+                if not self.app._fastapi.debug and hasattr(record, "getMessage"):
                     message = record.getMessage()
                     # Check if the message contains health check paths
-                    health_paths = ["/health", "/is_ready"]
-                    if any(path in message for path in health_paths):
+                    if any(path in message for path in self.app._health_check_endpoints):
                         return False
                 return True
 
         # Apply filter to uvicorn access logger
-        health_filter = HealthCheckFilter(self._fastapi)
+        health_filter = HealthCheckFilter(self)
         uvicorn_logger = logging.getLogger("uvicorn.access")
 
         # Remove old filters of this type, if any (for safety)
