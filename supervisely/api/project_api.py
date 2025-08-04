@@ -2455,6 +2455,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         request_body = {
             ApiField.PROJECT_ID: project_id,
             ApiField.LIMIT: limit,
+            ApiField.UNIQUE_ITEMS: limit,  # the same as limit, but for diverse search
         }
 
         if dataset_id is not None:
