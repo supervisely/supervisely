@@ -33,7 +33,7 @@ Vue.component('fast-table', {
                   @keydown.esc="searchChanged('')"
                 >
               </div>
-              <slot name="header-left-side" />
+              <slot name="header-left-side-end" />
             </div>
             <div
               v-if="data && data.length"

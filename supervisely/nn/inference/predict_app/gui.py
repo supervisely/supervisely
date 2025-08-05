@@ -30,6 +30,7 @@ from supervisely.app.widgets import (
     Text,
 )
 from supervisely.app.widgets.button.button import Button
+from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.io import env
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction
@@ -139,10 +140,36 @@ class SelectItem:
             ],
         )
         self.one_of = OneOf(conditional_widget=self.radio)
+        self.select_button = Button("Select", icon="zmdi zmdi-check")
+        self.deselect_button = Button("Clear Selection", icon="zmdi zmdi-close")
+        self.deselect_button.hide()
+        self.select_button_flexbox = Flexbox(
+            widgets=[self.select_button, self.deselect_button], gap=0
+        )
+
+        @self.select_button.click
+        def select_button_click():
+            self.radio.disable()
+            self.select_project.disable()
+            self.select_dataset.disable()
+            self.select_video_container.disable()
+            self.select_button.hide()
+            self.deselect_button.show()
+
+        @self.deselect_button.click
+        def deselect_button_click():
+            self.radio.enable()
+            self.select_project.enable()
+            self.select_dataset.enable()
+            self.select_video_container.enable()
+            self.deselect_button.hide()
+            self.select_button.show()
+
         self.container = Container(
             widgets=[
                 self.radio,
                 self.one_of,
+                self.select_button_flexbox,
             ],
             direction="vertical",
             gap=20,
@@ -241,8 +268,27 @@ class SelectOutput:
             direction="horizontal",
         )
         self.one_of = OneOf(self.radio)
-        self.container = Container(widgets=[self.radio, self.one_of], direction="vertical", gap=20)
+        self.progress = Progress()
+        self.run_button = Button("Run", icon="zmdi zmdi-play")
+        self.run_button.disable()
+        self.result = ProjectThumbnail()
+        self.result.hide()
+
+        self.container = Container(
+            widgets=[self.radio, self.one_of, self.run_button, self.progress, self.result],
+            direction="vertical",
+            gap=20,
+        )
         self.card = Card(title="Output", content=self.container)
+
+    def set_result_thumbnail(self, project_id: int):
+        try:
+            project_info = self.gui.api.project.get_info_by_id(project_id)
+            self.result.set(project_info)
+            self.result.show()
+        except Exception as e:
+            logger.error(f"Failed to set result thumbnail: {str(e)}")
+            self.result.hide()
 
     def get_output_settings(self):
         settings = {}
@@ -280,7 +326,15 @@ class Preview:
         self._preview_path = os.path.join(self._preview_dir, "preview.jpg")
         self._peview_url = f"/static/preview/preview.jpg"
 
+        self.inference_settings_editor = self.gui.inference_settings
+        self.inference_settings_field = Field(
+            content=self.inference_settings_editor,
+            title="Inference Settings",
+            description="Settings for the inference. YAML format.",
+        )
+
         self.preview_button = Button("Preview", icon="zmdi zmdi-eye")
+        self.preview_button.disable()
 
         self.gallery = GridGallery(
             2,
@@ -293,13 +347,25 @@ class Preview:
         self.error_message.hide()
         self.container = Container(
             widgets=[
+                self.inference_settings_field,
                 self.preview_button,
-                Container(widgets=[self.error_message, self.gallery], gap=0),
             ],
+            style="width: 100%;",
             direction="vertical",
-            gap=20,
+            gap=30,
         )
-        self.card = Card(title="Preview", content=self.container)
+        self.flexbox = Container(
+            widgets=[
+                self.container,
+                Container(widgets=[self.error_message, self.gallery], gap=0, style="width: 100%;"),
+            ],
+            direction="horizontal",
+            overflow="wrap",
+            fractions=[3, 7],
+            gap=40,
+            # widgets_style="width: -webkit-fill-available;",
+        )
+        self.card = Card(title="Preview", content=self.flexbox)
 
         @self.preview_button.click
         def preview_button_click():
@@ -409,47 +475,28 @@ class PredictAppGui:
         self.model.deploy = self._deploy_model
 
         self.model_card = Card(title="Select Model", description="", content=self.model)
-        self.inference_settings = Editor("", language_mode="yaml", height_lines=10)
-        self.inference_settings_card = Card(
-            title="Inference Settings", content=self.inference_settings
-        )
+        self.inference_settings = Editor("", language_mode="yaml", height_px=300)
         self.items = SelectItem(self)
-        self.output = SelectOutput(self)
         self.preview = Preview(self)
-        self.progress = Progress()
-        self.run_button = Button("Run", icon="zmdi zmdi-play")
-        self.run_button.disable()
-        self.preview.preview_button.disable()
-        self.result = ProjectThumbnail()
-        self.result.hide()
+        self.output = SelectOutput(self)
+
+        self.items.card.lock("Deploy model first to select items.")
+        self.preview.card.lock("Deploy model first to preview results.")
 
         self.layout = Container(
             widgets=[
                 self.model_card,
                 self.items.card,
-                self.inference_settings_card,
                 self.preview.card,
                 self.output.card,
-                self.run_button,
-                self.progress,
-                self.result,
             ],
             direction="vertical",
             gap=10,
         )
 
-        @self.run_button.click
+        @self.output.run_button.click
         def run_button_click():
             self._run()
-
-    def _set_result_thumbnail(self, project_id: int):
-        try:
-            project_info = self.api.project.get_info_by_id(project_id)
-            self.result.set(project_info)
-            self.result.show()
-        except Exception as e:
-            logger.error(f"Failed to set result thumbnail: {str(e)}")
-            self.result.hide()
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
         if run_parameters is None:
@@ -490,7 +537,7 @@ class PredictAppGui:
             upload_parameters["upload_mode"] = "append"
 
         predictions = model_api.predict(
-            **item_prameters, **inference_settings, **upload_parameters, tqdm=self.progress()
+            **item_prameters, **inference_settings, **upload_parameters, tqdm=self.output.progress()
         )
         if "output_project_id" in upload_parameters:
             for prediction in predictions:
@@ -504,22 +551,27 @@ class PredictAppGui:
                 project_id = predictions[0].extra_data["output_project_id"]
             else:
                 project_id = predictions[0].project_id
-            self._set_result_thumbnail(project_id)
+            self.output.set_result_thumbnail(project_id)
         return predictions
 
     def _deploy_model(self) -> ModelAPI:
         model_api = None
+        self.preview.card.unlock()
+        self.items.card.unlock()
         try:
             model_api = type(self.model).deploy(self.model)
             inference_settings = model_api.get_settings()
             self.set_inference_settings(inference_settings)
         except:
-            self.run_button.disable()
+            self.output.run_button.disable()
             self.preview.preview_button.disable()
+            self.preview.card.lock("Deploy model first to preview results.")
+            self.items.card.lock("Deploy model first to select items.")
+            self.set_inference_settings("")
             raise
         else:
-            self.run_button.enable()
             self.preview.preview_button.enable()
+            self.output.run_button.enable()
         return model_api
 
     def get_inference_settings(self):

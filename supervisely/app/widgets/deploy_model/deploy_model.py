@@ -12,6 +12,9 @@ from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_selector import (
+    DropdownCheckboxSelector,
+)
 from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.experiment_selector.experiment_selector import (
     ExperimentSelector,
@@ -19,6 +22,7 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
+from supervisely.app.widgets.select.select import Select
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -69,7 +73,9 @@ class DeployModel(Widget):
 
         def _create_layout(self) -> Container:
             self.refresh_button = Button(
-                "", icon="zmdi zmdi-refresh", style="background-color: #20a0ff;"
+                "",
+                icon="zmdi zmdi-refresh",
+                button_type="text",
             )
             self.sessions_table = FastTable(
                 columns=self.COLUMNS,
@@ -132,7 +138,9 @@ class DeployModel(Widget):
             }
 
         def load_from_json(self, data: Dict):
-            self.sessions_table.select_row_by_value(str(self.COLUMN.SESSION_ID), data["session_id"])
+            session_id = data["session_id"]
+            self._update_sessions()
+            self.sessions_table.select_row_by_value(str(self.COLUMN.SESSION_ID), session_id)
 
     class Pretrained(DeployMode):
         class COLUMN:
@@ -168,13 +176,32 @@ class DeployModel(Widget):
             self.inference_settings_editor_field = Field(
                 content=self.inference_settings_editor, title="Inference Settings"
             )
+            self.framework_filter = DropdownCheckboxSelector(items=[])
+            self.framework_filter_container = Container(
+                widgets=[self.framework_filter],
+                # widgets_style="border-width: 1px;"
+            )
             self.pretrained_table = FastTable(
                 columns=self.COLUMNS,
                 page_size=10,
                 is_radio=True,
+                header_right_content=self.framework_filter_container,
             )
+            self.pretrained_table.set_filter(self._filter_function)
+
+            @self.framework_filter.value_changed
+            def on_framework_filter_changed(selected_items: List[DropdownCheckboxSelector.Item]):
+                selected_items = [item.id for item in selected_items]
+                self.pretrained_table.filter(selected_items)
 
             return self.pretrained_table
+
+        def _filter_function(self, data: pd.DataFrame, filter_value: List[str]) -> pd.DataFrame:
+            if not filter_value:
+                return data
+
+            filtered_data = data[data.iloc[:, 0].isin(filter_value)]
+            return filtered_data
 
         def _load_models(self):
             try:
@@ -224,6 +251,10 @@ class DeployModel(Widget):
                 ]
                 df = pd.DataFrame.from_records(data=data, columns=self.COLUMNS)
                 self.pretrained_table.read_pandas(df)
+                unique_frameworks = df[self.COLUMN.FRAMEWORK].unique().tolist()
+                self.framework_filter.set(
+                    [DropdownCheckboxSelector.Item(framework) for framework in unique_frameworks]
+                )
             except Exception as e:
                 logger.error(
                     f"Failed to load pretrained models: {e}",
@@ -271,10 +302,6 @@ class DeployModel(Widget):
             return self._layout
 
         def _create_layout(self) -> Container:
-            self.inference_settings_editor = Editor(language_mode="yaml", height_lines=10)
-            self.inference_settings_editor_field = Field(
-                content=self.inference_settings_editor, title="Inference Settings"
-            )
             frameworks = self.deploy_model.get_frameworks()
             experiment_infos = []
             for framework_name in frameworks:

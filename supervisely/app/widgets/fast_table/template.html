@@ -45,6 +45,13 @@
     </div>
   </span>
   {% endif %}
+  {% if widget._header_right_content %}
+  <span slot="header-left-side-end" class="header-right-side-end-cls">
+    <div style="padding-left: 10px">
+      {{{ widget._header_right_content }}}
+    </div>
+  </span>
+  {% endif %}
   <span slot="cell-content" slot-scope="{ row, column, cellValue, idx }">
     {% for column_data in widget._columns_data %}
     {% if column_data.is_widget %}

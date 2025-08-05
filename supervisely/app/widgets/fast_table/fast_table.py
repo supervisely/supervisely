@@ -140,6 +140,7 @@ class FastTable(Widget):
         is_radio: bool = False,
         is_selectable: bool = False,
         header_left_content: Optional[Widget] = None,
+        header_right_content: Optional[Widget] = None,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -166,6 +167,7 @@ class FastTable(Widget):
         self._columns_options = columns_options
         self._sorted_data = None
         self._filtered_data = None
+        self._searched_data = None
         self._active_page = 1
         self._width = width
         self._selected_rows = None
@@ -176,6 +178,7 @@ class FastTable(Widget):
         self._show_header = show_header
         self._project_meta = self._unpack_project_meta(project_meta)
         self._header_left_content = header_left_content
+        self._header_right_content = header_right_content
 
         # table_options
         self._page_size = page_size
@@ -185,8 +188,10 @@ class FastTable(Widget):
         self._validate_sort_attrs()
         self._is_radio = is_radio
         self._is_selectable = is_selectable
-        self._search_function = self._search
-        self._sort_function = self._sort
+        self._search_function = self._default_search_function
+        self._sort_function = self._default_sort_function
+        self._filter_function = self._default_filter_function
+        self._filter_value = None
 
         # to avoid errors with the duplicated names in columns
         self._multi_idx_columns = None
@@ -217,22 +222,23 @@ class FastTable(Widget):
 
         @server.post(filter_changed_route_path)
         def _filter_changed_handler():
-            self._filter_changed()
+            self._refresh()
 
-    def _filter_changed(self):
+    def _refresh(self):
         # TODO sort widgets
         self._active_page = StateJson()[self.widget_id]["page"]
         self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
         self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
         search_value = StateJson()[self.widget_id]["search"]
-        self._filtered_data = self.search(search_value)
-        self._rows_total = len(self._filtered_data)
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(search_value)
+        self._rows_total = len(self._searched_data)
 
         if self._rows_total > 0 and self._active_page == 0:  # if previous filtered data was empty
             self._active_page = 1
             StateJson()[self.widget_id]["page"] = self._active_page
 
-        self._sorted_data = self._sort_table_data(self._filtered_data)
+        self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         StateJson().send_changes()
@@ -365,6 +371,17 @@ class FastTable(Widget):
         :type func: Callable[[pd.DataFrame, str], pd.DataFrame]
         """
         self._search_function = func
+
+    def set_filter(self, filter_function: Callable[[pd.DataFrame, Any], pd.DataFrame]) -> None:
+        """Sets a custom filter function for the table.
+        first argument is a DataFrame, second argument is a filter value.
+
+        :param filter_function: Custom filter function
+        :type filter_function: Callable[[pd.DataFrame, Any], pd.DataFrame]
+        """
+        if filter_function is None:
+            filter_function = self._default_filter_function
+        self._filter_function = filter_function
 
     def read_json(self, data: Dict, meta: Dict = None) -> None:
         """Replace table data with options and project meta in the widget
@@ -700,11 +717,40 @@ class FastTable(Widget):
 
         return _click
 
-    def _search(self, data: pd.DataFrame, search_value: str) -> pd.DataFrame:
+    def _default_filter_function(self, data: pd.DataFrame, filter_value: Any) -> pd.DataFrame:
+        return data
+
+    def _filter_table_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """Filter source data using a self._filter_function as filter function.
+        To apply a custom filter function, use the set_filter method.
+
+        :return: Filtered data
+        :rtype: pd.DataFrame
+        """
+        filtered_data = self._filter_function(data, self._filter_value)
+        return filtered_data
+
+    def _filter(self, filter_value: Any) -> pd.DataFrame:
+        filtered_data = self._source_data.copy()
+        if filter_value is None:
+            return filtered_data
+        if self._filter_value != filter_value:
+            self._active_page = 1
+            StateJson()[self.widget_id]["page"] = self._active_page
+            StateJson().send_changes()
+        self._filter_value = filter_value
+        filtered_data = self._filter_table_data(filtered_data)
+        return filtered_data
+
+    def filter(self, filter_value) -> None:
+        self._filter_value = filter_value
+        self._refresh()
+
+    def _default_search_function(self, data: pd.DataFrame, search_value: str) -> pd.DataFrame:
         data = data[data.applymap(lambda x: search_value in str(x)).any(axis=1)]
         return data
 
-    def search(self, search_value: str) -> pd.DataFrame:
+    def _search(self, search_value: str) -> pd.DataFrame:
         """Search source data for search value.
 
         :param search_value: Search value
@@ -712,7 +758,7 @@ class FastTable(Widget):
         :return: Filtered data
         :rtype: pd.DataFrame
         """
-        filtered_data = self._source_data.copy()
+        filtered_data = self._filtered_data.copy()
         if search_value == "":
             return filtered_data
         if self._search_str != search_value:
@@ -723,12 +769,12 @@ class FastTable(Widget):
         self._search_str = search_value
         return filtered_data
 
-    def do_search(self, search_value: str) -> None:
+    def search(self, search_value: str) -> None:
         StateJson()[self.widget_id]["search"] = search_value
         StateJson().send_changes()
-        self._filter_changed()
+        self._refresh()
 
-    def _sort(
+    def _default_sort_function(
         self,
         data: pd.DataFrame,
         column_idx: Optional[int],
@@ -764,9 +810,10 @@ class FastTable(Widget):
             StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
         if self._sort_order is not None:
             StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
-        self._filtered_data = self.search(self._search_str)
-        self._rows_total = len(self._filtered_data)
-        self._sorted_data = self._sort_table_data(self._filtered_data)
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._rows_total = len(self._searched_data)
+        self._sorted_data = self._sort_table_data(self._searched_data)
         self._sliced_data = self._slice_table_data(self._sorted_data, actual_page=self._active_page)
         self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
@@ -1035,9 +1082,10 @@ class FastTable(Widget):
         self._sort_column_idx = StateJson()[self.widget_id]["sort"]["column"]
         self._sort_order = StateJson()[self.widget_id]["sort"]["order"]
         self._validate_sort_attrs()
-        self._filtered_data = self.search(self._search_str)
-        self._rows_total = len(self._filtered_data)
-        self._sorted_data = self._sort_table_data(self._filtered_data)
+        self._filtered_data = self._filter(self._filter_value)
+        self._searched_data = self._search(self._search_str)
+        self._rows_total = len(self._searched_data)
+        self._sorted_data = self._sort_table_data(self._searched_data)
 
         increment = 0 if self._rows_total % self._page_size == 0 else 1
         max_page = self._rows_total // self._page_size + increment

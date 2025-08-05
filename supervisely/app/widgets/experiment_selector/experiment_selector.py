@@ -9,6 +9,9 @@ from supervisely._utils import abs_url, is_development, logger
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_selector import (
+    DropdownCheckboxSelector,
+)
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.app.widgets.project_thumbnail.project_thumbnail import ProjectThumbnail
@@ -424,6 +427,26 @@ class ExperimentSelector(Widget):
 
         return data
 
+    def _filter_function(self, data: pd.DataFrame, filter_value: List[str]) -> pd.DataFrame:
+        if not filter_value:
+            return data
+
+        filtered_experiments_idxs = [
+            idx
+            for idx, experiment_info in zip(self._experiment_infos)
+            if experiment_info.framework_name in filter_value
+        ]
+        filtered_data = data.iloc[filtered_experiments_idxs]
+        filtered_data.reset_index(inplace=True, drop=True)
+        return filtered_data
+
+    def _get_frameworks(self):
+        frameworks = set()
+        for experiment_info in self._experiment_infos:
+            if experiment_info.framework_name:
+                frameworks.add(experiment_info.framework_name)
+        return sorted(frameworks)
+
     def _create_table(self) -> FastTable:
         widgets = self.ModelRow.widgets_templates()
         columns = []
@@ -432,11 +455,27 @@ class ExperimentSelector(Widget):
             columns.append((column_name, widget))
             columns_options.append({"customCell": True})
         columns_options[3].update({"classes": "border border-gray-200 px-2"})
+        self.framework_filter = DropdownCheckboxSelector(
+            items=[
+                DropdownCheckboxSelector.Item(framework) for framework in self._get_frameworks()
+            ],
+        )
         table = FastTable(
-            columns=columns, columns_options=columns_options, is_radio=True, page_size=10
+            columns=columns,
+            columns_options=columns_options,
+            is_radio=True,
+            page_size=10,
+            header_right_content=self.framework_filter,
         )
         table.set_search(self._search_function)
         table.set_sort(self._sort_function)
+        table.set_filter(self._filter_function)
+
+        @self.framework_filter.value_changed
+        def on_framework_filter_change(selected_frameworks: List[DropdownCheckboxSelector.Item]):
+            selected_frameworks = [item.id for item in selected_frameworks]
+            self.table.filter(selected_frameworks)
+
         return table
 
     def _generate_table_rows(self, experiment_infos: List[ExperimentInfo]) -> List[ModelRow]:
@@ -525,7 +564,7 @@ class ExperimentSelector(Widget):
         return self.table.selection_changed(f)
 
     def search(self, search_value: str):
-        self.table.do_search(search_value)
+        self.table.search(search_value)
 
     def get_json_data(self):
         return {}
