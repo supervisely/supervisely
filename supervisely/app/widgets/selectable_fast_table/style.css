@@ -945,3 +945,61 @@
 	background-color: rgba(227, 230, 236, 0.5);
 	border-radius: 0.5rem;
 }
+.selectable-fast-table .el-checkbox__inner {
+	position: relative !important;
+	background-color: #fff !important;
+	border: 1px solid #dcdfe6 !important;
+	border-radius: 2px !important;
+	box-sizing: border-box !important;
+	width: 14px !important;
+	height: 14px !important;
+	z-index: 1 !important;
+}
+
+.selectable-fast-table .el-checkbox__input.is-checked .el-checkbox__inner {
+	background-color: #409eff !important;
+	border-color: #409eff !important;
+}
+
+.selectable-fast-table .el-checkbox__inner::after {
+	box-sizing: content-box !important;
+	content: "" !important;
+	border: 1px solid #fff !important;
+	border-left: 0 !important;
+	border-top: 0 !important;
+	height: 7px !important;
+	left: 4px !important;
+	position: absolute !important;
+	top: 1px !important;
+	transform: rotate(45deg) scaleY(1) !important;
+	width: 3px !important;
+	transition: transform 0.15s ease-in 0.05s !important;
+	transform-origin: center !important;
+	opacity: 1 !important;
+}
+
+.selectable-fast-table .el-checkbox__input:not(.is-checked) .el-checkbox__inner::after {
+	transform: rotate(45deg) scaleY(0) !important;
+	opacity: 0 !important;
+}
+
+.selectable-fast-table .el-checkbox__input.is-checked .el-checkbox__inner::after {
+	transform: rotate(45deg) scaleY(1) !important;
+	opacity: 1 !important;
+}
+
+.selectable-fast-table .el-checkbox__input.is-checked .el-checkbox__inner .el-checkbox__original~* {
+	color: white !important;
+	font-size: 12px !important;
+}
+
+.selectable-fast-table .el-checkbox {
+	color: #606266 !important;
+	font-weight: 500 !important;
+	font-size: 14px !important;
+	position: relative !important;
+	cursor: pointer !important;
+	display: inline-block !important;
+	white-space: nowrap !important;
+	user-select: none !important;
+}

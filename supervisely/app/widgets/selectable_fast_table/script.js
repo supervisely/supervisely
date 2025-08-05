@@ -3,7 +3,7 @@ Vue.component('selectable-fast-table', {
     <!-- eslint-disable vue/no-v-html -->
     <div class="sly-ninja-table" :disabled="disabled" style="position: relative;">
     <div v-if="disabled" class="sly-fast-table-disable-overlay"></div>
-      <div class=" tailwind fast-table">
+      <div class="tailwind fast-table selectable-fast-table">
         <div
           ref="wrapper"
           class="rounded-lg border border-slate-200 bg-white overflow-hidden"
@@ -76,20 +76,21 @@ Vue.component('selectable-fast-table', {
                 <tr>
                   <th
                     v-if="settings.isSelectable"
-                    class="px-2 md:px-3 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
+                    class="px-1 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
                     :class="{ 'first:sticky first:left-0 first:z-20 first:shadow-[inset_-2px_-2px_0_#dfe6ec]': fixColumns }"
-                    style="width: 20px;"
+                    style="width: 40px; text-align: center;"
                   >
                     <el-checkbox
                       v-if="settings.isSelectable && (!settings.maxSelectedRows || settings.maxSelectedRows > 1)"
                       size="small"
                       :value="selectedIdxs.length === data.length && data.length > 0"
                       @change="selectAllRowsIdx"
+                      style="transform: scale(1.2);"
                     />
                   </th>
                   <th
                     v-else-if="settings.isRowSelectable"
-                    class="px-2 md:px-3 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
+                    class="px-1 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
                     :class="{ 'first:sticky first:left-0 first:z-20 first:shadow-[inset_-2px_-2px_0_#dfe6ec]': fixColumns }"
                   >
                     <el-checkbox
@@ -97,6 +98,7 @@ Vue.component('selectable-fast-table', {
                       size="small"
                       :value="isAllRowsSelected"
                       @input="selectAllRows"
+                      style="transform: scale(1.2);"
                     />
                   </th>
                   <th
@@ -153,28 +155,28 @@ Vue.component('selectable-fast-table', {
                 >
                   <td
                     v-if="settings.isSelectable"
-                    class="px-2 md:px-3 py-2 bg-white first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer group-hover:bg-slate-50 group"
+                    class="px-1 py-2 bg-white first:pl-3 last:pr-3 md:last:pr-6 cursor-pointer group-hover:bg-slate-50 group"
                     :class="{ 'first:sticky first:left-0 first:z-10 first:shadow-[inset_-2px_0_0_#dfe6ec]': fixColumns, 'cursor-pointer': settings.isCellClickable }"
+                    style="text-align: center;"
                   >
                     <el-checkbox
-                      v-model="selectedIdxs"
-                      :label="row.idx"
+                      :value="selectedIdxs.includes(row.idx)"
                       @input="updateSelectedRows(row)"
-                      style="width: 20px;"
-                      class="row-radio"
-                    >
-                      <span style="margin-left: -20px; visibility: hidden;">{{ row.idx }}</span>
-                    </el-checkbox>
+                      size="small"
+                      style="transform: scale(1.2);"
+                    ></el-checkbox>
                   </td>
                   <td
                     v-else-if="settings.isRowSelectable"
-                    class="row-select-cell px-2 md:px-3 py-2 bg-white first:pl-3 last:pr-3 md:last:pr-6 group-hover:bg-slate-50 group"
+                    class="row-select-cell px-1 py-2 bg-white first:pl-3 last:pr-3 md:last:pr-6 group-hover:bg-slate-50 group"
                     :class="{ 'first:sticky first:left-0 first:z-10 first:shadow-[inset_-2px_0_0_#dfe6ec]': fixColumns, 'cursor-pointer': settings.isCellClickable }"
+                    style="text-align: center;"
                   >
                     <el-checkbox
                       size="small"
                       :value="!!selectedRowsById[row.id]"
                       @input="updateSelectedRows(row)"
+                      style="transform: scale(1.2);"
                     />
                   </td>
 
