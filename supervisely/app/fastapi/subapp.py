@@ -3,7 +3,9 @@ import json
 import os
 import signal
 import sys
+import time
 from contextlib import suppress
+from contextvars import ContextVar
 from functools import wraps
 from pathlib import Path
 from threading import Event as ThreadingEvent
@@ -63,6 +65,9 @@ if SUPERVISELY_SERVER_PATH_PREFIX and not SUPERVISELY_SERVER_PATH_PREFIX.startsw
 
 HEALTH_ENDPOINTS = ["/health", "/is_ready"]
 
+# Context variable for response time
+response_time_ctx: ContextVar[float] = ContextVar("response_time", default=None)
+
 class ReadyzFilter(logging.Filter):
     def filter(self, record):
         if "/readyz" in record.getMessage() or "/livez" in record.getMessage():
@@ -71,11 +76,25 @@ class ReadyzFilter(logging.Filter):
         return True
 
 
+class ResponseTimeFilter(logging.Filter):
+    def filter(self, record):
+        # Only add responseTime to HTTP access logs (uvicorn format)
+        if hasattr(record, "getMessage"):
+            message = record.getMessage()
+            # Check if this is an HTTP access log line
+            if ' - "' in message and "HTTP/" in message:
+                response_time = response_time_ctx.get(None)
+                if response_time is not None:
+                    record.responseTime = f"{round(response_time, 2)}ms"
+        return True
+
+
 def _init_uvicorn_logger():
     uvicorn_logger = logging.getLogger("uvicorn.access")
     for handler in uvicorn_logger.handlers:
         handler.setFormatter(create_formatter())
     uvicorn_logger.addFilter(ReadyzFilter())
+    uvicorn_logger.addFilter(ResponseTimeFilter())
 
 
 _init_uvicorn_logger()
@@ -795,6 +814,8 @@ def _init(
 
     @app.middleware("http")
     async def get_state_from_request(request: Request, call_next):
+        # Start timer for response time measurement
+        start_time = time.perf_counter()
         if headless is False:
             await StateJson.from_request(request)
 
@@ -830,6 +851,9 @@ def _init(
         except Exception as exc:
             need_to_handle_error = is_production()
             response = await process_server_error(request, exc, need_to_handle_error)
+        # Calculate response time and set it for uvicorn logger in ms
+        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        response_time_ctx.set(elapsed_ms)
         return response
 
     def verify_localhost(request: Request):
