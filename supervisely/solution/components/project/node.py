@@ -43,6 +43,8 @@ class ProjectNode(SolutionElement):
         """
         self.api = api
         self.project_id = project_id
+
+        # --- project info ------------------------------------------------------
         self.project = self.api.project.get_info_by_id(project_id)
         self.workspace_id = self.project.workspace_id
         self.dataset_id = dataset_id
@@ -54,6 +56,7 @@ class ProjectNode(SolutionElement):
         self.description = description
         self.is_training = is_training
 
+        # --- core blocks --------------------------------------------------------
         self.automation = ProjectAutomation(project_id=self.project_id, func=self.update)
         self.gui = ProjectGUI(
             title=self.title,
@@ -61,14 +64,20 @@ class ProjectNode(SolutionElement):
             is_training=self.is_training,
             dataset=self.dataset,
         )
-
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
+
+        # --- modals -------------------------------------------------------------
         self.modals = []
+
+        # --- refresh ------------------------------------------------------------
         self.refresh_interval = refresh_interval
         self.apply_automation(sec=self.refresh_interval)
 
         super().__init__(*args, **kwargs)
 
+    # ------------------------------------------------------------------
+    # Base Widget Methods ----------------------------------------------
+    # ------------------------------------------------------------------
     def get_json_data(self) -> dict:
         """
         Returns the current data of the Project widget.
@@ -86,6 +95,9 @@ class ProjectNode(SolutionElement):
         """
         return {}
 
+    # ------------------------------------------------------------------
+    # Update Methods ---------------------------------------------------
+    # ------------------------------------------------------------------
     def update(self, new_items_count: Optional[int] = None) -> None:
         """
         Update the project node with new information.
@@ -118,6 +130,8 @@ class ProjectNode(SolutionElement):
     def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
         """
         Returns the training and validation collections for the project.
+        If the project is not a training project, returns empty lists.
+
         :return: Tuple of lists containing training and validation collection IDs.
         """
         train_collections = []
@@ -141,6 +155,7 @@ class ProjectNode(SolutionElement):
     ) -> Tuple[List, List]:
         """
         Returns the items in training and validation collections.
+
         :param dataset_id: Optional dataset ID to filter items
         :type dataset_id: Optional[int]
         :return: Tuple containing lists of training and validation items.
@@ -179,6 +194,9 @@ class ProjectNode(SolutionElement):
 
         return None
 
+    # ------------------------------------------------------------------
+    # Automation --------------------------------------------------------
+    # ------------------------------------------------------------------
     def apply_automation(self, sec: int, *args) -> None:
         """
         Apply the automation to refresh the project node periodically.

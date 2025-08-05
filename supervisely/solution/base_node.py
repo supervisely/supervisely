@@ -1,26 +1,20 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Callable, Dict, List, Literal, Optional, Any, Union
 
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import (
     Button,
-    Checkbox,
     Container,
-    Empty,
-    InputNumber,
-    Select,
     SolutionCard,
     SolutionGraph,
     SolutionProject,
-    Text,
     Widget,
     Dialog,
 )
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.solution.scheduler import TasksScheduler
-from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 
 # ------------------------------------------------------------------
@@ -186,25 +180,24 @@ class Automation:
 
 class AutomationWidget(Automation):
 
-    def __init__(self, description: str, func: Callable):
+    def __init__(self, func: Callable):
         """
         Initializes the automation widget.
 
-        :param description: Description of the automation.
-        :type description: str
         :param func: Function to be called when the automation is applied.
         :type func: Callable
         """
         super().__init__()
-        self.description = description
         self.func = func
         self.apply_button = Button("Apply", plain=True, button_size="small")
         self.widget = self._create_widget()
         self.job_id = self.widget.widget_id
 
+        # --- modal ----------------------------------------------------
         self._modal: Optional[Dialog] = None
         self._open_modal_button: Optional[Button] = None
 
+        # --- apply button ---------------------------------------------
         @self.apply_button.click
         def on_apply_button_click():
             self.apply()
@@ -212,11 +205,6 @@ class AutomationWidget(Automation):
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
-    @property
-    def is_enabled(self) -> bool:
-        """Check if the automation is enabled."""
-        return self.enabled_checkbox.is_checked()
-
     def apply(self) -> None:
         """Applies the automation settings."""
         sec, _, _ = self.get_details()
@@ -233,53 +221,41 @@ class AutomationWidget(Automation):
         self._on_apply = func
 
     # ------------------------------------------------------------------
+    # Automation Settings ----------------------------------------------
+    # Depends on the automation GUI implementation `_create_widget()` --
+    # ------------------------------------------------------------------
+    def get_details(self) -> Any:
+        """Returns the details of the automation."""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def save_details(self) -> None:
+        """
+        Saves the automation settings.
+
+        :param enabled: Whether the automation is enabled.
+        :type enabled: bool
+        :param interval: Interval for synchronization.
+        :type interval: int
+        :param period: Period unit for synchronization (e.g., "minutes", "hours", "days").
+        :type period: str
+        """
+        raise NotImplementedError("Subclasses must implement this method")
+
+    # ------------------------------------------------------------------
     # GUI --------------------------------------------------------------
     # ------------------------------------------------------------------
     def _create_widget(self) -> Container:
-        """Creates the widget for the automation."""
-        self.description = Text(
-            self.description,
-            status="text",
-            color="gray",
-        )
-        self.enabled_checkbox = Checkbox(content="Run every", checked=False)
-        self.interval_input = InputNumber(
-            min=1, value=60, debounce=1000, controls=False, size="mini", width=150
-        )
-        self.interval_input.disable()
-        self.period_select = Select(
-            [Select.Item("min", "minutes"), Select.Item("h", "hours"), Select.Item("d", "days")],
-            size="mini",
-        )
-        self.period_select.disable()
+        """Create the widget for the automation."""
+        raise NotImplementedError("Subclasses must implement this method")
 
-        settings_container = Container(
-            [
-                self.enabled_checkbox,
-                self.interval_input,
-                self.period_select,
-                Empty(),
-            ],
-            direction="horizontal",
-            gap=3,
-            fractions=[1, 1, 1, 1],
-            style="align-items: center",
-            overflow="wrap",
-        )
+    @property
+    def is_enabled(self) -> bool:
+        """Implement checkbox in `_create_widget()` to check if the automation is enabled."""
+        raise NotImplementedError("Subclasses must implement this method")
 
-        apply_button_container = Container([self.apply_button], style="align-items: flex-end")
-
-        @self.enabled_checkbox.value_changed
-        def on_automate_checkbox_change(is_checked):
-            if is_checked:
-                self.interval_input.enable()
-                self.period_select.enable()
-            else:
-                self.interval_input.disable()
-                self.period_select.disable()
-
-        return Container([self.description, settings_container, apply_button_container])
-
+    # ------------------------------------------------------------------
+    # Modal ------------------------------------------------------------
+    # ------------------------------------------------------------------
     @property
     def modal(self) -> Dialog:
         """Returns the modal for the automation."""
@@ -305,45 +281,6 @@ class AutomationWidget(Automation):
 
             self._open_modal_button = btn
         return self._open_modal_button
-
-    # ------------------------------------------------------------------
-    # Automation Settings ----------------------------------------------
-    # ------------------------------------------------------------------
-    def get_details(self) -> Tuple[int, int, str]:
-        """Returns the details of the automation."""
-        enabled = self.enabled_checkbox.is_checked()
-        period = self.period_select.get_value()
-        interval = self.interval_input.get_value()
-
-        if not enabled:
-            return None, None, None
-
-        sec = get_seconds_from_period_and_interval(period, interval)
-        if sec == 0:
-            return None, None, None
-
-        return sec, interval, period
-
-    def save_details(self, enabled: bool, interval: int, period: str) -> None:
-        """
-        Saves the automation settings.
-
-        :param enabled: Whether the automation is enabled.
-        :type enabled: bool
-        :param interval: Interval for synchronization.
-        :type interval: int
-        :param period: Period unit for synchronization (e.g., "minutes", "hours", "days").
-        :type period: str
-        """
-        if self.enabled_checkbox.is_checked() != enabled:
-            if enabled:
-                self.enabled_checkbox.check()
-            else:
-                self.enabled_checkbox.uncheck()
-        if self.period_select.get_value() != period:
-            self.period_select.set_value(period)
-        if self.interval_input.get_value() != interval:
-            self.interval_input.value = interval
 
 
 # ------------------------------------------------------------------

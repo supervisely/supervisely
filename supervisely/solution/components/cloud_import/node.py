@@ -17,6 +17,7 @@ class CloudImportNode(SolutionElement):
     progress_badge_key = "Import"
 
     def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
+        """Node for importing data from the Cloud Storage to the Input Project."""
         self.api = api
         self.project_id = project_id
 
@@ -26,7 +27,7 @@ class CloudImportNode(SolutionElement):
         self.card = self._build_card(
             title="Import from Cloud",
             tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
-            buttons=[self._create_tasks_button(), self.automation.open_modal_button],
+            buttons=[self.gui.tasks_history.open_modal_button, self.automation.open_modal_button],
         )
         self.node = SolutionCardNode(x=x, y=y, content=self.card)
 
@@ -36,10 +37,10 @@ class CloudImportNode(SolutionElement):
 
         # --- modals -------------------------------------------------------------
         self.modals = [
-            self.tasks_modal,
-            self.automation.modal,
-            self.gui.tasks_history.logs_modal,
             self.modal,
+            self.automation.modal,
+            self.gui.tasks_history.modal,
+            self.gui.tasks_history.logs_modal,
         ]
 
         super().__init__(*args, **kwargs)
@@ -52,38 +53,6 @@ class CloudImportNode(SolutionElement):
         if not hasattr(self, "_modal"):
             self._modal = Dialog(title="Import from Cloud Storage", content=self.gui, size="tiny")
         return self._modal
-
-    # ------------------------------------------------------------------
-    # Task History -----------------------------------------------------
-    # ------------------------------------------------------------------
-    @property
-    def tasks_history(self):
-        return self.gui.tasks_history
-
-    @property
-    def tasks_modal(self):
-        if not hasattr(self, "_tasks_modal"):
-            self._tasks_modal = self._create_tasks_modal()
-        return self._tasks_modal
-
-    def _create_tasks_modal(self):
-        return Dialog(title="Import tasks history", content=self.tasks_history)
-
-    def _create_tasks_button(self):
-        btn = Button(
-            "Import Tasks History",
-            icon="zmdi zmdi-view-list-alt",
-            button_size="mini",
-            plain=True,
-            button_type="text",
-        )
-
-        @btn.click
-        def _show_tasks_dialog():
-            self.gui.tasks_history.update()
-            self.tasks_modal.show()
-
-        return btn
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------

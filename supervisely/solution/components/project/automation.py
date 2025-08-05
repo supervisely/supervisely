@@ -14,6 +14,9 @@ class ProjectAutomation(Automation):
         self.project_id = project_id
         self.func = func
 
+    # ------------------------------------------------------------------
+    # Automation -------------------------------------------------------
+    # ------------------------------------------------------------------
     def apply(self, sec: int, *args) -> None:
         self.scheduler.add_job(
             self.func, interval=sec, job_id=self.job_id, replace_existing=True, *args

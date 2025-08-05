@@ -20,6 +20,9 @@ class ProjectGUI:
         self.dataset = dataset
         self.card = self._create_card()
 
+    # ------------------------------------------------------------------
+    # GUI --------------------------------------------------------------
+    # ------------------------------------------------------------------
     def _create_card(self) -> SolutionProject:
         """Creates the SolutionProject card with appropriate settings"""
         stats_url = self.project.url.replace("datasets", "stats/datasets")
@@ -76,6 +79,9 @@ class ProjectGUI:
             content=tooltip_widgets,
         )
 
+    # ------------------------------------------------------------------
+    # Update Methods ---------------------------------------------------
+    # ------------------------------------------------------------------
     def update_preview(self, preview_urls: List[str], items_counts: List[int]) -> None:
         """Update preview URLs and item counts for the project card"""
         self.card.update_preview_url(preview_urls)

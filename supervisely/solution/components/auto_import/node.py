@@ -1,17 +1,19 @@
-from typing import List, Optional, Tuple
-from venv import logger
+from typing import Tuple
 
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
-from supervisely.app.widgets import Button, Dialog, FastTable, SolutionCard, TaskLogs
 from supervisely.solution.base_node import SolutionElement, SolutionCardNode
+
+from .history import AutoImportTasksHistory
 
 
 class AutoImportNode(SolutionElement):
     progress_badge_key = "Import"
     APP_SLUG = "supervisely-ecosystem/main-import"
 
-    def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
+    def __init__(
+        self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs
+    ):
         """
         Initialize the Manual Import GUI widget.
 
@@ -23,20 +25,28 @@ class AutoImportNode(SolutionElement):
 
         # --- core blocks --------------------------------------------------------
         node_id = 41  # 49
+        self.tasks_history = AutoImportTasksHistory(
+            self.api, self.project_id
+        )  # @TODO: widget_id job_id?
         autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
-        autoimport_link += f"?moduleId=435&nodeId={node_id}&appVersion=test-env&appIsBranch=true"
+        autoimport_link += (
+            f"?moduleId=435&nodeId={node_id}&appVersion=test-env&appIsBranch=true"
+        )
         self.card = self._build_card(
             title="Drag & Drop Import",
             tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
-            buttons=[self._create_tasks_button()],
+            buttons=[self.tasks_history.open_modal_button],
             link=autoimport_link,
         )
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 
-        self.modals = [self.logs_modal, self.tasks_modal]
-        self._tasks = []
+        self.modals = [self.tasks_history.modal, self.tasks_history.logs_modal]
+        self._tasks = self.tasks_history._tasks
         super().__init__(*args, **kwargs)
 
+    # ------------------------------------------------------------------
+    # Base Widget Methods ----------------------------------------------
+    # ------------------------------------------------------------------
     def get_json_data(self) -> dict:
         """
         Returns the current data of the Manual Import widget.
@@ -46,137 +56,11 @@ class AutoImportNode(SolutionElement):
             "tasks": self._tasks,
         }
 
-    # ------------------------------------------------------------------
-    # Tasks History ----------------------------------------------------
-    # ------------------------------------------------------------------
-    @property
-    def logs(self) -> TaskLogs:
+    def get_json_state(self) -> dict:
         """
-        Returns the TaskLogs widget for displaying task logs.
+        Returns the current state of the Auto Import widget.
         """
-        if not hasattr(self, "_logs"):
-            self._logs = TaskLogs()
-        return self._logs
-
-    @property
-    def logs_modal(self) -> Dialog:
-        """
-        Returns the modal dialog for displaying task logs.
-        """
-        if not hasattr(self, "_logs_modal"):
-            self._logs_modal = Dialog(title="Task logs", content=self.logs)
-        return self._logs_modal
-
-    def _create_tasks_table(self) -> FastTable:
-        """
-        Creates and returns the FastTable for displaying import tasks history.
-        """
-        import_table_columns = [
-            "Task ID",
-            "App Name",
-            "Dataset IDs",
-            "Created At",
-            "Images Count",
-            "Status",
-        ]
-        tasks_table = FastTable(
-            columns=import_table_columns,
-            sort_column_idx=0,
-            fixed_columns=1,
-            sort_order="desc",
-        )
-
-        @tasks_table.row_click
-        def on_row_click(clicked_row: FastTable.ClickedRow):
-            self.logs.set_task_id(clicked_row.row[0])
-            self.logs_modal.show()
-
-        return tasks_table
-
-    @property
-    def tasks_table(self) -> FastTable:
-        if not hasattr(self, "_tasks_table"):
-            self._tasks_table = self._create_tasks_table()
-        return self._tasks_table
-
-    def _create_tasks_modal(self, tasks_table: FastTable) -> Dialog:
-        """
-        Creates and returns the modal dialog for displaying import tasks history.
-        """
-        return Dialog(title="Import tasks history", content=tasks_table)
-
-    @property
-    def tasks_modal(self) -> Dialog:
-        """
-        Returns the modal dialog for displaying import tasks history.
-        """
-        if not hasattr(self, "_tasks_modal"):
-            self._tasks_modal = self._create_tasks_modal(self.tasks_table)
-        return self._tasks_modal
-
-    def _create_tasks_button(self) -> Button:
-        """
-        Creates and returns the button for showing import tasks history.
-        """
-        btn = Button(
-            "Import tasks history",
-            icon="zmdi zmdi-view-list-alt",
-            button_size="mini",
-            plain=True,
-            button_type="text",
-        )
-
-        @btn.click
-        def _show_tasks():
-            self.tasks_table.clear()
-            for row in self._get_table_data():
-                self.tasks_table.insert_row(row)
-            self.tasks_modal.show()
-
-        return btn
-
-    def _get_table_data(self) -> List[List]:
-        """
-        Collects and returns the import tasks history as a list of lists.
-        """
-
-        project = self.api.project.get_info_by_id(self.project_id)
-        full_history = project.custom_data.get("import_history", {}).get("tasks", [])
-        history_dict = {item["task_id"]: item for item in full_history}
-
-        for task in full_history:
-            if task.get("slug") == self.APP_SLUG:
-                task_id = task.get("task_id")
-                if task_id is not None and task_id not in self._tasks:
-                    self._tasks.append(task_id)
-
-        data = []
-        for task_id in self._tasks:
-            history_item = history_dict.get(task_id)
-            if history_item is None:
-                data.append([task_id, "", "", "", 0, "failed"])
-                continue
-            if history_item.get("slug") != self.APP_SLUG:
-                logger.warning(
-                    f"Import history item with task_id {task_id} does not match the slug {self.APP_SLUG}. Skipping."
-                )
-                continue
-            datasets = history_item.get("datasets", [])
-            ds_ids = ", ".join(str(d["id"]) for d in datasets)
-            status = history_item.get("status")
-            if status == "started":
-                status = "ok"
-            row = [
-                history_item.get("task_id"),
-                history_item.get("app", {}).get("name", ""),
-                ds_ids,
-                history_item.get("timestamp"),
-                history_item.get("items_count"),
-                status,
-            ]
-            data.append(row)
-
-        return data
+        return {}
 
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
@@ -204,7 +88,11 @@ class AutoImportNode(SolutionElement):
             last_task = import_history_dict.get(last_task_id)
             if last_task is not None:
                 items_count = last_task.get("items_count", 0)
-                self.gui.card.update_property(key="Last import", value=f"+{items_count}")
-                self.gui.card.update_badge_by_key("Last import:", f"+{items_count}", "success")
+                self.gui.card.update_property(
+                    key="Last import", value=f"+{items_count}"
+                )
+                self.gui.card.update_badge_by_key(
+                    "Last import:", f"+{items_count}", "success"
+                )
                 return items_count, project.image_preview_url
         return None, project.image_preview_url
