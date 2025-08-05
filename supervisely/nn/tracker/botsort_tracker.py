@@ -3,13 +3,31 @@ from supervisely.nn.tracker.base_tracker import BaseTracker
 from supervisely.nn.tracker.botsort.tracker.mc_bot_sort import BoTSORT
 from supervisely import Annotation, VideoAnnotation
 
+from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 import numpy as np
 import yaml
 import os
 from pathlib import Path
 from supervisely import logger
+
+
+@dataclass
+class TrackedObject:
+    """
+    Data class representing a tracked object in a single frame.
+    
+    Args:
+        track_id: Unique identifier for the track
+        bbox: Bounding box coordinates in format [x1, y1, x2, y2]
+        class_id: Numeric class identifier
+        score: Confidence score of the detection/track
+    """
+    track_id: int
+    bbox: List[float]  # [x1, y1, x2, y2]
+    class_id: int
+    score: float
 
 
 class BotSortTracker(BaseTracker):
@@ -44,7 +62,7 @@ class BotSortTracker(BaseTracker):
         with open(config_path, 'r', encoding='utf-8') as file:
             return yaml.safe_load(file)
 
-    def update(self, frame: np.ndarray, annotation: Annotation) -> List[Dict[str, Any]]:
+    def update(self, frame: np.ndarray, annotation: Annotation) -> List[TrackedObject]:
         """Update tracker and return tracks for current frame."""
         self.frame_shape = frame.shape[:2]
         self._update_obj_classes(annotation)
@@ -115,8 +133,8 @@ class BotSortTracker(BaseTracker):
         else:
             return np.zeros((0, 6), dtype=np.float32)
     
-    def _stracks_to_tracks(self, output_stracks) -> List[Dict[str, Any]]:
-        """Convert BoTSORT output tracks to standard dictionary format."""
+    def _stracks_to_tracks(self, output_stracks) -> List[TrackedObject]:
+        """Convert BoTSORT output tracks to TrackedObject dataclass instances."""
         tracks = []
         
         for strack in output_stracks:
@@ -130,12 +148,12 @@ class BotSortTracker(BaseTracker):
             elif hasattr(strack, 'class_id'):
                 class_id = int(strack.class_id)
             
-            track = {
-                'track_id': strack.track_id,
-                'bbox': strack.tlbr.tolist(),  # [x1, y1, x2, y2]
-                'class_id': class_id,
-                'score': getattr(strack, 'score', 1.0)
-            }
+            track = TrackedObject(
+                track_id=strack.track_id,
+                bbox=strack.tlbr.tolist(),  # [x1, y1, x2, y2]
+                class_id=class_id,
+                score=getattr(strack, 'score', 1.0)
+            )
             tracks.append(track)
         
         return tracks
@@ -158,9 +176,9 @@ class BotSortTracker(BaseTracker):
             frame_figures = []
             
             for track in tracks:
-                track_id = track['track_id']
-                bbox = track['bbox']  # [x1, y1, x2, y2]
-                class_id = track['class_id']
+                track_id = track.track_id
+                bbox = track.bbox  # [x1, y1, x2, y2]
+                class_id = track.class_id
                 
                 # Clip bbox to image boundaries
                 x1, y1, x2, y2 = bbox
@@ -190,7 +208,7 @@ class BotSortTracker(BaseTracker):
             frames=sly.FrameCollection(frames)
         )
         
-    @property
+    @property    
     def video_annotation(self) -> VideoAnnotation:
         """Return the accumulated VideoAnnotation."""
         if not self.frame_tracks:
@@ -201,5 +219,3 @@ class BotSortTracker(BaseTracker):
             raise ValueError(error_msg)
                 
         return self._create_video_annotation()
-    
-

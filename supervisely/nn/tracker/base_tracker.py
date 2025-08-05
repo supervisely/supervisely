@@ -7,18 +7,19 @@ class BaseTracker:
 
     def __init__(self, settings: dict = None, device: str = None):
         self.settings = settings or {}
-        if self.settings.get("device") is None:
-            if device is not None:
-                self.device = device
+        auto_device = "cuda" if torch.cuda.is_available() else "cpu"
+        settings_device = self.settings.get("device")
+        
+        if settings_device is not None:
+            if settings_device == "auto":
+                self.device = auto_device
             else:
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+                self.device = settings_device
         else:
-            if self.settings["device"] == "auto":
-                self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            else:
-                self.device = self.settings["device"]
+            self.device = device if device is not None else auto_device
                 
         self._validate_device()
+
 
     def update(self, frame, detections):
         raise NotImplementedError("This method should be overridden by subclasses.")
