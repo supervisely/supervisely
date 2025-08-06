@@ -119,7 +119,7 @@ class ModelSelector:
             model_name = _get_model_name(selected_row)
         else:
             selected_row = self.experiment_selector.get_selected_experiment_info()
-            model_name = selected_row.get("model_name", None)
+            model_name = selected_row.model_name
         return model_name
 
     def get_model_info(self) -> dict:

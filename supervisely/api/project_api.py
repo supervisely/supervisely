@@ -2156,7 +2156,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None,
-            #                       teamd_id = 1,
+            #                       team_id = 1,
             #                       import_settings = {},
             #                   ),
             #                   ProjectInfo(id = 23,
@@ -2174,7 +2174,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None),
-            #                       teamd_id = 1,
+            #                       team_id = 1,
             #                       import_settings = {},
             #                   )
             #                 ]
