@@ -314,6 +314,10 @@ class DeployModel(Widget):
                 api=self.api,
             )
 
+            @self.experiment_table.checkpoint_changed
+            def _checkpoint_changed(row: ExperimentSelector.ModelRow, checkpoint_value: str):
+                print(f"Checkpoint changed for {row._experiment_info.task_id}: {checkpoint_value}")
+
             return self.experiment_table
 
         def get_deploy_parameters(self) -> Dict[str, Any]:

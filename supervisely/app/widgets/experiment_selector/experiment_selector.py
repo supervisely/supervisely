@@ -1,7 +1,8 @@
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, List, Optional, Union
+from functools import partial
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 
@@ -9,6 +10,7 @@ from supervisely import batched
 from supervisely._utils import abs_url, is_development, logger
 from supervisely.api.api import Api, ApiField
 from supervisely.api.project_api import ProjectInfo
+from supervisely.app.exceptions import show_dialog
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_selector import (
     DropdownCheckboxSelector,
@@ -189,7 +191,10 @@ class ExperimentSelector(Widget):
 
         def _create_task_link(self) -> str:
             remote_path = os.path.join(self._task_path, "open_app.lnk")
+            # TODO: remove temp logs
+            logger.debug(f"Looking for task link file at: {self._task_path}")
             task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
+            logger.debug(f"Found task link file: {self._task_path}")
             if task_file is not None:
                 if is_development():
                     return abs_url(f"/files/{task_file.id}")
@@ -250,6 +255,9 @@ class ExperimentSelector(Widget):
                 training_project_text.show()
             return Container(widgets=[training_project_thumbnail, training_project_text], gap=0)
 
+        def checkpoint_changed(self, checkpoint_value: str):
+            return
+
         def _create_checkpoints_widget(self) -> Select:
             checkpoint_selector_items = []
             for path, name in zip(self._checkpoints_paths, self._checkpoints_names):
@@ -257,6 +265,11 @@ class ExperimentSelector(Widget):
             checkpoint_selector = Select(items=checkpoint_selector_items)
             if self._best_checkpoint_value is not None:
                 checkpoint_selector.set_value(self._best_checkpoint)
+
+            @checkpoint_selector.value_changed
+            def on_checkpoint_changed(checkpoint_value: str):
+                self.checkpoint_changed(checkpoint_value)
+
             return checkpoint_selector
 
         def _create_session_widget(self) -> Text:
@@ -314,6 +327,9 @@ class ExperimentSelector(Widget):
 
         @classmethod
         def widgets_templates(cls):
+            checkpoints_template_widget = Select(items=[])
+            checkpoints_template_widget.value_changed(lambda _: None)
+
             return [
                 # _task_widget
                 Container(widgets=[Text(""), Text("")], gap=0),
@@ -322,7 +338,7 @@ class ExperimentSelector(Widget):
                 # _training_project_widget
                 Container(widgets=[ProjectThumbnail(remove_margins=True), Text("")], gap=0),
                 # _checkpoints_widget
-                Select(items=[]),
+                checkpoints_template_widget,
                 # _session_widget
                 Text(""),
                 # _benchmark_widget
@@ -371,6 +387,7 @@ class ExperimentSelector(Widget):
             api = Api()
         self.api = api
         self._experiment_infos = experiment_infos
+        self._checkpoint_changed_func = None
 
         self._rows = []
         self.table = self._create_table()
@@ -430,25 +447,43 @@ class ExperimentSelector(Widget):
 
         return data
 
-    def _filter_function(self, data: pd.DataFrame, filter_value: List[str]) -> pd.DataFrame:
-        if not filter_value:
-            return data
+    def _filter_function(
+        self, data: pd.DataFrame, filter_value: Tuple[List[str], List[str]]
+    ) -> pd.DataFrame:
+        try:
+            frameworks, task_types = filter_value
 
-        filtered_experiments_idxs = [
-            idx
-            for idx, experiment_info in zip(self._experiment_infos)
-            if experiment_info.framework_name in filter_value
-        ]
-        filtered_data = data.iloc[filtered_experiments_idxs]
-        filtered_data.reset_index(inplace=True, drop=True)
-        return filtered_data
+            filtered_experiments_idxs = set()
+            if not frameworks and not task_types:
+                return data
+            if frameworks:
+                for idx, experiment_info in enumerate(self._experiment_infos):
+                    if experiment_info.framework_name in frameworks:
+                        filtered_experiments_idxs.add(idx)
+            if task_types:
+                for idx, experiment_info in enumerate(self._experiment_infos):
+                    if experiment_info.task_type in task_types:
+                        filtered_experiments_idxs.add(idx)
+
+            filtered_data = data.iloc[sorted(filtered_experiments_idxs)]
+            filtered_data.reset_index(inplace=True, drop=True)
+            return filtered_data
+        except Exception as e:
+            logger.error(f"Error during filtering: {e}", exc_info=True)
+            show_dialog(title="Filtering Error", description=str(e), status="error")
+            return data
 
     def _get_frameworks(self):
         frameworks = set()
         for experiment_info in self._experiment_infos:
-            if experiment_info.framework_name:
-                frameworks.add(experiment_info.framework_name)
+            frameworks.add(experiment_info.framework_name)
         return sorted(frameworks)
+
+    def _get_task_types(self):
+        task_types = set()
+        for experiment_info in self._experiment_infos:
+            task_types.add(experiment_info.task_type)
+        return sorted(task_types)
 
     def _create_table(self) -> FastTable:
         widgets = self.ModelRow.widgets_templates()
@@ -459,8 +494,15 @@ class ExperimentSelector(Widget):
             columns_options.append({"customCell": True})
         columns_options[3].update({"classes": "border border-gray-200 px-2"})
         self.framework_filter = DropdownCheckboxSelector(
+            label="Framework",
             items=[
                 DropdownCheckboxSelector.Item(framework) for framework in self._get_frameworks()
+            ],
+        )
+        self.task_type_filter = DropdownCheckboxSelector(
+            label="Task Type",
+            items=[
+                DropdownCheckboxSelector.Item(task_type) for task_type in self._get_task_types()
             ],
         )
         table = FastTable(
@@ -468,7 +510,11 @@ class ExperimentSelector(Widget):
             columns_options=columns_options,
             is_radio=True,
             page_size=10,
-            header_right_content=self.framework_filter,
+            header_right_content=Container(
+                widgets=[self.framework_filter, self.task_type_filter],
+                gap=10,
+                direction="horizontal",
+            ),
         )
         table.set_search(self._search_function)
         table.set_sort(self._sort_function)
@@ -479,7 +525,16 @@ class ExperimentSelector(Widget):
             selected_frameworks: List[DropdownCheckboxSelector.Item],
         ):
             selected_frameworks = [item.id for item in selected_frameworks]
-            self.table.filter(selected_frameworks)
+            selected_task_types = self.task_type_filter.get_selected()
+            self.table.filter((selected_frameworks, selected_task_types))
+
+        @self.task_type_filter.value_changed
+        def on_task_type_filter_change(
+            selected_task_types: List[DropdownCheckboxSelector.Item],
+        ):
+            selected_task_types = [item.id for item in selected_task_types]
+            selected_frameworks = self.framework_filter.get_selected()
+            self.table.filter((selected_frameworks, selected_task_types))
 
         return table
 
@@ -522,6 +577,8 @@ class ExperimentSelector(Widget):
 
         def process_experiment_info(experiment_info: ExperimentInfo):
             try:
+                # TODO remove temp logs
+                logger.debug(f"Processing experiment info: {experiment_info.task_id}")
                 project_info = self._project_infos_map.get(experiment_info.project_id)
                 model_row = ExperimentSelector.ModelRow(
                     api=self.api,
@@ -530,13 +587,18 @@ class ExperimentSelector(Widget):
                     experiment_info=experiment_info,
                     project_info=project_info,
                 )
+
+                def this_row_checkpoint_changed(checkpoint_value: str):
+                    self._checkpoint_changed(model_row, checkpoint_value)
+
+                model_row.checkpoint_changed = this_row_checkpoint_changed
                 return experiment_info.task_type, model_row
             except Exception as e:
                 logger.debug(f"Failed to process experiment info: {experiment_info}")
                 return None, None
 
         table_rows = []
-        with ThreadPoolExecutor() as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             futures = [
                 executor.submit(process_experiment_info, experiment_info)
                 for experiment_info in experiment_infos
@@ -605,6 +667,15 @@ class ExperimentSelector(Widget):
                 self.table.select_row(idx)
                 return
         raise ValueError(f"Experiment info with task id {task_id} not found in the table rows.")
+
+    def _checkpoint_changed(self, row: ModelRow, checkpoint_value: str):
+        if self._checkpoint_changed_func is None:
+            return
+        return self._checkpoint_changed_func(row, checkpoint_value)
+
+    def checkpoint_changed(self, func: Callable[[ModelRow, str], None]):
+        self._checkpoint_changed_func = func
+        return self._checkpoint_changed_func
 
     def selection_changed(self, func):
         def f(selected_row: FastTable.ClickedRow):

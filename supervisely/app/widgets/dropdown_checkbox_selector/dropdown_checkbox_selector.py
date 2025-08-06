@@ -31,8 +31,11 @@ class DropdownCheckboxSelector(Widget):
                 description=data.get("description", None),
             )
 
-    def __init__(self, items: List[Item], widget_id: str = None, multiple: bool = True):
+    def __init__(
+        self, items: List[Item], label: str = None, widget_id: str = None, multiple: bool = True
+    ):
         self._items = items
+        self._label = label
         self._multiple = multiple
         self._changes_handled = False
 
@@ -41,6 +44,7 @@ class DropdownCheckboxSelector(Widget):
     def get_json_data(self):
         return {
             "items": [item.to_json() for item in self._items],
+            "label": self._label,
         }
 
     def get_json_state(self):
