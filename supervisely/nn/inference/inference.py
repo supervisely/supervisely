@@ -34,7 +34,6 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 import supervisely.nn.inference.gui as GUI
-from supervisely.nn.experiments import ExperimentInfo
 from supervisely import DatasetInfo, batched
 from supervisely._utils import (
     add_callback,
@@ -69,13 +68,14 @@ from supervisely.decorators.inference import (
 from supervisely.geometry.any_geometry import AnyGeometry
 from supervisely.imaging.color import get_predefined_colors
 from supervisely.io.fs import list_files
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.inference.cache import InferenceImageCache
 from supervisely.nn.inference.inference_request import (
     InferenceRequest,
     InferenceRequestsManager,
 )
 from supervisely.nn.inference.uploader import Uploader
-from supervisely.nn.model.model_api import Prediction
+from supervisely.nn.model.model_api import ModelAPI, Prediction
 from supervisely.nn.prediction_dto import Prediction as PredictionDTO
 from supervisely.nn.utils import (
     CheckpointInfo,
@@ -93,7 +93,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
-from supervisely.nn.model.model_api import ModelAPI
 
 try:
     from typing import Literal
@@ -383,7 +382,7 @@ class Inference:
                     if m_name and m_name.lower() == model.lower():
                         return m
             return None
-        
+
         runtime = get_runtime(runtime)
         logger.debug(f"Runtime: {runtime}")
 
@@ -869,7 +868,7 @@ class Inference:
         """
         team_id = sly_env.team_id()
         local_model_files = {}
-        
+
         # Sort files to download 'checkpoint' first
         files_order = sorted(model_files.keys(), key=lambda x: (0 if x == "checkpoint" else 1, x))
         for file in files_order:
@@ -910,12 +909,12 @@ class Inference:
                     logger.debug("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
-            
+
             local_model_files[file] = file_path
         if log_progress:
             self.gui.download_progress.hide()
         return local_model_files
-    
+
     def _get_deploy_parameters_from_custom_checkpoint(self, checkpoint_path: str, device: str, runtime: str) -> dict:
         def _read_experiment_info(artifacts_dir: str) -> Optional[dict]:
             exp_path = os.path.join(artifacts_dir, "experiment_info.json")
@@ -1159,6 +1158,8 @@ class Inference:
         if model_source == ModelSource.CUSTOM:
             self._set_model_meta_custom_model(model_info)
             self._set_checkpoint_info_custom_model(deploy_params)
+        elif model_source == ModelSource.PRETRAINED:
+            self._set_checkpoint_info_pretrained(deploy_params)
 
         try:
             if is_production():
@@ -1231,6 +1232,19 @@ class Inference:
                 custom_checkpoint_path=checkpoint_file_path,
                 model_source=ModelSource.CUSTOM,
             )
+
+    def _set_checkpoint_info_pretrained(self, deploy_params: dict):
+        checkpoint_name = os.path.basename(deploy_params["model_files"]["checkpoint"])
+        model_name = deploy_params["model_info"]["model_name"]
+        checkpoint_url = deploy_params["model_info"]["meta"]["model_files"]["checkpoint"]
+        model_source = ModelSource.PRETRAINED
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=checkpoint_name,
+            model_name=model_name,
+            architecture=self.FRAMEWORK_NAME,
+            checkpoint_url=checkpoint_url,
+            model_source=model_source,
+        )
 
     def shutdown_model(self):
         self._model_served = False
@@ -1447,7 +1461,7 @@ class Inference:
         if api is None:
             api = self.api
         return api
-        
+
     def _inference_auto(
         self,
         source: List[Union[str, np.ndarray]],
