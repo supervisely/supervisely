@@ -82,7 +82,7 @@ class ResponseTimeFilter(logging.Filter):
         if getattr(record, "name", "") == "uvicorn.access":
             response_time = response_time_ctx.get(None)
             if response_time is not None:
-                record.responseTime = f"{round(response_time, 2)}ms"
+                record.responseTime = int(response_time)
         return True
 
 
@@ -849,7 +849,7 @@ def _init(
             need_to_handle_error = is_production()
             response = await process_server_error(request, exc, need_to_handle_error)
         # Calculate response time and set it for uvicorn logger in ms
-        elapsed_ms = (time.perf_counter() - start_time) * 1000
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000)
         response_time_ctx.set(elapsed_ms)
         return response
 
