@@ -115,14 +115,16 @@ class ExperimentGenerator(BaseGenerator):
 
     def _get_apps_context(self):
         train_app, serve_app = self._get_app_train_serve_app_info()
-        apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
         log_viewer_app = self._get_log_viewer_app_info()
+        apply_images_app, apply_videos_app = self._get_app_apply_nn_app_info()
+        predict_app = self._get_predict_app_info()
         return {
             "train": train_app,
             "serve": serve_app,
             "log_viewer": log_viewer_app,
             "apply_nn_to_images": apply_images_app,
             "apply_nn_to_videos": apply_videos_app,
+            "predict": predict_app,
         }
 
     def _get_links_context(self):
@@ -792,30 +794,39 @@ class ExperimentGenerator(BaseGenerator):
             ),
         }
 
+    def _get_predict_app_info(self):
+        """
+        Get predict app info.
+
+        :returns: Predict app info
+        :rtype: dict
+        """
+        # @TODO: get from app list after release
+        predict_app_slug = "b2db364195caccd9e94d63646b6edb8f/apply-neural-networks"
+        predict_app_module_id = 513
+        predict_app = {"slug": predict_app_slug, "module_id": predict_app_module_id}
+        return predict_app
+
     def _get_app_apply_nn_app_info(self):
-        """Get apply NN app info.
+        """
+        Get apply NN app info.
 
         :returns: Apply NN app info
         :rtype: dict
         """
-
+        # Images
         apply_nn_images_slug = "nn-image-labeling/project-dataset"
         apply_nn_images_module_id = self.api.app.get_ecosystem_module_id(
             f"supervisely-ecosystem/{apply_nn_images_slug}"
         )
+        apply_nn_images_app = {"slug": apply_nn_images_slug, "module_id": apply_nn_images_module_id}
+
+        # Videos
         apply_nn_videos_slug = "apply-nn-to-videos-project"
         apply_nn_videos_module_id = self.api.app.get_ecosystem_module_id(
             f"supervisely-ecosystem/{apply_nn_videos_slug}"
         )
-
-        apply_nn_images_app = {
-            "slug": "b2db364195caccd9e94d63646b6edb8f/apply-neural-networks",
-            "module_id": 513,
-        }
-        apply_nn_videos_app = {
-            "slug": apply_nn_videos_slug,
-            "module_id": apply_nn_videos_module_id,
-        }
+        apply_nn_videos_app = {"slug": apply_nn_videos_slug, "module_id": apply_nn_videos_module_id}
         return apply_nn_images_app, apply_nn_videos_app
 
     def _get_project_context(self):
