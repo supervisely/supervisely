@@ -210,7 +210,7 @@ class SelectOutput:
         self.gui = gui
 
         # new_project
-        self.new_project_name = Input()
+        self.new_project_name = Input(minlength=1, maxlength=255, placeholder="New Project Name")
         self.new_project_description = Text(
             "New project will be created. The created project will have the same dataset structure as the input project."
         )
@@ -220,7 +220,7 @@ class SelectOutput:
             description="Name of the new project to create for the results.",
         )
 
-        self.appned_description = Text("The results will be appended to the existing annotations.")
+        self.append_description = Text("The results will be appended to the existing annotations.")
         self.replace_description = Text(
             "The existing annotations will be replaced with the predictions."
         )
@@ -250,7 +250,7 @@ class SelectOutput:
                 RadioGroup.Item(
                     "append",
                     "Append",
-                    content=self.appned_description,
+                    content=self.append_description,
                 ),
                 RadioGroup.Item(
                     "replace",
