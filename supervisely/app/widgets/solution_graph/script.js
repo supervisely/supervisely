@@ -142,17 +142,20 @@ Vue.component("sly-flow-diagram", {
         fontSize = targetData[1].fontSize;
         fontColor = targetData[1].fontColor;
         fontFamily = targetData[1].fontFamily;
+        lineOffset = targetData[1].lineOffset || 0;
         if (targetData[1].labelType === "path") {
           line.middleLabel = LeaderLine.pathLabel(middleLabel, {
             color: fontColor,
             fontSize: fontSize,
             fontFamily: fontFamily,
+            lineOffset: lineOffset,
           });
         } else {
           line.middleLabel = LeaderLine.captionLabel(middleLabel, {
             color: fontColor,
             fontSize: fontSize,
             fontFamily: fontFamily,
+            lineOffset: lineOffset,
           });
         }
         pointAnchor = targetData[1].pointAnchor;
@@ -179,7 +182,7 @@ Vue.component("sly-flow-diagram", {
       console.log("Timeout");
       document.querySelectorAll(".leader-line-line-path").forEach((line) => {
         try {
-          this.addArc(line, 10);
+          this.addArc(line, 20);
         } catch (error) {}
       });
     }, 3500);
