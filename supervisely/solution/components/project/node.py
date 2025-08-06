@@ -1,128 +1,11 @@
-from typing import Callable, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
-from supervisely._utils import abs_url
 from supervisely.api.api import Api
-from supervisely.api.dataset_api import DatasetInfo
-from supervisely.api.project_api import ProjectInfo
-from supervisely.app.widgets import Button, SolutionProject
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import (
-    Automation,
-    SolutionElement,
-    SolutionProjectNode,
-)
+from supervisely.solution.base_node import SolutionElement, SolutionProjectNode
 
-
-class ProjectRefresh(Automation):
-    """
-    Automation for refreshing labeling queue information periodically
-    """
-
-    def __init__(self, project_id: int, func: Optional[Callable[[], None]] = None):
-        super().__init__()
-        self.job_id = f"refresh_project_{project_id}"
-        self.project_id = project_id
-        self.func = func
-
-    def apply(self, sec: int, *args) -> None:
-        self.scheduler.add_job(
-            self.func, interval=sec, job_id=self.job_id, replace_existing=True, *args
-        )
-
-    def schedule_refresh(self, func: Callable[[], None], interval_sec: int = 5) -> None:
-        """
-        Schedule a job to refresh labeling queue info.
-        """
-        self.scheduler.add_job(
-            func, interval=interval_sec, job_id=self.job_id, replace_existing=True
-        )
-        logger.info(
-            f"Scheduled refresh for labeling queue {self.project_id} every {interval_sec} seconds"
-        )
-
-    def unschedule_refresh(self) -> None:
-        """
-        Unschedule the job that refreshes labeling queue info.
-        """
-        if self.scheduler.is_job_scheduled(self.job_id):
-            self.scheduler.remove_job(self.job_id)
-            logger.info(f"Unscheduled refresh for labeling queue {self.project_id}")
-
-
-class ProjectGUI:
-    def __init__(
-        self,
-        title: str,
-        project: ProjectInfo,
-        is_training: bool = False,
-        dataset: Optional[DatasetInfo] = None,
-    ):
-        self.title = title
-        self.project = project
-        self.is_training = is_training
-        self.dataset = dataset
-        self.card = self._create_card()
-
-    def _create_card(self) -> SolutionProject:
-        """Creates the SolutionProject card with appropriate settings"""
-        stats_url = self.project.url.replace("datasets", "stats/datasets")
-        tooltip = self._create_tooltip(stats_url)
-
-        if self.is_training:
-            items_count, preview_url = [0, 0], [None, None]
-        else:
-            items_count = (
-                self.project.items_count if self.dataset is None else self.dataset.items_count
-            )
-            preview_url = (
-                self.project.image_preview_url
-                if self.dataset is None
-                else self.dataset.image_preview_url
-            )
-            items_count, preview_url = [items_count or 0], [preview_url]
-            if preview_url[0] == abs_url("/"):
-                preview_url[0] = None
-
-        return SolutionProject(
-            title=self.title,
-            preview_url=preview_url,
-            items_count=items_count,
-            project_id=self.project.id,
-            width=270 if self.is_training else 180,
-            tooltip=tooltip,
-            tooltip_position="left",
-        )
-
-    def _create_tooltip(self, stats_url: str) -> SolutionProject.Tooltip:
-        """Creates the tooltip for the SolutionProject card"""
-        tooltip_widgets = [
-            Button(
-                "Open project",
-                icon="zmdi zmdi-open-in-new",
-                button_size="mini",
-                plain=True,
-                link=self.project.url,
-                button_type="text",
-            ),
-            Button(
-                "QA stats",
-                icon="zmdi zmdi-open-in-new",
-                button_size="mini",
-                plain=True,
-                link=stats_url,
-                button_type="text",
-            ),
-        ]
-
-        return SolutionProject.Tooltip(
-            description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time.",
-            content=tooltip_widgets,
-        )
-
-    def update_preview(self, preview_urls: List[str], items_counts: List[int]) -> None:
-        """Update preview URLs and item counts for the project card"""
-        self.card.update_preview_url(preview_urls)
-        self.card.update_items_count(items_counts)
+from .automation import ProjectAutomation
+from .gui import ProjectGUI
 
 
 class ProjectNode(SolutionElement):
@@ -160,32 +43,41 @@ class ProjectNode(SolutionElement):
         """
         self.api = api
         self.project_id = project_id
+
+        # --- project info ------------------------------------------------------
         self.project = self.api.project.get_info_by_id(project_id)
         self.workspace_id = self.project.workspace_id
         self.dataset_id = dataset_id
         self.dataset = None
         if self.dataset_id is not None:
             self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
-            
+
         self.title = title
         self.description = description
         self.is_training = is_training
 
-        self.automation = ProjectRefresh(project_id=self.project_id, func=self.update)
+        # --- core blocks --------------------------------------------------------
+        self.automation = ProjectAutomation(project_id=self.project_id, func=self.update)
         self.gui = ProjectGUI(
             title=self.title,
             project=self.project,
             is_training=self.is_training,
             dataset=self.dataset,
         )
-
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
+
+        # --- modals -------------------------------------------------------------
         self.modals = []
+
+        # --- refresh ------------------------------------------------------------
         self.refresh_interval = refresh_interval
         self.apply_automation(sec=self.refresh_interval)
 
         super().__init__(*args, **kwargs)
 
+    # ------------------------------------------------------------------
+    # Base Widget Methods ----------------------------------------------
+    # ------------------------------------------------------------------
     def get_json_data(self) -> dict:
         """
         Returns the current data of the Project widget.
@@ -203,6 +95,9 @@ class ProjectNode(SolutionElement):
         """
         return {}
 
+    # ------------------------------------------------------------------
+    # Update Methods ---------------------------------------------------
+    # ------------------------------------------------------------------
     def update(self, new_items_count: Optional[int] = None) -> None:
         """
         Update the project node with new information.
@@ -235,6 +130,8 @@ class ProjectNode(SolutionElement):
     def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
         """
         Returns the training and validation collections for the project.
+        If the project is not a training project, returns empty lists.
+
         :return: Tuple of lists containing training and validation collection IDs.
         """
         train_collections = []
@@ -258,6 +155,7 @@ class ProjectNode(SolutionElement):
     ) -> Tuple[List, List]:
         """
         Returns the items in training and validation collections.
+
         :param dataset_id: Optional dataset ID to filter items
         :type dataset_id: Optional[int]
         :return: Tuple containing lists of training and validation items.
@@ -296,6 +194,9 @@ class ProjectNode(SolutionElement):
 
         return None
 
+    # ------------------------------------------------------------------
+    # Automation --------------------------------------------------------
+    # ------------------------------------------------------------------
     def apply_automation(self, sec: int, *args) -> None:
         """
         Apply the automation to refresh the project node periodically.

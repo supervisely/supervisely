@@ -1,26 +1,27 @@
-from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
+from __future__ import annotations
+
+from typing import Callable, Dict, List, Literal, Optional, Any, Union
 
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app import DataJson
 from supervisely.app.widgets import (
     Button,
-    Checkbox,
     Container,
-    Empty,
-    InputNumber,
-    Select,
     SolutionCard,
     SolutionGraph,
     SolutionProject,
-    Text,
     Widget,
+    Dialog,
 )
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.solution.scheduler import TasksScheduler
-from supervisely.solution.utils import get_seconds_from_period_and_interval
 
 
+# ------------------------------------------------------------------
+# Node -------------------------------------------------------------
+# ------------------------------------------------------------------
 class SolutionElement(Widget):
+    progress_badge_key = "Task"
 
     def __new__(cls, *args, **kwargs):
         JinjaWidgets().incremental_widget_id_mode = True
@@ -37,6 +38,9 @@ class SolutionElement(Widget):
             self.widget_id = widget_id
         Widget.__init__(self, widget_id=self.widget_id)
 
+    # ------------------------------------------------------------------
+    # Base Widget Methods ----------------------------------------------
+    # ------------------------------------------------------------------
     def get_json_data(self) -> Dict:
         return {}
 
@@ -52,30 +56,160 @@ class SolutionElement(Widget):
         DataJson()[self.widget_id].update(data)
         DataJson().send_changes()
 
+    # ------------------------------------------------------------------
+    # Card  ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _build_card(
+        self,
+        title: str,
+        tooltip_description: str,
+        width: int = 250,
+        buttons: Optional[List] = None,
+        link: Optional[str] = None,
+    ) -> SolutionCard:
+        if buttons is None:
+            buttons = []
+            if self.history is not None:
+                buttons.append(self.history.open_modal_button)
+            if self.automation is not None:
+                buttons.append(self.automation.open_modal_button)
 
+        return SolutionCard(
+            title=title,
+            tooltip=SolutionCard.Tooltip(
+                description=tooltip_description,
+                content=buttons,
+            ),
+            width=width,
+            link=link,
+        )
+
+    # ------------------------------------------------------------------
+    # Progress badge wrappers ------------------------------------------
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _wrap_start(node: SolutionElement, func: Callable):
+        def wrapped():
+            node.show_in_progress_badge(node.progress_badge_key)
+            if callable(func):
+                func()
+
+        return wrapped
+
+    @staticmethod
+    def _wrap_finish(node: "SolutionElement", func: Callable[[int], None]):
+        import inspect
+
+        def wrapped(task_id: int):
+            if callable(func):
+                # Call with task_id only if the callback expects at least one parameter
+                if len(inspect.signature(func).parameters) > 0:
+                    func(task_id)
+                else:
+                    func()
+            node.hide_in_progress_badge(node.progress_badge_key)
+
+        return wrapped
+
+    # ------------------------------------------------------------------
+    # Badge proxies for SolutionCardNode -------------------------------
+    # ------------------------------------------------------------------
+    def show_in_progress_badge(self, key: Optional[str] = None):
+        if hasattr(self, "node") and hasattr(self.node, "show_in_progress_badge"):
+            self.node.show_in_progress_badge(key)
+
+    def hide_in_progress_badge(self, key: Optional[str] = None):
+        if hasattr(self, "node") and hasattr(self.node, "hide_in_progress_badge"):
+            self.node.hide_in_progress_badge(key)
+
+    def show_finished_badge(self):
+        if hasattr(self, "node") and hasattr(self.node, "show_finished_badge"):
+            self.node.show_finished_badge()
+
+    def hide_finished_badge(self):
+        if hasattr(self, "node") and hasattr(self.node, "hide_finished_badge"):
+            self.node.hide_finished_badge()
+
+    def show_failed_badge(self):
+        if hasattr(self, "node") and hasattr(self.node, "show_failed_badge"):
+            self.node.show_failed_badge()
+
+    def hide_failed_badge(self):
+        if hasattr(self, "node") and hasattr(self.node, "hide_failed_badge"):
+            self.node.hide_failed_badge()
+
+    # ------------------------------------------------------------------
+    # Event registration ------------------------------------------------
+    # ------------------------------------------------------------------
+    def on_start(self, func: Callable[[], None] = None):
+        """Register a callback to run *before* the node's main task.
+        The callback is wrapped so the in-progress badge appears automatically."""
+        if not hasattr(self, "gui") or not hasattr(self.gui, "on_start"):
+            raise AttributeError(f"{self.__class__.__name__} has no gui.on_start() method")
+        wrapped = self._wrap_start(self, func)
+        return self.gui.on_start(wrapped)
+
+    def on_finish(self, func: Callable[[int], None] = None):
+        """Register a callback to run *after* the node's main task.
+        The callback is wrapped so the in-progress badge disappears automatically."""
+        if not hasattr(self, "gui") or not hasattr(self.gui, "on_finish"):
+            raise AttributeError(f"{self.__class__.__name__} has no gui.on_finish() method")
+        wrapped = self._wrap_finish(self, func)
+        return self.gui.on_finish(wrapped)
+
+    # ------------------------------------------------------------------
+    # Convenience ------------------------------------------------------
+    # ------------------------------------------------------------------
+    def run(self, *args, **kwargs):
+        if hasattr(self, "gui"):
+            if hasattr(self.gui, "widget"):
+                if hasattr(self.gui.widget, "run"):
+                    return self.gui.widget.run(*args, **kwargs)
+        raise NotImplementedError("Subclasses must implement this method")
+
+
+# ------------------------------------------------------------------
+# Automation -------------------------------------------------------
+# ------------------------------------------------------------------
 class Automation:
     @property
     def scheduler(self):
+        """Returns the scheduler for the automation."""
         return TasksScheduler()
 
 
 class AutomationWidget(Automation):
 
-    def __init__(self, description: str, func: Callable):
+    def __init__(self, func: Callable):
+        """
+        Initializes the automation widget.
+
+        :param func: Function to be called when the automation is applied.
+        :type func: Callable
+        """
         super().__init__()
-        self.description = description
         self.func = func
-        self.apply_btn = Button("Apply", plain=True, button_size="small")
+        self.apply_button = Button("Apply", plain=True, button_size="small")
         self.widget = self._create_widget()
         self.job_id = self.widget.widget_id
-        self._on_apply = None
 
-        @self.apply_btn.click
-        def on_apply_btn_click():
-            self.apply()
+        # --- modal ----------------------------------------------------
+        self._modal: Optional[Dialog] = None
+        self._open_modal_button: Optional[Button] = None
 
+        # --- apply button ---------------------------------------------
+        # should be implemented in subclasses (can not be overridden)
+        # @self.apply_button.click
+        # def on_apply_button_click():
+        #     self.modal.hide()
+        #     self.apply()
+
+    # ------------------------------------------------------------------
+    # Automation -------------------------------------------------------
+    # ------------------------------------------------------------------
     def apply(self) -> None:
-        sec, _, _ = self.get_automation_details()
+        """Applies the automation settings."""
+        sec, _, _ = self.get_details()
         if sec is None:
             if self.scheduler.is_job_scheduled(self.job_id):
                 self.scheduler.remove_job(self.job_id)
@@ -85,89 +219,76 @@ class AutomationWidget(Automation):
             self._on_apply()
 
     def on_apply(self, func: Callable) -> None:
+        """Sets the function to be called when the automation is applied."""
         self._on_apply = func
 
-    def is_enabled(self) -> bool:
-        """Check if the automation is enabled."""
-        return self.enabled_checkbox.is_checked()
+    # ------------------------------------------------------------------
+    # Automation Settings ----------------------------------------------
+    # Depends on the automation GUI implementation `_create_widget()` --
+    # ------------------------------------------------------------------
+    def get_details(self) -> Any:
+        """Returns the details of the automation."""
+        raise NotImplementedError("Subclasses must implement this method")
 
-    def _create_widget(self):
-        self.description = Text(
-            self.description,
-            status="text",
-            color="gray",
-        )
-        self.enabled_checkbox = Checkbox(content="Run every", checked=False)
-        self.interval_input = InputNumber(
-            min=1, value=60, debounce=1000, controls=False, size="mini", width=150
-        )
-        self.interval_input.disable()
-        self.period_select = Select(
-            [Select.Item("min", "minutes"), Select.Item("h", "hours"), Select.Item("d", "days")],
-            size="mini",
-        )
-        self.period_select.disable()
-
-        settings_container = Container(
-            [
-                self.enabled_checkbox,
-                self.interval_input,
-                self.period_select,
-                Empty(),
-            ],
-            direction="horizontal",
-            gap=3,
-            fractions=[1, 1, 1, 1],
-            style="align-items: center",
-            overflow="wrap",
-        )
-
-        apply_btn_container = Container([self.apply_btn], style="align-items: flex-end")
-
-        @self.enabled_checkbox.value_changed
-        def on_automate_checkbox_change(is_checked):
-            if is_checked:
-                self.interval_input.enable()
-                self.period_select.enable()
-            else:
-                self.interval_input.disable()
-                self.period_select.disable()
-
-        return Container([self.description, settings_container, apply_btn_container])
-
-    def get_automation_details(self) -> Tuple[int, str, int, str]:
-        enabled = self.enabled_checkbox.is_checked()
-        period = self.period_select.get_value()
-        interval = self.interval_input.get_value()
-
-        if not enabled:
-            # removed = g.session.importer.unschedule_cloud_import()
-            return None, None, None
-
-        sec = get_seconds_from_period_and_interval(period, interval)
-        if sec == 0:
-            return None, None, None
-
-        return sec, interval, period
-
-    def save_automation_details(self, enabled: bool, interval: int, period: str) -> None:
+    def save_details(self) -> None:
         """
+        Saves the automation settings.
+
         :param enabled: Whether the automation is enabled.
+        :type enabled: bool
         :param interval: Interval for synchronization.
+        :type interval: int
         :param period: Period unit for synchronization (e.g., "minutes", "hours", "days").
+        :type period: str
         """
-        if self.enabled_checkbox.is_checked() != enabled:
-            if enabled:
-                self.enabled_checkbox.check()
-            else:
-                self.enabled_checkbox.uncheck()
-        if self.period_select.get_value() != period:
-            self.period_select.set_value(period)
-        if self.interval_input.get_value() != interval:
-            self.interval_input.value = interval
+        raise NotImplementedError("Subclasses must implement this method")
+
+    # ------------------------------------------------------------------
+    # GUI --------------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _create_widget(self) -> Container:
+        """Create the widget for the automation."""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @property
+    def is_enabled(self) -> bool:
+        """Implement checkbox in `_create_widget()` to check if the automation is enabled."""
+        raise NotImplementedError("Subclasses must implement this method")
+
+    # ------------------------------------------------------------------
+    # Modal ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    @property
+    def modal(self) -> Dialog:
+        """Returns the modal for the automation."""
+        if self._modal is None:
+            self._modal = Dialog(title="Automation Settings", content=self.widget, size="tiny")
+        return self._modal
+
+    @property
+    def open_modal_button(self) -> Button:
+        """Returns the open modal button."""
+        if self._open_modal_button is None:
+            btn = Button(
+                text="Automate",
+                icon="zmdi zmdi-flash-auto",
+                button_size="mini",
+                plain=True,
+                button_type="text",
+            )
+
+            @btn.click
+            def _on_click():
+                self.modal.show()
+
+            self._open_modal_button = btn
+        return self._open_modal_button
 
 
-# only SolutionCard/SolutionProject can be used as content
+# ------------------------------------------------------------------
+# Card -------------------------------------------------------------
+# only SolutionCard/SolutionProject can be used as content ---------
+# ------------------------------------------------------------------
 class SolutionCardNode(SolutionGraph.Node):
     def __new__(
         cls, content: Widget, x: int = 0, y: int = 0, *args, **kwargs
@@ -177,15 +298,35 @@ class SolutionCardNode(SolutionGraph.Node):
             raise TypeError("Content must be one of SolutionCard or SolutionProject")
         return super().__new__(cls, *args, **kwargs)
 
+    # ------------------------------------------------------------------
+    # Base Widget Settings ---------------------------------------------
+    # ------------------------------------------------------------------
     def disable(self):
+        """Disables the card widget."""
         self.content.disable()
         super().disable()
 
     def enable(self):
+        """Enables the card widget."""
         self.content.enable()
         super().enable()
 
+    # ------------------------------------------------------------------
+    # Tooltip Methods --------------------------------------------------
+    # ------------------------------------------------------------------
     def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
+        """
+        Updates the property of the card.
+
+        :param key: Key of the property.
+        :type key: str
+        :param value: Value of the property.
+        :type value: str
+        :param link: Link of the property.
+        :type link: str
+        :param highlight: Whether to highlight the property.
+        :type highlight: bool
+        """
         for prop in self.content.tooltip_properties:
             if prop["key"] == key:
                 self.content.update_property(key, value, link, highlight)
@@ -193,7 +334,34 @@ class SolutionCardNode(SolutionGraph.Node):
         self.content.add_property(key, value, link, highlight)
 
     def remove_property_by_key(self, key: str):
+        """
+        Removes the property by key of the card.
+
+        :param key: Key of the property.
+        :type key: str
+        """
         self.content.remove_property_by_key(key)
+
+    # ------------------------------------------------------------------
+    # Badge Methods ----------------------------------------------------
+    # ------------------------------------------------------------------
+    def add_badge(self, badge):
+        """
+        Adds a badge to the card.
+
+        :param badge: Badge to add.
+        :type badge: Badge
+        """
+        self.content.add_badge(badge)
+
+    def remove_badge(self, idx: int):
+        """
+        Removes the badge by index of the card.
+
+        :param idx: Index of the badge.
+        :type idx: int
+        """
+        self.content.remove_badge(idx)
 
     def update_badge(
         self,
@@ -202,6 +370,18 @@ class SolutionCardNode(SolutionGraph.Node):
         on_hover: str = None,
         badge_type: Literal["info", "success", "warning", "error"] = "info",
     ):
+        """
+        Updates the badge by index of the card.
+
+        :param idx: Index of the badge.
+        :type idx: int
+        :param label: Label of the badge.
+        :type label: str
+        :param on_hover: On hover text of the badge.
+        :type on_hover: str
+        :param badge_type: Type of the badge.
+        :type badge_type: Literal["info", "success", "warning", "error"]
+        """
         self.content.update_badge(idx, label, on_hover, badge_type)
 
     def update_badge_by_key(
@@ -212,6 +392,14 @@ class SolutionCardNode(SolutionGraph.Node):
         new_key: str = None,
         plain: Optional[bool] = None,
     ):
+        """
+        Updates the badge by key of the card.
+
+        :param key: Key of the badge.
+        :type key: str
+        :param label: Label of the badge.
+        :type label: str
+        """
         self.content.update_badge_by_key(
             key=key,
             label=label,
@@ -220,16 +408,25 @@ class SolutionCardNode(SolutionGraph.Node):
             plain=plain,
         )
 
-    def add_badge(self, badge):
-        self.content.add_badge(badge)
-
-    def remove_badge(self, idx: int):
-        self.content.remove_badge(idx)
-
     def remove_badge_by_key(self, key: str):
+        """
+        Removes the badge by key from the card.
+
+        :param key: Key of the badge.
+        :type key: str
+        """
         self.content.remove_badge_by_key(key)
 
+    # ------------------------------------------------------------------
+    # Automation Badge Methods -----------------------------------------
+    # ------------------------------------------------------------------
     def update_automation_badge(self, enable: bool) -> None:
+        """
+        Updates the automation badge of the card.
+
+        :param enable: Whether to enable the automation.
+        :type enable: bool
+        """
         for idx, prop in enumerate(self.content.badges):
             if prop["on_hover"] == "Automation":
                 if enable:
@@ -256,16 +453,32 @@ class SolutionCardNode(SolutionGraph.Node):
         """Updates the card to show that automation is disabled."""
         self.update_automation_badge(False)
 
+    # ------------------------------------------------------------------
+    # In Progress Badge Methods ----------------------------------------
+    # ------------------------------------------------------------------
     def show_in_progress_badge(self, key: Optional[str] = None):
-        """Updates the card to show that the main task is in progress."""
+        """
+        Updates the card to show that the main task is in progress.
+
+        :param key: Key of the badge.
+        :type key: Optional[str]
+        """
         key = key or "⏳"
         self.content.update_badge_by_key(key=key, label="In progress", badge_type="info")
 
     def hide_in_progress_badge(self, key: Optional[str] = None):
-        """Hides the in-progress badge from the card."""
+        """
+        Hides the in-progress badge from the card.
+
+        :param key: Key of the badge.
+        :type key: Optional[str]
+        """
         key = key or "⏳"
         self.content.remove_badge_by_key(key=key)
 
+    # ------------------------------------------------------------------
+    # Finished Badge Methods -------------------------------------------
+    # ------------------------------------------------------------------
     def show_finished_badge(self):
         """Updates the card to show that main task is finished."""
         self.content.update_badge_by_key(
@@ -276,6 +489,9 @@ class SolutionCardNode(SolutionGraph.Node):
         """Hides the finished badge from the card."""
         self.content.remove_badge_by_key(key="Finished")
 
+    # ------------------------------------------------------------------
+    # Failed Badge Methods ---------------------------------------------
+    # ------------------------------------------------------------------
     def show_failed_badge(self):
         """Updates the card to show that the main task has failed."""
         self.content.update_badge_by_key(key="Failed", label="❌", plain=True, badge_type="error")
@@ -285,7 +501,10 @@ class SolutionCardNode(SolutionGraph.Node):
         self.content.remove_badge_by_key(key="Failed")
 
 
-# only SolutionProject can be used as content
+# ------------------------------------------------------------------
+# Project ----------------------------------------------------------
+# only SolutionProject can be used as content ----------------------
+# ------------------------------------------------------------------
 class SolutionProjectNode(SolutionCardNode):
     def __new__(
         cls, content: Widget, x: int = 0, y: int = 0, *args, **kwargs
@@ -294,10 +513,42 @@ class SolutionProjectNode(SolutionCardNode):
             raise TypeError("Content must be an instance of SolutionProject")
         return super().__new__(cls, content, x, y, *args, **kwargs)
 
+    # ------------------------------------------------------------------
+    # Preview Methods --------------------------------------------------
+    # ------------------------------------------------------------------
     def update_preview(self, imgs: List[str], counts: List[int]):
+        """
+        Updates the preview of the project.
+
+        :param imgs: List of image urls.
+        :type imgs: List[str]
+        :param counts: List of counts.
+        :type counts: List[int]
+        """
         self.content.update_preview_url(imgs)
         self.content.update_items_count(counts)
 
+    def update_preview_url(self, imgs: List[str]):
+        """
+        Updates the preview url of the project.
+
+        :param imgs: List of image urls.
+        :type imgs: List[str]
+        """
+        self.content.update_preview_url(imgs)
+
+    def update_items_count(self, counts: List[int]):
+        """
+        Updates the items count of the project.
+
+        :param counts: List of counts.
+        :type counts: List[int]
+        """
+        self.content.update_items_count(counts)
+
+    # ------------------------------------------------------------------
+    # Update Methods ---------------------------------------------------
+    # ------------------------------------------------------------------
     def update(
         self,
         project: ProjectInfo = None,
@@ -305,6 +556,18 @@ class SolutionProjectNode(SolutionCardNode):
         urls: List[Union[int, str, None]] = None,
         counts: List[Union[int, None]] = None,
     ):
+        """
+        Updates the node with the new project.
+
+        :param project: Project info.
+        :type project: ProjectInfo
+        :param new_items_count: New items count.
+        :type new_items_count: int
+        :param urls: List of image urls.
+        :type urls: List[Union[int, str, None]]
+        :param counts: List of counts.
+        :type counts: List[Union[int, None]]
+        """
         if project is not None:
             self.project = project
         if new_items_count is not None:
