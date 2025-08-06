@@ -126,7 +126,7 @@ class ModelSelector:
         if self.get_model_source() == ModelSource.PRETRAINED:
             return self.pretrained_models_table.get_selected_row()
         else:
-            return self.experiment_selector.get_selected_experiment_info()
+            return self.experiment_selector.get_selected_experiment_info().to_json()
 
     def get_checkpoint_name(self) -> str:
         if self.get_model_source() == ModelSource.PRETRAINED:
@@ -183,4 +183,4 @@ class ModelSelector:
         if self.get_model_source() == ModelSource.PRETRAINED:
             return self.pretrained_models_table.get_selected_task_type()
         else:
-            return self.experiment_selector.get_selected_task_type()
+            return self.experiment_selector.get_selected_experiment_info().task_type
