@@ -2301,24 +2301,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
         return info.embeddings_in_progress
 
-    def get_embeddings_in_progress(self, id: int) -> bool:
-        """
-        Get the embeddings in progress status for the project.
-        This method checks whether embeddings are currently being created for the project.
-
-        :param id: Project ID
-        :type id: int
-        :return: True if embeddings are in progress, False otherwise.
-        :rtype: bool
-        """
-        info = self.get_info_by_id(id, extra_fields=[ApiField.EMBEDDINGS_IN_PROGRESS])
-        if info is None:
-            raise RuntimeError(f"Project with ID {id} not found.")
-        if not hasattr(info, "embeddings_in_progress"):
-            raise RuntimeError(
-                f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
-            )
-        return info.embeddings_in_progress
 
     def set_embeddings_updated_at(
         self, id: int, timestamp: Optional[str] = None, silent: bool = True
