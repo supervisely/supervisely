@@ -78,14 +78,11 @@ class ReadyzFilter(logging.Filter):
 
 class ResponseTimeFilter(logging.Filter):
     def filter(self, record):
-        # Only add responseTime to HTTP access logs (uvicorn format)
-        if hasattr(record, "getMessage"):
-            message = record.getMessage()
-            # Check if this is an HTTP access log line
-            if ' - "' in message and "HTTP/" in message:
-                response_time = response_time_ctx.get(None)
-                if response_time is not None:
-                    record.responseTime = f"{round(response_time, 2)}ms"
+        # Check if this is an HTTP access log line by logger name
+        if getattr(record, "name", "") == "uvicorn.access":
+            response_time = response_time_ctx.get(None)
+            if response_time is not None:
+                record.responseTime = f"{round(response_time, 2)}ms"
         return True
 
 
