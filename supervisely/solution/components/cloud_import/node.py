@@ -16,9 +16,9 @@ from .automation import CloudImportAutomation
 class CloudImportNode(SolutionElement):
     progress_badge_key = "Import"
 
-    def __init__(self, api: Api, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
+    def __init__(self, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
         """Node for importing data from the Cloud Storage to the Input Project."""
-        self.api = api
+        self.api = Api.from_env()
         self.project_id = project_id
 
         # --- core blocks --------------------------------------------------------

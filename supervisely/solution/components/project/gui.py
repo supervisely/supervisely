@@ -25,9 +25,6 @@ class ProjectGUI:
     # ------------------------------------------------------------------
     def _create_card(self) -> SolutionProject:
         """Creates the SolutionProject card with appropriate settings"""
-        stats_url = self.project.url.replace("datasets", "stats/datasets")
-        tooltip = self._create_tooltip(stats_url)
-
         if self.is_training:
             items_count, preview_url = [0, 0], [None, None]
         else:
@@ -49,12 +46,13 @@ class ProjectGUI:
             items_count=items_count,
             project_id=self.project.id,
             width=270 if self.is_training else 180,
-            tooltip=tooltip,
+            tooltip=self._create_tooltip(),
             tooltip_position="left",
         )
 
-    def _create_tooltip(self, stats_url: str) -> SolutionProject.Tooltip:
+    def _create_tooltip(self) -> SolutionProject.Tooltip:
         """Creates the tooltip for the SolutionProject card"""
+        stats_url = self.project.url.replace("datasets", "stats/datasets")
         tooltip_widgets = [
             Button(
                 "Open project",

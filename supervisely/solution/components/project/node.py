@@ -16,7 +16,6 @@ class ProjectNode(SolutionElement):
 
     def __init__(
         self,
-        api: Api,
         project_id: int,
         title: str = "Input Project",
         description: str = "Centralizes all incoming data. Data in this project will not be modified.",
@@ -41,7 +40,7 @@ class ProjectNode(SolutionElement):
         :param dataset_id: Optional dataset ID to filter items in the project
         :param args: Additional positional arguments
         """
-        self.api = api
+        self.api = Api.from_env()
         self.project_id = project_id
 
         # --- project info ------------------------------------------------------
