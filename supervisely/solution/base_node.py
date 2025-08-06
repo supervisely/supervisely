@@ -33,10 +33,22 @@ class SolutionElement(Widget):
         This class is used to create a common interface for all solution elements.
         It can be extended to create specific solution elements with their own properties and methods.
         """
+        self.id = kwargs.get("id", None)
         widget_id = kwargs.get("widget_id", None)
         if not hasattr(self, "widget_id"):
             self.widget_id = widget_id
         Widget.__init__(self, widget_id=self.widget_id)
+
+    # ------------------------------------------------------------------
+    # JSON Methods ----------------------------------------------------
+    # ------------------------------------------------------------------
+    @classmethod
+    def from_json(cls, json_data):
+        node_id = json_data.get("id")
+        kwargs = json_data.get("parameters", {})
+        x = kwargs.pop("x", 0)
+        y = kwargs.pop("y", 0)
+        return cls(id=node_id, x=x, y=y, **kwargs)
 
     # ------------------------------------------------------------------
     # Base Widget Methods ----------------------------------------------
