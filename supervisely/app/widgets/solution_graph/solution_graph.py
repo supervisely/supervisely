@@ -167,5 +167,6 @@ class SolutionGraph(Widget):
                 "startSocket": "bottom",  #  top, right, bottom, left, auto
                 "endSocket": "top",  #  top, right, bottom, left, auto
                 "dash": False,  #  or {"animation": False, "len": 4, "gap": 8}
+                "lineOffset": 0, # offset of the label from the middle of the line (-100 to 100)
             }
         return options.copy()

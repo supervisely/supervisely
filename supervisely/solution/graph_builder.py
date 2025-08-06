@@ -62,6 +62,7 @@ class SolutionGraphBuilder:
         start_plug_size: int = 3,
         end_plug_size: int = 3,
         point_anchor: Union[Dict[str, int], None] = None,
+        label_offset: int = 0, # Offset for the label position (-100 to 100)
     ) -> None:
         """
         Add an edge to the graph.
@@ -104,6 +105,7 @@ class SolutionGraphBuilder:
             "endPlug": end_plug,
             "startPlugSize": start_plug_size,
             "endPlugSize": end_plug_size,
+            "lineOffset": label_offset,
         }
         if point_anchor is not None:
             settings["pointAnchor"] = point_anchor
