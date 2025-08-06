@@ -198,9 +198,11 @@ class AutomationWidget(Automation):
         self._open_modal_button: Optional[Button] = None
 
         # --- apply button ---------------------------------------------
-        @self.apply_button.click
-        def on_apply_button_click():
-            self.apply()
+        # should be implemented in subclasses (can not be overridden)
+        # @self.apply_button.click
+        # def on_apply_button_click():
+        #     self.modal.hide()
+        #     self.apply()
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------

@@ -35,6 +35,11 @@ class CloudImportNode(SolutionElement):
         def show_modal():
             self.modal.show()
 
+        @self.automation.apply_button.click
+        def _on_apply_automation_btn_click():
+            self.automation.modal.hide()
+            self.apply_automation(self.run)
+
         # --- modals -------------------------------------------------------------
         self.modals = [
             self.modal,
