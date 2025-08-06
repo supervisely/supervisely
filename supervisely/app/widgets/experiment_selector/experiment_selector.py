@@ -6,9 +6,8 @@ from typing import Dict, List, Optional, Union
 import pandas as pd
 
 from supervisely import batched
-from supervisely.api.api import ApiField
 from supervisely._utils import abs_url, is_development, logger
-from supervisely.api.api import Api
+from supervisely.api.api import Api, ApiField
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_selector import (
@@ -617,8 +616,20 @@ class ExperimentSelector(Widget):
 
         return self.table.selection_changed(f)
 
+    def set_selected_checkpoint_by_name(self, checkpoint_name: str):
+        selected_row = self.table.get_selected_row()
+        if selected_row is None:
+            return
+        self._rows[selected_row.row_index].set_selected_checkpoint_by_name(checkpoint_name)
+
     def search(self, search_value: str):
         self.table.search(search_value)
+
+    def disable(self):
+        return self.table.disable()
+
+    def enable(self):
+        return self.table.enable()
 
     def get_json_data(self):
         return {}

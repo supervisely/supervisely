@@ -909,14 +909,17 @@ class TrainGUI:
         # Custom
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.experiment_selector.set_by_task_id(model_settings["task_id"])
-            active_row = self.model_selector.experiment_selector.get_selected_row()
-            if model_settings["checkpoint"] not in active_row.checkpoints_names:
+            self.model_selector.experiment_selector.select_experiment_info_by_task_id(
+                model_settings["task_id"]
+            )
+            experiment_info = self.model_selector.experiment_selector.get_selected_experiment_info()
+            if model_settings["checkpoint"] not in experiment_info.checkpoints:
                 raise ValueError(
                     f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
                 )
-
-            active_row.set_selected_checkpoint_by_name(model_settings["checkpoint"])
+            self.model_selector.experiment_selector.set_selected_checkpoint_by_name(
+                model_settings["checkpoint"]
+            )
 
         is_valid = True
         if validate:
