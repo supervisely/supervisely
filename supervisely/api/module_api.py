@@ -707,6 +707,8 @@ class ApiField:
     """"""
     ERROR_MESSAGE = "errorMessage"
     """"""
+    UNIQUE_ITEMS = "uniqueItems"
+    """"""
 
 
 def _get_single_item(items):
