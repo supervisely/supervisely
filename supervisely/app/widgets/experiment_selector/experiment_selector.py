@@ -1,10 +1,12 @@
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Union
+from typing import Dict, List, Optional, Union
 
 import pandas as pd
 
+from supervisely import batched
+from supervisely.api.api import ApiField
 from supervisely._utils import abs_url, is_development, logger
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
@@ -52,11 +54,13 @@ class ExperimentSelector(Widget):
             team_id: int,
             task_type: str,
             experiment_info: ExperimentInfo,
+            project_info: Optional[ProjectInfo] = None,
         ):
             self._api = api
             self._team_id = team_id
             self._task_type = task_type
             self._experiment_info = experiment_info
+            self._project_info = project_info
 
             task_id = experiment_info.task_id
             if task_id == "debug-session" or task_id == -1:
@@ -84,9 +88,7 @@ class ExperimentSelector(Widget):
             if self._training_project_id is None:
                 self._training_project_info = None
             else:
-                self._training_project_info = self._api.project.get_info_by_id(
-                    self._training_project_id
-                )
+                self._training_project_info = self._project_info
 
             # col 4 checkpoints
             self._checkpoints = experiment_info.checkpoints
@@ -375,6 +377,8 @@ class ExperimentSelector(Widget):
         self.table = self._create_table()
         self._rows_search_texts = []
         self._rows_sort_values = []
+
+        self._project_infos_map = self._get_project_infos_map(experiment_infos)
         self.set_experiment_infos(experiment_infos)
         super().__init__(widget_id=widget_id)
 
@@ -472,22 +476,60 @@ class ExperimentSelector(Widget):
         table.set_filter(self._filter_function)
 
         @self.framework_filter.value_changed
-        def on_framework_filter_change(selected_frameworks: List[DropdownCheckboxSelector.Item]):
+        def on_framework_filter_change(
+            selected_frameworks: List[DropdownCheckboxSelector.Item],
+        ):
             selected_frameworks = [item.id for item in selected_frameworks]
             self.table.filter(selected_frameworks)
 
         return table
+
+    def _get_project_infos_map(
+        self, experiment_infos: List[ExperimentInfo]
+    ) -> Dict[int, ProjectInfo]:
+        """
+        Returns a map of project IDs to project infos used in the experiment infos.
+        """
+        project_ids = set()
+        for experiment_info in experiment_infos:
+            if experiment_info.project_id is not None:
+                project_ids.add(experiment_info.project_id)
+        project_ids = list(project_ids)
+
+        project_infos_map = {}
+        if project_ids is not None:
+            for batch in batched(project_ids):
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: batch,
+                    },
+                ]
+
+                fields = [ApiField.IMAGES_COUNT, ApiField.REFERENCE_IMAGE_URL]
+                batch_infos = self.api.project.get_list(
+                    team_id=self.team_id,
+                    filters=filters,
+                    fields=fields,
+                )
+                for info in batch_infos:
+                    project_infos_map[info.id] = info
+
+        return project_infos_map
 
     def _generate_table_rows(self, experiment_infos: List[ExperimentInfo]) -> List[ModelRow]:
         """Method to generate table rows from remote path to training app save directory"""
 
         def process_experiment_info(experiment_info: ExperimentInfo):
             try:
+                project_info = self._project_infos_map.get(experiment_info.project_id)
                 model_row = ExperimentSelector.ModelRow(
                     api=self.api,
                     team_id=self.team_id,
                     task_type=experiment_info.task_type,
                     experiment_info=experiment_info,
+                    project_info=project_info,
                 )
                 return experiment_info.task_type, model_row
             except Exception as e:
