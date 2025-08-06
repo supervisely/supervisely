@@ -86,9 +86,6 @@ class ModelSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        @self.button.click
-        def on_button_click():
-            self.experiment_selector.disable()
 
         self.display_widgets.extend([self.model_source_tabs, self.validator_text, self.button])
         # -------------------------------- #

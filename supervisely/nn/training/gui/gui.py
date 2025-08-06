@@ -605,6 +605,8 @@ class TrainGUI:
         """
         if self.input_selector is not None:
             self.input_selector.button.enable()
+        if self.model_selector is not None:
+            self.model_selector.button.enable()
         if self.train_val_splits_selector is not None:
             self.train_val_splits_selector.button.enable()
         if self.classes_selector is not None:
@@ -622,6 +624,8 @@ class TrainGUI:
         """
         if self.input_selector is not None:
             self.input_selector.button.disable()
+        if self.model_selector is not None:
+            self.model_selector.button.disable()
         if self.train_val_splits_selector is not None:
             self.train_val_splits_selector.button.disable()
         if self.classes_selector is not None:
