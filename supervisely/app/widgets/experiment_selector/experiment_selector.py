@@ -358,9 +358,9 @@ class ExperimentSelector(Widget):
 
     def __init__(
         self,
-        experiment_infos: List[ExperimentInfo] = [],
-        team_id: int = None,
         api: Api = None,
+        team_id: int = None,
+        experiment_infos: List[ExperimentInfo] = [],
         widget_id: str = None,
     ):
         if team_id is None:
