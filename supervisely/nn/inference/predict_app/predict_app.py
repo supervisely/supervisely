@@ -22,6 +22,9 @@ class PredictApp:
     def stop(self):
         self.gui.stop()
 
+    def shutdown(self):
+        self.gui.shutdown()
+
     def load_from_json(self, data):
         self.gui.load_from_json(data)
 
