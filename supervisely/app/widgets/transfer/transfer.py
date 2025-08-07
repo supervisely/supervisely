@@ -160,7 +160,7 @@ class Transfer(Widget):
         self._filterable = filterable
         self._filter_placeholder = filter_placeholder
 
-        self._width = width
+        self._width = max(width, 150)
 
         self._titles = titles if titles is not None else ["Source", "Target"]
 
