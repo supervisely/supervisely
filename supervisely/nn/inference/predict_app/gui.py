@@ -1,4 +1,3 @@
-import json
 import os
 import random
 from typing import Any, Dict, List
@@ -6,7 +5,7 @@ from typing import Any, Dict, List
 import yaml
 
 from supervisely._utils import logger
-from supervisely.annotation.annotation import Annotation, Label, ObjClass
+from supervisely.annotation.annotation import Annotation, Label
 from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
@@ -479,6 +478,7 @@ class PredictAppGui:
         self.items = SelectItem(self)
         self.preview = Preview(self)
         self.output = SelectOutput(self)
+        self._stop_flag = False
 
         self.items.card.lock("Deploy model first to select items.")
         self.preview.card.lock("Deploy model first to preview results.")
@@ -496,7 +496,7 @@ class PredictAppGui:
 
         @self.output.run_button.click
         def run_button_click():
-            self._run()
+            self.run()
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
         if run_parameters is None:
@@ -536,23 +536,35 @@ class PredictAppGui:
             upload_parameters["output_project_id"] = created_project.id
             upload_parameters["upload_mode"] = "append"
 
-        predictions = model_api.predict(
+        predictions = []
+        with model_api.predict_detached(
             **item_prameters, **inference_settings, **upload_parameters, tqdm=self.output.progress()
-        )
-        if "output_project_id" in upload_parameters:
-            for prediction in predictions:
-                prediction.extra_data["output_project_id"] = upload_parameters["output_project_id"]
+        ) as session:
+            i = 0
+            for prediction in session:
+                if "output_project_id" in upload_parameters:
+                    prediction.extra_data["output_project_id"] = upload_parameters[
+                        "output_project_id"
+                    ]
+                if i % 100 == 0:
+                    if "output_project_id" in prediction.extra_data:
+                        project_id = prediction.extra_data["output_project_id"]
+                    else:
+                        project_id = prediction.project_id
+                    self.output.set_result_thumbnail(project_id)
+                predictions.append(prediction)
+                i += 1
+                if self._stop_flag:
+                    logger.info("Prediction stopped by user.")
+                    break
+
         return predictions
 
-    def _run(self):
-        predictions = self.run(self.get_run_parameters())
-        if predictions:
-            if "output_project_id" in predictions[0].extra_data:
-                project_id = predictions[0].extra_data["output_project_id"]
-            else:
-                project_id = predictions[0].project_id
-            self.output.set_result_thumbnail(project_id)
-        return predictions
+    def stop(self):
+        self._stop_flag = True
+
+    def shutdown(self):
+        self.model.stop()
 
     def _deploy_model(self) -> ModelAPI:
         model_api = None

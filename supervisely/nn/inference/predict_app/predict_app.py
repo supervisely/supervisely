@@ -1,8 +1,11 @@
+from typing import Dict, List, Optional
+
 from fastapi import Request
 
 from supervisely.api.api import Api
 from supervisely.app.fastapi.subapp import Application
 from supervisely.nn.inference.predict_app.gui import PredictAppGui
+from supervisely.nn.model.prediction import Prediction
 
 
 class PredictApp:
@@ -12,6 +15,12 @@ class PredictApp:
         self.gui = PredictAppGui(api, static_dir=_static_dir)
         self.app = Application(self.gui.layout, static_dir=_static_dir)
         self._add_endpoints()
+
+    def run(self, run_parameters: Optional[Dict] = None) -> List[Prediction]:
+        return self.gui.run(run_parameters)
+
+    def stop(self):
+        self.gui.stop()
 
     def load_from_json(self, data):
         self.gui.load_from_json(data)
@@ -118,7 +127,7 @@ class PredictApp:
             else:
                 run_parameters["output"] = {"mode": None}
 
-            predictions = self.gui.run(run_parameters)
+            predictions = self.run(run_parameters)
             return [prediction.to_json() for prediction in predictions]
 
         @server.post("/run")
@@ -126,5 +135,5 @@ class PredictApp:
             """
             Run the model prediction.
             """
-            predicitons = self.gui._run()
+            predicitons = self.run()
             return [prediction.to_json() for prediction in predicitons]
