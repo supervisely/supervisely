@@ -152,3 +152,9 @@ from supervisely.app.widgets.bokeh.bokeh import Bokeh
 from supervisely.app.widgets.run_app_button.run_app_button import RunAppButton
 from supervisely.app.widgets.select_collection.select_collection import SelectCollection
 from supervisely.app.widgets.sampling.sampling import Sampling
+from supervisely.app.widgets.solution_graph.solution_graph import SolutionGraph
+from supervisely.app.widgets.solution_card.solution_card import SolutionCard
+from supervisely.app.widgets.solution_project.solution_project import SolutionProject
+from supervisely.app.widgets.cloud_import.cloud_import import CloudImport
+from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
+from supervisely.app.widgets.new_experiment.new_experiment import NewExperiment
