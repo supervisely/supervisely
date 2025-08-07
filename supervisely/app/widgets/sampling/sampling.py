@@ -29,12 +29,12 @@ class Sampling(Widget):
         datasets_ids: List[int] = None,
         output_project_id: int = None,
         output_project_selectable: bool = True,
-        widgth: int = 370,
+        width: int = 370,
         widget_id: str = None,
         file_path: str = __file__,
         copy_annotations: bool = True,
     ):
-        super().__init__(widget_id, file_path)
+        super().__init__(widget_id=widget_id)
         if not input_selectable and project_id is None:
             raise ValueError(
                 "Either 'project_id' must be provided or 'project_selectable' must be True."
@@ -87,8 +87,8 @@ class Sampling(Widget):
         self.input_project_container = Container(
             widgets=[
                 self.input_datasets_select,
-                self.nested_datasets_checkbox,
                 self.project_preview,
+                self.nested_datasets_checkbox,
             ],
             style="padding-left: 21px; padding-top: 10px;",
         )
@@ -359,10 +359,10 @@ class Sampling(Widget):
                 self.preview_container,
                 self.result_container,
             ],
-            style=f"width: {self.widgth}px;",
+            style=f"width: {self.width}px;",
         )
 
-    def _get_settings(self) -> dict:
+    def get_settings(self) -> dict:
         settings = {
             SamplingSettings.ONLY_ANNOTATED: self.only_annotated_checkbox.is_checked(),
             SamplingSettings.STEP: self.step_input.get_value(),
@@ -413,7 +413,7 @@ class Sampling(Widget):
                 dst_project_info = sample_video_project(
                     api=self._api,
                     project_id=project_id,
-                    settings=self._get_settings(),
+                    settings=self.get_settings(),
                     dst_project_id=self._get_dst_project_id(),
                     datasets_ids=datasets_ids,
                     items_progress_cb=pbar.update,

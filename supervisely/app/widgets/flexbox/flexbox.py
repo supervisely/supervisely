@@ -35,3 +35,11 @@ class Flexbox(Widget):
 
     def get_json_state(self) -> Dict:
         return {}
+
+    def disable(self):
+        for widget in self._widgets:
+            widget.disable()
+
+    def enable(self):
+        for widget in self._widgets:
+            widget.enable()

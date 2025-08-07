@@ -5,7 +5,7 @@ import os
 
 try:
     __version__ = pkg_resources.require("supervisely")[0].version
-except TypeError as e:
+except Exception as e:
     __version__ = "development"
 
 from supervisely.sly_logger import (
@@ -265,6 +265,7 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 
 import supervisely.team_files as team_files
 import supervisely.output as output
+import supervisely.solution as solution
 
 # start monkey patching
 import importlib
