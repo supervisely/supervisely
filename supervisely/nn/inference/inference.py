@@ -1996,7 +1996,9 @@ class Inference:
         )
 
         _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
+            self.add_results_to_request,
+            inference_request=inference_request,
+            iou_merge_threshold=iou_merge_threshold,
         )
 
         if upload_mode is None:
@@ -2252,7 +2254,9 @@ class Inference:
         )
 
         _add_results_to_request = partial(
-            self.add_results_to_request, inference_request=inference_request
+            self.add_results_to_request,
+            inference_request=inference_request,
+            iou_merge_threshold=iou_merge_threshold,
         )
 
         if upload_mode is None:
