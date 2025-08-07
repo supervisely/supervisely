@@ -41,7 +41,9 @@ class Transfer(Widget):
     :param right_checked: A list of keys of the items in the right (target) list, which should be checked at widget
                         initialization. Defaults to None.
     :type right_checked: List[str], optional
-            
+    :param width: The width of the widget in pixels. Defaults to 150.
+    :type width: int, optional
+
     :Methods:
     get_transferred_items(): returns the list of keys of the items, which are currently displayed in the
         right (target) list.
@@ -88,7 +90,7 @@ class Transfer(Widget):
     """
     class Routes:
         VALUE_CHANGED = "value_changed"
-        
+
     class Item:
         """
         Class for representing items in the Transfer widget.
@@ -123,45 +125,49 @@ class Transfer(Widget):
             else:
                 self.label = label
             self.disabled = disabled
-    
+
         def to_json(self):
             return {"key": self.key, "label": self.label, "disabled": self.disabled}
-    
-    def __init__(self, 
-                 items: Optional[Union[List[Item], List[str]]] = None, 
-                 transferred_items: Optional[List[str]] = None, 
-                 widget_id: Optional[str] = None,
-                 filterable: Optional[bool] = False, 
-                 filter_placeholder: Optional[str] = None, 
-                 titles: Optional[List[str]] = None,
-                 button_texts: Optional[List[str]] = None, 
-                 left_checked: Optional[List[str]] = None, 
-                 right_checked: Optional[List[str]] = None):    
-        
+
+    def __init__(
+        self,
+        items: Optional[Union[List[Item], List[str]]] = None,
+        transferred_items: Optional[List[str]] = None,
+        widget_id: Optional[str] = None,
+        filterable: Optional[bool] = False,
+        filter_placeholder: Optional[str] = None,
+        titles: Optional[List[str]] = None,
+        button_texts: Optional[List[str]] = None,
+        left_checked: Optional[List[str]] = None,
+        right_checked: Optional[List[str]] = None,
+        width: int = 150,
+    ):
+
         self._changes_handled = False
         self._items = []
         self._transferred_items = []
-        
+
         if items:
             self._items = self.__checked_items(items)
-        
+
         if transferred_items:
             self._transferred_items = self.__checked_transferred_items(transferred_items)
-        
+
         # If wrong items are specified, items won't be checked.
         self._left_checked = left_checked
         self._right_checked = right_checked
-        
+
         self._filterable = filterable
         self._filter_placeholder = filter_placeholder
-        
+
+        self._width = width
+
         self._titles = titles if titles is not None else ["Source", "Target"]
-        
+
         self._button_texts = button_texts
-        
+
         super().__init__(widget_id=widget_id, file_path=__file__)
-    
-    
+
     def __checked_items(self, items: Optional[Union[List[Item], List[str]]]) -> List[Transfer.Item]:
         """
         If the list of items is specified as a list of strings, they will be converted to Transfer.Item objects. List of
@@ -183,17 +189,17 @@ class Transfer(Widget):
             if len(set(items)) != len(items):
                 # If the keys of the items are not unique, an error will be raised.
                 raise ValueError("The keys of the items should be unique.")
-            
+
             checked_items = [Transfer.Item(key=item) for item in items]
         else:
             # If items are specified as Transfer.Item objects, they will be checked for uniqueness.
             if len({item.key for item in items}) != len(items):
                 # If the keys of the items are not unique, an error will be raised.
                 raise ValueError("The keys of the items should be unique.")
-            
+
             checked_items = items
         return checked_items
-    
+
     def __checked_transferred_items(self, transferred_items: List[str]) -> List[str]:
         """
         If the self._items is specified, the list of transferred items will be checked for the keys of the items. Since
@@ -223,7 +229,7 @@ class Transfer(Widget):
                     "the keys of the items specified in the 'items' argument.")
             else:
                 return transferred_items
-    
+
     def get_json_data(self) -> Dict[str, Union[List[Dict[str, Union[str, bool]]], None]]:
         """
         Returns the data of the widget in JSON format.
@@ -243,7 +249,7 @@ class Transfer(Widget):
             res["items"] = [item.to_json() for item in self._items]
 
         return res
-    
+
     def get_json_state(self) -> Dict[str, List[str]]:
         """
         Returns the state of the widget in JSON format.
@@ -256,9 +262,9 @@ class Transfer(Widget):
         """
 
         transferred_items = self._transferred_items
-        
+
         return {"transferred_items": transferred_items}
-    
+
     def get_transferred_items(self) -> List[str]:        
         """
         Returns the list of transferred items.
@@ -268,8 +274,7 @@ class Transfer(Widget):
         """
 
         return StateJson()[self.widget_id]["transferred_items"]
-    
-    
+
     def get_untransferred_items(self) -> List[str]:
         """
         Returns the list of untransferred items.
@@ -279,8 +284,7 @@ class Transfer(Widget):
         """
 
         return [item.key for item in self._items if item.key not in self.get_transferred_items()]
-    
-    
+
     def value_changed(self, func: Callable) -> Callable:
         """
         Decorates a function which will be called when the the items in right list are changed (moved in or out of the list).
@@ -305,22 +309,21 @@ class Transfer(Widget):
                 print(items.untransferred_items) # ["item3"]
         """
 
-        
         route_path = self.get_route_path(Transfer.Routes.VALUE_CHANGED)
         server = self._sly_app.get_server()
         self._changes_handled = True
 
         @server.post(route_path)
         def _click():
-            
+
             Items = namedtuple("Items", ["transferred_items", "untransferred_items"])
-            
+
             res = Items(transferred_items=self.get_transferred_items(), untransferred_items=self.get_untransferred_items())
-            
+
             func(res)
 
         return _click
-    
+
     def set_items(self, items: Union[List[Transfer.Item], List[str]]):
         """
         Sets the list of items for the widget.
@@ -345,7 +348,7 @@ class Transfer(Widget):
 
             # As you can see, the list of items was replaced with the new one.
         """
-        
+
         if items:
             self._items = self.__checked_items(items)
         else:
@@ -365,7 +368,7 @@ class Transfer(Widget):
         self._transferred_items = self.__checked_transferred_items(transferred_items)
         self.update_state()
         StateJson().send_changes()
-        
+
     def add(self, items: Union[List[Item], List[str]]):
         """
         Adds new items to the current list of items.
@@ -391,14 +394,14 @@ class Transfer(Widget):
         """
 
         items = self.__checked_items(items)
-        
+
         if any([item.key in [item.key for item in self._items] for item in items]):
             raise ValueError("The 'items' argument should not contain any items with the same key as the items in the current list.")
         else:
             self._items.extend(items)
             self.update_data()
             DataJson().send_changes()
-            
+
     def remove(self, items_keys: List[str]):
         """
         Removes items from the current list of items.
@@ -416,7 +419,7 @@ class Transfer(Widget):
         self.update_state()
         DataJson().send_changes()
         StateJson().send_changes()
-    
+
     def get_items_keys(self) -> List[str]:
         """
         Returns the list of keys of the items.
