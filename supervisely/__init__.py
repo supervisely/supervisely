@@ -265,6 +265,7 @@ from supervisely.geometry.bitmap import SkeletonizeMethod
 
 import supervisely.team_files as team_files
 import supervisely.output as output
+import supervisely.solution as solution
 
 # start monkey patching
 import importlib
