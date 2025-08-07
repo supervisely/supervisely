@@ -26,6 +26,7 @@ from supervisely.app.widgets.pretrained_models_selector.pretrained_models_select
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
 from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class ServingGUITemplate(ServingGUI):
@@ -169,7 +170,12 @@ class ServingGUITemplate(ServingGUI):
 
     @property
     def model_info(self) -> Dict[str, Any]:
-        return self._get_selected_row()
+        model_info = self._get_selected_row()
+        if isinstance(model_info, ExperimentInfo):
+            # model info requires json format
+            # to match types of pretrained and custom model info
+            model_info = model_info.to_json()
+        return model_info
 
     @property
     def model_name(self) -> Optional[str]:
@@ -185,8 +191,8 @@ class ServingGUITemplate(ServingGUI):
             return model_meta.get("model_files", {})
         else:
             experiment_info = self.experiment_selector.get_selected_experiment_info()
-            artifacts_dir = experiment_info.get("artifacts_dir")
-            model_files = experiment_info.get("model_files", {})
+            artifacts_dir = experiment_info.artifacts_dir
+            model_files = experiment_info.model_files
             full_model_files = {
                 name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
             }

@@ -341,10 +341,10 @@ class DeployModel(Widget):
             if "experiment_info" in data:
                 experiment_info_json = data["experiment_info"]
                 experiment_info = ExperimentInfo(**experiment_info_json)
-                self.experiment_table.select_experiment_info(experiment_info)
+                self.experiment_table.set_selected_row_by_experiment_info(experiment_info)
             elif "train_task_id" in data:
                 task_id = data["train_task_id"]
-                self.experiment_table.select_experiment_info_by_task_id(task_id)
+                self.experiment_table.set_selected_row_by_task_id(task_id)
                 self.experiment_table.search(str(task_id))
             else:
                 raise ValueError("Invalid data format for loading custom model.")

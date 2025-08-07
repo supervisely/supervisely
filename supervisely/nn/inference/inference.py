@@ -23,6 +23,7 @@ import numpy as np
 import requests
 import uvicorn
 import yaml
+import _pickle
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from requests.structures import CaseInsensitiveDict
@@ -904,6 +905,11 @@ class Inference:
                     if extracted_files:
                         local_model_files[file] = file_path
                         return local_model_files
+                except _pickle.UnpicklingError as e:
+                    logger.debug(f"Couldn't load '{file_name}'. Checkpoint might be corrupted. Error: {repr(e)}")
+                    logger.debug("Model files will be downloaded from Team Files")
+                    local_model_files[file] = file_path
+                    continue
                 except Exception as e:
                     logger.debug(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
                     logger.debug("Model files will be downloaded from Team Files")
@@ -975,8 +981,7 @@ class Inference:
             # --- LOCAL ---
             try:
                 logger.debug("Reading state dict...")
-                import torch  # pylint: disable=import-error
-                ckpt = torch.load(checkpoint_path, map_location="cpu")
+                ckpt = torch_load_safe(checkpoint_path)
                 model_info = ckpt.get("model_info", {})
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_files["checkpoint"] = checkpoint_path
@@ -1016,10 +1021,8 @@ class Inference:
         if file_ext not in (".pth", ".pt"):
             return extracted_files
 
-        import torch  # pylint: disable=import-error
         logger.debug(f"Reading checkpoint: {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
-
+        checkpoint = torch_load_safe(checkpoint_path)
         # 1. Extract additional model files embedded into checkpoint (if any)
         ckpt_files = checkpoint.get("model_files", None)
         if ckpt_files and isinstance(ckpt_files, dict):
@@ -2468,6 +2471,7 @@ class Inference:
                 # raise DialogWindowError(title="Call undeployed model.", description=msg)
                 raise RuntimeError(msg)
             return func(*args, **kwargs)
+
         return wrapper
 
     def _freeze_model(self):
@@ -2826,12 +2830,12 @@ class Inference:
             # Predict and shutdown
             if self._args.mode == "predict":
                 if any(
-                [
-                    self._args.input,
-                    self._args.project_id,
-                    self._args.dataset_id,
-                    self._args.image_id,
-                ]
+                    [
+                        self._args.input,
+                        self._args.project_id,
+                        self._args.dataset_id,
+                        self._args.image_id,
+                    ]
                 ):
                     self._parse_inference_settings_from_args()
                     self._inference_by_cli_deploy_args()
@@ -3685,6 +3689,7 @@ class Inference:
 
     def _parse_inference_settings_from_args(self):
         logger.debug("Parsing inference settings from args")
+
         def parse_value(value: str):
             if value.lower() in ("true", "false"):
                 return value.lower() == "true"
@@ -3811,8 +3816,7 @@ class Inference:
             try:
                 # Read data from checkpoint
                 logger.debug(f"Reading data from checkpoint: {checkpoint_path}")
-                import torch  # pylint: disable=import-error
-                checkpoint = torch.load(checkpoint_path)
+                checkpoint = torch_load_safe(checkpoint_path)
                 model_info = checkpoint["model_info"]
                 model_files = self._extract_model_files_from_checkpoint(checkpoint_path)
                 model_meta = os.path.join(self.model_dir, "model_meta.json")
@@ -4042,6 +4046,7 @@ class Inference:
             draw: bool = False,
         ):
             logger.info(f"Predicting Local Data: {input_path}")
+
             def postprocess_image(image_path: str, ann: Annotation, pred_dir: str = None):
                 image_name = sly_fs.get_file_name_with_ext(image_path)
                 if pred_dir is not None:
@@ -4150,13 +4155,15 @@ class Inference:
 
             task_id = experiment_info.task_id
             self.gui.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.gui.experiment_selector.set_by_task_id(task_id)
+            self.gui.experiment_selector.set_selected_row_by_task_id(task_id)
 
             best_ckpt = experiment_info.best_checkpoint
             if best_ckpt:
-                row = self.gui.experiment_selector.get_by_task_id(task_id)
+                row = self.gui.experiment_selector.get_selected_row_by_task_id(task_id)
                 if row is not None:
                     row.set_selected_checkpoint_by_name(best_ckpt)
+                    self.gui.experiment_selector.search(str(task_id))
+
         except Exception as e:
             logger.warning(f"Failed to set checkpoint from experiment info: {repr(e)}")
 
@@ -4164,6 +4171,7 @@ class Inference:
         if not isinstance(self.gui, GUI.ServingGUITemplate) or self.gui.experiment_selector is None:
             return
         self.gui.model_source_tabs.set_active_tab(ModelSource.PRETRAINED)
+
 
 def _exclude_duplicated_predictions(
     api: Api,
@@ -4657,3 +4665,11 @@ def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
                 continue
             return data[key]
     return None
+
+def torch_load_safe(checkpoint_path: str):
+    import torch # pylint: disable=import-error
+    if torch.__version__ >= "2.6.0":
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    else:
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    return checkpoint

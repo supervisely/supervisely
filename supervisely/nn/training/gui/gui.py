@@ -584,7 +584,6 @@ class TrainGUI:
             self._run_from_experiment(train_task_id, train_mode)
         # ----------------------------------------- #
 
-
     def set_next_step(self):
         current_step = self.stepper.get_active_step()
         self.stepper.set_active_step(current_step + 1)
@@ -829,10 +828,10 @@ class TrainGUI:
         """
         if isinstance(app_state, str):
             app_state = sly_json.load_json_file(app_state)
-            
+
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
-        
+
         # Set experiment name
         experiment_name = app_state.get("experiment_name")
         if experiment_name is not None:
@@ -843,7 +842,7 @@ class TrainGUI:
             if not init_fn(settings, options, click_cb, validate_steps):
                 return False
             return True
-        
+
         # GUI init steps
         _steps = [
             (self._init_input, app_state.get("input"), "Input project"),
@@ -913,17 +912,12 @@ class TrainGUI:
         # Custom
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.experiment_selector.select_experiment_info_by_task_id(
-                model_settings["task_id"]
-            )
+            self.model_selector.experiment_selector.set_selected_row_by_task_id(model_settings["task_id"])
             experiment_info = self.model_selector.experiment_selector.get_selected_experiment_info()
             if model_settings["checkpoint"] not in experiment_info.checkpoints:
-                raise ValueError(
-                    f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
-                )
-            self.model_selector.experiment_selector.set_selected_checkpoint_by_name(
-                model_settings["checkpoint"]
-            )
+                raise ValueError(f"Checkpoint '{model_settings['checkpoint']}' not found in selected task")
+            self.model_selector.experiment_selector.set_selected_checkpoint_by_name(model_settings["checkpoint"])
+            self.model_selector.experiment_selector.search(str(experiment_info.task_id))
 
         is_valid = True
         if validate:
@@ -933,7 +927,7 @@ class TrainGUI:
             self.set_next_step()
         return is_valid
         # ----------------------------------------- #
-        
+
     def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
         """
         Initialize the classes selector with the given settings.
@@ -1066,7 +1060,7 @@ class TrainGUI:
             self.train_val_splits_selector_cb()
             self.set_next_step()
         return is_valid
-    
+
     def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
         """
         Initialize the hyperparameters selector with the given settings.
@@ -1118,7 +1112,7 @@ class TrainGUI:
         app_state = sly_json.load_json_file(local_app_state_path)
         sly_fs.silent_remove(local_app_state_path)
         return app_state
-    
+
     def _download_experiment_hparams(self, experiment_info: ExperimentInfo) -> dict:
         local_hparams_path = f"./{experiment_info.hyperparameters}"
         remote_hparams_path = os.path.join(experiment_info.artifacts_dir, experiment_info.hyperparameters)

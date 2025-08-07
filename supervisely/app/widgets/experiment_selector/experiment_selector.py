@@ -192,9 +192,7 @@ class ExperimentSelector(Widget):
         def _create_task_link(self) -> str:
             remote_path = os.path.join(self._task_path, "open_app.lnk")
             # TODO: remove temp logs
-            logger.debug(f"Looking for task link file at: {self._task_path}")
             task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
-            logger.debug(f"Found task link file: {self._task_path}")
             if task_file is not None:
                 if is_development():
                     return abs_url(f"/files/{task_file.id}")
@@ -642,6 +640,12 @@ class ExperimentSelector(Widget):
             return None
         return self._rows[selected_row.row_index]._experiment_info
 
+    def get_selected_experiment_info_json(self) -> Union[dict, None]:
+        experiment_info = self.get_selected_experiment_info()
+        if experiment_info is None:
+            return None
+        return experiment_info.to_json()
+
     def get_selected_checkpoint_name(self) -> Union[str, None]:
         selected_row = self.table.get_selected_row()
         if selected_row is None:
@@ -654,19 +658,12 @@ class ExperimentSelector(Widget):
             return None
         return self._rows[selected_row.row_index].get_selected_checkpoint_path()
 
-    def select_experiment_info(self, experiment_info: ExperimentInfo) -> None:
+    def set_selected_row_by_experiment_info(self, experiment_info: ExperimentInfo) -> None:
         for idx, row in enumerate(self._rows):
             if row._experiment_info.task_id == experiment_info.task_id:
                 self.table.select_row(idx)
                 return
         raise ValueError(f"Experiment info {experiment_info} not found in the table rows.")
-
-    def select_experiment_info_by_task_id(self, task_id: int) -> None:
-        for idx, row in enumerate(self._rows):
-            if row._experiment_info.task_id == task_id:
-                self.table.select_row(idx)
-                return
-        raise ValueError(f"Experiment info with task id {task_id} not found in the table rows.")
 
     def _checkpoint_changed(self, row: ModelRow, checkpoint_value: str):
         if self._checkpoint_changed_func is None:
@@ -692,6 +689,19 @@ class ExperimentSelector(Widget):
         if selected_row is None:
             return
         self._rows[selected_row.row_index].set_selected_checkpoint_by_name(checkpoint_name)
+
+    def set_selected_row_by_task_id(self, task_id: int):
+        for idx, row in enumerate(self._rows):
+            if row._experiment_info.task_id == task_id:
+                self.table.select_row(idx)
+                return
+        raise ValueError(f"Experiment info with task id {task_id} not found in the table rows.")
+
+    def get_selected_row_by_task_id(self, task_id: int):
+        for idx, row in enumerate(self._rows):
+            if row._experiment_info.task_id == task_id:
+                return row
+        return None
 
     def search(self, search_value: str):
         self.table.search(search_value)
