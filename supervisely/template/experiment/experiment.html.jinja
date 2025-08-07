@@ -89,6 +89,11 @@ The quick actions on this page, such as **Deploy**, **Predict**, or **Fine-tune*
 }}){:target="_blank"} - deploy your model in the Supervisely Platform.
 - [Train {{ experiment.model.framework }}]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.train.slug
 }}){:target="_blank"} - train a model in the Supervisely Platform.
+- [Apply NN]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.predict.slug }}){:target="_blank"} -
+connect to your model and make predictions on image project or dataset.
+
+**Legacy Apps:**
+
 - [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_images.slug }}){:target="_blank"} -
 connect to your model and make predictions on image project or dataset.
 - [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_videos.slug }}){:target="_blank"} -
@@ -484,10 +489,19 @@ using the original code from the authors.
 
 1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
 
-2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo.name }}]({{
-code.local_prediction.repo.url }}){:target="_blank"}
+{% if resources.original_repository.name and resources.original_repository.url %}
+
+2. Prepare environment following the instructions of the original repository [{{ resources.original_repository.name }}]({{
+resources.original_repository.url }}){:target="_blank"}
 
 3. Use the demo script for inference:
+
+{% else %}
+2. Prepare environment following the instructions of the original repository
+
+3. Use the demo script for inference:
+
+{% endif %}
 
 <details>
 <summary><strong>🐍 View Code</strong></summary>

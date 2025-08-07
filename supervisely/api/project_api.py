@@ -388,8 +388,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.GROUP_ID,
             ApiField.CREATED_BY_ID[0][0],
         ]
-        if fields is not None:
-            fields = default_fields + fields
+        
+        if fields:
+            merged_fields = default_fields + fields
+            fields = list(dict.fromkeys(merged_fields))
 
         data = {
             ApiField.FILTER: filters or [],

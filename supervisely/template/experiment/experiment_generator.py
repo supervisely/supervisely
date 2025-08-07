@@ -103,7 +103,7 @@ class ExperimentGenerator(BaseGenerator):
         context = {
             "env": self._get_env_context(),
             "experiment": self._get_experiment_context(),
-            "resources": self._get_links_context(),
+            "resources": self._get_resources_context(),
             "code": self._get_code_context(),
             "widgets": self._get_widgets_context(),
         }
@@ -127,8 +127,20 @@ class ExperimentGenerator(BaseGenerator):
             "predict": predict_app,
         }
 
-    def _get_links_context(self):
-        return {"apps": self._get_apps_context()}
+    def _get_original_repository_info(self):
+        original_repository = self.app_options.get("original_repository", None)
+        if original_repository is None:
+            return None
+        original_repository_info = {
+            "name": original_repository.get("name", None),
+            "url": original_repository.get("url", None),
+        }
+        return original_repository_info
+
+    def _get_resources_context(self):
+        apps = self._get_apps_context()
+        original_repository = self._get_original_repository_info()
+        return {"apps": apps, "original_repository": original_repository}
 
     def _get_code_context(self):
         docker_image = self._get_docker_image()
