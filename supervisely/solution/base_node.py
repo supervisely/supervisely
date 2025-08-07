@@ -108,9 +108,9 @@ class SolutionElement(Widget, EventMixin):
     ) -> SolutionCard:
         if buttons is None:
             buttons = []
-            if self.history is not None:
+            if hasattr(self, "history") and self.history is not None:
                 buttons.append(self.history.open_modal_button)
-            if self.automation is not None:
+            if hasattr(self, "automation") and self.automation is not None:
                 buttons.append(self.automation.open_modal_button)
 
         return SolutionCard(
