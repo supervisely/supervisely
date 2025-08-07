@@ -41,7 +41,7 @@ class Transfer(Widget):
     :param right_checked: A list of keys of the items in the right (target) list, which should be checked at widget
                         initialization. Defaults to None.
     :type right_checked: List[str], optional
-    :param width: The width of the widget in pixels. Defaults to 150.
+    :param width: The width of the widget in pixels. The default and minimum width is 150 pixels.
     :type width: int, optional
 
     :Methods:
