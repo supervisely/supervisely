@@ -2797,8 +2797,27 @@ class Inference:
             inference_request.add_results(results)
 
     def add_results_to_request(
-        self, predictions: List[Prediction], inference_request: InferenceRequest
+        self,
+        predictions: List[Prediction],
+        inference_request: InferenceRequest,
+        iou_merge_threshold: float = None,
     ):
+
+        if iou_merge_threshold:
+            ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
+            for prediction in predictions:
+                ds_predictions[prediction.dataset_id].append(prediction)
+            for dataset_id, preds in ds_predictions.items():
+                anns = _exclude_duplicated_predictions(
+                    self.api,
+                    [pred.annotation for pred in preds],
+                    dataset_id,
+                    gt_image_ids=[pred.image_id for pred in preds],
+                    iou=iou_merge_threshold,
+                    meta=preds[0].model_meta,
+                )
+                for pred, ann in zip(preds, anns):
+                    pred.annotation = ann
         results = self._format_output(predictions)
         inference_request.add_results(results)
         inference_request.done(len(results))
