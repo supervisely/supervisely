@@ -116,7 +116,7 @@ class ProjectInfo(NamedTuple):
 
     @property
     def url(self):
-        res = f"projects/{self.id}/datasets"
+        res = f"/projects/{self.id}/datasets"
         if is_development():
             res = abs_url(res)
         return res
