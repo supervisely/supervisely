@@ -1,7 +1,9 @@
+import sys
 from typing import Dict, List, Optional
 
-from fastapi import Request
+from fastapi import BackgroundTasks, Request
 
+from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.app.fastapi.subapp import Application
 from supervisely.nn.inference.predict_app.gui import PredictAppGui
@@ -22,11 +24,20 @@ class PredictApp:
     def stop(self):
         self.gui.stop()
 
-    def shutdown(self):
-        self.gui.shutdown()
+    def shutdown_model(self):
+        self.gui.shutdown_model()
 
     def load_from_json(self, data):
         self.gui.load_from_json(data)
+        if data.get("run", False):
+            try:
+                self.run()
+            except Exception as e:
+                raise
+            finally:
+                if data.get("stop_after_run", False):
+                    self.shutdown_model()
+                    self.app.stop()
 
     def get_inference_settings(self):
         return self.gui.get_inference_settings()
@@ -38,7 +49,7 @@ class PredictApp:
         server = self.app.get_server()
 
         @server.post("/load")
-        def load(request: Request):
+        def load(request: Request, background_tasks: BackgroundTasks):
             """
             Load the model state from a JSON object.
             This endpoint initializes the model with the provided state.
@@ -74,7 +85,13 @@ class PredictApp:
                 }
             """
             state = request.state.state
+            stop_after_run = state.get("stop_after_run", False)
+            if stop_after_run:
+                state["stop_after_run"] = False
             self.load_from_json(state)
+            if stop_after_run:
+                self.shutdown_model()
+                background_tasks.add_task(self.app.stop)
 
         @server.post("/deploy")
         def deploy(request: Request):

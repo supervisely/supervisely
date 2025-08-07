@@ -696,6 +696,7 @@ class DeployModel(Widget):
     def stop(self) -> None:
         if self.model_api is None:
             return
+        logger.info("Stopping model...")
         self.model_api.shutdown()
         self.model_api = None
         self.set_model_status("stopped")

@@ -1,5 +1,6 @@
 import os
 import random
+import time
 from typing import Any, Dict, List
 
 import yaml
@@ -479,6 +480,7 @@ class PredictAppGui:
         self.preview = Preview(self)
         self.output = SelectOutput(self)
         self._stop_flag = False
+        self._is_running = False
 
         self.items.card.lock("Deploy model first to select items.")
         self.preview.card.lock("Deploy model first to preview results.")
@@ -537,33 +539,57 @@ class PredictAppGui:
             upload_parameters["upload_mode"] = "append"
 
         predictions = []
-        with model_api.predict_detached(
-            **item_prameters, **inference_settings, **upload_parameters, tqdm=self.output.progress()
-        ) as session:
-            i = 0
-            for prediction in session:
-                if "output_project_id" in upload_parameters:
-                    prediction.extra_data["output_project_id"] = upload_parameters[
-                        "output_project_id"
-                    ]
-                if i % 100 == 0:
-                    if "output_project_id" in prediction.extra_data:
-                        project_id = prediction.extra_data["output_project_id"]
-                    else:
-                        project_id = prediction.project_id
-                    self.output.set_result_thumbnail(project_id)
-                predictions.append(prediction)
-                i += 1
-                if self._stop_flag:
-                    logger.info("Prediction stopped by user.")
-                    break
+        self._is_running = True
+        try:
+            with model_api.predict_detached(
+                **item_prameters,
+                **inference_settings,
+                **upload_parameters,
+                tqdm=self.output.progress(),
+            ) as session:
+                i = 0
+                for prediction in session:
+                    if "output_project_id" in upload_parameters:
+                        prediction.extra_data["output_project_id"] = upload_parameters[
+                            "output_project_id"
+                        ]
+                    if i % 100 == 0:
+                        if "output_project_id" in prediction.extra_data:
+                            project_id = prediction.extra_data["output_project_id"]
+                        else:
+                            project_id = prediction.project_id
+                        self.output.set_result_thumbnail(project_id)
+                    predictions.append(prediction)
+                    i += 1
+                    if self._stop_flag:
+                        logger.info("Prediction stopped by user.")
+                        break
+        finally:
+            self._is_running = False
+            self._stop_flag = False
 
         return predictions
 
     def stop(self):
+        logger.info("Stopping prediction...")
         self._stop_flag = True
 
-    def shutdown(self):
+    def wait_for_stop(self, timeout: int = None):
+        logger.info(
+            "Waiting " + ""
+            if timeout is None
+            else f"{timeout} seconds " + "for prediction to stop..."
+        )
+        t = time.monotonic()
+        while self._is_running:
+            if timeout is not None and time.monotonic() - t > timeout:
+                raise TimeoutError("Timeout while waiting for stop.")
+            time.sleep(0.1)
+        logger.info("Prediction stopped.")
+
+    def shutdown_model(self):
+        self.stop()
+        self.wait_for_stop(10)
         self.model.stop()
 
     def _deploy_model(self) -> ModelAPI:
