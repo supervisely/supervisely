@@ -56,7 +56,7 @@ from supervisely.nn.benchmark import (
     SemanticSegmentationEvaluator,
 )
 from supervisely.nn.inference import RuntimeType, SessionJSON
-from supervisely.nn.inference.inference import Inference
+from supervisely.nn.inference.inference import Inference, torch_load_safe
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
 from supervisely.nn.training.gui.utils import generate_task_check_function_js
@@ -399,14 +399,14 @@ class TrainApp:
         :rtype: str
         """
         return self.gui.training_process.get_device()
-    
+
     @property
     def base_checkpoint(self) -> str:
         """
         Returns the name of the base checkpoint.
         """
         return self.gui.model_selector.get_checkpoint_name()
-    
+
     @property
     def base_checkpoint_link(self) -> str:
         """
@@ -596,13 +596,17 @@ class TrainApp:
             if self.gui.classes_selector is not None:
                 if self.gui.classes_selector.is_convert_class_shapes_enabled():
                     self._convert_project_to_model_task()
-        # Step 4. Split Project
+        
+        # Step 4. Create collections
+        # self._create_collections()
+
+        # Step 5. Split Project
         self._split_project()
-        # Step 5. Remove classes except selected
+        # Step 6. Remove classes except selected
         if self.sly_project.type == ProjectType.IMAGES.value:
             self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
             self._read_project()
-        # Step 6. Download Model files
+        # Step 7. Download Model files
         self._download_model()
 
     def _finalize(self, experiment_info: dict) -> None:
@@ -1667,7 +1671,8 @@ class TrainApp:
             try:
                 # pylint: disable=import-error
                 import torch
-                state_dict = torch.load(new_checkpoint_path)
+
+                state_dict = torch_load_safe(new_checkpoint_path)
                 state_dict["model_info"] = {
                     "task_id": self.task_id,
                     "model_name": experiment_info["model_name"],
@@ -1679,9 +1684,7 @@ class TrainApp:
                 state_dict["model_files"] = ckpt_files
                 torch.save(state_dict, new_checkpoint_path)
             except Exception as e:
-                logger.warning(
-                    f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}"
-                )
+                logger.warning(f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}")
                 continue
 
             new_checkpoint_paths.append(new_checkpoint_path)
@@ -2003,7 +2006,7 @@ class TrainApp:
             need_generate_report = False
         # ------------------------------------------------------------ #
 
-        if need_generate_report: # link to experiment page
+        if need_generate_report:  # link to experiment page
             try:
                 output_file_info = self._generate_experiment_report(experiment_info, model_meta)
                 experiment_info["has_report"] = True
@@ -2011,7 +2014,7 @@ class TrainApp:
                 logger.error(f"Error generating experiment report: {e}")
                 output_file_info = session_link_file_info
                 experiment_info["has_report"] = False
-        else: # link to artifacts directory
+        else:  # link to artifacts directory
             output_file_info = session_link_file_info
             experiment_info["has_report"] = False
         return output_file_info, experiment_info
@@ -3089,4 +3092,37 @@ class TrainApp:
         # 4. Match splits with original project
         gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data
-        return gt_project_info.id, gt_split_data
+
+    # @TODO: save selected train val splits to collections
+    # def _create_collections(self):
+    #     item_type = self.project_info.type
+    #     experiment_name = self.gui.training_process.get_experiment_name()
+        
+    #     project_collections = self._api.entities_collection.get_list(self.project_id)
+    #     # @TODO: add func to check latest collection increment to train val split gui
+    #     # get collection name from gui and increment by 1
+    #     # add collection info to project custom data (first get custom_data from project and then append info to it)
+    #     train_collections = []
+    #     val_collections = []
+    #     for collection in project_collections:
+    #         if collection.name.startswith("train_"):
+    #             train_collections.append(collection)
+    #         elif collection.name.startswith("val_"):
+    #             val_collections.append(collection)
+
+    #     # Get train collection with max idx
+    #     train_collection_idx = max([int(collection.name.split("_")[1]) for collection in train_collections])
+    #     # Get val collection with max idx
+    #     val_collection_idx = max([int(collection.name.split("_")[1]) for collection in val_collections])
+
+    #     # Train Collection
+    #     train_img_ids = []
+    #     train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
+    #     train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
+    #     self._api.entities_collection.add_items(train_collection.id, train_img_ids)
+        
+    #     # Val Collection
+    #     val_img_ids = []
+    #     val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
+    #     val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
+    #     self._api.entities_collection.add_items(val_collection.id, val_img_ids)

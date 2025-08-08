@@ -82,6 +82,7 @@ class ExperimentInfo:
         for field in fields(self.__class__):
             value = getattr(self, field.name)
             data[field.name] = value
+        return data
 
 
 def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:

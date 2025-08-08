@@ -303,7 +303,9 @@ class TrainGUI:
         # 3. Classes selector
         self.classes_selector = None
         if self.show_classes_selector:
-            self.classes_selector = ClassesSelector(self.project_id, [], self.model_selector, self.app_options)
+            self.classes_selector = ClassesSelector(
+                self.project_id, [], self.model_selector, self.app_options
+            )
             self.steps.append(self.classes_selector.card)
 
         # 4. Tags selector
@@ -364,7 +366,10 @@ class TrainGUI:
             self.training_process.set_experiment_name(experiment_name)
 
         def need_convert_class_shapes() -> bool:
-            if self.hyperparameters_selector.run_model_benchmark_checkbox is None or not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked():
+            if (
+                self.hyperparameters_selector.run_model_benchmark_checkbox is None
+                or not self.hyperparameters_selector.run_model_benchmark_checkbox.is_checked()
+            ):
                 self.hyperparameters_selector.model_benchmark_auto_convert_warning.hide()
                 self.need_convert_shapes = False
                 return False
@@ -376,14 +381,22 @@ class TrainGUI:
 
                 # Exclude classes with no annotations to avoid unnecessary conversion
                 data = self.classes_selector.classes_table._table_data
-                empty_classes = {r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0}
+                empty_classes = {
+                    r[0]["data"] for r in data if r[2]["data"] == 0 and r[3]["data"] == 0
+                }
                 need_conversion = bool(wrong_shapes - empty_classes)
             else:
                 # Classes selector disabled – check entire project meta
                 if task_type == TaskType.OBJECT_DETECTION:
-                    need_conversion = any(obj_cls.geometry_type != Rectangle for obj_cls in self.project_meta.obj_classes)
+                    need_conversion = any(
+                        obj_cls.geometry_type != Rectangle
+                        for obj_cls in self.project_meta.obj_classes
+                    )
                 elif task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.SEMANTIC_SEGMENTATION]:
-                    need_conversion = any(obj_cls.geometry_type == Polygon for obj_cls in self.project_meta.obj_classes)
+                    need_conversion = any(
+                        obj_cls.geometry_type == Polygon
+                        for obj_cls in self.project_meta.obj_classes
+                    )
                 else:
                     need_conversion = False
 
@@ -394,6 +407,7 @@ class TrainGUI:
 
             self.need_convert_shapes = need_conversion
             return need_conversion
+
         # ------------------------------------------------- #
 
         self.step_flow = StepFlow(self.stepper, self.app_options)
@@ -420,7 +434,7 @@ class TrainGUI:
                 self.model_selector.widgets_to_disable,
                 self.model_selector.validator_text,
                 self.model_selector.validate_step,
-                position=position
+                position=position,
             ).add_on_select_actions("model_selector", [set_experiment_name])
             position += 1
 
@@ -517,7 +531,9 @@ class TrainGUI:
         has_model_selector = self.show_model_selector and self.model_selector is not None
         has_classes_selector = self.show_classes_selector and self.classes_selector is not None
         has_tags_selector = self.show_tags_selector and self.tags_selector is not None
-        has_train_val_splits = self.show_train_val_splits_selector and self.train_val_splits_selector is not None
+        has_train_val_splits = (
+            self.show_train_val_splits_selector and self.train_val_splits_selector is not None
+        )
 
         # Set step dependency chain
         prev_step = "input_selector"
@@ -571,11 +587,13 @@ class TrainGUI:
             @self.hyperparameters_selector.run_model_benchmark_checkbox.value_changed
             def show_mb_speedtest(is_checked: bool):
                 self.hyperparameters_selector.toggle_mb_speedtest(is_checked)
+
         # ------------------------------------------------- #
 
         self.layout: Widget = self.stepper
 
         # Run from experiment page
+
         train_task_id = getenv("modal.state.trainTaskId", None)
         if train_task_id is not None:
             train_task_id = int(train_task_id)
@@ -583,7 +601,6 @@ class TrainGUI:
         if train_task_id is not None and train_mode is not None:
             self._run_from_experiment(train_task_id, train_mode)
         # ----------------------------------------- #
-
 
     def set_next_step(self):
         current_step = self.stepper.get_active_step()
@@ -605,6 +622,8 @@ class TrainGUI:
         """
         if self.input_selector is not None:
             self.input_selector.button.enable()
+        if self.model_selector is not None:
+            self.model_selector.button.enable()
         if self.train_val_splits_selector is not None:
             self.train_val_splits_selector.button.enable()
         if self.classes_selector is not None:
@@ -622,6 +641,8 @@ class TrainGUI:
         """
         if self.input_selector is not None:
             self.input_selector.button.disable()
+        if self.model_selector is not None:
+            self.model_selector.button.disable()
         if self.train_val_splits_selector is not None:
             self.train_val_splits_selector.button.disable()
         if self.classes_selector is not None:
@@ -775,7 +796,9 @@ class TrainGUI:
                 )
         return app_state
 
-    def load_from_app_state(self, app_state: Union[str, dict], click_cb: bool = True, validate_steps: bool = True) -> None:
+    def load_from_app_state(
+        self, app_state: Union[str, dict], click_cb: bool = True, validate_steps: bool = True
+    ) -> None:
         """
         Load the GUI state from app state dictionary or path to the state file.
 
@@ -825,10 +848,10 @@ class TrainGUI:
         """
         if isinstance(app_state, str):
             app_state = sly_json.load_json_file(app_state)
-            
+
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
-        
+
         # Set experiment name
         experiment_name = app_state.get("experiment_name")
         if experiment_name is not None:
@@ -839,7 +862,7 @@ class TrainGUI:
             if not init_fn(settings, options, click_cb, validate_steps):
                 return False
             return True
-        
+
         # GUI init steps
         _steps = [
             (self._init_input, app_state.get("input"), "Input project"),
@@ -856,12 +879,20 @@ class TrainGUI:
                     logger.warning(f"Step '{step_name}' {idx}/{len(_steps)} failed to validate")
                 return
             if validate_steps:
-                logger.info(f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully")
+                logger.info(
+                    f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully"
+                )
         if validate_steps:
             logger.info(f"All steps have been validated successfully")
         # ------------------------------------------------------------------ #
 
-    def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+    def _init_input(
+        self,
+        input_settings: Union[dict, None],
+        options: dict,
+        click_cb: bool = True,
+        validate: bool = True,
+    ) -> bool:
         """
         Initialize the input selector with the given settings.
 
@@ -885,7 +916,13 @@ class TrainGUI:
         return is_valid
         # ----------------------------------------- #
 
-    def _init_model(self, model_settings: dict, options: dict = None, click_cb: bool = True, validate: bool = True) -> bool:
+    def _init_model(
+        self,
+        model_settings: dict,
+        options: dict = None,
+        click_cb: bool = True,
+        validate: bool = True,
+    ) -> bool:
         """
         Initialize the model selector with the given settings.
 
@@ -909,14 +946,19 @@ class TrainGUI:
         # Custom
         elif model_settings["source"] == ModelSource.CUSTOM:
             self.model_selector.model_source_tabs.set_active_tab(ModelSource.CUSTOM)
-            self.model_selector.experiment_selector.set_by_task_id(model_settings["task_id"])
-            active_row = self.model_selector.experiment_selector.get_selected_row()
-            if model_settings["checkpoint"] not in active_row.checkpoints_names:
-                raise ValueError(
-                    f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
-                )
-
-            active_row.set_selected_checkpoint_by_name(model_settings["checkpoint"])
+            self.model_selector.experiment_selector.set_selected_row_by_task_id(
+                model_settings["task_id"]
+            )
+            experiment_info = self.model_selector.experiment_selector.get_selected_experiment_info()
+            if model_settings["checkpoint"] not in experiment_info.checkpoints:
+                if f"checkpoints/{model_settings['checkpoint']}" not in experiment_info.checkpoints:
+                    raise ValueError(
+                        f"Checkpoint '{model_settings['checkpoint']}' not found in selected task"
+                    )
+            self.model_selector.experiment_selector.set_selected_checkpoint_by_name(
+                model_settings["checkpoint"]
+            )
+            self.model_selector.experiment_selector.search(str(model_settings["task_id"]))
 
         is_valid = True
         if validate:
@@ -926,8 +968,10 @@ class TrainGUI:
             self.set_next_step()
         return is_valid
         # ----------------------------------------- #
-        
-    def _init_classes(self, classes_settings: list, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+
+    def _init_classes(
+        self, classes_settings: list, options: dict, click_cb: bool = True, validate: bool = True
+    ) -> bool:
         """
         Initialize the classes selector with the given settings.
 
@@ -941,7 +985,7 @@ class TrainGUI:
         :type validate: bool
         """
         if self.classes_selector is None:
-            return True # Selector disabled by app options
+            return True  # Selector disabled by app options
 
         convert_class_shapes = options.get("convert_class_shapes", True)
         if convert_class_shapes:
@@ -958,7 +1002,9 @@ class TrainGUI:
         return is_valid
         # ----------------------------------------- #
 
-    def _init_tags(self, tags_settings: list, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+    def _init_tags(
+        self, tags_settings: list, options: dict, click_cb: bool = True, validate: bool = True
+    ) -> bool:
         """
         Initialize the tags selector with the given settings.
 
@@ -972,7 +1018,7 @@ class TrainGUI:
         :type validate: bool
         """
         if self.tags_selector is None:
-            return True # Selector disabled by app options
+            return True  # Selector disabled by app options
 
         # Set Tags
         self.tags_selector.set_tags(tags_settings)
@@ -985,7 +1031,13 @@ class TrainGUI:
         return is_valid
         # ----------------------------------------- #
 
-    def _init_train_val_splits(self, train_val_splits_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+    def _init_train_val_splits(
+        self,
+        train_val_splits_settings: dict,
+        options: dict,
+        click_cb: bool = True,
+        validate: bool = True,
+    ) -> bool:
         """
         Initialize the train/val splits selector with the given settings.
 
@@ -999,7 +1051,7 @@ class TrainGUI:
         :type validate: bool
         """
         if self.train_val_splits_selector is None:
-            return True # Selector disabled by app options
+            return True  # Selector disabled by app options
 
         if train_val_splits_settings == {}:
             available_methods = self.app_options.get("train_val_splits_methods", [])
@@ -1059,8 +1111,14 @@ class TrainGUI:
             self.train_val_splits_selector_cb()
             self.set_next_step()
         return is_valid
-    
-    def _init_hyperparameters(self, hyperparameters_settings: dict, options: dict, click_cb: bool = True, validate: bool = True) -> bool:
+
+    def _init_hyperparameters(
+        self,
+        hyperparameters_settings: dict,
+        options: dict,
+        click_cb: bool = True,
+        validate: bool = True,
+    ) -> bool:
         """
         Initialize the hyperparameters selector with the given settings.
 
@@ -1101,6 +1159,7 @@ class TrainGUI:
             self.hyperparameters_selector_cb()
             self.set_next_step()
         return is_valid
+
     # ----------------------------------------- #
 
     # Run from experiment page
@@ -1111,10 +1170,12 @@ class TrainGUI:
         app_state = sly_json.load_json_file(local_app_state_path)
         sly_fs.silent_remove(local_app_state_path)
         return app_state
-    
+
     def _download_experiment_hparams(self, experiment_info: ExperimentInfo) -> dict:
         local_hparams_path = f"./{experiment_info.hyperparameters}"
-        remote_hparams_path = os.path.join(experiment_info.artifacts_dir, experiment_info.hyperparameters)
+        remote_hparams_path = os.path.join(
+            experiment_info.artifacts_dir, experiment_info.hyperparameters
+        )
         self._api.file.download(self.team_id, remote_hparams_path, local_hparams_path)
         with open(local_hparams_path, "r") as f:
             hparams = f.read()
@@ -1129,11 +1190,14 @@ class TrainGUI:
             model_settings = {
                 "source": ModelSource.CUSTOM,
                 "task_id": train_task_id,
-                "checkpoint": experiment_info.best_checkpoint
+                "checkpoint": experiment_info.best_checkpoint,
             }
 
         if experiment_state is not None:
-            self.input_selector.validator_text.set(f"Training configuration is loaded from the experiment: {experiment_info.experiment_name}.", "success")
+            self.input_selector.validator_text.set(
+                f"Training configuration is loaded from the experiment: {experiment_info.experiment_name}.",
+                "success",
+            )
             self.input_selector.validator_text.show()
             experiment_state = self._download_experiment_state(experiment_info)
             if train_mode == "continue":
@@ -1142,11 +1206,12 @@ class TrainGUI:
         else:
             self.input_selector.validator_text.set(
                 f"Couldn't load full training configuration from the experiment: {experiment_info.experiment_name}. Only model and hyperparameters are loaded.",
-                "warning"
+                "warning",
             )
             self.input_selector.validator_text.show()
             hparams = self._download_experiment_hparams(experiment_info)
             self.hyperparameters_selector.set_hyperparameters(hparams)
             if train_mode == "continue":
                 self._init_model(model_settings, {}, click_cb=False, validate=False)
+
     # ----------------------------------------- #
