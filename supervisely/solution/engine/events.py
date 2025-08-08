@@ -1,27 +1,38 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable
+from typing import Callable, List, Union
 
 from supervisely.app.singleton import Singleton
 from supervisely.sly_logger import logger
 
 
 # to subscribe to an event, use:
-def on_event(topic: str):
+def on_event(topic: Union[str, List[str]]):
+    if isinstance(topic, str):
+        topic = [topic]
+
     def decorator(method):
-        method._event_topic = topic
+        if hasattr(method, "_event_topic"):
+            raise ValueError(
+                f"Method {method.__name__} already has an event topic defined: {method._event_topic}. "
+            )
+        method._event_topic = topic.copy()
         return method
 
     return decorator
 
 
 # to publish an event, use:
-def publish_event(topic: str):
+def publish_event(topic: Union[str, List[str]]):
+    if isinstance(topic, str):
+        topic = [topic]
+
     def decorator(method):
         def wrapper(*args, **kwargs):
-            broker = PubSubAsync()
             message = method(*args, **kwargs)
-            broker.publish(topic, message)
+            broker = PubSub()
+            for t in topic:
+                broker.publish(t, message)
             return message
 
         return wrapper
@@ -32,7 +43,6 @@ def publish_event(topic: str):
 class PubSub(metaclass=Singleton):
     def __init__(self):
         self.subscribers = {}  # Dictionary to store subscribers for each topic
-        self.lock = threading.Lock()  # Lock for thread-safe access to subscribers
 
     def _safe_callback_wrapper(self, callback: Callable, message: str, topic: str):
         """Wrapper for safe callback execution"""
@@ -45,29 +55,29 @@ class PubSub(metaclass=Singleton):
         """Wrapper for safe callback execution"""
         return self._safe_callback_wrapper(callback, message, topic)
 
-    def subscribe(self, topic, callback):
+    def subscribe(self, topic, callback: Callable):
         """Subscribes a callback function to a given topic."""
-        with self.lock:
-            if topic not in self.subscribers:
-                self.subscribers[topic] = []
-            self.subscribers[topic].append(callback)
-            logger.info(f"Subscribed to topic: '{topic}': {callback.__name__}")
+        if topic not in self.subscribers:
+            self.subscribers[topic] = []
+        self.subscribers[topic].append(callback)
+        logger.info(f"Subscribed to topic: '{topic}': {callback.__qualname__}()")
 
-    def unsubscribe(self, topic, callback):
+    def unsubscribe(self, topic, callback: Callable):
         """Unsubscribes a callback function from a given topic."""
-        with self.lock:
-            if topic in self.subscribers and callback in self.subscribers[topic]:
-                self.subscribers[topic].remove(callback)
-                logger.info(f"Unsubscribed from topic: '{topic}': {callback.__name__}")
+        if topic in self.subscribers and callback in self.subscribers[topic]:
+            self.subscribers[topic].remove(callback)
+            logger.info(f"Unsubscribed from topic: '{topic}': {callback.__qualname__}()")
 
     def publish(self, topic, message):
         """Publishes a message to a given topic, notifying all subscribers."""
-        with self.lock:
-            if topic in self.subscribers:
-                for callback in self.subscribers[topic]:
-                    self._callback_wrapper(callback, message, topic)
-            else:
-                logger.info(f"No subscribers for topic: '{topic}'")
+        if topic in self.subscribers:
+            for callback in self.subscribers[topic]:
+                logger.info(
+                    f"Publishing message to topic: '{topic}': {callback.__qualname__}()"
+                )
+                self._callback_wrapper(callback, message, topic)
+        else:
+            logger.info(f"No subscribers for topic: '{topic}'")
 
 
 class PubSubAsync(PubSub):
@@ -106,3 +116,8 @@ class PubSubAsync(PubSub):
             logger.info("PubSubAsync executor shutdown complete.")
         else:
             logger.warning("PubSubAsync executor was not initialized.")
+
+
+# ! TODO: check for race conditions
+# ! TODO: check for circular events
+# ! TODO: check for API rate limits

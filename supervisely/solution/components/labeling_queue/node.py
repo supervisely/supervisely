@@ -1,13 +1,15 @@
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 from venv import logger
 
 from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
-from supervisely.solution.components.labeling_queue.automation import (
-    LabelingQueueRefresh,
-)
+from supervisely.solution.components.labeling_queue.automation import LabelingQueueRefresh
 from supervisely.solution.components.labeling_queue.gui import LabelingQueueGUI
+from supervisely.solution.engine.models import (
+    LabelingQueueRefreshInfoMessage,
+    SampleFinishedMessage,
+)
 
 
 class LabelingQueueNode(SolutionElement):
@@ -146,10 +148,13 @@ class LabelingQueueNode(SolutionElement):
         _, _, _, finished, _ = self.get_labeling_stats()
         return finished
 
-    def refresh_info(self):
+    def refresh_info(
+        self, message: Optional[SampleFinishedMessage] = None
+    ) -> LabelingQueueRefreshInfoMessage:
         """
         Refresh the labeling queue info and update the GUI.
         """
+        pending, annotating, reviewing, finished, rejected = 0, 0, 0, 0, 0
         try:
             pending, annotating, reviewing, finished, rejected = self.get_labeling_stats()
             self.update_pending(pending)
@@ -158,12 +163,15 @@ class LabelingQueueNode(SolutionElement):
             self.update_finished(finished)
             for callback in self._callbacks:
                 callback()
-        except RuntimeError as e:
-            logger.error(str(e))
-            self.unschedule_refresh()
-            raise e
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
+        return LabelingQueueRefreshInfoMessage(
+            pending=pending,
+            annotating=annotating,
+            reviewing=reviewing,
+            finished=finished,
+            rejected=rejected,
+        )
 
     def on_refresh(self, func: Callable[[], None]) -> None:
         """
@@ -187,3 +195,32 @@ class LabelingQueueNode(SolutionElement):
         )
 
         return [entity["id"] for entity in resp["images"]]
+
+    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "sample_finished": [self.add_items, self.refresh_info],
+        }
+
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {
+            "refresh_labeling_queue_info": self.refresh_info,
+        }
+
+    def add_items(self, message: SampleFinishedMessage) -> None:
+        """
+        Add items to the labeling queue.
+        :param message: Message containing the list of image IDs to add.
+        """
+        if not message.dst:
+            logger.warning("No images to add to labeling queue.")
+            return
+
+        images = []
+        for imgs in message.dst.values():
+            images.extend(imgs)
+        self.api.entities_collection.add_items(self.collection_id, images)
+        for imgs in message.dst.values():
+            images.extend(imgs)
+        self.api.entities_collection.add_items(self.collection_id, images)

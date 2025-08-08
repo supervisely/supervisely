@@ -1,12 +1,13 @@
 import random
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Callable, Dict, List, Optional, Union
 
 from supervisely.app.content import DataJson
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
-from supervisely.solution.components.train_val_split.gui import (
-    SplitSettings,
-    TrainValSplitGUI,
+from supervisely.solution.components.train_val_split.gui import SplitSettings, TrainValSplitGUI
+from supervisely.solution.engine.models import (
+    LabelingQueueRefreshInfoMessage,
+    SampleFinishedMessage,
 )
 
 
@@ -60,8 +61,16 @@ class TrainValSplitNode(SolutionElement):
         self.node.update_property("train", f"{train_count} image{'' if train_count == 1 else 's'}")
         self.node.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
 
-    def set_items_count(self, items_count: int):
+    def set_items_count(
+        self, message: Union[SampleFinishedMessage, LabelingQueueRefreshInfoMessage]
+    ) -> None:
         """Set the number of items in the random splits table."""
+        if isinstance(message, SampleFinishedMessage):
+            items_count = message.items_count
+        elif isinstance(message, LabelingQueueRefreshInfoMessage):
+            items_count = message.finished
+        else:
+            items_count = 0
         self.gui.random_splits.set_items_count(items_count)
         settings = self.gui.get_split_settings()
         self.update_properties(settings)
@@ -94,3 +103,17 @@ class TrainValSplitNode(SolutionElement):
     def get_split_settings(self) -> SplitSettings:
         """Get split settings from GUI."""
         return self.gui.get_split_settings()
+
+    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "sample_finished": [self.set_items_count],
+            "refresh_labeling_queue_info": [self.set_items_count],
+        }
+
+    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "sample_finished": [self.set_items_count],
+            "refresh_labeling_queue_info": [self.set_items_count],
+        }

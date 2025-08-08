@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
     Widget,
 )
 from supervisely.app.widgets_context import JinjaWidgets
-from supervisely.solution.engine.events import PubSubAsync
+from supervisely.solution.engine.events import PubSub, PubSubAsync, publish_event
 from supervisely.solution.engine.scheduler import TasksScheduler
 
 
@@ -23,7 +23,6 @@ from supervisely.solution.engine.scheduler import TasksScheduler
 # ------------------------------------------------------------------
 class EventMixin:
     def __init__(self):
-        self._event_broker = PubSubAsync()
         self._register_event_handlers()
 
     @property
@@ -37,8 +36,8 @@ class EventMixin:
             try:
                 method = getattr(self, method_name)
                 if hasattr(method, "_event_topic"):
-                    topic = method._event_topic
-                    self.broker.subscribe(topic, method)
+                    for topic in method._event_topic:
+                        PubSub().subscribe(topic, method)
             except Exception as e:
                 pass
 
@@ -60,11 +59,16 @@ class SolutionElement(Widget, EventMixin):
         It can be extended to create specific solution elements with their own properties and methods.
         """
         self.id = kwargs.pop("id", None)
+        self._subscribe = kwargs.pop("subscribe", [])  # List of topics to subscribe to
+        self._publish = kwargs.pop("publish", [])  # List of topics to publish to
         widget_id = kwargs.get("widget_id", None)
         if not hasattr(self, "widget_id"):
             self.widget_id = widget_id
         # Widget.__init__(self, widget_id=self.widget_id)
         super().__init__(widget_id=self.widget_id, *args, **kwargs)
+        self.enable_subscribtions()
+        self.enable_publishing()
+        EventMixin.__init__(self)
 
     # ------------------------------------------------------------------
     # JSON Methods ----------------------------------------------------
@@ -75,7 +79,9 @@ class SolutionElement(Widget, EventMixin):
         kwargs = json_data.get("parameters", {})
         x = kwargs.pop("x", 0)
         y = kwargs.pop("y", 0)
-        return cls(id=node_id, x=x, y=y, **kwargs)
+        subscribe = json_data.get("events", {}).get("subscribe", [])
+        publish = json_data.get("events", {}).get("publish", [])
+        return cls(id=node_id, x=x, y=y, subscribe=subscribe, publish=publish, **kwargs)
 
     # ------------------------------------------------------------------
     # Base Widget Methods ----------------------------------------------
@@ -109,9 +115,11 @@ class SolutionElement(Widget, EventMixin):
         if buttons is None:
             buttons = []
             if hasattr(self, "history") and self.history is not None:
-                buttons.append(self.history.open_modal_button)
+                if hasattr(self.history, "open_modal_button"):
+                    buttons.append(self.history.open_modal_button)
             if hasattr(self, "automation") and self.automation is not None:
-                buttons.append(self.automation.open_modal_button)
+                if hasattr(self.automation, "open_modal_button"):
+                    buttons.append(self.automation.open_modal_button)
 
         return SolutionCard(
             title=title,
@@ -126,6 +134,16 @@ class SolutionElement(Widget, EventMixin):
     # ------------------------------------------------------------------
     # Progress badge wrappers ------------------------------------------
     # ------------------------------------------------------------------
+    @staticmethod
+    def _wrap_in_progress(node: SolutionElement, func: Callable):
+        def wrapped(*args, **kwargs):
+            node.show_in_progress_badge(node.progress_badge_key)
+            res = func(*args, **kwargs)
+            node.hide_in_progress_badge(node.progress_badge_key)
+            return res
+
+        return wrapped
+
     @staticmethod
     def _wrap_start(node: SolutionElement, func: Callable):
         def wrapped():
@@ -180,6 +198,33 @@ class SolutionElement(Widget, EventMixin):
     # ------------------------------------------------------------------
     # Event registration ------------------------------------------------
     # ------------------------------------------------------------------
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {}
+
+    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {}
+
+    def enable_subscribtions(self):
+        """Subscribe to events defined in the class."""
+        for topic, method in self._available_subscribe_methods().items():
+            if topic in self._subscribe:
+                if not isinstance(method, list):
+                    method = [method]
+                for m in method:
+                    if not callable(m):
+                        raise TypeError(f"Method {m} for topic {topic} is not callable")
+                    PubSubAsync().subscribe(topic, m)
+
+    def enable_publishing(self):
+        """Publish events defined in the class."""
+        for topic, method in self._available_publish_methods().items():
+            if topic in self._publish:
+                # not publish, but wrap the method to publish the event when called
+                wrapped = publish_event(topic)(self._wrap_in_progress(self, method))
+                setattr(self, method.__name__, wrapped)  # replace the method with the wrapped one
+
     def on_start(self, func: Callable[[], None] = None):
         """Register a callback to run *before* the node's main task.
         The callback is wrapped so the in-progress badge appears automatically."""

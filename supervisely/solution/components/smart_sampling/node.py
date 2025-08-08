@@ -1,22 +1,25 @@
 from __future__ import annotations
-from typing import Callable, Optional
-from supervisely.api.api import Api
 
+from typing import Callable, Dict, Optional, Union
+
+from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.engine.models import (
+    ImportFinishedMessage,
+    SampleFinishedMessage,
+)
 from supervisely.solution.utils import get_interval_period
 
 from .automation import SmartSamplingAutomation
-from .gui import SmartSamplingGUI, SamplingMode
+from .gui import SamplingMode, SmartSamplingGUI
 from .history import SmartSamplingTasksHistory
 
 
 class SmartSamplingNode(SolutionElement):
     progress_badge_key = "Sampling"
 
-    def __init__(
-        self, project_id: int, dst_project: int, x: int, y: int, *args, **kwargs
-    ):
+    def __init__(self, project_id: int, dst_project: int, x: int, y: int, *args, **kwargs):
         """Node for sampling data from the input project and copying it to the labeling project."""
         self.api = Api.from_env()
         self.project_id = project_id
@@ -60,10 +63,16 @@ class SmartSamplingNode(SolutionElement):
 
         @self.gui.run_button.click
         def on_run_button_click():
+            self.gui.modal.hide()
             self.gui.status_text.show()
             self.gui.status_text.set("Sampling is in progress...", status="info")
             self.run()
             self.gui.status_text.hide()
+
+        @self.automation.apply_button.click
+        def on_apply_automation_click():
+            self.automation.modal.hide()
+            self.apply_automation(self.run)
 
         super().__init__(*args, **kwargs)
 
@@ -92,21 +101,29 @@ class SmartSamplingNode(SolutionElement):
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
-    def update_widgets(
-        self,
-        diff: Optional[int] = None,
-        sampling_settings: Optional[dict] = None,
-        updated_project_info: Optional[ProjectInfo] = None,
-    ):
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {
+            "sample_finished": self.run,
+        }
+
+    def _available_subscribe_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "import_finished": self.update_widgets,
+            "sample_finished": self.update_widgets,
+        }
+
+    # callback method (accepts Message object)
+    def update_widgets(self, message: Union[ImportFinishedMessage, SampleFinishedMessage] = None) -> None:
         """Update the sampling inputs based on the difference."""
-        if updated_project_info:
-            self.project = updated_project_info
-            self.items_count = self.project.items_count
-            self.gui.total_num_text.text = f"{self.items_count} images"
+        updated_project_info = self.api.project.get_info_by_id(self.project_id)
+        self.project = updated_project_info
+        self.items_count = self.project.items_count
+        self.gui.total_num_text.text = f"{self.items_count} images"
+        sampling_settings = self.gui.get_settings()
 
-        if diff is None:
-            diff = self.gui.calculate_diff_count()
-
+        diff = self.gui.calculate_diff_count()
         self.gui.update_widgets(diff, sampling_settings)
 
         if diff == 0:
@@ -115,7 +132,6 @@ class SmartSamplingNode(SolutionElement):
             self.card.update_badge_by_key("Difference:", str(diff), "info")
         self.card.update_property("Difference:", str(diff))
 
-        sampling_settings = sampling_settings or self.gui.get_settings()
         mode = sampling_settings.get("mode", SamplingMode.RANDOM.value)
         self.card.update_property("mode", mode)
         if mode in [SamplingMode.RANDOM.value, SamplingMode.DIVERSE.value]:
@@ -153,11 +169,14 @@ class SmartSamplingNode(SolutionElement):
     # ------------------------------------------------------------------
     # Run --------------------------------------------------------------
     # ------------------------------------------------------------------
-    def run(self):
+
+    # publish_event (may send Message object)
+    def run(self) -> SampleFinishedMessage:
         self.node.show_in_progress_badge("Sampling")
         for callback in self.on_start_callbacks:
             callback()
         res = self.gui.run()
+        src, dst, images_count = res
         for callback in self.on_finish_callbacks:
             if callable(callback):
                 if callback.__code__.co_argcount == 0:
@@ -165,3 +184,6 @@ class SmartSamplingNode(SolutionElement):
                 else:
                     callback(res)
         self.node.hide_in_progress_badge("Sampling")
+        self.node.hide_in_progress_badge("Sampling")
+        return SampleFinishedMessage(success=True, src=src, dst=dst, items_count=images_count)
+

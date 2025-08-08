@@ -1,11 +1,16 @@
-from typing import List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from supervisely.api.api import Api
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import SolutionElement, SolutionProjectNode
-
-from .automation import ProjectAutomation
-from .gui import ProjectGUI
+from supervisely.solution.components.project.automation import ProjectAutomation
+from supervisely.solution.components.project.gui import ProjectGUI
+from supervisely.solution.engine.events import on_event
+from supervisely.solution.engine.models import (
+    ImportFinishedMessage,
+    MoveLabeledDataFinishedMessage,
+    SampleFinishedMessage,
+)
 
 
 class ProjectNode(SolutionElement):
@@ -70,7 +75,7 @@ class ProjectNode(SolutionElement):
 
         # --- refresh ------------------------------------------------------------
         self.refresh_interval = refresh_interval
-        self.apply_automation(sec=self.refresh_interval)
+        # self.apply_automation(sec=self.refresh_interval)
 
         super().__init__(*args, **kwargs)
 
@@ -97,15 +102,37 @@ class ProjectNode(SolutionElement):
     # ------------------------------------------------------------------
     # Update Methods ---------------------------------------------------
     # ------------------------------------------------------------------
-    def update(self, new_items_count: Optional[int] = None) -> None:
+    def _available_subscribe_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "import_finished": self.update,
+            "sample_finished": self.update,
+            "move_labeled_data_finished": self.update,
+        }
+
+    def update(
+        self,
+        message: Union[
+            ImportFinishedMessage,
+            SampleFinishedMessage,
+            MoveLabeledDataFinishedMessage,
+        ],
+    ) -> None:
         """
         Update the project node with new information.
 
         :param new_items_count: Optional count of newly added items
         """
+        if not message.success:
+            logger.info("Skipping update project info due to unsuccessful import.")
+            return
+        new_items_count = message.items_count
         self.project = self.api.project.get_info_by_id(self.project_id)
         items_count = self.project.items_count or 0
-        preview_url = self.project.image_preview_url
+        if isinstance(message, ImportFinishedMessage):
+            preview_url = message.image_preview_url or self.project.image_preview_url
+        else:
+            preview_url = self.project.image_preview_url
         if self.dataset_id is not None:
             self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
             items_count = self.dataset.items_count or 0
@@ -118,7 +145,7 @@ class ProjectNode(SolutionElement):
 
         # Update preview
         if self.is_training:
-            train_items, val_items = self._get_train_val_items(dataset_id=self.dataset_id)
+            train_items, val_items = self._get_train_val_items()
             self.gui.update_preview(
                 [self._get_random_image_url(train_items), self._get_random_image_url(val_items)],
                 [len(train_items), len(val_items)],
@@ -148,10 +175,7 @@ class ProjectNode(SolutionElement):
 
         return train_collections, val_collections
 
-    def _get_train_val_items(
-        self,
-        dataset_id: Optional[int] = None,
-    ) -> Tuple[List, List]:
+    def _get_train_val_items(self) -> Tuple[List, List]:
         """
         Returns the items in training and validation collections.
 
@@ -170,10 +194,10 @@ class ProjectNode(SolutionElement):
             images = self.api.entities_collection.get_items(collection_id, self.project_id)
             val_items.extend(images)
 
-        if dataset_id is not None:
+        if self.dataset_id is not None:
             # Filter items by dataset ID if provided
-            train_items = [item for item in train_items if item.dataset_id == dataset_id]
-            val_items = [item for item in val_items if item.dataset_id == dataset_id]
+            train_items = [item for item in train_items if item.dataset_id == self.dataset_id]
+            val_items = [item for item in val_items if item.dataset_id == self.dataset_id]
 
         return train_items, val_items
 

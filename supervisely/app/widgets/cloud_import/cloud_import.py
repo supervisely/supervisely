@@ -104,9 +104,9 @@ class CloudImport(Widget):
             [text, self.path_input, self.agent_select, self.status_text, run_btn_cont]
         )
 
-        @self.run_btn.click
-        def _on_run_btn_click():
-            self.run()
+        # @self.run_btn.click
+        # def _on_run_btn_click():
+        #     self.run()
 
     def _validate_path(self, path: str) -> bool:
         """

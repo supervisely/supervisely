@@ -1,17 +1,20 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple, Union
 
-from supervisely._utils import abs_url, logger
 import supervisely.io.env as sly_env
+from supervisely._utils import abs_url, logger
 from supervisely.api.api import Api
+from supervisely.app.widgets import Button
 from supervisely.app.widgets import CloudImport as CloudImportWidget
-from supervisely.app.widgets import (
-    Button,
-    Dialog,
-    SolutionCard,
-)
+from supervisely.app.widgets import Dialog, SolutionCard
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
-
-from .automation import CloudImportAutomation
+from supervisely.solution.components.cloud_import.automation import (
+    CloudImportAutomation,
+)
+from supervisely.solution.engine.events import on_event, publish_event
+from supervisely.solution.engine.models import (
+    ImportFinishedMessage,
+    ImportStartedMessage,
+)
 
 
 class CloudImportNode(SolutionElement):
@@ -35,6 +38,10 @@ class CloudImportNode(SolutionElement):
         @self.card.click
         def show_modal():
             self.modal.show()
+
+        @self.gui.run_btn.click
+        def _on_run_btn_click():
+            self.run()
 
         @self.automation.apply_button.click
         def _on_apply_automation_btn_click():
@@ -115,7 +122,21 @@ class CloudImportNode(SolutionElement):
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
-    def run(self, path: Optional[str] = None) -> int:
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for publishing events."""
+        key = f"{self.id}_import_started"
+        return {
+            "import_started": self.run,
+            key: self.wait_import_completion,
+        }
+
+    def _available_subscribe_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "import_started": self.handle_import_started,
+        }
+
+    def run(self, path: Optional[str] = None) -> ImportStartedMessage:
         """
         Runs the import task.
 
@@ -124,7 +145,33 @@ class CloudImportNode(SolutionElement):
         :return: The task ID.
         :rtype: int
         """
-        return self.gui.run(path)
+        self.modal.hide()
+        self.gui.path_input.set_value("")
+        task_id = self.gui.run(path)
+        return ImportStartedMessage(task_id=task_id)
+
+    def handle_import_started(self, message: ImportStartedMessage) -> None:
+        """Automatically handles import_started events"""
+        success = self.wait_import_completion(message.task_id)
+        logger.info(f"Import task {message.task_id} completed with status: {success}")
+
+    def wait_import_completion(self, task_id: int) -> ImportFinishedMessage:
+        """
+        Waits for the import task to complete.
+
+        :param task_id: The ID of the import task.
+        :type task_id: int
+        :return: Dictionary containing the success status, items count, image preview URL, and task ID.
+        :rtype: Dict[str, Optional[int]]
+        """
+        success = self.gui.wait_import_completion(task_id)
+        items_count, image_preview_url = self.update_card_after_import(task_id)
+        return ImportFinishedMessage(
+            task_id=task_id,
+            success=success,
+            items_count=items_count,
+            image_preview_url=image_preview_url,
+        )
 
     def update_card_after_import(self, task_id: Optional[int] = None) -> Tuple[int, str]:
         """
