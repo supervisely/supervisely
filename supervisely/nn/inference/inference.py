@@ -2258,6 +2258,7 @@ class Inference:
             self.add_results_to_request,
             inference_request=inference_request,
             iou_merge_threshold=iou_merge_threshold,
+            context=inference_request.context,
         )
 
         if upload_mode is None:
@@ -2808,13 +2809,6 @@ class Inference:
         iou_merge_threshold: float = None,
         context: Dict = None,
     ):
-        logger.debug(
-            "adding predictions to inference request",
-            extra={
-                "iou_merge_threshold": iou_merge_threshold,
-                "predictions_count": len(predictions),
-            },
-        )
         if iou_merge_threshold:
             if context is None:
                 context = {}
