@@ -146,12 +146,14 @@ class DeployModel(Widget):
         class COLUMN:
             FRAMEWORK = "Framework"
             MODEL_NAME = "Model"
+            TASK_TYPE = "Task Type"
             PARAMETERS = "Parameters (M)"
             MAP = "mAP"
 
         COLUMNS = [
             str(COLUMN.FRAMEWORK),
             str(COLUMN.MODEL_NAME),
+            str(COLUMN.TASK_TYPE),
             str(COLUMN.PARAMETERS),
             str(COLUMN.MAP),
         ]
@@ -229,7 +231,8 @@ class DeployModel(Widget):
             try:
                 self.pretrained_table.clear()
                 models_data = []
-                for framework in self.deploy_model.get_frameworks():
+                frameworks = self.deploy_model.get_frameworks()
+                for framework in frameworks:
                     try:
                         framework_models = self._list_pretrained_models(framework)
                         models_data.extend(
@@ -244,6 +247,7 @@ class DeployModel(Widget):
                     {
                         self.COLUMN.FRAMEWORK: model_data["framework"],
                         self.COLUMN.MODEL_NAME: model_data["model"]["name"],
+                        self.COLUMN.TASK_TYPE: model_data["model"]["task"],
                         self.COLUMN.PARAMETERS: model_data["model"].get("paramsM", "N/A"),
                         self.COLUMN.MAP: self._map_from_model(model_data["model"]),
                     }

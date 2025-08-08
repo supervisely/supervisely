@@ -142,15 +142,15 @@
     </div>
     <div class="experiment-info-subheader-footer-menu">
         {% if experiment.training.evaluation.id %}
-        <a :href="`${window.location.pathname}#predictions`" class="active">Predictions</a>
-        <a :href="`${window.location.pathname}#evaluation-2`">Evaluation</a>
+        <a :href="`${location.pathname}#predictions`" class="active">Predictions</a>
+        <a :href="`${location.pathname}#evaluation-2`">Evaluation</a>
         {% endif %}
         {% if not experiment.training.evaluation.id %}
-        <a :href="`${window.location.pathname}#evaluation-2`" class="active">Evaluation</a>
+        <a :href="`${location.pathname}#evaluation-2`" class="active">Evaluation</a>
         {% endif %}
-        <a :href="`${window.location.pathname}#artifacts`">Artifacts</a>
-        <a :href="`${window.location.pathname}#classes`">Classes</a>
-        <a :href="`${window.location.pathname}#hyperparameters`">Hyperparameters</a>
-        <a :href="`${window.location.pathname}#api-integration-amp-deployment`">API Integration & Deployment</a>
+        <a :href="`${location.pathname}#artifacts`">Artifacts</a>
+        <a :href="`${location.pathname}#classes`">Classes</a>
+        <a :href="`${location.pathname}#hyperparameters`">Hyperparameters</a>
+        <a :href="`${location.pathname}#api-integration-amp-deployment`">API Integration & Deployment</a>
     </div>
 </div>

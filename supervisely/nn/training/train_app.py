@@ -596,6 +596,7 @@ class TrainApp:
             if self.gui.classes_selector is not None:
                 if self.gui.classes_selector.is_convert_class_shapes_enabled():
                     self._convert_project_to_model_task()
+        
         # Step 4. Create collections
         # self._create_collections()
 
@@ -3091,20 +3092,37 @@ class TrainApp:
         # 4. Match splits with original project
         gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data
-        return gt_project_info.id, gt_split_data
 
-    # @TODO: safe selected train val splits to collections
+    # @TODO: save selected train val splits to collections
     # def _create_collections(self):
-    #     project_colletions = self._api.entities_collection.get_list(self.project_id)
+    #     item_type = self.project_info.type
+    #     experiment_name = self.gui.training_process.get_experiment_name()
+        
+    #     project_collections = self._api.entities_collection.get_list(self.project_id)
     #     # @TODO: add func to check latest collection increment to train val split gui
     #     # get collection name from gui and increment by 1
     #     # add collection info to project custom data (first get custom_data from project and then append info to it)
+    #     train_collections = []
+    #     val_collections = []
+    #     for collection in project_collections:
+    #         if collection.name.startswith("train_"):
+    #             train_collections.append(collection)
+    #         elif collection.name.startswith("val_"):
+    #             val_collections.append(collection)
 
-    #     train_collection = self._api.entities_collection.create(self.project_id, "train_collection", "train_collection") # -> info obj
-    #     val_collection = self._api.entities_collection.create(self.project_id, "val_collection", "val_collection") # -> info obj
+    #     # Get train collection with max idx
+    #     train_collection_idx = max([int(collection.name.split("_")[1]) for collection in train_collections])
+    #     # Get val collection with max idx
+    #     val_collection_idx = max([int(collection.name.split("_")[1]) for collection in val_collections])
 
+    #     # Train Collection
     #     train_img_ids = []
-    #     val_img_ids = []
-
+    #     train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
+    #     train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
     #     self._api.entities_collection.add_items(train_collection.id, train_img_ids)
+        
+    #     # Val Collection
+    #     val_img_ids = []
+    #     val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
+    #     val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
     #     self._api.entities_collection.add_items(val_collection.id, val_img_ids)
