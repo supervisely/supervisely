@@ -1999,6 +1999,7 @@ class Inference:
             self.add_results_to_request,
             inference_request=inference_request,
             iou_merge_threshold=iou_merge_threshold,
+            context=inference_request.context,
         )
 
         if upload_mode is None:
@@ -2805,6 +2806,7 @@ class Inference:
         predictions: List[Prediction],
         inference_request: InferenceRequest,
         iou_merge_threshold: float = None,
+        context: Dict = None,
     ):
         logger.debug(
             "adding predictions to inference request",
@@ -2814,6 +2816,14 @@ class Inference:
             },
         )
         if iou_merge_threshold:
+            if context is None:
+                context = {}
+                ds_info = self.api.dataset.get_info_by_id(dataset_id)
+                project_id = ds_info.project_id
+                project_meta = context.setdefault("project_meta", {}).get(project_id, None)
+                if project_meta is None:
+                    project_meta = ProjectMeta.from_json(api.project.get_meta(project_id))
+                    context["project_meta"][project_id] = project_meta
             ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
             for prediction in predictions:
                 ds_predictions[prediction.dataset_id].append(prediction)
@@ -2824,7 +2834,7 @@ class Inference:
                     dataset_id,
                     gt_image_ids=[pred.image_id for pred in preds],
                     iou=iou_merge_threshold,
-                    meta=preds[0].model_meta,
+                    meta=project_meta,
                 )
                 for pred, ann in zip(preds, anns):
                     pred.annotation = ann
