@@ -34,6 +34,8 @@ class GraphBuilder(SolutionGraph):
         nodes: Optional[List[SolutionGraph.Node]] = None,
         edges: Optional[List[Dict[str, Any]]] = None,
         modals: Optional[List[Dialog]] = None,
+        height: Optional[str] = None,
+        width: Optional[str] = None,
     ):
         self.graph = None
         self.nodes: Dict[str, SolutionGraph.Node] = nodes or {}
@@ -41,11 +43,16 @@ class GraphBuilder(SolutionGraph):
         self._modals: List[Dialog] = modals or []
 
         super().__init__(
-            nodes=self.nodes, connections=self.edges, height="100vh", width="100%", show_grid=True
+            nodes=self.nodes, connections=self.edges, height=height, width=width, show_grid=True
         )
 
     @classmethod
-    def from_json(cls, json_data: Union[str, Path]) -> "GraphBuilder":
+    def from_json(
+        cls,
+        json_data: Union[str, Path],
+        height: Optional[str] = None,
+        width: Optional[str] = None,
+    ) -> "GraphBuilder":
         if isinstance(json_data, (str, Path)):
             with open(json_data, "r") as f:
                 json_data = json.load(f)
@@ -75,15 +82,17 @@ class GraphBuilder(SolutionGraph):
                 settings = connection.get("connection_settings", {})
                 edge = cls.Edge(source=src_key, target=target_key, settings=settings)
                 edges[src_key].append([edge.target, edge.settings])
-        return cls(nodes=nodes, edges=edges, modals=modals)
+        return cls(nodes=nodes, edges=edges, modals=modals, height=height, width=width)
 
     @classmethod
     def from_yaml(cls, yaml_path: Union[str, Path]) -> "GraphBuilder":
         parser = YAMLParser()
         config = parser.load_config(yaml_path)
+        height = config.get("settings", {}).get("graph", {}).get("height")
+        width = config.get("settings", {}).get("graph", {}).get("width")
         if "nodes" not in config:
             raise ValueError("YAML configuration must contain 'nodes' key.")
-        return cls.from_json(config["nodes"])
+        return cls.from_json(config["nodes"], height=height, width=width)
 
     @property
     def modals(self) -> List[Dialog]:
