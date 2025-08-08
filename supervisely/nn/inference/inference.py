@@ -2806,7 +2806,13 @@ class Inference:
         inference_request: InferenceRequest,
         iou_merge_threshold: float = None,
     ):
-
+        logger.debug(
+            "adding predictions to inference request",
+            extra={
+                "iou_merge_threshold": iou_merge_threshold,
+                "predictions_count": len(predictions),
+            },
+        )
         if iou_merge_threshold:
             ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
             for prediction in predictions:
