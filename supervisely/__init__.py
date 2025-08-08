@@ -127,6 +127,7 @@ from supervisely.api.workspace_api import WorkspaceInfo
 from supervisely.api.team_api import TeamInfo
 from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.app_api import WorkflowSettings, WorkflowMeta
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 from supervisely.cli import _handle_creds_error_to_console
 
@@ -311,7 +312,9 @@ try:
 except Exception as e:
     logger.warn(f"Failed to setup certificates. Reason: {repr(e)}", exc_info=True)
 
-# If new changes in Supervisely Python SDK require upgrade of the Supervisely instance
-# set a new value for the environment variable MINIMUM_INSTANCE_VERSION_FOR_SDK, otherwise
-# users can face compatibility issues, if the instance version is lower than the SDK version.
-os.environ["MINIMUM_INSTANCE_VERSION_FOR_SDK"] = "6.13.00"
+# Configure minimum instance version automatically from versions.json
+# if new changes in Supervisely Python SDK require upgrade of the Supervisely instance.
+# If the instance version is lower than the SDK version, users can face compatibility issues.
+from supervisely.io.env import configure_minimum_instance_version
+
+configure_minimum_instance_version()

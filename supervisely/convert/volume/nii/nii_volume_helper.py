@@ -10,10 +10,12 @@ from supervisely import Api
 from supervisely.collection.str_enum import StrEnum
 from supervisely.geometry.mask_3d import Mask3D
 from supervisely.io.fs import ensure_base_path, get_file_ext, get_file_name
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.volume.volume import convert_3d_nifti_to_nrrd
 
 VOLUME_NAME = "anatomic"
+SCORE_NAME = "score"
 LABEL_NAME = ["inference", "label", "annotation", "mask", "segmentation"]
 MASK_PIXEL_VALUE = "Mask pixel value: "
 
@@ -172,20 +174,62 @@ def get_scores_from_table(csv_file_path: str, plane: str) -> dict:
     return result
 
 
+def _find_pixel_values(descr: str) -> int:
+    """
+    Find the pixel value in the description string.
+    """
+    lines = descr.split("\n")
+    for line in lines:
+        if line.strip().startswith(MASK_PIXEL_VALUE):
+            try:
+                value_part = line.strip().split(MASK_PIXEL_VALUE)[1]
+                return int(value_part.strip())
+            except (IndexError, ValueError):
+                continue
+    return None
+
+
+def get_class_id_to_pixel_value_map(meta: ProjectMeta) -> dict:
+    class_id_to_pixel_value = {}
+    for obj_class in meta.obj_classes.items():
+        pixel_value = _find_pixel_values(obj_class.description)
+        if pixel_value is not None:
+            class_id_to_pixel_value[obj_class.sly_id] = pixel_value
+        elif "Segment_" in obj_class.name:
+            try:
+                pixel_value = int(obj_class.name.split("_")[-1])
+                class_id_to_pixel_value[obj_class.sly_id] = pixel_value
+            except (ValueError, IndexError):
+                logger.warning(
+                    f"Failed to parse pixel value from class name: {obj_class.name}. "
+                    "Please ensure the class name ends with a valid integer."
+                )
+        else:
+            logger.warning(
+                f"Class {obj_class.name} does not have a pixel value defined in its description. "
+                "Please update the class description to include 'Mask pixel value: <value>'."
+            )
+    return class_id_to_pixel_value
+
+
 class AnnotationMatcher:
     def __init__(self, items, dataset_id):
-        self._items = items
-        self._ds_id = dataset_id
         self._ann_paths = defaultdict(list)
         self._item_by_filename = {}
         self._item_by_path = {}
 
-        self.set_items(items)
+        self.items = items
+        self._ds_id = dataset_id
 
         self._project_wide = False
         self._volumes = None
 
-    def set_items(self, items):
+    @property
+    def items(self):
+        return self._items
+
+    @items.setter
+    def items(self, items):
         self._items = items
         self._ann_paths.clear()
         self._item_by_filename.clear()
@@ -202,13 +246,13 @@ class AnnotationMatcher:
 
     def get_volumes(self, api: Api):
         dataset_info = api.dataset.get_info_by_id(self._ds_id)
-        datasets = {dataset_info.name: dataset_info}
-        project_id = dataset_info.project_id
-        if dataset_info.items_count > 0 and len(self._ann_paths.keys()) == 1:
+        if dataset_info.items_count > 0:
+            datasets = {dataset_info.name: dataset_info}
             self._project_wide = False
         else:
             datasets = {
-                dsinfo.name: dsinfo for dsinfo in api.dataset.get_list(project_id, recursive=True)
+                dsinfo.name: dsinfo
+                for dsinfo in api.dataset.get_list(dataset_info.project_id, recursive=True)
             }
             self._project_wide = True
 
@@ -270,6 +314,8 @@ class AnnotationMatcher:
         # items_to_remove = []
         for item, volume in item_to_volume.items():
             volume_shape = tuple(volume.file_meta["sizes"])
+            if item.shape is None:
+                continue
             if item.shape != volume_shape:
                 logger.warning(f"Volume shape mismatch: {item.shape} != {volume_shape}")
                 # items_to_remove.append(item)
@@ -363,26 +409,25 @@ def parse_name_parts(full_name: str) -> NameParts:
     type = None
     is_ann = False
     if VOLUME_NAME in full_name:
-        type = "anatomic"
-    elif any(part in full_name for part in LABEL_NAME):
+        type = VOLUME_NAME
+    elif SCORE_NAME in full_name and full_name.endswith(".csv"):
+        type = SCORE_NAME
+    else:
         type = next((part for part in LABEL_NAME if part in full_name), None)
         is_ann = type is not None
-    elif "score" in name_no_ext or get_file_ext(full_name) == ".csv":
-        type = "score"
 
     if type is None:
         return
 
     plane = None
+    tokens = name_no_ext.lower().split("_")
     for part in PlanePrefix.values():
-        if part in name:
+        if part in tokens:
             plane = part
             break
 
     if plane is None:
         return
-
-    is_ann = any(part in name.lower() for part in LABEL_NAME)
 
     patient_uuid = None
     case_uuid = None
