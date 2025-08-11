@@ -577,6 +577,8 @@ class PredictionSession:
             ("tracker_settings", tracker_settings), 
             ("batch_size", batch_size),
         ):
+            if not self.tracking and key in ("tracker", "tracker_settings"):
+                continue
             if value is not None:
                 state[key] = value
         if isinstance(videos[0], int):
