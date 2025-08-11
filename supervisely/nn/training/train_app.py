@@ -1224,7 +1224,7 @@ class TrainApp:
 
                 
                 # Move img_info
-                img_info_name = f"{sly_fs.get_file_name_with_ext(item.img_path) + ".json"}"
+                img_info_name = f"{sly_fs.get_file_name_with_ext(item.img_path)}.json"
                 img_info_path = join(dirname(dirname(item.img_path)), "img_info", img_info_name)
                 # shutil.copy(img_info_path, join(paths["img_info_dir"], ann_name))
 
