@@ -37,6 +37,9 @@ class AutoImportNode(SolutionElement):
             tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
             buttons=[self.tasks_history.open_modal_button],
             link=autoimport_link,
+            icon="zmdi zmdi-upload",
+            icon_color="#1976D2",
+            icon_bg_color="#E3F2FD",
         )
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 

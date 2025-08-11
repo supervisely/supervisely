@@ -42,6 +42,9 @@ class MoveLabeledNode(SolutionElement):
         self.card = self._build_card(
             title="Move Labeled Data",
             tooltip_description="Move labeled and accepted images to the Training Project.",
+            icon="zmdi zmdi-dns",
+            icon_color="#1976D2",
+            icon_bg_color="#E3F2FD",
         )
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 

@@ -13,11 +13,13 @@ class ProjectGUI:
         project: ProjectInfo,
         is_training: bool = False,
         dataset: Optional[DatasetInfo] = None,
+        tooltip_position: str = "left",
     ):
         self.title = title
         self.project = project
         self.is_training = is_training
         self.dataset = dataset
+        self.tooltip_position = tooltip_position
         self.card = self._create_card()
 
     # ------------------------------------------------------------------
@@ -47,7 +49,7 @@ class ProjectGUI:
             project_id=self.project.id,
             width=270 if self.is_training else 180,
             tooltip=self._create_tooltip(),
-            tooltip_position="left",
+            tooltip_position=self.tooltip_position,
         )
 
     def _create_tooltip(self) -> SolutionProject.Tooltip:

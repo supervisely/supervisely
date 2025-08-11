@@ -33,6 +33,9 @@ class SmartSamplingNode(SolutionElement):
             title="Smart Sampling",
             tooltip_description="Selects a data sample from the input project and copies it to the labeling project. Supports various sampling strategies: random, k-means clustering, diversity-based, or using embeddings precomputed by the “AI Index” node for smarter selection.",
             buttons=[self.tasks_history.open_modal_button, self.automation.open_modal_button],
+            icon="zmdi zmdi-playlist-plus",
+            icon_color="#1976D2",
+            icon_bg_color="#E3F2FD",
         )
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 

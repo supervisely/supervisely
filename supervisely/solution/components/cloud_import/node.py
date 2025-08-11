@@ -32,6 +32,9 @@ class CloudImportNode(SolutionElement):
             title="Import from Cloud",
             tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
             buttons=[self.gui.tasks_history.open_modal_button, self.automation.open_modal_button],
+            icon="zmdi zmdi-cloud-download",
+            icon_color="#1976D2",
+            icon_bg_color="#E3F2FD",
         )
         self.node = SolutionCardNode(x=x, y=y, content=self.card)
 

@@ -11,6 +11,7 @@ from supervisely.app.widgets import (
     SolutionCard,
     SolutionGraph,
     Text,
+    Icons,
 )
 
 
@@ -68,6 +69,11 @@ class LabelingQueueGUI:
             tooltip=self._create_tooltip(),
             content=[self._create_nested_diagram()],
             width=200,
+            icon=Icons(
+                class_name="zmdi zmdi-brush",
+                color="#1976D2",
+                bg_color="#E3F2FD",
+            )
         )
 
     def _create_tooltip(self) -> SolutionCard.Tooltip:

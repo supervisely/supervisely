@@ -35,6 +35,9 @@ class TrainValSplitNode(SolutionElement):
         self.card = self._build_card(
             title="Train/Val Split",
             tooltip_description="Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
+            icon="zmdi zmdi-arrow-split",
+            icon_color="#1976D2",
+            icon_bg_color="#E3F2FD",
         )
         self.node = SolutionCardNode(content=self.card, x=x, y=y)
 

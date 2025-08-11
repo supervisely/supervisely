@@ -29,6 +29,7 @@ class ProjectNode(SolutionElement):
         y: int = 0,
         dataset_id: Optional[int] = None,
         refresh_interval: int = 30,
+        tooltip_position: str = "left",
         *args,
         **kwargs,
     ):
@@ -67,6 +68,7 @@ class ProjectNode(SolutionElement):
             project=self.project,
             is_training=self.is_training,
             dataset=self.dataset,
+            tooltip_position=tooltip_position,
         )
         self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
 

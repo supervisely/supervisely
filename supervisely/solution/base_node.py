@@ -8,6 +8,7 @@ from supervisely.app.widgets import (
     Button,
     Container,
     Dialog,
+    Icons,
     SolutionCard,
     SolutionGraph,
     SolutionProject,
@@ -107,6 +108,9 @@ class SolutionElement(Widget, EventMixin):
         width: int = 250,
         buttons: Optional[List] = None,
         link: Optional[str] = None,
+        icon: Optional[str] = None,  # e.g., "zmdi zmdi-flash-auto"
+        icon_color: Optional[str] = None,
+        icon_bg_color: Optional[str] = None,
     ) -> SolutionCard:
         if buttons is None:
             buttons = []
@@ -117,6 +121,9 @@ class SolutionElement(Widget, EventMixin):
                 if hasattr(self.automation, "open_modal_button"):
                     buttons.append(self.automation.open_modal_button)
 
+        if icon is not None:
+            icon = Icons(class_name=icon, color=icon_color, bg_color=icon_bg_color)
+
         return SolutionCard(
             title=title,
             tooltip=SolutionCard.Tooltip(
@@ -125,6 +132,7 @@ class SolutionElement(Widget, EventMixin):
             ),
             width=width,
             link=link,
+            icon=icon,
         )
 
     # ------------------------------------------------------------------
