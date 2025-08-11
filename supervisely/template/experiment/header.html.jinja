@@ -148,6 +148,9 @@
         {% if not experiment.training.evaluation.id %}
         <a :href="`${location.pathname}#evaluation-2`" class="active">Evaluation</a>
         {% endif %}
+        {% if widgets.training_plots %}
+        <a :href="`${location.pathname}#training-plots`">Training Plots</a>
+        {% endif %}
         <a :href="`${location.pathname}#artifacts`">Artifacts</a>
         <a :href="`${location.pathname}#classes`">Classes</a>
         <a :href="`${location.pathname}#hyperparameters`">Hyperparameters</a>

@@ -28,6 +28,19 @@ was performed.
 
 {% endif %}
 
+{% if widgets.training_plots %}
+
+## Training Plots
+
+Visualization of the training scalars logged during the experiment. For more details use the `logs` button in the
+header.
+
+<div class="training-plots">
+    {{ widgets.training_plots | safe }}
+</div>
+
+{% endif %}
+
 ## Artifacts
 
 [📂 Open in Team Files]({{ experiment.paths.artifacts_dir.url }}){:target="_blank"}

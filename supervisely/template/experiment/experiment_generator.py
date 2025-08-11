@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import os
+import math
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Literal, Optional, Tuple
+from typing import Dict, Literal, Optional, Tuple, List
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
@@ -166,7 +167,7 @@ class ExperimentGenerator(BaseGenerator):
         metrics_table = self._generate_metrics_table(self.info["task_type"])
         sample_gallery = self._get_sample_predictions_gallery()
         classes_table = self._generate_classes_table()
-
+        training_plots = self._generate_training_plots()
         return {
             "tables": {
                 "checkpoints": checkpoints_table,
@@ -174,6 +175,7 @@ class ExperimentGenerator(BaseGenerator):
                 "classes": classes_table,
             },
             "sample_pred_gallery": sample_gallery,
+            "training_plots": training_plots,
         }
 
     # --------------------------------------------------------------------------- #
@@ -972,3 +974,96 @@ class ExperimentGenerator(BaseGenerator):
             },
         }
         return experiment_context
+
+    def _generate_training_plots(self) -> Optional[str]:
+        # pip install tbparse plotly kaleido
+        if SummaryReader is None or px is None:
+            logger.debug("tbparse or plotly is not installed – skipping training plots generation")
+            return None
+
+        logs_path = self.info.get("logs", {}).get("link")
+        if logs_path is None:
+            return None
+
+        events_files: List[str] = []
+        remote_log_files = self.api.file.list(self.team_id, logs_path, return_type="fileinfo")
+        try:
+            for f in remote_log_files:
+                if f.name.startswith("events.out.tfevents"):
+                    events_files.append(f.path)
+        except Exception as e:
+            logger.warning(f"Failed to get training logs: {e}")
+            return None
+
+        if len(events_files) == 0:
+            return None
+
+        tmp_logs_dir = os.path.join(self.output_dir, "logs_tmp")
+        sly_fs.mkdir(tmp_logs_dir, True)
+        local_event_path = os.path.join(tmp_logs_dir, os.path.basename(events_files[0]))
+        try:
+            self.api.file.download(self.team_id, events_files[0], local_event_path)
+        except Exception as e:
+            logger.warning(f"Failed to download training log: {e}")
+            return None
+
+        try:
+            reader = SummaryReader(local_event_path)
+            scalars_df = reader.scalars
+        except Exception as e:
+            logger.warning(f"Failed to read training log: {e}")
+            return None
+
+        if scalars_df is None or scalars_df.empty:
+            return None
+
+        tags_to_plot = scalars_df["tag"].unique().tolist()[:12]
+        df_plot = scalars_df[scalars_df["tag"].isin(tags_to_plot)]
+
+        try:
+            data_dir = os.path.join(self.output_dir, "data")
+            if not sly_fs.dir_exists(data_dir):
+                sly_fs.mkdir(data_dir, True)
+
+            n_tags = len(tags_to_plot)
+            side = min(4, max(2, math.ceil(math.sqrt(n_tags))))
+            cols = side
+            rows = math.ceil(n_tags / cols)
+            fig = make_subplots(rows=rows, cols=cols, subplot_titles=tags_to_plot)
+
+            for idx, tag in enumerate(tags_to_plot, start=1):
+                tag_df = df_plot[df_plot["tag"] == tag]
+                if tag_df.empty:
+                    continue
+                row = (idx - 1) // cols + 1
+                col = (idx - 1) % cols + 1
+                fig.add_trace(
+                    go.Scatter(
+                        x=tag_df["step"],
+                        y=tag_df["value"],
+                        mode="lines",
+                        name=tag,
+                        showlegend=False,
+                    ),
+                    row=row,
+                    col=col,
+                )
+
+                if tag.startswith("lr"):
+                    fig.update_yaxes(tickformat=".0e", row=row, col=col)
+
+            fig.update_layout(
+                height=300 * rows,
+                width=400 * cols,
+                showlegend=False,
+            )
+
+            local_img_path = os.path.join(data_dir, "training_plots_grid.png")
+            fig.write_image(local_img_path, engine="kaleido")
+            sly_fs.remove_dir(tmp_logs_dir)
+
+            img_widget = f"<sly-iw-image src=\"/data/training_plots_grid.png\" :template-base-path=\"templateBasePath\" :options=\"{{ style: {{ width: '70%', height: 'auto' }} }}\" />"
+            return img_widget
+        except Exception as e:
+            logger.warning(f"Failed to build or save static training plot: {e}")
+            return None
