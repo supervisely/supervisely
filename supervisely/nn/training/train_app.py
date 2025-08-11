@@ -72,6 +72,7 @@ from supervisely.project.download import (
     is_cached,
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 
 class TrainApp:
@@ -159,8 +160,11 @@ class TrainApp:
         self.sly_project = None
         # -------------------------- #
 
-        self._train_split = None
-        self._val_split = None
+        # Train Val Splits
+        self._train_split = []
+        self._val_split = []
+        self._train_split_item_ids = set()
+        self._val_split_item_ids = set()
         # -------------------------- #
 
         # Input
@@ -597,15 +601,16 @@ class TrainApp:
                 if self.gui.classes_selector.is_convert_class_shapes_enabled():
                     self._convert_project_to_model_task()
         
-        # Step 4. Create collections
-        # self._create_collections()
-
-        # Step 5. Split Project
+        # Step 4. Split Project
         self._split_project()
-        # Step 6. Remove classes except selected
+        # Step 5. Remove classes except selected
         if self.sly_project.type == ProjectType.IMAGES.value:
             self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
             self._read_project()
+
+        # Step 6. Create collections
+        self._create_collection_splits()
+
         # Step 7. Download Model files
         self._download_model()
 
@@ -1166,13 +1171,15 @@ class TrainApp:
             self._train_val_split_file = None
             self._train_split = []
             self._val_split = []
+            self._train_split_item_ids = set()
+            self._val_split_item_ids = set()
             return
 
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
-        self._train_split, self._val_split = (
-            self.gui.train_val_splits_selector.train_val_splits.get_splits()
-        )
+        self._train_split, self._val_split = self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        self._train_split_ids, self._val_split_ids = [], []
+        self._train_split_item_ids, self._val_split_item_ids = set(), set()
 
         # Prepare paths
         project_split_path = join(self.work_dir, "splits")
@@ -1181,11 +1188,13 @@ class TrainApp:
                 "split_path": join(project_split_path, "train"),
                 "img_dir": join(project_split_path, "train", "img"),
                 "ann_dir": join(project_split_path, "train", "ann"),
+                "img_info_dir": join(project_split_path, "train", "img_info"),
             },
             "val": {
                 "split_path": join(project_split_path, "val"),
                 "img_dir": join(project_split_path, "val", "img"),
                 "ann_dir": join(project_split_path, "val", "ann"),
+                "img_info_dir": join(project_split_path, "val", "img_info"),
             },
         }
 
@@ -1203,7 +1212,7 @@ class TrainApp:
         }
 
         # Utility function to move files
-        def move_files(split, paths, img_name_format, pbar):
+        def move_files(split, split_name, paths, img_name_format, pbar):
             """
             Move files to the appropriate directories.
             """
@@ -1212,6 +1221,20 @@ class TrainApp:
                 ann_name = f"{item_name}.json"
                 shutil.copy(item.img_path, join(paths["img_dir"], item_name))
                 shutil.copy(item.ann_path, join(paths["ann_dir"], ann_name))
+
+                
+                # Move img_info
+                img_info_name = f"{sly_fs.get_file_name_with_ext(item.img_path) + ".json"}"
+                img_info_path = join(dirname(dirname(item.img_path)), "img_info", img_info_name)
+                # shutil.copy(img_info_path, join(paths["img_info_dir"], ann_name))
+
+                # Write split ids to img_info
+                img_info = sly_json.load_json_file(img_info_path)
+                if split_name == "train":
+                    self._train_split_item_ids.add(img_info["id"])
+                else:
+                    self._val_split_item_ids.add(img_info["id"])
+
                 pbar.update(1)
 
         # Main split processing
@@ -1220,12 +1243,16 @@ class TrainApp:
         ) as main_pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                split = self._train_split if dataset == "train" else self._val_split
+                split_name = dataset
+                if split_name == "train":
+                    split = self._train_split
+                else:
+                    split_name = self._val_split
                 with self.progress_bar_secondary(
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
                     self.progress_bar_secondary.show()
-                    move_files(split, paths[dataset], image_name_formats[dataset], second_pbar)
+                    move_files(split, split_name, paths[dataset], image_name_formats[dataset], second_pbar)
                     main_pbar.update(1)
                 self.progress_bar_secondary.hide()
             self.progress_bar_main.hide()
@@ -1245,10 +1272,7 @@ class TrainApp:
         with self.progress_bar_main(message="Processing splits", total=2) as pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                shutil.move(
-                    paths[dataset]["split_path"],
-                    train_ds_path if dataset == "train" else val_ds_path,
-                )
+                shutil.move(paths[dataset]["split_path"], train_ds_path if dataset == "train" else val_ds_path)
                 pbar.update(1)
             self.progress_bar_main.hide()
 
@@ -1820,7 +1844,6 @@ class TrainApp:
         :type export_weights: dict
         """
         logger.debug("Updating experiment info")
-
         experiment_info = {
             "experiment_name": self.gui.training_process.get_experiment_name(),
             "framework_name": self.framework_name,
@@ -1829,6 +1852,7 @@ class TrainApp:
             "base_checkpoint_link": self.base_checkpoint_link,
             "task_type": experiment_info["task_type"],
             "project_id": self.project_info.id,
+            "project_version": self.project_info.version,
             "task_id": self.task_id,
             "model_files": experiment_info["model_files"],
             "checkpoints": experiment_info["checkpoints"],
@@ -1846,6 +1870,8 @@ class TrainApp:
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
             "device": self.gui.training_process.get_device_name(),
             "training_duration": self._training_duration,
+            "train_collection_id": self._train_collection_id,
+            "val_collection_id": self._val_collection_id,
         }
 
         if self._has_splits_selector:
@@ -3093,36 +3119,79 @@ class TrainApp:
         gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data
 
-    # @TODO: save selected train val splits to collections
-    # def _create_collections(self):
-    #     item_type = self.project_info.type
-    #     experiment_name = self.gui.training_process.get_experiment_name()
-        
-    #     project_collections = self._api.entities_collection.get_list(self.project_id)
-    #     # @TODO: add func to check latest collection increment to train val split gui
-    #     # get collection name from gui and increment by 1
-    #     # add collection info to project custom data (first get custom_data from project and then append info to it)
-    #     train_collections = []
-    #     val_collections = []
-    #     for collection in project_collections:
-    #         if collection.name.startswith("train_"):
-    #             train_collections.append(collection)
-    #         elif collection.name.startswith("val_"):
-    #             val_collections.append(collection)
+    def _create_collection_splits(self):
+        def _check_match(current_selected_collection_ids: List[int], all_split_collections: List[EntitiesCollectionInfo]):
+            if len(current_selected_collection_ids) > 0:
+                if len(current_selected_collection_ids) == 1:
+                    current_selected_collection_id = current_selected_collection_ids[0]
+                    for collection in all_split_collections:
+                        if collection.id == current_selected_collection_id:
+                            return True
+            return False
 
-    #     # Get train collection with max idx
-    #     train_collection_idx = max([int(collection.name.split("_")[1]) for collection in train_collections])
-    #     # Get val collection with max idx
-    #     val_collection_idx = max([int(collection.name.split("_")[1]) for collection in val_collections])
+        # Case 1: Use existing collections for training. No need to create new collections
+        split_method = self.gui.train_val_splits_selector.get_split_method()
+        all_train_collections = self.gui.train_val_splits_selector.all_train_collections
+        all_val_collections = self.gui.train_val_splits_selector.all_val_collections
+        if split_method == "Based on collections":
+            current_selected_train_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
+            train_match = _check_match(current_selected_train_collection_ids, all_train_collections)
+            if train_match:
+                current_selected_val_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
+                val_match = _check_match(current_selected_val_collection_ids, all_val_collections)
+                if val_match:
+                    train_collection_id = current_selected_train_collection_ids[0]
+                    val_collection_id = current_selected_val_collection_ids[0]
+                    self._update_project_custom_data(train_collection_id, val_collection_id)
+                    return
+        # ------------------------------------------------------------ #
 
-    #     # Train Collection
-    #     train_img_ids = []
-    #     train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
-    #     train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
-    #     self._api.entities_collection.add_items(train_collection.id, train_img_ids)
+        # Case 2: Create new collections for selected train val splits. Need to create new collections
+        item_type = self.project_info.type
+        experiment_name = self.gui.training_process.get_experiment_name()
+
+        train_collection_idx = 1
+        val_collection_idx = 1        
+
+        # Get train collection with max idx
+        if len(all_train_collections) > 0:
+            train_collection_idx = max([int(collection.name.split("_")[1]) for collection in all_train_collections])
+            train_collection_idx += 1
+        # Get val collection with max idx
+        if len(all_val_collections) > 0:
+            val_collection_idx = max([int(collection.name.split("_")[1]) for collection in all_val_collections])
+            val_collection_idx += 1
+        # -------------------------------- #
+
+        # Create Train Collection
+        train_img_ids = list(self._train_split_item_ids)
+        train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
+        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
+        self._api.entities_collection.add_items(train_collection.id, train_img_ids)
+        self._train_collection_id = train_collection.id
         
-    #     # Val Collection
-    #     val_img_ids = []
-    #     val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
-    #     val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
-    #     self._api.entities_collection.add_items(val_collection.id, val_img_ids)
+        # Create Val Collection
+        val_img_ids = list(self._val_split_item_ids)
+        val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
+        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
+        self._api.entities_collection.add_items(val_collection.id, val_img_ids)
+        self._val_collection_id = val_collection.id
+
+        # Update Project Custom Data
+        self._update_project_custom_data(train_collection.id, val_collection.id)
+
+    def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
+        train_info = {
+            "task_id": self.task_id,
+            "app_name": self.framework_name,
+            # "module_id": self.module_id,
+            "splits": {
+                "train_collection": train_collection_id,
+                "val_collection": val_collection_id
+            }
+        }
+        custom_data = self._api.project.get_info_by_id(self.project_id).custom_data
+        train_info_list = custom_data.get("train_info", [])
+        train_info_list.append(train_info)
+        custom_data.update({"train_info": train_info_list})
+        self._api.project.update_custom_data(self.project_id, custom_data)

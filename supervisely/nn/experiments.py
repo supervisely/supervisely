@@ -62,6 +62,12 @@ class ExperimentInfo:
     """Evaluation metrics"""
     logs: Optional[dict] = None
     """Dictionary with link and type of logger"""
+    train_collection_id: Optional[int] = None
+    """ID of the collection with train images"""
+    val_collection_id: Optional[int] = None
+    """ID of the collection with validation images"""
+    project_version: Optional[int] = None
+    """Version of the project"""
 
     def __init__(self, **kwargs):
         required_fieds = {

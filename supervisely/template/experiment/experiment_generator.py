@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from _typeshed import NoneType
 import os
 import math
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import Dict, Literal, Optional, Tuple, List
+from urllib.parse import urlencode
 
 import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
-from supervisely import logger
+from supervisely import logger, ProjectInfo
 from supervisely.api.api import Api
 from supervisely.api.file_api import FileInfo
 from supervisely.geometry.any_geometry import AnyGeometry
@@ -77,6 +80,12 @@ class ExperimentGenerator(BaseGenerator):
 
     def _report_url(self, server_address: str, template_id: int) -> str:
         return f"{server_address}/nn/experiments/{template_id}"
+
+    def _datasets_url_with_entities_filter(self, project_id: int, entities_filter: List[dict]) -> str:
+        base_url = self.api.server_address.rstrip('/')
+        path = f"/projects/{project_id}/datasets"
+        query = urlencode({"entitiesFilter": json.dumps(entities_filter)})
+        return f"{base_url}{path}?{query}"
 
     def upload_to_artifacts(self):
         remote_dir = os.path.join(self.info["artifacts_dir"], "visualization")
@@ -843,25 +852,78 @@ class ExperimentGenerator(BaseGenerator):
         apply_nn_videos_app = {"slug": apply_nn_videos_slug, "module_id": apply_nn_videos_module_id}
         return apply_nn_images_app, apply_nn_videos_app
 
+    def _get_project_splits(self):
+        train_collection_id = self.info.get("train_collection_id", None)
+        if train_collection_id is not None:
+            train_collection_info = self.api.entities_collection.get_info_by_id(train_collection_id)
+            train_collection_name = train_collection_info.name
+            train_collection_url = self._datasets_url_with_entities_filter(self.info["project_id"], [{"type": "entities_collection", "data": {"collectionId": train_collection_id, "include": True}}])
+            train_size = self.info.get("train_size", "N/A")
+        else:
+            train_collection_name = None
+            train_size = None
+            train_collection_url = None
+
+        val_collection_id = self.info.get("val_collection_id", None)
+        if val_collection_id is not None:
+            val_collection_info = self.api.entities_collection.get_info_by_id(val_collection_id)
+            val_collection_name = val_collection_info.name
+            val_collection_url = self._datasets_url_with_entities_filter(self.info["project_id"], [{"type": "entities_collection", "data": {"collectionId": val_collection_id, "include": True}}])
+            val_size = self.info.get("val_size", "N/A")
+        else:
+            val_collection_name = None
+            val_size = None
+            val_collection_url = None
+
+        splits = {
+            "train": {
+                "name": train_collection_name,
+                "size": train_size,
+                "url": train_collection_url,
+            },
+            "val": {
+                "name": val_collection_name,
+                "size": val_size,
+                "url": val_collection_url,
+            },
+        }
+        return splits
+
+    def _get_project_version(self, project_info: ProjectInfo):
+        project_version = project_info.version
+        if project_version is None:
+            version_info = {
+                "version": "N/A",
+                "id": None,
+                "url": None,
+            }
+        else:
+            version_info = {
+                "version": project_version["version"],
+                "id": project_version["id"],
+                "url": f"{self.api.server_address}/projects/{project_info.id}/versions",
+            }
+        return version_info
+
     def _get_project_context(self):
         project_id = self.info["project_id"]
         project_info = self.api.project.get_info_by_id(project_id)
+        project_version = self._get_project_version(project_info)
         project_type = project_info.type
         project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
         project_train_size = self.info.get("train_size", "N/A")
         project_val_size = self.info.get("val_size", "N/A")
         model_classes = [cls.name for cls in self.model_meta.obj_classes]
         class_names = self._get_class_names(model_classes)
+        splits = self._get_project_splits()
 
         project_context = {
             "id": project_id,
             "name": project_info.name if project_info else "Project was archived",
+            "version": project_version,
             "url": project_url,
             "type": project_type,
-            "splits": {
-                "train": project_train_size,
-                "val": project_val_size,
-            },
+            "splits": splits,
             "classes": {
                 "count": len(model_classes),
                 "names": class_names,
