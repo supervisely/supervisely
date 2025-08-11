@@ -574,6 +574,7 @@ class PredictionSession:
             ("duration", duration),
             ("direction", direction),
             ("tracker", tracker),
+            ("tracker_settings", tracker_settings), 
             ("batch_size", batch_size),
         ):
             if value is not None:

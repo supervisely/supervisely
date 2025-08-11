@@ -1864,7 +1864,7 @@ class Inference:
             if tracker is not None:
                 for frame, ann in zip(frames, anns):
                     tracks = tracker.update(frame, ann)
-                    ann = ann.clone(custom_data={"tracks": tracks.as_dict()})
+                    ann = ann.clone(custom_data={"tracks": tracks})
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
@@ -2119,7 +2119,8 @@ class Inference:
             batch_results = self._format_output(predictions)
             if tracker is not None:
                 for frame, ann in zip(frames, anns):
-                    tracker.update(frame, ann)
+                    tracks = tracker.update(frame, ann)
+                    ann = ann.clone(custom_data={"tracks": tracks})
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
