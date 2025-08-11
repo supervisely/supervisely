@@ -39,6 +39,14 @@ from supervisely.nn.utils import RuntimeType
 from supervisely.project import ProjectMeta
 from supervisely.template.base_generator import BaseGenerator
 
+try:
+    from tbparse import SummaryReader
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
+except Exception as _:
+    SummaryReader = None  # type: ignore
+    px = None  # type: ignore
 
 # @TODO: Partly supports unreleased apps
 class ExperimentGenerator(BaseGenerator):

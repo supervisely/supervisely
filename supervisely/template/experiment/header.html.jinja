@@ -117,13 +117,13 @@
             <li><strong>Project:</strong> {{ experiment.project.name }}</li>
             <li><strong>Classes:</strong> ({{ experiment.project.classes.count }})  {% for class_name in experiment.project.classes.names.short_list %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>
             
-            {% if %}
+            {% if experiment.project.splits.train.url %}
             <li><strong>Training:</strong> <a href='{{ experiment.project.splits.train.url }}' target="_blank">{{ experiment.project.splits.train.size }} {{ experiment.project.type }}</a></li>
             {% else %}
             <li><strong>Training:</strong>{{ experiment.project.splits.train.size }} {{ experiment.project.type }}</li>
             {% endif %}
             
-            {% if %}
+            {% if experiment.project.splits.val.url %}
             <li><strong>Validation:</strong> <a href='{{ experiment.project.splits.val.url }}' target="_blank">{{ experiment.project.splits.val.size }} {{ experiment.project.type }}</a></li>
             {% else %}
             <li><strong>Validation:</strong>{{ experiment.project.splits.val.size }} {{ experiment.project.type }}</li>

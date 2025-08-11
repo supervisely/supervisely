@@ -293,6 +293,8 @@ setup(
             "tensorboardX",
             "markdown",
             "pymdown-extensions",
+            "tbparse",
+            "kaleido==0.2.1",
         ],
         # legacy dependencies
         "plugins": [
