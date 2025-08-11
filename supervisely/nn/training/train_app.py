@@ -3186,12 +3186,8 @@ class TrainApp:
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {
             "task_id": self.task_id,
-            "app_name": self.framework_name,
-            # "module_id": self.module_id,
-            "splits": {
-                "train_collection": train_collection_id,
-                "val_collection": val_collection_id
-            }
+            "framework_name": self.framework_name,
+            "splits": {"train_collection": train_collection_id, "val_collection": val_collection_id}
         }
         custom_data = self._api.project.get_info_by_id(self.project_id).custom_data
         train_info_list = custom_data.get("train_info", [])
