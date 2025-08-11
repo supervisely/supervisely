@@ -162,9 +162,12 @@ class TrainApp:
 
         # Train Val Splits
         self._train_split = []
-        self._val_split = []
         self._train_split_item_ids = set()
+        self._train_collection_id = None
+        
+        self._val_split = []
         self._val_split_item_ids = set()
+        self._val_collection_id = None
         # -------------------------- #
 
         # Input
@@ -3140,9 +3143,9 @@ class TrainApp:
                 current_selected_val_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
                 val_match = _check_match(current_selected_val_collection_ids, all_val_collections)
                 if val_match:
-                    train_collection_id = current_selected_train_collection_ids[0]
-                    val_collection_id = current_selected_val_collection_ids[0]
-                    self._update_project_custom_data(train_collection_id, val_collection_id)
+                    self._train_collection_id = current_selected_train_collection_ids[0]
+                    self._val_collection_id = current_selected_val_collection_ids[0]
+                    self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
                     return
         # ------------------------------------------------------------ #
 
