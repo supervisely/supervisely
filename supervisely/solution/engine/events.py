@@ -97,7 +97,6 @@ class PubSubAsync(PubSub):
     def _callback_wrapper(self, callback: Callable, message: str, topic: str):
         """Wrapper for safe callback execution in async context"""
         try:
-            logger.info(f"[ASYNC EVENT]: {callback.__qualname__}() called for topic: '{topic}'")
             future = self._executor.submit(self._safe_callback_wrapper, callback, message, topic)
             future.add_done_callback(self._log_future_exceptions)
         except Exception as e:
