@@ -163,7 +163,7 @@ class BotSortTracker(BaseTracker):
         for label in annotation.labels:
             class_name = label.obj_class.name
             if class_name in self.class_ids:
-                return
+                continue
             class_id = len(self.class_ids)
             self.obj_classes[class_id] = label.obj_class
             self.class_ids[class_name] = class_id
