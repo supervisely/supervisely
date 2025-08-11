@@ -203,12 +203,13 @@ class ModelAPI:
         project_id: int = None,
         batch_size: int = None,
         conf: float = None,
+        img_size: int = None,
         classes: List[str] = None,
         upload_mode: str = None,
+        recursive: bool = False,
+        tracking: bool = None,
         **kwargs,
     ) -> PredictionSession:
-        if upload_mode is not None:
-            kwargs["upload_mode"] = upload_mode
         return PredictionSession(
             self.url,
             input=input,
@@ -219,7 +220,11 @@ class ModelAPI:
             api=self.api,
             batch_size=batch_size,
             conf=conf,
+            img_size=img_size,
             classes=classes,
+            upload_mode=upload_mode,
+            recursive=recursive,
+            tracking=tracking,
             **kwargs,
         )
 
@@ -235,28 +240,29 @@ class ModelAPI:
         img_size: int = None,
         classes: List[str] = None,
         upload_mode: str = None,
-        recursive: bool = None,
+        recursive: bool = False,
+        tracking: bool = None,
         **kwargs,
     ) -> List[Prediction]:
         if "show_progress" not in kwargs:
             kwargs["show_progress"] = True
-        if recursive is not None:
-            kwargs["recursive"] = recursive
-        if img_size is not None:
-            kwargs["img_size"] = img_size
-        return list(
-            self.predict_detached(
-                input,
-                image_id,
-                video_id,
-                dataset_id,
-                project_id,
-                batch_size,
-                conf,
-                classes,
-                upload_mode,
-                **kwargs,
-            )
+        session = PredictionSession(
+            self.url,
+            input=input,
+            image_id=image_id,
+            video_id=video_id,
+            dataset_id=dataset_id,
+            project_id=project_id,
+            api=self.api,
+            batch_size=batch_size,
+            conf=conf,
+            img_size=img_size,
+            classes=classes,
+            upload_mode=upload_mode,
+            recursive=recursive,
+            tracking=tracking,
+            **kwargs,
         )
+        return list(session)
 
     # ------------------------------------ #
