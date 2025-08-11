@@ -559,6 +559,7 @@ class PredictionSession:
         duration=None,
         direction: Literal["forward", "backward"] = None,
         tracker: Literal["botsort", "boxmot"] = None,
+        tracker_settings: Dict[str, Any] = None,
         batch_size: int = None,
     ):
         if len(videos) != 1:
