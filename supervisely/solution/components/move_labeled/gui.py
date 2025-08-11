@@ -11,6 +11,7 @@ from supervisely.app.widgets import (
     Select,
     Switch,
     Text,
+    Flexbox,
 )
 from supervisely.sly_logger import logger
 from supervisely.solution.utils import (
@@ -118,9 +119,8 @@ class MoveLabeledGUI:
                 self.automate_min_batch_input.disable()
 
         run_btn_cont = Container(
-            [self.automation_btn, self.pull_btn],
+            [Flexbox([self.automation_btn, self.run_btn])],
             style="align-items: flex-end",
-            direction="horizontal",
         )
         return Container([info, automation_field, run_btn_cont])
 
@@ -147,20 +147,20 @@ class MoveLabeledGUI:
     @property
     def automation_switch(self) -> Switch:
         if not hasattr(self, "_automation_switch"):
-            self._automation_switch = Switch(switched=True)
+            self._automation_switch = Switch(switched=False)
         return self._automation_switch
 
     @property
-    def pull_btn(self):
-        if not hasattr(self, "_pull_btn"):
-            self._pull_btn = Button(
+    def run_btn(self):
+        if not hasattr(self, "_run_btn"):
+            self._run_btn = Button(
                 "Pull labeled data",
-                icon="zmdi zmdi-refresh",
-                button_size="mini",
-                plain=True,
-                button_type="text",
+                # icon="zmdi zmdi-refresh",
+                # button_size="mini",
+                # plain=True,
+                # button_type="text",
             )
-        return self._pull_btn
+        return self._run_btn
 
     @property
     def automation_btn(self) -> Button:
@@ -168,9 +168,9 @@ class MoveLabeledGUI:
             self._automation_btn = Button(
                 "Save settings",
                 icon="zmdi zmdi-check",
-                button_size="mini",
+                # button_size="mini",
                 plain=True,
-                button_type="text",
+                # button_type="text",
             )
         return self._automation_btn
 

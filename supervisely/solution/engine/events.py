@@ -30,7 +30,7 @@ def publish_event(topic: Union[str, List[str]]):
     def decorator(method):
         def wrapper(*args, **kwargs):
             message = method(*args, **kwargs)
-            broker = PubSub()
+            broker = PubSubAsync()
             for t in topic:
                 broker.publish(t, message)
             return message
@@ -60,20 +60,20 @@ class PubSub(metaclass=Singleton):
         if topic not in self.subscribers:
             self.subscribers[topic] = []
         self.subscribers[topic].append(callback)
-        logger.info(f"Subscribed to topic: '{topic}': {callback.__qualname__}()")
+        logger.info(f"[EVENT]: {callback.__qualname__}() subscribed to topic: '{topic}'")
 
     def unsubscribe(self, topic, callback: Callable):
         """Unsubscribes a callback function from a given topic."""
         if topic in self.subscribers and callback in self.subscribers[topic]:
             self.subscribers[topic].remove(callback)
-            logger.info(f"Unsubscribed from topic: '{topic}': {callback.__qualname__}()")
+            logger.info(f"[EVENT]: {callback.__qualname__}() unsubscribed from topic: '{topic}'")
 
     def publish(self, topic, message):
         """Publishes a message to a given topic, notifying all subscribers."""
         if topic in self.subscribers:
             for callback in self.subscribers[topic]:
                 logger.info(
-                    f"Publishing message to topic: '{topic}': {callback.__qualname__}()"
+                    f"[EVENT]: {callback.__qualname__}() called for topic: '{topic}'"
                 )
                 self._callback_wrapper(callback, message, topic)
         else:
@@ -97,6 +97,7 @@ class PubSubAsync(PubSub):
     def _callback_wrapper(self, callback: Callable, message: str, topic: str):
         """Wrapper for safe callback execution in async context"""
         try:
+            logger.info(f"[ASYNC EVENT]: {callback.__qualname__}() called for topic: '{topic}'")
             future = self._executor.submit(self._safe_callback_wrapper, callback, message, topic)
             future.add_done_callback(self._log_future_exceptions)
         except Exception as e:

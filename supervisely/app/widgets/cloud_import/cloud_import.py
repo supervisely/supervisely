@@ -228,7 +228,8 @@ class CloudImport(Widget):
         """Wait for import task to complete and return status"""
         try:
             self.api.app.wait(task_id, target_status=self.api.task.Status.FINISHED)
-            return True
+            status = self.api.task.get_status(task_id)
+            return status == self.api.task.Status.FINISHED
         except Exception as e:
             logger.error(f"Import task {task_id} failed: {str(e)}")
             return False

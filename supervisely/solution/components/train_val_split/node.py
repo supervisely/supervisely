@@ -1,13 +1,17 @@
 import random
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Literal, Optional, Union
 
+from supervisely.api.api import Api
 from supervisely.app.content import DataJson
+from supervisely.sly_logger import logger
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
 from supervisely.solution.components.train_val_split.gui import SplitSettings, TrainValSplitGUI
 from supervisely.solution.engine.models import (
     LabelingQueueRefreshInfoMessage,
+    MoveLabeledDataFinishedMessage,
     SampleFinishedMessage,
+    TrainValSplitMessage,
 )
 
 
@@ -17,13 +21,15 @@ class TrainValSplitNode(SolutionElement):
     It is used to move labeled data from one location to another.
     """
 
-    def __init__(self, x: int, y: int, *args, **kwargs):
+    def __init__(self, dst_project_id: int, x: int, y: int, *args, **kwargs):
         """
         Initialize the TrainValSplit node.
 
         :param x: X coordinate of the node.
         :param y: Y coordinate of the node.
         """
+        self.api = Api.from_env()
+        self.dst_project_id = dst_project_id
         self.split_settings = SplitSettings()
         self.gui = TrainValSplitGUI()
         self.card = self._build_card(
@@ -84,7 +90,11 @@ class TrainValSplitNode(SolutionElement):
         DataJson()[self.widget_id]["split_settings"] = settings.to_json()
         DataJson().send_changes()
 
-    def split(self, items: list, random_selection: bool = True) -> Dict[str, list]:
+    def split(
+        self,
+        message: MoveLabeledDataFinishedMessage,
+        random_selection: bool = True,
+    ) -> MoveLabeledDataFinishedMessage:
         """
         Split the given items into train and validation sets.
 
@@ -92,13 +102,25 @@ class TrainValSplitNode(SolutionElement):
         :return: Dictionary with train and validation items.
         """
         settings = self.gui.get_split_settings()
+        if not message.items_count:
+            logger.warning("No items to split. Returning empty splits.")
+            # return TrainValSplitMessage(train=[], val=[]) # TODO:
+        items = [img_id for img_ids in message.dst.values() for img_id in img_ids]
         train_count = int(len(items) * settings.train_percent / 100)
         val_count = len(items) - train_count
         if random_selection:
             random.shuffle(items)
         train_items = items[:train_count]
         val_items = items[train_count : train_count + val_count]
-        return {"train": train_items, "val": val_items}
+        self._add_to_collection(train_items, "train")
+        self._add_to_collection(val_items, "val")
+
+        return MoveLabeledDataFinishedMessage(
+            success=True,
+            src=message.src,
+            dst=message.dst,
+            items_count=len(train_items) + len(val_items),
+        )
 
     def get_split_settings(self) -> SplitSettings:
         """Get split settings from GUI."""
@@ -107,13 +129,51 @@ class TrainValSplitNode(SolutionElement):
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "sample_finished": [self.set_items_count],
-            "refresh_labeling_queue_info": [self.set_items_count],
+            "labeling_queue_info_refresh": [self.set_items_count],
+            "move_labeled_data_finished": self.split,
         }
 
-    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
-        return {
-            "sample_finished": [self.set_items_count],
-            "refresh_labeling_queue_info": [self.set_items_count],
-        }
+    def _available_publish_methods(self):
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {"train_val_split_finished": self.split}
+
+    def _add_to_collection(
+        self,
+        image_ids: List[int],
+        split_name: Literal["train", "val"],
+    ) -> None:
+        """
+        Add the MoveLabeled node to a collection.
+        """
+        if not image_ids:
+            logger.warning("No images to add to collection.")
+            return
+        collections = self.api.entities_collection.get_list(self.dst_project_id)
+
+        main_collection_name = f"all_{split_name}"
+        main_collection = None
+
+        last_batch_index = 0
+        for collection in collections:
+            if collection.name == main_collection_name:
+                main_collection = collection
+            elif collection.name.startswith(f"{split_name}_"):
+                last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
+
+        if main_collection is None:
+            main_collection = self.api.entities_collection.create(
+                self.dst_project_id, main_collection_name
+            )
+            logger.info(f"Created new collection '{main_collection_name}'")
+
+        self.api.entities_collection.add_items(main_collection.id, image_ids)
+
+        batch_collection_name = f"{split_name}_{last_batch_index + 1}"
+        batch_collection = self.api.entities_collection.create(
+            self.dst_project_id, batch_collection_name
+        )
+        logger.info(f"Created new collection '{batch_collection_name}'")
+
+        self.api.entities_collection.add_items(batch_collection.id, image_ids)
+
+        logger.info(f"Added {len(image_ids)} images to {split_name} collections")

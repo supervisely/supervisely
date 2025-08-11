@@ -4,12 +4,12 @@ from venv import logger
 from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
-from supervisely.solution.components.labeling_queue.automation import LabelingQueueRefresh
+from supervisely.solution.components.labeling_queue.automation import \
+    LabelingQueueRefresh
 from supervisely.solution.components.labeling_queue.gui import LabelingQueueGUI
 from supervisely.solution.engine.models import (
-    LabelingQueueRefreshInfoMessage,
-    SampleFinishedMessage,
-)
+    LabelingQueueAcceptedImagesMessage, LabelingQueueRefreshInfoMessage,
+    SampleFinishedMessage)
 
 
 class LabelingQueueNode(SolutionElement):
@@ -41,15 +41,17 @@ class LabelingQueueNode(SolutionElement):
         self._labeled_images = []
 
         self.gui = LabelingQueueGUI(queue_id=self.queue_id)
-        self.automation = LabelingQueueRefresh(queue_id=self.queue_id, func=self.refresh_info)
         self.node = SolutionCardNode(content=self.gui.card, x=x, y=y)
         self.modals = [self.gui.add_user_modal]
 
         self._setup_handlers()
         self._callbacks: List[Callable[[], None]] = []
-        self.apply_automation(sec=30)
 
         super().__init__(*args, **kwargs)
+
+        # automation after init (we need to wrap the publish methods in init first)
+        self.automation = LabelingQueueRefresh(queue_id=self.queue_id, func=self.refresh_info)
+        self.apply_automation(sec=30)
 
     def _setup_handlers(self):
         """Setup handlers for buttons and other interactive elements"""
@@ -163,6 +165,8 @@ class LabelingQueueNode(SolutionElement):
             self.update_finished(finished)
             for callback in self._callbacks:
                 callback()
+            if finished > 0:
+                self.get_new_accepted_images()
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
         return LabelingQueueRefreshInfoMessage(
@@ -181,7 +185,7 @@ class LabelingQueueNode(SolutionElement):
         self._callbacks.append(func)
         return func
 
-    def get_new_accepted_images(self) -> List[int]:
+    def get_new_accepted_images(self) -> LabelingQueueAcceptedImagesMessage:
         """Get all labeled images from labeling queue with status accepted"""
 
         if not self.queue_id or not self.collection_id:
@@ -194,7 +198,9 @@ class LabelingQueueNode(SolutionElement):
             filter_by=None,
         )
 
-        return [entity["id"] for entity in resp["images"]]
+        img_ids = [entity["id"] for entity in resp["images"]]
+        logger.info(f"Found {len(img_ids)} new accepted images in the labeling queue.")
+        return LabelingQueueAcceptedImagesMessage(accepted_images=img_ids.copy())
 
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
@@ -205,7 +211,8 @@ class LabelingQueueNode(SolutionElement):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "refresh_labeling_queue_info": self.refresh_info,
+            "labeling_queue_info_refresh": self.refresh_info,
+            "images_to_move": self.get_new_accepted_images,
         }
 
     def add_items(self, message: SampleFinishedMessage) -> None:
@@ -218,9 +225,6 @@ class LabelingQueueNode(SolutionElement):
             return
 
         images = []
-        for imgs in message.dst.values():
-            images.extend(imgs)
-        self.api.entities_collection.add_items(self.collection_id, images)
         for imgs in message.dst.values():
             images.extend(imgs)
         self.api.entities_collection.add_items(self.collection_id, images)

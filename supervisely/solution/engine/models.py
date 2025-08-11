@@ -65,3 +65,18 @@ class LabelingQueueRefreshInfoMessage(Message):
     reviewing: int = Field(..., description="Number of items currently being reviewed")
     finished: int = Field(..., description="Number of items that have been finished")
     rejected: int = Field(..., description="Number of items that have been rejected")
+
+
+class TrainValSplitMessage(Message):
+    """Train/Val split event message."""
+
+    train: List[int] = Field(..., description="List of image IDs in the training set")
+    val: List[int] = Field(..., description="List of image IDs in the validation set")
+
+
+class LabelingQueueAcceptedImagesMessage(Message):
+    """Labeling queue accepted images event message."""
+
+    accepted_images: List[int] = Field(
+        ..., description="List of image IDs that have been accepted in the labeling queue"
+    )

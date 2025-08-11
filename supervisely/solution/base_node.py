@@ -25,11 +25,6 @@ class EventMixin:
     def __init__(self):
         self._register_event_handlers()
 
-    @property
-    def broker(self):
-        """Get the event broker instance."""
-        return self._event_broker
-
     def _register_event_handlers(self):
         """Register all methods decorated with @on_event."""
         for method_name in dir(self):
@@ -37,7 +32,7 @@ class EventMixin:
                 method = getattr(self, method_name)
                 if hasattr(method, "_event_topic"):
                     for topic in method._event_topic:
-                        PubSub().subscribe(topic, method)
+                        PubSubAsync().subscribe(topic, method)
             except Exception as e:
                 pass
 
@@ -66,9 +61,9 @@ class SolutionElement(Widget, EventMixin):
             self.widget_id = widget_id
         # Widget.__init__(self, widget_id=self.widget_id)
         super().__init__(widget_id=self.widget_id, *args, **kwargs)
+        EventMixin.__init__(self)
         self.enable_subscribtions()
         self.enable_publishing()
-        EventMixin.__init__(self)
 
     # ------------------------------------------------------------------
     # JSON Methods ----------------------------------------------------
@@ -222,7 +217,7 @@ class SolutionElement(Widget, EventMixin):
         for topic, method in self._available_publish_methods().items():
             if topic in self._publish:
                 # not publish, but wrap the method to publish the event when called
-                wrapped = publish_event(topic)(self._wrap_in_progress(self, method))
+                wrapped = publish_event(topic)(method)
                 setattr(self, method.__name__, wrapped)  # replace the method with the wrapped one
 
     def on_start(self, func: Callable[[], None] = None):

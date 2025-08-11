@@ -13,3 +13,4 @@ from supervisely.solution.engine.events import PubSubAsync, on_event, publish_ev
 # from supervisely.solution.components.video_samling import VideoSampling
 from supervisely.solution.engine.graph_builder import GraphBuilder
 from supervisely.solution.engine.scheduler import TasksScheduler
+from supervisely.solution.engine.events import PubSubAsync

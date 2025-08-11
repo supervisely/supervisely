@@ -418,11 +418,15 @@ class SmartSamplingGUI(Widget):
         settings = self.get_settings()
         sampled_images = self._sample(settings)
         if sampled_images is None:
-            return None
+            return {}, {}, 0
 
-        src, dst, images_count = self._copy_to_new_project(sampled_images)
+        res = self._copy_to_new_project(sampled_images)
+        if res is None:
+            logger.warning("No images to copy to the labeling project.")
+            return {}, {}, 0
+        src, dst, images_count = res
         if images_count is None or images_count == 0:
-            return None
+            return {}, {}, 0
 
         self._add_record_to_history(
             sampling_id=uuid,

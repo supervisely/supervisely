@@ -9,7 +9,11 @@ from supervisely.sly_logger import logger
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
 from supervisely.solution.components.move_labeled.automation import MoveLabeledAuto
 from supervisely.solution.components.move_labeled.gui import MoveLabeledGUI
-from supervisely.solution.engine.models import MoveLabeledDataFinishedMessage
+from supervisely.solution.engine.models import (
+    LabelingQueueAcceptedImagesMessage,
+    MoveLabeledDataFinishedMessage,
+    TrainValSplitMessage,
+)
 from supervisely.solution.utils import get_interval_period
 
 
@@ -46,17 +50,33 @@ class MoveLabeledNode(SolutionElement):
 
         super().__init__(*args, **kwargs)
 
+        self._images_to_move = []
+
         @self.card.click
         def on_automate_click():
             self.modal.show()
 
-        # @self.gui.automation_btn.click
-        # def on_automate_click():
-        #     self.apply_automation(self._get_new_images)
+        @self.gui.automation_btn.click
+        def on_automate_click():
+            self.apply_automation(self.run)
+
+        @self.gui.run_btn.click
+        def on_run_click():
+            self.modal.hide()
+            self.node.show_in_progress_badge()
+            self.run()
+            self.node.hide_in_progress_badge()
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
-        return {"move_labeled_data_finished": self.run}
+        return {
+            "move_labeled_data_finished": self.run,
+        }
+
+    def _available_subscribe_methods(self):
+        return {
+            "images_to_move": self.set_images_to_move,
+        }
 
     @property
     def modal(self):
@@ -88,12 +108,20 @@ class MoveLabeledNode(SolutionElement):
                 self.card.remove_property_by_key("Min batch size")
 
     # publish event (may send Message object)
-    def run(self, image_ids: Dict[int, List[ImageInfo]]) -> MoveLabeledDataFinishedMessage:
+    def run(self) -> MoveLabeledDataFinishedMessage:
+        if not self._images_to_move:
+            logger.warning("No images to move. Returning empty message.")
+            return MoveLabeledDataFinishedMessage(
+                success=False,
+                src={},
+                dst={},
+                items_count=0,
+            )
         src, dst, total_moved = move_structured_images(
             self.api,
             self.src_project_id,
             self.dst_project_id,
-            images=image_ids,
+            images=self._images_to_move,
         )
         return MoveLabeledDataFinishedMessage(
             success=True,
@@ -106,7 +134,10 @@ class MoveLabeledNode(SolutionElement):
         """
         Apply the automation function to the MoveLabeled node.
         """
-        _, _, _, _, sec = self.gui.get_automation_details()
+        enabled, _, _, _, sec = self.gui.get_automation_details()
+        if not enabled:
+            logger.warning("[MoveLabeledNode] Automation is not enabled.")
+            sec = None
         self.automation.apply(func, sec, *args)
         self.save_settings()
 
@@ -132,43 +163,15 @@ class MoveLabeledNode(SolutionElement):
         self.gui.update_automation_widgets(enabled, sec, min_batch)
         self._update_automation_details()
 
-    def add_to_collection(
-        self,
-        image_ids: List[int],
-        split_name: Literal["train", "val"],
-    ) -> None:
+    def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
         """
-        Add the MoveLabeled node to a collection.
+        Set the images to move based on the message.
         """
-        if not image_ids:
-            logger.warning("No images to add to collection.")
+        if not message.accepted_images:
+            logger.warning("No items to move. Returning empty list.")
+            self._images_to_move = []
             return
-        collections = self.api.entities_collection.get_list(self.dst_project_id)
 
-        main_collection_name = f"All_{split_name}"
-        main_collection = None
+        self._images_to_move = message.accepted_images
+        logger.info(f"Set {len(self._images_to_move)} images to move.")
 
-        last_batch_index = 0
-        for collection in collections:
-            if collection.name == main_collection_name:
-                main_collection = collection
-            elif collection.name.startswith(f"{split_name}_"):
-                last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
-
-        if main_collection is None:
-            main_collection = self.api.entities_collection.create(
-                self.dst_project_id, main_collection_name
-            )
-            logger.info(f"Created new collection '{main_collection_name}'")
-
-        self.api.entities_collection.add_items(main_collection.id, image_ids)
-
-        batch_collection_name = f"{split_name}_{last_batch_index + 1}"
-        batch_collection = self.api.entities_collection.create(
-            self.dst_project_id, batch_collection_name
-        )
-        logger.info(f"Created new collection '{batch_collection_name}'")
-
-        self.api.entities_collection.add_items(batch_collection.id, image_ids)
-
-        logger.info(f"Added {len(image_ids)} images to {split_name} collections")

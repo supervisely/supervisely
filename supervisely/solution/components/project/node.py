@@ -107,7 +107,7 @@ class ProjectNode(SolutionElement):
         return {
             "import_finished": self.update,
             "sample_finished": self.update,
-            "move_labeled_data_finished": self.update,
+            "train_val_split_finished": self.update,
         }
 
     def update(
@@ -123,7 +123,7 @@ class ProjectNode(SolutionElement):
 
         :param new_items_count: Optional count of newly added items
         """
-        if not message.success:
+        if not message.success or not message.items_count:
             logger.info("Skipping update project info due to unsuccessful import.")
             return
         new_items_count = message.items_count

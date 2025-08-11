@@ -124,10 +124,9 @@ class CloudImportNode(SolutionElement):
     # ------------------------------------------------------------------
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
-        key = f"{self.id}_import_started"
         return {
             "import_started": self.run,
-            key: self.wait_import_completion,
+            "import_finished": self.wait_import_completion,
         }
 
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
@@ -146,14 +145,16 @@ class CloudImportNode(SolutionElement):
         :rtype: int
         """
         self.modal.hide()
-        self.gui.path_input.set_value("")
         task_id = self.gui.run(path)
+        self.gui.path_input.set_value("")
         return ImportStartedMessage(task_id=task_id)
 
     def handle_import_started(self, message: ImportStartedMessage) -> None:
         """Automatically handles import_started events"""
+        self.node.show_in_progress_badge()
         success = self.wait_import_completion(message.task_id)
         logger.info(f"Import task {message.task_id} completed with status: {success}")
+        self.node.hide_in_progress_badge()
 
     def wait_import_completion(self, task_id: int) -> ImportFinishedMessage:
         """

@@ -115,7 +115,9 @@ class SmartSamplingNode(SolutionElement):
         }
 
     # callback method (accepts Message object)
-    def update_widgets(self, message: Union[ImportFinishedMessage, SampleFinishedMessage] = None) -> None:
+    def update_widgets(
+        self, message: Union[ImportFinishedMessage, SampleFinishedMessage] = None
+    ) -> None:
         """Update the sampling inputs based on the difference."""
         updated_project_info = self.api.project.get_info_by_id(self.project_id)
         self.project = updated_project_info
@@ -184,6 +186,5 @@ class SmartSamplingNode(SolutionElement):
                 else:
                     callback(res)
         self.node.hide_in_progress_badge("Sampling")
-        self.node.hide_in_progress_badge("Sampling")
+        self.update_widgets()
         return SampleFinishedMessage(success=True, src=src, dst=dst, items_count=images_count)
-
