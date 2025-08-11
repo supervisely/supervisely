@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from _typeshed import NoneType
 import os
 import math
 from datetime import datetime
