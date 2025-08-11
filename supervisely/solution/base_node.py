@@ -62,8 +62,9 @@ class SolutionElement(Widget, EventMixin):
         # Widget.__init__(self, widget_id=self.widget_id)
         super().__init__(widget_id=self.widget_id, *args, **kwargs)
         EventMixin.__init__(self)
+
+        self.enable_publishing()  # order matters (publish methods must be wrapped before subscribing)
         self.enable_subscribtions()
-        self.enable_publishing()
 
     # ------------------------------------------------------------------
     # JSON Methods ----------------------------------------------------
