@@ -1269,7 +1269,7 @@ class Inference:
             "async_video_inference_support": True,
             "tracking_on_videos_support": True,
             "async_image_inference_support": True,
-            "tracking_algorithms": ["botsort", "boxmot"],
+            "tracking_algorithms": ["botsort"],
             "batch_inference_support": self.is_batch_inference_supported(),
             "max_batch_size": self.max_batch_size,
         }

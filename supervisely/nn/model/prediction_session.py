@@ -558,7 +558,7 @@ class PredictionSession:
         end_frame=None,
         duration=None,
         direction: Literal["forward", "backward"] = None,
-        tracker: Literal["botsort", "boxmot"] = None,
+        tracker: Literal["botsort"] = None,
         tracker_settings: Dict[str, Any] = None,
         batch_size: int = None,
     ):
