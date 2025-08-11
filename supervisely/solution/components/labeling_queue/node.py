@@ -49,6 +49,8 @@ class LabelingQueueNode(SolutionElement):
 
         super().__init__(*args, **kwargs)
 
+        self.refresh_info()
+
         # automation after init (we need to wrap the publish methods in init first)
         self.automation = LabelingQueueRefresh(queue_id=self.queue_id, func=self.refresh_info)
         self.apply_automation(sec=30)

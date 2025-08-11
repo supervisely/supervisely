@@ -77,6 +77,7 @@ class ProjectNode(SolutionElement):
 
         # --- refresh ------------------------------------------------------------
         self.refresh_interval = refresh_interval
+        self.update()
         # self.apply_automation(sec=self.refresh_interval)
 
         super().__init__(*args, **kwargs)
@@ -118,17 +119,17 @@ class ProjectNode(SolutionElement):
             ImportFinishedMessage,
             SampleFinishedMessage,
             MoveLabeledDataFinishedMessage,
-        ],
+        ] = None,
     ) -> None:
         """
         Update the project node with new information.
 
         :param new_items_count: Optional count of newly added items
         """
-        if not message.success or not message.items_count:
-            logger.info("Skipping update project info due to unsuccessful import.")
+        if message and (not message.success or not message.items_count):
+            logger.info("No items to update. Skipping project update.")
             return
-        new_items_count = message.items_count
+        new_items_count = message.items_count if message else None
         self.project = self.api.project.get_info_by_id(self.project_id)
         items_count = self.project.items_count or 0
         if isinstance(message, ImportFinishedMessage):

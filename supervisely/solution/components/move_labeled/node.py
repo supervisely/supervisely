@@ -61,6 +61,7 @@ class MoveLabeledNode(SolutionElement):
 
         @self.gui.automation_btn.click
         def on_automate_click():
+            self.modal.hide()
             self.apply_automation(self.run)
 
         @self.gui.run_btn.click
@@ -89,7 +90,6 @@ class MoveLabeledNode(SolutionElement):
         if not hasattr(self, "_modal"):
             self._modal = Dialog(
                 title="Move Labeled Data",
-                size="tiny",
                 content=self.gui.widget,
             )
         return self._modal

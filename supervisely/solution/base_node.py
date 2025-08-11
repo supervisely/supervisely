@@ -350,7 +350,7 @@ class AutomationWidget(Automation):
     def modal(self) -> Dialog:
         """Returns the modal for the automation."""
         if self._modal is None:
-            self._modal = Dialog(title="Automation Settings", content=self.widget, size="tiny")
+            self._modal = Dialog(title="Automation Settings", content=self.widget)
         return self._modal
 
     @property

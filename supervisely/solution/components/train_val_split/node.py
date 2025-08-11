@@ -11,7 +11,7 @@ from supervisely.solution.engine.models import (
     LabelingQueueRefreshInfoMessage,
     MoveLabeledDataFinishedMessage,
     SampleFinishedMessage,
-    TrainValSplitMessage,
+    LabelingQueueAcceptedImagesMessage,
 )
 
 
@@ -71,13 +71,13 @@ class TrainValSplitNode(SolutionElement):
         self.node.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
 
     def set_items_count(
-        self, message: Union[SampleFinishedMessage, LabelingQueueRefreshInfoMessage]
+        self, message: Union[SampleFinishedMessage, LabelingQueueAcceptedImagesMessage] = None
     ) -> None:
         """Set the number of items in the random splits table."""
         if isinstance(message, SampleFinishedMessage):
             items_count = message.items_count
-        elif isinstance(message, LabelingQueueRefreshInfoMessage):
-            items_count = message.finished
+        elif isinstance(message, LabelingQueueAcceptedImagesMessage):
+            items_count = len(message.accepted_images)
         else:
             items_count = 0
         self.gui.random_splits.set_items_count(items_count)
@@ -117,6 +117,8 @@ class TrainValSplitNode(SolutionElement):
         val_items = items[train_count : train_count + val_count]
         self._add_to_collection(train_items, "train")
         self._add_to_collection(val_items, "val")
+        logger.info(f"Split {len(items)} items into {len(train_items)} train and {len(val_items)} val items.")
+        self.set_items_count()
 
         return MoveLabeledDataFinishedMessage(
             success=True,
@@ -132,7 +134,7 @@ class TrainValSplitNode(SolutionElement):
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "labeling_queue_info_refresh": [self.set_items_count],
+            "images_to_move": [self.set_items_count],
             "move_labeled_data_finished": self.split,
         }
 

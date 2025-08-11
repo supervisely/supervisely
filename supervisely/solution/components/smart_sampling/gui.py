@@ -324,7 +324,7 @@ class SmartSamplingGUI(Widget):
     def modal(self) -> Dialog:
         """Returns the modal for the node GUI."""
         if not hasattr(self, "_modal"):
-            self._modal = Dialog(title="Sampling Settings", content=self.content, size="tiny")
+            self._modal = Dialog(title="Sampling Settings", content=self.content)
         return self._modal
 
     # ------------------------------------------------------------------

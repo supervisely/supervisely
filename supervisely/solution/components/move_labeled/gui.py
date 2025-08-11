@@ -35,7 +35,7 @@ class MoveLabeledGUI:
 
         # Info -----------------------------------------------------------------------------
         text = Text(
-            "This node is used to move labeled and accepted images from the source project to the destination project. After the data is moved, it can be added to the corresponding collections in the destination project ,for example, to the training or validation collections. <br><br> Note: The node will only move images that have been labeled and accepted. If the images are not labeled or accepted, they will not be moved. <br><br> The node will not move images that have already been moved to the destination project to avoid duplication.",
+            "This node is used to move labeled and accepted images to the Training project. After the data is moved, it will be added to the corresponding collections (train / val) in the Training project. <br><br> The node will not move images that have already been moved to the destination project to avoid duplication. <br><br> Note: The node will only move images that have been labeled and accepted. If the images are not labeled or accepted, they will not be moved.",
         )
         info = Field(
             text,
@@ -175,7 +175,7 @@ class MoveLabeledGUI:
         return self._automation_btn
 
     def get_automation_details(self):
-        enabled = self.automation_switch.is_checked()
+        enabled = self.automation_switch.is_switched()
         period = self.automate_period_select.get_value()
         interval = self.automate_input.get_value()
         min_batch_enabled = self.automate_min_batch.is_checked()

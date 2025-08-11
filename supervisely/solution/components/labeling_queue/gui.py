@@ -81,8 +81,8 @@ class LabelingQueueGUI:
             description="Labeling Queue management. Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator.",
             content=[
                 self.open_labeling_queue_btn,
-                self.add_annotator_btn,
-                self.add_reviewer_btn,
+                # self.add_annotator_btn,
+                # self.add_reviewer_btn,
             ],
         )
 

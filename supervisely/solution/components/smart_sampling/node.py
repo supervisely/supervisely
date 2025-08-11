@@ -26,6 +26,7 @@ class SmartSamplingNode(SolutionElement):
         self.project = self.api.project.get_info_by_id(project_id)
 
         # --- core blocks --------------------------------------------------------
+        super().__init__(*args, **kwargs)
         self.gui = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
         self.automation = SmartSamplingAutomation(self.run)
         self.tasks_history = SmartSamplingTasksHistory(self.api)  # , widget_id) job_id?
@@ -75,9 +76,7 @@ class SmartSamplingNode(SolutionElement):
         @self.automation.apply_button.click
         def on_apply_automation_click():
             self.automation.modal.hide()
-            self.apply_automation(self.run)
-
-        super().__init__(*args, **kwargs)
+            self.apply_automation()
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
