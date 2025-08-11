@@ -1238,7 +1238,7 @@ class Inference:
 
     def _set_checkpoint_info_pretrained(self, deploy_params: dict):
         checkpoint_name = os.path.basename(deploy_params["model_files"]["checkpoint"])
-        model_name = deploy_params["model_info"]["model_name"]
+        model_name = _get_model_name(deploy_params["model_info"])
         checkpoint_url = deploy_params["model_info"]["meta"]["model_files"]["checkpoint"]
         model_source = ModelSource.PRETRAINED
         self.checkpoint_info = CheckpointInfo(
