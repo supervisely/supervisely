@@ -1,5 +1,4 @@
 import random
-from dataclasses import dataclass
 from typing import Callable, Dict, List, Literal, Optional, Union
 
 from supervisely.api.api import Api
@@ -8,10 +7,9 @@ from supervisely.sly_logger import logger
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
 from supervisely.solution.components.train_val_split.gui import SplitSettings, TrainValSplitGUI
 from supervisely.solution.engine.models import (
-    LabelingQueueRefreshInfoMessage,
+    LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
     SampleFinishedMessage,
-    LabelingQueueAcceptedImagesMessage,
 )
 
 
@@ -28,9 +26,14 @@ class TrainValSplitNode(SolutionElement):
         :param x: X coordinate of the node.
         :param y: Y coordinate of the node.
         """
+        # First, initialize the base class (to wrap publish/subscribe methods)
+        super().__init__(*args, **kwargs)
+
+        # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
         self.dst_project_id = dst_project_id
-        self.split_settings = SplitSettings()
+
+        # --- core blocks --------------------------------------------------------
         self.gui = TrainValSplitGUI()
         self.card = self._build_card(
             title="Train/Val Split",
@@ -43,23 +46,17 @@ class TrainValSplitNode(SolutionElement):
 
         # --- modals -------------------------------------------------------------
         self.modals = [self.gui.modal]
-        super().__init__(*args, **kwargs)
 
         @self.gui.ok_btn.click
-        def save_split_settings():
+        def on_save_split_settings_click():
             self.gui.modal.hide()
-            settings = self.gui.get_split_settings()
-            self.update_properties(settings)
-            self.save_split_settings(settings)
+            self.save_split_settings()
 
         @self.card.click
         def show_split_modal():
             self.gui.modal.show()
 
-    def get_json_data(self) -> dict:
-        return {"split_settings": self.split_settings.to_json()}
-
-    def update_properties(self, settings: SplitSettings):
+    def _update_properties(self, settings: SplitSettings):
         """Update node properties with current split settings."""
         counts = self.gui.random_splits.get_splits_counts()
         train = settings.train_percent
@@ -70,29 +67,18 @@ class TrainValSplitNode(SolutionElement):
         self.node.update_property("train", f"{train_count} image{'' if train_count == 1 else 's'}")
         self.node.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
 
-    def set_items_count(
-        self, message: Union[SampleFinishedMessage, LabelingQueueAcceptedImagesMessage] = None
-    ) -> None:
-        """Set the number of items in the random splits table."""
-        if isinstance(message, SampleFinishedMessage):
-            items_count = message.items_count
-        elif isinstance(message, LabelingQueueAcceptedImagesMessage):
-            items_count = len(message.accepted_images)
-        else:
-            items_count = 0
-        self.gui.random_splits.set_items_count(items_count)
-        settings = self.gui.get_split_settings()
-        self.update_properties(settings)
-        self.save_split_settings(settings)
-
     def save_split_settings(self, settings: Optional[SplitSettings] = None):
         """Save split settings to node state."""
         if settings is None:
             settings = self.gui.get_split_settings()
-        self.split_settings = settings
-        DataJson()[self.widget_id]["split_settings"] = settings.to_json()
-        DataJson().send_changes()
+        self.gui.save_split_settings(settings)
+        self._update_properties(settings)
 
+    # ------------------------------------------------------------------
+    # Events -----------------------------------------------------------
+    # ------------------------------------------------------------------
+
+    # publish and subscribe method
     def split(
         self,
         message: MoveLabeledDataFinishedMessage,
@@ -101,8 +87,13 @@ class TrainValSplitNode(SolutionElement):
         """
         Split the given items into train and validation sets.
 
-        :param items: List of items to split.
-        :return: Dictionary with train and validation items.
+        :param message: Message containing the items to split.
+        :type message: MoveLabeledDataFinishedMessage
+        :param random_selection: Whether to randomly select items for the split.
+        :type random_selection: bool
+        :raises ValueError: If no items are provided in the message.
+        :return: Returns the MoveLabeledDataFinishedMessage object
+        :rtype: MoveLabeledDataFinishedMessage
         """
         settings = self.gui.get_split_settings()
         if not message.items_count:
@@ -117,7 +108,9 @@ class TrainValSplitNode(SolutionElement):
         val_items = items[train_count : train_count + val_count]
         self._add_to_collection(train_items, "train")
         self._add_to_collection(val_items, "val")
-        logger.info(f"Split {len(items)} items into {len(train_items)} train and {len(val_items)} val items.")
+        logger.info(
+            f"Split {len(items)} items into {len(train_items)} train and {len(val_items)} val items."
+        )
         self.set_items_count()
 
         return MoveLabeledDataFinishedMessage(
@@ -127,9 +120,18 @@ class TrainValSplitNode(SolutionElement):
             items_count=len(train_items) + len(val_items),
         )
 
-    def get_split_settings(self) -> SplitSettings:
-        """Get split settings from GUI."""
-        return self.gui.get_split_settings()
+    def set_items_count(
+        self, message: Union[SampleFinishedMessage, LabelingQueueAcceptedImagesMessage] = None
+    ) -> None:
+        """Set the number of items in the random splits table."""
+        if isinstance(message, SampleFinishedMessage):
+            items_count = message.items_count
+        elif isinstance(message, LabelingQueueAcceptedImagesMessage):
+            items_count = len(message.accepted_images)
+        else:
+            items_count = 0
+        self.gui.set_items_count(items_count)
+        self.save_split_settings()
 
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
@@ -142,6 +144,9 @@ class TrainValSplitNode(SolutionElement):
         """Returns a dictionary of methods that can be used for publishing events."""
         return {"train_val_split_finished": self.split}
 
+    # ------------------------------------------------------------------
+    # Methods ----------------------------------------------------------
+    # ------------------------------------------------------------------
     def _add_to_collection(
         self,
         image_ids: List[int],

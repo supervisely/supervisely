@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import random
 from datetime import datetime
+from enum import Enum
 from typing import Dict, List, Literal, Optional, Tuple
 from uuid import uuid4
-from enum import Enum
 
-from supervisely.api.api import Api
-from supervisely.api.image_api import ImageInfo
 from typing_extensions import NotRequired, TypedDict
 
+from supervisely.api.api import Api
 from supervisely.api.entities_collection_api import CollectionTypeFilter
+from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import (
@@ -27,7 +27,10 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
-from supervisely.project.image_transfer_utils import compare_projects, copy_structured_images
+from supervisely.project.image_transfer_utils import (
+    compare_projects,
+    copy_structured_images,
+)
 from supervisely.sly_logger import logger
 
 
@@ -124,7 +127,7 @@ class SmartSamplingGUI(Widget):
         ai_search_sampling: bool = False,
     ):
         # -- main widgets ----------------------------------------------------
-        self.preview_button = Button("Preview", icon="zmdi zmdi-eye", plain=True)
+        self.preview_button = Button("Preview", icon="zmdi zmdi-eye", plain=True, button_size="mini")
         self.preview_gallery = GridGallery(columns_number=3)
         self.preview_collapse = Collapse(
             items=[Collapse.Item("preview", "Preview", content=self.preview_gallery)]
@@ -163,12 +166,12 @@ class SmartSamplingGUI(Widget):
 
         self.status_text = Text("", status="text")
         self.status_text.hide()
-        self.save_settings_button = Button("Confirm settings", plain=True)
-        self.run_button = Button("Run sampling", plain=True, icon="zmdi zmdi-play")
+        self.save_settings_button = Button("Save settings", plain=True, icon="zmdi zmdi-save")
+        self.run_button = Button("Run")
         sample_button_container = Container(
             [self.save_settings_button, self.run_button],
             direction="horizontal",
-            style="align-items: center; justify-content: space-between; margin-top: 10px;",
+            style="align-items: flex-end; margin-top: 10px;",
         )
 
         self.sampling_tabs = Tabs(

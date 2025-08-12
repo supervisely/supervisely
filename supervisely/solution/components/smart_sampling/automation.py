@@ -1,13 +1,9 @@
 from __future__ import annotations
+
 from typing import Callable, Tuple
-from supervisely.app.widgets import (
-    Checkbox,
-    Container,
-    Empty,
-    InputNumber,
-    Select,
-    Text,
-)
+
+from supervisely.app.widgets import (Checkbox, Container, Empty, InputNumber,
+                                     Select, Text)
 from supervisely.solution.base_node import AutomationWidget
 from supervisely.solution.utils import get_interval_period
 

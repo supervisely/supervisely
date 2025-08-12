@@ -6,6 +6,7 @@ from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.input.input import Input
+from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -95,13 +96,35 @@ class CloudImport(Widget):
             color="gray",
         )
         self.path_input = Input(placeholder="provider://bucket-name/path/to/folder")
+        input_field = Field(
+            self.path_input,
+            title="Remote Path",
+            description="Example: s3://my-bucket/my-folder/my-dataset/img/",
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-cloud-upload",
+                color_rgb=(21, 101, 192),
+                bg_color_rgb=(227, 242, 253),
+            ),
+        )
+
         self.agent_select = AgentSelector(self.project.team_id, compact=True)
+        agent_select_field = Field(
+            self.agent_select,
+            title="Agent",
+            description="Select the agent to run the import task.",
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-desktop-mac",
+                color_rgb=(21, 101, 192),
+                bg_color_rgb=(227, 242, 253),
+            ),
+        )
+
         self.status_text = Text("", status="text")
         self.status_text.hide()
-        self.run_btn = Button("Run", plain=True)
+        self.run_btn = Button("Run")
         run_btn_cont = Container([self.run_btn], style="align-items: flex-end")
         self.content = Container(
-            [text, self.path_input, self.agent_select, self.status_text, run_btn_cont]
+            [text, input_field, agent_select_field, self.status_text, run_btn_cont], gap=20
         )
 
         # @self.run_btn.click

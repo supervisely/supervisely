@@ -67,7 +67,7 @@ class CloudImportNode(SolutionElement):
     @property
     def modal(self):
         if not hasattr(self, "_modal"):
-            self._modal = Dialog(title="Import from Cloud Storage", content=self.gui)
+            self._modal = Dialog(title="Import from Cloud Storage", content=self.gui, size="tiny")
         return self._modal
 
     # ------------------------------------------------------------------
