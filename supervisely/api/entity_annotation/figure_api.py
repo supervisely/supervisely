@@ -818,7 +818,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type log_progress: bool, optional
         :param batch_size: Size of the batch for downloading figures per 1 request. Default is 300.
                         Used for batching image_ids when filtering by specific images.
-                        Adjust this value for optimal performance, value cannot exceed 300.
+                        Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
@@ -939,7 +939,6 @@ class FigureApi(RemoveableBulkModuleApi):
 
         # Combine results from all batches
         images_figures = defaultdict(list)
-        total_processed = 0
 
         if log_progress:
             # Calculate total figures from all batches
@@ -949,7 +948,6 @@ class FigureApi(RemoveableBulkModuleApi):
         for batch_figures in all_results:
             for figure in batch_figures:
                 images_figures[figure.entity_id].append(figure)
-                total_processed += 1
                 if log_progress:
                     progress_cb.update(1)
 
@@ -982,7 +980,7 @@ class FigureApi(RemoveableBulkModuleApi):
         :type log_progress: bool, optional
         :param batch_size: Size of the batch for downloading figures per 1 request. Default is 300.
                         Used for batching image_ids when filtering by specific images.
-                        Adjust this value for optimal performance, value cannot exceed 300.
+                        Adjust this value for optimal performance, value cannot exceed 500.
         :type batch_size: int, optional
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
