@@ -610,9 +610,9 @@ class BaseTrainArtifacts:
             date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
             experiment_info_data = {
-                "experiment_name": f"Unknown {self.framework_name} experiment",
+                "experiment_name": f"{self.framework_name} experiment",
                 "framework_name": self.framework_name,
-                "model_name": f"Unknown {self.framework_name} model",
+                "model_name": f"{self.framework_name} model",
                 "task_type": train_info.task_type,
                 "project_id": project_id,
                 "task_id": train_info.task_id,

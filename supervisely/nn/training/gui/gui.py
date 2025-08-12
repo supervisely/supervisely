@@ -357,9 +357,9 @@ class TrainGUI:
                 experiment_name = "Enter experiment name"
             else:
                 if self.task_id == -1:
-                    experiment_name = f"debug_{self.project_info.name}_{model_name}"
+                    experiment_name = f"debug {self.project_info.name} {model_name}"
                 else:
-                    experiment_name = f"{self.task_id}_{self.project_info.name}_{model_name}"
+                    experiment_name = f"{self.task_id} {self.project_info.name} {model_name}"
 
             if experiment_name == self.training_process.get_experiment_name():
                 return
@@ -843,7 +843,7 @@ class TrainGUI:
                         "TensorRT": True
                     },
                 },
-                "experiment_name": "my_experiment",
+                "experiment_name": "My Experiment",
             }
         """
         if isinstance(app_state, str):

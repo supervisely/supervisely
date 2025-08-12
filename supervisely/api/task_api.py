@@ -1007,7 +1007,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         Example of experiment_info:
 
             experiment_info = {
-                'experiment_name': '247_Lemons_RT-DETRv2-M',
+                'experiment_name': '247 Lemons RT-DETRv2-M',
                 'framework_name': 'RT-DETRv2',
                 'model_name': 'RT-DETRv2-M',
                 'task_type': 'object detection',

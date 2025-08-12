@@ -164,7 +164,7 @@ class TrainApp:
         self._train_split = []
         self._train_split_item_ids = set()
         self._train_collection_id = None
-        
+
         self._val_split = []
         self._val_split_item_ids = set()
         self._val_collection_id = None
@@ -603,7 +603,7 @@ class TrainApp:
             if self.gui.classes_selector is not None:
                 if self.gui.classes_selector.is_convert_class_shapes_enabled():
                     self._convert_project_to_model_task()
-        
+
         # Step 4. Split Project
         self._split_project()
         # Step 5. Remove classes except selected
@@ -859,7 +859,7 @@ class TrainApp:
                         "TensorRT": True
                     },
                 },
-                "experiment_name": "my_experiment",
+                "experiment_name": "My Experiment",
             }
         """
         self.gui.load_from_app_state(app_state)
@@ -1225,7 +1225,6 @@ class TrainApp:
                 shutil.copy(item.img_path, join(paths["img_dir"], item_name))
                 shutil.copy(item.ann_path, join(paths["ann_dir"], ann_name))
 
-                
                 # Move img_info
                 img_info_name = f"{sly_fs.get_file_name_with_ext(item.img_path)}.json"
                 img_info_path = join(dirname(dirname(item.img_path)), "img_info", img_info_name)
@@ -3172,7 +3171,7 @@ class TrainApp:
         train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
         self._api.entities_collection.add_items(train_collection.id, train_img_ids)
         self._train_collection_id = train_collection.id
-        
+
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
         val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
