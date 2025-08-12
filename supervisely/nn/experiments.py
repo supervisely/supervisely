@@ -54,6 +54,8 @@ class ExperimentInfo:
     """Number of images in the validation set"""
     datetime: Optional[str] = None
     """Date and time when the experiment was started"""
+    experiment_report_id: Optional[int] = None
+    """ID of the experiment report"""
     evaluation_report_id: Optional[int] = None
     """ID of the model benchmark evaluation report"""
     evaluation_report_link: Optional[str] = None
