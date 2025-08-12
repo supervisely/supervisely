@@ -924,11 +924,11 @@ class ExperimentGenerator(BaseGenerator):
 
         project_context = {
             "id": project_id,
-            "workspace_id": project_info.workspace_id,
+            "workspace_id": project_info.workspace_id if project_info else None,
             "name": project_info.name if project_info else "Project was archived",
             "version": project_version,
-            "url": project_url,
-            "type": project_type,
+            "url": project_url if project_info else None,
+            "type": project_type if project_info else None,
             "splits": splits,
             "classes": {
                 "count": len(model_classes),
