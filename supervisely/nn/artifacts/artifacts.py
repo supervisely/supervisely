@@ -68,6 +68,7 @@ class BaseTrainArtifacts:
         self._pattern: str = None
         self._available_task_types: List[str] = []
         self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     @property
     def team_id(self) -> int:
@@ -208,6 +209,13 @@ class BaseTrainArtifacts:
         :rtype: bool
         """
         return self._require_runtime
+
+    @property
+    def has_benchmark_evaluation(self):
+        """
+        Whether the framework has integrated benchmark evaluation.
+        """
+        return self._has_benchmark_evaluation
 
     def is_valid_artifacts_path(self, path):
         """

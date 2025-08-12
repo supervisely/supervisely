@@ -26,6 +26,7 @@ class MMDetection(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/mmdetection/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["object detection", "instance segmentation"]
         self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
@@ -75,7 +76,8 @@ class MMDetection3(BaseTrainArtifacts):
         self._pattern = re_compile(r"^/mmdetection-3/\d+_[^/]+/?$")
         self._available_task_types: List[str] = ["object detection", "instance segmentation"]
         self._require_runtime = False
-        
+        self._has_benchmark_evaluation = True
+
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")
         if len(parts) < 3:
