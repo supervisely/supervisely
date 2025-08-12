@@ -67,6 +67,7 @@ class PredictionSession:
         dataset_id: Union[List[int], int] = None,
         project_id: Union[List[int], int] = None,
         api: "Api" = None,
+        tracking: bool = None,
         **kwargs: dict,
     ):
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
@@ -559,7 +560,7 @@ class PredictionSession:
         duration=None,
         direction: Literal["forward", "backward"] = None,
         tracker: Literal["botsort"] = None,
-        tracker_settings: Dict[str, Any] = None,
+        tracker_settings: dict = None,
         batch_size: int = None,
     ):
         if len(videos) != 1:
