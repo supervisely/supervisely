@@ -105,7 +105,12 @@ class TasksHistory(Widget):
         for task in self.get_tasks():
             task_id = task["id"]
             task_info = self.api.task.get_info_by_id(task_id)
-            task.update(task_info)
+            for col_keys in self.columns_keys:
+                if not isinstance(col_keys, list):
+                    col_keys = [col_keys]
+                task_item = self._get_task_item(col_keys, task_info, default=None)
+                if task_item is not None:
+                    task[col_keys[-1]] = task_item
         self.table.clear()
         for row in self._get_table_data():
             self.table.insert_row(row)
