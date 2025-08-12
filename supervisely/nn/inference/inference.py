@@ -1241,6 +1241,29 @@ class Inference:
 
     def get_classes(self) -> List[str]:
         return self.classes
+    
+    def _tracker_init(self, state: dict) -> object:
+        # Check if tracking is supported for this model
+        info = self.get_info()
+        tracking_support = info.get("tracking_on_videos_support", False)
+        
+        if not tracking_support:
+            logger.debug("Tracking is not supported for this model")
+            return None
+        
+        tracking = state.get("tracker", None)
+        
+        if tracking == "botsort":
+            from supervisely.nn.tracker import BotSortTracker
+            tracker_settings = state.get("tracker_settings", {})
+            device = tracker_settings.get("device", self.device)
+            logger.debug(f"Initializing BotSort tracker with device: {device}")
+            return BotSortTracker(settings=tracker_settings, device=device)
+        else:
+            if tracking is not None:
+                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+            return None
+
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -1820,17 +1843,8 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        if tracking == "botsort":
-            from supervisely.nn.tracker import BotSortTracker
-            tracker_settings = state.get("tracker_settings", {})
-            device = tracker_settings.get("device", self.device) 
-            tracker = BotSortTracker(settings=tracker_settings, device=device)
-            
-        else:
-            if tracking is not None:
-                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
-            tracker = None
-
+        self._tracker = self._tracker_init(state)
+        
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
@@ -1861,18 +1875,20 @@ class Inference:
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            if tracker is not None:
-                for frame, ann in zip(frames, anns):
-                    tracks = tracker.update(frame, ann)
-                    ann = ann.clone(custom_data={"tracks": tracks})
+            if self._tracker is not None:
+                for i, (frame, ann) in enumerate(zip(frames, anns)):
+                    tracks = self._tracker.update(frame, ann)
+                    updated_ann = ann.clone(custom_data={"tracks": tracks})
+                    anns[i] = updated_ann
+                    predictions[i].annotation = updated_ann
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if tracker is not None:
+        if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
             
-            video_ann_json = tracker.video_annotation.to_json()
+            video_ann_json = self._tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
@@ -2055,20 +2071,8 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        if tracking == "botsort":
-            from supervisely.nn.tracker import BotSortTracker
-            tracker_settings = state.get("tracker_settings", {})
-            device = tracker_settings.get("device", self.device) 
-            tracker = BotSortTracker(settings=tracker_settings, device=device)
-            
-        elif tracking == "deepsort":
-            from supervisely.nn.tracker import DeepSortTracker
-
-            tracker = DeepSortTracker(state)
-        else:
-            if tracking is not None:
-                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
-            tracker = None
+        self._tracker = self._tracker_init(state)
+        
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -2110,24 +2114,27 @@ class Inference:
                     frame_index=frame_index,
                     video_id=video_info.id,
                     dataset_id=video_info.dataset_id,
-                    project_id=video_info.project_id,
-                )
+                        project_id=video_info.project_id,
+                    )
                 for ann, frame_index in zip(anns, batch)
             ]
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            if tracker is not None:
-                for frame, ann in zip(frames, anns):
-                    tracks = tracker.update(frame, ann)
+            if self._tracker is not None:
+                for i, (frame, ann) in enumerate(zip(frames, anns)):
+                    tracks = self._tracker.update(frame, ann)
                     ann = ann.clone(custom_data={"tracks": tracks})
+                    anns[i] = ann
+                    predictions[i].annotation = ann
+                    
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if tracker is not None:
+        if self._tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = tracker.video_annotation.to_json()
+            video_ann_json = self._tracker.video_annotation.to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
