@@ -169,8 +169,7 @@ class SmartSamplingGUI(Widget):
         self.save_settings_button = Button("Save settings", plain=True, icon="zmdi zmdi-save")
         self.run_button = Button("Run")
         sample_button_container = Container(
-            [self.save_settings_button, self.run_button],
-            direction="horizontal",
+            [Flexbox([self.save_settings_button, self.run_button])],
             style="align-items: flex-end; margin-top: 10px;",
         )
 

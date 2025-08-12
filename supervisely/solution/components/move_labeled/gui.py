@@ -1,4 +1,6 @@
-from supervisely.app.widgets import Button, Container, Dialog, Field, Text
+from supervisely.app.widgets import (AgentSelector, Button, Container, Dialog,
+                                     Field, Text)
+from supervisely.io.env import team_id
 
 
 class MoveLabeledGUI:
@@ -27,11 +29,15 @@ class MoveLabeledGUI:
             """,
         )
 
-        get_available_items = lambda x: f"<strong>Available items to move:</strong><br>&nbsp;&nbsp;• {x} Images"
+        get_available_items = (
+            lambda x: f"<strong>Available items to move:</strong><br>&nbsp;&nbsp;• {x} Images"
+        )
         available_items_info = Text(get_available_items(0))
 
         # Function to update the available items count
-        self.set_items_count = lambda x: available_items_info.set(text=get_available_items(x), status="text")
+        self.set_items_count = lambda x: available_items_info.set(
+            text=get_available_items(x), status="text"
+        )
 
         info = Field(
             Container([text, available_items_info], gap=15),
@@ -42,8 +48,19 @@ class MoveLabeledGUI:
                 bg_color_rgb=(227, 242, 253),
             ),
         )
+        self.agent_selector = AgentSelector(team_id(), compact=True)
+        agent_select_field = Field(
+            self.agent_selector,
+            title="Agent",
+            description="Select the agent to run the Data Commander task.",
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-desktop-mac",
+                color_rgb=(21, 101, 192),
+                bg_color_rgb=(227, 242, 253),
+            ),
+        )
         btn_cont = Container([self.run_btn], style="align-items: flex-end")
-        return Container([info, btn_cont])
+        return Container([info, agent_select_field, btn_cont], gap=20)
 
     @property
     def run_btn(self):

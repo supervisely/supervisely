@@ -46,14 +46,7 @@ class MoveLabeledDataFinishedMessage(Message):
     """Move labeled data has finished event message."""
 
     success: bool = Field(..., description="Indicates if the move was successful")
-    src: Dict[int, List[int]] = Field(
-        ...,
-        description="Dictionary with dataset IDs as keys and lists of image IDs from the source project",
-    )
-    dst: Dict[int, List[int]] = Field(
-        ...,
-        description="Dictionary with dataset IDs as keys and lists of image IDs from the destination project",
-    )
+    items: List[int] = Field(..., description="List of image IDs that were moved")
     items_count: int = Field(..., description="Total number of images moved")
 
 

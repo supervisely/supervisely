@@ -95,11 +95,14 @@ class TrainValSplitNode(SolutionElement):
         :return: Returns the MoveLabeledDataFinishedMessage object
         :rtype: MoveLabeledDataFinishedMessage
         """
+        if not message.success:
+            logger.error("Failed to move labeled data. Cannot perform split.")
+            return MoveLabeledDataFinishedMessage(success=False, items=[], items_count=0)
         settings = self.gui.get_split_settings()
         if not message.items_count:
             logger.warning("No items to split. Returning empty splits.")
             # return TrainValSplitMessage(train=[], val=[]) # TODO:
-        items = [img_id for img_ids in message.dst.values() for img_id in img_ids]
+        items = message.items
         train_count = int(len(items) * settings.train_percent / 100)
         val_count = len(items) - train_count
         if random_selection:
@@ -115,8 +118,7 @@ class TrainValSplitNode(SolutionElement):
 
         return MoveLabeledDataFinishedMessage(
             success=True,
-            src=message.src,
-            dst=message.dst,
+            items=train_items + val_items,
             items_count=len(train_items) + len(val_items),
         )
 
