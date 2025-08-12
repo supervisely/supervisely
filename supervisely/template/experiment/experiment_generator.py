@@ -918,8 +918,6 @@ class ExperimentGenerator(BaseGenerator):
         project_version = self._get_project_version(project_info)
         project_type = project_info.type
         project_url = f"{self.api.server_address}/projects/{project_id}/datasets"
-        project_train_size = self.info.get("train_size", "N/A")
-        project_val_size = self.info.get("val_size", "N/A")
         model_classes = [cls.name for cls in self.model_meta.obj_classes]
         class_names = self._get_class_names(model_classes)
         splits = self._get_project_splits()
