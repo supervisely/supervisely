@@ -926,6 +926,7 @@ class ExperimentGenerator(BaseGenerator):
 
         project_context = {
             "id": project_id,
+            "workspace_id": project_info.workspace_id,
             "name": project_info.name if project_info else "Project was archived",
             "version": project_version,
             "url": project_url,
