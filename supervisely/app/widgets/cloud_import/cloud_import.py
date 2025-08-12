@@ -70,7 +70,7 @@ class CloudImport(Widget):
         self.tasks_history.table_columns = [
             "Task ID",
             "App Name",
-            "Dataset IDs",
+            "Dataset ID",
             "Created At",
             "Images Count",
             "Status",
@@ -79,7 +79,7 @@ class CloudImport(Widget):
             ["id"],
             ["meta", "app", "name"],
             ["dataset_ids"],
-            ["created_at"],
+            ["startedAt"],
             ["items_count"],
             ["status"],
         ]

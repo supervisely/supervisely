@@ -198,7 +198,16 @@ class TasksHistory(Widget):
         for col_keys in self.columns_keys:
             if not isinstance(col_keys, list):
                 col_keys = [col_keys]
-            res[col_keys[-1]] = self._get_task_item(col_keys, task, default="unknown")
+            if len(col_keys) == 1:
+                res[col_keys[0]] = self._get_task_item(col_keys, task, default="unknown")
+            else:
+                # If col_keys is a list, set value in a nested dictionary
+                current = res
+                for key in col_keys[:-1]:
+                    if key not in current:
+                        current[key] = {}
+                    current = current[key]
+                current[col_keys[-1]] = self._get_task_item(col_keys, task, default="unknown")
         return res
 
     # ------------------------------------------------------------------
