@@ -1,4 +1,4 @@
-from typing import List, Optional, Any
+from typing import Any, List, Optional
 from venv import logger
 
 from supervisely.api.api import Api
@@ -7,6 +7,8 @@ from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 
 class AutoImportTasksHistory(TasksHistory):
     """Tasks history widget specialised for Auto Import node."""
+
+    APP_SLUG = "supervisely-ecosystem/main-import"
 
     def __init__(
         self,
@@ -78,7 +80,7 @@ class AutoImportTasksHistory(TasksHistory):
             ds_ids = ", ".join(str(d["id"]) for d in datasets)
             status = history_item.get("status")
             if status == "started":
-                status = "ok"
+                status = "success"
             row = [
                 history_item.get("task_id"),
                 history_item.get("app", {}).get("name", ""),
