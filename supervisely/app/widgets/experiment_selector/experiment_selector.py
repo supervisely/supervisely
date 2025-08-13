@@ -454,14 +454,15 @@ class ExperimentSelector(Widget):
             filtered_experiments_idxs = set()
             if not frameworks and not task_types:
                 return data
-            if frameworks:
-                for idx, experiment_info in enumerate(self._experiment_infos):
-                    if experiment_info.framework_name in frameworks:
-                        filtered_experiments_idxs.add(idx)
-            if task_types:
-                for idx, experiment_info in enumerate(self._experiment_infos):
-                    if experiment_info.task_type in task_types:
-                        filtered_experiments_idxs.add(idx)
+
+            for idx, experiment_info in enumerate(self._experiment_infos):
+                should_add = True
+                if frameworks and experiment_info.framework_name not in frameworks:
+                    should_add = False
+                if task_types and experiment_info.task_type not in task_types:
+                    should_add = False
+                if should_add:
+                    filtered_experiments_idxs.add(idx)
 
             filtered_data = data.iloc[sorted(filtered_experiments_idxs)]
             filtered_data.reset_index(inplace=True, drop=True)

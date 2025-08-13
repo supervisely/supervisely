@@ -12,17 +12,15 @@ from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
-from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_selector import (
-    DropdownCheckboxSelector,
-)
-from supervisely.app.widgets.editor.editor import Editor
 from supervisely.app.widgets.experiment_selector.experiment_selector import (
     ExperimentSelector,
 )
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
-from supervisely.app.widgets.select.select import Select
+from supervisely.app.widgets.pretrained_model_selector2.pretrained_model_selector2 import (
+    PretrainedModelSelector2,
+)
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -165,124 +163,27 @@ class DeployModel(Widget):
             self.deploy_model = deploy_model
             self._model_api = None
             self._last_selected_framework = None
-            self._load_models()
             self._layout = self._create_layout()
-            self._update_pretrained_models()
 
         @property
         def layout(self) -> FastTable:
             return self._layout
 
         def _create_layout(self) -> Container:
-            self.inference_settings_editor = Editor(language_mode="yaml", height_lines=10)
-            self.inference_settings_editor_field = Field(
-                content=self.inference_settings_editor, title="Inference Settings"
-            )
-            self.framework_filter = DropdownCheckboxSelector(items=[])
-            self.framework_filter_container = Container(
-                widgets=[self.framework_filter],
-                # widgets_style="border-width: 1px;"
-            )
-            self.pretrained_table = FastTable(
-                columns=self.COLUMNS,
-                page_size=10,
-                is_radio=True,
-                header_right_content=self.framework_filter_container,
-            )
-            self.pretrained_table.set_filter(self._filter_function)
-
-            @self.framework_filter.value_changed
-            def on_framework_filter_changed(selected_items: List[DropdownCheckboxSelector.Item]):
-                selected_items = [item.id for item in selected_items]
-                self.pretrained_table.filter(selected_items)
-
-            return self.pretrained_table
-
-        def _filter_function(self, data: pd.DataFrame, filter_value: List[str]) -> pd.DataFrame:
-            if not filter_value:
-                return data
-
-            filtered_data = data[data.iloc[:, 0].isin(filter_value)]
-            return filtered_data
-
-        def _load_models(self):
-            try:
-                models = self.api.nn.models_api.list_models()
-            except:
-                logger.error("Failed to load pretrained models from API.")
-                models = []
-            for model in models:
-                self._cache.setdefault("pretrained_models", {}).setdefault(
-                    model["framework"], []
-                ).append(model)
-
-        def _list_pretrained_models(self, framework: str):
-            models = self._cache.setdefault("pretrained_models", {}).get(framework, [])
-            return models
-
-        def _map_from_model(self, model: Dict):
-            try:
-                return model.get("evaluation", {}).get("metrics", {}).get("mAP", "N/A")
-            except:
-                return "N/A"
-
-        def _update_pretrained_models(self) -> None:
-            self.pretrained_table.loading = True
-            try:
-                self.pretrained_table.clear()
-                models_data = []
-                frameworks = self.deploy_model.get_frameworks()
-                for framework in frameworks:
-                    try:
-                        framework_models = self._list_pretrained_models(framework)
-                        models_data.extend(
-                            [{"framework": framework, "model": model} for model in framework_models]
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to load pretrained models for framework '{framework}': {e}",
-                            exc_info=True,
-                        )
-                data = [
-                    {
-                        self.COLUMN.FRAMEWORK: model_data["framework"],
-                        self.COLUMN.MODEL_NAME: model_data["model"]["name"],
-                        self.COLUMN.TASK_TYPE: model_data["model"]["task"],
-                        self.COLUMN.PARAMETERS: model_data["model"].get("paramsM", "N/A"),
-                        self.COLUMN.MAP: self._map_from_model(model_data["model"]),
-                    }
-                    for model_data in models_data
-                ]
-                df = pd.DataFrame.from_records(data=data, columns=self.COLUMNS)
-                self.pretrained_table.read_pandas(df)
-                unique_frameworks = df[self.COLUMN.FRAMEWORK].unique().tolist()
-                self.framework_filter.set(
-                    [DropdownCheckboxSelector.Item(framework) for framework in unique_frameworks]
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed to load pretrained models: {e}",
-                    exc_info=True,
-                )
-            finally:
-                self.pretrained_table.loading = False
+            self.model_selector = PretrainedModelSelector2(api=self.api)
+            return self.model_selector
 
         def get_deploy_parameters(self) -> Dict[str, Any]:
-            selected_row = self.pretrained_table.get_selected_row()
+            selected_model = self.model_selector.get_selected()
             return {
-                "framework": selected_row.row[self.COLUMNS.index(str(self.COLUMN.FRAMEWORK))],
-                "model_name": selected_row.row[self.COLUMNS.index(str(self.COLUMN.MODEL_NAME))],
+                "framework": selected_model["framework"],
+                "model_name": selected_model["name"],
             }
 
         def load_from_json(self, data: Dict[str, Any]) -> None:
             framework = data["framework"]
             model_name = data["model_name"]
-            idxs = []
-            for idx, row in enumerate(self.pretrained_table._parsed_source_data["data"]):
-                row_data = row.get("row", row.get("items", []))
-                if row_data[0] == framework and row_data[1] == model_name:
-                    idxs.append(idx)
-            self.pretrained_table.select_rows(idxs)
+            self.model_selector.select_framework_and_model_name(framework, model_name)
 
         def deploy(self, agent_id: int = None) -> ModelAPI:
             deploy_parameters = self.get_deploy_parameters()
