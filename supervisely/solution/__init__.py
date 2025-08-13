@@ -8,6 +8,8 @@ from supervisely.solution.components.labeling_performance.node import LabelingQu
 from supervisely.solution.components.move_labeled.node import MoveLabeledNode
 from supervisely.solution.components.project.node import ProjectNode
 from supervisely.solution.components.smart_sampling.node import SmartSamplingNode
+from supervisely.solution.components.smart_sampling.ai_index import AiIndexNode
+from supervisely.solution.components.smart_sampling.clip_service import OpenAIClipServiceNode
 from supervisely.solution.components.train_val_split.node import TrainValSplitNode
 from supervisely.solution.engine.events import PubSubAsync, on_event, publish_event
 

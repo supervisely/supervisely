@@ -73,3 +73,9 @@ class LabelingQueueAcceptedImagesMessage(Message):
     accepted_images: List[int] = Field(
         ..., description="List of image IDs that have been accepted in the labeling queue"
     )
+
+
+class EmbeddingsStatusMessage(Message):
+    """Embeddings status event message."""
+
+    status: bool = Field(..., description="Indicates if embeddings are enabled and up to date")
