@@ -191,6 +191,7 @@ api = sly.Api()
 model = api.nn.deploy(
     model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
     device="cuda:0", # or "cpu"
+    workspace_id={{ experiment.project.workspace_id }}
 )
 ```
 
@@ -208,6 +209,7 @@ api = sly.Api()
 model = api.nn.deploy(
     model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name }}",
     device="cuda:0", # or "cpu"
+    workspace_id={{ experiment.project.workspace_id }}
 )
 ```
 
@@ -226,6 +228,7 @@ api = sly.Api()
 model = api.nn.deploy(
     model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.tensorrt.name }}",
     device="cuda:0", # or "cpu"
+    workspace_id={{ experiment.project.workspace_id }}
 )
 ```
 
@@ -360,7 +363,7 @@ Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tr
 You can deploy the model in a 🐋 Docker Container with a single `docker run` command. Download a checkpoint, pull the
 docker image for the corresponding model's framework, and run the `docker run` command with addtional arguments.
 
-1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
+1. Download training artifacts from Supervisely ([Open in Team Files]({{ experiment.paths.artifacts_dir.url }}){:target="_blank"})
 
 2. Pull the Docker image
 
