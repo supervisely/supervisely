@@ -61,15 +61,18 @@ class AiIndexNode(EmptyNode):
                 and self._check_embeddings_updated_at()
             )
             if not is_ready:
-                logger.info(f"Embeddings are not ready for project {self.project_id}.")
                 self.start_autorefresh()
         except Exception as e:
             logger.error(f"Error checking AI Index status: {repr(e)}")
         finally:
             self.send_embeddings_status_message(is_ready)
 
-    def send_embeddings_status_message(self, status) -> EmbeddingsStatusMessage:
-        return EmbeddingsStatusMessage(status=status)
+    def send_embeddings_status_message(self, is_ready: bool) -> EmbeddingsStatusMessage:
+        if is_ready:
+            self.node.update_badge_by_key(key="On", label="⚡", plain=True)
+        else:
+            self.node.remove_badge_by_key(key="On")
+        return EmbeddingsStatusMessage(status=is_ready)
 
     # ------------------------------------------------------------------
     # Private methods --------------------------------------------------
@@ -96,6 +99,7 @@ class AiIndexNode(EmptyNode):
             logger.info(f"Embeddings are not up to date for project {self.project_id}. Updating...")
             self.api.project.calculate_embeddings(self.project_id)
             return False
+        logger.info(f"Embeddings are up to date for project {self.project_id}.")
         return True
 
     def _is_embeddings_in_progress(self):
@@ -112,7 +116,7 @@ class AiIndexNode(EmptyNode):
         """
         try:
             is_ready = self.check_embeddings_status()
-            if is_ready:
+            if is_ready:  # send message only if embeddings are ready
                 self.stop_autorefresh(wait=True)
                 self.send_embeddings_status_message(is_ready)
         except Exception as e:
