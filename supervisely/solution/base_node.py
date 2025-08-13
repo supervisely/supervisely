@@ -111,6 +111,7 @@ class SolutionElement(Widget, EventMixin):
         icon: Optional[str] = None,  # e.g., "zmdi zmdi-flash-auto"
         icon_color: Optional[str] = None,
         icon_bg_color: Optional[str] = None,
+        tooltip_position: Literal["left", "right"] = "left",
     ) -> SolutionCard:
         if buttons is None:
             buttons = []
@@ -133,6 +134,7 @@ class SolutionElement(Widget, EventMixin):
             width=width,
             link=link,
             icon=icon,
+            tooltip_position=tooltip_position,
         )
 
     # ------------------------------------------------------------------
