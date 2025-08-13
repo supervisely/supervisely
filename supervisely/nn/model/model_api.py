@@ -261,6 +261,8 @@ class ModelAPI:
     ) -> List[Prediction]:
         if "show_progress" not in kwargs:
             kwargs["show_progress"] = True
+        # add additional check for input type (video/video_id)
+        # if tracking is None - auto-detect from input type and support tracking
         if tracking is True:
             if tracking_settings is None:
                 tracker = "botsort"

@@ -73,6 +73,7 @@ class BotSortTracker(BaseTracker):
         # Store tracks for VideoAnnotation creation
         self.frame_tracks.append(tracks)
         self.current_frame += 1
+        # tracks = [{"label": label, "track_id": track_id}]
         return tracks
     
     def reset(self):

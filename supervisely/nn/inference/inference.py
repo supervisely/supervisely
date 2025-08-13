@@ -1868,6 +1868,7 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
+            # do tracking and add custom_data
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
