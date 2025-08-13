@@ -640,7 +640,7 @@ class SmartSamplingGUI(Widget):
             return new_sampled_images
 
         except Exception as e:
-            logger.error(f"Error during sampling: {e}")
+            logger.error(f"Error during sampling: {repr(e)}")
 
     def _copy_to_new_project(
         self,

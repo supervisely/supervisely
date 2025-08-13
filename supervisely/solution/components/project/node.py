@@ -174,7 +174,7 @@ class ProjectNode(SolutionElement):
                     val_collections.append(collection_info.id)
 
             if not train_collections and not val_collections:
-                logger.warning("No training or validation collections found in the project.")
+                logger.debug("No training or validation collections found in the project.")
 
         return train_collections, val_collections
 

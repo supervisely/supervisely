@@ -131,10 +131,10 @@ class SmartSamplingNode(SolutionElement):
         self.gui.update_widgets(diff, sampling_settings)
 
         if diff == 0:
-            self.card.remove_badge_by_key("Difference:")
+            self.card.remove_badge_by_key("New Data:")
         else:
-            self.card.update_badge_by_key("Difference:", str(diff), "info")
-        self.card.update_property("Difference:", str(diff))
+            self.card.update_badge_by_key("New Data:", str(diff), "info")
+        self.card.update_property("New Data:", str(diff))
 
         mode = sampling_settings.get("mode", SamplingMode.RANDOM.value)
         self.card.update_property("mode", mode)

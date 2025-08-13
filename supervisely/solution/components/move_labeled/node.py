@@ -136,6 +136,10 @@ class MoveLabeledNode(SolutionElement):
             logger.error(f"Not all images were moved. Expected {len(images)}, but got {len(res)}.")
             success = False
 
+        if success:
+            logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
+            self._images_to_move = []
+
         return MoveLabeledDataFinishedMessage(success=success, items=res, items_count=len(res))
 
     # subscribe event (may receive Message object)
@@ -186,6 +190,12 @@ class MoveLabeledNode(SolutionElement):
         dst = self.dst_project_id
         images = self._images_to_move
         if not images:
+            return
+
+        min_batch_size = self.automation.automate_min_batch_input.get_value()
+        use_min_batch = self.automation.automate_min_batch.is_checked()
+        if use_min_batch and len(images) < min_batch_size:
+            logger.warning(f"Not enough images to move. {min_batch_size} < {len(images)}")
             return
 
         self.node.show_in_progress_badge()
