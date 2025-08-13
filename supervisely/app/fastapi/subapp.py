@@ -1294,11 +1294,11 @@ def restore_data_state(task_id: Optional[int] = None):
         raise ValueError(f"Task with ID {task_id} not found.")
 
     if not task_info.get("settings"):
-        logger.warning(f"Task Info (ID: {task_id}) has no settings field.")
+        logger.debug(f"Task Info (ID: {task_id}) has no settings field.")
         return
 
     if not task_info["settings"].get("customData"):
-        logger.warning(f"Task Info (ID: {task_id}) has no customData field in settings. ")
+        logger.debug(f"Task Info (ID: {task_id}) has no customData field in settings. ")
         return
 
     old_data = task_info["settings"]["customData"].get(Field.DATA.value)
