@@ -116,7 +116,7 @@ class ProjectInfo(NamedTuple):
 
     @property
     def url(self):
-        res = f"projects/{self.id}/datasets"
+        res = f"/projects/{self.id}/datasets"
         if is_development():
             res = abs_url(res)
         return res
@@ -2300,6 +2300,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 f"Project with ID {id} does not have 'embeddings_in_progress' field in its info."
             )
         return info.embeddings_in_progress
+
 
     def set_embeddings_updated_at(
         self, id: int, timestamp: Optional[str] = None, silent: bool = True
