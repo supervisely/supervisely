@@ -363,7 +363,6 @@ class Preview:
             overflow="wrap",
             fractions=[3, 7],
             gap=40,
-            # widgets_style="width: -webkit-fill-available;",
         )
         self.card = Card(title="Preview", content=self.flexbox)
 
@@ -435,10 +434,11 @@ class Preview:
                 images = self.gui.api.image.get_list(dataset_info.id)
                 image_info = random.choice(images)
                 img_url = image_info.preview_url
-                # for testing
-                self.gui.api.image.download_path(image_info.id, self._preview_path)
-                img_url = self._peview_url
-                ##
+
+                # @TODO: check infinite preview loading
+                # self.gui.api.image.download_path(image_info.id, self._preview_path)
+                # img_url = self._peview_url
+
                 project_meta = ProjectMeta.from_json(
                     self.gui.api.project.get_meta(dataset_info.project_id)
                 )

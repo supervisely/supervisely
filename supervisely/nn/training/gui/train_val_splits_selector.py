@@ -271,6 +271,7 @@ class TrainValSplitsSelector:
                 return False
             if len(empty_train_collections) > 0 or len(empty_val_collections) > 0:
                 empty_collections_text = "Selected collections are empty. "
+                # @TODO: Use collection names instead of ids
                 if len(empty_train_collections) > 0:
                     empty_collections_text += f"train: {', '.join([str(collection_id) for collection_id in empty_train_collections])}. "
                 if len(empty_val_collections) > 0:

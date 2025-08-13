@@ -512,7 +512,7 @@ class FastTable(Widget):
             rows = []
             for row in selected_rows:
                 row_index = row["idx"]
-                row_data = row["row"]
+                row_data = row.get("row", row.get("items", None))
                 if row_index is None or row_data is None:
                     continue
                 rows.append(self.ClickedRow(row_data, row_index))

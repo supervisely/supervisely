@@ -144,13 +144,13 @@ class ServingGUITemplate(ServingGUI):
 
         if self.runtime_select is not None:
             self.runtime_select.value_changed(lambda _: self._update_export_message())
-        # TODO: fix.
+
         if self.experiment_selector is not None:
             self.experiment_selector.selection_changed(lambda _: self._update_export_message())
             self.experiment_selector.checkpoint_changed(
                 lambda row, _: self._update_export_message()
             )
-            # Update export message when checkpoints are changed
+
         if self.pretrained_models_table is not None:
             self.pretrained_models_table.model_changed(lambda _: self._update_export_message())
 

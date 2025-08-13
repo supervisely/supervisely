@@ -4668,8 +4668,8 @@ def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
 
 def torch_load_safe(checkpoint_path: str, device:str = "cpu"):
     import torch # pylint: disable=import-error
-    if torch.__version__ >= "2.6.0":
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    else:
+    try:
         checkpoint = torch.load(checkpoint_path, map_location=device)
+    except:
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     return checkpoint
