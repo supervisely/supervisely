@@ -212,10 +212,7 @@ class ModelAPI:
         **kwargs,
     ) -> PredictionSession:
         if tracking is True:
-            model_info = self.session.get_session_info()
-            if not model_info.get("tracking_on_videos_support", False):
-                raise ValueError("Tracking is not supported by this model")
-            
+
             if tracking_settings is None:
                 tracker = "botsort"
                 tracker_settings_dict = {}
@@ -265,10 +262,6 @@ class ModelAPI:
         if "show_progress" not in kwargs:
             kwargs["show_progress"] = True
         if tracking is True:
-            model_info = self.session.get_session_info()
-            if not model_info.get("tracking_on_videos_support", False):
-                raise ValueError("Tracking is not supported by this model")
-            
             if tracking_settings is None:
                 tracker = "botsort"
                 tracker_settings_dict = {}

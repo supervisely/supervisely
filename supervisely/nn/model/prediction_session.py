@@ -69,7 +69,9 @@ class PredictionSession:
         api: "Api" = None,
         tracking: bool = None,
         **kwargs: dict,
-    ):
+    ):  
+        
+            
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
             sum(
@@ -88,6 +90,7 @@ class PredictionSession:
             == 1
         ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
 
+        self.tracking = tracking if tracking is not None else False
         self._iterator = None
         self._base_url = url
         self.inference_request_uuid = None
@@ -215,6 +218,12 @@ class PredictionSession:
             raise ValueError(
                 "Unknown input type. Supported types are: numpy array, path to a file or directory, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo."
             )
+         
+        model_info = self._get_session_info()
+        if not model_info.get("tracking_on_videos_support", False) and self.tracking:
+            raise ValueError("Tracking is not supported by this model")
+
+            
 
     def _set_var_from_kwargs(self, key, kwargs, default):
         value = kwargs.get(key, default)
@@ -261,6 +270,7 @@ class PredictionSession:
             return self.api.token
         return env.api_token(raise_not_found=False)
 
+    
     def _get_json_body(self):
         body = {"state": {}, "context": {}}
         if self.inference_request_uuid is not None:
@@ -270,7 +280,7 @@ class PredictionSession:
         if self.api_token is not None:
             body["api_token"] = self.api_token
         return body
-
+    
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
         if kwargs.get("headers") is None:
             kwargs["headers"] = {}
@@ -304,6 +314,11 @@ class PredictionSession:
                 if retry_idx + 1 == retries:
                     raise exc
 
+    def _get_session_info(self) -> Dict[str, Any]:
+        method = "get_session_info"
+        r = self._post(method, json=self._get_json_body())
+        return r.json()
+    
     def _get_inference_progress(self):
         method = "get_inference_progress"
         r = self._post(method, json=self._get_json_body())
