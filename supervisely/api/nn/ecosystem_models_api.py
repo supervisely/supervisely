@@ -24,7 +24,7 @@ class ModelApiField:
     EVALUATION = "evaluation"
 
 
-class ModelsApi(ModuleApi):
+class EcosystemModelsApi(ModuleApi):
 
     def __init__(self, api: Api):
         self._api = api

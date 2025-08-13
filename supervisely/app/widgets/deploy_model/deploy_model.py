@@ -18,8 +18,8 @@ from supervisely.app.widgets.experiment_selector.experiment_selector import (
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
-from supervisely.app.widgets.pretrained_model_selector2.pretrained_model_selector2 import (
-    PretrainedModelSelector2,
+from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
+    EcosystemModelSelector,
 )
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
@@ -170,7 +170,7 @@ class DeployModel(Widget):
             return self._layout
 
         def _create_layout(self) -> Container:
-            self.model_selector = PretrainedModelSelector2(api=self.api)
+            self.model_selector = EcosystemModelSelector(api=self.api)
             return self.model_selector
 
         def get_deploy_parameters(self) -> Dict[str, Any]:

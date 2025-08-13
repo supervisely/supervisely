@@ -388,9 +388,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             ApiField.GROUP_ID,
             ApiField.CREATED_BY_ID[0][0],
         ]
-        
+
         if fields:
-            merged_fields = default_fields + fields
+            merged_fields = list(set(default_fields + fields))
             fields = list(dict.fromkeys(merged_fields))
 
         data = {

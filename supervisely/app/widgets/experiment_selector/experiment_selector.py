@@ -191,7 +191,6 @@ class ExperimentSelector(Widget):
 
         def _create_task_link(self) -> str:
             remote_path = os.path.join(self._task_path, "open_app.lnk")
-            # TODO: remove temp logs
             task_file = self._api.file.get_info_by_path(self._team_id, remote_path)
             if task_file is not None:
                 if is_development():

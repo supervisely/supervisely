@@ -731,13 +731,15 @@ class Api:
         :param method:
         :type method: str
         :param params: Dictionary to send in the body of the :class:`Request`.
-        :type method: dict
+        :type params: dict
         :param retries: The number of attempts to connect to the server.
-        :type method: int, optional
+        :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
-        :type method: bool, optional
+        :type stream: bool, optional
         :param use_public_api:
-        :type method: bool, optional
+        :type use_public_api: bool, optional
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """

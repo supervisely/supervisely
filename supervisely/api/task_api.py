@@ -1029,6 +1029,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                 'hyperparameters_id': 45234,
                 'artifacts_dir': '/experiments/76_Lemons/247_RT-DETRv2/',
                 'datetime': '2025-01-22 18:13:43',
+                'experiment_report_id': 87654,
                 'evaluation_report_id': 12961,
                 'evaluation_report_link': 'https://app.supervisely.com/model-benchmark?id=12961',
                 'evaluation_metrics': {

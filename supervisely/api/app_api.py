@@ -1405,7 +1405,28 @@ class AppApi(TaskApi):
         log_progress=True,
         ext_logger=None,
     ):
-        """download_git_file"""
+        """
+        Download a file from app repository. File should be added in the app config under `files` key.
+
+        :param module_id: ID of the module
+        :type module_id: int
+        :param save_path: Path to save the file
+        :type save_path: str
+        :param app_id: ID of the app
+        :type app_id: int
+        :param version: Version of the app
+        :type version: str
+        :param file_path: Path to the file in the app github repository
+        :type file_path: str
+        :param file_key: Key of the file in the app github repository
+        :type file_key: str
+        :param log_progress: If True, will log the progress of the download
+        :type log_progress: bool
+        :param ext_logger: Logger to use for logging
+        :type ext_logger: Logger
+        :return: None
+        :rtype: None
+        """
         if file_path is None and file_key is None:
             raise ValueError("Either file_path or file_key must be provided")
         payload = {

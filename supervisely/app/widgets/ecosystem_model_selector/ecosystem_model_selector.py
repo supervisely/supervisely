@@ -13,7 +13,7 @@ from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_select
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 
 
-class PretrainedModelSelector2(Widget):
+class EcosystemModelSelector(Widget):
     class COLUMN:
         MODEL_NAME = "name"
         FRAMEWORK = "framework"
@@ -99,7 +99,7 @@ class PretrainedModelSelector2(Widget):
         self.frameworks = frameworks
         self.task_types = task_types
         if models is None:
-            models = self.api.nn.models_api.list_models()
+            models = self.api.nn.ecosystem_models_api.list_models()
         self.models = models
         self.models = self._filter_models(self.models, self.frameworks, self.task_types)
 
