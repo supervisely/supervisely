@@ -3,7 +3,8 @@ from supervisely.solution.components.cloud_import.node import CloudImportNode
 from supervisely.solution.components.empty.node import EmptyNode
 from supervisely.solution.components.labeling_queue.node import LabelingQueueNode
 
-# from supervisely.solution.components.link_node import LinkNode
+from supervisely.solution.components.link_node.node import LinkNode
+from supervisely.solution.components.labeling_performance.node import LabelingQueuePerformanceNode
 from supervisely.solution.components.move_labeled.node import MoveLabeledNode
 from supervisely.solution.components.project.node import ProjectNode
 from supervisely.solution.components.smart_sampling.node import SmartSamplingNode
