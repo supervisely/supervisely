@@ -23,12 +23,14 @@ class TrackedObject:
         det_id: Detection ID for mapping back to original annotation
         bbox: Bounding box coordinates in format [x1, y1, x2, y2]
         class_name: String class name
+        class_sly_id: Supervisely class ID (from ObjClass.sly_id)
         score: Confidence score of the detection/track
     """
     track_id: int
     det_id: int
     bbox: List[float]  # [x1, y1, x2, y2]
     class_name: str
+    class_sly_id: Optional[int]  # Supervisely class ID
     score: float
 
 
@@ -172,17 +174,24 @@ class BotSortTracker(BaseTracker):
             
             class_name = id_to_name.get(class_id, "unknown")
             
+            # Get Supervisely class ID from stored ObjClass
+            class_sly_id = None
+            if class_name in self.obj_classes:
+                obj_class = self.obj_classes[class_name]
+                class_sly_id = obj_class.sly_id
+            
             track = TrackedObject(
                 track_id=strack.track_id,
                 det_id=track_id_to_det_id.get(strack.track_id),
                 bbox=strack.tlbr.tolist(),  # [x1, y1, x2, y2]
                 class_name=class_name,
+                class_sly_id=class_sly_id,
                 score=getattr(strack, 'score', 1.0)
             )
             tracks.append(track)
         
         return tracks
-    
+        
     def _update_obj_classes(self, annotation: Annotation):
         """Extract and store object classes from annotation."""
         for label in annotation.labels:
