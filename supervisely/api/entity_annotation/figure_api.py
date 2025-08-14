@@ -867,7 +867,7 @@ class FigureApi(RemoveableBulkModuleApi):
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
 
-        async def _get_page_figures(page_data, semaphore):
+        async def _get_page_figures(page_data, semaphore, progress_cb: tqdm = None):
             """Helper function to get figures from a single page"""
             async with semaphore:
                 response = await self._api.post_async("figures.list", page_data)
@@ -877,9 +877,12 @@ class FigureApi(RemoveableBulkModuleApi):
                 for info in response_json["entities"]:
                     figure_info = self._convert_json_info(info, True)
                     page_figures.append(figure_info)
+                    if progress_cb is not None:
+                        progress_cb.total += 1
+                        progress_cb.update(1)
                 return page_figures
 
-        async def _get_all_pages(ids_filter):
+        async def _get_all_pages(ids_filter, progress_cb: tqdm = None):
             """Internal function to process all pages for given filter"""
             data = base_data.copy()
             data[ApiField.FILTER] = ids_filter
@@ -897,6 +900,9 @@ class FigureApi(RemoveableBulkModuleApi):
             for info in response_json["entities"]:
                 figure_info = self._convert_json_info(info, True)
                 all_figures.append(figure_info)
+                if progress_cb is not None:
+                    progress_cb.total += 1
+                    progress_cb.update(1)
 
             # Process remaining pages in parallel if needed
             if pages_count > 1:
@@ -904,7 +910,11 @@ class FigureApi(RemoveableBulkModuleApi):
                 for page in range(2, pages_count + 1):
                     page_data = data.copy()
                     page_data[ApiField.PAGE] = page
-                    tasks.append(asyncio.create_task(_get_page_figures(page_data, semaphore)))
+                    tasks.append(
+                        asyncio.create_task(
+                            _get_page_figures(page_data, semaphore, progress_cb=progress_cb)
+                        )
+                    )
 
                 if tasks:
                     page_results = await asyncio.gather(*tasks)
@@ -913,13 +923,18 @@ class FigureApi(RemoveableBulkModuleApi):
 
             return all_figures
 
+        if log_progress:
+            progress_cb = tqdm(desc="Downloading figures", unit="figure", total=0)
+        else:
+            progress_cb = None
+
         # Strategy: batch processing based on image_ids
         tasks = []
 
         if image_ids is None:
             # Single task for all figures in dataset
             filters = []
-            tasks.append(_get_all_pages(filters))
+            tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
         else:
             # Batch image_ids and create tasks for each batch
             for batch_ids in batched(image_ids, batch_size):
@@ -930,7 +945,7 @@ class FigureApi(RemoveableBulkModuleApi):
                         ApiField.VALUE: list(batch_ids),
                     }
                 ]
-                tasks.append(_get_all_pages(filters))
+                tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
                 # Small delay between batches to reduce server load
                 await asyncio.sleep(0.02)
 
@@ -940,16 +955,9 @@ class FigureApi(RemoveableBulkModuleApi):
         # Combine results from all batches
         images_figures = defaultdict(list)
 
-        if log_progress:
-            # Calculate total figures from all batches
-            total_figures = sum(len(batch_figures) for batch_figures in all_results)
-            progress_cb = tqdm(total=total_figures, desc="Downloading figures")
-
         for batch_figures in all_results:
             for figure in batch_figures:
                 images_figures[figure.entity_id].append(figure)
-                if log_progress:
-                    progress_cb.update(1)
 
         return dict(images_figures)
 
