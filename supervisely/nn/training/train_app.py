@@ -239,19 +239,32 @@ class TrainApp:
                 self.gui.training_process.start_button.loading = False
                 raise e
 
-        # # Get training status
-        # @self._server.post("/train_status")
-        # def _train_status(response: Response, request: Request):
-        #     """Returns the current training status."""
-        #     status = self.gui.training_process.validator_text.get_value()
-        #     if status == "Training is in progress...":
-        #         try:
-        #             total_epochs = self.progress_bar_main.total
-        #             current_epoch = self.progress_bar_main.current
-        #             status += f" (Epoch {current_epoch}/{total_epochs})"
-        #         except Exception:
-        #             pass
-        #     return {"status": status}
+        @self._server.post("/train_status")
+        def _train_status(response: Response, request: Request):
+            """Returns the current training status."""
+            status = self.gui.training_process.validator_text.get_value()
+            if status == "Training is in progress...":
+                try:
+                    total_epochs = self.progress_bar_main.total
+                    current_epoch = self.progress_bar_main.current
+                    status += f" (Epoch {current_epoch}/{total_epochs})"
+                except Exception:
+                    pass
+            return {"status": status}
+
+        # Read GUI State when launched from experiment modal
+        state = self.gui._extract_state_from_env()
+        logger.debug(f"State: {state}")
+        gui_state_raw = state.get("guiState")
+        if gui_state_raw is not None:
+            logger.info("Loading GUI from state")
+            logger.debug(f"GUI State: {gui_state_raw}")
+            try:
+                self.gui.load_from_app_state(gui_state_raw)
+                logger.info("Successfully loaded GUI from state")
+            except Exception as e:
+                raise e
+        # ----------------------------------------- #
 
     def _register_routes(self):
         """

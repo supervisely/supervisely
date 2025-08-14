@@ -1211,5 +1211,29 @@ class TrainGUI:
             self.hyperparameters_selector.set_hyperparameters(hparams)
             if train_mode == "continue":
                 self._init_model(model_settings, {}, click_cb=False, validate=False)
+    # ----------------------------------------- #
 
+    def _extract_state_from_env(self):
+        import ast
+        import os
+
+        base = "modal.state"
+        state = {}
+        for key, value in os.environ.items():
+            state_part = state
+            if key.startswith(base):
+                key = key.replace(base + ".", "")
+                parts = key.split(".")
+                while len(parts) > 1:
+                    part = parts.pop(0)
+                    state_part.setdefault(part, {})
+                    state_part = state_part[part]
+                part = parts.pop(0)
+                if value and (value[0] == "[" or value.isdigit()):
+                    state_part[part] = ast.literal_eval(value)
+                elif value in ["True", "true", "False", "false"]:
+                    state_part[part] = value in ["True", "true"]
+                else:
+                    state_part[part] = value
+        return state
     # ----------------------------------------- #
