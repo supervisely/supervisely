@@ -4669,7 +4669,15 @@ def torch_load_safe(checkpoint_path: str, device:str = "cpu"):
     import torch  # pylint: disable=import-error
 
     try:
+        logger.debug(f"Loading checkpoint from {checkpoint_path} on {device}")
         checkpoint = torch.load(checkpoint_path, map_location=device)
+        logger.debug(f"Checkpoint loaded from {checkpoint_path} on {device}")
     except:
+        logger.debug(
+            f"Failed to load checkpoint from {checkpoint_path} on {device}. Trying again with weights_only=False"
+        )
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+        logger.debug(
+            f"Checkpoint loaded from {checkpoint_path} on {device} with weights_only=False"
+        )
     return checkpoint
