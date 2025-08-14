@@ -82,6 +82,7 @@ class Prediction:
         self._masks = None
         self._classes = None
         self._scores = None
+        self._track_ids = []
 
         if self.path is None and isinstance(self.source, (str, PathLike)):
             self.path = str(self.source)
