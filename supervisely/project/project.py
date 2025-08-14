@@ -3333,7 +3333,6 @@ class Project:
 
         return train_items, val_items
 
-
     @staticmethod
     def download(
         api: Api,
@@ -3434,7 +3433,6 @@ class Project:
         log_progress: Optional[bool] = True,
         progress_cb: Optional[Callable] = None,
         return_bytesio: Optional[bool] = False,
-        volumes: Optional[List[int]] = None
     ) -> Union[str, io.BytesIO]:
         """
         Download project to the local directory in binary format. Faster than downloading project in the usual way.
@@ -3537,13 +3535,7 @@ class Project:
         if dataset_infos != [] and ds_progress is not None:
             ds_progress.close()
 
-        #volumes_data=None
-        if volumes is not None:
-            volumes_data=[]
-            for volume in volumes:
-                volume_info = api.volume.get_info_by_id(volume)
-                volumes_data.append(volume_info)
-        data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries, volumes_data)
+        data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
         file = (
             io.BytesIO()
             if return_bytesio

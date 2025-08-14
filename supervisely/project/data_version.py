@@ -491,7 +491,7 @@ class DataVersion(ModuleApiBase):
             return None
         return latest
 
-    def _compress_and_upload(self, path: str, volumes: Optional[List[int]] = None) -> dict:
+    def _compress_and_upload(self, path: str) -> dict:
         """
         Save project in binary format in archive to the Team Files.
         Binary file name: version.bin
@@ -506,7 +506,7 @@ class DataVersion(ModuleApiBase):
         temp_dir = tempfile.mkdtemp()
 
         data = Project.download_bin(
-            self._api, self.project_info.id, batch_size=200, return_bytesio=True, volumes=volumes
+            self._api, self.project_info.id, batch_size=200, return_bytesio=True
         )
         data.seek(0)
         info = tarfile.TarInfo(name="version.bin")
