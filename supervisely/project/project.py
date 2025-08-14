@@ -3501,13 +3501,23 @@ class Project:
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
 
+        api_entity_map = {
+            str(sly.ProjectType.IMAGES): api.image,
+            str(sly.ProjectType.VOLUMES): api.volume,
+        }
+
+        api_entity = api_entity_map.get(project_info.type)
+        if api_entity is None:
+            raise NotImplementedError(f"Project type {project_info.type} is not supported yet.")
+        sly.logger.debug(f"Found supported entity API for the project type {project_info.type}")
+
         dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
 
         image_infos = []
         figures = {}
         alpha_geometries = {}
         for dataset_info in dataset_infos:
-            ds_image_infos = api.image.get_list(dataset_info.id)
+            ds_image_infos = api_entity.get_list(dataset_info.id)
             image_infos.extend(ds_image_infos)
 
             ds_progress = progress_cb
@@ -3519,7 +3529,7 @@ class Project:
 
             for batch in batched(ds_image_infos, batch_size):
                 image_ids = [image_info.id for image_info in batch]
-                ds_figures = api.image.figure.download(dataset_info.id, image_ids)
+                ds_figures = api_entity.figure.download(dataset_info.id, image_ids)
                 alpha_ids = [
                     figure.id
                     for figures in ds_figures.values()
@@ -3527,13 +3537,16 @@ class Project:
                     if figure.geometry_type == sly.AlphaMask.name()
                 ]
                 if len(alpha_ids) > 0:
-                    geometries_list = api.image.figure.download_geometries_batch(alpha_ids)
+                    geometries_list = api_entity.figure.download_geometries_batch(alpha_ids)
                     alpha_geometries.update(dict(zip(alpha_ids, geometries_list)))
                 figures.update(ds_figures)
                 if ds_progress is not None:
                     ds_progress(len(batch))
         if dataset_infos != [] and ds_progress is not None:
             ds_progress.close()
+
+        sly.logger.debug(f"Downloaded {len(dataset_infos)} datasets for project {project_info.name}.")
+
         data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
         file = (
             io.BytesIO()
@@ -3546,6 +3559,8 @@ class Project:
         else:
             with file as f:
                 pickle.dump(data, f)
+
+        sly.logger.debug(f"Finished downloading and preparing project {project_info.name}.")
 
         return file if return_bytesio else file.name
 

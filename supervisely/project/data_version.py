@@ -226,6 +226,10 @@ class DataVersion(ModuleApiBase):
         latest = self._get_latest_id()
         try:
             version_id, commit_token = self.reserve(project_info.id)
+            logger.debug(
+                f"Reserved version {version_id} with commit token "
+                f"{'*' * len(commit_token)} for project {project_info.name}."
+            )
         except Exception as e:
             logger.error(f"Failed to reserve version. Exception: {e}")
             return None
@@ -237,7 +241,7 @@ class DataVersion(ModuleApiBase):
                 "path": path,
                 "updated_at": project_info.updated_at,
                 "previous": latest,
-                "number": int(self.versions[str(latest)]["number"]) + 1 if latest else 1,
+                "number": (int(self.versions[str(latest)]["number"]) + 1 if latest else 1),
             }
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
@@ -508,9 +512,12 @@ class DataVersion(ModuleApiBase):
         data = Project.download_bin(
             self._api, self.project_info.id, batch_size=200, return_bytesio=True
         )
+        logger.debug("Downloaded project in binary format.")
+
         data.seek(0)
         info = tarfile.TarInfo(name="version.bin")
         info.size = len(data.getvalue())
+        logger.debug(f"Data size: {info.size / 1024} KB")
         chunk_size = 1024 * 1024 * 50  # 50 MiB
         tar_data = io.BytesIO()
 
@@ -528,7 +535,9 @@ class DataVersion(ModuleApiBase):
                 if not chunk:
                     break
                 zst.write(zstd.compress(chunk))
+        logger.debug(f"Will upload {zst_archive_path} to Team Files: {path}")
         file_info = self._api.file.upload(self.project_info.team_id, zst_archive_path, path)
+        logger.debug(f"Versioned file successfully uploaded. Size {file_info.sizeb} bytes")
         tar_data.close()
         remove_dir(temp_dir)
         return file_info
