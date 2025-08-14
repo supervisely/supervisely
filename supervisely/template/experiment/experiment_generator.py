@@ -831,9 +831,11 @@ class ExperimentGenerator(BaseGenerator):
         :returns: Predict app info
         :rtype: dict
         """
-        # @TODO: get from app list after release
-        predict_app_slug = "supervisely-ecosystem/apply-nn"
-        predict_app_module_id = self.api.app.get_ecosystem_module_id(predict_app_slug)
+        predict_app_slug = "b2db364195caccd9e94d63646b6edb8f/apply-neural-networks"
+        predict_app_module_id = 513
+        # @TODO: Uncomment before merge
+        # predict_app_slug = "supervisely-ecosystem/apply-nn"
+        # predict_app_module_id = self.api.app.get_ecosystem_module_id(predict_app_slug)
         predict_app = {"slug": predict_app_slug, "module_id": predict_app_module_id}
         return predict_app
 

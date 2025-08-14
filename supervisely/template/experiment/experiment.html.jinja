@@ -32,8 +32,23 @@ was performed.
 
 ## Training Plots
 
-Visualization of the training scalars logged during the experiment. For more details use the `logs` button in the
-header.
+Visualization of the training scalars logged during the experiment.
+
+{% if experiment.training.logs.path %}
+<div>
+    <sly-iw-launch-button
+        style=""
+        :disabled="false"
+        :autoRun="true"
+        :state="{ 'slyFolder': '{{ experiment.training.logs.path }}' }"
+        :moduleId="{{ resources.apps.log_viewer.module_id }}"
+        :proxyKeepUrl="true"
+        :openInNewWindow="true"
+        :command="command">
+        <span>Open Logs</span> <i class="zmdi zmdi-arrow-right-top" />
+    </sly-iw-launch-button>
+</div>
+{% endif %}
 
 <div class="training-plots">
     {{ widgets.training_plots | safe }}
@@ -104,13 +119,6 @@ The quick actions on this page, such as **Deploy**, **Predict**, or **Fine-tune*
 }}){:target="_blank"} - train a model in the Supervisely Platform.
 - [Predict App]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.predict.slug }}){:target="_blank"} -
 deploy your model and make predictions.
-
-**Legacy Apps:**
-
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_images.slug }}){:target="_blank"} -
-connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_videos.slug }}){:target="_blank"} -
-for predictions on video project or dataset.
 
 ## API Integration & Deployment
 

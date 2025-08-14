@@ -77,6 +77,7 @@
                 <h2>Training Info</h2>
                 <a href="{{ experiment.training.session.url }}" target="_blank">Session <i class="zmdi zmdi-arrow-right-top" /></a>
                 <!-- Launch Logs Button -->
+                {% if experiment.training.logs.path %}
                 <sly-iw-launch-button
                     style=""
                     :disabled="false"
@@ -88,6 +89,7 @@
                     :command="command">
                     <span>Logs</span> <i class="zmdi zmdi-arrow-right-top" />
                 </sly-iw-launch-button>
+                {% endif %}
             </div>
             <ul>
             <li><strong>Date:</strong> {{ experiment.date }}</li>
@@ -95,7 +97,7 @@
             <li><strong>Model:</strong> {{ experiment.model.name }}</li>
             {% if experiment.model.base_checkpoint.url and not experiment.model.base_checkpoint.path %}
             <!-- Pretrained Checkpoint -> download link-->
-            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }}</a></li>
+            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }} <i class="zmdi zmdi-download"></i></a></li>
             {% elif experiment.model.base_checkpoint.path %}
             <!-- Custom Checkpoint -> TeamFiles Link -->
             <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.path }}" target="_blank">{{ experiment.model.base_checkpoint.name }}</a></li>
