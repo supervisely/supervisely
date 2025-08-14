@@ -12,15 +12,15 @@ from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
+    EcosystemModelSelector,
+)
 from supervisely.app.widgets.experiment_selector.experiment_selector import (
     ExperimentSelector,
 )
 from supervisely.app.widgets.fast_table.fast_table import FastTable
 from supervisely.app.widgets.field.field import Field
 from supervisely.app.widgets.flexbox.flexbox import Flexbox
-from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
-    EcosystemModelSelector,
-)
 from supervisely.app.widgets.tabs.tabs import Tabs
 from supervisely.app.widgets.text.text import Text
 from supervisely.app.widgets.widget import Widget
@@ -250,7 +250,6 @@ class DeployModel(Widget):
             elif "train_task_id" in data:
                 task_id = data["train_task_id"]
                 self.experiment_table.set_selected_row_by_task_id(task_id)
-                self.experiment_table.search(str(task_id))
             else:
                 raise ValueError("Invalid data format for loading custom model.")
 

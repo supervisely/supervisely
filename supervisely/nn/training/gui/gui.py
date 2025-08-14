@@ -9,17 +9,17 @@ import os
 from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from supervisely import logger
-import supervisely.io.fs as sly_fs
 import supervisely.io.env as sly_env
+import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
-from supervisely import Api, ProjectMeta
+from supervisely import Api, ProjectMeta, logger
 from supervisely._utils import is_production
 from supervisely.app.widgets import Button, Card, Stepper, Widget
 from supervisely.geometry.bitmap import Bitmap
 from supervisely.geometry.graph import GraphNodes
 from supervisely.geometry.polygon import Polygon
 from supervisely.geometry.rectangle import Rectangle
+from supervisely.nn.experiments import ExperimentInfo
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.classes_selector import ClassesSelector
 from supervisely.nn.training.gui.hyperparameters_selector import HyperparametersSelector
@@ -32,7 +32,6 @@ from supervisely.nn.training.gui.training_logs import TrainingLogs
 from supervisely.nn.training.gui.training_process import TrainingProcess
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
 from supervisely.nn.utils import ModelSource, RuntimeType
-from supervisely.nn.experiments import ExperimentInfo
 
 
 class StepFlow:
@@ -958,7 +957,6 @@ class TrainGUI:
             self.model_selector.experiment_selector.set_selected_checkpoint_by_name(
                 model_settings["checkpoint"]
             )
-            self.model_selector.experiment_selector.search(str(model_settings["task_id"]))
 
         is_valid = True
         if validate:

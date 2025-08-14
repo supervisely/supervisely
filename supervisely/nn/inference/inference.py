@@ -19,11 +19,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
+import _pickle
 import numpy as np
 import requests
 import uvicorn
 import yaml
-import _pickle
 from fastapi import Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from requests.structures import CaseInsensitiveDict
@@ -4162,7 +4162,6 @@ class Inference:
                 row = self.gui.experiment_selector.get_selected_row_by_task_id(task_id)
                 if row is not None:
                     row.set_selected_checkpoint_by_name(best_ckpt)
-                    self.gui.experiment_selector.search(str(task_id))
 
         except Exception as e:
             logger.warning(f"Failed to set checkpoint from experiment info: {repr(e)}")
@@ -4667,7 +4666,8 @@ def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
     return None
 
 def torch_load_safe(checkpoint_path: str, device:str = "cpu"):
-    import torch # pylint: disable=import-error
+    import torch  # pylint: disable=import-error
+
     try:
         checkpoint = torch.load(checkpoint_path, map_location=device)
     except:

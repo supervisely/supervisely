@@ -1137,7 +1137,11 @@ class FastTable(Widget):
             {"idx": idx, "row": selected_row.get("items", selected_row.get("row", None))}
         ]
         StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
-        StateJson().send_changes()
+        page = idx // self._page_size + 1
+        if self._active_page != page:
+            self._active_page = page
+            StateJson()[self.widget_id]["page"] = self._active_page
+        self._refresh()
 
     def select_rows(self, idxs: List[int]):
         if not self._is_selectable:
