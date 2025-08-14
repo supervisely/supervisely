@@ -586,7 +586,8 @@ class SessionJSON:
     def _post(self, *args, retries=5, **kwargs) -> requests.Response:
         retries = min(self.api.retry_count, retries)
         url = kwargs.get("url") or args[0]
-        method = url[len(self._base_url) :]
+        method = tus
+        
         for retry_idx in range(retries):
             response = None
             try:

@@ -1868,19 +1868,24 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
+            
+            if self._tracker is not None:
+                updated_anns = []
+                for frame, ann in zip(frames, anns):
+                    tracks, matches = self._tracker.update(frame, ann)
+                    updated_ann = ann.clone(custom_data=matches)
+                    updated_anns.append(updated_ann)
+                anns = updated_anns
+                    
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
             ]
+            
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            if self._tracker is not None:
-                for i, (frame, ann) in enumerate(zip(frames, anns)):
-                    tracks = self._tracker.update(frame, ann)
-                    updated_ann = ann.clone(custom_data={"tracks": tracks})
-                    anns[i] = updated_ann
-                    predictions[i].annotation = updated_ann
+            
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
@@ -2107,6 +2112,14 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
+            
+            if self._tracker is not None:
+                updated_anns = []
+                for frame, ann in zip(frames, anns):
+                    tracks, matches = self._tracker.update(frame, ann)
+                    updated_ann = ann.clone(custom_data=matches)
+                    updated_anns.append(updated_ann)
+                anns = updated_anns
             predictions = [
                 Prediction(
                     ann,
@@ -2121,12 +2134,6 @@ class Inference:
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            if self._tracker is not None:
-                for i, (frame, ann) in enumerate(zip(frames, anns)):
-                    tracks = self._tracker.update(frame, ann)
-                    ann = ann.clone(custom_data={"tracks": tracks})
-                    anns[i] = ann
-                    predictions[i].annotation = ann
                     
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))

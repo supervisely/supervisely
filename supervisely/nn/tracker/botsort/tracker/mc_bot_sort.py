@@ -259,6 +259,14 @@ class BoTSORT(object):
         lost_stracks = []
         removed_stracks = []
 
+        # mapping detection to track - INITIALIZE det_id immediately
+        detection_track_map = []
+        for i in range(len(output_results)):
+            detection_track_map.append({
+                "det_id": i,  # Detection index - fill immediately
+                "track_id": None  # track_id remains None until track assignment
+            })
+
         if len(output_results):
             bboxes = output_results[:, :4]
             scores = output_results[:, 4]
@@ -271,6 +279,7 @@ class BoTSORT(object):
             scores = scores[lowest_inds]
             classes = classes[lowest_inds]
             features = output_results[lowest_inds]
+            low_inds_map = lowest_inds.nonzero()[0]  # Mapping to original indices
 
             # Find high threshold detections
             remain_inds = scores > self.args.track_high_thresh
@@ -278,6 +287,7 @@ class BoTSORT(object):
             scores_keep = scores[remain_inds]
             classes_keep = classes[remain_inds]
             features_keep = features[remain_inds]
+            high_inds_map = low_inds_map[remain_inds]  # Mapping to original indices
         else:
             bboxes = []
             scores = []
@@ -285,26 +295,25 @@ class BoTSORT(object):
             dets = []
             scores_keep = []
             classes_keep = []
+            high_inds_map = []
 
         '''Extract embeddings '''
-        if self.args.with_reid:
+        if self.args.with_reid and len(dets) > 0:
             features_keep = self.encoder.inference(img, dets)
 
-
         if len(dets) > 0:
-            '''Detections'''
             if self.args.with_reid:
                 detections = [STrack(STrack.tlbr_to_tlwh(tlbr), s, c, f) for
-                              (tlbr, s, c, f) in zip(dets, scores_keep, classes_keep, features_keep)]
+                            (tlbr, s, c, f) in zip(dets, scores_keep, classes_keep, features_keep)]
             else:
                 detections = [STrack(STrack.tlbr_to_tlwh(tlbr), s, c) for
-                              (tlbr, s, c) in zip(dets, scores_keep, classes_keep)]
+                            (tlbr, s, c) in zip(dets, scores_keep, classes_keep)]
         else:
             detections = []
 
         ''' Add newly detected tracklets to tracked_stracks'''
         unconfirmed = []
-        tracked_stracks = []  # type: list[STrack]
+        tracked_stracks = []
         for track in self.tracked_stracks:
             if not track.is_activated:
                 unconfirmed.append(track)
@@ -314,15 +323,11 @@ class BoTSORT(object):
         ''' Step 2: First association, with high score detection boxes'''
         strack_pool = joint_stracks(tracked_stracks, self.lost_stracks)
 
-        # Predict the current location with KF
         STrack.multi_predict(strack_pool)
-
-        # Fix camera motion
         warp = self.gmc.apply(img, dets)
         STrack.multi_gmc(strack_pool, warp)
         STrack.multi_gmc(unconfirmed, warp)
 
-        # Associate with high score detection boxes
         ious_dists = matching.iou_distance(strack_pool, detections)
         ious_dists_mask = (ious_dists > self.proximity_thresh)
 
@@ -331,19 +336,9 @@ class BoTSORT(object):
 
         if self.args.with_reid:
             emb_dists = matching.embedding_distance(strack_pool, detections) / 2.0
-            raw_emb_dists = emb_dists.copy()
             emb_dists[emb_dists > self.appearance_thresh] = 1.0
             emb_dists[ious_dists_mask] = 1.0
             dists = np.minimum(ious_dists, emb_dists)
-
-            # Popular ReID method (JDE / FairMOT)
-            # raw_emb_dists = matching.embedding_distance(strack_pool, detections)
-            # dists = matching.fuse_motion(self.kalman_filter, raw_emb_dists, strack_pool, detections)
-            # emb_dists = dists
-
-            # IoU making ReID
-            # dists = matching.embedding_distance(strack_pool, detections)
-            # dists[ious_dists_mask] = 1.0
         else:
             dists = ious_dists
 
@@ -352,8 +347,11 @@ class BoTSORT(object):
         for itracked, idet in matches:
             track = strack_pool[itracked]
             det = detections[idet]
+            orig_idx = int(high_inds_map[idet])  # Get original detection index
+            # Fill track_id for matched detection
+            detection_track_map[orig_idx]["track_id"] = int(track.track_id)
             if track.state == TrackState.Tracked:
-                track.update(detections[idet], self.frame_id)
+                track.update(det, self.frame_id)
                 activated_starcks.append(track)
             else:
                 track.re_activate(det, self.frame_id, new_id=False)
@@ -367,16 +365,16 @@ class BoTSORT(object):
             dets_second = bboxes[inds_second]
             scores_second = scores[inds_second]
             classes_second = classes[inds_second]
+            second_inds_map = low_inds_map[inds_second]
         else:
             dets_second = []
             scores_second = []
             classes_second = []
+            second_inds_map = []
 
-        # association the untrack to the low score detections
         if len(dets_second) > 0:
-            '''Detections'''
             detections_second = [STrack(STrack.tlbr_to_tlwh(tlbr), s, c) for
-                                 (tlbr, s, c) in zip(dets_second, scores_second, classes_second)]
+                                (tlbr, s, c) in zip(dets_second, scores_second, classes_second)]
         else:
             detections_second = []
 
@@ -385,12 +383,14 @@ class BoTSORT(object):
         matches, u_track, u_detection_second = matching.linear_assignment(dists, thresh=0.5)
         for itracked, idet in matches:
             track = r_tracked_stracks[itracked]
-            det = detections_second[idet]
+            orig_idx = int(second_inds_map[idet])
+            # Fill track_id for matched second-level detection
+            detection_track_map[orig_idx]["track_id"] = int(track.track_id)
             if track.state == TrackState.Tracked:
-                track.update(det, self.frame_id)
+                track.update(detections_second[idet], self.frame_id)
                 activated_starcks.append(track)
             else:
-                track.re_activate(det, self.frame_id, new_id=False)
+                track.re_activate(detections_second[idet], self.frame_id, new_id=False)
                 refind_stracks.append(track)
 
         for it in u_track:
@@ -399,14 +399,20 @@ class BoTSORT(object):
                 track.mark_lost()
                 lost_stracks.append(track)
 
-        '''Deal with unconfirmed tracks, usually tracks with only one beginning frame'''
-        detections = [detections[i] for i in u_detection]
-        dists = matching.iou_distance(unconfirmed, detections)
+        '''Deal with unconfirmed tracks'''
+        detections_unconf = [detections[i] for i in u_detection]
+        dists = matching.iou_distance(unconfirmed, detections_unconf)
         if not self.args.mot20:
-            dists = matching.fuse_score(dists, detections)
-        matches, u_unconfirmed, u_detection = matching.linear_assignment(dists, thresh=0.7)
+            dists = matching.fuse_score(dists, detections_unconf)
+        matches, u_unconfirmed, u_detection_unconf = matching.linear_assignment(dists, thresh=0.7)
         for itracked, idet in matches:
-            unconfirmed[itracked].update(detections[idet], self.frame_id)
+            track = unconfirmed[itracked]
+            # Get original detection index from u_detection array
+            detection_idx = u_detection[idet]
+            orig_idx = int(high_inds_map[detection_idx])
+            # Fill track_id for matched unconfirmed detection
+            detection_track_map[orig_idx]["track_id"] = int(track.track_id)
+            unconfirmed[itracked].update(detections_unconf[idet], self.frame_id)
             activated_starcks.append(unconfirmed[itracked])
         for it in u_unconfirmed:
             track = unconfirmed[it]
@@ -416,9 +422,11 @@ class BoTSORT(object):
         """ Step 4: Init new stracks"""
         for inew in u_detection:
             track = detections[inew]
+            orig_idx = int(high_inds_map[inew])
             if track.score < self.new_track_thresh:
                 continue
-
+            # Fill track_id for new detection
+            detection_track_map[orig_idx]["track_id"] = int(track.track_id)
             track.activate(self.kalman_filter, self.frame_id)
             activated_starcks.append(track)
 
@@ -438,12 +446,9 @@ class BoTSORT(object):
         self.removed_stracks.extend(removed_stracks)
         self.tracked_stracks, self.lost_stracks = remove_duplicate_stracks(self.tracked_stracks, self.lost_stracks)
 
-        # output_stracks = [track for track in self.tracked_stracks if track.is_activated]
         output_stracks = [track for track in self.tracked_stracks if track.is_activated]
 
-
-        return output_stracks
-        
+        return output_stracks, detection_track_map
 
 def joint_stracks(tlista, tlistb):
     exists = {}

@@ -211,17 +211,7 @@ class ModelAPI:
         tracking_settings: dict = None,
         **kwargs,
     ) -> PredictionSession:
-        if tracking is True:
-
-            if tracking_settings is None:
-                tracker = "botsort"
-                tracker_settings_dict = {}
-            else:
-                tracker = tracking_settings.get("tracker", "botsort")
-                tracker_settings_dict = tracking_settings.get("settings", {})
-        else:
-            tracker = None
-            tracker_settings_dict = None
+        
         return PredictionSession(
             self.url,
             input=input,
@@ -237,8 +227,7 @@ class ModelAPI:
             upload_mode=upload_mode,
             recursive=recursive,
             tracking=tracking,
-            tracker=tracker,
-            tracker_settings=tracker_settings_dict,
+            tracking_settings=tracking_settings,
             **kwargs,
         )
 
@@ -261,16 +250,6 @@ class ModelAPI:
     ) -> List[Prediction]:
         if "show_progress" not in kwargs:
             kwargs["show_progress"] = True
-        if tracking is True:
-            if tracking_settings is None:
-                tracker = "botsort"
-                tracker_settings_dict = {}
-            else:
-                tracker = tracking_settings.get("tracker", "botsort")
-                tracker_settings_dict = tracking_settings.get("settings", {})
-        else:
-            tracker = None
-            tracker_settings_dict = None
         session = PredictionSession(
             self.url,
             input=input,
@@ -286,8 +265,7 @@ class ModelAPI:
             upload_mode=upload_mode,
             recursive=recursive,
             tracking=tracking,
-            tracker=tracker,
-            tracker_settings=tracker_settings_dict,
+            tracking_settings=tracking_settings,
             **kwargs,
         )
         return list(session)

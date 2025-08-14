@@ -20,13 +20,15 @@ class TrackedObject:
     
     Args:
         track_id: Unique identifier for the track
+        det_id: Detection ID for mapping back to original annotation
         bbox: Bounding box coordinates in format [x1, y1, x2, y2]
-        class_id: Numeric class identifier
+        class_name: String class name
         score: Confidence score of the detection/track
     """
     track_id: int
+    det_id: int
     bbox: List[float]  # [x1, y1, x2, y2]
-    class_id: int
+    class_name: str
     score: float
 
 
@@ -67,13 +69,25 @@ class BotSortTracker(BaseTracker):
         self.frame_shape = frame.shape[:2]
         self._update_obj_classes(annotation)
         detections = self._convert_annotation(annotation)
-        output_stracks = self.tracker.update(detections, frame)
-        tracks = self._stracks_to_tracks(output_stracks)
+        output_stracks, detection_track_map = self.tracker.update(detections, frame)
+        tracks = self._stracks_to_tracks(output_stracks, detection_track_map)
         
         # Store tracks for VideoAnnotation creation
         self.frame_tracks.append(tracks)
         self.current_frame += 1
-        return tracks
+        
+        matches = []
+        for pair in detection_track_map:
+            det_id = pair["det_id"]
+            track_id = pair["track_id"]
+        
+            match = {
+                "track_id": track_id,  # Может быть None если детекция не затрекана
+                "label": annotation.labels[det_id].to_json()
+            }
+            matches.append(match)
+            
+        return tracks, matches
     
     def reset(self):
         super().reset()
@@ -133,9 +147,17 @@ class BotSortTracker(BaseTracker):
         else:
             return np.zeros((0, 6), dtype=np.float32)
     
-    def _stracks_to_tracks(self, output_stracks) -> List[TrackedObject]:
+    def _stracks_to_tracks(self, output_stracks, detection_track_map) -> List[TrackedObject]:
         """Convert BoTSORT output tracks to TrackedObject dataclass instances."""
         tracks = []
+        
+        id_to_name = {v: k for k, v in self.class_ids.items()}
+        
+        track_id_to_det_id = {}
+        for pair in detection_track_map:
+            det_id = pair["det_id"]
+            track_id = pair["track_id"]
+            track_id_to_det_id[track_id] = det_id 
         
         for strack in output_stracks:
             # BoTSORT may store class info in different attributes
@@ -148,10 +170,13 @@ class BotSortTracker(BaseTracker):
             elif hasattr(strack, 'class_id'):
                 class_id = int(strack.class_id)
             
+            class_name = id_to_name.get(class_id, "unknown")
+            
             track = TrackedObject(
                 track_id=strack.track_id,
+                det_id=track_id_to_det_id.get(strack.track_id),
                 bbox=strack.tlbr.tolist(),  # [x1, y1, x2, y2]
-                class_id=class_id,
+                class_name=class_name,
                 score=getattr(strack, 'score', 1.0)
             )
             tracks.append(track)
@@ -162,11 +187,12 @@ class BotSortTracker(BaseTracker):
         """Extract and store object classes from annotation."""
         for label in annotation.labels:
             class_name = label.obj_class.name
-            if class_name in self.class_ids:
-                continue
-            class_id = len(self.class_ids)
-            self.obj_classes[class_id] = label.obj_class
-            self.class_ids[class_name] = class_id
+            if class_name not in self.obj_classes:
+                self.obj_classes[class_name] = label.obj_class
+        
+            if class_name not in self.class_ids:
+                self.class_ids[class_name] = len(self.class_ids)
+
 
     def _create_video_annotation(self) -> VideoAnnotation:
         """Convert accumulated tracking results to Supervisely VideoAnnotation."""
@@ -180,7 +206,7 @@ class BotSortTracker(BaseTracker):
             for track in tracks:
                 track_id = track.track_id
                 bbox = track.bbox  # [x1, y1, x2, y2]
-                class_id = track.class_id
+                class_name = track.class_name
                 
                 # Clip bbox to image boundaries
                 x1, y1, x2, y2 = bbox
@@ -189,7 +215,7 @@ class BotSortTracker(BaseTracker):
                 
                 # Get or create VideoObject
                 if track_id not in video_objects:
-                    obj_class = self.obj_classes.get(class_id)
+                    obj_class = self.obj_classes.get(class_name)
                     if obj_class is None:
                         continue  # Skip if class not found
                     video_objects[track_id] = sly.VideoObject(obj_class)

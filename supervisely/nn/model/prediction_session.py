@@ -68,10 +68,10 @@ class PredictionSession:
         project_id: Union[List[int], int] = None,
         api: "Api" = None,
         tracking: bool = None,
+        tracking_settings: dict = None,
         **kwargs: dict,
-    ):  
-        
-            
+    ): 
+                  
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
             sum(
@@ -90,7 +90,7 @@ class PredictionSession:
             == 1
         ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
 
-        self.tracking = tracking if tracking is not None else False
+        
         self._iterator = None
         self._base_url = url
         self.inference_request_uuid = None
@@ -115,6 +115,21 @@ class PredictionSession:
         self.inference_settings = {
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
         }
+        
+        if tracking is True:
+            model_info = self._get_session_info()
+            if not model_info.get("tracking_on_videos_support", False) and self.tracking:
+                raise ValueError("Tracking is not supported by this model")
+            
+            if tracking_settings is None:
+                self.tracker = "botsort"
+                self.tracker_settings = {}
+            else:
+                self.tracker = tracking_settings.get("tracker", "botsort")
+                self.tracker_settings = tracking_settings.get("settings", {})
+        else:
+            self.tracker = None
+            self.tracker_settings = None
 
         # extra input args
         image_ids = self._set_var_from_kwargs("image_ids", kwargs, image_id)
@@ -184,7 +199,7 @@ class PredictionSession:
                         self._iterator = self._predict_images(input, **kwargs)
                     elif ext.lower() in ALLOWED_VIDEO_EXTENSIONS:
                         kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
-                        self._iterator = self._predict_videos(input, **kwargs)
+                        self._iterator = self._predict_videos(input, tracker=self.tracker, tracker_settings=self.tracker_settings, **kwargs)
                     else:
                         raise ValueError(
                             f"Unsupported file extension: {ext}. Supported extensions are: {SUPPORTED_IMG_EXTS + ALLOWED_VIDEO_EXTENSIONS}"
@@ -197,7 +212,7 @@ class PredictionSession:
             if len(video_ids) > 1:
                 raise ValueError("Only one video id can be provided.")
             kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
-            self._iterator = self._predict_videos(video_ids, **kwargs)
+            self._iterator = self._predict_videos(video_ids, tracker=self.tracker, tracker_settings=self.tracker_settings, **kwargs)
         elif dataset_ids is not None:
             kwargs = get_valid_kwargs(
                 kwargs,
@@ -218,10 +233,9 @@ class PredictionSession:
             raise ValueError(
                 "Unknown input type. Supported types are: numpy array, path to a file or directory, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo."
             )
-         
-        model_info = self._get_session_info()
-        if not model_info.get("tracking_on_videos_support", False) and self.tracking:
-            raise ValueError("Tracking is not supported by this model")
+        
+        
+        
 
             
 
@@ -593,8 +607,6 @@ class PredictionSession:
             ("tracker_settings", tracker_settings), 
             ("batch_size", batch_size),
         ):
-            if not self.tracking and key in ("tracker", "tracker_settings"):
-                continue
             if value is not None:
                 state[key] = value
         if isinstance(videos[0], int):
