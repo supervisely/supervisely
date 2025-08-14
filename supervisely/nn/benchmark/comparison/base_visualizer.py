@@ -112,15 +112,23 @@ class BaseComparisonVisualizer:
     def _get_eval_project_infos(self, eval_result):
         # get project infos
         if self.gt_project_info is None:
-            self.gt_project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
+            project_info = self.api.project.get_info_by_id(eval_result.gt_project_id)
+            if project_info is None:
+                raise ValueError(
+                    f"Ground truth project with ID {eval_result.gt_project_id} not found."
+                )
+            self.gt_project_info = project_info
         eval_result.gt_project_info = self.gt_project_info
         eval_result.pred_project_info = self.api.project.get_info_by_id(eval_result.pred_project_id)
 
         # get project metas
         if self.gt_project_meta is None:
-            self.gt_project_meta = ProjectMeta.from_json(
-                self.api.project.get_meta(eval_result.gt_project_id)
-            )
+            project_meta_json = self.api.project.get_meta(eval_result.gt_project_id)
+            if project_meta_json is None:
+                raise ValueError(
+                    f"Ground truth project meta for project ID {eval_result.gt_project_id} not found."
+                )
+            self.gt_project_meta = ProjectMeta.from_json(project_meta_json)
         eval_result.gt_project_meta = self.gt_project_meta
         eval_result.pred_project_meta = ProjectMeta.from_json(
             self.api.project.get_meta(eval_result.pred_project_id)
