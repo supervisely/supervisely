@@ -82,14 +82,16 @@ class BotSortTracker(BaseTracker):
         for pair in detection_track_map:
             det_id = pair["det_id"]
             track_id = pair["track_id"]
-        
-            match = {
-                "track_id": track_id,  # Может быть None если детекция не затрекана
-                "label": annotation.labels[det_id].to_json()
-            }
-            matches.append(match)
+
+            if track_id is not None:
+                match = {
+                    "track_id": track_id,
+                    "det_id": det_id,
+                    "label": annotation.labels[det_id].to_json()
+                }
+                matches.append(match)
             
-        return tracks, matches
+        return matches
     
     def reset(self):
         super().reset()

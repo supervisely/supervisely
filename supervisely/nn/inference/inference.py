@@ -2116,10 +2116,18 @@ class Inference:
             if self._tracker is not None:
                 updated_anns = []
                 for frame, ann in zip(frames, anns):
-                    tracks, matches = self._tracker.update(frame, ann)
-                    updated_ann = ann.clone(custom_data=matches)
-                    updated_anns.append(updated_ann)
+                    matches = self._tracker.update(frame, ann)
+ 
+                    track_ids = [match["track_id"] for match in matches]
+                    tracked_labels = [ann.labels[match["det_id"]] for match in matches]
+                    
+                    filtered_annotation = ann.clone(
+                        labels=tracked_labels,
+                        custom_data=track_ids
+                    )
+                    updated_anns.append(filtered_annotation)
                 anns = updated_anns
+                
             predictions = [
                 Prediction(
                     ann,
