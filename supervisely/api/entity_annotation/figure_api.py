@@ -877,9 +877,8 @@ class FigureApi(RemoveableBulkModuleApi):
                 for info in response_json["entities"]:
                     figure_info = self._convert_json_info(info, True)
                     page_figures.append(figure_info)
-                    if progress_cb is not None:
-                        progress_cb.total += 1
-                        progress_cb.update(1)
+                if progress_cb is not None:
+                    progress_cb.update(len(response_json["entities"]))
                 return page_figures
 
         async def _get_all_pages(ids_filter, progress_cb: tqdm = None):
@@ -900,9 +899,8 @@ class FigureApi(RemoveableBulkModuleApi):
             for info in response_json["entities"]:
                 figure_info = self._convert_json_info(info, True)
                 all_figures.append(figure_info)
-                if progress_cb is not None:
-                    progress_cb.total += 1
-                    progress_cb.update(1)
+            if progress_cb is not None:
+                progress_cb.update(len(response_json["entities"]))
 
             # Process remaining pages in parallel if needed
             if pages_count > 1:
