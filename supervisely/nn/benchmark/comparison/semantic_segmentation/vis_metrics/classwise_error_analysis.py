@@ -25,7 +25,6 @@ class ClasswiseErrorAnalysis(BaseVisMetrics):
 
         fig = go.Figure()
 
-        # Цветовая палитра для метрик
         color_palette = ["#8ACAA1", "#FFE4B5", "#F7ADAA", "#dd3f3f"]
         metrics = ["IoU", "E_extent_oU", "E_boundary_oU", "E_segment_oU"]
 

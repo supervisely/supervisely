@@ -66,40 +66,131 @@ class ModelComparison:
 
             self.eval_results.append(eval_result)
 
-        self._validate_eval_data()
+        self._validate_task_type()
+        self._get_overlapping_categories()
+        # self._get_overlapping_images()
 
         self.visualizer: ComparisonVisualizer = None
         self.remote_dir = None
 
-    def _validate_eval_data(self):
+    # @TODO: rewrite
+    def _check_project_existence(self, eval_result):
         """
-        Validate the evaluation data before running the comparison.
-        Make sure the benchmarks are done on the same project and datasets.
+        Check if the ground truth project exists for the evaluation result.
+        If not, raise an error.
+        """
+        if eval_result.gt_project_id is not None:
+            if not self.api.project.exists(eval_result.gt_project_id):
+                raise ValueError(
+                    f"Ground truth project with ID {eval_result.gt_project_id} not found."
+                )
+
+        if eval_result.pred_project_id is not None:
+            if not self.api.project.exists(eval_result.pred_project_id):
+                raise ValueError(
+                    f"Prediction project with ID {eval_result.pred_project_id} not found."
+                )
+
+    def _validate_task_type(self):
+        """
+        Validate the task type of the evaluations.
+        Ensure that all evaluations are for the same task type.
         """
         task_type = None
-        img_names = None
-        cat_names = None
-        for eval_result in self.eval_results:
-            next_task_type = eval_result.cv_task
-            if not task_type is None:
-                assert task_type == next_task_type, "Task types are different in the evaluations."
-            task_type = next_task_type
-            if task_type == TaskType.SEMANTIC_SEGMENTATION:
-                next_img_names = set(eval_result.mp.per_image_metrics.index)
-            else:
-                next_img_names = set(
-                    [img.get("file_name") for img in eval_result.coco_gt.imgs.values()]
+        try:
+            for eval_result in self.eval_results:
+                next_task_type = eval_result.cv_task
+                if task_type is not None:
+                    assert task_type == next_task_type
+                task_type = next_task_type
+        except AssertionError:
+            raise RuntimeError(
+                f"Comparison validation failed: Task types are different in the evaluations"
+            )
+
+    def _get_overlapping_images(self):
+        """
+        Get the set of images that are present in all evaluations.
+        This is used to ensure that the evaluations are comparable.
+        """
+        task_type = self.eval_results[0].cv_task
+        get_image_names = lambda eval_result: (
+            set(eval_result.mp.per_image_metrics.index)
+            if task_type == TaskType.SEMANTIC_SEGMENTATION
+            else set([img.get("file_name") for img in eval_result.coco_gt.imgs.values()])
+        )
+
+        image_names = get_image_names(self.eval_results[0])
+        for eval_result in self.eval_results[1:]:
+            image_names.intersection_update(get_image_names(eval_result))
+
+        if not image_names:
+            raise RuntimeError(
+                "Comparison validation failed: No overlapping images found in the evaluations."
+            )
+
+        logger.info("Found %s overlapping images across evaluations", len(image_names))
+
+        if task_type == TaskType.SEMANTIC_SEGMENTATION:
+            for eval_result in self.eval_results:
+                s = eval_result.mp.per_image_metrics["img_names"]
+                eval_result.mp.per_image_metrics["img_names"] = [
+                    img for img in s if img in image_names
+                ]
+        else:
+            for eval_result in self.eval_results:
+                s = eval_result.coco_gt.imgs
+                eval_result.coco_gt.imgs = {
+                    k: v for k, v in s.items() if v["file_name"] in image_names
+                }
+
+    def _get_overlapping_categories(self):
+        """
+        Get the set of categories that are present in all evaluations.
+        This is used to ensure that the evaluations are comparable.
+        """
+        task_type = self.eval_results[0].cv_task
+        get_category_names = lambda eval_result: (
+            set(eval_result.mp.class_names)
+            if task_type == TaskType.SEMANTIC_SEGMENTATION
+            else set(eval_result.mp.cat_names)
+        )
+        category_names = get_category_names(self.eval_results[0])
+        for eval_result in self.eval_results[1:]:
+            category_names.intersection_update(get_category_names(eval_result))
+
+        if not category_names:
+            raise RuntimeError(
+                "Comparison validation failed: No overlapping categories found in the evaluations."
+            )
+
+        logger.info("Found %s overlapping categories across evaluations", len(category_names))
+
+        if task_type == TaskType.SEMANTIC_SEGMENTATION:
+            for eval_result in self.eval_results:
+                eval_result.mp.class_names = list(
+                    filter(lambda c: c in category_names, eval_result.mp.class_names)
                 )
-            if not img_names is None:
-                assert img_names == next_img_names, "Images are different in the evaluations."
-            img_names = next_img_names
-            if task_type == TaskType.SEMANTIC_SEGMENTATION:
-                next_cat_names = set(eval_result.mp.class_names)
+        else:
+            for eval_result in self.eval_results:
+                eval_result.mp.cat_names = list(
+                    filter(lambda c: c in category_names, eval_result.mp.cat_names)
+                )
+
+        for eval_result in self.eval_results:
+            # eval_result.classes_whitelist = list(category_names)
+            eval_result.inference_info["inference_settings"]["classes"] = list(category_names)
+            bar_data, labels = eval_result.mp.classwise_segm_error_data
+            names = list(labels)
+            keep_idx = [i for i, n in enumerate(names) if n in category_names]
+
+            if hasattr(bar_data, "iloc"):
+                filtered_bar_data = bar_data.iloc[keep_idx]
             else:
-                next_cat_names = set(eval_result.mp.cat_names)
-            if not cat_names is None:
-                assert cat_names == next_cat_names, "Categories are different in the evaluations."
-            cat_names = next_cat_names
+                filtered_bar_data = [bar_data[i] for i in keep_idx]
+
+            filtered_labels = [names[i] for i in keep_idx]
+            eval_result.mp.classwise_segm_error_data = (filtered_bar_data, filtered_labels)
 
     def visualize(self):
         task_type = self.eval_results[0].cv_task
