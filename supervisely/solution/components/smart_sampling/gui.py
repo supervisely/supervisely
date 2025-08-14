@@ -15,22 +15,25 @@ from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.widgets import (
     Button,
+    Card,
     Collapse,
+    Icons,
     Container,
     Dialog,
     Empty,
+    Field,
     Flexbox,
     GridGallery,
     Input,
     InputNumber,
+    NotificationBox,
+    OneOf,
+    RadioGroup,
     Tabs,
     Text,
     Widget,
 )
-from supervisely.project.image_transfer_utils import (
-    compare_projects,
-    copy_structured_images,
-)
+from supervisely.project.image_transfer_utils import compare_projects, copy_structured_images
 from supervisely.sly_logger import logger
 
 
@@ -69,7 +72,7 @@ class SmartSamplingGUI(Widget):
         self._diff_num = 0
         self._items_count = self.project.items_count
         super().__init__(widget_id=widget_id)
-        self._create_gui(random_sampling=True, diverse_sampling=True, ai_search_sampling=True)
+        self.content = self._create_gui()
 
     # ------------------------------------------------------------------
     # Properties -------------------------------------------------------
@@ -120,79 +123,44 @@ class SmartSamplingGUI(Widget):
     # ------------------------------------------------------------------
     # GUI --------------------------------------------------------------
     # ------------------------------------------------------------------
-    def _create_gui(
-        self,
-        random_sampling: bool = True,
-        diverse_sampling: bool = False,
-        ai_search_sampling: bool = False,
-    ):
-        # -- main widgets ----------------------------------------------------
-        self.preview_button = Button("Preview", icon="zmdi zmdi-eye", plain=True, button_size="mini")
-        self.preview_gallery = GridGallery(columns_number=3)
-        self.preview_collapse = Collapse(
-            items=[Collapse.Item("preview", "Preview", content=self.preview_gallery)]
-        )
-        preview_button_container = Container([self.preview_button], style="align-items: flex-end")
-        preview_container = Container(
-            [preview_button_container, self.preview_collapse], style="margin-bottom: 5px"
-        )
-        total_text = Text("Total images in the input project:")
-        self.total_num_text = Text(f"{self.items_count} images")
-        diff_text = Text("Available images for sampling:")
-        self.diff_num_text = Text(f"{self.diff_num} images")
-        self.sampling_text = Text(f" of {self.diff_num} images")
+    def _create_gui(self):
+        """
+        Create the GUI for the Smart Sampling node.
+        :param random_sampling: bool, if True, random sampling tab will be created
+        :param diverse_sampling: bool, if True, diverse sampling tab will be created
+        :param ai_search_sampling: bool, if True, AI Search sampling tab will be created
+        """
+        # --- Field with radio buttons to select sampling mode ------
+        sampling_mode_field = self._create_sampling_mode_field()
 
-        tabs = []
-        # random sampling
-        if random_sampling:
-            random_tab_container = self._create_random_sampling_tab(
-                total_text, diff_text, preview_container
-            )
-            tabs.append(random_tab_container)
+        # --- Field with info text about abavailable images --------
+        total_images_field = self._create_total_images_info_field()
+        available_images_field = self._create_available_images_info_field()
 
-        # diverse sampling
-        if diverse_sampling:
-            diverse_tab_container = self._create_diverse_sampling_tab(
-                total_text, diff_text, preview_container
-            )
-            tabs.append(diverse_tab_container)
+        # --- Notification box for info about sampling --------
+        notification_box = self._create_notification()
 
-        # AI Search sampling
-        if ai_search_sampling:
-            ai_search_tab_container = self._create_ai_search_tab(
-                total_text, diff_text, preview_container
-            )
-            tabs.append(ai_search_tab_container)
+        # --- Field with OneOf to input sampling settings and info text -----
+        one_of_widget = self._create_one_of_widget()
 
-        self.status_text = Text("", status="text")
-        self.status_text.hide()
-        self.save_settings_button = Button("Save settings", plain=True, icon="zmdi zmdi-save")
-        self.run_button = Button("Run")
-        sample_button_container = Container(
-            [Flexbox([self.save_settings_button, self.run_button])],
-            style="align-items: flex-end; margin-top: 10px;",
-        )
+        # --- Gallery in Card with preview button -------------------
+        gallery_card = self._create_gallery_card()
 
-        self.sampling_tabs = Tabs(
-            labels=["Random", "Diverse", "AI Search"],
-            contents=tabs,
-            type="card",
-        )
-        self.content = Container([self.sampling_tabs, self.status_text, sample_button_container])
+        # --- Status text for showing messages ----------------------
+        status_text = self._create_status_text()
 
-        @self.sampling_tabs.click
-        def on_sampling_tabs_click(value: str):
-            self.preview_collapse.set_active_panel([])
+        # --- Field with Save Settings and Run buttons ---------------
+        buttons = self._create_main_buttons()
+
+        @self.sampling_mode.value_changed
+        def on_sampling_mode_changed(value: str):
+            self.collapse_preview()
+            self.preview_gallery.clean_up()
 
         @self.preview_button.click
         def preview_button_clicked():
-            """
-            Show or hide the preview modal.
-            :param active: bool, True if the preview is shown, False otherwise
-            """
-            self.status_text.hide()
+            self.hide_status_text()
             self.preview_gallery.loading = True
-            self.preview_collapse.set_active_panel(["preview"])
             sampling_settings = self.get_settings()
             if sampling_settings.get("sample_size", 0) > 6:
                 sampling_settings["sample_size"] = 6
@@ -202,15 +170,16 @@ class SmartSamplingGUI(Widget):
             sampled_images = self._sample(sampling_settings)
             if sampled_images is None:
                 self.preview_gallery.loading = False
+                self.set_status_text("No images to preview.", "warning")
+                self.show_status_text()
                 return
 
             infos = []
             for _, imgs in sampled_images.items():
                 infos.extend(imgs)
             urls = [img.full_storage_url for img in infos]
-
             ai_metas = [img.ai_search_meta for img in infos]
-            # ai_metas = [None for img in infos]
+
             self.preview_gallery.clean_up()
 
             for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
@@ -221,103 +190,244 @@ class SmartSamplingGUI(Widget):
                 self.preview_gallery.append(column_index=column, image_url=url, title=title)
             self.preview_gallery.loading = False
 
-    def to_html(self):
-        return self.content.to_html()
+        return Container(
+            [
+                sampling_mode_field,
+                notification_box,
+                total_images_field,
+                available_images_field,
+                one_of_widget,
+                gallery_card,
+                status_text,
+                buttons,
+            ],
+            style="gap: 10px; margin-top: 10px;",
+        )
 
     # ------------------------------------------------------------------
     # GUI Helpers ------------------------------------------------------
     # ------------------------------------------------------------------
-    def _create_random_sampling_tab(self, total_text, diff_text, preview_container):
-        random_text_info = Text(
-            "<strong>Random sampling</strong> is a simple way to select a random subset of images from the input project. <br> <strong>Note:</strong> The sampling is performed only on the images which were not copied to the labeling project yet.",
+    def _create_total_images_info_field(self) -> Field:
+        """
+        Create a field with information about the total number of images in the input project.
+        """
+        get_total_text = lambda x: f"<strong>{x} images</strong>"
+        total_text = Text(get_total_text(self.items_count))
+        self.set_total_num_text = lambda x: total_text.set(text=get_total_text(x), status="text")
+
+        description = "Total number of images in the input project."
+        return Field(title="Total Images", description=description, content=total_text)
+
+    def _create_available_images_info_field(self) -> Field:
+        """
+        Create a field with information about the number of available images for sampling.
+        """
+        get_diff_text = lambda x: f"<strong>{x} images</strong>"
+        diff_text = Text(get_diff_text(self.diff_num))
+        self.set_diff_num_text = lambda x: diff_text.set(text=get_diff_text(x), status="text")
+
+        description = "Number of images available for sampling."
+        return Field(title="Available Images", description=description, content=diff_text)
+
+    def _create_sampling_mode_field(self) -> Field:
+        """
+        Create a field with radio buttons to select the sampling mode.
+        """
+        # modes = [mode.value for mode in SamplingMode]
+        # items = [RadioGroup.Item(value=mode) for mode in modes]
+        items = [
+            RadioGroup.Item(
+                value=SamplingMode.RANDOM.value, content=self._create_random_mode_content()
+            ),
+            RadioGroup.Item(
+                value=SamplingMode.DIVERSE.value, content=self._create_diverse_mode_content()
+            ),
+            RadioGroup.Item(
+                value=SamplingMode.AI_SEARCH.value, content=self._create_ai_search_mode_content()
+            ),
+        ]
+        self.sampling_mode = RadioGroup(items=items, direction="vertical")
+        return Field(
+            title="Sampling Mode",
+            description="Select the sampling mode to use for sampling images.",
+            content=self.sampling_mode,
+            # icon=Icons(class_name="zmdi zmdi-settings", color="#1976D2", bg_color="#E3F2FD"),
         )
-        self.random_input = InputNumber()
-        random_input_container = Container(
-            [self.random_input, self.sampling_text],
+
+    def _create_one_of_widget(self) -> OneOf:
+        if not hasattr(self, "sampling_mode"):
+            raise ValueError("Sampling mode must be created before creating OneOf widget.")
+        return OneOf(conditional_widget=self.sampling_mode)
+
+    def _create_notification(self) -> NotificationBox:
+        description = "Sampling is performed only on images that have not been copied to the labeling project yet."
+        return NotificationBox(description=description)
+
+    def _create_random_mode_content(self) -> Field:
+        """Create the content for the Random sampling mode."""
+        num_input = InputNumber(value=1, min=1, max=self.diff_num)
+        get_text = lambda x: f" of {x} images"
+        text = Text(get_text(self.diff_num))
+        container = Container(
+            [num_input, text],
             direction="horizontal",
-            gap=3,
+            gap=5,
             style="align-items: center",
         )
-        random_nums_container = Container(
-            [self.total_num_text, self.total_num_text, random_input_container]
-        )
-        random_sampling_text = Text("Sampling random:")
-        random_texts = Container([total_text, diff_text, random_sampling_text])
 
-        random_container = Container(
-            [random_texts, random_nums_container, Empty()], direction="horizontal", gap=5
-        )
-        random_tab_container = Container([random_text_info, random_container, preview_container])
-        return random_tab_container
+        # --- Methods -------------------------------------------------
+        self.get_random_input_value = lambda: num_input.get_value()
+        self.set_random_text = lambda x: text.set(text=get_text(x), status="text")
+        self.set_random_input_value = lambda x: num_input.set_value(x)
+        self.set_random_input_max = lambda x: num_input.set_max(x)
+        self.set_random_input_min = lambda x: num_input.set_min(x)
 
-    def _create_diverse_sampling_tab(
-        self, total_text: Text, diff_text: Text, preview_container: Container
-    ):
-        diverse_text_info = Text(
-            "<strong>Diversity sampling strategy:</strong> Sampling most diverse images using k-means clustering. By default, embeddings are computed using the OpenAI CLIP model. <br> <strong>Note:</strong> The sampling is performed only on the images which were not copied to the labeling project yet.",
+        return Field(
+            title="Sample Size",
+            description="Select the number of images to sample randomly from the input project.",
+            content=container,
+            # icon=Icons(class_name="zmdi zmdi-settings", color="#1976D2", bg_color="#E3F2FD"),
         )
-        self.diverse_input = InputNumber()
-        diverse_input_container = Container(
-            [self.diverse_input, self.sampling_text],
+
+    def _create_diverse_mode_content(self) -> Field:
+        """Create the content for the Diverse sampling mode."""
+        num_input = InputNumber(value=1, min=1, max=self.diff_num)
+        get_text = lambda x: f" of {x} images"
+        text = Text(get_text(self.diff_num))
+        container = Container(
+            [num_input, text],
             direction="horizontal",
-            gap=3,
+            gap=5,
             style="align-items: center",
         )
-        diverse_nums_container = Container(
-            [self.total_num_text, self.total_num_text, diverse_input_container]
-        )
-        diverse_sampling_text = Text("Sample size:")
-        diverse_texts = Container([total_text, diff_text, diverse_sampling_text])
-        diverse_container = Container(
-            [diverse_texts, diverse_nums_container, Empty()], direction="horizontal", gap=5
-        )
-        diverse_tab_container = Container([diverse_text_info, diverse_container, preview_container])
-        return diverse_tab_container
 
-    def _create_ai_search_tab(
-        self, total_text: Text, diff_text: Text, preview_container: Container
-    ):
-        ai_search_info = Text(
-            "Sampling images from the project using <strong>AI Search</strong> by user-defined prompt to find the most suitable images. <br> <strong>Note:</strong> The sampling is performed only on the images which were not copied to the labeling project yet.",
-        )
-        ai_search_total = Container(
-            [total_text, self.total_num_text], direction="horizontal", fractions=[2, 1]
-        )
-        ai_search_diff = Container(
-            [diff_text, self.total_num_text], direction="horizontal", fractions=[2, 1]
-        )
-        ai_search_limit_text = Text(f"Limit: ")
-        self.ai_search_limit_input = InputNumber(min=1, max=self.diff_num, value=self.diff_num)
-        ai_search_limit = Container(
-            [ai_search_limit_text, self.ai_search_limit_input],
-            direction="horizontal",
-            fractions=[2, 1],
+        # --- Methods -------------------------------------------------
+        self.set_diverse_text = lambda x: text.set(text=get_text(x), status="text")
+        self.get_diverse_input_value = lambda: num_input.get_value()
+        self.set_diverse_input_value = lambda x: num_input.set_value(x)
+        self.set_diverse_input_max = lambda x: num_input.set_max(x)
+        self.set_diverse_input_min = lambda x: num_input.set_min(x)
+
+        return Field(
+            title="Sample Size",
+            description="Select the number of images to sample using the diversity sampling strategy.",
+            content=container,
         )
 
-        self.ai_search_threshold_input = InputNumber(min=0, max=1, value=0.05, step=0.01)
-        ai_search_threshold_text = Text(f"Threshold: ")
-        ai_search_threshold = Container(
-            [ai_search_threshold_text, self.ai_search_threshold_input],
-            direction="horizontal",
-            fractions=[2, 1],
-        )
+    def _create_ai_search_mode_content(self) -> Container:
+        """Create the content for the AI Search sampling mode."""
+        prompt_input = Input(placeholder="e.g. 'cat', 'dog', 'car'")
+        limit_input = InputNumber(value=self.diff_num, min=1, max=self.diff_num)
+        threshold_input = InputNumber(value=0.05, min=0, max=1, step=0.01)
 
-        ai_search_input_text = Text(f"Search query: ")
-        self.ai_search_input = Input(placeholder="e.g. 'cat', 'dog', 'car'")
-        ai_search_prompt = Flexbox([ai_search_input_text, self.ai_search_input])
+        # --- Methods -------------------------------------------------
+        self.get_ai_search_limit = lambda: limit_input.get_value()
+        self.set_ai_search_limit_max = lambda x: limit_input.set_max(x)
+        self.set_ai_search_limit_min = lambda x: limit_input.set_min(x)
+        self.set_ai_search_limit_value = lambda x: limit_input.set_value(x)
+        self.get_ai_search_threshold = lambda: threshold_input.get_value()
+        self.set_ai_search_threshold = lambda x: threshold_input.set_value(x)
+        self.get_ai_search_prompt = lambda: prompt_input.get_value()
+        self.set_ai_search_prompt = lambda x: prompt_input.set_value(x)
 
-        ai_search_tab_container = Container(
+        return Container(
             [
-                ai_search_info,
-                ai_search_total,
-                ai_search_diff,
-                ai_search_limit,
-                ai_search_threshold,
-                ai_search_prompt,
-                preview_container,
+                Field(
+                    title="Search Query",
+                    description="Enter a search query to find the most suitable images using AI Search.",
+                    content=prompt_input,
+                ),
+                Field(
+                    title="Limit",
+                    description="Set the maximum number of images to sample.",
+                    content=limit_input,
+                ),
+                Field(
+                    title="Threshold",
+                    description="Set the threshold for filtering images based on AI Search scores.",
+                    content=threshold_input,
+                ),
             ]
         )
-        return ai_search_tab_container
+
+    def _create_gallery_card(self) -> Card:
+        """Create a Card with a GridGallery for previewing sampled images."""
+        self.preview_button = Button(
+            "Preview", icon="zmdi zmdi-eye", plain=True, button_size="mini"
+        )
+        self.preview_gallery = GridGallery(columns_number=3)
+
+        card = Card(
+            title="Sampled Images Preview",
+            description="Example of sampled images based on the selected sampling mode. Click 'Preview' to see the images.",
+            collapsable=True,
+            content=self.preview_gallery,
+            content_top_right=self.preview_button,
+        )
+        self.collapse_preview = card.collapse()
+        return card
+
+    def _create_status_text(self) -> Text:
+        text = Text("", status="text")
+        text.hide()
+        self.show_status_text = lambda: text.show()
+        self.hide_status_text = lambda: text.hide()
+        self.set_status_text = lambda x, y: text.set(text=x, status=y)
+        return text
+
+    def _create_main_buttons(self) -> Container:
+        """
+        Create a container with Save Settings and Run buttons.
+        """
+        self.save_settings_button = Button("Save Settings", plain=True, icon="zmdi zmdi-save")
+        self.run_button = Button("Run Sampling")
+
+        return Container(
+            [Flexbox([self.save_settings_button, self.run_button])],
+            style="align-items: flex-end; margin-top: 10px;",
+        )
+
+    def update_widgets(
+        self,
+        diff: int,
+        sampling_settings: Optional[dict] = None,
+    ):
+        """Update the sampling inputs based on the difference."""
+        if sampling_settings is None:
+            sampling_settings = self.get_settings()
+
+        min_value = 0 if diff == 0 else 1
+        mode = sampling_settings.get("mode")
+        max_value = diff if diff > 0 else 0
+        value = min(sampling_settings.get("sample_size", min_value), diff)
+
+        # info texts
+        self.set_diff_num_text(diff)
+        project = self.api.project.get_info_by_id(self.project_id)
+        self.set_total_num_text(project.items_count if project.items_count else 0)
+
+        # random
+        self.set_random_input_min(min_value)
+        self.set_random_input_max(max_value)
+        self.set_random_input_value(value)
+
+        # diverse
+        self.set_diverse_input_min(min_value)
+        self.set_diverse_input_max(max_value)
+        self.set_diverse_input_value(value)
+
+        # ai search
+        value = min(sampling_settings.get("limit", max_value), diff)
+        self.set_ai_search_limit_min(min_value)
+        self.set_ai_search_limit_max(max_value)
+        self.set_ai_search_limit_value(value)
+        self.set_ai_search_threshold(sampling_settings.get("threshold", 0.05))
+        self.set_ai_search_prompt(sampling_settings.get("prompt", ""))
+
+        self.sampling_mode.set_value(mode)
+        self._diff_num = value
+        DataJson()[self.widget_id]["differences_count"] = value
+        DataJson().send_changes()
 
     # ------------------------------------------------------------------
     # Modal ------------------------------------------------------------
@@ -338,17 +448,19 @@ class SmartSamplingGUI(Widget):
 
         :return: dict with sample settings
         """
-        mode = self.sampling_tabs.get_active_tab()
+        mode = self.sampling_mode.get_value()
         data = {"mode": mode}
-        if mode == "Random":
-            data["sample_size"] = self.random_input.get_value()
-        elif mode == "Diverse":
-            data["sample_size"] = self.diverse_input.get_value()
+        if mode == SamplingMode.RANDOM.value:
+            data["sample_size"] = self.get_random_input_value()
+        elif mode == SamplingMode.DIVERSE.value:
+            data["sample_size"] = self.get_diverse_input_value()
             data["diversity_mode"] = "centroids"
-        elif mode == "AI Search":
-            data["prompt"] = self.ai_search_input.get_value()
-            data["limit"] = self.ai_search_limit_input.get_value()
-            data["threshold"] = self.ai_search_threshold_input.get_value()
+        elif mode == SamplingMode.AI_SEARCH.value:
+            data["prompt"] = self.get_ai_search_prompt()
+            data["limit"] = self.get_ai_search_limit()
+            data["threshold"] = self.get_ai_search_threshold()
+        else:
+            raise ValueError(f"Unknown sampling mode: {mode}")
         return data
 
     def save_settings(self, settings: SamplingSettings):
@@ -358,54 +470,17 @@ class SmartSamplingGUI(Widget):
         :param settings: dict with sample settings
         """
         mode = settings.get("mode")
-        self.sampling_tabs.set_active_tab(mode)
-        if mode == "Random":
-            self.random_input.value = settings.get("sample_size", 0)
-        elif mode == "Diverse":
-            self.diverse_input.value = settings.get("sample_size", 0)
-        elif mode == "AI Search":
-            self.ai_search_input.value = settings.get("prompt", "")
-            self.ai_search_limit_input.value = settings.get("limit", 0)
-            self.ai_search_threshold_input.value = settings.get("threshold", 0.05)
-        self.preview_gallery.clear()
-        self.preview_collapse.set_active_panel([])
-
-    def update_widgets(
-        self,
-        diff: int,
-        sampling_settings: Optional[dict] = None,
-    ):
-        """Update the sampling inputs based on the difference."""
-        if sampling_settings is None:
-            sampling_settings = self.get_settings()
-
-        min_value = 0 if diff == 0 else 1
-        if len(sampling_settings) == 0:
-            sampling_settings = {
-                "mode": "Random",
-                "sample_size": min_value,
-            }
-        mode = sampling_settings.get("mode")
-        max_value = diff if diff > 0 else 0
-        value = min(sampling_settings.get("sample_size", min_value), diff)
-        if mode == SamplingMode.AI_SEARCH.value:
-            value = min(sampling_settings.get("limit", max_value), diff)
-        self.sampling_text.text = f" of {diff} images"
-        if hasattr(self, "random_input"):
-            self.random_input.min = min_value
-            self.random_input.max = max_value
-            self.random_input.value = value
-        if hasattr(self, "diverse_input"):
-            self.diverse_input.min = min_value
-            self.diverse_input.max = max_value
-            self.diverse_input.value = value
-        if hasattr(self, "ai_search_input"):
-            self.ai_search_input.set_value(sampling_settings.get("prompt", ""))
-            self.ai_search_limit_input.value = value
-            self.ai_search_limit_input.min = min_value
-            self.ai_search_limit_input.max = max_value
-            self.ai_search_threshold_input.value = sampling_settings.get("threshold", 0.05)
-        self.sampling_tabs.set_active_tab(mode)
+        self.sampling_mode.set_value(mode)
+        if mode == SamplingMode.RANDOM.value:
+            self.set_random_input_value(settings.get("sample_size", 0))
+        elif mode == SamplingMode.DIVERSE.value:
+            self.set_diverse_input_value(settings.get("sample_size", 0))
+        elif mode == SamplingMode.AI_SEARCH.value:
+            self.set_ai_search_prompt(settings.get("prompt", ""))
+            self.set_ai_search_limit_value(settings.get("limit", 0))
+            self.set_ai_search_threshold(settings.get("threshold", 0.05))
+        self.preview_gallery.clean_up()
+        self.collapse_preview()
 
     # ------------------------------------------------------------------
     # Run --------------------------------------------------------
@@ -437,6 +512,7 @@ class SmartSamplingGUI(Widget):
             settings=settings,
             items=sampled_images,
         )
+        self.update_widgets(diff=self.calculate_diff_count(), sampling_settings=settings)
         return src, dst, images_count
 
     # ------------------------------------------------------------------
@@ -578,10 +654,7 @@ class SmartSamplingGUI(Widget):
                     logger.error(f"Unknown sampling mode: {mode}")
                     return None
 
-                # Send request to the API
-                self.api.project.enable_embeddings(self.project_id)
-                self.api.project.calculate_embeddings(self.project_id)
-
+                # Send request to the API to perform AI search or diverse sampling
                 collection_id = self.api.project.perform_ai_search(
                     project_id=self.project_id,
                     prompt=prompt,
@@ -592,17 +665,6 @@ class SmartSamplingGUI(Widget):
                     image_id_scope=all_diffs_flat,
                     threshold=threshold,
                 )
-                # module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
-                # sessions = self.api.app.get_sessions(
-                #     self.team_id, module_info.id, statuses=[self.api.task.Status.STARTED]
-                # )
-                # if len(sessions) == 0:
-                #     logger.error("No active sessions found for embeddings generator.")
-                #     return None
-                # session = sessions[0]
-                # # api.app.wait(session.task_id, target_status=api.task.Status.STARTED)
-                # logger.info(f"Embeddings generator session: {session.task_id}")
-                # res = self.api.app.send_request(session.task_id, method, data=data)
                 if isinstance(collection_id, int):
                     all_sampled_images = self.api.entities_collection.get_items(
                         collection_id=collection_id,
@@ -615,20 +677,11 @@ class SmartSamplingGUI(Widget):
                         if ds_id not in new_sampled_images:
                             new_sampled_images[ds_id] = []
                         new_sampled_images[ds_id].append(img)
-                # elif collection_id is None:
-                #     logger.error(f"Error during sampling")
-                #     return None
-                # elif isinstance(res, list):
-                #     res_ids = {img["id"] for img in res}
-                #     new_sampled_images = {
-                #         ds_id: [img for img in diffs[ds_id] if img.id in res_ids]
-                #         for ds_id in diffs.keys()
-                #     }
                 else:
-                    self.status_text.show()
-                    self.status_text.set(
+                    self.show_status_text()
+                    self.set_status_text(
                         "Error during sampling. Check that AI Search have calculated embeddings and is ready to use on project page.",
-                        status="error",
+                        "error",
                     )
                     logger.error(f"Error during sampling")
                     return None

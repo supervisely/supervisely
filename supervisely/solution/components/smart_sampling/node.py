@@ -68,10 +68,10 @@ class SmartSamplingNode(SolutionElement):
         @self.gui.run_button.click
         def on_run_button_click():
             self.gui.modal.hide()
-            self.gui.status_text.show()
-            self.gui.status_text.set("Sampling is in progress...", status="info")
+            self.gui.show_status_text()
+            self.gui.set_status_text("Sampling is in progress...", "info")
             self.run()
-            self.gui.status_text.hide()
+            self.gui.hide_status_text()
 
         @self.automation.apply_button.click
         def on_apply_automation_click():
@@ -121,10 +121,9 @@ class SmartSamplingNode(SolutionElement):
         self, message: Union[ImportFinishedMessage, SampleFinishedMessage] = None
     ) -> None:
         """Update the sampling inputs based on the difference."""
-        updated_project_info = self.api.project.get_info_by_id(self.project_id)
-        self.project = updated_project_info
+        self.project = self.api.project.get_info_by_id(self.project_id)
         self.items_count = self.project.items_count
-        self.gui.total_num_text.text = f"{self.items_count} images"
+        self.gui.set_total_num_text(self.items_count)
         sampling_settings = self.gui.get_settings()
 
         diff = self.gui.calculate_diff_count()
