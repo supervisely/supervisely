@@ -32,7 +32,7 @@ class OpenAIClipServiceNode(EmptyNode):
         self._refresh_interval = 60
         self._stop_autorefresh = False
         self._refresh_thread = None
-        self.start_autorefresh(30)
+        # self.start_autorefresh(30)
 
     def start_autorefresh(self, interval: int = 60):
         """
