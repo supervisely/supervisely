@@ -3534,7 +3534,6 @@ class Project:
                     ds_progress(len(batch))
         if dataset_infos != [] and ds_progress is not None:
             ds_progress.close()
-
         data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
         file = (
             io.BytesIO()
