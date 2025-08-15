@@ -54,11 +54,6 @@ class SelectItem:
         self.gui = gui
         workspace_id = env.workspace_id()
 
-        # project
-        self.select_project = SelectProject(
-            workspace_id=workspace_id, compact=True, allowed_types=[ProjectType.IMAGES]
-        )
-
         # dataset
         self.select_dataset = SelectDataset(
             multiselect=True,
@@ -133,10 +128,8 @@ class SelectItem:
         # radio group
         self.radio = RadioGroup(
             items=[
-                RadioGroup.Item("project", "Project", content=self.select_project),
-                RadioGroup.Item("dataset", "Dataset", content=self.select_dataset),
+                RadioGroup.Item("images", "Dataset", content=self.select_dataset),
                 RadioGroup.Item("video", "Video", content=self.select_video_container),
-                # RadioGroup.Item("images", "Images", content=self.select_images_container),
             ],
         )
         self.one_of = OneOf(conditional_widget=self.radio)
@@ -150,7 +143,6 @@ class SelectItem:
         @self.select_button.click
         def select_button_click():
             self.radio.disable()
-            self.select_project.disable()
             self.select_dataset.disable()
             self.select_video_container.disable()
             self.select_button.hide()
@@ -159,7 +151,6 @@ class SelectItem:
         @self.deselect_button.click
         def deselect_button_click():
             self.radio.enable()
-            self.select_project.enable()
             self.select_dataset.enable()
             self.select_video_container.enable()
             self.deselect_button.hide()
@@ -181,9 +172,7 @@ class SelectItem:
         )
 
     def get_item_settings(self) -> Dict[str, Any]:
-        if self.radio.get_value() == "project":
-            return {"project_id": self.select_project.get_selected_id()}
-        elif self.radio.get_value() == "dataset":
+        if self.radio.get_value() == "dataset":
             return {"dataset_ids": self.select_dataset.get_selected_ids()}
         elif self.radio.get_value() == "video":
             return {
@@ -196,7 +185,8 @@ class SelectItem:
 
     def load_from_json(self, data):
         if "project_id" in data:
-            self.select_project.set_project_id(data["project_id"])
+            self.select_dataset.set_project_id(data["project_id"])
+            self.select_dataset.set_select_all_datasets(True)
         if "dataset_ids" in data:
             self.select_dataset.set_dataset_ids(data["dataset_ids"])
         if "video_id" in data:
