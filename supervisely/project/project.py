@@ -23,7 +23,7 @@ from typing import (
     Tuple,
     Union,
 )
-
+from supervisely.api.volume.volume_api import VolumeInfo
 import aiofiles
 import numpy as np
 from tqdm import tqdm
@@ -3626,20 +3626,28 @@ class Project:
 
         alpha_mask_name = sly.AlphaMask.name()
         project_info: sly.ProjectInfo
+
+        # TODO: Move to separate method.
+        entity_api_map = {
+            str(sly.ProjectType.IMAGES): api.image,
+            str(sly.ProjectType.VOLUMES): api.volume,
+        }
+
         meta: ProjectMeta
         dataset_infos: List[sly.DatasetInfo]
-        image_infos: List[ImageInfo]
+        entity_infos: List[Union[ImageInfo, VolumeInfo]]
         figures: Dict[int, List[sly.FigureInfo]]  # image_id: List of figure_infos
         alpha_geometries: Dict[int, List[dict]]  # figure_id: List of geometries
         with file if isinstance(file, io.BytesIO) else open(file, "rb") as f:
             unpickler = CustomUnpickler(f)
-            project_info, meta, dataset_infos, image_infos, figures, alpha_geometries = (
+            project_info, meta, dataset_infos, entity_infos, figures, alpha_geometries = (
                 unpickler.load()
             )
+        entity_api = entity_api_map.get(str(project_info.type), None)
         if project_name is None:
             project_name = project_info.name
         new_project_info = api.project.create(
-            workspace_id, project_name, change_name_if_conflict=True
+            workspace_id, project_name, change_name_if_conflict=True, type=project_info.type
         )
         custom_data = new_project_info.custom_data
         version_num = project_info.version.get("version", None) if project_info.version else 0
@@ -3692,27 +3700,36 @@ class Project:
         )
 
         if skip_missed:
-            existing_hashes = api.image.check_existing_hashes(
-                list(set([inf.hash for inf in image_infos if inf.hash and not inf.link]))
-            )
-            workspace_info = api.workspace.get_info_by_id(workspace_id)
-            existing_links = api.image.check_existing_links(
-                list(set([inf.link for inf in image_infos if inf.link])),
-                team_id=workspace_info.team_id,
-            )
-        image_infos = sorted(image_infos, key=lambda info: info.link is not None)
+            if project_info.type == str(sly.ProjectType.IMAGES):
+                logger.debug("Skip missed is enabled and supported by images project type.")
+                existing_hashes = api.image.check_existing_hashes(
+                    list(set([inf.hash for inf in entity_infos if inf.hash and not inf.link]))
+                )
+                workspace_info = api.workspace.get_info_by_id(workspace_id)
+                existing_links = api.image.check_existing_links(
+                    list(set([inf.link for inf in entity_infos if inf.link])),
+                    team_id=workspace_info.team_id,
+                )
+            else:
+                logger.warning(
+                    f"Skip missed is enabled but not supported by this project type: {project_info.type}"
+                )
+        entity_infos = sorted(
+            entity_infos, key=lambda info: getattr(info, "link", None) is not None
+        )
+        logger.debug(f"Prepared {len(entity_infos)} entity infos for upload_bin.")
 
         values_lists = ["infos", "ids", "names", "hashes", "metas", "links"]
         attributes = [None, "id", "name", "hash", "meta", "link"]
-        for info in image_infos:
+        for info in entity_infos:
             # pylint: disable=possibly-used-before-assignment
-            if skip_missed and info.hash and not info.link:
+            if skip_missed and info.hash and not getattr(info, "link", None):
                 if info.hash not in existing_hashes:
                     logger.warning(
                         f"Image with name {info.name} can't be uploaded. Hash {info.hash} not found"
                     )
                     continue
-            if skip_missed and info.link:
+            if skip_missed and getattr(info, "link", None):
                 if info.link not in existing_links:
                     logger.warning(
                         f"Image with name {info.name} can't be uploaded. Link {info.link} can't be accessed"
@@ -3723,6 +3740,9 @@ class Project:
                     info_values_by_dataset[info.dataset_id][value_list].append(info)
                 else:
                     info_values_by_dataset[info.dataset_id][value_list].append(getattr(info, attr))
+        logger.debug(
+            f"Info values by dataset prepared and contains {len(info_values_by_dataset)} datasets."
+        )
 
         for dataset_id, values in info_values_by_dataset.items():
             dataset_name = None
@@ -3745,21 +3765,21 @@ class Project:
             none_link_indices = [i for i, link in enumerate(values["links"]) if link is None]
 
             if len(none_link_indices) == len(values["links"]):
-                new_file_infos = api.image.upload_hashes(
+                new_file_infos = entity_api.upload_hashes(
                     dataset_id,
                     names=values["names"],
                     hashes=values["hashes"],
                     metas=values["metas"],
-                    batch_size=200,
+                    # batch_size=200,
                     progress_cb=ds_progress,
                 )
             elif not none_link_indices:
-                new_file_infos = api.image.upload_links(
+                new_file_infos = entity_api.upload_links(
                     dataset_id,
                     names=values["names"],
                     links=values["links"],
                     metas=values["metas"],
-                    batch_size=200,
+                    # batch_size=200,
                     progress_cb=ds_progress,
                 )
             else:
@@ -3773,7 +3793,7 @@ class Project:
                 i = none_link_indices[0]  # first image without link
                 j = none_link_indices[-1]  # last image without link
 
-                new_file_infos = api.image.upload_hashes(
+                new_file_infos = entity_api.upload_hashes(
                     dataset_id,
                     names=values["names"][i : j + 1],
                     hashes=values["hashes"][i : j + 1],
@@ -3781,7 +3801,7 @@ class Project:
                     batch_size=200,
                     progress_cb=ds_progress,
                 )
-                new_file_infos_link = api.image.upload_links(
+                new_file_infos_link = entity_api.upload_links(
                     dataset_id,
                     names=values["names"][j + 1 :],
                     links=values["links"][j + 1 :],
@@ -3790,6 +3810,7 @@ class Project:
                     progress_cb=ds_progress,
                 )
                 new_file_infos.extend(new_file_infos_link)
+            logger.debug(f"Uploaded {len(new_file_infos)} entities to dataset {dataset_name}")
             # ----------------------------------------------- - ---------------------------------------------- #
 
             # image_lists_by_tags -> tagId: {tagValue: [imageId]}
