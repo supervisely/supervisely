@@ -363,11 +363,10 @@ class ExperimentSelector(Widget):
             return [
                 self._task_id,
                 self._model_name.capitalize(),
-                int(pd.to_datetime(self._task_date).timestamp()),
                 training_project_name,
                 0,
                 0,
-                0,
+                1 if self._benchmark_report_id else 0,
             ]
 
     def __init__(
@@ -491,6 +490,8 @@ class ExperimentSelector(Widget):
             columns.append((column_name, widget))
             columns_options.append({"customCell": True})
         columns_options[3].update({"classes": "border border-gray-200 px-2"})
+        columns_options[3].update({"disableSort": True})
+        columns_options[4].update({"disableSort": True})
         self.framework_filter = DropdownCheckboxSelector(
             label="Framework",
             items=[
