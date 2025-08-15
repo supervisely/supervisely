@@ -128,7 +128,7 @@ class SelectItem:
         # radio group
         self.radio = RadioGroup(
             items=[
-                RadioGroup.Item("images", "Dataset", content=self.select_dataset),
+                RadioGroup.Item("dataset", "Images", content=self.select_dataset),
                 RadioGroup.Item("video", "Video", content=self.select_video_container),
             ],
         )
@@ -187,10 +187,13 @@ class SelectItem:
         if "project_id" in data:
             self.select_dataset.set_project_id(data["project_id"])
             self.select_dataset.set_select_all_datasets(True)
+            self.radio.set_value("dataset")
         if "dataset_ids" in data:
             self.select_dataset.set_dataset_ids(data["dataset_ids"])
+            self.radio.set_value("dataset")
         if "video_id" in data:
             self.select_video.select_row_by_value("id", data["video_id"])
+            self.radio.set_value("video")
         if "image_ids" in data:
             self.select_images.select_rows_by_value("id", data["image_ids"])
 
