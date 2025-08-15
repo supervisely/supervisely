@@ -5621,7 +5621,7 @@ async def _download_project_async(
                     if download_blob_files and image.related_data_id is not None:
                         blob_files_to_download[image.related_data_id] = image.download_id
                         blob_images.append(image)
-                    elif image.size < switch_size:
+                    elif image.size is not None and image.size < switch_size:
                         small_images.append(image)
                     else:
                         large_images.append(image)
