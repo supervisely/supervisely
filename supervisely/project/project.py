@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import gc
 import io
 import json
 import os
@@ -27,6 +26,7 @@ from typing import (
 
 import aiofiles
 import numpy as np
+from PIL import Image as PILImage
 from tqdm import tqdm
 
 import supervisely as sly
@@ -5862,33 +5862,34 @@ async def _download_project_item_async(
                 img_info.id, temp_path, semaphore=semaphore, check_hash=True
             )
 
-            # Get dimensions if needed - read minimal data from file
+            # Get dimensions if needed
             if None in [img_info.height, img_info.width]:
-                try:
-                    with open(temp_path, "rb") as f:
-                        header_bytes = f.read(65536)
-                        width, height = sly.image.get_size_from_bytes(header_bytes)
-                        img_info = img_info._replace(height=height, width=width)
-                except Exception:
-                    with open(temp_path, "rb") as f:
-                        img_bytes = f.read()
-                        width, height = sly.image.get_size_from_bytes(img_bytes)
-                        img_info = img_info._replace(height=height, width=width)
-                        del img_bytes
+                # Use PIL directly on the file - it will only read the minimal header needed
+                with PILImage.open(temp_path) as image:
+                    width, height = image.size
+                img_info = img_info._replace(height=height, width=width)
 
             # Update annotation with correct dimensions if needed
             if None in tmp_ann.img_size:
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
                 ann_json = tmp_ann.to_json()
 
+            # Clean up existing item first
+            dataset_fs.delete_item(img_info.name)
+
             # Move temp file to final location
             final_path = dataset_fs.get_item_path(img_info.name)
-            sly.fs.ensure_base_path(final_path)
 
-            if os.path.exists(final_path):
-                os.remove(final_path)
+            # os.rename is atomic and will overwrite the destination if it exists
             os.rename(temp_path, final_path)
-            img_bytes_for_save = None
+
+            # For streaming, we save directly to filesystem, so use add_item_raw_bytes_async with None
+            await dataset_fs.add_item_raw_bytes_async(
+                item_name=img_info.name,
+                item_raw_bytes=None,  # Image already saved to disk
+                ann=ann_json,
+                img_info=img_info if save_image_info is True else None,
+            )
         else:
             # Use fast in-memory download for small images
             img_bytes = await api.image.download_bytes_single_async(
@@ -5904,17 +5905,22 @@ async def _download_project_item_async(
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
                 ann_json = tmp_ann.to_json()
 
-            img_bytes_for_save = img_bytes
+            # Clean up existing item first, then save new one
+            dataset_fs.delete_item(img_info.name)
+            await dataset_fs.add_item_raw_bytes_async(
+                item_name=img_info.name,
+                item_raw_bytes=img_bytes,
+                ann=ann_json,
+                img_info=img_info if save_image_info is True else None,
+            )
     else:
-        img_bytes_for_save = None
-
-    dataset_fs.delete_item(img_info.name)
-    await dataset_fs.add_item_raw_bytes_async(
-        item_name=img_info.name,
-        item_raw_bytes=img_bytes_for_save,
-        ann=ann_json,
-        img_info=img_info if save_image_info is True else None,
-    )
+        # If not saving images, still need to save annotation
+        await dataset_fs.add_item_raw_bytes_async(
+            item_name=img_info.name,
+            item_raw_bytes=None,
+            ann=ann_json,
+            img_info=img_info if save_image_info is True else None,
+        )
 
     if progress_cb is not None:
         progress_cb(1)
@@ -5940,9 +5946,8 @@ async def _download_project_items_batch_async(
     Optimized version - uses fast batch processing for small images, streaming for mixed batches.
     """
     img_ids = [img_info.id for img_info in img_infos]
-    id_to_info = {img_info.id: img_info for img_info in img_infos}
 
-    # Download annotations first (smaller - less data to transfer)
+    # Download annotations first
     if only_image_tags is False:
         ann_infos = await api.annotation.download_bulk_async(
             dataset_id,
@@ -5974,123 +5979,43 @@ async def _download_project_items_batch_async(
             id_to_annotation[img_info.id] = tmp_ann.to_json()
 
     if save_images:
-        # For small batches, use parallel individual downloads (faster)
-        # For large batches, use streaming bulk download (memory-safe)
-        total_estimated_size = 0
-        for img_info in img_infos:
-            estimated_size = getattr(img_info, "size", 0) or (
-                img_info.height * img_info.width * 3
-                if img_info.height and img_info.width
-                else 1024 * 1024
-            )  # Default 1MB if unknown
-            total_estimated_size += estimated_size
+        logger.debug(f"Downloading {len(img_ids)} small images in batch mode")
 
-        # Use parallel downloads for small batches (faster due to parallelism)
-        # Use streaming for large batches (memory-safe but slower due to single request)
-        use_parallel_downloads = (
-            total_estimated_size < 50 * 1024 * 1024  # < 50MB total
-            and len(img_infos) <= 50  # and <= 50 images to avoid too many parallel requests
-        )
+        imgs_bytes = await api.image.download_bytes_many_async(img_ids, semaphore=semaphore)
 
-        if use_parallel_downloads:
-            # Fast parallel processing - each image downloaded independently
-            logger.debug(
-                f"Downloading {len(img_ids)} images in parallel mode (total: {total_estimated_size/1024/1024:.1f}MB)"
+        # Process all images at once - faster than one by one
+        for img_info, img_bytes in zip(img_infos, imgs_bytes):
+            if None in [img_info.height, img_info.width]:
+                width, height = sly.image.get_size_from_bytes(img_bytes)
+                img_info = img_info._replace(height=height, width=width)
+
+                # Update annotation if needed
+                if img_info.id in id_to_annotation:
+                    try:
+                        ann_dict = json.loads(id_to_annotation[img_info.id])
+                        if ann_dict.get("size") is None or None in ann_dict.get("size", []):
+                            ann_dict["size"] = {"height": height, "width": width}
+                            id_to_annotation[img_info.id] = json.dumps(ann_dict)
+                    except Exception:
+                        pass
+
+            ann_json = id_to_annotation.get(img_info.id)
+            dataset_fs.delete_item(img_info.name)
+            await dataset_fs.add_item_raw_bytes_async(
+                item_name=img_info.name,
+                item_raw_bytes=img_bytes,
+                ann=ann_json,
+                img_info=img_info if save_image_info is True else None,
             )
 
-            imgs_bytes = await api.image.download_bytes_many_async(
-                img_ids,
-                semaphore=semaphore,
-                check_hash=True,
-            )
+            if progress_cb is not None:
+                progress_cb(1)
 
-            # Process all images at once - faster than one by one
-            for img_info, img_bytes in zip(img_infos, imgs_bytes):
-                if None in [img_info.height, img_info.width]:
-                    width, height = sly.image.get_size_from_bytes(img_bytes)
-                    img_info = img_info._replace(height=height, width=width)
-
-                    # Update annotation if needed
-                    if img_info.id in id_to_annotation:
-                        try:
-                            ann_dict = json.loads(id_to_annotation[img_info.id])
-                            if ann_dict.get("size") is None or None in ann_dict.get("size", []):
-                                ann_dict["size"] = {"height": height, "width": width}
-                                id_to_annotation[img_info.id] = json.dumps(ann_dict)
-                        except Exception:
-                            pass
-
-                ann_json = id_to_annotation.get(img_info.id)
-                dataset_fs.delete_item(img_info.name)
-                await dataset_fs.add_item_raw_bytes_async(
-                    item_name=img_info.name,
-                    item_raw_bytes=img_bytes,
-                    ann=ann_json,
-                    img_info=img_info if save_image_info is True else None,
-                )
-
-                if progress_cb is not None:
-                    progress_cb(1)
-
-            logger.debug(f"Processed {len(img_infos)} images in parallel mode")
-        else:
-            # Streaming processing for large batches to prevent OOM
-            logger.debug(
-                f"Downloading {len(img_ids)} images in streaming batch mode (total: {total_estimated_size/1024/1024:.1f}MB)"
-            )
-
-            processed_count = 0
-            async for img_id, img_bytes in api.image.download_bytes_generator_async(
-                dataset_id,
-                img_ids,
-                semaphore=semaphore,
-                check_hash=True,
-            ):
-                img_info = id_to_info[img_id]
-
-                # Handle dimension detection
-                if None in [img_info.height, img_info.width]:
-                    width, height = sly.image.get_size_from_bytes(img_bytes)
-                    img_info = img_info._replace(height=height, width=width)
-
-                    # Update annotation with correct dimensions if needed
-                    if img_id in id_to_annotation:
-                        try:
-                            ann_dict = json.loads(id_to_annotation[img_id])
-                            if ann_dict.get("size") is None or None in ann_dict.get("size", []):
-                                ann_dict["size"] = {"height": height, "width": width}
-                                id_to_annotation[img_id] = json.dumps(ann_dict)
-                        except Exception:
-                            pass
-
-                ann_json = id_to_annotation.get(img_id)
-
-                # Save immediately and clear from memory
-                dataset_fs.delete_item(img_info.name)
-                await dataset_fs.add_item_raw_bytes_async(
-                    item_name=img_info.name,
-                    item_raw_bytes=img_bytes,
-                    ann=ann_json,
-                    img_info=img_info if save_image_info is True else None,
-                )
-
-                # Clear image bytes immediately
-                img_bytes = None
-                processed_count += 1
-
-                if progress_cb is not None:
-                    progress_cb(1)
-
-                # Force garbage collection only for very large batches (> 50 images)
-                if processed_count % 25 == 0 and len(img_infos) > 50:
-                    gc.collect()
-
-            logger.debug(f"Processed {processed_count} images in streaming batch mode")
+        logger.debug(f"Processed {len(img_infos)} small images in batch mode")
     else:
         # If not saving images, still need to save annotations
         for img_info in img_infos:
             ann_json = id_to_annotation.get(img_info.id)
-            dataset_fs.delete_item(img_info.name)
             await dataset_fs.add_item_raw_bytes_async(
                 item_name=img_info.name,
                 item_raw_bytes=None,
@@ -6102,7 +6027,6 @@ async def _download_project_items_batch_async(
 
     # Clear annotations from memory
     id_to_annotation.clear()
-    id_to_info.clear()
 
     logger.debug(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
 
