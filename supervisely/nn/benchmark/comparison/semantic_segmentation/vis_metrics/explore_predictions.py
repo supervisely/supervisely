@@ -1,6 +1,9 @@
 from typing import List, Tuple
 
 from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.annotation import AnnotationJsonFields as AJF
+from supervisely.annotation.label import LabelJsonFields as LJF
+from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.module_api import ApiField
 from supervisely.nn.benchmark.base_visualizer import BaseVisMetrics
@@ -23,6 +26,16 @@ class ExplorePredictions(BaseVisMetrics):
         self.meta = self.eval_results[0].gt_project_meta
         for eval_res in self.eval_results:
             self.meta = self.meta.merge(eval_res.pred_project_meta)
+
+        class_names = set(objclass.name for objclass in self.meta.obj_classes.items())
+        new_class_names = list(class_names.intersection(self.eval_results[0].classes_whitelist))
+        new_classes = [
+            objclass
+            for objclass in self.meta.obj_classes.items()
+            if objclass.name in new_class_names
+        ]
+        self.meta = self.meta.clone(obj_classes=new_classes)
+
         return self.meta
 
     @property
@@ -45,10 +58,10 @@ class ExplorePredictions(BaseVisMetrics):
 
         return gallery
 
-    def _get_sample_data(self) -> Tuple[List[ImageInfo], List[Annotation], List[ProjectMeta]]:
+    def _get_sample_data(self) -> Tuple[List[ImageInfo], List[Annotation]]:
         images = []
         annotations = []
-        api = self.eval_results[0].api
+        api: Api = self.eval_results[0].api
         names = None
         ds_name = None
         for idx, eval_res in enumerate(self.eval_results):
@@ -59,9 +72,6 @@ class ExplorePredictions(BaseVisMetrics):
                 images_ids = [image_info.id for image_info in infos]
                 names = [image_info.name for image_info in infos]
                 images.append(infos)
-                from supervisely.api.api import Api
-
-                api: Api
                 anns = api.annotation.download_batch(
                     dataset_info.id, images_ids, force_metadata_for_links=False
                 )
@@ -80,9 +90,14 @@ class ExplorePredictions(BaseVisMetrics):
             )
             images_ids = [image_info.id for image_info in infos]
             images.append(infos)
-            anns = api.annotation.download_batch(
+            anns = []
+            for ann in api.annotation.download_batch(
                 dataset_info.id, images_ids, force_metadata_for_links=False
-            )
+            ):
+                filter_fn = lambda label: label[LJF.OBJ_CLASS_NAME] in eval_res.classes_whitelist
+                ann.annotation[AJF.LABELS] = list(filter(filter_fn, ann.annotation[AJF.LABELS]))
+                anns.append(ann)
+
             annotations.append(anns)
 
         images = list(i for x in zip(*images) for i in x)
