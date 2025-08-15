@@ -12,6 +12,9 @@ from supervisely.api.app_api import ModuleInfo
 from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
+from supervisely.app.widgets.card.card import Card
+from supervisely.app.widgets.classes_table.classes_table import ClassesTable
+from supervisely.app.widgets.model_info.model_info import ModelInfo
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
 )
@@ -27,6 +30,8 @@ from supervisely.app.widgets.widget import Widget
 from supervisely.io import env
 from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
 from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.inference.session import Session
+from supervisely.project.project_meta import ProjectMeta
 
 
 class DeployModel(Widget):
@@ -228,7 +233,7 @@ class DeployModel(Widget):
         def get_deploy_parameters(self) -> Dict[str, Any]:
             experiment_info = self.experiment_table.get_selected_experiment_info()
             return {
-                "experiment_info": experiment_info.to_json() if experiment_info else None,
+                "experiment_info": (experiment_info.to_json() if experiment_info else None),
             }
 
         def deploy(self, agent_id: int) -> ModelAPI:
@@ -237,7 +242,9 @@ class DeployModel(Widget):
             experiment_info = deploy_parameters["experiment_info"]
             experiment_info = ExperimentInfo(**experiment_info)
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
-                agent_id=agent_id, experiment_info=experiment_info, log_level="debug"
+                agent_id=agent_id,
+                experiment_info=experiment_info,
+                log_level="debug",
             )
             model_api = ModelAPI(api=self.api, task_id=task_info["id"])
             return model_api
@@ -419,6 +426,8 @@ class DeployModel(Widget):
         self.select_agent = AgentSelector(self.team_id)
         self.select_agent_field = Field(content=self.select_agent, title="Select Agent")
 
+        self._create_model_info_widget()
+
         self.deploy_button = Button("Deploy", icon="zmdi zmdi-play")
         self.connect_button = Button("Connect", icon="zmdi zmdi-link")
         self.stop_button = Button("Stop", icon="zmdi zmdi-stop", button_type="danger")
@@ -426,7 +435,8 @@ class DeployModel(Widget):
         self.disconnect_button = Button("Disconnect", icon="zmdi zmdi-close", button_type="warning")
         self.disconnect_button.hide()
         self.deploy_stop_buttons = Flexbox(
-            widgets=[self.deploy_button, self.stop_button, self.disconnect_button], gap=10
+            widgets=[self.deploy_button, self.stop_button, self.disconnect_button],
+            gap=10,
         )
         self.connect_stop_buttons = Flexbox(
             widgets=[self.connect_button, self.stop_button, self.disconnect_button],
@@ -439,10 +449,17 @@ class DeployModel(Widget):
         for mode_name, mode in self.modes.items():
             label = self.modes_labels[mode_name]
             if mode_name == str(self.MODE.CONNECT):
-                widgets = [mode.layout, self.connect_stop_buttons, self.status, self.sesson_link]
+                widgets = [
+                    mode.layout,
+                    self.model_info_card,
+                    self.connect_stop_buttons,
+                    self.status,
+                    self.sesson_link,
+                ]
             else:
                 widgets = [
                     mode.layout,
+                    self.model_info_card,
                     self.select_agent_field,
                     self.deploy_stop_buttons,
                     self.status,
@@ -474,6 +491,18 @@ class DeployModel(Widget):
         def _disconnect_button_clicked():
             self.disconnect()
 
+        @self.tabs.click
+        def _active_tab_changed(tab_name: str):
+            if tab_name == self.modes_labels[str(self.MODE.CONNECT)]:
+                self.model_info_message.set(
+                    "Connect to model to see the session information.", status="text"
+                )
+            else:
+                self.model_info_message.set(
+                    "Deploy model to see the session information.", status="text"
+                )
+            self.model_info_card.collapse()
+
     def set_model_status(
         self,
         status: Literal["deployed", "stopped", "deploying", "connecting", "error", "hide"],
@@ -488,7 +517,10 @@ class DeployModel(Widget):
             "deploying": {"text": "Deploying model...", "status": "info"},
             "connecting": {"text": "Connecting to model...", "status": "info"},
             "connected": {"text": "Model connected successfully!", "status": "success"},
-            "error": {"text": "Error occurred during model deployment.", "status": "error"},
+            "error": {
+                "text": "Error occurred during model deployment.",
+                "status": "error",
+            },
         }
         args = status_args[status]
         if extra_text:
@@ -552,12 +584,14 @@ class DeployModel(Widget):
             self.model_api = model_api
             self.set_model_status("connected")
             self.set_session_info(task_info)
+            self.set_model_info(model_api.task_id)
             self.show_stop()
         except Exception as e:
             logger.error(f"Failed to deploy model: {e}", exc_info=True)
             self.set_model_status("error", str(e))
             self.set_session_info(None)
             self.enable_modes()
+            self.reset_model_info()
             self.show_deploy_button()
 
     def _deploy(self) -> None:
@@ -576,13 +610,15 @@ class DeployModel(Widget):
             self.model_api = model_api
             self.set_model_status("deployed")
             self.set_session_info(task_info)
+            self.set_model_info(model_api.task_id)
             self.show_stop()
         except Exception as e:
             logger.error(f"Failed to deploy model: {e}", exc_info=True)
             self.set_model_status("error", str(e))
             self.set_session_info(None)
-            self.enable_modes()
+            self.reset_model_info()
             self.show_deploy_button()
+            self.enable_modes()
         else:
             if str(self.MODE.CONNECT) in self.modes:
                 self.modes[str(self.MODE.CONNECT)]._update_sessions()
@@ -605,6 +641,7 @@ class DeployModel(Widget):
         self.model_api = None
         self.set_model_status("stopped")
         self.enable_modes()
+        self.reset_model_info()
         self.show_deploy_button()
         if str(self.MODE.CONNECT) in self.modes:
             self.modes[str(self.MODE.CONNECT)]._update_sessions()
@@ -615,6 +652,7 @@ class DeployModel(Widget):
         self.model_api = None
         self.set_model_status("hide")
         self.set_session_info(None)
+        self.reset_model_info()
         self.show_deploy_button()
         self.enable_modes()
 
@@ -652,3 +690,58 @@ class DeployModel(Widget):
 
     def to_html(self):
         return self.layout.to_html()
+
+    # Model Info
+    def _create_model_info_widget(self):
+        self.model_info_widget = ModelInfo()
+        model_info_widget_container = Field(
+            self.model_info_widget,
+            title="Model Info",
+            description="Information about the deployed model",
+        )
+
+        self.model_info_classes_widget = ClassesTable(selectable=False)
+        self.model_info_classes_message = Text("No classes provided")
+        self.model_info_classes_message.hide()
+        model_info_classes_widget_container = Field(
+            content=Container([self.model_info_classes_widget, self.model_info_classes_message]),
+            title="Model classes",
+            description="List of classes model predicts",
+        )
+
+        self.model_info_container = Container(
+            [model_info_widget_container, model_info_classes_widget_container]
+        )
+        self.model_info_container.hide()
+        self.model_info_message = Text("Connect to model to see the session information.")
+
+        self.model_info_card = Card(
+            title="Session Info",
+            description="Model parameters and classes",
+            collapsable=True,
+            content=Container([self.model_info_container, self.model_info_message]),
+        )
+        self.model_info_card.collapse()
+
+    def set_model_info(self, session_id):
+        session = Session(self.api, session_id)
+        self.model_info_widget.set_model_info(session_id)
+        model_meta = session.get_model_meta()
+        self.model_info_message.hide()
+        if len(model_meta.obj_classes) > 0:
+            self.model_info_classes_message.hide()
+            self.model_info_classes_widget.set_project_meta(model_meta)
+            self.model_info_classes_widget.show()
+        else:
+            self.model_info_classes_widget.hide()
+            self.model_info_classes_message.show()
+
+        self.model_info_container.show()
+
+    def reset_model_info(self):
+        self.model_info_container.hide()
+        self.model_info_widget.hide()
+        self.model_info_message.show()
+        self.model_info_classes_widget.set_project_meta(ProjectMeta())
+
+    # ------------------------------------------------------------ #

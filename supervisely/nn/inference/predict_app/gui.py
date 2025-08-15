@@ -11,14 +11,17 @@ from supervisely.api.api import Api
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import (
-    Card,
+    Button,
+    Flexbox,
+    Field,
     Container,
+    Card,
+    Text,
+    Input,
     DeployModel,
     Editor,
     FastTable,
-    Field,
     GridGallery,
-    Input,
     InputNumber,
     OneOf,
     Progress,
@@ -26,11 +29,7 @@ from supervisely.app.widgets import (
     RadioGroup,
     RadioTable,
     SelectDataset,
-    SelectProject,
-    Text,
 )
-from supervisely.app.widgets.button.button import Button
-from supervisely.app.widgets.flexbox.flexbox import Flexbox
 from supervisely.io import env
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction

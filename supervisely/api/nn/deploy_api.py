@@ -560,6 +560,10 @@ class DeployApi:
             agent_id=agent_id,
             module_id=module_id,
             workspace_id=workspace_id,
+            # @TODO: Remove this after testing
+            app_version="test-experiment-report",
+            is_branch=True,
+            # ---------------------------- #
             **kwargs,
         )
         ready = self._api.app.wait_until_ready_for_api_calls(
