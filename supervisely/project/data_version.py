@@ -95,7 +95,7 @@ class DataVersion(ModuleApiBase):
             project_info = self._api.project.get_info_by_id(project_info)
         self.project_info: ProjectInfo = project_info
         self.project_dir: str = os.path.join(self.__storage_dir, str(self.project_info.id))
-        self.versions_path: str = os.path.join(self.project_dir, "versions.json")
+        self.versions_path: str = os.path.join(self.project_dir, "versions.json").replace("\\", "/")
         self.versions: dict = self.get_map(self.project_info, do_initialization=False)
         if self.project_info.version is None:
             self._create_warning_system_file()
@@ -245,6 +245,9 @@ class DataVersion(ModuleApiBase):
             }
             self.versions["latest"] = version_id
             self.set_map(project_info, initialize=False)
+            logger.debug(
+                f"Project version {version_id} archive created and uploaded. Starting commit..."
+            )
             self.commit(
                 version_id,
                 commit_token,
@@ -425,6 +428,7 @@ class DataVersion(ModuleApiBase):
             return
 
         bin_io = self._download_and_extract(backup_files)
+        logger.debug(f"Downloaded and extracted project version {version_num} in binary format.")
         new_project_info = Project.upload_bin(
             self._api,
             bin_io,
