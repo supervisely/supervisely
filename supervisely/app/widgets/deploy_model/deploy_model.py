@@ -451,7 +451,7 @@ class DeployModel(Widget):
             if mode_name == str(self.MODE.CONNECT):
                 widgets = [
                     mode.layout,
-                    self.model_info_card,
+                    self._model_info_card,
                     self.connect_stop_buttons,
                     self.status,
                     self.sesson_link,
@@ -459,7 +459,7 @@ class DeployModel(Widget):
             else:
                 widgets = [
                     mode.layout,
-                    self.model_info_card,
+                    self._model_info_card,
                     self.select_agent_field,
                     self.deploy_stop_buttons,
                     self.status,
@@ -493,15 +493,7 @@ class DeployModel(Widget):
 
         @self.tabs.click
         def _active_tab_changed(tab_name: str):
-            if tab_name == self.modes_labels[str(self.MODE.CONNECT)]:
-                self.model_info_message.set(
-                    "Connect to model to see the session information.", status="text"
-                )
-            else:
-                self.model_info_message.set(
-                    "Deploy model to see the session information.", status="text"
-                )
-            self.model_info_card.collapse()
+            self.set_model_message_by_tab(tab_name)
 
     def set_model_status(
         self,
@@ -693,55 +685,70 @@ class DeployModel(Widget):
 
     # Model Info
     def _create_model_info_widget(self):
-        self.model_info_widget = ModelInfo()
-        model_info_widget_container = Field(
-            self.model_info_widget,
+        self._model_info_widget = ModelInfo()
+        self._model_info_widget_field = Field(
+            self._model_info_widget,
             title="Model Info",
             description="Information about the deployed model",
         )
 
-        self.model_info_classes_widget = ClassesTable(selectable=False)
-        self.model_info_classes_message = Text("No classes provided")
-        self.model_info_classes_message.hide()
-        model_info_classes_widget_container = Field(
-            content=Container([self.model_info_classes_widget, self.model_info_classes_message]),
+        self._model_info_classes_widget = ClassesTable(selectable=False)
+        self._model_info_classes_message = Text("No classes provided")
+        self._model_info_classes_message.hide()
+        self._model_info_classes_widget_field = Field(
+            content=Container([self._model_info_classes_widget, self._model_info_classes_message]),
             title="Model classes",
             description="List of classes model predicts",
         )
 
-        self.model_info_container = Container(
-            [model_info_widget_container, model_info_classes_widget_container]
+        self._model_info_container = Container(
+            [self._model_info_widget_field, self._model_info_classes_widget_field]
         )
-        self.model_info_container.hide()
-        self.model_info_message = Text("Connect to model to see the session information.")
+        self._model_info_container.hide()
+        self._model_info_message = Text("Connect to model to see the session information.")
 
-        self.model_info_card = Card(
+        self._model_info_card = Card(
             title="Session Info",
             description="Model parameters and classes",
             collapsable=True,
-            content=Container([self.model_info_container, self.model_info_message]),
+            content=Container([self._model_info_container, self._model_info_message]),
         )
-        self.model_info_card.collapse()
+        self._model_info_card.collapse()
 
     def set_model_info(self, session_id):
-        session = Session(self.api, session_id)
-        self.model_info_widget.set_model_info(session_id)
-        model_meta = session.get_model_meta()
-        self.model_info_message.hide()
-        if len(model_meta.obj_classes) > 0:
-            self.model_info_classes_message.hide()
-            self.model_info_classes_widget.set_project_meta(model_meta)
-            self.model_info_classes_widget.show()
-        else:
-            self.model_info_classes_widget.hide()
-            self.model_info_classes_message.show()
+        def set_project_meta(model_meta: ProjectMeta):
+            if len(model_meta.obj_classes) == 0:
+                self._model_info_classes_widget.hide()
+                self._model_info_classes_message.show()
+                return
 
-        self.model_info_container.show()
+            self._model_info_classes_widget.set_project_meta(model_meta)
+            self._model_info_classes_message.hide()
+            self._model_info_classes_widget.show()
+
+        session = Session(self.api, session_id)
+        self._model_info_widget.set_model_info(session_id)
+        model_meta = session.get_model_meta()
+        set_project_meta(model_meta)
+
+        self._model_info_message.hide()
+        self._model_info_container.show()
+        self._model_info_card.uncollapse()
 
     def reset_model_info(self):
-        self.model_info_container.hide()
-        self.model_info_widget.hide()
-        self.model_info_message.show()
-        self.model_info_classes_widget.set_project_meta(ProjectMeta())
+        self._model_info_card.collapse()
+        self._model_info_container.hide()
+        self._model_info_message.show()
+
+    def set_model_message_by_tab(self, tab_name: str):
+        if tab_name == self.modes_labels[str(self.MODE.CONNECT)]:
+            self._model_info_message.set(
+                "Connect to model to see the session information.", status="text"
+            )
+        else:
+            self._model_info_message.set(
+                "Deploy model to see the session information.", status="text"
+            )
+        self._model_info_card.collapse()
 
     # ------------------------------------------------------------ #
