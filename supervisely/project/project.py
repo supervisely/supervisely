@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import gc
 import io
 import json
 import os
@@ -5612,6 +5613,7 @@ async def _download_project_async(
         blob_files_to_download = {}
         blob_images = []
 
+        sly.logger.info("Calculating images to download...", extra={"dataset": dataset.name})
         async for image_batch in all_images:
             for image in image_batch:
                 if images_ids is None or image.id in images_ids:
@@ -5655,16 +5657,55 @@ async def _download_project_async(
                             ds_progress(1)
                 return to_download
 
-            async def run_tasks_with_delay(tasks, delay=0.1):
-                created_tasks = []
-                for task in tasks:
-                    created_task = asyncio.create_task(task)
-                    created_tasks.append(created_task)
-                    await asyncio.sleep(delay)
+            async def run_tasks_with_semaphore_control(task_generators, delay=0.05):
+                """
+                Execute tasks with semaphore control - create tasks only as semaphore permits become available.
+                task_generators - list of coroutines or callables that create tasks
+                """
+                random.shuffle(task_generators)
+                running_tasks = set()
+                max_concurrent = getattr(semaphore, "_value", 10)
+
+                task_iter = iter(task_generators)
+                completed_count = 0
+
+                while True:
+                    # Add new tasks while we have capacity
+                    while len(running_tasks) < max_concurrent:
+                        try:
+                            task_gen = next(task_iter)
+                            if callable(task_gen):
+                                task = asyncio.create_task(task_gen())
+                            else:
+                                task = asyncio.create_task(task_gen)
+                            running_tasks.add(task)
+                            await asyncio.sleep(delay)
+                        except StopIteration:
+                            break
+
+                    if not running_tasks:
+                        break
+
+                    # Wait for at least one task to complete
+                    done, running_tasks = await asyncio.wait(
+                        running_tasks, return_when=asyncio.FIRST_COMPLETED
+                    )
+
+                    # Process completed tasks
+                    for task in done:
+                        completed_count += 1
+                        try:
+                            await task
+                        except Exception as e:
+                            logger.error(f"Task error: {e}")
+
+                    # Clear the done set - this should be enough for memory cleanup
+                    done.clear()
+
                 logger.debug(
-                    f"{len(created_tasks)} tasks have been created for dataset ID: {dataset.id}, Name: {dataset.name}"
+                    f"{completed_count} tasks have been completed for dataset ID: {dataset.id}, Name: {dataset.name}"
                 )
-                return created_tasks
+                return completed_count
 
             # Download blob files if required
             if download_blob_files and len(blob_files_to_download) > 0:
@@ -5728,19 +5769,24 @@ async def _download_project_async(
                             progress_cb=ds_progress,
                         )
                         offset_tasks.append(offset_task)
-                    created_tasks = await run_tasks_with_delay(offset_tasks, 0.05)
-                    await asyncio.gather(*created_tasks)
+                    await run_tasks_with_semaphore_control(offset_tasks, 0.05)
 
             tasks = []
-            # Check which images need to be downloaded
-            small_images = await check_items(small_images)
-            large_images = await check_items(large_images)
+            if resume_download is True:
+                sly.logger.info("Checking existing images...", extra={"dataset": dataset.name})
+                # Check which images need to be downloaded
+                small_images = await check_items(small_images)
+                large_images = await check_items(large_images)
 
             # If only one small image, treat it as a large image for efficiency
             if len(small_images) == 1:
                 large_images.append(small_images.pop())
 
             # Create batch download tasks
+            sly.logger.debug(
+                f"Downloading {len(small_images)} small images in batch number {len(small_images) // batch_size}...",
+                extra={"dataset": dataset.name},
+            )
             for images_batch in batched(small_images, batch_size=batch_size):
                 task = _download_project_items_batch_async(
                     api=api,
@@ -5758,6 +5804,10 @@ async def _download_project_async(
                 tasks.append(task)
 
             # Create individual download tasks for large images
+            sly.logger.debug(
+                f"Downloading {len(large_images)} large images one by one...",
+                extra={"dataset": dataset.name},
+            )
             for image in large_images:
                 task = _download_project_item_async(
                     api=api,
@@ -5773,8 +5823,7 @@ async def _download_project_async(
                 )
                 tasks.append(task)
 
-            created_tasks = await run_tasks_with_delay(tasks)
-            await asyncio.gather(*created_tasks)
+            await run_tasks_with_semaphore_control(tasks)
 
         if save_image_meta:
             meta_dir = dataset_fs.meta_dir
@@ -5853,11 +5902,15 @@ async def _download_project_item_async(
 
         if estimated_size > size_threshold_for_streaming:
             # Use streaming for large images only
-            logger.debug(
-                f"Downloading 1 large image in streaming mode. ID: {img_info.id}, Size: {estimated_size/1024/1024:.1f}MB"
+            sly.logger.trace(
+                f"Downloading large image in streaming mode: {img_info.size / 1024 / 1024:.1f}MB"
             )
 
-            temp_path = dataset_fs.get_item_path(img_info.name) + ".tmp"
+            # Clean up existing item first
+            dataset_fs.delete_item(img_info.name)
+
+            final_path = dataset_fs.generate_item_path(img_info.name)
+            temp_path = final_path + ".tmp"
             await api.image.download_path_async(
                 img_info.id, temp_path, semaphore=semaphore, check_hash=True
             )
@@ -5874,12 +5927,6 @@ async def _download_project_item_async(
                 tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
                 ann_json = tmp_ann.to_json()
 
-            # Clean up existing item first
-            dataset_fs.delete_item(img_info.name)
-
-            # Move temp file to final location
-            final_path = dataset_fs.get_item_path(img_info.name)
-
             # os.rename is atomic and will overwrite the destination if it exists
             os.rename(temp_path, final_path)
 
@@ -5891,6 +5938,7 @@ async def _download_project_item_async(
                 img_info=img_info if save_image_info is True else None,
             )
         else:
+            sly.logger.trace(f"Downloading large image: {img_info.size / 1024 / 1024:.1f}MB")
             # Use fast in-memory download for small images
             img_bytes = await api.image.download_bytes_single_async(
                 img_info.id, semaphore=semaphore, check_hash=True
@@ -5914,7 +5962,7 @@ async def _download_project_item_async(
                 img_info=img_info if save_image_info is True else None,
             )
     else:
-        # If not saving images, still need to save annotation
+        dataset_fs.delete_item(img_info.name)
         await dataset_fs.add_item_raw_bytes_async(
             item_name=img_info.name,
             item_raw_bytes=None,
@@ -5944,12 +5992,13 @@ async def _download_project_items_batch_async(
     Download images and annotations from Supervisely API and save them to the local filesystem.
     Uses parameters from the parent function _download_project_async.
     It is used for batch download of images and annotations with the bulk download API methods.
-    
+
     IMPORTANT: The total size of all images in a batch must not exceed 130MB, and the size of each image must not exceed 1.28MB.
     """
     img_ids = [img_info.id for img_info in img_infos]
     img_ids_to_info = {img_info.id: img_info for img_info in img_infos}
 
+    sly.logger.trace(f"Downloading {len(img_infos)} images in batch mode.")
     # Download annotations first
     if only_image_tags is False:
         ann_infos = await api.annotation.download_bulk_async(
@@ -5982,12 +6031,9 @@ async def _download_project_items_batch_async(
             id_to_annotation[img_info.id] = tmp_ann.to_json()
 
     if save_images:
-        img_ids, imgs_bytes = await api.image.download_bytes_generator_async(
+        async for img_id, img_bytes in api.image.download_bytes_generator_async(
             dataset_id=dataset_id, img_ids=img_ids, semaphore=semaphore, check_hash=True
-        )
-
-        # Process all images at once - faster than one by one
-        for img_id, img_bytes in zip(img_ids, imgs_bytes):
+        ):
             img_info = img_ids_to_info.get(img_id)
             if img_info is None:
                 continue
@@ -5996,17 +6042,19 @@ async def _download_project_items_batch_async(
                 width, height = sly.image.get_size_from_bytes(img_bytes)
                 img_info = img_info._replace(height=height, width=width)
 
-                # Update annotation if needed
-                if img_id in id_to_annotation:
+                # Update annotation if needed - use pop to get and remove at the same time
+                ann_json = id_to_annotation.pop(img_id, None)
+                if ann_json is not None:
                     try:
-                        ann_dict = json.loads(id_to_annotation[img_id])
-                        if ann_dict.get("size") is None or None in ann_dict.get("size", []):
-                            ann_dict["size"] = {"height": height, "width": width}
-                            id_to_annotation[img_id] = json.dumps(ann_dict)
+                        tmp_ann = Annotation.from_json(ann_json, meta)
+                        if None in tmp_ann.img_size:
+                            tmp_ann = tmp_ann.clone(img_size=(img_info.height, img_info.width))
+                        ann_json = tmp_ann.to_json()
                     except Exception:
                         pass
+            else:
+                ann_json = id_to_annotation.pop(img_id, None)
 
-            ann_json = id_to_annotation.get(img_id)
             dataset_fs.delete_item(img_info.name)
             await dataset_fs.add_item_raw_bytes_async(
                 item_name=img_info.name,
@@ -6017,12 +6065,10 @@ async def _download_project_items_batch_async(
 
             if progress_cb is not None:
                 progress_cb(1)
-
-        logger.debug(f"Processed {len(img_infos)} small images in batch mode")
     else:
-        # If not saving images, still need to save annotations
         for img_info in img_infos:
-            ann_json = id_to_annotation.get(img_info.id)
+            dataset_fs.delete_item(img_info.name)
+            ann_json = id_to_annotation.pop(img_info.id, None)
             await dataset_fs.add_item_raw_bytes_async(
                 item_name=img_info.name,
                 item_raw_bytes=None,
@@ -6032,8 +6078,13 @@ async def _download_project_items_batch_async(
             if progress_cb is not None:
                 progress_cb(1)
 
-    # Clear annotations from memory
+    # Clear dictionaries and force GC for large batches only
+    batch_size = len(img_infos)
     id_to_annotation.clear()
+    img_ids_to_info.clear()
+
+    if batch_size > 50:  # Only for large batches
+        gc.collect()
 
     logger.debug(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
 
