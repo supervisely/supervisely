@@ -28,6 +28,7 @@ class YOLOv8(BaseTrainArtifacts):
             "pose estimation",
         ]
         self._require_runtime = True
+        self._has_benchmark_evaluation = True
 
     def get_task_id(self, artifacts_folder: str) -> str:
         parts = artifacts_folder.split("/")

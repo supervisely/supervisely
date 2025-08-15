@@ -264,9 +264,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
     def get_list(
         self,
-        workspace_id: int,
+        workspace_id: Optional[int] = None,
         filters: Optional[List[Dict[str, str]]] = None,
         fields: List[str] = [],
+        team_id: Optional[int] = None,
     ) -> List[ProjectInfo]:
         """
         List of Projects in the given Workspace.
@@ -275,12 +276,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         If you need version information, use :func:`get_info_by_id`.
 
         :param workspace_id: Workspace ID in which the Projects are located.
-        :type workspace_id: int
+        :type workspace_id: int, optional
         :param filters: List of params to sort output Projects.
         :type filters: List[dict], optional
         :param fields: The list of api fields which will be returned with the response. You must specify all fields you want to receive, not just additional ones.
         :type fields: List[str]
-
+        :param team_id: Team ID in which the Projects are located.
+        :type team_id: int, optional
         :return: List of all projects with information for the given Workspace. See :class:`info_sequence<info_sequence>`
         :rtype: :class: `List[ProjectInfo]`
         :Usage example:
@@ -357,6 +359,11 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             # ]
 
         """
+        if team_id is not None and workspace_id is not None:
+            raise ValueError(
+                "team_id and workspace_id cannot be used together. Please provide only one of them."
+            )
+
         method = "projects.list"
 
         debug_message = "While getting list of projects, the following fields are not available: "
@@ -367,11 +374,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 self.debug_messages_sent["get_list_versions"] = True
                 logger.debug(debug_message + "version. ")
 
+        default_fields = [
+            ApiField.ID,
+            ApiField.WORKSPACE_ID,
+            ApiField.TITLE,
+            ApiField.DESCRIPTION,
+            ApiField.SIZE,
+            ApiField.README,
+            ApiField.TYPE,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.CUSTOM_DATA,
+            ApiField.GROUP_ID,
+            ApiField.CREATED_BY_ID[0][0],
+        ]
+
+        if fields:
+            merged_fields = list(set(default_fields + fields))
+            fields = list(dict.fromkeys(merged_fields))
+
         data = {
-            ApiField.WORKSPACE_ID: workspace_id,
             ApiField.FILTER: filters or [],
             ApiField.FIELDS: fields,
         }
+        if workspace_id is not None:
+            data[ApiField.WORKSPACE_ID] = workspace_id
+        if team_id is not None:
+            data[ApiField.GROUP_ID] = team_id
 
         return self.get_list_all_pages(method, data)
 
@@ -2129,7 +2158,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None,
-            #                       teamd_id = 1,
+            #                       team_id = 1,
             #                       import_settings = {},
             #                   ),
             #                   ProjectInfo(id = 23,
@@ -2147,7 +2176,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             #                       reference_image_url = None,
             #                       custom_data = None,
             #                       backup_archive = None),
-            #                       teamd_id = 1,
+            #                       team_id = 1,
             #                       import_settings = {},
             #                   )
             #                 ]

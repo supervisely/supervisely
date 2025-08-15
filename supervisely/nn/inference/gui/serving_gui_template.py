@@ -1,3 +1,4 @@
+import os
 from os.path import join
 from typing import Any, Dict, List, Optional, Union
 
@@ -7,14 +8,25 @@ import supervisely.io.env as sly_env
 import supervisely.io.fs as sly_fs
 import supervisely.io.json as sly_json
 from supervisely import Api
-from supervisely.app.widgets import Card, Container, Field, RadioTabs, SelectString, Text, Widget
-from supervisely.app.widgets.experiment_selector.experiment_selector import ExperimentSelector
+from supervisely.app.widgets import (
+    Card,
+    Container,
+    Field,
+    RadioTabs,
+    SelectString,
+    Text,
+    Widget,
+)
+from supervisely.app.widgets.experiment_selector.experiment_selector import (
+    ExperimentSelector,
+)
 from supervisely.app.widgets.pretrained_models_selector.pretrained_models_selector import (
     PretrainedModelsSelector,
 )
 from supervisely.nn.experiments import get_experiment_infos
 from supervisely.nn.inference.gui.serving_gui import ServingGUI
 from supervisely.nn.utils import ModelSource, RuntimeType, _get_model_name
+from supervisely.nn.experiments import ExperimentInfo
 
 
 class ServingGUITemplate(ServingGUI):
@@ -67,7 +79,7 @@ class ServingGUITemplate(ServingGUI):
         # Custom models
         if use_custom_models:
             experiments = get_experiment_infos(self.api, self.team_id, self.framework_name)
-            self.experiment_selector = ExperimentSelector(self.team_id, experiments)
+            self.experiment_selector = ExperimentSelector(self.api, self.team_id, experiments)
         else:
             self.experiment_selector = None
 
@@ -132,11 +144,13 @@ class ServingGUITemplate(ServingGUI):
 
         if self.runtime_select is not None:
             self.runtime_select.value_changed(lambda _: self._update_export_message())
+
         if self.experiment_selector is not None:
-            self.experiment_selector.value_changed(lambda _: self._update_export_message())
-            for task_type in self.experiment_selector.rows:
-                for row in self.experiment_selector.rows[task_type]:
-                    row.checkpoints_selector.value_changed(lambda _: self._update_export_message())
+            self.experiment_selector.selection_changed(lambda _: self._update_export_message())
+            self.experiment_selector.checkpoint_changed(
+                lambda row, _: self._update_export_message()
+            )
+
         if self.pretrained_models_table is not None:
             self.pretrained_models_table.model_changed(lambda _: self._update_export_message())
 
@@ -156,7 +170,12 @@ class ServingGUITemplate(ServingGUI):
 
     @property
     def model_info(self) -> Dict[str, Any]:
-        return self._get_selected_row()
+        model_info = self._get_selected_row()
+        if isinstance(model_info, ExperimentInfo):
+            # model info requires json format
+            # to match types of pretrained and custom model info
+            model_info = model_info.to_json()
+        return model_info
 
     @property
     def model_name(self) -> Optional[str]:
@@ -171,7 +190,14 @@ class ServingGUITemplate(ServingGUI):
             model_meta = self.model_info.get("meta", {})
             return model_meta.get("model_files", {})
         else:
-            return self.experiment_selector.get_model_files()
+            experiment_info = self.experiment_selector.get_selected_experiment_info()
+            artifacts_dir = experiment_info.artifacts_dir
+            model_files = experiment_info.model_files
+            full_model_files = {
+                name: os.path.join(artifacts_dir, file) for name, file in model_files.items()
+            }
+            full_model_files["checkpoint"] = self.experiment_selector.get_selected_checkpoint_path()
+            return full_model_files
 
     @property
     def runtime(self) -> str:
@@ -235,10 +261,10 @@ class ServingGUITemplate(ServingGUI):
 
         checkpoint_name = None
         if self.model_source == ModelSource.CUSTOM and self.experiment_selector is not None:
-            selected_row = self.experiment_selector.get_selected_row()
-            if selected_row is None:
+            selected_experiment_info = self.experiment_selector.get_selected_experiment_info()
+            if selected_experiment_info is None:
                 return
-            checkpoint_name = selected_row.get_selected_checkpoint_name()
+            checkpoint_name = self.experiment_selector.get_selected_checkpoint_name()
             if checkpoint_name is None:
                 return
 
@@ -250,7 +276,7 @@ class ServingGUITemplate(ServingGUI):
                 if key.lower().startswith(runtime.lower()):
                     available = True
                     break
-            if checkpoint_name != selected_row.best_checkpoint:
+            if checkpoint_name != selected_experiment_info.best_checkpoint:
                 available = False
 
         if available:

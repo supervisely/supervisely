@@ -314,7 +314,7 @@
     align-items: center;
 }
 
-.experiment-body .experiment-info-header .experiment-info-buttons a {
+.experiment-body .experiment-info-header .experiment-info-buttons a, .training-plots-button {
     display: flex;
     gap: 5px;
     align-items: center;
@@ -327,7 +327,8 @@
     cursor: pointer;
 }
 
-.experiment-body .experiment-info-header .experiment-info-buttons a.primary {
+
+.experiment-body .experiment-info-header .experiment-info-buttons a.primary, .training-plots-button {
     background: black;
     color: white;
 }
@@ -336,6 +337,10 @@
     height: 16px;
     width: auto;
     background: transparent;
+}
+
+.experiment-body .training-plots-button {
+    display: inline-block;
 }
 
 /*********************** Metrics ***********************/
