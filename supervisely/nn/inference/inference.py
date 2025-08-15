@@ -1242,7 +1242,7 @@ class Inference:
     def get_classes(self) -> List[str]:
         return self.classes
     
-    def _tracker_init(self, state: dict) -> object:
+    def _tracker_init(self, tracker: str, tracker_settings: dict) -> object:
         # Check if tracking is supported for this model
         info = self.get_info()
         tracking_support = info.get("tracking_on_videos_support", False)
@@ -1251,17 +1251,14 @@ class Inference:
             logger.debug("Tracking is not supported for this model")
             return None
         
-        tracking = state.get("tracker", None)
-        
-        if tracking == "botsort":
+        if tracker == "botsort":
             from supervisely.nn.tracker import BotSortTracker
-            tracker_settings = state.get("tracker_settings", {})
             device = tracker_settings.get("device", self.device)
             logger.debug(f"Initializing BotSort tracker with device: {device}")
             return BotSortTracker(settings=tracker_settings, device=device)
         else:
-            if tracking is not None:
-                logger.warning(f"Unknown tracking type: {tracking}. Tracking is disabled.")
+            if tracker is not None:
+                logger.warning(f"Unknown tracking type: {tracker}. Tracking is disabled.")
             return None
 
 
@@ -1843,7 +1840,7 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        self._tracker = self._tracker_init(state)
+        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
         
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
@@ -2084,7 +2081,7 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        self._tracker = self._tracker_init(state)
+        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
         
         logger.debug(
             f"Video info:",
