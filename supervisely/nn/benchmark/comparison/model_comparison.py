@@ -180,17 +180,18 @@ class ModelComparison:
         for eval_result in self.eval_results:
             # eval_result.classes_whitelist = list(category_names)
             eval_result.inference_info["inference_settings"]["classes"] = list(category_names)
-            bar_data, labels = eval_result.mp.classwise_segm_error_data
-            names = list(labels)
-            keep_idx = [i for i, n in enumerate(names) if n in category_names]
+            if task_type == TaskType.SEMANTIC_SEGMENTATION:
+                bar_data, labels = eval_result.mp.classwise_segm_error_data
+                names = list(labels)
+                keep_idx = [i for i, n in enumerate(names) if n in category_names]
 
-            if hasattr(bar_data, "iloc"):
-                filtered_bar_data = bar_data.iloc[keep_idx]
-            else:
-                filtered_bar_data = [bar_data[i] for i in keep_idx]
+                if hasattr(bar_data, "iloc"):
+                    filtered_bar_data = bar_data.iloc[keep_idx]
+                else:
+                    filtered_bar_data = [bar_data[i] for i in keep_idx]
 
-            filtered_labels = [names[i] for i in keep_idx]
-            eval_result.mp.classwise_segm_error_data = (filtered_bar_data, filtered_labels)
+                filtered_labels = [names[i] for i in keep_idx]
+                eval_result.mp.classwise_segm_error_data = (filtered_bar_data, filtered_labels)
 
     def visualize(self):
         task_type = self.eval_results[0].cv_task
