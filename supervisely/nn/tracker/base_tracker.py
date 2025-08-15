@@ -1,5 +1,6 @@
+from typing import List, Dict, Any
 import supervisely as sly
-from supervisely import VideoAnnotation
+from supervisely import Annotation, VideoAnnotation
 import numpy as np
 import torch
 
@@ -21,14 +22,14 @@ class BaseTracker:
         self._validate_device()
 
 
-    def update(self, frame, detections):
+    def update(self, frame, detections) -> List[Dict[str, Any]]:
         raise NotImplementedError("This method should be overridden by subclasses.")
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset tracker state."""
-        pass
+        pass    
     
-    def track(self, frames: list, annotations: list):
+    def track(self, frames: List[np.ndarray], annotations: List[Annotation]) -> VideoAnnotation:
         raise NotImplementedError("This method should be overridden by subclasses.")
     
     @property
@@ -36,7 +37,7 @@ class BaseTracker:
         """Return the accumulated VideoAnnotation."""
         raise NotImplementedError("This method should be overridden by subclasses.")
 
-    def _validate_device(self):
+    def _validate_device(self) -> None:
         if self.device != 'cpu' and not self.device.startswith('cuda'):
             raise ValueError(
                 f"Invalid device '{self.device}'. Supported devices are 'cpu' or 'cuda'."

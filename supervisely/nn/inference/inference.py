@@ -1290,7 +1290,7 @@ class Inference:
             "sliding_window_support": self.sliding_window_mode,
             "videos_support": True,
             "async_video_inference_support": True,
-            "tracking_on_videos_support": True,
+            "tracking_on_videos_support": False,
             "async_image_inference_support": True,
             "tracking_algorithms": ["botsort"],
             "batch_inference_support": self.is_batch_inference_supported(),
@@ -1872,9 +1872,17 @@ class Inference:
             if self._tracker is not None:
                 updated_anns = []
                 for frame, ann in zip(frames, anns):
-                    tracks, matches = self._tracker.update(frame, ann)
-                    updated_ann = ann.clone(custom_data=matches)
-                    updated_anns.append(updated_ann)
+                    matches = self._tracker.update(frame, ann)
+ 
+                    track_ids = [match["track_id"] for match in matches]
+                    tracked_labels = [match["label"] for match in matches]
+                    # tracked_labels = [ann.labels[match["det_id"]] for match in matches]
+                    
+                    filtered_annotation = ann.clone(
+                        labels=tracked_labels,
+                        custom_data=track_ids
+                    )
+                    updated_anns.append(filtered_annotation)
                 anns = updated_anns
                     
             predictions = [
@@ -2119,7 +2127,7 @@ class Inference:
                     matches = self._tracker.update(frame, ann)
  
                     track_ids = [match["track_id"] for match in matches]
-                    tracked_labels = [ann.labels[match["det_id"]] for match in matches]
+                    tracked_labels = [match["label"] for match in matches]
                     
                     filtered_annotation = ann.clone(
                         labels=tracked_labels,

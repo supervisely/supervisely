@@ -66,8 +66,8 @@ class BotSortTracker(BaseTracker):
         with open(config_path, 'r', encoding='utf-8') as file:
             return yaml.safe_load(file)
 
-    def update(self, frame: np.ndarray, annotation: Annotation) -> List[TrackedObject]:
-        """Update tracker and return tracks for current frame."""
+    def update(self, frame: np.ndarray, annotation: Annotation) -> List[Dict[str, Any]]:
+        """Update tracker and return list of matches for current frame."""
         self.frame_shape = frame.shape[:2]
         self._update_obj_classes(annotation)
         detections = self._convert_annotation(annotation)
@@ -86,14 +86,13 @@ class BotSortTracker(BaseTracker):
             if track_id is not None:
                 match = {
                     "track_id": track_id,
-                    "det_id": det_id,
-                    "label": annotation.labels[det_id].to_json()
+                    "label": annotation.labels[det_id]
                 }
                 matches.append(match)
             
         return matches
     
-    def reset(self):
+    def reset(self) -> None:
         super().reset()
         self.frame_tracks = []
         self.obj_classes = {}
