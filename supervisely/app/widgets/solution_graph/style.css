@@ -1,0 +1,37 @@
+.sly-flow-diagram {
+  /* overflow: hidden; */
+  position: relative;
+}
+
+.dotted-grid {
+  background-image: radial-gradient(
+    circle,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 0
+  );
+  background-size: 25px 25px;
+}
+
+.sly-flow-nodes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.sly-flow-node-content {
+  display: flex;
+}
+
+.sly-flow-node {
+  display: flex;
+  position: absolute;
+  padding: 3px;
+}
+
+.sly-flow-node-button {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  justify-content: flex-end;
+}
