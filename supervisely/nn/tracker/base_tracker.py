@@ -22,7 +22,7 @@ class BaseTracker:
         self._validate_device()
 
 
-    def update(self, frame, detections) -> List[Dict[str, Any]]:
+    def update(self, frame: np.ndarray, annotation: Annotation) -> List[Dict[str, Any]]:
         raise NotImplementedError("This method should be overridden by subclasses.")
 
     def reset(self) -> None:

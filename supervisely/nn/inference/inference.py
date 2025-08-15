@@ -94,6 +94,7 @@ from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
 from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.tracker.base_tracker import BaseTracker
 
 try:
     from typing import Literal
@@ -190,7 +191,7 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker = None
+        self._tracker: BaseTracker = None
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -1867,21 +1868,8 @@ class Inference:
             )
             
             if self._tracker is not None:
-                updated_anns = []
-                for frame, ann in zip(frames, anns):
-                    matches = self._tracker.update(frame, ann)
- 
-                    track_ids = [match["track_id"] for match in matches]
-                    tracked_labels = [match["label"] for match in matches]
-                    # tracked_labels = [ann.labels[match["det_id"]] for match in matches]
-                    
-                    filtered_annotation = ann.clone(
-                        labels=tracked_labels,
-                        custom_data=track_ids
-                    )
-                    updated_anns.append(filtered_annotation)
-                anns = updated_anns
-                    
+                anns = self._apply_tracker_to_anns(self, frames, anns)
+                
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
@@ -2119,19 +2107,7 @@ class Inference:
             )
             
             if self._tracker is not None:
-                updated_anns = []
-                for frame, ann in zip(frames, anns):
-                    matches = self._tracker.update(frame, ann)
- 
-                    track_ids = [match["track_id"] for match in matches]
-                    tracked_labels = [match["label"] for match in matches]
-                    
-                    filtered_annotation = ann.clone(
-                        labels=tracked_labels,
-                        custom_data=track_ids
-                    )
-                    updated_anns.append(filtered_annotation)
-                anns = updated_anns
+                anns = self._apply_tracker_to_anns(self, frames, anns)
                 
             predictions = [
                 Prediction(
@@ -4062,6 +4038,20 @@ class Inference:
                 self._args.draw,
             )
 
+    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation]):
+        updated_anns = []
+        for frame, ann in zip(frames, anns):
+            matches = self._tracker.update(frame, ann)
+            track_ids = [match["track_id"] for match in matches]
+            tracked_labels = [match["label"] for match in matches]
+            
+            filtered_annotation = ann.clone(
+                labels=tracked_labels,
+                custom_data=track_ids
+            )
+            updated_anns.append(filtered_annotation)
+        return updated_anns
+                
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]

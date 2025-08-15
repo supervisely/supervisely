@@ -68,7 +68,7 @@ class PredictionSession:
         project_id: Union[List[int], int] = None,
         api: "Api" = None,
         tracking: bool = None,
-        tracking_settings: dict = None,
+        tracking_config: dict = None,
         **kwargs: dict,
     ): 
                   
@@ -118,15 +118,16 @@ class PredictionSession:
         
         if tracking is True:
             model_info = self._get_session_info()
-            if not model_info.get("tracking_on_videos_support", False) and self.tracking:
+            if not model_info.get("tracking_on_videos_support", False):
                 raise ValueError("Tracking is not supported by this model")
             
-            if tracking_settings is None:
+            if tracking_config is None:
                 self.tracker = "botsort"
                 self.tracker_settings = {}
             else:
-                self.tracker = tracking_settings.get("tracker", "botsort")
-                self.tracker_settings = tracking_settings.get("settings", {})
+                cfg = dict(tracking_config)
+                self.tracker = cfg.pop("tracker", "botsort")
+                self.tracker_settings = cfg
         else:
             self.tracker = None
             self.tracker_settings = None
@@ -233,11 +234,6 @@ class PredictionSession:
             raise ValueError(
                 "Unknown input type. Supported types are: numpy array, path to a file or directory, ImageInfo, VideoInfo, ProjectInfo, DatasetInfo."
             )
-        
-        
-        
-
-            
 
     def _set_var_from_kwargs(self, key, kwargs, default):
         value = kwargs.get(key, default)
@@ -283,7 +279,6 @@ class PredictionSession:
         if self.api is not None:
             return self.api.token
         return env.api_token(raise_not_found=False)
-
     
     def _get_json_body(self):
         body = {"state": {}, "context": {}}

@@ -127,15 +127,9 @@ class Prediction:
         self._boxes = np.array(self._boxes)
         self._masks = np.array(self._masks)
         
-        self._track_ids = []
         custom_data = self.annotation.custom_data
-        
         if custom_data and isinstance(custom_data, list) and len(custom_data) == len(self.annotation.labels):
-            self._track_ids = list(custom_data)
-        else:
-            self._track_ids = [None] * len(self.annotation.labels)
-        
-        self._track_ids = np.array(self._track_ids)
+            self._track_ids = np.array(custom_data)
 
     @property
     def boxes(self):
