@@ -261,13 +261,22 @@ class SelectOutput:
         )
         self.one_of = OneOf(self.radio)
         self.progress = Progress()
+        self.validation_message = Text("", status="text")
+        self.validation_message.hide()
         self.run_button = Button("Run", icon="zmdi zmdi-play")
         self.run_button.disable()
         self.result = ProjectThumbnail()
         self.result.hide()
 
         self.container = Container(
-            widgets=[self.radio, self.one_of, self.run_button, self.progress, self.result],
+            widgets=[
+                self.radio,
+                self.one_of,
+                self.validation_message,
+                self.run_button,
+                self.progress,
+                self.result,
+            ],
             direction="vertical",
             gap=20,
         )
@@ -493,6 +502,7 @@ class PredictAppGui:
             self.run()
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
+        self.output.validation_message.hide()
         if run_parameters is None:
             run_parameters = self.get_run_parameters()
 
@@ -523,7 +533,11 @@ class PredictAppGui:
         if upload_mode == "create":
             project_name = output_parameters["project_name"]
             if not project_name:
-                raise ValueError("Project name cannot be empty when creating a new project.")
+                self.output.validation_message.set(
+                    "Project name cannot be empty when creating a new project.", "error"
+                )
+                self.output.validation_message.show()
+                return
             created_project = self.api.project.create(
                 env.workspace_id(), project_name, type=ProjectType.IMAGES
             )
