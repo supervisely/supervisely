@@ -5943,9 +5943,12 @@ async def _download_project_items_batch_async(
     """
     Download images and annotations from Supervisely API and save them to the local filesystem.
     Uses parameters from the parent function _download_project_async.
-    Optimized version - uses fast batch processing for small images, streaming for mixed batches.
+    It is used for batch download of images and annotations with the bulk download API methods.
+    
+    IMPORTANT: The total size of all images in a batch must not exceed 130MB, and the size of each image must not exceed 1.28MB.
     """
     img_ids = [img_info.id for img_info in img_infos]
+    img_ids_to_info = {img_info.id: img_info for img_info in img_infos}
 
     # Download annotations first
     if only_image_tags is False:
@@ -5979,27 +5982,31 @@ async def _download_project_items_batch_async(
             id_to_annotation[img_info.id] = tmp_ann.to_json()
 
     if save_images:
-        logger.debug(f"Downloading {len(img_ids)} small images in batch mode")
-
-        imgs_bytes = await api.image.download_bytes_many_async(img_ids, semaphore=semaphore)
+        img_ids, imgs_bytes = await api.image.download_bytes_generator_async(
+            dataset_id=dataset_id, img_ids=img_ids, semaphore=semaphore, check_hash=True
+        )
 
         # Process all images at once - faster than one by one
-        for img_info, img_bytes in zip(img_infos, imgs_bytes):
+        for img_id, img_bytes in zip(img_ids, imgs_bytes):
+            img_info = img_ids_to_info.get(img_id)
+            if img_info is None:
+                continue
+
             if None in [img_info.height, img_info.width]:
                 width, height = sly.image.get_size_from_bytes(img_bytes)
                 img_info = img_info._replace(height=height, width=width)
 
                 # Update annotation if needed
-                if img_info.id in id_to_annotation:
+                if img_id in id_to_annotation:
                     try:
-                        ann_dict = json.loads(id_to_annotation[img_info.id])
+                        ann_dict = json.loads(id_to_annotation[img_id])
                         if ann_dict.get("size") is None or None in ann_dict.get("size", []):
                             ann_dict["size"] = {"height": height, "width": width}
-                            id_to_annotation[img_info.id] = json.dumps(ann_dict)
+                            id_to_annotation[img_id] = json.dumps(ann_dict)
                     except Exception:
                         pass
 
-            ann_json = id_to_annotation.get(img_info.id)
+            ann_json = id_to_annotation.get(img_id)
             dataset_fs.delete_item(img_info.name)
             await dataset_fs.add_item_raw_bytes_async(
                 item_name=img_info.name,
