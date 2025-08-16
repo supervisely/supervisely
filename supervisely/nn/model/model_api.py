@@ -208,7 +208,7 @@ class ModelAPI:
         upload_mode: str = None,
         recursive: bool = False,
         tracking: bool = None,
-        tracking_settings: dict = None,
+        tracking_config: dict = None,
         **kwargs,
     ) -> PredictionSession:
         
@@ -227,7 +227,7 @@ class ModelAPI:
             upload_mode=upload_mode,
             recursive=recursive,
             tracking=tracking,
-            tracking_settings=tracking_settings,
+            tracking_config=tracking_config,
             **kwargs,
         )
 
@@ -245,7 +245,7 @@ class ModelAPI:
         upload_mode: str = None,
         recursive: bool = False,
         tracking: bool = None,
-        tracking_settings: dict = None,
+        tracking_config: dict = None,
         **kwargs,
     ) -> List[Prediction]:
         if "show_progress" not in kwargs:
@@ -265,7 +265,7 @@ class ModelAPI:
             upload_mode=upload_mode,
             recursive=recursive,
             tracking=tracking,
-            tracking_settings=tracking_settings,
+            tracking_config=tracking_config,
             **kwargs,
         )
         return list(session)
