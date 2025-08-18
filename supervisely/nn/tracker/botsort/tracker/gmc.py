@@ -82,7 +82,7 @@ class GMC:
         # Initialize
         height, width, _ = raw_frame.shape
         frame = cv2.cvtColor(raw_frame, cv2.COLOR_BGR2GRAY)
-        H = np.eye(2, 3, dtype=float32)
+        H = np.eye(2, 3, dtype=np.float32)
 
         # Downscale image (TODO: consider using pyramids)
         if self.downscale > 1.0:
@@ -305,7 +305,7 @@ class GMC:
     def applyFile(self, raw_frame, detections=None):
         line = self.gmcFile.readline()
         tokens = line.split("\t")
-        H = np.eye(2, 3, dtype=float_)
+        H = np.eye(2, 3, dtype=np.float32)
         H[0, 0] = float(tokens[1])
         H[0, 1] = float(tokens[2])
         H[0, 2] = float(tokens[3])
