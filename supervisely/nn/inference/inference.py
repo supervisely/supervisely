@@ -93,7 +93,6 @@ from supervisely.project.project_meta import ProjectMeta
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
 from supervisely.video.video import ALLOWED_VIDEO_EXTENSIONS, VideoFrameReader
-from supervisely.nn.tracker.base_tracker import BaseTracker
 
 try:
     from typing import Literal
@@ -193,7 +192,7 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker: BaseTracker = None
+        self._tracker = None
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -1267,7 +1266,7 @@ class Inference:
     def get_classes(self) -> List[str]:
         return self.classes
     
-    def _tracker_init(self, tracker: str, tracker_settings: dict) -> object:
+    def _tracker_init(self, tracker: str, tracker_settings: dict):
         # Check if tracking is supported for this model
         info = self.get_info()
         tracking_support = info.get("tracking_on_videos_support", False)

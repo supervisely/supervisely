@@ -1,11 +1,16 @@
 import numpy as np
-import scipy
-import lap
-from scipy.spatial.distance import cdist
+from supervisely import logger
 
-from cython_bbox import bbox_overlaps as bbox_ious
+try:
+    import scipy
+    import lap
+    from scipy.spatial.distance import cdist
+
+    from cython_bbox import bbox_overlaps as bbox_ious
+except ImportError:
+    logger.warning("scipy, lap, and cython_bbox are not installed, some tracker functionalities may not work.")
+    
 from . import kalman_filter
-
 
 def merge_matches(m1, m2, shape):
     O,P,Q = shape

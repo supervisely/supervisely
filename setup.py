@@ -275,6 +275,7 @@ setup(
             "tensorboard",
             "decord",
             "gdown",
+            "torch",
         ],
         "model-benchmark": [
             "pycocotools",
