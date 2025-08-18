@@ -2,10 +2,15 @@
 from __future__ import absolute_import, division
 
 import warnings
+from supervisely import logger
 
-import torch
-from torch import nn
-from torch.nn import functional as F
+try:
+    import torch  # pylint: disable=import-error
+    from torch import nn
+    from torch.nn import functional as F
+except ImportError:
+    logger.warning("torch is not installed, OSNet re-ID cannot be used.")
+    
 
 __all__ = ["osnet_x1_0", "osnet_x0_75", "osnet_x0_5", "osnet_x0_25", "osnet_ibn_x1_0"]
 

@@ -2,11 +2,11 @@ from typing import List, Dict, Any
 import supervisely as sly
 from supervisely import Annotation, VideoAnnotation
 import numpy as np
-import torch
 
 class BaseTracker:
 
     def __init__(self, settings: dict = None, device: str = None):
+        import torch  # pylint: disable=import-error
         self.settings = settings or {}
         auto_device = "cuda" if torch.cuda.is_available() else "cpu"
         settings_device = self.settings.get("device")
