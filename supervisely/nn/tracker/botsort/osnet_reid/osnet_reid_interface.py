@@ -1,5 +1,4 @@
 from pathlib import Path
-import torch
 import cv2
 import numpy as np
 from .osnet import osnet_x1_0
@@ -8,6 +7,7 @@ from supervisely import logger
 
 try:
     # pylint: disable=import-error
+    import torch
     from torch.nn import functional as F
 except ImportError:
     logger.warning("torch is not installed, OSNet re-ID cannot be used.")
