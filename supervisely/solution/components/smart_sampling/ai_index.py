@@ -33,7 +33,7 @@ class AiIndexNode(EmptyNode):
         self._stop_autorefresh = False
         self._refresh_thread = None
         self.api = Api.from_env()
-        # self.check_embeddings_status()
+        self.check_embeddings_status()
 
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
@@ -48,10 +48,10 @@ class AiIndexNode(EmptyNode):
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
             "import_finished": self.check_embeddings_status,
-            "embedding_status": self.check_embeddings_status,
+            "need_embedding_status": self.check_embeddings_status,
         }
 
-    def check_embeddings_status(self):
+    def check_embeddings_status(self, message=None) -> EmbeddingsStatusMessage:
         """Check that project embeddings are enabled, not in progress, and up to date."""
         is_ready = False
         try:
@@ -62,6 +62,8 @@ class AiIndexNode(EmptyNode):
             )
             if not is_ready:
                 self.start_autorefresh()
+            else:
+                self.stop_autorefresh(wait=True)
         except Exception as e:
             logger.error(f"Error checking AI Index status: {repr(e)}")
         finally:
@@ -69,9 +71,11 @@ class AiIndexNode(EmptyNode):
 
     def send_embeddings_status_message(self, is_ready: bool) -> EmbeddingsStatusMessage:
         if is_ready:
-            self.node.update_badge_by_key(key="On", label="⚡", plain=True)
+            self.node.update_badge_by_key(key="Up to date", label="⚡", plain=True)
+            self.node.update_property("Embeddings", "Up to date", highlight=True)
         else:
-            self.node.remove_badge_by_key(key="On")
+            self.node.remove_badge_by_key(key="Up to date")
+            self.node.remove_property_by_key("Embeddings")
         return EmbeddingsStatusMessage(status=is_ready)
 
     # ------------------------------------------------------------------
@@ -82,6 +86,12 @@ class AiIndexNode(EmptyNode):
         if not is_embeddings_enabled:
             logger.info(f"Embeddings are not enabled for project {self.project_id}. Enabling...")
             self.api.project.enable_embeddings(self.project_id)
+            embeddings_updated_at = self.api.project.get_embeddings_updated_at(self.project_id)
+            if embeddings_updated_at is None:
+                logger.info(
+                    f"Embeddings are not updated for project {self.project_id}. Updating..."
+                )
+                self.api.project.calculate_embeddings(self.project_id)
             return False
         return True
 
@@ -89,12 +99,12 @@ class AiIndexNode(EmptyNode):
         """Check if embeddings are up to date."""
         embeddings_updated_at = self.api.project.get_embeddings_updated_at(self.project_id)
         if embeddings_updated_at is None:
-            logger.info(f"Embeddings are not updated for project {self.project_id}. Updating...")
-            self.api.project.enable_embeddings(self.project_id)
+            logger.info(f"Embeddings are not up to date for project {self.project_id}. Updating...")
+            self.api.project.calculate_embeddings(self.project_id)
             return False
         project_info = self.api.project.get_info_by_id(self.project_id)
-        embeddings_updated_at = datetime.fromisoformat(embeddings_updated_at)
-        project_updated_at = datetime.fromisoformat(project_info.updated_at)
+        embeddings_updated_at = datetime.fromisoformat(embeddings_updated_at.replace("Z", "+00:00"))
+        project_updated_at = datetime.fromisoformat(project_info.updated_at.replace("Z", "+00:00"))
         if embeddings_updated_at < project_updated_at:
             logger.info(f"Embeddings are not up to date for project {self.project_id}. Updating...")
             self.api.project.calculate_embeddings(self.project_id)
@@ -117,7 +127,7 @@ class AiIndexNode(EmptyNode):
         try:
             is_ready = self.check_embeddings_status()
             if is_ready:  # send message only if embeddings are ready
-                self.stop_autorefresh(wait=True)
+                self.stop_autorefresh()
                 self.send_embeddings_status_message(is_ready)
         except Exception as e:
             logger.error(f"Error during auto-refresh: {repr(e)}")
@@ -156,5 +166,8 @@ class AiIndexNode(EmptyNode):
         self._stop_autorefresh = True
         if wait:
             if self._refresh_thread is not None:
-                self._refresh_thread.join()
-                self._refresh_thread = None
+                try:
+                    self._refresh_thread.join()
+                    logger.info("AI Index auto-refresh stopped.")
+                except Exception as e:
+                    logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")

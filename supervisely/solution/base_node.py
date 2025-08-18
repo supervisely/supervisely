@@ -115,12 +115,14 @@ class SolutionElement(Widget, EventMixin):
     ) -> SolutionCard:
         if buttons is None:
             buttons = []
-            if hasattr(self, "history") and self.history is not None:
-                if hasattr(self.history, "open_modal_button"):
-                    buttons.append(self.history.open_modal_button)
-            if hasattr(self, "automation") and self.automation is not None:
-                if hasattr(self.automation, "open_modal_button"):
-                    buttons.append(self.automation.open_modal_button)
+            if hasattr(self, "history"):
+                if self.history is not None:
+                    if hasattr(self.history, "open_modal_button"):
+                        buttons.append(self.history.open_modal_button)
+            if hasattr(self, "automation"):
+                if self.automation is not None:
+                    if hasattr(self.automation, "open_modal_button"):
+                        buttons.append(self.automation.open_modal_button)
 
         if icon is not None:
             icon = Icons(class_name=icon, color=icon_color, bg_color=icon_bg_color)

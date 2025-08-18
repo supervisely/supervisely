@@ -17,13 +17,13 @@ from supervisely.app.widgets import (
     Button,
     Card,
     Collapse,
-    Icons,
     Container,
     Dialog,
     Empty,
     Field,
     Flexbox,
     GridGallery,
+    Icons,
     Input,
     InputNumber,
     NotificationBox,
@@ -33,7 +33,10 @@ from supervisely.app.widgets import (
     Text,
     Widget,
 )
-from supervisely.project.image_transfer_utils import compare_projects, copy_structured_images
+from supervisely.project.image_transfer_utils import (
+    compare_projects,
+    copy_structured_images,
+)
 from supervisely.sly_logger import logger
 
 
@@ -134,11 +137,7 @@ class SmartSamplingGUI(Widget):
         sampling_mode_field = self._create_sampling_mode_field()
 
         # --- Field with info text about abavailable images --------
-        total_images_field = self._create_total_images_info_field()
-        available_images_field = self._create_available_images_info_field()
-
-        # --- Notification box for info about sampling --------
-        notification_box = self._create_notification()
+        images_field = self._create_images_info_field()
 
         # --- Field with OneOf to input sampling settings and info text -----
         one_of_widget = self._create_one_of_widget()
@@ -152,14 +151,11 @@ class SmartSamplingGUI(Widget):
         # --- Field with Save Settings and Run buttons ---------------
         buttons = self._create_main_buttons()
 
-        @self.sampling_mode.value_changed
-        def on_sampling_mode_changed(value: str):
-            self.collapse_preview()
-            self.preview_gallery.clean_up()
-
         @self.preview_button.click
         def preview_button_clicked():
             self.hide_status_text()
+            self.uncollapse_preview()
+            self.preview_gallery.clean_up()
             self.preview_gallery.loading = True
             sampling_settings = self.get_settings()
             if sampling_settings.get("sample_size", 0) > 6:
@@ -180,8 +176,6 @@ class SmartSamplingGUI(Widget):
             urls = [img.full_storage_url for img in infos]
             ai_metas = [img.ai_search_meta for img in infos]
 
-            self.preview_gallery.clean_up()
-
             for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
                 title = None
                 if ai_meta is not None:
@@ -193,9 +187,7 @@ class SmartSamplingGUI(Widget):
         return Container(
             [
                 sampling_mode_field,
-                notification_box,
-                total_images_field,
-                available_images_field,
+                images_field,
                 one_of_widget,
                 gallery_card,
                 status_text,
@@ -207,34 +199,31 @@ class SmartSamplingGUI(Widget):
     # ------------------------------------------------------------------
     # GUI Helpers ------------------------------------------------------
     # ------------------------------------------------------------------
-    def _create_total_images_info_field(self) -> Field:
-        """
-        Create a field with information about the total number of images in the input project.
-        """
-        get_total_text = lambda x: f"<strong>{x} images</strong>"
+    def _create_images_info_field(self) -> Field:
+        get_total_text = lambda x: f"Total images in project: <strong>{x}</strong>"
         total_text = Text(get_total_text(self.items_count))
         self.set_total_num_text = lambda x: total_text.set(text=get_total_text(x), status="text")
 
-        description = "Total number of images in the input project."
-        return Field(title="Total Images", description=description, content=total_text)
-
-    def _create_available_images_info_field(self) -> Field:
-        """
-        Create a field with information about the number of available images for sampling.
-        """
-        get_diff_text = lambda x: f"<strong>{x} images</strong>"
+        get_diff_text = lambda x: f"Available images for sampling: <strong>{x}</strong>"
         diff_text = Text(get_diff_text(self.diff_num))
         self.set_diff_num_text = lambda x: diff_text.set(text=get_diff_text(x), status="text")
 
-        description = "Number of images available for sampling."
-        return Field(title="Available Images", description=description, content=diff_text)
+        description = "Information about the total number of images in the input project and the number of available images for sampling."
+        return Field(
+            title="Images Info",
+            description=description,
+            content=Container([total_text, diff_text]),
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-collection-image",
+                color_rgb=[25, 118, 210],
+                bg_color_rgb=[227, 242, 253],
+            ),
+        )
 
     def _create_sampling_mode_field(self) -> Field:
         """
         Create a field with radio buttons to select the sampling mode.
         """
-        # modes = [mode.value for mode in SamplingMode]
-        # items = [RadioGroup.Item(value=mode) for mode in modes]
         items = [
             RadioGroup.Item(
                 value=SamplingMode.RANDOM.value, content=self._create_random_mode_content()
@@ -247,11 +236,19 @@ class SmartSamplingGUI(Widget):
             ),
         ]
         self.sampling_mode = RadioGroup(items=items, direction="vertical")
+
+        # --- Notification box for info about sampling --------
+        notification_box = self._create_notification()
+
         return Field(
             title="Sampling Mode",
             description="Select the sampling mode to use for sampling images.",
-            content=self.sampling_mode,
-            # icon=Icons(class_name="zmdi zmdi-settings", color="#1976D2", bg_color="#E3F2FD"),
+            content=Container([self.sampling_mode, notification_box]),
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-settings",
+                color_rgb=[25, 118, 210],
+                bg_color_rgb=[227, 242, 253],
+            ),
         )
 
     def _create_one_of_widget(self) -> OneOf:
@@ -268,12 +265,7 @@ class SmartSamplingGUI(Widget):
         num_input = InputNumber(value=1, min=1, max=self.diff_num)
         get_text = lambda x: f" of {x} images"
         text = Text(get_text(self.diff_num))
-        container = Container(
-            [num_input, text],
-            direction="horizontal",
-            gap=5,
-            style="align-items: center",
-        )
+        container = Flexbox([num_input, text], vertical_alignment="center")
 
         # --- Methods -------------------------------------------------
         self.get_random_input_value = lambda: num_input.get_value()
@@ -286,7 +278,11 @@ class SmartSamplingGUI(Widget):
             title="Sample Size",
             description="Select the number of images to sample randomly from the input project.",
             content=container,
-            # icon=Icons(class_name="zmdi zmdi-settings", color="#1976D2", bg_color="#E3F2FD"),
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-collection-image-o",
+                color_rgb=[25, 118, 210],
+                bg_color_rgb=[227, 242, 253],
+            ),
         )
 
     def _create_diverse_mode_content(self) -> Field:
@@ -312,6 +308,11 @@ class SmartSamplingGUI(Widget):
             title="Sample Size",
             description="Select the number of images to sample using the diversity sampling strategy.",
             content=container,
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-collection-image-o",
+                color_rgb=[25, 118, 210],
+                bg_color_rgb=[227, 242, 253],
+            ),
         )
 
     def _create_ai_search_mode_content(self) -> Container:
@@ -336,16 +337,31 @@ class SmartSamplingGUI(Widget):
                     title="Search Query",
                     description="Enter a search query to find the most suitable images using AI Search.",
                     content=prompt_input,
+                    icon=Field.Icon(
+                        zmdi_class="zmdi zmdi-search",
+                        color_rgb=[25, 118, 210],
+                        bg_color_rgb=[227, 242, 253],
+                    ),
                 ),
                 Field(
                     title="Limit",
                     description="Set the maximum number of images to sample.",
                     content=limit_input,
+                    icon=Field.Icon(
+                        zmdi_class="zmdi zmdi-collection-image-o",
+                        color_rgb=[25, 118, 210],
+                        bg_color_rgb=[227, 242, 253],
+                    ),
                 ),
                 Field(
                     title="Threshold",
                     description="Set the threshold for filtering images based on AI Search scores.",
                     content=threshold_input,
+                    icon=Field.Icon(
+                        zmdi_class="zmdi zmdi-code-setting",
+                        color_rgb=[25, 118, 210],
+                        bg_color_rgb=[227, 242, 253],
+                    ),
                 ),
             ]
         )
@@ -363,8 +379,11 @@ class SmartSamplingGUI(Widget):
             collapsable=True,
             content=self.preview_gallery,
             content_top_right=self.preview_button,
+            style="margin-top: 20px",
         )
-        self.collapse_preview = card.collapse()
+        self.collapse_preview = lambda: card.collapse()
+        self.uncollapse_preview = lambda: card.uncollapse()
+        self.collapse_preview()
         return card
 
     def _create_status_text(self) -> Text:
@@ -787,6 +806,9 @@ class SmartSamplingGUI(Widget):
         self._add_task(history_item)
         if items is not None:
             _items = {}
+            for ds_id, img_list in items.items():
+                _items[ds_id] = [img.id for img in img_list]
+            self._add_sampled_images(sampling_id, _items)
             for ds_id, img_list in items.items():
                 _items[ds_id] = [img.id for img in img_list]
             self._add_sampled_images(sampling_id, _items)

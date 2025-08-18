@@ -6,6 +6,7 @@ from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
 from supervisely.solution.base_node import SolutionCardNode, SolutionElement
 from supervisely.solution.engine.models import (
+    EmbeddingsStatusMessage,
     ImportFinishedMessage,
     SampleFinishedMessage,
 )
@@ -53,17 +54,18 @@ class SmartSamplingNode(SolutionElement):
         self.on_finish_callbacks = []
 
         # --- events -------------------------------------------------------------
-        self.update_widgets()
+        self._update_widgets()
 
         @self.card.click
         def on_sampling_setup_btn_click():
             """Show the sampling settings modal."""
             self.gui.modal.show()
+            self._check_embeddings_status()
 
         @self.gui.save_settings_button.click
         def on_save_settings_click():
             self.gui.modal.hide()
-            self.update_widgets()
+            self._update_widgets()
 
         @self.gui.run_button.click
         def on_run_button_click():
@@ -77,6 +79,13 @@ class SmartSamplingNode(SolutionElement):
         def on_apply_automation_click():
             self.automation.modal.hide()
             self.apply_automation()
+
+        @self.gui.sampling_mode.value_changed
+        def on_sampling_mode_change(value: str):
+            """Update the sampling settings based on the selected mode."""
+            self.gui.collapse_preview()
+            self.gui.preview_gallery.clean_up()
+            self._check_embeddings_status()
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
@@ -107,17 +116,19 @@ class SmartSamplingNode(SolutionElement):
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
             "sample_finished": self.run,
+            "need_embedding_status": self._check_embeddings_status,
         }
 
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "import_finished": self.update_widgets,
-            "sample_finished": self.update_widgets,
+            "import_finished": self._update_widgets,
+            "sample_finished": self._update_widgets,
+            "embedding_status": self._process_embeddings_status_message,
         }
 
     # callback method (accepts Message object)
-    def update_widgets(
+    def _update_widgets(
         self, message: Union[ImportFinishedMessage, SampleFinishedMessage] = None
     ) -> None:
         """Update the sampling inputs based on the difference."""
@@ -149,25 +160,26 @@ class SmartSamplingNode(SolutionElement):
             self.card.update_property("Threshold", f"{threshold:.2f}")
 
     # ------------------------------------------------------------------
-    # Callbacks --------------------------------------------------------
+    # Methods --------------------------------------------------------
     # ------------------------------------------------------------------
-    def on_start(self, func: Callable):
-        """
-        Decorator to register a callback function to be called when the sampling starts.
-        :param func: Callable, function to be called on start
-        :return: Callable, the same function
-        """
-        self.on_start_callbacks.append(func)
-        return func
+    def _check_embeddings_status(self):
+        """Send message to check embeddings status."""
+        if self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value:
+            self.gui.preview_button.enable()
+            self.gui.run_button.enable()
+        else:
+            self.gui.preview_button.disable()
+            self.gui.run_button.disable()
 
-    def on_finish(self, func: Callable):
-        """
-        Decorator to register a callback function to be called when the sampling finishes.
-        :param func: Callable, function to be called on finish
-        :return: Callable, the same function
-        """
-        self.on_finish_callbacks.append(func)
-        return func
+    def _process_embeddings_status_message(self, message: EmbeddingsStatusMessage) -> None:
+        """Process the embeddings status message."""
+        is_ready = message.status
+        if is_ready or self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value:
+            self.gui.preview_button.enable()
+            self.gui.run_button.enable()
+        else:
+            self.gui.preview_button.disable()
+            self.gui.run_button.disable()
 
     # ------------------------------------------------------------------
     # Run --------------------------------------------------------------
@@ -187,5 +199,5 @@ class SmartSamplingNode(SolutionElement):
                 else:
                     callback(res)
         self.node.hide_in_progress_badge("Sampling")
-        self.update_widgets()
+        self._update_widgets()
         return SampleFinishedMessage(success=True, src=src, dst=dst, items_count=images_count)

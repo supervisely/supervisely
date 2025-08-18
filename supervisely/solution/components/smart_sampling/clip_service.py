@@ -32,7 +32,8 @@ class OpenAIClipServiceNode(EmptyNode):
         self._refresh_interval = 60
         self._stop_autorefresh = False
         self._refresh_thread = None
-        # self.start_autorefresh(30)
+        self._check_service_status()
+        self.start_autorefresh(60)
 
     def start_autorefresh(self, interval: int = 60):
         """
@@ -73,7 +74,7 @@ class OpenAIClipServiceNode(EmptyNode):
         """
         module_id = self.api.app.get_ecosystem_module_id(slug=self.APP_SLUG)
         sessions = self.api.app.get_sessions(
-            team_id=team_id(),
+            team_id=1,  # Assuming that CLIP service is deployed in admin team with ID 1
             module_id=module_id,
             with_shared=True,
         )
@@ -82,11 +83,7 @@ class OpenAIClipServiceNode(EmptyNode):
             self.node.remove_badge_by_key(key="On")
         else:
             logger.debug(f"Active sessions found: {len(sessions)}")
-            is_ready = False
-            for session in sessions:
-                is_ready = self.api.task.is_ready(session.task_id)
-                break
-            if is_ready:
+            if len(sessions) > 0:
                 logger.debug("OpenAI CLIP service is ready.")
                 self.node.update_badge_by_key(key="On", label="⚡", plain=True)
             else:
