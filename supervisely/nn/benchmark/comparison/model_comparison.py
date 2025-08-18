@@ -66,9 +66,14 @@ class ModelComparison:
 
             self.eval_results.append(eval_result)
 
+        self.images_partially_matched = False
+        self.matched_images_dict = {}
+        self.classes_partially_matched = False
+        self.matched_classes_dict = {}
+
         self._validate_task_type()
         self._get_overlapping_categories()
-        # self._get_overlapping_images()
+        self._get_overlapping_images()
 
         self.visualizer: ComparisonVisualizer = None
         self.remote_dir = None
@@ -121,15 +126,31 @@ class ModelComparison:
         )
 
         image_names = get_image_names(self.eval_results[0])
+        max_img_cnt = len(image_names)
         for eval_result in self.eval_results[1:]:
-            image_names.intersection_update(get_image_names(eval_result))
+            current_image_names = get_image_names(eval_result)
+            image_names.intersection_update(current_image_names)
+            max_img_cnt = max(max_img_cnt, len(current_image_names))
 
         if not image_names:
             raise RuntimeError(
                 "Comparison validation failed: No overlapping images found in the evaluations."
             )
 
-        logger.info("Found %s overlapping images across evaluations", len(image_names))
+        if len(image_names) == max_img_cnt:
+            logger.info("All images are identical in all evaluations, no filtering applied.")
+            return
+
+        self.matched_images_dict = {
+            "max": max_img_cnt,
+            "current": len(image_names),
+            "percentage": f"{len(image_names) / max_img_cnt * 100:.2f}%",
+        }
+        self.images_partially_matched = True
+        logger.info(
+            "Found %s overlapping images across evaluations",
+            f"{self.matched_images_dict['current']}/{self.matched_images_dict['max']} ({self.matched_images_dict['percentage']})",
+        )
 
         if task_type == TaskType.SEMANTIC_SEGMENTATION:
             for eval_result in self.eval_results:
@@ -144,6 +165,9 @@ class ModelComparison:
                     k: v for k, v in s.items() if v["file_name"] in image_names
                 }
 
+        for eval_result in self.eval_results:
+            eval_result.image_whitelist = list(image_names)
+
     def _get_overlapping_categories(self):
         """
         Get the set of categories that are present in all evaluations.
@@ -156,15 +180,31 @@ class ModelComparison:
             else set(eval_result.mp.cat_names)
         )
         category_names = get_category_names(self.eval_results[0])
+        max_categories = len(category_names)
         for eval_result in self.eval_results[1:]:
-            category_names.intersection_update(get_category_names(eval_result))
+            current_category_names = get_category_names(eval_result)
+            category_names.intersection_update(current_category_names)
+            max_categories = max(max_categories, len(current_category_names))
 
         if not category_names:
             raise RuntimeError(
                 "Comparison validation failed: No overlapping categories found in the evaluations."
             )
 
-        logger.info("Found %s overlapping categories across evaluations", len(category_names))
+        if len(category_names) == max_categories:
+            logger.info("All categories are identical in all evaluations, no filtering applied.")
+            return
+
+        self.matched_classes_dict = {
+            "max": max_categories,
+            "current": len(category_names),
+            "percentage": f"{len(category_names) / max_categories * 100:.2f}%",
+        }
+        self.classes_partially_matched = True
+        logger.info(
+            "Found %s overlapping categories across evaluations",
+            f"{self.matched_classes_dict['current']}/{self.matched_classes_dict['max']} ({self.matched_classes_dict['percentage']})",
+        )
 
         if task_type == TaskType.SEMANTIC_SEGMENTATION:
             for eval_result in self.eval_results:
@@ -178,7 +218,6 @@ class ModelComparison:
                 )
 
         for eval_result in self.eval_results:
-            # eval_result.classes_whitelist = list(category_names)
             eval_result.inference_info["inference_settings"]["classes"] = list(category_names)
             if task_type == TaskType.SEMANTIC_SEGMENTATION:
                 bar_data, labels = eval_result.mp.classwise_segm_error_data

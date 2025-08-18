@@ -12,6 +12,9 @@ from supervisely.nn.benchmark.visualization.widgets import (
     GalleryWidget,
     MarkdownWidget,
 )
+from supervisely.nn.benchmark.visualization.widgets.notification.notification import (
+    NotificationWidget,
+)
 from supervisely.project.project_meta import ProjectMeta
 
 
@@ -27,6 +30,7 @@ class BaseComparisonVisualizer:
         self.gt_project_info = None
         self.gt_project_meta = None
         # self._widgets_created = False
+        self._warning_notification = self._create_warning_notification_if_needed()
 
         for eval_result in self.eval_results:
             eval_result.api = self.api  # add api to eval_result for overview widget
@@ -153,3 +157,58 @@ class BaseComparisonVisualizer:
         # eval_result.pred_dataset_infos = self.api.dataset.get_list(
         #     eval_result.pred_project_id, recursive=True
         # )
+
+    def _create_warning_notification_if_needed(self):
+        NOTIFICATION = "overlap_notification"
+        images_overlap_partial = bool(getattr(self.comparison, "images_partially_matched", False))
+        classes_overlap_partial = bool(getattr(self.comparison, "classes_partially_matched", False))
+
+        # Get matched statistics if available
+        matched_classes_dict = getattr(self.comparison, "matched_classes_dict", None)
+        matched_images_dict = getattr(self.comparison, "matched_images_dict", None)
+
+        classes_desc = ""
+        if matched_classes_dict:
+            classes_desc = (
+                f"<b>{matched_classes_dict['current']} out of {matched_classes_dict['max']} classes "
+                f"({matched_classes_dict['percentage']})</b> are included in the comparison."
+            )
+
+        images_desc = ""
+        if matched_images_dict:
+            images_desc = (
+                f"<b>{matched_images_dict['current']} out of {matched_images_dict['max']} images "
+                f"({matched_images_dict['percentage']})</b> are included in the comparison."
+            )
+
+        if images_overlap_partial and classes_overlap_partial:
+            return NotificationWidget(
+                name=NOTIFICATION,
+                title="Warning: Images and classes only partially overlap across evaluations.",
+                desc=(
+                    "<br>The comparison includes only items present in every evaluation (set intersection). "
+                    f"Images or classes missing in any evaluation are excluded. <br>{images_desc} <br>{classes_desc} <br>"
+                    "Align datasets and class definitions across evaluations for accurate results."
+                ),
+            )
+        elif images_overlap_partial:
+            return NotificationWidget(
+                name=NOTIFICATION,
+                title="Warning: Images only partially overlap across evaluations.",
+                desc=(
+                    "<br>Only images present in every evaluation are compared. "
+                    f"Images missing from any evaluation are excluded. <br>{images_desc} <br>"
+                    "Align datasets to ensure a fair comparison."
+                ),
+            )
+        elif classes_overlap_partial:
+            return NotificationWidget(
+                name=NOTIFICATION,
+                title="Warning: Classes only partially overlap across evaluations.",
+                desc=(
+                    "<br>Only classes present in every evaluation are compared. "
+                    f"Classes missing from any evaluation are excluded. <br>{classes_desc} <br>"
+                    "Align class definitions across evaluations for accurate results."
+                ),
+            )
+        return None

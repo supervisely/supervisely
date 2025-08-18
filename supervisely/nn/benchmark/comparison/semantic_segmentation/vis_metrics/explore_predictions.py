@@ -67,7 +67,18 @@ class ExplorePredictions(BaseVisMetrics):
         for idx, eval_res in enumerate(self.eval_results):
             if idx == 0:
                 dataset_info = eval_res.gt_dataset_infos[0]
-                infos = api.image.get_list(dataset_info.id, limit=5, force_metadata_for_links=False)
+                filters = None
+                if getattr(eval_res, "image_whitelist", None) is not None:
+                    filters = [
+                        {
+                            ApiField.FIELD: ApiField.NAME,
+                            ApiField.OPERATOR: "in",
+                            ApiField.VALUE: eval_res.image_whitelist,
+                        }
+                    ]
+                infos = api.image.get_list(
+                    dataset_info.id, filters=filters, limit=5, force_metadata_for_links=False
+                )
                 ds_name = dataset_info.name
                 images_ids = [image_info.id for image_info in infos]
                 names = [image_info.name for image_info in infos]
@@ -120,7 +131,13 @@ class ExplorePredictions(BaseVisMetrics):
         for eval_res in self.eval_results:
             eval_res.mp.per_image_metrics["img_names"].apply(image_names.add)
 
-        filters = [{"field": "name", "operator": "in", "value": list(image_names)}]
+        filters = [
+            {
+                ApiField.FIELD: ApiField.NAME,
+                ApiField.OPERATOR: "in",
+                ApiField.VALUE: list(image_names),
+            }
+        ]
 
         images_ids = []
         api = self.eval_results[0].api

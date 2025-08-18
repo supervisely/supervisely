@@ -33,7 +33,7 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
         self.eval_results: List[ObjectDetectionEvalResult]
 
     def _create_widgets(self):
-        # Modal Gellery
+        # Modal Gallery
         self.diff_modal_table = self._create_diff_modal_table()
         self.explore_modal_table = self._create_explore_modal_table(self.diff_modal_table.id)
 
@@ -209,6 +209,8 @@ class DetectionComparisonVisualizer(BaseComparisonVisualizer):
             (0, self.cal_score_confidence_score_md_2),
             (0, self.cal_score_collapse_conf_score),
         ]
+        if self._warning_notification:
+            is_anchors_widgets.insert(1, (0, self._warning_notification))
         if self.speedtest_present:
             is_anchors_widgets.extend(
                 [

@@ -50,12 +50,25 @@ class ExplorePredictions(BaseVisMetrics):
         for idx, eval_res in enumerate(self.eval_results):
             if idx == 0:
                 dataset_info = eval_res.gt_dataset_infos[0]
-                image_infos = api.image.get_list(dataset_info.id, limit=5, force_metadata_for_links=False)
+                filters = None
+                if getattr(eval_res, "image_whitelist", None) is not None:
+                    filters = [
+                        {
+                            ApiField.FIELD: ApiField.NAME,
+                            ApiField.OPERATOR: "in",
+                            ApiField.VALUE: eval_res.image_whitelist,
+                        }
+                    ]
+                image_infos = api.image.get_list(
+                    dataset_info.id, filters=filters, limit=5, force_metadata_for_links=False
+                )
                 ds_name = dataset_info.name
                 images_ids = [image_info.id for image_info in image_infos]
                 names = [image_info.name for image_info in image_infos]
                 images.append(image_infos)
-                anns = api.annotation.download_batch(dataset_info.id, images_ids, force_metadata_for_links=False)
+                anns = api.annotation.download_batch(
+                    dataset_info.id, images_ids, force_metadata_for_links=False
+                )
                 annotations.append(anns)
                 skip_tags_filtering.append(True)
             metas.append(eval_res.pred_project_meta)
@@ -73,7 +86,9 @@ class ExplorePredictions(BaseVisMetrics):
             )
             images_ids = [image_info.id for image_info in image_infos]
             images.append(image_infos)
-            anns = eval_res.api.annotation.download_batch(dataset_info.id, images_ids, force_metadata_for_links=False)
+            anns = eval_res.api.annotation.download_batch(
+                dataset_info.id, images_ids, force_metadata_for_links=False
+            )
             annotations.append(anns)
             skip_tags_filtering.append(False)
             min_conf = min(min_conf, eval_res.mp.conf_threshold)
@@ -103,13 +118,25 @@ class ExplorePredictions(BaseVisMetrics):
         names = None
         ds_names = None
         for idx, eval_res in enumerate(self.eval_results):
+            filters = None
+            if getattr(eval_res, "image_whitelist", None) is not None:
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.NAME,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: eval_res.image_whitelist,
+                    }
+                ]
             if idx == 0:
                 dataset_infos = eval_res.gt_dataset_infos
                 ds_names = [ds.name for ds in dataset_infos]
                 current_images_ids = []
                 current_images_names = []
                 for ds in dataset_infos:
-                    image_infos = api.image.get_list(ds.id, force_metadata_for_links=False)
+
+                    image_infos = api.image.get_list(
+                        ds.id, filters=filters, force_metadata_for_links=False
+                    )
                     image_infos = sorted(image_infos, key=lambda x: x.name)
                     current_images_names.extend([image_info.name for image_info in image_infos])
                     current_images_ids.extend([image_info.id for image_info in image_infos])
@@ -121,7 +148,9 @@ class ExplorePredictions(BaseVisMetrics):
             dataset_infos = sorted(dataset_infos, key=lambda x: ds_names.index(x.name))
             current_images_infos = []
             for ds in dataset_infos:
-                image_infos = api.image.get_list(ds.id, force_metadata_for_links=False)
+                image_infos = api.image.get_list(
+                    ds.id, filters=filters, force_metadata_for_links=False
+                )
                 image_infos = [image_info for image_info in image_infos if image_info.name in names]
                 current_images_infos.extend(image_infos)
             current_images_infos = sorted(current_images_infos, key=lambda x: names.index(x.name))
