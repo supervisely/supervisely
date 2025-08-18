@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, NamedTuple, Optional, Union
 
 import requests
+from pydantic import BaseModel, Field
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
 from tqdm import tqdm
 
@@ -29,6 +30,28 @@ from supervisely.io.fs import (
     get_file_name,
     get_file_name_with_ext,
 )
+
+
+class KubernetesSettings(BaseModel):
+    """
+    KubernetesSettings for application resource limits and requests.
+    """
+
+    use_health_check: Optional[bool] = Field(None, alias="useHealthCheck")
+    request_cpus: Optional[int] = Field(None, alias="requestCpus")
+    limit_cpus: Optional[int] = Field(None, alias="limitCpus")
+    limit_memory_gb: Optional[int] = Field(None, alias="limitMemoryGb")
+    limit_shm_gb: Optional[int] = Field(None, alias="limitShmGb")
+    limit_storage_gb: Optional[int] = Field(None, alias="limitStorageGb")
+    limit_gpus: Optional[int] = Field(None, alias="limitGpus")
+    limit_gpu_memory_mb: Optional[int] = Field(None, alias="limitGpuMemoryMb")
+    limit_gpu_cores_perc: Optional[int] = Field(None, alias="limitGpuCoresPerc")
+
+    model_config = {"populate_by_name": True}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dict with only non-None values using aliases."""
+        return self.model_dump(exclude_none=True, by_alias=True)
 
 
 class TaskFinishedWithError(Exception):
@@ -365,6 +388,7 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         module_id: Optional[int] = None,
         redirect_requests: Optional[Dict[str, int]] = {},
         limit_by_workspace: bool = False,
+        kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Starts the application task on the agent.
 
@@ -401,6 +425,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         :param limit_by_workspace: If set to True tasks will be only visible inside of the workspace
             with specified workspace_id.
         :type limit_by_workspace: bool, optional
+        :param kubernetes_settings: Kubernetes settings for the application.
+        :type kubernetes_settings: Union[KubernetesSettings, Dict[str, Any]], optional
         :return: Task information in JSON format.
         :rtype: Dict[str, Any]
 
@@ -438,6 +464,15 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         advanced_settings = {
             ApiField.LIMIT_BY_WORKSPACE: limit_by_workspace,
         }
+
+        if kubernetes_settings is not None:
+            if isinstance(kubernetes_settings, KubernetesSettings):
+                kubernetes_settings = kubernetes_settings.to_dict()
+            if not isinstance(kubernetes_settings, dict):
+                raise TypeError(
+                    f"kubernetes_settings must be a dict or an instance of KubernetesSettings, got {type(kubernetes_settings)}"
+                )
+            advanced_settings.update(kubernetes_settings)
 
         data = {
             ApiField.AGENT_ID: agent_id,
@@ -1011,6 +1046,9 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
                     'type': 'tensorboard',
                     'link': '/experiments/76_Lemons/247_RT-DETRv2/logs/'
                 },
+                # These fields are present only in task_info
+                'project_preview': 'https://app.supervisely.com/...',
+                'has_report': True,
             }
         """
         output = {

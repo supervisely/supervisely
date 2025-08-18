@@ -2,6 +2,7 @@
 """load and inference models"""
 
 from __future__ import annotations
+
 import os
 from os import PathLike
 from typing import List, Union
@@ -11,6 +12,7 @@ import requests
 
 import supervisely.io.env as sly_env
 import supervisely.io.json as sly_json
+from supervisely.api.api import Api
 from supervisely.api.module_api import ApiField
 from supervisely.api.task_api import TaskApi
 from supervisely.nn.experiments import ExperimentInfo
@@ -18,7 +20,6 @@ from supervisely.nn.model.prediction import Prediction
 from supervisely.nn.model.prediction_session import PredictionSession
 from supervisely.nn.utils import ModelSource
 from supervisely.project.project_meta import ProjectMeta
-from supervisely.api.api import Api
 
 
 class ModelAPI:
@@ -111,6 +112,12 @@ class ModelAPI:
         response = self._post("tasks.stop", {ApiField.ID: id})
         return TaskApi.Status(response[ApiField.STATUS])
 
+    def freeze_model(self):
+        """Freeze the model to free up resources."""
+        if self.task_id is not None:
+            return self.api.task.send_request(self.task_id, "freeze_model", {})
+        return self._post("freeze_model", {})
+
     # --------------------- #
 
     # region Load
@@ -120,7 +127,8 @@ class ModelAPI:
         device: str = None,
         runtime: str = None,
     ):
-        if self.url is not None:
+        if self.task_id is None:
+            # TODO: proper check
             if os.path.exists(model):
                 self._load_local_custom_model(model, device, runtime)
             else:
