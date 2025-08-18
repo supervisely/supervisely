@@ -29,6 +29,7 @@ from supervisely.app.widgets import (
     RadioGroup,
     RadioTable,
     SelectDataset,
+    Stepper,
 )
 from supervisely.io import env
 from supervisely.nn.model.model_api import ModelAPI
