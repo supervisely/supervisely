@@ -4,7 +4,14 @@ import cv2
 import numpy as np
 from .osnet import osnet_x1_0
 from collections import OrderedDict
-import torch.nn.functional as F
+from supervisely import logger
+
+try:
+    # pylint: disable=import-error
+    from torch.nn import functional as F
+except ImportError:
+    logger.warning("torch is not installed, OSNet re-ID cannot be used.")
+
 
 class OsnetReIDModel:
     def __init__(self, weights_path: Path = None, device: torch.device = torch.device("cpu"), half: bool = False):
