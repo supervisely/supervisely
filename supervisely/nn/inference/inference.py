@@ -1894,7 +1894,7 @@ class Inference:
             )
             
             if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(self, frames, anns)
+                anns = self._apply_tracker_to_anns(frames, anns)
                 
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
@@ -2133,7 +2133,7 @@ class Inference:
             )
             
             if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(self, frames, anns)
+                anns = self._apply_tracker_to_anns(frames, anns)
                 
             predictions = [
                 Prediction(

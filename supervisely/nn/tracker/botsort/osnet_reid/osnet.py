@@ -416,7 +416,7 @@ def init_pretrained_weights(model, key=""):
     import os
     from collections import OrderedDict
 
-    import gdown
+    import gdown  # pylint: disable=import-error
 
     def _get_torch_home():
         ENV_TORCH_HOME = "TORCH_HOME"
