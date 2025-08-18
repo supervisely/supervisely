@@ -3530,6 +3530,13 @@ class Project:
             for batch in batched(ds_image_infos, batch_size):
                 image_ids = [image_info.id for image_info in batch]
                 ds_figures = api_entity.figure.download(dataset_info.id, image_ids)
+                if True:
+                    # ! WARNING! DEBUG CODE!
+                    # Do only for non image project types.
+                    # TODO: Remove it.
+                    object_class_map = Project.object_class_map(api, dataset_info.id, image_ids)
+                    ds_figures = Project.update_figures(ds_figures, object_class_map)
+
                 alpha_ids = [
                     figure.id
                     for figures in ds_figures.values()
@@ -3563,6 +3570,52 @@ class Project:
         sly.logger.debug(f"Finished downloading and preparing project {project_info.name}.")
 
         return file if return_bytesio else file.name
+
+    @staticmethod
+    def object_class_map(api: sly.Api, dataset_id: int, volumes_ids: List[int]) -> Dict[int, int]:
+        """Create a mapping from object IDs to class IDs from volume annotations.
+
+        :param api: Supervisely API instance
+        :type api: sly.Api
+        :param dataset_id: ID of the dataset to process
+        :type dataset_id: int
+        :param volumes_ids: List of volume IDs to process
+        :type volumes_ids: List[int]
+        :return: Mapping of object IDs to class IDs
+        :rtype: Dict[int, int]
+        """
+        volumes_anns = api.volume.annotation.download_bulk(dataset_id, volumes_ids)
+
+        volume_object_class_map = {}
+        for volume_ann in volumes_anns:
+            for object in volume_ann.get("objects", []):
+                object_id = object.get("id")
+                class_id = object.get("classId")
+                if object_id not in volume_object_class_map:
+                    volume_object_class_map[object_id] = class_id
+
+        return volume_object_class_map
+
+    @staticmethod
+    def update_figures(
+        dataset_figures: Dict[int, List[sly.FigureInfo]], object_class_map: Dict[int, int]
+    ) -> Dict[int, List[sly.FigureInfo]]:
+        """Update the class IDs of figures in the dataset based on the object class map.
+
+        :param dataset_figures: Dictionary mapping volume IDs to lists of figure information
+        :type dataset_figures: Dict[int, List[sly.FigureInfo]]
+        :param object_class_map: Mapping of object IDs to class IDs
+        :type object_class_map: Dict[int, int]
+        :return: Updated dictionary mapping volume IDs to lists of figure information
+        :rtype: Dict[int, List[sly.FigureInfo]]
+        """
+        updated_ds_figures = defaultdict(list)
+        for volume_id, volume_figures in dataset_figures.items():
+            for figure in volume_figures:
+                new_class_id = object_class_map.get(figure.object_id)
+                new_figure = figure._replace(class_id=new_class_id)
+                updated_ds_figures[volume_id].append(new_figure)
+        return updated_ds_figures
 
     @staticmethod
     def upload_bin(
@@ -3842,13 +3895,17 @@ class Project:
                             other_figure_jsons.append(figure_json)
 
                     def create_figure_json(figure, geometry):
-                        return {
+                        data = {
                             "meta": figure["meta"] if figure["meta"] is not None else {},
                             "entityId": new_file_info.id,
                             "classId": old_new_classes_mapping[figure["class_id"]],
                             "geometry": geometry,
                             "geometryType": figure["geometry_type"],
                         }
+                        object_id = figure.get("object_id")
+                        if object_id is not None:
+                            data["objectId"] = object_id
+                        return data
 
                     new_figure_jsons = [
                         create_figure_json(figure, figure["geometry"])
