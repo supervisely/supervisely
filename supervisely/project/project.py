@@ -5657,16 +5657,16 @@ async def _download_project_async(
                             ds_progress(1)
                 return to_download
 
-            async def run_tasks_with_semaphore_control(task_generators, delay=0.05):
+            async def run_tasks_with_semaphore_control(task_list: list, delay=0.05):
                 """
                 Execute tasks with semaphore control - create tasks only as semaphore permits become available.
-                task_generators - list of coroutines or callables that create tasks
+                task_list - list of coroutines or callables that create tasks
                 """
-                random.shuffle(task_generators)
+                random.shuffle(task_list)
                 running_tasks = set()
                 max_concurrent = getattr(semaphore, "_value", 10)
 
-                task_iter = iter(task_generators)
+                task_iter = iter(task_list)
                 completed_count = 0
 
                 while True:
