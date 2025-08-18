@@ -64,8 +64,10 @@ class ExperimentSelector(Widget):
             self._project_info = project_info
 
             task_id = experiment_info.task_id
-            if task_id == "debug-session" or task_id == -1:
+            if task_id == -1:
                 pass
+            elif task_id == "debug-session":
+                task_id = -1
             elif type(task_id) is str:
                 if task_id.isdigit():
                     task_id = int(task_id)
@@ -354,11 +356,16 @@ class ExperimentSelector(Widget):
             return text
 
         def sort_values(self) -> List[int]:
-            training_project_name = None
+            # Sort by training project name: real names first (A->Z), deleted projects last
             if self._training_project_info is not None:
-                training_project_name = self._training_project_info.name.capitalize()
+                training_project_name = (0, self._training_project_info.name.lower())
             else:
-                training_project_name = "Project was deleted"
+                training_project_name = (1, "")
+
+            if self._benchmark_report_id == "No evaluation report available":
+                benchmark_report_id = 0
+            else:
+                benchmark_report_id = 1
 
             return [
                 self._task_id,
@@ -366,7 +373,7 @@ class ExperimentSelector(Widget):
                 training_project_name,
                 0,
                 0,
-                1 if self._benchmark_report_id else 0,
+                benchmark_report_id,
             ]
 
     def __init__(
@@ -609,6 +616,8 @@ class ExperimentSelector(Widget):
                     task_type, model_row = result
                     if task_type is not None and model_row is not None:
                         table_rows.append(model_row)
+
+        table_rows.sort(key=lambda x: x.task_id, reverse=True)
         return table_rows
 
     def _update_search_text(self):

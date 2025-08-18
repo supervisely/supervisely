@@ -539,7 +539,10 @@ class PredictAppGui:
                 self.output.validation_message.show()
                 return
             created_project = self.api.project.create(
-                env.workspace_id(), project_name, type=ProjectType.IMAGES
+                env.workspace_id(),
+                project_name,
+                type=ProjectType.IMAGES,
+                change_name_if_conflict=True,
             )
             upload_parameters["output_project_id"] = created_project.id
             upload_parameters["upload_mode"] = "append"

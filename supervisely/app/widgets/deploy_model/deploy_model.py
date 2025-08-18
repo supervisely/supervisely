@@ -692,18 +692,7 @@ class DeployModel(Widget):
             description="Information about the deployed model",
         )
 
-        self._model_info_classes_widget = ClassesTable(selectable=False)
-        self._model_info_classes_message = Text("No classes provided")
-        self._model_info_classes_message.hide()
-        self._model_info_classes_widget_field = Field(
-            content=Container([self._model_info_classes_widget, self._model_info_classes_message]),
-            title="Model classes",
-            description="List of classes model predicts",
-        )
-
-        self._model_info_container = Container(
-            [self._model_info_widget_field, self._model_info_classes_widget_field]
-        )
+        self._model_info_container = Container([self._model_info_widget_field])
         self._model_info_container.hide()
         self._model_info_message = Text("Connect to model to see the session information.")
 
@@ -716,20 +705,7 @@ class DeployModel(Widget):
         self._model_info_card.collapse()
 
     def set_model_info(self, session_id):
-        def set_project_meta(model_meta: ProjectMeta):
-            if len(model_meta.obj_classes) == 0:
-                self._model_info_classes_widget.hide()
-                self._model_info_classes_message.show()
-                return
-
-            self._model_info_classes_widget.set_project_meta(model_meta)
-            self._model_info_classes_message.hide()
-            self._model_info_classes_widget.show()
-
-        session = Session(self.api, session_id)
         self._model_info_widget.set_model_info(session_id)
-        model_meta = session.get_model_meta()
-        set_project_meta(model_meta)
 
         self._model_info_message.hide()
         self._model_info_container.show()
