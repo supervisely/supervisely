@@ -6,7 +6,7 @@ from fastapi import BackgroundTasks, Request
 from supervisely._utils import logger
 from supervisely.api.api import Api
 from supervisely.app.fastapi.subapp import Application
-from supervisely.nn.inference.predict_app.gui import PredictAppGui
+from supervisely.nn.inference.predict_app.gui.gui import PredictAppGui
 from supervisely.nn.model.prediction import Prediction
 
 

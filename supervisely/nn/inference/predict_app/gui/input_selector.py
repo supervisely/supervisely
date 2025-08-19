@@ -1,6 +1,5 @@
 from typing import Any, Dict, List
 
-from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Container,
@@ -19,25 +18,30 @@ class InputSelector:
     description = "Select the data modality on which to run model"
     lock_message = None
 
-    def __init__(self, api: Api, workspace_id: int):
-        # Init basic state
-        self.api = api
+    def __init__(self, workspace_id: int):
+        # Init Step
         self.workspace_id = workspace_id
         self.display_widgets: List[Any] = []
         # -------------------------------- #
 
-        # Init widgets
-        self.select_dataset_for_images = None
-        self.select_image_container = None
-        self.select_dataset_for_video = None
-        self.select_video = None
-        self.select_video_container = None
-        self.radio = None
-        self.one_of = None
+        # Init Base Widgets
         self.validator_text = None
         self.button = None
         self.container = None
         self.card = None
+        # -------------------------------- #
+
+        # Init Step Widgets
+        # Images
+        self.select_dataset_for_images = None
+        self.select_image_container = None
+        # Videos
+        self.select_dataset_for_video = None
+        self.select_video = None
+        self.select_video_container = None
+        # Selector
+        self.radio = None
+        self.one_of = None
         # -------------------------------- #
 
         # Images
@@ -65,57 +69,50 @@ class InputSelector:
         self._radio_item_videos = RadioGroup.Item(
             ProjectType.VIDEOS.value, "Videos", content=self.select_video_container
         )
-
-        @self.select_dataset_for_video.value_changed
-        def dataset_for_video_changed(dataset_id: int):
-            self.select_video.loading = True
-            if dataset_id is None:
-                rows = []
-            else:
-                dataset_info = self.api.dataset.get_info_by_id(dataset_id)
-                videos = self.api.video.get_list(dataset_id)
-                rows = [[video.id, video.name, dataset_info.name] for video in videos]
-            self.select_video.rows = rows
-            self.select_video.loading = False
-
         # -------------------------------- #
 
         # Data type Radio Selector
         self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
         self.one_of = OneOf(conditional_widget=self.radio)
-        # -------------------------------- #
+        # Add widgets to display ------------ #
+        self.display_widgets.extend([self.radio, self.one_of])
+        # ----------------------------------- #
 
+        # Base Widgets
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
-        self.display_widgets.extend([self.radio, self.one_of])
+        # Add widgets to display ------------ #
+        self.display_widgets.extend([self.validator_text, self.button])
+        # ----------------------------------- #
 
-        self.container = Container(self.display_widgets, gap=20)
+        # Card Layout
+        self.container = Container(self.display_widgets)
         self.card = Card(
             title=self.title,
             description=self.description,
             content=self.container,
+            lock_message=self.lock_message,
         )
+        # ----------------------------------- #
 
     @property
     def widgets_to_disable(self) -> list:
         return [
+            self.select_dataset_for_images,
+            self.select_dataset_for_video,
+            self.select_video,
             self.radio,
-            self.select_image_container,
-            self.select_video_container,
+            self.one_of,
         ]
 
-    def get_item_settings(self) -> Dict[str, Any]:
+    def get_settings(self) -> Dict[str, Any]:
         if self.radio.get_value() == ProjectType.IMAGES.value:
             return {"dataset_ids": self.select_dataset_for_images.get_selected_ids()}
         if self.radio.get_value() == ProjectType.VIDEOS.value:
             return {"video_id": self.select_video.get_selected_row()}
 
-    def validate_step(self) -> bool:
-        return True
-
     def load_from_json(self, data):
-        # @TODO: add images or videos if
         if "project_id" in data:
             self.select_dataset_for_images.set_project_id(data["project_id"])
             self.select_dataset_for_images.set_select_all_datasets(True)
@@ -126,3 +123,27 @@ class InputSelector:
         if "video_id" in data:
             self.select_video.select_row_by_value("id", data["video_id"])
             self.radio.set_value("video")
+
+    def validate_step(self) -> bool:
+        self.validator_text.hide()
+        if self.radio.get_value() == ProjectType.IMAGES.value:
+            if len(self.select_dataset_for_images.get_selected_ids()) == 0:
+                self.validator_text.set(text="Select at least one dataset", status="error")
+                self.validator_text.show()
+                return False
+        if self.radio.get_value() == ProjectType.VIDEOS.value:
+            if self.select_dataset_for_video.get_selected_id() is None:
+                self.validator_text.set(text="Select a dataset", status="error")
+                self.validator_text.show()
+                return False
+            if len(self.select_video.rows) == 0:
+                self.validator_text.set(
+                    text="No videos found in the selected dataset", status="error"
+                )
+                self.validator_text.show()
+                return False
+            if self.select_video.get_selected_row() == []:
+                self.validator_text.set(text="Select a video", status="error")
+                self.validator_text.show()
+                return False
+        return True

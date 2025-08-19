@@ -1,107 +1,536 @@
-import os
-import random
-import time
-from typing import Any, Dict, List
-
 import yaml
+import time
+from typing import Any, Dict, List, Callable, Optional
 
 from supervisely._utils import logger
-from supervisely.annotation.annotation import Annotation, Label
 from supervisely.api.api import Api
-from supervisely.api.image_api import ImageInfo
-from supervisely.api.video.video_api import VideoInfo
-from supervisely.app.widgets import (
-    Button,
-    Flexbox,
-    Field,
-    Container,
-    Card,
-    Text,
-    Input,
-    DeployModel,
-    Editor,
-    FastTable,
-    GridGallery,
-    InputNumber,
-    OneOf,
-    Progress,
-    ProjectThumbnail,
-    RadioGroup,
-    RadioTable,
-    SelectDataset,
-    Stepper,
-)
+from supervisely.app.widgets import Container, Card, Stepper, Button, Widget
 from supervisely.io import env
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction
 from supervisely.project.project import ProjectType
 from supervisely.project.project_meta import ProjectMeta
+
+from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
+from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
+from supervisely.nn.inference.predict_app.gui.classes_selector import ClassesSelector
+from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
+from supervisely.nn.inference.predict_app.gui.settings_selector import SettingsSelector
+from supervisely.nn.inference.predict_app.gui.preview import Preview
+from supervisely.nn.inference.predict_app.gui.output_selector import OutputSelector
+from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
+
+import random
+from supervisely.annotation.label import Label
+from supervisely.api.video.video_api import VideoInfo
+from supervisely.annotation.annotation import Annotation
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
-from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
+
+class StepFlow:
+
+    def __init__(self, stepper: Stepper):
+        self.stepper = stepper
+        self.steps = {}
+        self.step_sequence = []
+
+    def register_step(
+        self,
+        name: str,
+        card: Card,
+        button: Optional[Button] = None,
+        widgets_to_disable: Optional[List[Widget]] = None,
+        validation_text: Optional[Widget] = None,
+        validation_func: Optional[Callable] = None,
+        position: Optional[int] = None,
+    ) -> "StepFlow":
+        self.steps[name] = {
+            "card": card,
+            "button": button,
+            "widgets_to_disable": widgets_to_disable or [],
+            "validation_text": validation_text,
+            "validation_func": validation_func,
+            "position": position,
+            "next_steps": [],
+            "on_select_click": [],
+            "on_reselect_click": [],
+            "wrapper": None,
+            "has_button": button is not None,
+        }
+
+        if position is not None:
+            while len(self.step_sequence) <= position:
+                self.step_sequence.append(None)
+            self.step_sequence[position] = name
+
+        return self
+
+    def set_next_steps(self, step_name: str, next_steps: List[str]) -> "StepFlow":
+        if step_name in self.steps:
+            self.steps[step_name]["next_steps"] = next_steps
+        return self
+
+    def add_on_select_actions(
+        self, step_name: str, actions: List[Callable], is_reselect: bool = False
+    ) -> "StepFlow":
+        if step_name in self.steps:
+            key = "on_reselect_click" if is_reselect else "on_select_click"
+            self.steps[step_name][key].extend(actions)
+        return self
+
+    def build_wrappers(self) -> Dict[str, Callable]:
+        valid_sequence = [s for s in self.step_sequence if s is not None and s in self.steps]
+
+        for step_name in reversed(valid_sequence):
+            step = self.steps[step_name]
+
+            cards_to_unlock = []
+            for next_step_name in step["next_steps"]:
+                if next_step_name in self.steps:
+                    cards_to_unlock.append(self.steps[next_step_name]["card"])
+
+            callback = None
+            if step["next_steps"] and step["has_button"]:
+                for next_step_name in step["next_steps"]:
+                    if (
+                        next_step_name in self.steps
+                        and self.steps[next_step_name].get("wrapper")
+                        and self.steps[next_step_name]["has_button"]
+                    ):
+                        callback = self.steps[next_step_name]["wrapper"]
+                        break
+
+            if step["has_button"]:
+                wrapper = wrap_button_click(
+                    button=step["button"],
+                    cards_to_unlock=cards_to_unlock,
+                    widgets_to_disable=step["widgets_to_disable"],
+                    callback=callback,
+                    validation_text=step["validation_text"],
+                    validation_func=step["validation_func"],
+                    on_select_click=step["on_select_click"],
+                    on_reselect_click=step["on_reselect_click"],
+                    collapse_card=None,
+                )
+
+                step["wrapper"] = wrapper
+
+        return {
+            name: self.steps[name]["wrapper"]
+            for name in self.steps
+            if self.steps[name].get("wrapper") and self.steps[name]["has_button"]
+        }
+
+    def setup_button_handlers(self) -> None:
+        positions = {}
+        pos = 1
+
+        for i, step_name in enumerate(self.step_sequence):
+            if step_name is not None and step_name in self.steps:
+                positions[step_name] = pos
+                pos += 1
+
+        for step_name, step in self.steps.items():
+            if step_name in positions and step.get("wrapper") and step["has_button"]:
+
+                button = step["button"]
+                wrapper = step["wrapper"]
+                position = positions[step_name]
+                next_position = position + 1
+
+                def create_handler(btn, cb, next_pos):
+                    def handler():
+                        cb()
+                        set_stepper_step(self.stepper, btn, next_pos=next_pos)
+
+                    return handler
+
+                button.click(create_handler(button, wrapper, next_position))
+
+    def build(self) -> Dict[str, Callable]:
+        wrappers = self.build_wrappers()
+        self.setup_button_handlers()
+        return wrappers
 
 
 class PredictAppGui:
-
     def __init__(self, api: Api, static_dir: str = "static"):
         self.api = api
         self.static_dir = static_dir
-        self.team_id = env.team_id()
-        self.model = DeployModel(api=self.api, team_id=self.team_id)
-        self.model.deploy = self._deploy_model
 
-        self.model_card = Card(title="Select Model", description="", content=self.model)
-        self.inference_settings = Editor("", language_mode="yaml", height_px=300)
+        # Environment variables
+        self.team_id = env.team_id()
+        self.workspace_id = env.workspace_id()
+        self.project_id = env.project_id(raise_not_found=False)
+        # -------------------------------- #
+
+        # Flags
         self._stop_flag = False
         self._is_running = False
+        # -------------------------------- #
 
+        # GUI
         # Steps
-        self.input_selector = InputSelector(self.api)
-        self.model_selector = ModelSelector(self.api)
-        self.classes_selector = ClassesSelector(self.api)
-        self.tags_selector = TagsSelector(self.api)
-        self.settings_selector = SettingsSelector(self.api)
-        self.preview = Preview()
+        self.steps = []
+
+        # 1. Input selector
+        self.input_selector = InputSelector(self.workspace_id)
+        self.steps.append(self.input_selector.card)
+
+        # 2. Model selector
+        self.model_selector = ModelSelector(self.api, self.team_id)
+        self.steps.append(self.model_selector.card)
+
+        # 3. Classes selector
+        self.classes_selector = None
+        if True:
+            self.classes_selector = ClassesSelector()
+            self.steps.append(self.classes_selector.card)
+
+        # 4. Tags selector
+        self.tags_selector = None
+        if False:
+            self.tags_selector = TagsSelector()
+            self.steps.append(self.tags_selector.card)
+
+        # 5. Settings selector
+        self.settings_selector = SettingsSelector()
+        self.steps.append(self.settings_selector.card)
+
+        # 6. Preview
+        self.preview = None
+        if False:
+            self.preview = Preview(api, static_dir)
+            self.steps.append(self.preview.card)
+
+        # 7. Output selector
         self.output_selector = OutputSelector(self.api)
+        self.steps.append(self.output_selector.card)
         # -------------------------------- #
 
         # Stepper
-        step_titles = [
-            self.input_selector.title,
-            self.model_selector.title,
-            self.classes_selector.title,
-            self.tags_selector.title,
-            self.settings_selector.title,
-            self.preview.title,
-            self.output_selector.title,
-        ]
-        step_widgets = [
-            self.input_selector.card,
-            self.model_selector.card,
-            self.classes_selector.card,
-            self.tags_selector.card,
-            self.settings_selector.card,
-            self.preview.card,
-            self.output_selector.card,
-        ]
-        self.stepper = Stepper(titles=step_titles, widgets=step_widgets)
+        self.stepper = Stepper(widgets=self.steps)
         # ---------------------------- #
-        self.layout = Container([self.stepper])
 
-        @self.output.run_button.click
-        def run_button_click():
-            self.run()
+        # Layout
+        self.layout = Container([self.stepper])
+        # ---------------------------- #
+
+        # Button Utils
+        def deploy_model() -> ModelAPI:
+            model_api = None
+            try:
+                model_api = type(self.model_selector.model).deploy(self.model_selector.model)
+                inference_settings = model_api.get_settings()
+                self.settings_selector.set_inference_settings(inference_settings)
+            except:
+                self.output_selector.start_button.disable()
+                self.settings_selector.set_inference_settings("")
+                raise
+            else:
+                self.output_selector.start_button.enable()
+            return model_api
+
+        # Reimplement deploy method for DeployModel widget
+        self.model_selector.model.deploy = deploy_model
+
+        def set_entity_meta():
+            model_api = self.model_selector.model.model_api
+
+            # Get Model Meta to set classes and tags selectors
+            model_meta = model_api.get_model_meta()
+            if self.classes_selector is not None:
+                self.classes_selector.classes_table.set_project_meta(model_meta)
+            if self.tags_selector is not None:
+                self.tags_selector.tags_table.set_project_meta(model_meta)
+
+            # Get Inference Settings to set settings selector
+            inference_settings_json = model_api.get_settings()
+            inference_settings = yaml.safe_dump(inference_settings_json)
+            self.settings_selector.inference_settings.set_text(inference_settings)
+
+            # Set Inference Settings for preview (?)
+            if self.preview is not None:
+                self.preview.inference_settings = inference_settings
+
+        def reset_entity_meta():
+            empty_meta = ProjectMeta()
+            if self.classes_selector is not None:
+                self.classes_selector.classes_table.set_project_meta(empty_meta)
+            if self.tags_selector is not None:
+                self.tags_selector.tags_table.set_project_meta(empty_meta)
+            self.settings_selector.inference_settings.set_text("")
+            if self.preview is not None:
+                self.preview.inference_settings = None
+
+        def generate_preview():
+            def _get_frame_annotation(
+                video_info: VideoInfo, frame_index: int, project_meta: ProjectMeta
+            ) -> Annotation:
+                video_annotation = VideoAnnotation.from_json(
+                    self.api.video.annotation.download(video_info.id, frame_index),
+                    project_meta=project_meta,
+                    key_id_map=KeyIdMap(),
+                )
+                frame = video_annotation.frames.get(frame_index)
+                img_size = (video_info.frame_height, video_info.frame_width)
+                if frame is None:
+                    return Annotation(img_size)
+                labels = []
+                for figure in frame.figures:
+                    labels.append(Label(figure.geometry, figure.video_object.obj_class))
+                ann = Annotation(img_size, labels=labels)
+                return ann
+
+            if self.preview is None:
+                return
+
+            self.preview.validator_text.hide()
+            self.preview.gallery.clean_up()
+            self.preview.gallery.show()
+            self.preview.gallery.loading = True
+            try:
+                items_settings = self.input_selector.get_settings()
+                if "video_id" in items_settings:
+                    video_id = items_settings["video_id"]
+                    video_info = self.api.video.get_info_by_id(video_id)
+                    video_frame = random.randint(0, video_info.frames_count - 1)
+                    self.api.video.frame.download_path(
+                        video_info.id, video_frame, self.preview.preview_path
+                    )
+                    img_url = self.preview.peview_url
+                    project_meta = ProjectMeta.from_json(
+                        self.api.project.get_meta(video_info.project_id)
+                    )
+                    input_ann = _get_frame_annotation(video_info, video_frame, project_meta)
+                    prediction = self.model_selector.model.model_api.predict(
+                        input=self.preview.preview_path, **self.settings_selector.get_settings()
+                    )[0]
+                    output_ann = prediction.annotation
+                else:
+                    if "project_id" in items_settings:
+                        project_id = items_settings["project_id"]
+                        dataset_infos = self.api.dataset.get_list(project_id, recursive=True)
+                        dataset_infos = [ds for ds in dataset_infos if ds.items_count > 0]
+                        if not dataset_infos:
+                            raise ValueError("No datasets with items found in the project.")
+                        dataset_info = random.choice(dataset_infos)
+                    elif "dataset_ids" in items_settings:
+                        dataset_ids = items_settings["dataset_ids"]
+                        dataset_infos = [
+                            self.api.dataset.get_info_by_id(dataset_id)
+                            for dataset_id in dataset_ids
+                        ]
+                        dataset_infos = [ds for ds in dataset_infos if ds.items_count > 0]
+                        if not dataset_infos:
+                            raise ValueError("No items in selected datasets.")
+                        dataset_info = random.choice(dataset_infos)
+                    else:
+                        raise ValueError("No valid item settings found for preview.")
+                    images = self.api.image.get_list(dataset_info.id)
+                    image_info = random.choice(images)
+                    img_url = image_info.preview_url
+
+                    project_meta = ProjectMeta.from_json(
+                        self.api.project.get_meta(dataset_info.project_id)
+                    )
+                    input_ann = Annotation.from_json(
+                        self.api.annotation.download(image_info.id).annotation,
+                        project_meta=project_meta,
+                    )
+                    prediction = self.model_selector.model.model_api.predict(
+                        image_id=image_info.id, **self.get_inference_settings()
+                    )[0]
+                    output_ann = prediction.annotation
+
+                self.preview.gallery.append(img_url, input_ann, "Input")
+                self.preview.gallery.append(img_url, output_ann, "Output")
+                self.preview.validator_text.hide()
+                self.preview.gallery.show()
+                return prediction
+            except Exception as e:
+                self.preview.gallery.hide()
+                self.preview.validator_text.set(
+                    text=f"Error during preview: {str(e)}", status="error"
+                )
+                self.preview.validator_text.show()
+                self.preview.gallery.clean_up()
+            finally:
+                self.preview.gallery.loading = False
+
+        # ---------------------------- #
+
+        # StepFlow callbacks and wiring
+        self.step_flow = StepFlow(self.stepper)
+        position = 0
+
+        # 1. Input selector
+        self.step_flow.register_step(
+            "input_selector",
+            self.input_selector.card,
+            self.input_selector.button,
+            self.input_selector.widgets_to_disable,
+            getattr(self.input_selector, "validator_text", None),
+            self.input_selector.validate_step,
+            position=position,
+        )
+        position += 1
+
+        # 2. Model selector
+        self.step_flow.register_step(
+            "model_selector",
+            self.model_selector.card,
+            self.model_selector.button,
+            self.model_selector.widgets_to_disable,
+            getattr(self.model_selector, "validator_text", None),
+            self.model_selector.validate_step,
+            position=position,
+        )
+        self.step_flow.add_on_select_actions("model_selector", [set_entity_meta])
+        self.step_flow.add_on_select_actions(
+            "model_selector", [reset_entity_meta], is_reselect=True
+        )
+        position += 1
+
+        # 3. Classes selector
+        if self.classes_selector is not None:
+            self.step_flow.register_step(
+                "classes_selector",
+                self.classes_selector.card,
+                self.classes_selector.button,
+                self.classes_selector.widgets_to_disable,
+                getattr(self.classes_selector, "validator_text", None),
+                self.classes_selector.validate_step,
+                position=position,
+            )
+            position += 1
+
+        # 4. Tags selector
+        if self.tags_selector is not None:
+            self.step_flow.register_step(
+                "tags_selector",
+                self.tags_selector.card,
+                self.tags_selector.button,
+                self.tags_selector.widgets_to_disable,
+                getattr(self.tags_selector, "validator_text", None),
+                self.tags_selector.validate_step,
+                position=position,
+            )
+            position += 1
+
+        # 5. Settings selector
+        self.step_flow.register_step(
+            "settings_selector",
+            self.settings_selector.card,
+            self.settings_selector.button,
+            self.settings_selector.widgets_to_disable,
+            getattr(self.settings_selector, "validator_text", None),
+            self.settings_selector.validate_step,
+            position=position,
+        )
+        position += 1
+
+        # 6. Preview
+        if self.preview is not None:
+            self.step_flow.register_step(
+                "preview",
+                self.preview.card,
+                self.preview.button,
+                self.preview.widgets_to_disable,
+                getattr(self.preview, "validator_text", None),
+                self.preview.validate_step,
+                position=position,
+            ).add_on_select_actions("preview", [generate_preview])
+            position += 1
+
+        # 7. Output selector
+        self.step_flow.register_step(
+            "output_selector",
+            self.output_selector.card,
+            None,
+            self.output_selector.widgets_to_disable,
+            getattr(self.output_selector, "validator_text", None),
+            self.output_selector.validate_step,
+            position=position,
+        )
+
+        # Dependencies Chain
+        has_model_selector = self.model_selector is not None
+        has_classes_selector = self.classes_selector is not None
+        has_tags_selector = self.tags_selector is not None
+        has_preview = self.preview is not None
+
+        # Step 1 -> Step 2
+        prev_step = "input_selector"
+        if has_model_selector:
+            self.step_flow.set_next_steps(prev_step, ["model_selector"])
+            prev_step = "model_selector"
+        # Step 2 -> Step 3
+        if has_classes_selector:
+            self.step_flow.set_next_steps(prev_step, ["classes_selector"])
+            prev_step = "classes_selector"
+        # Step 3 -> Step 4
+        if has_tags_selector:
+            self.step_flow.set_next_steps(prev_step, ["tags_selector"])
+            prev_step = "tags_selector"
+        # Step 4 -> Step 5
+        self.step_flow.set_next_steps(prev_step, ["settings_selector"])
+        prev_step = "settings_selector"
+        # Step 5 -> Step 6
+        if has_preview:
+            self.step_flow.set_next_steps(prev_step, ["preview"])
+            prev_step = "preview"
+        # Step 6 -> Step 7
+        self.step_flow.set_next_steps(prev_step, ["output_selector"])
+
+        # Create all wrappers and set button handlers
+        wrappers = self.step_flow.build()
+
+        self.input_selector_cb = wrappers.get("input_selector")
+        self.classes_selector_cb = wrappers.get("classes_selector")
+        self.tags_selector_cb = wrappers.get("tags_selector")
+        self.model_selector_cb = wrappers.get("model_selector")
+        self.settings_selector_cb = wrappers.get("settings_selector")
+        self.preview_cb = wrappers.get("preview")
+        self.output_selector_cb = wrappers.get("output_selector")
+        # ------------------------------------------------- #
+
+        # Start Prediction Handler
+        @self.output_selector.start_button.click
+        def start_prediction():
+            if self.output_selector.validate_step():
+                self.run()
+
+        # ------------------------------------------------- #
+
+        # Other Handlers
+        @self.input_selector.radio.value_changed
+        def input_selector_type_changed(value: str):
+            self.input_selector.validator_text.hide()
+
+        @self.input_selector.select_dataset_for_video.value_changed
+        def dataset_for_video_changed(dataset_id: int):
+            self.input_selector.select_video.loading = True
+            if dataset_id is None:
+                rows = []
+            else:
+                dataset_info = self.api.dataset.get_info_by_id(dataset_id)
+                videos = self.api.video.get_list(dataset_id)
+                rows = [[video.id, video.name, dataset_info.name] for video in videos]
+            self.input_selector.select_video.rows = rows
+            self.input_selector.select_video.loading = False
+
+        # ------------------------------------------------- #
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
-        self.output.validation_message.hide()
         if run_parameters is None:
             run_parameters = self.get_run_parameters()
 
-        if self.model.model_api is None:
-            self.model._deploy()
+        if self.model_selector.model.model_api is None:
+            self.model_selector.model._deploy()
 
-        model_api = self.model.model_api
+        model_api = self.model_selector.model.model_api
         if model_api is None:
             logger.error("Model Deployed with an error")
             return
@@ -125,10 +554,10 @@ class PredictAppGui:
         if upload_mode == "create":
             project_name = output_parameters["project_name"]
             if not project_name:
-                self.output.validation_message.set(
+                self.output_selector.validator_text.set(
                     "Project name cannot be empty when creating a new project.", "error"
                 )
-                self.output.validation_message.show()
+                self.output_selector.validator_text.show()
                 return
             created_project = self.api.project.create(
                 env.workspace_id(),
@@ -146,7 +575,7 @@ class PredictAppGui:
                 **item_prameters,
                 **inference_settings,
                 **upload_parameters,
-                tqdm=self.output.progress(),
+                tqdm=self.output_selector.progress(),
             ) as session:
                 i = 0
                 for prediction in session:
@@ -159,7 +588,7 @@ class PredictAppGui:
                             project_id = prediction.extra_data["output_project_id"]
                         else:
                             project_id = prediction.project_id
-                        self.output.set_result_thumbnail(project_id)
+                        self.output_selector.set_result_thumbnail(project_id)
                     predictions.append(prediction)
                     i += 1
                     if self._stop_flag:
@@ -191,48 +620,37 @@ class PredictAppGui:
     def shutdown_model(self):
         self.stop()
         self.wait_for_stop(10)
-        self.model.stop()
-
-    def _deploy_model(self) -> ModelAPI:
-        model_api = None
-        self.preview.card.unlock()
-        self.input_selector.card.unlock()
-        try:
-            model_api = type(self.model).deploy(self.model)
-            inference_settings = model_api.get_settings()
-            self.set_inference_settings(inference_settings)
-        except:
-            self.output.run_button.disable()
-            self.preview.preview_button.disable()
-            self.preview.card.lock("Deploy model first to preview results.")
-            self.input_selector.card.lock("Deploy model first to select items.")
-            self.set_inference_settings("")
-            raise
-        else:
-            self.preview.preview_button.enable()
-            self.output.run_button.enable()
-        return model_api
-
-    def get_inference_settings(self):
-        return yaml.safe_load(self.inference_settings.get_text())
-
-    def set_inference_settings(self, settings: Dict[str, Any]):
-        if isinstance(settings, str):
-            self.inference_settings.set_text(settings)
-        else:
-            self.inference_settings.set_text(yaml.safe_dump(settings))
+        self.model_selector.model.stop()
 
     def get_run_parameters(self) -> Dict[str, Any]:
         return {
-            "model": self.model.get_deploy_parameters(),
-            "inference_settings": self.get_inference_settings(),
-            "item": self.input_selector.get_input_settings(),
-            "output": self.output.get_output_settings(),
+            "model": self.model_selector.model.get_deploy_parameters(),
+            "inference_settings": self.settings_selector.get_inference_settings(),
+            "input": self.input_selector.get_settings(),
+            "output": self.output_selector.get_settings(),
         }
 
     def load_from_json(self, data):
-        self.model.load_from_json(data.get("model", {}))
-        inference_settings = data.get("inference_settings", "")
-        self.set_inference_settings(inference_settings)
+        # 1. Input selector
         self.input_selector.load_from_json(data.get("items", {}))
-        self.output.load_from_json(data.get("output", {}))
+
+        # 2. Model selector
+        self.model_selector.model.load_from_json(data.get("model", {}))
+
+        # 3. Classes selector
+        if self.classes_selector is not None:
+            self.classes_selector.load_from_json(data.get("classes", {}))
+
+        # 4. Tags selector
+        if self.tags_selector is not None:
+            self.tags_selector.load_from_json(data.get("tags", {}))
+
+        # 5. Settings selector
+        self.settings_selector.load_from_json(data.get("settings", {}))
+
+        # 6. Preview (No need?)
+        if self.preview is not None:
+            self.preview.load_from_json(data.get("preview", {}))
+
+        # 7. Output selector
+        self.output_selector.load_from_json(data.get("output", {}))
