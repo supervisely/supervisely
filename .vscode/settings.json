@@ -48,5 +48,5 @@
         "minimap.infoHighlight": "#00a8aa",
         "editorOverviewRuler.infoForeground": "#00a8aa"        
     },
-    "editor.formatOnSaveMode": "modifications"
+    "editor.formatOnSaveMode": "file"
 }
