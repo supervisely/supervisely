@@ -1,15 +1,17 @@
-from typing import Any, List, Dict
+from typing import Any, Dict, List
+
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Card,
+    CheckboxField,
     Container,
+    Field,
     Input,
     Progress,
-    Text,
-    Field,
     ProjectThumbnail,
+    Text,
 )
 
 
@@ -33,11 +35,24 @@ class OutputSelector:
         # -------------------------------- #
 
         # Init Step Widgets
+        self.stop_serving_on_finish = None
+        self.stop_self_on_finish = None
         self.project_name_input = None
         self.project_name_field = None
         self.progress = None
         self.project_thumbnail = None
         # -------------------------------- #
+
+        # Stop Apps on Finish
+        self.stop_serving_on_finish = CheckboxField(
+            title="Stop Serving App on prediction finish", description="", checked=True
+        )
+        self.stop_self_on_finish = CheckboxField(
+            title="Stop Predict App on prediction finish", description="", checked=True
+        )
+        # Add widgets to display ------------ #
+        self.display_widgets.extend([self.stop_serving_on_finish, self.stop_self_on_finish])
+        # ----------------------------------- #
 
         # Project Name
         self.project_name_input = Input(minlength=1, maxlength=255, placeholder="New Project Name")
@@ -101,6 +116,12 @@ class OutputSelector:
         settings["mode"] = "create"
         settings["project_name"] = self.project_name_input.get_value()
         return settings
+
+    def should_stop_serving_on_finish(self) -> bool:
+        return self.stop_serving_on_finish.is_checked()
+
+    def should_stop_self_on_finish(self) -> bool:
+        return self.stop_self_on_finish.is_checked()
 
     def load_from_json(self, data):
         return

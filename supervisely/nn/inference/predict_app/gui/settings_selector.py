@@ -1,16 +1,17 @@
-import yaml
 from typing import Any, Dict, List
+
+import yaml
 
 from supervisely.app.widgets import (
     Button,
-    Container,
     Card,
-    Editor,
-    Text,
-    Select,
-    Field,
     Checkbox,
+    Container,
+    Editor,
+    Field,
     Input,
+    Select,
+    Text,
 )
 
 
@@ -142,7 +143,7 @@ class SettingsSelector:
         else:
             self.inference_settings.set_text(yaml.safe_dump(settings))
 
-    def get_inference_settings(self):
+    def get_inference_settings(self) -> Dict:
         return yaml.safe_load(self.inference_settings.get_text())
 
     def get_settings(self) -> Dict[str, Any]:
@@ -150,7 +151,7 @@ class SettingsSelector:
             "inference_mode": self.inference_mode_selector.get_value(),
             "model_prediction_suffix": self.model_prediction_suffix_input.get_value(),
             "predictions_mode": self.predictions_mode_selector.get_value(),
-            "inference_settings": self.inference_settings.get_text(),
+            "inference_settings": self.get_inference_settings(),
         }
 
     def load_from_json(self, data):

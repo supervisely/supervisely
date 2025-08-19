@@ -2,8 +2,8 @@ from typing import Any, Dict, List
 
 from supervisely.app.widgets import (
     Button,
-    Container,
     Card,
+    Container,
     OneOf,
     RadioGroup,
     RadioTable,
@@ -108,7 +108,10 @@ class InputSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         if self.radio.get_value() == ProjectType.IMAGES.value:
-            return {"dataset_ids": self.select_dataset_for_images.get_selected_ids()}
+            return {
+                "project_id": self.select_dataset_for_images.get_selected_project_id(),
+                "dataset_ids": self.select_dataset_for_images.get_selected_ids(),
+            }
         if self.radio.get_value() == ProjectType.VIDEOS.value:
             return {"video_id": self.select_video.get_selected_row()}
 
@@ -116,13 +119,13 @@ class InputSelector:
         if "project_id" in data:
             self.select_dataset_for_images.set_project_id(data["project_id"])
             self.select_dataset_for_images.set_select_all_datasets(True)
-            self.radio.set_value("dataset")
+            self.radio.set_value(ProjectType.IMAGES.value)
         if "dataset_ids" in data:
             self.select_dataset_for_images.set_dataset_ids(data["dataset_ids"])
-            self.radio.set_value("dataset")
+            self.radio.set_value(ProjectType.IMAGES.value)
         if "video_id" in data:
             self.select_video.select_row_by_value("id", data["video_id"])
-            self.radio.set_value("video")
+            self.radio.set_value(ProjectType.VIDEOS.value)
 
     def validate_step(self) -> bool:
         self.validator_text.hide()

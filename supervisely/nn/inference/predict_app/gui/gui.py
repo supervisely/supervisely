@@ -1,31 +1,51 @@
-import yaml
+import random
 import time
-from typing import Any, Dict, List, Callable, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-from supervisely._utils import logger
+import yaml
+
+from supervisely._utils import is_development, logger
+from supervisely.annotation.annotation import Annotation
+from supervisely.annotation.label import Label
 from supervisely.api.api import Api
-from supervisely.app.widgets import Container, Card, Stepper, Button, Widget
+from supervisely.api.dataset_api import DatasetInfo
+from supervisely.api.video.video_api import VideoInfo
+from supervisely.app.widgets import Button, Card, Container, Stepper, Widget
 from supervisely.io import env
-from supervisely.nn.model.model_api import ModelAPI
-from supervisely.nn.model.prediction import Prediction
-from supervisely.project.project import ProjectType
-from supervisely.project.project_meta import ProjectMeta
-
+from supervisely.nn.inference.predict_app.gui.classes_selector import ClassesSelector
 from supervisely.nn.inference.predict_app.gui.input_selector import InputSelector
 from supervisely.nn.inference.predict_app.gui.model_selector import ModelSelector
-from supervisely.nn.inference.predict_app.gui.classes_selector import ClassesSelector
-from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
-from supervisely.nn.inference.predict_app.gui.settings_selector import SettingsSelector
-from supervisely.nn.inference.predict_app.gui.preview import Preview
 from supervisely.nn.inference.predict_app.gui.output_selector import OutputSelector
+from supervisely.nn.inference.predict_app.gui.preview import Preview
+from supervisely.nn.inference.predict_app.gui.settings_selector import (
+    AddPredictionsMode,
+    SettingsSelector,
+)
+from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
+from supervisely.nn.model.model_api import ModelAPI
+from supervisely.nn.model.prediction import Prediction
 from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
-
-import random
-from supervisely.annotation.label import Label
-from supervisely.api.video.video_api import VideoInfo
-from supervisely.annotation.annotation import Annotation
+from supervisely.project.project import ProjectType
+from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
+
+
+def find_parents_in_tree(tree: Dict[DatasetInfo], dataset_id: int) -> Optional[List[DatasetInfo]]:
+    """
+    Find all parent datasets in the tree for a given dataset ID.
+    """
+
+    def _dfs(subtree: Dict[DatasetInfo, Dict], parents: List[DatasetInfo]):
+        for dataset_info, children in subtree.items():
+            if dataset_info.id == dataset_id:
+                return parents
+            res = _dfs(children, parents + [dataset_info])
+            if res is not None:
+                return res
+        return None
+
+    return _dfs(tree, [])
 
 
 class StepFlow:
@@ -340,7 +360,7 @@ class PredictAppGui:
                         project_meta=project_meta,
                     )
                     prediction = self.model_selector.model.model_api.predict(
-                        image_id=image_info.id, **self.get_inference_settings()
+                        image_id=image_info.id, **self.settings_selector.get_settings()
                     )[0]
                     output_ann = prediction.annotation
 
@@ -535,60 +555,78 @@ class PredictAppGui:
             logger.error("Model Deployed with an error")
             return
 
-        inference_settings = run_parameters["inference_settings"]
-        if not inference_settings:
-            inference_settings = {}
+        kwargs = {}
 
-        item_prameters = run_parameters["item"]
+        # Input
+        # Input would be newely created project
+        input_parameters = run_parameters["input"]
+        input_project_id = input_parameters.get("project_id", None)
+        if input_project_id is None:
+            raise ValueError("Input project ID is required for prediction.")
+        input_dataset_ids = input_parameters.get("dataset_ids", [])
+        if not input_dataset_ids:
+            raise ValueError("At least one dataset must be selected for prediction.")
 
+        # Settings
+        settings = run_parameters["settings"]
+        prediction_mode = settings.pop("predictions_mode")
+        upload_mode = None
+        copy_image_tags = None
+        if prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
+            upload_mode = "replace"
+            copy_image_tags = False
+        elif prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS:
+            upload_mode = "append"
+            copy_image_tags = True
+        elif prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS:
+            upload_mode = "replace"
+            copy_image_tags = True
+        kwargs.update(settings)
+        kwargs["upload_mode"] = upload_mode
+
+        # Output
+        # Always create new project
+        # But the actual inference will happen inplace
         output_parameters = run_parameters["output"]
-        upload_parameters = {}
-        upload_mode = output_parameters["mode"]
+        project_name = output_parameters["project_name"]
+        if not project_name:
+            raise ValueError("Project name cannot be empty when creating a new project.")
 
-        upload_parameters["upload_mode"] = upload_mode
-        if upload_mode == "iou_merge":
-            upload_parameters["existing_objects_iou_thresh"] = output_parameters[
-                "iou_merge_threshold"
-            ]
-
-        if upload_mode == "create":
-            project_name = output_parameters["project_name"]
-            if not project_name:
-                self.output_selector.validator_text.set(
-                    "Project name cannot be empty when creating a new project.", "error"
+        # Create new project
+        # TODO decompose
+        created_project = self.api.project.create(
+            self.workspace_id,
+            project_name,
+            type=ProjectType.IMAGES,
+            change_name_if_conflict=True,
+        )
+        input_datasets_tree = self.api.dataset.get_tree(input_project_id)
+        input_datasets_list = self.api.dataset.flatten_tree(input_datasets_tree)
+        created_datasets = {}
+        for input_dataset_id in input_dataset_ids:
+            parents = find_parents_in_tree(input_datasets_tree, input_dataset_id)
+            if not parents:
+                created_dataset = self.api.dataset.copy(
+                    created_project.id, input_dataset_id, with_annotations=upload_mode == "append"
                 )
-                self.output_selector.validator_text.show()
-                return
-            created_project = self.api.project.create(
-                env.workspace_id(),
-                project_name,
-                type=ProjectType.IMAGES,
-                change_name_if_conflict=True,
-            )
-            upload_parameters["output_project_id"] = created_project.id
-            upload_parameters["upload_mode"] = "append"
+                created_datasets[input_dataset_id] = created_dataset
+                if copy_image_tags:
+                    # TODO: copy image tags
+                    pass
+            else:
+                # TODO: handle nested datasets
+                pass
 
         predictions = []
         self._is_running = True
         try:
             with model_api.predict_detached(
-                **item_prameters,
-                **inference_settings,
-                **upload_parameters,
+                project_id=created_project.id,
                 tqdm=self.output_selector.progress(),
+                **kwargs,
             ) as session:
                 i = 0
                 for prediction in session:
-                    if "output_project_id" in upload_parameters:
-                        prediction.extra_data["output_project_id"] = upload_parameters[
-                            "output_project_id"
-                        ]
-                    if i % 100 == 0:
-                        if "output_project_id" in prediction.extra_data:
-                            project_id = prediction.extra_data["output_project_id"]
-                        else:
-                            project_id = prediction.project_id
-                        self.output_selector.set_result_thumbnail(project_id)
                     predictions.append(prediction)
                     i += 1
                     if self._stop_flag:
@@ -597,6 +635,20 @@ class PredictAppGui:
         finally:
             self._is_running = False
             self._stop_flag = False
+
+        self.output_selector.set_result_thumbnail(created_project.id)
+
+        if self.output_selector.should_stop_serving_on_finish():
+            logger.info("Stopping serving app...")
+            self.model_selector.model.stop()
+
+        if self.output_selector.should_stop_self_on_finish():
+            logger.info("Stopping Predict App...")
+            if is_development():
+                exit(0)
+            self.api.task.stop(
+                env.task_id(),
+            )
 
         return predictions
 
@@ -625,14 +677,14 @@ class PredictAppGui:
     def get_run_parameters(self) -> Dict[str, Any]:
         return {
             "model": self.model_selector.model.get_deploy_parameters(),
-            "inference_settings": self.settings_selector.get_inference_settings(),
+            "settings": self.settings_selector.get_settings(),
             "input": self.input_selector.get_settings(),
             "output": self.output_selector.get_settings(),
         }
 
     def load_from_json(self, data):
         # 1. Input selector
-        self.input_selector.load_from_json(data.get("items", {}))
+        self.input_selector.load_from_json(data.get("input", {}))
 
         # 2. Model selector
         self.model_selector.model.load_from_json(data.get("model", {}))

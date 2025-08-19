@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 from supervisely.api.api import Api
-from supervisely.app.widgets import Button, Container, Card, Text, DeployModel
+from supervisely.app.widgets import Button, Card, Container, DeployModel, Text
 
 
 class ModelSelector:
@@ -24,7 +24,7 @@ class ModelSelector:
         # -------------------------------- #
 
         # Init Step Widgets
-        self.model = None
+        self.model: DeployModel = None
         # -------------------------------- #
 
         # Model Selector
