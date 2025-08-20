@@ -264,7 +264,7 @@ class BaseTracking(Inference):
 
         @server.post("/track-api")
         @handle_validation
-        async def track_api_handler(request: Request):
+        def track_api_handler(request: Request):
             api = self.api_from_request(request)
             state = request.state.state
             context = request.state.context
