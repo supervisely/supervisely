@@ -155,7 +155,21 @@ class SettingsSelector:
         }
 
     def load_from_json(self, data):
-        pass
+        inference_mode = data.get("inference_mode", None)
+        if inference_mode:
+            self.inference_mode_selector.set_value(inference_mode)
+
+        model_prediction_suffix = data.get("model_prediction_suffix", None)
+        if model_prediction_suffix is not None:
+            self.model_prediction_suffix_input.set_value(model_prediction_suffix)
+
+        predictions_mode = data.get("predictions_mode", None)
+        if predictions_mode:
+            self.predictions_mode_selector.set_value(predictions_mode)
+
+        inference_settings = data.get("inference_settings", None)
+        if inference_settings is not None:
+            self.set_inference_settings(inference_settings)
 
     def validate_step(self) -> bool:
         return True

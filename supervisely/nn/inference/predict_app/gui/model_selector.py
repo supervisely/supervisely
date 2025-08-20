@@ -63,10 +63,10 @@ class ModelSelector:
         ]
 
     def get_settings(self) -> Dict[str, Any]:
-        pass
+        return self.model.get_deploy_parameters()
 
     def load_from_json(self, data):
-        pass
+        self.model.load_from_json(data)
 
     def validate_step(self) -> bool:
         self.validator_text.hide()

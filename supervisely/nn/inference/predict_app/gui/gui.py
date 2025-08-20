@@ -31,7 +31,9 @@ from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
 
-def find_parents_in_tree(tree: Dict[DatasetInfo], dataset_id: int) -> Optional[List[DatasetInfo]]:
+def find_parents_in_tree(
+    tree: Dict[DatasetInfo, Dict], dataset_id: int, with_self: bool = False
+) -> Optional[List[DatasetInfo]]:
     """
     Find all parent datasets in the tree for a given dataset ID.
     """
@@ -39,6 +41,8 @@ def find_parents_in_tree(tree: Dict[DatasetInfo], dataset_id: int) -> Optional[L
     def _dfs(subtree: Dict[DatasetInfo, Dict], parents: List[DatasetInfo]):
         for dataset_info, children in subtree.items():
             if dataset_info.id == dataset_id:
+                if with_self:
+                    return parents + [dataset_info]
                 return parents
             res = _dfs(children, parents + [dataset_info])
             if res is not None:
@@ -584,6 +588,11 @@ class PredictAppGui:
         kwargs.update(settings)
         kwargs["upload_mode"] = upload_mode
 
+        # Classes
+        classes = run_parameters["classes"]
+        if classes:
+            kwargs["classes"] = classes
+
         # Output
         # Always create new project
         # But the actual inference will happen inplace
@@ -594,28 +603,78 @@ class PredictAppGui:
 
         # Create new project
         # TODO decompose
-        created_project = self.api.project.create(
-            self.workspace_id,
-            project_name,
-            type=ProjectType.IMAGES,
-            change_name_if_conflict=True,
-        )
-        input_datasets_tree = self.api.dataset.get_tree(input_project_id)
-        input_datasets_list = self.api.dataset.flatten_tree(input_datasets_tree)
-        created_datasets = {}
-        for input_dataset_id in input_dataset_ids:
-            parents = find_parents_in_tree(input_datasets_tree, input_dataset_id)
-            if not parents:
-                created_dataset = self.api.dataset.copy(
-                    created_project.id, input_dataset_id, with_annotations=upload_mode == "append"
+        logger.info("Creating project for predictions...")
+        input_project_datasets_tree = self.api.dataset.get_tree(input_project_id)
+        input_project_datasets_list = self.api.dataset.flatten_tree(input_project_datasets_tree)
+        with self.output_selector.progress(
+            "Creating project for predictions...",
+            total=sum(
+                ds.items_count for ds in input_project_datasets_list if ds.id in input_dataset_ids
+            ),
+        ) as progress:
+            created_project = self.api.project.create(
+                self.workspace_id,
+                project_name,
+                type=ProjectType.IMAGES,
+                change_name_if_conflict=True,
+            )
+            created_datasets = {}
+
+            for input_dataset_id in input_dataset_ids:
+                if input_dataset_id not in created_datasets:
+                    datasets_to_create = find_parents_in_tree(
+                        input_project_datasets_tree, input_dataset_id, with_self=True
+                    )
+                    if datasets_to_create:
+                        for dataset in datasets_to_create:
+                            if dataset.id in created_datasets:
+                                continue
+                            this_parent_id = None
+                            if dataset.parent_id is not None:
+                                this_parent_id = created_datasets[dataset.parent_id].id
+
+                            created_dataset = self.api.dataset.create(
+                                created_project.id,
+                                dataset.name,
+                                description=dataset.description,
+                                change_name_if_conflict=False,
+                                parent_id=this_parent_id,
+                            )
+                            created_datasets[dataset.id] = created_dataset
+                input_img_infos = self.api.image.get_list(input_dataset_id)
+                created_img_infos = self.api.image.copy_batch_optimized(
+                    src_dataset_id=input_dataset_id,
+                    src_image_infos=input_img_infos,
+                    dst_dataset_id=created_datasets[input_dataset_id].id,
+                    progress_cb=progress,
+                    with_annotations=upload_mode in ["append", "iou_merge"],
                 )
-                created_datasets[input_dataset_id] = created_dataset
                 if copy_image_tags:
-                    # TODO: copy image tags
-                    pass
-            else:
-                # TODO: handle nested datasets
-                pass
+                    # copy project meta
+                    project_meta = ProjectMeta.from_json(
+                        self.api.project.merge_metas(
+                            src_project_id=input_project_id, dst_project_id=created_project.id
+                        )
+                    )
+                    tag_meta_by_name = {
+                        tag_meta.name: tag_meta for tag_meta in project_meta.tag_metas
+                    }
+
+                    tags_data = {}
+                    for src_image_info, dst_image_info in zip(input_img_infos, created_img_infos):
+                        if src_image_info.tags:
+                            for tag in src_image_info.tags:
+                                src_tag_name = tag["name"]
+                                dst_tag_id = tag_meta_by_name[src_tag_name].sly_id
+                                tags_data.setdefault(dst_tag_id, []).append(
+                                    (dst_image_info.id, tag["value"])
+                                )
+
+                    for tag_id, d in tags_data.items():
+                        img_ids, tag_values = zip(*d)
+                        self.api.image.add_tags_batch(
+                            image_ids=img_ids, tag_ids=tag_id, values=tag_values
+                        )
 
         predictions = []
         self._is_running = True
@@ -678,6 +737,8 @@ class PredictAppGui:
         return {
             "model": self.model_selector.model.get_deploy_parameters(),
             "settings": self.settings_selector.get_settings(),
+            # "tags": self.tags_selector.get_selected_tags(),
+            "classes": self.classes_selector.get_selected_classes(),
             "input": self.input_selector.get_settings(),
             "output": self.output_selector.get_settings(),
         }

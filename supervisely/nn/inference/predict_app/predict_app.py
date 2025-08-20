@@ -40,7 +40,7 @@ class PredictApp:
                     self.app.stop()
 
     def get_inference_settings(self):
-        return self.gui.get_inference_settings()
+        return self.gui.settings_selector.get_inference_settings()
 
     def get_run_parameters(self):
         return self.gui.get_run_parameters()
@@ -99,7 +99,7 @@ class PredictApp:
             Deploy the model for inference.
             This endpoint prepares the model for running predictions.
             """
-            self.gui.model._deploy()
+            self.gui.model_selector.model._deploy()
 
         @server.get("/inference_settings")
         def get_inference_settings():

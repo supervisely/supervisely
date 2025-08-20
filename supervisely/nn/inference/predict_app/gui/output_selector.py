@@ -113,7 +113,6 @@ class OutputSelector:
 
     def get_settings(self) -> Dict[str, Any]:
         settings = {}
-        settings["mode"] = "create"
         settings["project_name"] = self.project_name_input.get_value()
         return settings
 
@@ -124,15 +123,9 @@ class OutputSelector:
         return self.stop_self_on_finish.is_checked()
 
     def load_from_json(self, data):
-        return
-        # if not data:
-        #     return
-        # mode = data["mode"]
-        # self.radio.set_value(mode)
-        # if mode == "create":
-        #     self.new_project_name.set_value(data.get("project_name", ""))
-        # elif mode == "iou_merge":
-        #     self.iou_merge_threshold.value = data.get("iou_merge_threshold", 0)
+        project_name = data.get("project_name", None)
+        if project_name:
+            self.project_name_input.set_value(project_name)
 
     def validate_step(self) -> bool:
         self.validator_text.hide()
