@@ -553,6 +553,8 @@ class PredictionSession:
             state["upload_mode"] = upload_mode
         if output_project_id is not None:
             state["output_project_id"] = output_project_id
+        if "model_prediction_suffix" in self.kwargs:
+            state["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return self._start_inference(method, json=json_body)
 
     def _predict_videos(
@@ -646,6 +648,8 @@ class PredictionSession:
             state["cache_project_on_model"] = cache_project_on_model
         if output_project_id is not None:
             state["output_project_id"] = output_project_id
+        if "model_prediction_suffix" in self.kwargs:
+            state["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
 
         return self._start_inference(method, json=json_body)
 
