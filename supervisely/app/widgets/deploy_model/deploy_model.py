@@ -13,7 +13,6 @@ from supervisely.app.widgets.agent_selector.agent_selector import AgentSelector
 from supervisely.app.widgets.button.button import Button
 from supervisely.app.widgets.container.container import Container
 from supervisely.app.widgets.card.card import Card
-from supervisely.app.widgets.classes_table.classes_table import ClassesTable
 from supervisely.app.widgets.model_info.model_info import ModelInfo
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
@@ -30,8 +29,6 @@ from supervisely.app.widgets.widget import Widget
 from supervisely.io import env
 from supervisely.nn.experiments import ExperimentInfo, get_experiment_infos
 from supervisely.nn.model.model_api import ModelAPI
-from supervisely.nn.inference.session import Session
-from supervisely.project.project_meta import ProjectMeta
 
 
 class DeployModel(Widget):
@@ -214,10 +211,10 @@ class DeployModel(Widget):
         def _create_layout(self) -> Container:
             frameworks = self.deploy_model.get_frameworks()
             experiment_infos = []
-            for framework_name in frameworks:
-                experiment_infos.extend(
-                    get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
-                )
+            # for framework_name in frameworks:
+            #     experiment_infos.extend(
+            #         get_experiment_infos(self.api, self.team_id, framework_name=framework_name)
+            #     )
             self.experiment_table = ExperimentSelector(
                 experiment_infos=experiment_infos,
                 team_id=self.team_id,

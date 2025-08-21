@@ -1932,6 +1932,7 @@ class Inference:
             raise ValueError("Image ids are not provided")
         if not isinstance(image_ids, list):
             image_ids = [image_ids]
+        model_prediction_suffix = state.get("model_prediction_suffix", None)
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
@@ -1996,6 +1997,7 @@ class Inference:
             progress_cb=inference_request.done,
             iou_merge_threshold=iou_merge_threshold,
             inference_request=inference_request,
+            model_prediction_suffix=model_prediction_suffix,
         )
 
         _add_results_to_request = partial(
@@ -2178,6 +2180,8 @@ class Inference:
         project_info = api.project.get_info_by_id(project_id)
         if project_info.type != str(ProjectType.IMAGES):
             raise ValueError("Only images projects are supported.")
+
+        model_prediction_suffix = state.get("model_prediction_suffix", None)
         upload_mode = state.get("upload_mode", None)
         iou_merge_threshold = inference_settings.get("existing_objects_iou_thresh", None)
         if upload_mode == "iou_merge" and iou_merge_threshold is None:
@@ -2252,6 +2256,7 @@ class Inference:
             progress_cb=inference_request.done,
             iou_merge_threshold=iou_merge_threshold,
             inference_request=inference_request,
+            model_prediction_suffix=model_prediction_suffix,
         )
 
         _add_results_to_request = partial(
@@ -2623,6 +2628,7 @@ class Inference:
         progress_cb=None,
         iou_merge_threshold: float = None,
         inference_request: InferenceRequest = None,
+        model_prediction_suffix: str = None,
     ):
         ds_predictions: Dict[int, List[Prediction]] = defaultdict(list)
         for prediction in predictions:
@@ -2684,7 +2690,9 @@ class Inference:
                 meta_changed = False
                 for pred in preds:
                     ann = pred.annotation
-                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(
+                        project_meta, ann, model_prediction_suffix
+                    )
                     meta_changed = meta_changed or meta_changed_
                     pred.annotation = ann
                     prediction.model_meta = project_meta
@@ -2748,7 +2756,9 @@ class Inference:
                 meta_changed = False
                 for pred in preds:
                     ann = pred.annotation
-                    project_meta, ann, meta_changed_ = update_meta_and_ann(project_meta, ann)
+                    project_meta, ann, meta_changed_ = update_meta_and_ann(
+                        project_meta, ann, model_prediction_suffix
+                    )
                     meta_changed = meta_changed or meta_changed_
                     pred.annotation = ann
                     prediction.model_meta = project_meta
@@ -4447,7 +4457,7 @@ def _fix_classes_names(meta: ProjectMeta, ann: Annotation):
     return meta, ann, replaced_classes_in_meta, list(replaced_classes_in_ann)
 
 
-def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
+def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suffix: str = None):
     """Update project meta and annotation to match each other
     If obj class or tag meta from annotation conflicts with project meta
     add suffix to obj class or tag meta.
@@ -4455,6 +4465,13 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
     """
     obj_classes_suffixes = ["_nn"]
     tag_meta_suffixes = ["_nn"]
+    if model_prediction_suffix is not None:
+        obj_classes_suffixes = [model_prediction_suffix]
+        tag_meta_suffixes = [model_prediction_suffix]
+        logger.debug(
+            f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
+        )
+    logger.debug("source meta", extra={"meta": meta.to_json()})
     ann_obj_classes = {}
     ann_tag_metas = {}
     meta_changed = False
@@ -4489,15 +4506,31 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation):
         ):
             found = False
             for suffix in obj_classes_suffixes:
+                logger.debug(
+                    "Checking suffix for obj class",
+                    extra={
+                        "obj_class": ann_obj_class.name,
+                        "suffix": suffix,
+                        "geometry_type": ann_obj_class.geometry_type,
+                    },
+                )
                 new_obj_class_name = ann_obj_class.name + suffix
                 meta_obj_class = meta.get_obj_class(new_obj_class_name)
                 if meta_obj_class is None:
+                    logger.debug(
+                        "Creating new obj class with suffix",
+                        extra={"obj_class": new_obj_class_name},
+                    )
                     new_obj_class = ann_obj_class.clone(name=new_obj_class_name)
                     meta = meta.add_obj_class(new_obj_class)
                     meta_changed = True
                     changed_obj_classes[ann_obj_class.name] = new_obj_class
                     found = True
                     break
+                logger.debug(
+                    "Found obj class with suffix in meta",
+                    extra={"obj_class": meta_obj_class.to_json()},
+                )
                 if meta_obj_class.geometry_type == ann_obj_class.geometry_type:
                     changed_obj_classes[ann_obj_class.name] = meta_obj_class
                     found = True

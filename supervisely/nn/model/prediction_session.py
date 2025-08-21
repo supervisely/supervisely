@@ -112,6 +112,13 @@ class PredictionSession:
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
         }
 
+        if "classes" in kwargs:
+            self.inference_settings["classes"] = kwargs["classes"]
+        if "settings" in kwargs:
+            self.inference_settings.update(kwargs["settings"])
+        if "inference_settings" in kwargs:
+            self.inference_settings.update(kwargs["inference_settings"])
+
         # extra input args
         image_ids = self._set_var_from_kwargs("image_ids", kwargs, image_id)
         video_ids = self._set_var_from_kwargs("video_ids", kwargs, video_id)
@@ -139,7 +146,6 @@ class PredictionSession:
             input = [input]
         if isinstance(input[0], np.ndarray):
             # input is numpy array
-            kwargs = get_valid_kwargs(kwargs, self._predict_images, exclude=["images"])
             self._predict_images(input, **kwargs)
         elif isinstance(input[0], (str, PathLike)):
             if len(input) > 1:
@@ -268,6 +274,8 @@ class PredictionSession:
             body["state"]["settings"] = self.inference_settings
         if self.api_token is not None:
             body["api_token"] = self.api_token
+        if "model_prediction_suffix" in self.kwargs:
+            body["state"]["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return body
 
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
@@ -646,7 +654,6 @@ class PredictionSession:
             state["cache_project_on_model"] = cache_project_on_model
         if output_project_id is not None:
             state["output_project_id"] = output_project_id
-
         return self._start_inference(method, json=json_body)
 
     def _predict_datasets(
