@@ -6,6 +6,7 @@ training workflows in Supervisely.
 """
 
 import os
+import json
 from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -254,6 +255,7 @@ class TrainGUI:
         self.app_options = app_options
         self.collapsable = self.app_options.get("collapsable", False)
         self.need_convert_shapes = False
+        self._start_training = False
 
         self.team_id = sly_env.team_id(raise_not_found=False)
         self.workspace_id = sly_env.workspace_id(raise_not_found=False)
@@ -789,11 +791,31 @@ class TrainGUI:
         app_state example:
 
             app_state = {
+                # random
                 "train_val_split": {
                     "method": "random",
                     "split": "train",
                     "percent": 90
                 },
+                # datasets
+                # "train_val_split": {
+                #    "method": "datasets",
+                #     "train_datasets": [123, 456],
+                #    "val_datasets": [789, 101]
+                #},
+                # tags
+                # "train_val_split": {
+                #     "method": "tags",
+                #     "train_tag": "train",
+                #     "val_tag": "val",
+                #     "untagged_action": "ignore"
+                # },
+                # collections
+                # "train_val_split": {
+                #    "method": "collections",
+                #    "train_collections": [123, 456],
+                #    "val_collections": [789, 101]
+                # },
                 "classes": ["apple"],
                 # Pretrained model
                 "model": {
@@ -821,17 +843,21 @@ class TrainGUI:
                     },
                 },
                 "experiment_name": "my_experiment",
+                "start_training": False,
             }
         """
         if isinstance(app_state, str):
-            app_state = sly_json.load_json_file(app_state)
-            
+            if os.path.exists(app_state):
+                app_state = sly_json.load_json_file(app_state)
+            else:
+                app_state = json.loads(app_state)
+
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
         
         # Set experiment name
         experiment_name = app_state.get("experiment_name")
-        if experiment_name is not None:
+        if experiment_name is not None and experiment_name != "":
             self.training_process.set_experiment_name(experiment_name)
 
         # Run init-steps and stop on validation failure
@@ -859,6 +885,8 @@ class TrainGUI:
                 logger.info(f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully")
         if validate_steps:
             logger.info(f"All steps have been validated successfully")
+
+        self._start_training = app_state.get("start_training", False)
         # ------------------------------------------------------------------ #
 
     def _init_input(self, input_settings: Union[dict, None], options: dict, click_cb: bool = True, validate: bool = True) -> bool:
@@ -947,8 +975,16 @@ class TrainGUI:
         if convert_class_shapes:
             self.classes_selector.convert_class_shapes_checkbox.check()
 
+        classes = []
+        if all(isinstance(c, int) for c in classes_settings):
+            classes = [c.name for c in self.project_meta.obj_classes if c.sly_id in classes_settings]
+        elif all(isinstance(c, str) for c in classes_settings):
+            classes = [c.name for c in self.project_meta.obj_classes if c.name in classes_settings]
+        else:
+            raise ValueError("Classes must be a list of integers (sly_ids) or strings (names)")
+
         # Set Classes
-        self.classes_selector.set_classes(classes_settings)
+        self.classes_selector.set_classes(classes)
         is_valid = True
         if validate:
             is_valid = self.classes_selector.validate_step()
@@ -1149,4 +1185,28 @@ class TrainGUI:
             self.hyperparameters_selector.set_hyperparameters(hparams)
             if train_mode == "continue":
                 self._init_model(model_settings, {}, click_cb=False, validate=False)
+    # ----------------------------------------- #
+
+    def _extract_state_from_env(self):
+        import ast
+        import os
+        base = "modal.state"
+        state = {}
+        for key, value in os.environ.items():
+            state_part = state
+            if key.startswith(base):
+                key = key.replace(base + ".", "")
+                parts = key.split(".")
+                while len(parts) > 1:
+                    part = parts.pop(0)
+                    state_part.setdefault(part, {})
+                    state_part = state_part[part]
+                part = parts.pop(0)
+                if value and (value[0] == "[" or value.isdigit()):
+                    state_part[part] = ast.literal_eval(value)
+                elif value in ["True", "true", "False", "false"]:
+                    state_part[part] = value in ["True", "true"]
+                else:
+                    state_part[part] = value
+        return state
     # ----------------------------------------- #
