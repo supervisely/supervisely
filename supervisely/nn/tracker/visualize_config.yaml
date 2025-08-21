@@ -1,0 +1,32 @@
+# Configuration for visualize_tracking.py
+# Visualize Supervisely tracking annotations on video
+
+# Input settings
+annotation_path: "/root/yolo/supervisely_integration/serve/scripts/inference_tracking/output.json"
+
+# Video source settings (choose one)
+input_type: "video"  # "video" or "images"
+
+# For video input
+video_path: "/root/tracking-by-detection/data/dataset/train/v_-6Os86HzwCs_c009/output.avi"
+
+# For images input (if input_type is "images")
+images_dir: "/root/tracking-by-detection/data/dataset/train/v_-6Os86HzwCs_c009/img1"
+output_fps: 10  # FPS for output video when using image sequence
+
+# Output settings
+output_dir: "/root/yolo/supervisely_integration/serve/scripts/inference_tracking/visualization"
+output_filename: "tracking_visualization.avi"
+codec: "XVID"  # Video codec: XVID, MP4V, etc.
+
+# Visualization settings
+show_track_ids: true          # Show track ID numbers
+show_class_names: true        # Show object class names
+show_trajectories: false      # Show trajectory trails
+show_frame_number: true       # Show current frame number
+
+# Visual appearance
+box_thickness: 2              # Bounding box line thickness
+text_scale: 0.6              # Text size scale
+text_thickness: 2            # Text line thickness
+trajectory_length: 30        # Number of points in trajectory trail
