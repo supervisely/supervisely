@@ -659,14 +659,17 @@ class PredictAppGui:
         self.model_selector.model.stop()
 
     def get_run_parameters(self) -> Dict[str, Any]:
-        return {
+        settings = {
             "model": self.model_selector.model.get_deploy_parameters(),
             "settings": self.settings_selector.get_settings(),
-            # "tags": self.tags_selector.get_selected_tags(),
-            "classes": self.classes_selector.get_selected_classes(),
             "input": self.input_selector.get_settings(),
             "output": self.output_selector.get_settings(),
         }
+        if self.classes_selector is not None:
+            settings["classes"] = self.classes_selector.get_selected_classes()
+        if self.tags_selector is not None:
+            settings["tags"] = self.tags_selector.get_selected_tags()
+        return settings
 
     def load_from_json(self, data):
         # 1. Input selector

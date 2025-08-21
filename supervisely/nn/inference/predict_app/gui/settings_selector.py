@@ -155,7 +155,7 @@ class SettingsSelector:
             "inference_mode": self.inference_mode_selector.get_value(),
             "model_prediction_suffix": self.model_prediction_suffix_input.get_value(),
             "predictions_mode": self.predictions_mode_selector.get_value(),
-            "settings": self.get_inference_settings(),
+            "inference_settings": self.get_inference_settings(),
         }
 
     def load_from_json(self, data):
