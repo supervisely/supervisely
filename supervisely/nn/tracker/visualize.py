@@ -12,7 +12,7 @@ import supervisely as sly
 from supervisely import logger
 from supervisely.nn.model.prediction import Prediction
 from supervisely import VideoAnnotation
-from .utils import predictions_to_video_annotation
+from supervisely.nn.tracker.utils import predictions_to_video_annotation
 
 
 @dataclass
@@ -60,26 +60,18 @@ class VideoTrackingVisualizer:
     def _generate_color_palette(self, num_colors: int = 100) -> List[Tuple[int, int, int]]:
         """
         Generate bright, distinct color palette for track visualization.
-        
-        Args:
-            num_colors: Number of colors to generate
-            
-        Returns:
-            List of BGR color tuples
+        Uses HSV space with random hue and fixed high saturation/value.
         """
+        np.random.seed(42)  # фикс для воспроизводимости
         colors = []
-        
-        # HSV colors with high saturation and value for bright colors
         for i in range(num_colors):
-            hue = int(180 * i / num_colors)  # Distribute hues evenly
-            saturation = 255  # Maximum saturation for vivid colors
-            value = 255       # Maximum value for bright colors
-            
-            # Convert HSV to BGR
+            hue = np.random.randint(0, 180)   # Hue в OpenCV: [0,179]
+            saturation = 200 + np.random.randint(55)  # насыщенность высокая [200,255]
+            value = 200 + np.random.randint(55)       # яркость высокая [200,255]
+
             hsv_color = np.uint8([[[hue, saturation, value]]])
             bgr_color = cv2.cvtColor(hsv_color, cv2.COLOR_HSV2BGR)[0][0]
             colors.append(tuple(map(int, bgr_color)))
-            
         return colors
     
     def _get_track_color(self, track_id: int) -> Tuple[int, int, int]:
@@ -239,74 +231,69 @@ class VideoTrackingVisualizer:
                 self.tracks_by_frame[frame_idx].append((track_id, bbox, class_name))
         
         logger.info(f"Extracted tracks from {len(self.tracks_by_frame)} frames")
-    
+        
     def _draw_detection(self, img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, int], 
-                       class_name: str) -> Tuple[int, int]:
+                    class_name: str) -> Tuple[int, int] | None:
         """
         Draw single detection with track ID and class label.
-        
-        Args:
-            img: Image to draw on
-            track_id: Track identifier
-            bbox: Bounding box coordinates (x1, y1, x2, y2)
-            class_name: Object class name
-            
-        Returns:
-            Center point coordinates (cx, cy) for trajectory drawing
+        Returns the center point of the bbox for trajectory drawing.
         """
         x1, y1, x2, y2 = map(int, bbox)
+
+        if x2 <= x1 or y2 <= y1:
+            return None
+
         color = self._get_track_color(track_id)
-        
+
         # Draw bounding box
         cv2.rectangle(img, (x1, y1), (x2, y2), color, self.config.box_thickness)
-        
+
         # Draw label if enabled
         if self.config.show_labels:
             label = f"ID:{track_id}"
             if self.config.show_classes:
                 label += f" ({class_name})"
-            
-            # Position label above bbox if there's space, otherwise below
+
             label_y = y1 - 10 if y1 > 30 else y2 + 25
-            
-            # Get text size for background rectangle
             (text_w, text_h), _ = cv2.getTextSize(
                 label, cv2.FONT_HERSHEY_SIMPLEX, self.config.text_scale, self.config.text_thickness
             )
-            
-            # Draw text background
+
             cv2.rectangle(img, (x1, label_y - text_h - 5), 
-                         (x1 + text_w, label_y + 5), color, -1)
-            
-            # Draw text
+                        (x1 + text_w, label_y + 5), color, -1)
             cv2.putText(img, label, (x1, label_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, self.config.text_scale, 
-                       (255, 255, 255), self.config.text_thickness, cv2.LINE_AA)
-        
+                    cv2.FONT_HERSHEY_SIMPLEX, self.config.text_scale, 
+                    (255, 255, 255), self.config.text_thickness, cv2.LINE_AA)
+
         # Return center point for trajectory
         return (x1 + x2) // 2, (y1 + y2) // 2
-    
+
+
     def _draw_trajectories(self, img: np.ndarray) -> None:
-        """Draw trajectory lines for all tracks."""
+        """Draw trajectory lines for all tracks, filtering out big jumps."""
         if not self.config.show_trajectories:
             return
-        
+
+        max_jump = 200  
+
         for track_id, centers in self.track_centers.items():
             if len(centers) < 2:
                 continue
-                
+
             color = self._get_track_color(track_id)
-            # Limit trajectory length to avoid visual clutter
             points = centers[-self.config.trajectory_length:]
-            
-            # Draw trajectory line
+
             for i in range(1, len(points)):
-                cv2.line(img, points[i-1], points[i], color, 2)
-            
-            # Draw trajectory points (except the last one which is current position)
-            for point in points[:-1]:
-                cv2.circle(img, point, 3, color, -1)
-    
+                p1, p2 = points[i - 1], points[i]
+                if p1 is None or p2 is None:
+                    continue
+              
+                if np.hypot(p2[0] - p1[0], p2[1] - p1[1]) > max_jump:
+                    continue
+                cv2.line(img, p1, p2, color, 2)
+                cv2.circle(img, p1, 3, color, -1)
+
+        
     def _process_single_frame(self, frame: np.ndarray, frame_idx: int) -> np.ndarray:
         """
         Process single frame: add annotations and return processed frame.
@@ -319,13 +306,22 @@ class VideoTrackingVisualizer:
             Annotated frame
         """
         img = frame.copy()
-        
+        active_ids = set()
         # Draw detections for current frame
         if frame_idx in self.tracks_by_frame:
             for track_id, bbox, class_name in self.tracks_by_frame[frame_idx]:
                 center = self._draw_detection(img, track_id, bbox, class_name)
                 self.track_centers[track_id].append(center)
+                if len(self.track_centers[track_id]) > self.config.trajectory_length:
+                    self.track_centers[track_id].pop(0)
+                active_ids.add(track_id)
         
+        for tid in self.track_centers.keys():
+            if tid not in active_ids:
+                self.track_centers[tid].append(None)
+                if len(self.track_centers[tid]) > self.config.trajectory_length:
+                    self.track_centers[tid].pop(0)
+                
         # Draw trajectories
         self._draw_trajectories(img)
         
