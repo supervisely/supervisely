@@ -38,13 +38,15 @@ class VisualizationConfig:
         return self
 
 
-def get_track_color(track_id: int, seed: int = 42) -> Tuple[int, int, int]:
+
+def _get_track_color(track_id: int, seed: int = 42) -> Tuple[int, int, int]:
+    #TODO: make color palette instead of call this function
     """Generate consistent color for each track ID."""
     np.random.seed(track_id + seed)
     return tuple(np.random.randint(60, 255, 3).tolist())
 
 
-def load_video_frames(source: Union[str, Path], output_fps: float) -> Tuple[List[np.ndarray], float]:
+def _load_video_frames(source: Union[str, Path], output_fps: float) -> Tuple[List[np.ndarray], float]:
     """
     Load frames from video file or image directory.
     
@@ -60,6 +62,7 @@ def load_video_frames(source: Union[str, Path], output_fps: float) -> Tuple[List
     source = Path(source)
     
     if source.is_file():  # Video file
+        #TODO: use ffmpeg
         cap = cv2.VideoCapture(str(source))
         if not cap.isOpened():
             raise ValueError(f"Could not open video: {source}")
@@ -106,7 +109,7 @@ def load_video_frames(source: Union[str, Path], output_fps: float) -> Tuple[List
         raise ValueError(f"Source must be a video file or image directory, got: {source}")
 
 
-def extract_tracks_from_sly_annotation(annotation: Union[VideoAnnotation, dict]) -> Dict[int, List[Tuple[int, Tuple[int, int, int, int], str]]]:
+def _extract_tracks_from_sly_annotation(annotation: Union[VideoAnnotation, dict]) -> Dict[int, List[Tuple[int, Tuple[int, int, int, int], str]]]:
     """
     Extract tracks from Supervisely VideoAnnotation or dict.
     
@@ -121,14 +124,13 @@ def extract_tracks_from_sly_annotation(annotation: Union[VideoAnnotation, dict])
         ValueError: If annotation structure is invalid
     """
     # Convert VideoAnnotation to dict if needed
+    # TODO: use only VideoAnnotation
     if isinstance(annotation, VideoAnnotation):
         annotation_dict = annotation.to_json()
     elif isinstance(annotation, dict):
         annotation_dict = annotation
     else:
         raise TypeError(f"Annotation must be VideoAnnotation or dict, got {type(annotation)}")
-    
-
     
     # Map object keys to track info
     objects = {}
@@ -140,6 +142,7 @@ def extract_tracks_from_sly_annotation(annotation: Union[VideoAnnotation, dict])
     # Group detections by frame
     frames_data = defaultdict(list)
     
+    #TODO: use only VideoAnnotation
     for frame in annotation_dict['frames']:
         frame_idx = frame['index']
         for figure in frame['figures']:
@@ -165,7 +168,7 @@ def extract_tracks_from_sly_annotation(annotation: Union[VideoAnnotation, dict])
     return frames_data
 
 
-def draw_detection(img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, int], 
+def _draw_detection(img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, int], 
                   class_name: str, config: VisualizationConfig) -> Tuple[int, int]:
     """
     Draw single detection with track ID and class.
@@ -174,7 +177,7 @@ def draw_detection(img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, in
         Center point coordinates (cx, cy)
     """
     x1, y1, x2, y2 = map(int, bbox)
-    color = get_track_color(track_id)
+    color = _get_track_color(track_id)
     
     # Draw bounding box
     cv2.rectangle(img, (x1, y1), (x2, y2), color, config.box_thickness)
@@ -206,7 +209,7 @@ def draw_detection(img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, in
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def draw_trajectories(img: np.ndarray, track_centers: Dict[int, List[Tuple[int, int]]], 
+def _draw_trajectories(img: np.ndarray, track_centers: Dict[int, List[Tuple[int, int]]], 
                      config: VisualizationConfig) -> None:
     """Draw trajectory lines for all tracks."""
     if not config.show_trajectories:
@@ -216,7 +219,7 @@ def draw_trajectories(img: np.ndarray, track_centers: Dict[int, List[Tuple[int, 
         if len(centers) < 2:
             continue
             
-        color = get_track_color(track_id)
+        color = _get_track_color(track_id)
         # Limit trajectory length to avoid clutter
         points = centers[-config.trajectory_length:]
         
@@ -237,8 +240,8 @@ def visualize_video_annotation(annotation: Union[VideoAnnotation, dict],
     Visualize tracking annotations on video.
     
     Args:
-        annotation: Supervisely VideoAnnotation object or dict
-        source: Path to video file or image directory  
+        annotation: Supervisely VideoAnnotation object or dict #TODO: use only VideoAnnotation
+        source: Path to video file or image directory #TODO: say "folder with frames"
         output_path: Path for output video
         **kwargs: Additional configuration parameters
         
@@ -250,16 +253,16 @@ def visualize_video_annotation(annotation: Union[VideoAnnotation, dict],
     config = VisualizationConfig().update(**kwargs)
     
     # Load video frames
-    frames, fps = load_video_frames(source, config.output_fps)
+    frames, fps = _load_video_frames(source, config.output_fps)
     logger.info(f"Loaded {len(frames)} frames from {source} at {fps:.1f} FPS")
     
     # Extract tracking data 
-    tracks_by_frame = extract_tracks_from_sly_annotation(annotation)
+    tracks_by_frame = _extract_tracks_from_sly_annotation(annotation)
     logger.info(f"Extracted {len(tracks_by_frame)} tracks from annotation")
     
     if not frames:
         raise ValueError("No frames loaded from source")
-    
+    #TODO: write video with ffmpeg
     # Setup video writer
     h, w = frames[0].shape[:2]
     fourcc = cv2.VideoWriter_fourcc(*config.codec)
@@ -280,11 +283,12 @@ def visualize_video_annotation(annotation: Union[VideoAnnotation, dict],
             # Draw detections for current frame
             if frame_idx in tracks_by_frame:
                 for track_id, bbox, class_name in tracks_by_frame[frame_idx]:
-                    center = draw_detection(img, track_id, bbox, class_name, config)
+                    center = _draw_detection(img, track_id, bbox, class_name, config)
                     track_centers[track_id].append(center)
             
             # Draw trajectories
-            draw_trajectories(img, track_centers, config)
+            # TODO: not whole config, just what needed
+            _draw_trajectories(img, track_centers, config)
             
             # Add frame number if requested
             if config.show_frame_number:
