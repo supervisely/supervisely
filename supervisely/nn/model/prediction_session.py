@@ -139,7 +139,6 @@ class PredictionSession:
             input = [input]
         if isinstance(input[0], np.ndarray):
             # input is numpy array
-            kwargs = get_valid_kwargs(kwargs, self._predict_images, exclude=["images"])
             self._predict_images(input, **kwargs)
         elif isinstance(input[0], (str, PathLike)):
             if len(input) > 1:
@@ -555,6 +554,11 @@ class PredictionSession:
             state["output_project_id"] = output_project_id
         if "model_prediction_suffix" in self.kwargs:
             state["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
+        if "classes" in self.kwargs:
+            state["classes"] = self.kwargs["classes"]
+        if "inference_settings" in self.kwargs:
+            state["inference_settings"] = self.kwargs["inference_settings"]
+            state.setdefault("settings", {}).update(self.kwargs["inference_settings"])
         return self._start_inference(method, json=json_body)
 
     def _predict_videos(
