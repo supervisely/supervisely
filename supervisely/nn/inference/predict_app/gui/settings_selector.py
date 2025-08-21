@@ -48,7 +48,7 @@ class SettingsSelector:
         self.inference_mode_field = None
         self.model_prediction_suffix_input = None
         self.model_prediction_suffix_field = None
-        self.model_prediction_suffix_checkbox = None
+        # self.model_prediction_suffix_checkbox = None
         self.predictions_mode_selector = None
         self.predictions_mode_field = None
         self.inference_settings = None
@@ -74,12 +74,16 @@ class SettingsSelector:
         self.model_prediction_suffix_field = Field(
             content=self.model_prediction_suffix_input,
             title="Class and tag suffix",
-            description="Suffix that will be added to class and tag names.",
+            description=(
+                "Suffix that will be added to conflicting class and tag names. "
+                "E.g. your project has a class 'person' with shape 'bitmap' and model has class 'person' with shape 'rectangle', "
+                "then suffix will be added to the model predictions to avoid conflicts. E.g. 'person_model'."
+            ),
         )
-        self.model_prediction_suffix_checkbox = Checkbox("Always add suffix to model predictions")
+        # self.model_prediction_suffix_checkbox = Checkbox("Always add suffix to model predictions")
         # Add widgets to display ------------ #
         self.display_widgets.extend(
-            [self.model_prediction_suffix_field, self.model_prediction_suffix_checkbox]
+            [self.model_prediction_suffix_field]  # , self.model_prediction_suffix_checkbox]
         )
         # ----------------------------------- #
 
@@ -132,7 +136,7 @@ class SettingsSelector:
         return [
             self.inference_mode_selector,
             self.model_prediction_suffix_input,
-            self.model_prediction_suffix_checkbox,
+            # self.model_prediction_suffix_checkbox,
             self.predictions_mode_selector,
             self.inference_settings,
         ]
@@ -151,7 +155,7 @@ class SettingsSelector:
             "inference_mode": self.inference_mode_selector.get_value(),
             "model_prediction_suffix": self.model_prediction_suffix_input.get_value(),
             "predictions_mode": self.predictions_mode_selector.get_value(),
-            "inference_settings": self.get_inference_settings(),
+            "settings": self.get_inference_settings(),
         }
 
     def load_from_json(self, data):
