@@ -8,6 +8,7 @@ from supervisely.api.api import Api
 from supervisely.app.fastapi.subapp import Application
 from supervisely.nn.inference.predict_app.gui.gui import PredictAppGui
 from supervisely.nn.model.prediction import Prediction
+from supervisely.nn.inference.predict_app.gui.utils import disable_enable
 
 
 class PredictApp:
@@ -17,6 +18,28 @@ class PredictApp:
         self.gui = PredictAppGui(api, static_dir=_static_dir)
         self.app = Application(self.gui.layout, static_dir=_static_dir)
         self._add_endpoints()
+
+        @self.gui.output_selector.start_button.click
+        def start_prediction():
+            if self.gui.output_selector.validate_step():
+                disable_enable(self.gui.output_selector.widgets_to_disable, True)
+                self.gui.run()
+                self.shutdown_serving_app()
+                self.shutdown_predict_app()
+
+    def shutdown_serving_app(self):
+        if self.gui.output_selector.should_stop_serving_on_finish():
+            logger.info("Stopping serving app...")
+            self.gui.model_selector.model.stop()
+
+    def shutdown_predict_app(self):
+        if self.gui.output_selector.should_stop_self_on_finish():
+            self.gui.output_selector.start_button.disable()
+            logger.info("Stopping Predict App...")
+            self.app.stop()
+        else:
+            disable_enable(self.gui.output_selector.widgets_to_disable, False)
+            self.gui.output_selector.start_button.enable()
 
     def run(self, run_parameters: Optional[Dict] = None) -> List[Prediction]:
         return self.gui.run(run_parameters)

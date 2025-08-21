@@ -25,6 +25,7 @@ class ClassesSelector:
 
         # Classes
         self.classes_table = ClassesTable()
+        self.classes_table.hide()
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.classes_table])
         # ----------------------------------- #
@@ -68,6 +69,9 @@ class ClassesSelector:
         return {"classes": self.get_selected_classes()}
 
     def validate_step(self) -> bool:
+        if self.classes_table.is_hidden():
+            return True
+
         self.validator_text.hide()
         selected_classes = self.classes_table.get_selected_classes()
         n_classes = len(selected_classes)

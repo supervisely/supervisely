@@ -25,6 +25,7 @@ class TagsSelector:
 
         # Tags
         self.tags_table = TagsTable()
+        self.tags_table.hide()
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.tags_table])
         # ----------------------------------- #
@@ -68,6 +69,9 @@ class TagsSelector:
         return {"tags": self.get_selected_tags()}
 
     def validate_step(self) -> bool:
+        if self.tags_table.is_hidden():
+            return True
+
         self.validator_text.hide()
 
         project_tags = self.tags_table.project_meta.tag_metas

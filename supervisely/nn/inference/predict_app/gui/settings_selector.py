@@ -29,7 +29,7 @@ class AddPredictionsMode:
 class SettingsSelector:
     title = "Settings Selector"
     description = "Select additional settings for model inference"
-    lock_message = None
+    lock_message = "Select previous step to unlock"
 
     def __init__(self):
         # Init Step
@@ -87,7 +87,7 @@ class SettingsSelector:
         self.prediction_modes = [
             AddPredictionsMode.MERGE_WITH_EXISTING_LABELS,
             AddPredictionsMode.REPLACE_EXISTING_LABELS,
-            AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS,
+            # AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS, # @TODO: Implement later
         ]
         self.predictions_mode_selector = Select(
             items=[Select.Item(mode) for mode in self.prediction_modes]

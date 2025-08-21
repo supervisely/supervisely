@@ -8,7 +8,6 @@ from supervisely._utils import is_development, logger
 from supervisely.annotation.annotation import Annotation
 from supervisely.annotation.label import Label
 from supervisely.api.api import Api
-from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.video.video_api import VideoInfo
 from supervisely.app.widgets import Button, Card, Container, Stepper, Widget
 from supervisely.io import env
@@ -24,32 +23,15 @@ from supervisely.nn.inference.predict_app.gui.settings_selector import (
 from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction
-from supervisely.nn.training.gui.utils import set_stepper_step, wrap_button_click
-from supervisely.project.project import ProjectType
+from supervisely.nn.inference.predict_app.gui.utils import (
+    set_stepper_step,
+    disable_enable,
+    wrap_button_click,
+    copy_project,
+)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
-
-
-def find_parents_in_tree(
-    tree: Dict[DatasetInfo, Dict], dataset_id: int, with_self: bool = False
-) -> Optional[List[DatasetInfo]]:
-    """
-    Find all parent datasets in the tree for a given dataset ID.
-    """
-
-    def _dfs(subtree: Dict[DatasetInfo, Dict], parents: List[DatasetInfo]):
-        for dataset_info, children in subtree.items():
-            if dataset_info.id == dataset_id:
-                if with_self:
-                    return parents + [dataset_info]
-                return parents
-            res = _dfs(children, parents + [dataset_info])
-            if res is not None:
-                return res
-        return None
-
-    return _dfs(tree, [])
 
 
 class StepFlow:
@@ -246,11 +228,8 @@ class PredictAppGui:
             model_api = None
             try:
                 model_api = type(self.model_selector.model).deploy(self.model_selector.model)
-                inference_settings = model_api.get_settings()
-                self.settings_selector.set_inference_settings(inference_settings)
             except:
                 self.output_selector.start_button.disable()
-                self.settings_selector.set_inference_settings("")
                 raise
             else:
                 self.output_selector.start_button.enable()
@@ -262,19 +241,17 @@ class PredictAppGui:
         def set_entity_meta():
             model_api = self.model_selector.model.model_api
 
-            # Get Model Meta to set classes and tags selectors
             model_meta = model_api.get_model_meta()
             if self.classes_selector is not None:
                 self.classes_selector.classes_table.set_project_meta(model_meta)
+                self.classes_selector.classes_table.show()
             if self.tags_selector is not None:
                 self.tags_selector.tags_table.set_project_meta(model_meta)
+                self.tags_selector.tags_table.show()
 
-            # Get Inference Settings to set settings selector
-            inference_settings_json = model_api.get_settings()
-            inference_settings = yaml.safe_dump(inference_settings_json)
-            self.settings_selector.inference_settings.set_text(inference_settings)
+            inference_settings = model_api.get_settings()
+            self.settings_selector.set_inference_settings(inference_settings)
 
-            # Set Inference Settings for preview (?)
             if self.preview is not None:
                 self.preview.inference_settings = inference_settings
 
@@ -282,11 +259,21 @@ class PredictAppGui:
             empty_meta = ProjectMeta()
             if self.classes_selector is not None:
                 self.classes_selector.classes_table.set_project_meta(empty_meta)
+                self.classes_selector.classes_table.hide()
             if self.tags_selector is not None:
                 self.tags_selector.tags_table.set_project_meta(empty_meta)
-            self.settings_selector.inference_settings.set_text("")
+                self.tags_selector.tags_table.hide()
+
+            self.settings_selector.set_inference_settings("")
+
             if self.preview is not None:
                 self.preview.inference_settings = None
+
+        def disable_settings_editor():
+            if self.settings_selector.inference_settings.readonly:
+                self.settings_selector.inference_settings.readonly = False
+            else:
+                self.settings_selector.inference_settings.readonly = True
 
         def generate_preview():
             def _get_frame_annotation(
@@ -395,7 +382,7 @@ class PredictAppGui:
             self.input_selector.card,
             self.input_selector.button,
             self.input_selector.widgets_to_disable,
-            getattr(self.input_selector, "validator_text", None),
+            self.input_selector.validator_text,
             self.input_selector.validate_step,
             position=position,
         )
@@ -407,7 +394,7 @@ class PredictAppGui:
             self.model_selector.card,
             self.model_selector.button,
             self.model_selector.widgets_to_disable,
-            getattr(self.model_selector, "validator_text", None),
+            self.model_selector.validator_text,
             self.model_selector.validate_step,
             position=position,
         )
@@ -424,7 +411,7 @@ class PredictAppGui:
                 self.classes_selector.card,
                 self.classes_selector.button,
                 self.classes_selector.widgets_to_disable,
-                getattr(self.classes_selector, "validator_text", None),
+                self.classes_selector.validator_text,
                 self.classes_selector.validate_step,
                 position=position,
             )
@@ -437,7 +424,7 @@ class PredictAppGui:
                 self.tags_selector.card,
                 self.tags_selector.button,
                 self.tags_selector.widgets_to_disable,
-                getattr(self.tags_selector, "validator_text", None),
+                self.tags_selector.validator_text,
                 self.tags_selector.validate_step,
                 position=position,
             )
@@ -449,10 +436,12 @@ class PredictAppGui:
             self.settings_selector.card,
             self.settings_selector.button,
             self.settings_selector.widgets_to_disable,
-            getattr(self.settings_selector, "validator_text", None),
+            self.settings_selector.validator_text,
             self.settings_selector.validate_step,
             position=position,
         )
+        self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor])
+        self.step_flow.add_on_select_actions("settings_selector", [disable_settings_editor], True)
         position += 1
 
         # 6. Preview
@@ -462,7 +451,7 @@ class PredictAppGui:
                 self.preview.card,
                 self.preview.button,
                 self.preview.widgets_to_disable,
-                getattr(self.preview, "validator_text", None),
+                self.preview.validator_text,
                 self.preview.validate_step,
                 position=position,
             ).add_on_select_actions("preview", [generate_preview])
@@ -474,7 +463,7 @@ class PredictAppGui:
             self.output_selector.card,
             None,
             self.output_selector.widgets_to_disable,
-            getattr(self.output_selector, "validator_text", None),
+            self.output_selector.validator_text,
             self.output_selector.validate_step,
             position=position,
         )
@@ -520,14 +509,6 @@ class PredictAppGui:
         self.output_selector_cb = wrappers.get("output_selector")
         # ------------------------------------------------- #
 
-        # Start Prediction Handler
-        @self.output_selector.start_button.click
-        def start_prediction():
-            if self.output_selector.validate_step():
-                self.run()
-
-        # ------------------------------------------------- #
-
         # Other Handlers
         @self.input_selector.radio.value_changed
         def input_selector_type_changed(value: str):
@@ -548,6 +529,8 @@ class PredictAppGui:
         # ------------------------------------------------- #
 
     def run(self, run_parameters: Dict[str, Any] = None) -> List[Prediction]:
+        self.show_validator_text()
+        self.set_validator_text("Preparing settings for prediction...", "info")
         if run_parameters is None:
             run_parameters = self.get_run_parameters()
 
@@ -557,6 +540,7 @@ class PredictAppGui:
         model_api = self.model_selector.model.model_api
         if model_api is None:
             logger.error("Model Deployed with an error")
+            self.set_validator_text("Model Deployed with an error", "error")
             return
 
         kwargs = {}
@@ -575,16 +559,16 @@ class PredictAppGui:
         settings = run_parameters["settings"]
         prediction_mode = settings.pop("predictions_mode")
         upload_mode = None
-        copy_image_tags = None
+        with_annotations = None
         if prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS:
             upload_mode = "replace"
-            copy_image_tags = False
+            with_annotations = False
         elif prediction_mode == AddPredictionsMode.MERGE_WITH_EXISTING_LABELS:
             upload_mode = "append"
-            copy_image_tags = True
+            with_annotations = True
         elif prediction_mode == AddPredictionsMode.REPLACE_EXISTING_LABELS_AND_SAVE_IMAGE_TAGS:
             upload_mode = "replace"
-            copy_image_tags = True
+            with_annotations = True
         kwargs.update(settings)
         kwargs["upload_mode"] = upload_mode
 
@@ -601,81 +585,21 @@ class PredictAppGui:
         if not project_name:
             raise ValueError("Project name cannot be empty when creating a new project.")
 
-        # Create new project
-        # TODO decompose
-        logger.info("Creating project for predictions...")
-        input_project_datasets_tree = self.api.dataset.get_tree(input_project_id)
-        input_project_datasets_list = self.api.dataset.flatten_tree(input_project_datasets_tree)
-        with self.output_selector.progress(
-            "Creating project for predictions...",
-            total=sum(
-                ds.items_count for ds in input_project_datasets_list if ds.id in input_dataset_ids
-            ),
-        ) as progress:
-            created_project = self.api.project.create(
-                self.workspace_id,
-                project_name,
-                type=ProjectType.IMAGES,
-                change_name_if_conflict=True,
-            )
-            created_datasets = {}
+        # Copy project
+        self.set_validator_text("Copying project...", "info")
+        created_project = copy_project(
+            self.api,
+            project_name,
+            self.workspace_id,
+            input_project_id,
+            input_dataset_ids,
+            with_annotations,
+            self.output_selector.progress,
+        )
+        # ------------------------ #
 
-            for input_dataset_id in input_dataset_ids:
-                if input_dataset_id not in created_datasets:
-                    datasets_to_create = find_parents_in_tree(
-                        input_project_datasets_tree, input_dataset_id, with_self=True
-                    )
-                    if datasets_to_create:
-                        for dataset in datasets_to_create:
-                            if dataset.id in created_datasets:
-                                continue
-                            this_parent_id = None
-                            if dataset.parent_id is not None:
-                                this_parent_id = created_datasets[dataset.parent_id].id
-
-                            created_dataset = self.api.dataset.create(
-                                created_project.id,
-                                dataset.name,
-                                description=dataset.description,
-                                change_name_if_conflict=False,
-                                parent_id=this_parent_id,
-                            )
-                            created_datasets[dataset.id] = created_dataset
-                input_img_infos = self.api.image.get_list(input_dataset_id)
-                created_img_infos = self.api.image.copy_batch_optimized(
-                    src_dataset_id=input_dataset_id,
-                    src_image_infos=input_img_infos,
-                    dst_dataset_id=created_datasets[input_dataset_id].id,
-                    progress_cb=progress,
-                    with_annotations=upload_mode in ["append", "iou_merge"],
-                )
-                if copy_image_tags:
-                    # copy project meta
-                    project_meta = ProjectMeta.from_json(
-                        self.api.project.merge_metas(
-                            src_project_id=input_project_id, dst_project_id=created_project.id
-                        )
-                    )
-                    tag_meta_by_name = {
-                        tag_meta.name: tag_meta for tag_meta in project_meta.tag_metas
-                    }
-
-                    tags_data = {}
-                    for src_image_info, dst_image_info in zip(input_img_infos, created_img_infos):
-                        if src_image_info.tags:
-                            for tag in src_image_info.tags:
-                                src_tag_name = tag["name"]
-                                dst_tag_id = tag_meta_by_name[src_tag_name].sly_id
-                                tags_data.setdefault(dst_tag_id, []).append(
-                                    (dst_image_info.id, tag["value"])
-                                )
-
-                    for tag_id, d in tags_data.items():
-                        img_ids, tag_values = zip(*d)
-                        self.api.image.add_tags_batch(
-                            image_ids=img_ids, tag_ids=tag_id, values=tag_values
-                        )
-
+        # Run prediction
+        self.set_validator_text("Running prediction...", "info")
         predictions = []
         self._is_running = True
         try:
@@ -691,24 +615,22 @@ class PredictAppGui:
                     if self._stop_flag:
                         logger.info("Prediction stopped by user.")
                         break
+        except Exception as e:
+            logger.error(f"Error during prediction: {str(e)}")
+            self.set_validator_text(f"Error during prediction: {str(e)}", "error")
+            disable_enable(self.output_selector.widgets_to_disable, False)
+            self._is_running = False
+            self._stop_flag = False
+            raise e
         finally:
             self._is_running = False
             self._stop_flag = False
+        # ------------------------ #
 
+        # Set result thumbnail
+        self.set_validator_text("Project successfully processed", "success")
         self.output_selector.set_result_thumbnail(created_project.id)
-
-        if self.output_selector.should_stop_serving_on_finish():
-            logger.info("Stopping serving app...")
-            self.model_selector.model.stop()
-
-        if self.output_selector.should_stop_self_on_finish():
-            logger.info("Stopping Predict App...")
-            if is_development():
-                exit(0)
-            self.api.task.stop(
-                env.task_id(),
-            )
-
+        # ------------------------ #
         return predictions
 
     def stop(self):
@@ -767,3 +689,12 @@ class PredictAppGui:
 
         # 7. Output selector
         self.output_selector.load_from_json(data.get("output", {}))
+
+    def set_validator_text(self, text: str, status: str = "text"):
+        self.output_selector.validator_text.set(text=text, status=status)
+
+    def show_validator_text(self):
+        self.output_selector.validator_text.show()
+
+    def hide_validator_text(self):
+        self.output_selector.validator_text.hide()

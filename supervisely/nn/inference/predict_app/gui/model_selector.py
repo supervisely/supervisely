@@ -7,7 +7,7 @@ from supervisely.app.widgets import Button, Card, Container, DeployModel, Text
 class ModelSelector:
     title = "Select Model"
     description = "Connect to deployed model or deploy new model"
-    lock_message = None
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api, team_id: int):
         # Init Step

@@ -5,7 +5,7 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import (
     Button,
     Card,
-    CheckboxField,
+    Checkbox,
     Container,
     Field,
     Input,
@@ -18,7 +18,7 @@ from supervisely.app.widgets import (
 class OutputSelector:
     title = "Select Output"
     description = "Select the output mode"
-    lock_message = None
+    lock_message = "Select previous step to unlock"
 
     def __init__(self, api: Api):
         # Init Step
@@ -43,15 +43,12 @@ class OutputSelector:
         self.project_thumbnail = None
         # -------------------------------- #
 
+        # TODO: Implement option later
         # Stop Apps on Finish
-        self.stop_serving_on_finish = CheckboxField(
-            title="Stop Serving App on prediction finish", description="", checked=True
-        )
-        self.stop_self_on_finish = CheckboxField(
-            title="Stop Predict App on prediction finish", description="", checked=True
-        )
+        # self.stop_serving_on_finish = Checkbox("Stop Serving App on prediction finish", False)
+        # self.stop_self_on_finish = Checkbox("Stop Predict App on prediction finish", True)
         # Add widgets to display ------------ #
-        self.display_widgets.extend([self.stop_serving_on_finish, self.stop_self_on_finish])
+        # self.display_widgets.extend([self.stop_serving_on_finish, self.stop_self_on_finish])
         # ----------------------------------- #
 
         # Project Name
@@ -65,8 +62,18 @@ class OutputSelector:
         self.display_widgets.extend([self.project_name_field])
         # ----------------------------------- #
 
+        # Base Widgets
+        self.validator_text = Text("", status="text")
+        self.validator_text.hide()
+        self.start_button = Button("Run", icon="zmdi zmdi-play")
+        self.stop_button = Button("Stop", icon="zmdi zmdi-stop")
+        # Add widgets to display ------------ #
+        self.display_widgets.extend([self.start_button, self.validator_text])
+        # ----------------------------------- #
+
         # Progress
-        self.progress = Progress()
+        self.progress = Progress(hide_on_finish=False)
+        self.progress.hide()
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.progress])
         # ----------------------------------- #
@@ -76,15 +83,6 @@ class OutputSelector:
         self.project_thumbnail.hide()
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.project_thumbnail])
-        # ----------------------------------- #
-
-        # Base Widgets
-        self.validator_text = Text("", status="text")
-        self.validator_text.hide()
-        self.start_button = Button("Run", icon="zmdi zmdi-play")
-        self.stop_button = Button("Stop", icon="zmdi zmdi-stop")
-        # Add widgets to display ------------ #
-        self.display_widgets.extend([self.validator_text, self.start_button])
         # ----------------------------------- #
 
         # Card Layout
@@ -117,10 +115,14 @@ class OutputSelector:
         return settings
 
     def should_stop_serving_on_finish(self) -> bool:
-        return self.stop_serving_on_finish.is_checked()
+        if self.stop_serving_on_finish is not None:
+            return self.stop_serving_on_finish.is_checked()
+        return False
 
     def should_stop_self_on_finish(self) -> bool:
-        return self.stop_self_on_finish.is_checked()
+        if self.stop_self_on_finish is not None:
+            return self.stop_self_on_finish.is_checked()
+        return True
 
     def load_from_json(self, data):
         project_name = data.get("project_name", None)

@@ -7,7 +7,7 @@ from supervisely.app.widgets import (
     OneOf,
     RadioGroup,
     RadioTable,
-    SelectDataset,
+    SelectDatasetTree,
     Text,
 )
 from supervisely.project.project import ProjectType
@@ -45,12 +45,17 @@ class InputSelector:
         # -------------------------------- #
 
         # Images
-        self.select_dataset_for_images = SelectDataset(
-            multiselect=True, allowed_project_types=[ProjectType.IMAGES]
+        self.select_dataset_for_images = SelectDatasetTree(
+            multiselect=True,
+            flat=True,
+            select_all_datasets=False,
+            allowed_project_types=[ProjectType.IMAGES],
+            always_open=False,
+            compact=False,
+            team_is_selectable=False,
+            workspace_is_selectable=False,
+            show_select_all_datasets_checkbox=True,
         )
-        self.select_dataset_for_images._project_selector._ws_id = workspace_id
-        self.select_dataset_for_images._project_selector._compact = True
-        self.select_dataset_for_images._project_selector.update_data()
         self.select_image_container = Container(widgets=[self.select_dataset_for_images])
         self._radio_item_images = RadioGroup.Item(
             ProjectType.IMAGES.value, "Images", content=self.select_image_container
@@ -58,10 +63,16 @@ class InputSelector:
         # -------------------------------- #
 
         # Videos
-        self.select_dataset_for_video = SelectDataset(allowed_project_types=[ProjectType.VIDEOS])
-        self.select_dataset_for_video._project_selector._ws_id = workspace_id
-        self.select_dataset_for_video._project_selector._compact = True
-        self.select_dataset_for_video._project_selector.update_data()
+        self.select_dataset_for_video = SelectDatasetTree(
+            flat=True,
+            select_all_datasets=False,
+            allowed_project_types=[ProjectType.VIDEOS],
+            always_open=False,
+            compact=False,
+            team_is_selectable=False,
+            workspace_is_selectable=False,
+            show_select_all_datasets_checkbox=False,
+        )
         self.select_video = RadioTable(columns=["id", "name", "dataset"], rows=[])
         self.select_video_container = Container(
             widgets=[self.select_dataset_for_video, self.select_video]
@@ -118,7 +129,7 @@ class InputSelector:
     def load_from_json(self, data):
         if "project_id" in data:
             self.select_dataset_for_images.set_project_id(data["project_id"])
-            self.select_dataset_for_images.set_select_all_datasets(True)
+            self.select_dataset_for_images.select_all()
             self.radio.set_value(ProjectType.IMAGES.value)
         if "dataset_ids" in data:
             self.select_dataset_for_images.set_dataset_ids(data["dataset_ids"])
