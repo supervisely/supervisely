@@ -608,6 +608,7 @@ class PredictAppGui:
                 tqdm=self.output_selector.progress(),
                 **kwargs,
             ) as session:
+                self.output_selector.progress.show()
                 i = 0
                 for prediction in session:
                     predictions.append(prediction)
@@ -615,7 +616,9 @@ class PredictAppGui:
                     if self._stop_flag:
                         logger.info("Prediction stopped by user.")
                         break
+            self.output_selector.progress.hide()
         except Exception as e:
+            self.output_selector.progress.hide()
             logger.error(f"Error during prediction: {str(e)}")
             self.set_validator_text(f"Error during prediction: {str(e)}", "error")
             disable_enable(self.output_selector.widgets_to_disable, False)
