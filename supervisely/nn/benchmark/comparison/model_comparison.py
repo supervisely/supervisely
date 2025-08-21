@@ -119,11 +119,12 @@ class ModelComparison:
         This is used to ensure that the evaluations are comparable.
         """
         task_type = self.eval_results[0].cv_task
-        get_image_names = lambda eval_result: (
-            set(eval_result.mp.per_image_metrics.index)
-            if task_type == TaskType.SEMANTIC_SEGMENTATION
-            else set([img.get("file_name") for img in eval_result.coco_gt.imgs.values()])
-        )
+        if task_type == TaskType.SEMANTIC_SEGMENTATION:
+            get_image_names = lambda eval_result: set(eval_result.mp.per_image_metrics.index)
+        else:
+            get_image_names = lambda eval_result: set(
+                [img.get("file_name") for img in eval_result.coco_gt.imgs.values()]
+            )
 
         image_names = get_image_names(self.eval_results[0])
         max_img_cnt = len(image_names)
@@ -158,12 +159,55 @@ class ModelComparison:
                 eval_result.mp.per_image_metrics["img_names"] = [
                     img for img in s if img in image_names
                 ]
+                eval_result.images_map = dict(
+                    filter(lambda item: item[0] in image_names, eval_result.images_map.items())
+                )
+                eval_result.matched_pair_data = dict(
+                    filter(
+                        lambda item: item[0] in image_names,
+                        eval_result.matched_pair_data.items(),
+                    )
+                )
         else:
             for eval_result in self.eval_results:
-                s = eval_result.coco_gt.imgs
-                eval_result.coco_gt.imgs = {
-                    k: v for k, v in s.items() if v["file_name"] in image_names
+                coco_gt_name_to_sly_id = {}
+                coco_gt_name_to_id = {}
+                for img in eval_result.coco_gt.imgs.values():
+                    coco_gt_name_to_sly_id[img["file_name"]] = img["sly_id"]
+                    coco_gt_name_to_id[img["file_name"]] = img["id"]
+
+                coco_filtered_ids = [coco_gt_name_to_id[img_name] for img_name in image_names]
+                # todo: check if necessary
+                eval_result.coco_gt.anns = {
+                    k: v
+                    for k, v in eval_result.coco_gt.anns.items()
+                    if v["image_id"] in coco_filtered_ids
                 }
+
+                eval_result.coco_gt.imgs = {
+                    k: v
+                    for k, v in eval_result.coco_gt.imgs.items()
+                    if v["file_name"] in image_names
+                }
+
+                # outcome counts
+                sly_ids_filtered = [coco_gt_name_to_sly_id[img_name] for img_name in image_names]
+                for outcome, matches_data in eval_result.click_data.outcome_counts.items():
+                    new_matches_data = [
+                        match_data
+                        for match_data in matches_data
+                        if match_data["gt_img_id"] in sly_ids_filtered
+                    ]
+                    eval_result.click_data.outcome_counts[outcome] = new_matches_data
+
+                # objects by class
+                for cat_name, matches_data in eval_result.click_data.objects_by_class.items():
+                    new_matches_data = [
+                        match_data
+                        for match_data in matches_data
+                        if match_data["gt_img_id"] in image_names
+                    ]
+                    eval_result.click_data.objects_by_class[cat_name] = new_matches_data
 
         for eval_result in self.eval_results:
             eval_result.image_whitelist = list(image_names)
@@ -174,11 +218,11 @@ class ModelComparison:
         This is used to ensure that the evaluations are comparable.
         """
         task_type = self.eval_results[0].cv_task
-        get_category_names = lambda eval_result: (
-            set(eval_result.mp.class_names)
-            if task_type == TaskType.SEMANTIC_SEGMENTATION
-            else set(eval_result.mp.cat_names)
-        )
+        if task_type == TaskType.SEMANTIC_SEGMENTATION:
+            get_category_names = lambda eval_result: set(eval_result.mp.class_names)
+        else:
+            get_category_names = lambda eval_result: set(eval_result.mp.cat_names)
+
         category_names = get_category_names(self.eval_results[0])
         max_categories = len(category_names)
         for eval_result in self.eval_results[1:]:
@@ -211,10 +255,26 @@ class ModelComparison:
                 eval_result.mp.class_names = list(
                     filter(lambda c: c in category_names, eval_result.mp.class_names)
                 )
+                eval_result.mp.confusion_matrix = (
+                    eval_result.mp.confusion_matrix[0],
+                    [c for c in eval_result.mp.confusion_matrix[1] if c in category_names],
+                )
         else:
             for eval_result in self.eval_results:
                 eval_result.mp.cat_names = list(
                     filter(lambda c: c in category_names, eval_result.mp.cat_names)
+                )
+                eval_result.click_data.objects_by_class = dict(
+                    filter(
+                        lambda item: item[0] in category_names,
+                        eval_result.click_data.objects_by_class.items(),
+                    )
+                )
+                eval_result.click_data.outcome_counts_by_class = dict(
+                    filter(
+                        lambda item: item[0] in category_names,
+                        eval_result.click_data.outcome_counts_by_class.items(),
+                    )
                 )
 
         for eval_result in self.eval_results:
