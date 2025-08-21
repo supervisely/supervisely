@@ -1,4 +1,4 @@
-import sys
+import os
 from typing import Dict, List, Optional
 
 from fastapi import BackgroundTasks, Request
@@ -9,11 +9,13 @@ from supervisely.app.fastapi.subapp import Application
 from supervisely.nn.inference.predict_app.gui.gui import PredictAppGui
 from supervisely.nn.model.prediction import Prediction
 from supervisely.nn.inference.predict_app.gui.utils import disable_enable
+import supervisely.io.fs as sly_fs
 
 
 class PredictApp:
     def __init__(self, api: Api):
         _static_dir = "static"
+        sly_fs.mkdir(_static_dir, True)
         self.api = api
         self.gui = PredictAppGui(api, static_dir=_static_dir)
         self.app = Application(self.gui.layout, static_dir=_static_dir)
