@@ -1,0 +1,70 @@
+<div :style="{
+		'display': 'flex',
+    	'flex-direction': 'column',
+		'max-width': data.{{{widget.widget_id}}}.maxWidth,
+    'max-height': data.{{{widget.widget_id}}}.maxHeight,
+	}">
+  {% if widget._multiple %}
+  <div>
+    <el-button style="margin-right: 10px" type="text" {% if widget._checkboxes_handled %} @click="{
+					state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => true);
+					post('/{{{widget.widget_id}}}/checkbox_cb');
+				}" {% else %}
+      @click="state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => true)" {% endif
+      %}>
+      <i class="zmdi zmdi-check-all"></i>
+      Select all
+    </el-button>
+    <el-button style="margin-right: 10px" type="text" {% if widget._checkboxes_handled %} @click="{
+					state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => false);
+					post('/{{{widget.widget_id}}}/checkbox_cb');
+				}" {% else %}
+      @click="state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map(() => false)" {% endif
+      %}>
+      <i class="zmdi zmdi-square-o"></i>
+      Deselect all
+    </el-button>
+  </div>
+  {% endif %}
+  <div style="
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+			overflow-y: auto;
+			overflow-x: hidden;
+		">
+    <div v-for="(tag, idx) in data.{{{widget.widget_id}}}.tags" class="fflex" style="gap: 4px">
+      <el-checkbox style="flex: none" v-model="state.{{{widget.widget_id}}}.selected[idx]" {% if
+        widget._checkboxes_handled %} {% if not widget._multiple %} @change="() => {
+							if ($event.target.checked) {
+								state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map((_, i) => i == idx);
+							}
+							post('/{{{widget.widget_id}}}/checkbox_cb');
+						}" {% else %} @change="() => {
+							post('/{{{widget.widget_id}}}/checkbox_cb');
+						}" {% endif %} {% else %} {% if not widget._multiple %}
+        @change="if ($event.target.checked) {state.{{{widget.widget_id}}}.selected = state.{{{widget.widget_id}}}.selected.map((_, i) => i == idx);}"
+        {% endif %} {% endif %}>
+      </el-checkbox>
+      <i class="zmdi zmdi-label" :style="{color: tag.color}" style="flex: none"></i>
+      <div class="fflex" style="flex: 1; overflow: hidden; text-overflow: ellipsis">
+        <b style="width: 100%; overflow: hidden; text-overflow: ellipsis">{{tag.name}}</b>
+      </div>
+      <div v-if="state.{{{widget.widget_id}}}.selected[idx]">
+        <div v-if="tag.valueType == '{{{widget.VALUE_TYPES.any_string}}}'">
+          <el-input v-model="state.{{{widget.widget_id}}}.values[idx]" size="mini" style="width: 140px"></el-input>
+        </div>
+        <div v-if="tag.valueType == '{{{widget.VALUE_TYPES.one_of}}}'">
+          <el-select v-model="state.{{{widget.widget_id}}}.values[idx]" size="mini" style="width: 140px">
+            <el-option v-for="item in tag.possible_values" :key="item" :label="item" :value="item">
+            </el-option>
+          </el-select>
+        </div>
+        <div v-if="tag.valueType == '{{{widget.VALUE_TYPES.number}}}'">
+          <el-input-number :controls="false" v-model="state.{{{widget.widget_id}}}.values[idx]" size="mini"
+            style="width: 140px"></el-input-number>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
