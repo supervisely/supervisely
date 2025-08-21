@@ -70,7 +70,9 @@ class SettingsSelector:
         # ----------------------------------- #
 
         # Class / Tag Suffix
-        self.model_prediction_suffix_input = Input(value="model", minlength=1)
+        self.model_prediction_suffix_input = Input(
+            value="_model", minlength=1, placeholder="Enter suffix e.g: _model"
+        )
         self.model_prediction_suffix_field = Field(
             content=self.model_prediction_suffix_input,
             title="Class and tag suffix",

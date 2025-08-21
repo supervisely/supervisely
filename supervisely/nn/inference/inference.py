@@ -4500,10 +4500,7 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
         if meta.get_obj_class(ann_obj_class.name) is None:
             meta = meta.add_obj_class(ann_obj_class)
             meta_changed = True
-        elif (
-            meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type
-            and meta.get_obj_class(ann_obj_class.name).geometry_type != AnyGeometry
-        ):
+        elif meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type and ann_obj_class.geometry_type != AnyGeometry:
             found = False
             for suffix in obj_classes_suffixes:
                 logger.debug(
