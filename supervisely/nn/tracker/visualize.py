@@ -1,46 +1,72 @@
-def visualize(predictions, output_path, **kwargs)
-    pass
-
-def visualize_video_annotation(video_annotation, output_path, **kwargs):
-    pass
-
-
-##
-# Visualize Supervisely tracking annotations on video
-import json
-import cv2
+from typing import Union, Dict, List, Tuple
 import numpy as np
-import yaml
-import argparse
+import cv2
 from pathlib import Path
-import os
 from collections import defaultdict
+from dataclasses import dataclass
+
+import supervisely as sly
+from supervisely import logger
+from supervisely.nn.model.prediction import Prediction
+from supervisely import VideoAnnotation
+from .utils import predictions_to_video_annotation
+
+@dataclass
+class VisualizationConfig:
+    """Configuration for video tracking visualization."""
+    # Visual appearance
+    show_labels: bool = True
+    show_classes: bool = True
+    show_trajectories: bool = True
+    show_frame_number: bool = True
+    
+    # Style settings
+    box_thickness: int = 2
+    text_scale: float = 0.6
+    text_thickness: int = 2
+    trajectory_length: int = 30
+    
+    # Output settings
+    codec: str = 'XVID'
+    output_fps: float = 30.0
+    
+    def update(self, **kwargs) -> 'VisualizationConfig':
+        """Update config with keyword arguments."""
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+        return self
 
 
-
-def load_supervisely_annotation(json_path):
-    """Load Supervisely video annotation from JSON file."""
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    return data
-
-
-def get_track_color(track_id, seed=42):
+def get_track_color(track_id: int, seed: int = 42) -> Tuple[int, int, int]:
     """Generate consistent color for each track ID."""
     np.random.seed(track_id + seed)
-    # Generate bright colors
-    color = tuple(np.random.randint(60, 255, 3).tolist())
-    return color
+    return tuple(np.random.randint(60, 255, 3).tolist())
 
 
-def load_video_source(config):
-    """Load video source (either video file or image directory)."""
-    if config['input_type'] == 'video':
-        cap = cv2.VideoCapture(config['video_path'])
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+def load_video_frames(source: Union[str, Path], output_fps: float) -> Tuple[List[np.ndarray], float]:
+    """
+    Load frames from video file or image directory.
+    
+    Args:
+        source: Path to video file or directory with images
         
+    Returns:
+        Tuple of (frames list, fps)
+        
+    Raises:
+        ValueError: If source is invalid or no frames found
+    """
+    source = Path(source)
+    
+    if source.is_file():  # Video file
+        cap = cv2.VideoCapture(str(source))
+        if not cap.isOpened():
+            raise ValueError(f"Could not open video: {source}")
+            
+        fps = cap.get(cv2.CAP_PROP_FPS)
         frames = []
+        
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -48,230 +74,248 @@ def load_video_source(config):
             frames.append(frame)
         cap.release()
         
-        return frames, fps, frame_count
+        if not frames:
+            raise ValueError(f"No frames found in video: {source}")
+        return frames, fps
     
-    elif config['input_type'] == 'images':
-        image_dir = Path(config['images_dir'])
-        image_files = sorted([f for f in image_dir.iterdir() 
-                            if f.suffix.lower() in ['.jpg', '.jpeg', '.png']])
+    elif source.is_dir():  # Image directory
+        # Support common image extensions (including uppercase)
+        extensions = ['.jpg', '.jpeg', '.png', '.JPG', '.JPEG', '.PNG']
+        image_files = []
+        for ext in extensions:
+            image_files.extend(source.glob(f'*{ext}'))
         
+        image_files = sorted(image_files)
         if not image_files:
-            raise ValueError(f"No image files found in {image_dir}")
+            raise ValueError(f"No image files found in directory: {source}")
         
         frames = []
         for img_path in image_files:
             frame = cv2.imread(str(img_path))
-            if frame is None:
-                print(f"Warning: Could not load {img_path}")
-                continue
-            frames.append(frame)
+            if frame is not None:
+                frames.append(frame)
+            else:
+                logger.warning(f"Could not read image: {img_path}")
         
-        fps = config.get('output_fps', 10)  # Default FPS for image sequence
-        frame_count = len(frames)
+        if not frames:
+            raise ValueError(f"No valid images loaded from: {source}")
         
-        return frames, fps, frame_count
+        return frames, output_fps
     
     else:
-        raise ValueError("input_type must be 'video' or 'images'")
+        raise ValueError(f"Source must be a video file or image directory, got: {source}")
 
 
-def extract_tracks_data(sly_data):
-    """Extract track information from Supervisely annotation."""
-    tracks = defaultdict(list)  # track_id -> list of (frame_idx, bbox, class_title)
+def extract_tracks_from_sly_annotation(annotation: Union[VideoAnnotation, dict]) -> Dict[int, List[Tuple[int, Tuple[int, int, int, int], str]]]:
+    """
+    Extract tracks from Supervisely VideoAnnotation or dict.
     
-    # Create mapping from objectKey to track info
-    objects_info = {}
-    for i, obj in enumerate(sly_data['objects']):
-        objects_info[obj['key']] = {
-            'track_id': i + 1,
-            'class_title': obj['classTitle']
-        }
-    
-    # Process frames
-    for frame in sly_data['frames']:
-        frame_idx = frame['index']
+    Args:
+        annotation: Supervisely VideoAnnotation object or dict
         
+    Returns:
+        Dict mapping frame_idx to list of (track_id, bbox, class_name) tuples
+        
+    Raises:
+        TypeError: If annotation type is not supported
+        ValueError: If annotation structure is invalid
+    """
+    # Convert VideoAnnotation to dict if needed
+    if isinstance(annotation, VideoAnnotation):
+        annotation_dict = annotation.to_json()
+    elif isinstance(annotation, dict):
+        annotation_dict = annotation
+    else:
+        raise TypeError(f"Annotation must be VideoAnnotation or dict, got {type(annotation)}")
+    
+
+    
+    # Map object keys to track info
+    objects = {}
+    for i, obj in enumerate(annotation_dict['objects']):
+        if 'key' not in obj or 'classTitle' not in obj:
+            continue
+        objects[obj['key']] = (i, obj['classTitle'])
+    
+    # Group detections by frame
+    frames_data = defaultdict(list)
+    
+    for frame in annotation_dict['frames']:
+        frame_idx = frame['index']
         for figure in frame['figures']:
+            # Validate figure structure
             if figure['geometryType'] != 'rectangle':
                 continue
                 
             object_key = figure['objectKey']
-            track_info = objects_info[object_key]
-            track_id = track_info['track_id']
-            class_title = track_info['class_title']
+            if object_key not in objects:
+                continue
+                
+            track_id, class_name = objects[object_key]
             
-            # Extract bounding box
-            exterior_points = figure['geometry']['points']['exterior']
-            x1, y1 = exterior_points[0]
-            x2, y2 = exterior_points[1]
-            
-            # Normalize coordinates
-            x1, x2 = min(x1, x2), max(x1, x2)
-            y1, y2 = min(y1, y2), max(y1, y2)
-            
-            bbox = (int(x1), int(y1), int(x2), int(y2))
-            
-            tracks[track_id].append({
-                'frame_idx': frame_idx,
-                'bbox': bbox,
-                'class_title': class_title
-            })
-    
-    return tracks
+            # Extract bbox using Supervisely format
+            points = figure['geometry']['points']['exterior']                
+            x1, y1 = points[0]
+            x2, y2 = points[1]
+        
+            # Ensure proper bbox format (x1, y1, x2, y2) with x1 < x2, y1 < y2
+            bbox = (min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
+            frames_data[frame_idx].append((track_id, bbox, class_name))
+
+    return frames_data
 
 
-def draw_trajectory(img, track_points, color, max_points=30):
-    """Draw trajectory line for a track."""
-    if len(track_points) < 2:
-        return
+def draw_detection(img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, int], 
+                  class_name: str, config: VisualizationConfig) -> Tuple[int, int]:
+    """
+    Draw single detection with track ID and class.
     
-    # Limit trajectory length
-    points = track_points[-max_points:]
+    Returns:
+        Center point coordinates (cx, cy)
+    """
+    x1, y1, x2, y2 = map(int, bbox)
+    color = get_track_color(track_id)
     
-    # Draw trajectory lines
-    for i in range(1, len(points)):
-        cv2.line(img, points[i-1], points[i], color, 2)
+    # Draw bounding box
+    cv2.rectangle(img, (x1, y1), (x2, y2), color, config.box_thickness)
     
-    # Draw points
-    for point in points[:-1]:
-        cv2.circle(img, point, 3, color, -1)
-
-
-def visualize_frame(frame, tracks, frame_idx, config):
-    """Draw tracking annotations on a single frame."""
-    img = frame.copy()
-    
-    # Track center points for trajectory
-    trajectory_points = defaultdict(list)
-    
-    for track_id, track_data in tracks.items():
-        # Find detections for current frame
-        current_detections = [d for d in track_data if d['frame_idx'] == frame_idx]
+    # Draw label
+    if config.show_labels:
+        label = f"ID:{track_id}"
+        if config.show_classes:
+            label += f" ({class_name})"
         
-        if not current_detections:
-            continue
+        # Position label above bbox if there's space, otherwise below
+        label_y = y1 - 10 if y1 > 30 else y2 + 25
         
-        detection = current_detections[0]  # Should be only one per frame
-        bbox = detection['bbox']
-        class_title = detection['class_title']
-        color = get_track_color(track_id)
-        
-        x1, y1, x2, y2 = bbox
-        
-        # Draw bounding box
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, config.get('box_thickness', 2))
-        
-        # Draw track ID and class
-        if config.get('show_track_ids', True):
-            label = f"ID:{track_id}"
-            if config.get('show_class_names', True):
-                label += f" ({class_title})"
-            
-            # Calculate text position
-            text_y = y1 - 10 if y1 > 30 else y2 + 25
-            
-            # Draw text background
-            (text_w, text_h), baseline = cv2.getTextSize(
-                label, cv2.FONT_HERSHEY_SIMPLEX, 
-                config.get('text_scale', 0.6), config.get('text_thickness', 2)
-            )
-            cv2.rectangle(img, (x1, text_y - text_h - 5), (x1 + text_w, text_y + 5), color, -1)
-            
-            # Draw text
-            cv2.putText(
-                img, label, (x1, text_y),
-                cv2.FONT_HERSHEY_SIMPLEX, config.get('text_scale', 0.6),
-                (255, 255, 255), config.get('text_thickness', 2), cv2.LINE_AA
-            )
-        
-        # Store center point for trajectory
-        center_x = (x1 + x2) // 2
-        center_y = (y1 + y2) // 2
-        trajectory_points[track_id].append((center_x, center_y))
-    
-    # Draw trajectories if enabled
-    if config.get('show_trajectories', False):
-        # Collect all trajectory points up to current frame
-        all_trajectory_points = defaultdict(list)
-        
-        for track_id, track_data in tracks.items():
-            for detection in track_data:
-                if detection['frame_idx'] <= frame_idx:
-                    bbox = detection['bbox']
-                    x1, y1, x2, y2 = bbox
-                    center_x = (x1 + x2) // 2
-                    center_y = (y1 + y2) // 2
-                    all_trajectory_points[track_id].append((center_x, center_y))
-        
-        # Draw trajectories
-        for track_id, points in all_trajectory_points.items():
-            if len(points) > 1:
-                color = get_track_color(track_id)
-                draw_trajectory(img, points, color, config.get('trajectory_length', 30))
-    
-    return img
-
-
-def main():
-    with open("visualize_config.yaml", 'r', encoding='utf-8') as f:
-        config = yaml.safe_load(f)
-    
-    # Load annotation
-    sly_data = load_supervisely_annotation(config['annotation_path'])
-    print(f"Loaded annotation with {len(sly_data['objects'])} objects and {len(sly_data['frames'])} frames")
-    
-    # Load video source
-    frames, fps, frame_count = load_video_source(config)
-    print(f"Loaded {len(frames)} frames with FPS: {fps}")
-    
-    # Extract tracking data
-    tracks = extract_tracks_data(sly_data)
-    print(f"Extracted {len(tracks)} tracks")
-    
-    # Create output directory
-    output_dir = Path(config['output_dir'])
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Setup video writer
-    if frames:
-        h, w = frames[0].shape[:2]
-        fourcc = cv2.VideoWriter_fourcc(*config.get('codec', 'XVID'))
-        output_path = output_dir / config['output_filename']
-        
-        video_writer = cv2.VideoWriter(
-            str(output_path), fourcc, fps, (w, h)
+        # Get text size for background
+        (text_w, text_h), _ = cv2.getTextSize(
+            label, cv2.FONT_HERSHEY_SIMPLEX, config.text_scale, config.text_thickness
         )
         
-        print(f"Processing {len(frames)} frames...")
+        # Draw text background
+        cv2.rectangle(img, (x1, label_y - text_h - 5), 
+                     (x1 + text_w, label_y + 5), color, -1)
         
-        # Process each frame
-        for frame_idx, frame in enumerate(frames):
-            if frame_idx > len(tracks):
-                print(f"Warning: Frame index {frame_idx} exceeds available tracks, stopping early.")
-                break
-            # Visualize tracking on frame
-            vis_frame = visualize_frame(frame, tracks, frame_idx, config)
-            
-            # Add frame number if enabled
-            if config.get('show_frame_number', False):
-                cv2.putText(
-                    vis_frame, f"Frame: {frame_idx + 1}",
-                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                    (255, 255, 255), 2, cv2.LINE_AA
-                )
-            
-            # Write frame
-            video_writer.write(vis_frame)
-            
-            # Progress indicator
-            if (frame_idx + 1) % 100 == 0:
-                print(f"Processed {frame_idx + 1}/{len(frames)} frames")
-        
-        video_writer.release()
-        print(f"Visualization saved to: {output_path}")
+        # Draw text
+        cv2.putText(img, label, (x1, label_y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, config.text_scale, 
+                   (255, 255, 255), config.text_thickness, cv2.LINE_AA)
     
-    print("Done!")
+    # Return center point for trajectory
+    return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-if __name__ == "__main__":
-    main()
+def draw_trajectories(img: np.ndarray, track_centers: Dict[int, List[Tuple[int, int]]], 
+                     config: VisualizationConfig) -> None:
+    """Draw trajectory lines for all tracks."""
+    if not config.show_trajectories:
+        return
+    
+    for track_id, centers in track_centers.items():
+        if len(centers) < 2:
+            continue
+            
+        color = get_track_color(track_id)
+        # Limit trajectory length to avoid clutter
+        points = centers[-config.trajectory_length:]
+        
+        # Draw trajectory line
+        for i in range(1, len(points)):
+            cv2.line(img, points[i-1], points[i], color, 2)
+        
+        # Draw trajectory points (except the last one which is current position)
+        for point in points[:-1]:
+            cv2.circle(img, point, 3, color, -1)
+
+
+def visualize_video_annotation(annotation: Union[VideoAnnotation, dict], 
+                              source: Union[str, Path], 
+                              output_path: Union[str, Path], 
+                              **kwargs) -> None:
+    """
+    Visualize tracking annotations on video.
+    
+    Args:
+        annotation: Supervisely VideoAnnotation object or dict
+        source: Path to video file or image directory  
+        output_path: Path for output video
+        **kwargs: Additional configuration parameters
+        
+    Raises:
+        TypeError: If annotation type is not supported
+        ValueError: If source/annotation is invalid
+    """
+    # Create configuration with defaults and user overrides
+    config = VisualizationConfig().update(**kwargs)
+    
+    # Load video frames
+    frames, fps = load_video_frames(source, config.output_fps)
+    logger.info(f"Loaded {len(frames)} frames from {source} at {fps:.1f} FPS")
+    
+    # Extract tracking data 
+    tracks_by_frame = extract_tracks_from_sly_annotation(annotation)
+    logger.info(f"Extracted {len(tracks_by_frame)} tracks from annotation")
+    
+    if not frames:
+        raise ValueError("No frames loaded from source")
+    
+    # Setup video writer
+    h, w = frames[0].shape[:2]
+    fourcc = cv2.VideoWriter_fourcc(*config.codec)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (w, h))
+    if not writer.isOpened():
+        raise ValueError(f"Could not create video writer for {output_path}")
+    
+    # Track centers for trajectory visualization
+    track_centers = defaultdict(list)
+    
+    try:
+        for frame_idx, frame in enumerate(frames):
+            img = frame.copy()
+            
+            # Draw detections for current frame
+            if frame_idx in tracks_by_frame:
+                for track_id, bbox, class_name in tracks_by_frame[frame_idx]:
+                    center = draw_detection(img, track_id, bbox, class_name, config)
+                    track_centers[track_id].append(center)
+            
+            # Draw trajectories
+            draw_trajectories(img, track_centers, config)
+            
+            # Add frame number if requested
+            if config.show_frame_number:
+                cv2.putText(img, f"Frame: {frame_idx + 1}", (10, 30),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+            
+            writer.write(img)
+            
+            # Progress update every 100 frames
+            if (frame_idx + 1) % 100 == 0:
+                logger.info(f"Processed {frame_idx + 1}/{len(frames)} frames")
+    
+    finally:
+        writer.release()
+        
+    logger.info(f"Video saved to {output_path}")
+
+
+
+def visualize(predictions: Union[VideoAnnotation, dict, Prediction], 
+              source: Union[str, Path], 
+              output_path: Union[str, Path], 
+              **kwargs) -> None:
+    """
+    Generic visualization function for different input types.
+    
+    Args:
+        predictions: VideoAnnotation, dict, or Prediction object
+        source: Path to video file or image directory
+        output_path: Path for output video  
+        **kwargs: Additional configuration parameters
+    """
+    annotation = predictions_to_video_annotation(predictions)
+    visualize_video_annotation(annotation, source, output_path, **kwargs)
