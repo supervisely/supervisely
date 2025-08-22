@@ -150,7 +150,10 @@ class SettingsSelector:
             self.inference_settings.set_text(yaml.safe_dump(settings))
 
     def get_inference_settings(self) -> Dict:
-        return yaml.safe_load(self.inference_settings.get_text())
+        settings = yaml.safe_load(self.inference_settings.get_text())
+        if settings:
+            return settings
+        return {}
 
     def get_settings(self) -> Dict[str, Any]:
         return {
