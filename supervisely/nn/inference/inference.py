@@ -2013,8 +2013,8 @@ class Inference:
         with Uploader(upload_f, logger=logger) as uploader:
             for image_ids_batch in batched(image_ids, batch_size=batch_size):
                 if uploader.has_exception():
-                    exception = uploader.exception()
-                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                    exception = uploader.exception
+                    raise exception
                 if inference_request.is_stopped():
                     logger.debug(
                         f"Cancelling inference project...",
@@ -2282,7 +2282,7 @@ class Inference:
                         return
                     if uploader.has_exception():
                         exception = uploader.exception
-                        raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                        raise exception
                     if cache_project_on_model:
                         images_paths, _ = zip(
                             *read_from_cached_project(
@@ -2411,7 +2411,7 @@ class Inference:
                     return
                 if uploader.has_exception():
                     exception = uploader.exception
-                    raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                    raise exception
                 if i == num_warmup:
                     inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, num_iterations)
 

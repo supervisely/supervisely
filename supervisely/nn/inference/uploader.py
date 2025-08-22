@@ -161,5 +161,8 @@ class Uploader:
             return self._exception_handler(exc)
         if self.has_exception():
             exc = self.exception
-            return self._exception_handler(exc)
+            try:
+                raise RuntimeError(f"Error in uploader loop: {str(exc)}") from exc
+            except Exception as exc:
+                return self._exception_handler(exc)
         return False
