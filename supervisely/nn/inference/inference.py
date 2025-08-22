@@ -4472,8 +4472,6 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
             f"Using custom suffixes for obj classes and tag metas: {obj_classes_suffixes}, {tag_meta_suffixes}"
         )
     logger.debug("source meta", extra={"meta": meta.to_json()})
-    ann_obj_classes = {}
-    ann_tag_metas = {}
     meta_changed = False
 
     meta, ann, replaced_classes_in_meta, replaced_classes_in_ann = _fix_classes_names(meta, ann)
@@ -4484,104 +4482,115 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
             extra={"replaced_classes": {old: new for old, new in replaced_classes_in_meta}},
         )
 
-    # get all obj classes and tag metas from annotation
+    updated_labels = []
+    any_label_updated = False
     for label in ann.labels:
-        ann_obj_classes[label.obj_class.name] = label.obj_class
+        original_obj_class_name = label.obj_class.name
+        suffix_found = False
+        for suffix in ["", *obj_classes_suffixes]:
+            label_obj_class = label.obj_class
+            label_obj_class_name = label_obj_class.name + suffix
+            if suffix:
+                label_obj_class = label_obj_class.clone(name=label_obj_class_name)
+                label = label.clone(obj_class=label_obj_class)
+                any_label_updated = True
+            meta_obj_class = meta.get_obj_class(label_obj_class_name)
+            if meta_obj_class is None:
+                # if obj class is not in meta, add it with suffix
+                meta = meta.add_obj_class(label_obj_class)
+                updated_labels.append(label)
+                meta_changed = True
+                suffix_found = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == label.geometry.geometry_name():
+                # if label geometry is the same as in meta, use meta obj class
+                label = label.clone(obj_class=meta_obj_class)
+                updated_labels.append(label)
+                suffix_found = True
+                any_label_updated = True
+                break
+            elif meta_obj_class.geometry_type.geometry_name() == AnyGeometry.geometry_name():
+                # if meta obj class is AnyGeometry, use it in label
+                label = label.clone(obj_class=meta_obj_class)
+                updated_labels.append(label)
+                suffix_found = True
+                any_label_updated = True
+                break
+        if not suffix_found:
+            # if no suffix found, raise error
+            raise ValueError(
+                f"Can't add obj class {original_obj_class_name} to project meta. "
+                "Please check if geometry type is compatible with existing obj classes."
+            )
+    if any_label_updated:
+        ann = ann.clone(labels=updated_labels)
+
+    # check if tag metas are in project meta
+    # if not, add them with suffix
+    ann_tag_metas = {}
+    for label in ann.labels:
         for tag in label.tags:
             ann_tag_metas[tag.meta.name] = tag.meta
     for tag in ann.img_tags:
         ann_tag_metas[tag.meta.name] = tag.meta
 
-    # check if obj classes are in project meta
-    # if not, add them.
-    # if shape is different, add them with suffix
-    changed_obj_classes = {}
-    for ann_obj_class in ann_obj_classes.values():
-        if meta.get_obj_class(ann_obj_class.name) is None:
-            meta = meta.add_obj_class(ann_obj_class)
-            meta_changed = True
-        elif meta.get_obj_class(ann_obj_class.name).geometry_type != ann_obj_class.geometry_type and ann_obj_class.geometry_type != AnyGeometry:
-            found = False
-            for suffix in obj_classes_suffixes:
-                logger.debug(
-                    "Checking suffix for obj class",
-                    extra={
-                        "obj_class": ann_obj_class.name,
-                        "suffix": suffix,
-                        "geometry_type": ann_obj_class.geometry_type,
-                    },
-                )
-                new_obj_class_name = ann_obj_class.name + suffix
-                meta_obj_class = meta.get_obj_class(new_obj_class_name)
-                if meta_obj_class is None:
-                    logger.debug(
-                        "Creating new obj class with suffix",
-                        extra={"obj_class": new_obj_class_name},
-                    )
-                    new_obj_class = ann_obj_class.clone(name=new_obj_class_name)
-                    meta = meta.add_obj_class(new_obj_class)
-                    meta_changed = True
-                    changed_obj_classes[ann_obj_class.name] = new_obj_class
-                    found = True
-                    break
-                logger.debug(
-                    "Found obj class with suffix in meta",
-                    extra={"obj_class": meta_obj_class.to_json()},
-                )
-                if meta_obj_class.geometry_type == ann_obj_class.geometry_type:
-                    changed_obj_classes[ann_obj_class.name] = meta_obj_class
-                    found = True
-                    break
-            if not found:
-                raise ValueError(f"Can't add obj class {ann_obj_class.name} to project meta")
-
-    # check if tag metas are in project meta
-    # if not, add them with suffix
     changed_tag_metas = {}
-    for tag_meta in ann_tag_metas.values():
-        if meta.get_tag_meta(tag_meta.name) is None:
-            meta = meta.add_tag_meta(tag_meta)
+    for ann_tag_meta in ann_tag_metas.values():
+        meta_tag_meta = meta.get_tag_meta(ann_tag_meta.name)
+        if meta_tag_meta is None:
+            meta = meta.add_tag_meta(ann_tag_meta)
             meta_changed = True
-        elif not meta.get_tag_meta(tag_meta.name).is_compatible(tag_meta):
-            found = False
+        elif not meta_tag_meta.is_compatible(ann_tag_meta):
+            suffix_found = False
             for suffix in tag_meta_suffixes:
-                new_tag_meta_name = tag_meta.name + suffix
+                new_tag_meta_name = ann_tag_meta.name + suffix
                 meta_tag_meta = meta.get_tag_meta(new_tag_meta_name)
                 if meta_tag_meta is None:
-                    new_tag_meta = tag_meta.clone(name=new_tag_meta_name)
+                    new_tag_meta = ann_tag_meta.clone(name=new_tag_meta_name)
                     meta = meta.add_tag_meta(new_tag_meta)
-                    changed_tag_metas[tag_meta.name] = new_tag_meta
+                    changed_tag_metas[ann_tag_meta.name] = new_tag_meta
                     meta_changed = True
-                    found = True
+                    suffix_found = True
                     break
-                if meta_tag_meta.is_compatible(tag_meta):
-                    changed_tag_metas[tag_meta.name] = meta_tag_meta
-                    found = True
+                if meta_tag_meta.is_compatible(ann_tag_meta):
+                    changed_tag_metas[ann_tag_meta.name] = meta_tag_meta
+                    suffix_found = True
                     break
-            if not found:
-                raise ValueError(f"Can't add tag meta {tag_meta.name} to project meta")
+            if not suffix_found:
+                raise ValueError(f"Can't add tag meta {ann_tag_meta.name} to project meta")
 
-    labels = []
-    for label in ann.labels:
-        if label.obj_class.name in changed_obj_classes:
-            label = label.clone(obj_class=changed_obj_classes[label.obj_class.name])
-
-        label_tags = []
-        for tag in label.tags:
+    if changed_tag_metas:
+        labels = []
+        any_label_updated = False
+        for label in ann.labels:
+            any_tag_updated = False
+            label_tags = []
+            for tag in label.tags:
+                if tag.meta.name in changed_tag_metas:
+                    label_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                    any_tag_updated = True
+                else:
+                    label_tags.append(tag)
+            if any_tag_updated:
+                label = label.clone(tags=TagCollection(label_tags))
+                any_label_updated = True
+            labels.append(label)
+        img_tags = []
+        any_tag_updated = False
+        for tag in ann.img_tags:
             if tag.meta.name in changed_tag_metas:
-                label_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                img_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
+                any_tag_updated = True
             else:
-                label_tags.append(tag)
-
-        labels.append(label.clone(tags=TagCollection(label_tags)))
-    img_tags = []
-    for tag in ann.img_tags:
-        if tag.meta.name in changed_tag_metas:
-            img_tags.append(tag.clone(meta=changed_tag_metas[tag.meta.name]))
-        else:
-            img_tags.append(tag)
-
-    ann = ann.clone(labels=labels, img_tags=TagCollection(img_tags))
+                img_tags.append(tag)
+        if any_tag_updated or any_label_updated:
+            if any_tag_updated:
+                img_tags = TagCollection(img_tags)
+            else:
+                img_tags = None
+            if not any_label_updated:
+                labels = None
+            ann = ann.clone(img_tags=TagCollection(img_tags))
     return meta, ann, meta_changed
 
 
