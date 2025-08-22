@@ -20,6 +20,7 @@ class HRDA(BaseTrainArtifacts):
         # self._config_file = "config.py"
         # self._available_task_types: List[str] = ["semantic segmentation"]
         # self._require_runtime = False
+        # self._has_benchmark_evaluation = False
 
     def get_task_id(self, artifacts_folder: str) -> str:
         raise NotImplementedError

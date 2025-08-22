@@ -132,6 +132,14 @@ class PredictionSession:
             self.tracker = None
             self.tracker_settings = None
 
+        if "classes" in kwargs:
+            self.inference_settings["classes"] = kwargs["classes"]
+        # TODO: remove "settings", it is the same as inference_settings
+        if "settings" in kwargs:
+            self.inference_settings.update(kwargs["settings"])
+        if "inference_settings" in kwargs:
+            self.inference_settings.update(kwargs["inference_settings"])
+
         # extra input args
         image_ids = self._set_var_from_kwargs("image_ids", kwargs, image_id)
         video_ids = self._set_var_from_kwargs("video_ids", kwargs, video_id)
@@ -159,7 +167,6 @@ class PredictionSession:
             input = [input]
         if isinstance(input[0], np.ndarray):
             # input is numpy array
-            kwargs = get_valid_kwargs(kwargs, self._predict_images, exclude=["images"])
             self._predict_images(input, **kwargs)
         elif isinstance(input[0], (str, PathLike)):
             if len(input) > 1:
@@ -288,6 +295,8 @@ class PredictionSession:
             body["state"]["settings"] = self.inference_settings
         if self.api_token is not None:
             body["api_token"] = self.api_token
+        if "model_prediction_suffix" in self.kwargs:
+            body["state"]["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return body
     
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
@@ -562,7 +571,11 @@ class PredictionSession:
         return self._predict_images_bytes(images, batch_size=batch_size)
 
     def _predict_images_ids(
-        self, images: List[int], batch_size: int = None, upload_mode: str = None
+        self,
+        images: List[int],
+        batch_size: int = None,
+        upload_mode: str = None,
+        output_project_id: int = None,
     ):
         method = "inference_batch_ids_async"
         json_body = self._get_json_body()
@@ -572,6 +585,8 @@ class PredictionSession:
             state["batch_size"] = batch_size
         if upload_mode is not None:
             state["upload_mode"] = upload_mode
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_videos(
@@ -647,6 +662,7 @@ class PredictionSession:
         upload_mode: str = None,
         iou_merge_threshold: float = None,
         cache_project_on_model: bool = None,
+        output_project_id: int = None,
     ):
         if len(project_ids) != 1:
             raise ValueError("Only one project can be processed at a time.")
@@ -664,7 +680,8 @@ class PredictionSession:
             state["iou_merge_threshold"] = iou_merge_threshold
         if cache_project_on_model is not None:
             state["cache_project_on_model"] = cache_project_on_model
-
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_datasets(
