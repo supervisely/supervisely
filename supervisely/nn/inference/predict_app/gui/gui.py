@@ -225,6 +225,7 @@ class PredictAppGui:
 
         # Button Utils
         def deploy_model() -> ModelAPI:
+            self.model_selector.validator_text.hide()
             model_api = None
             try:
                 model_api = type(self.model_selector.model).deploy(self.model_selector.model)

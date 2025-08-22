@@ -14,8 +14,8 @@ from supervisely.project.project import ProjectType
 
 
 class InputSelector:
-    title = "Select Items"
-    description = "Select the data modality on which to run model"
+    title = "Select Input"
+    description = "Select input data on which to run model for prediction"
     lock_message = None
 
     def __init__(self, workspace_id: int):
@@ -85,6 +85,7 @@ class InputSelector:
         # Data type Radio Selector
         # self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
         self.radio = RadioGroup(items=[self._radio_item_images])
+        self.radio.hide()
         self.one_of = OneOf(conditional_widget=self.radio)
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.radio, self.one_of])
