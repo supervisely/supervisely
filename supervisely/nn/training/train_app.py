@@ -1096,6 +1096,7 @@ class TrainApp:
                 project_id=self.project_id,
                 dest_dir=self.project_dir,
                 dataset_ids=[ds_info.id for ds_info in dataset_infos],
+                save_image_info=True,
                 log_progress=True,
                 progress_cb=pbar.update,
             )
