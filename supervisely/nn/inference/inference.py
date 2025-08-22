@@ -2269,61 +2269,56 @@ class Inference:
             upload_f = _upload_predictions
 
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, inference_progress_total)
-
-        try:
-            with Uploader(upload_f, logger=logger) as uploader:
-                for dataset_info in datasets_infos:
-                    for images_infos_batch in batched(
-                        images_infos_dict[dataset_info.id], batch_size=batch_size
-                    ):
-                        if inference_request.is_stopped():
-                            logger.debug(
-                                f"Cancelling inference project...",
-                                extra={"inference_request_uuid": inference_request.uuid},
-                            )
-                            return
-                        if uploader.has_exception():
-                            exception = uploader.exception
-                            raise RuntimeError(f"Error in upload loop: {exception}") from exception
-                        if cache_project_on_model:
-                            images_paths, _ = zip(
-                                *read_from_cached_project(
-                                    project_info.id,
-                                    dataset_info.name,
-                                    [ii.name for ii in images_infos_batch],
-                                )
-                            )
-                            images_nps = [sly_image.read(img_path) for img_path in images_paths]
-                        else:
-                            images_nps = self.cache.download_images(
-                                api,
-                                dataset_info.id,
-                                [info.id for info in images_infos_batch],
-                                return_images=True,
-                            )
-                        anns, slides_data = self._inference_auto(
-                            source=images_nps,
-                            settings=inference_settings,
+        with Uploader(upload_f, logger=logger) as uploader:
+            for dataset_info in datasets_infos:
+                for images_infos_batch in batched(
+                    images_infos_dict[dataset_info.id], batch_size=batch_size
+                ):
+                    if inference_request.is_stopped():
+                        logger.debug(
+                            f"Cancelling inference project...",
+                            extra={"inference_request_uuid": inference_request.uuid},
                         )
-                        predictions = [
-                            Prediction(
-                                ann,
-                                model_meta=self.model_meta,
-                                image_id=image_info.id,
-                                name=image_info.name,
-                                dataset_id=dataset_info.id,
-                                project_id=dataset_info.project_id,
-                                image_name=image_info.name,
+                        return
+                    if uploader.has_exception():
+                        exception = uploader.exception
+                        raise RuntimeError(f"Error in upload loop: {exception}") from exception
+                    if cache_project_on_model:
+                        images_paths, _ = zip(
+                            *read_from_cached_project(
+                                project_info.id,
+                                dataset_info.name,
+                                [ii.name for ii in images_infos_batch],
                             )
-                            for ann, image_info in zip(anns, images_infos_batch)
-                        ]
-                        for pred, this_slides_data in zip(predictions, slides_data):
-                            pred.extra_data["slides_data"] = this_slides_data
+                        )
+                        images_nps = [sly_image.read(img_path) for img_path in images_paths]
+                    else:
+                        images_nps = self.cache.download_images(
+                            api,
+                            dataset_info.id,
+                            [info.id for info in images_infos_batch],
+                            return_images=True,
+                        )
+                    anns, slides_data = self._inference_auto(
+                        source=images_nps,
+                        settings=inference_settings,
+                    )
+                    predictions = [
+                        Prediction(
+                            ann,
+                            model_meta=self.model_meta,
+                            image_id=image_info.id,
+                            name=image_info.name,
+                            dataset_id=dataset_info.id,
+                            project_id=dataset_info.project_id,
+                            image_name=image_info.name,
+                        )
+                        for ann, image_info in zip(anns, images_infos_batch)
+                    ]
+                    for pred, this_slides_data in zip(predictions, slides_data):
+                        pred.extra_data["slides_data"] = this_slides_data
 
-                        uploader.put(predictions)
-        except Exception as e:
-            logger.debug("Error exiting fron uploader context: %s", e, exc_info=True)
-            raise
+                    uploader.put(predictions)
 
     def _run_speedtest(
         self,
