@@ -146,20 +146,25 @@ class Uploader:
         raise exception
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.stop()
+        logger.debug("Exiting uploader context")
         try:
-            self.join(timeout=30)
-            if self._upload_thread.is_alive():
-                raise TimeoutError("Uploader thread didn't finish in time")
-        except TimeoutError:
-            _logger = logger
-            if self._logger is not None:
-                _logger = self._logger
-            _logger.warning("Uploader thread didn't finish in time")
-        if exc_type is not None:
-            exc = exc_val.with_traceback(exc_tb)
-            return self._exception_handler(exc)
-        if self.has_exception():
-            exc = self.exception
-            return self._exception_handler(exc)
-        return False
+            self.stop()
+            try:
+                self.join(timeout=30)
+                if self._upload_thread.is_alive():
+                    raise TimeoutError("Uploader thread didn't finish in time")
+            except TimeoutError:
+                _logger = logger
+                if self._logger is not None:
+                    _logger = self._logger
+                _logger.warning("Uploader thread didn't finish in time")
+            if exc_type is not None:
+                exc = exc_val.with_traceback(exc_tb)
+                return self._exception_handler(exc)
+            if self.has_exception():
+                exc = self.exception
+                return self._exception_handler(exc)
+            return False
+        except Exception as e:
+            logger.debug("Error exiting uploader context: %s", str(e), exc_info=True)
+            raise e
