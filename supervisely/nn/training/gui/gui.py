@@ -6,6 +6,7 @@ training workflows in Supervisely.
 """
 
 import os
+import json
 from os import environ, getenv
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -846,15 +847,13 @@ class TrainGUI:
             }
         """
         if isinstance(app_state, str):
-            app_state = sly_json.load_json_file(app_state)
+            if os.path.isfile(app_state):
+                app_state = sly_json.load_json_file(app_state)
+            else:
+                app_state = json.loads(app_state)
 
         app_state = self.validate_app_state(app_state)
         options = app_state.get("options", {})
-
-        # Set experiment name
-        experiment_name = app_state.get("experiment_name")
-        if experiment_name is not None:
-            self.training_process.set_experiment_name(experiment_name)
 
         # Run init-steps and stop on validation failure
         def _run_step(init_fn, settings) -> bool:
@@ -881,6 +880,12 @@ class TrainGUI:
                 logger.info(
                     f"Step '{step_name}' {idx}/{len(_steps)} has been validated successfully"
                 )
+
+        # Set experiment name
+        experiment_name = app_state.get("experiment_name")
+        if experiment_name is not None:
+            self.training_process.set_experiment_name(experiment_name)
+
         if validate_steps:
             logger.info(f"All steps have been validated successfully")
         # ------------------------------------------------------------------ #
@@ -990,6 +995,13 @@ class TrainGUI:
             self.classes_selector.convert_class_shapes_checkbox.check()
 
         # Set Classes
+        if all(isinstance(c, int) for c in classes_settings):
+            project_classes = []
+            for obj_class in self.project_meta.obj_classes:
+                if obj_class.sly_id in classes_settings:
+                    project_classes.append(obj_class.name)
+            classes_settings = project_classes
+
         self.classes_selector.set_classes(classes_settings)
         is_valid = True
         if validate:
