@@ -148,7 +148,9 @@ class Uploader:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.stop()
         try:
-            self.join(timeout=5)
+            self.join(timeout=30)
+            if self._upload_thread.is_alive():
+                raise TimeoutError("Uploader thread didn't finish in time")
         except TimeoutError:
             _logger = logger
             if self._logger is not None:
@@ -158,6 +160,6 @@ class Uploader:
             exc = exc_val.with_traceback(exc_tb)
             return self._exception_handler(exc)
         if self.has_exception():
-            exc = self.exception.with_traceback(None)
+            exc = self.exception
             return self._exception_handler(exc)
         return False
