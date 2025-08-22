@@ -86,3 +86,8 @@ class Preview:
 
     def validate_step(self) -> bool:
         return True
+
+    def run_preview(self) -> None:
+        raise NotImplementedError(
+            "run_preview must be implemented by subclasses or injected at runtime"
+        )

@@ -239,6 +239,8 @@ class DeployModel(Widget):
             deploy_parameters = self.get_deploy_parameters()
             logger.info(f"Deploying custom model with parameters:", extra=deploy_parameters)
             experiment_info = deploy_parameters["experiment_info"]
+            if not isinstance(experiment_info, dict):
+                raise ValueError("experiment_info must be a mapping (dict) with experiment fields")
             experiment_info = ExperimentInfo(**experiment_info)
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
                 agent_id=agent_id,
@@ -251,6 +253,8 @@ class DeployModel(Widget):
         def load_from_json(self, data: Dict):
             if "experiment_info" in data:
                 experiment_info_json = data["experiment_info"]
+                if not isinstance(experiment_info_json, dict):
+                    raise ValueError("experiment_info must be a mapping (dict) in JSON data")
                 experiment_info = ExperimentInfo(**experiment_info_json)
                 self.experiment_table.set_selected_row_by_experiment_info(experiment_info)
             elif "train_task_id" in data:

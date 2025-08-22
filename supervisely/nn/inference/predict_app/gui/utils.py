@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Set
 from supervisely import logger
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
@@ -224,7 +224,7 @@ def copy_project(
 
     def _copy_datasets(created_project: ProjectInfo, src_datasets_tree: Dict[DatasetInfo, Dict]):
         created_datasets: Dict[int, DatasetInfo] = {}
-        processed_copy: set[int] = set()
+        processed_copy: Set[int] = set()
 
         for dataset_id in dataset_ids:
             chain = find_parents_in_tree(src_datasets_tree, dataset_id, with_self=True)

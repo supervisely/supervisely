@@ -40,13 +40,15 @@ from supervisely.project import ProjectMeta
 from supervisely.template.base_generator import BaseGenerator
 
 try:
-    from tbparse import SummaryReader
-    import plotly.express as px
-    from plotly.subplots import make_subplots
-    import plotly.graph_objects as go
+    from tbparse import SummaryReader  # pylint: disable=import-error
+    import plotly.express as px  # pylint: disable=import-error
+    from plotly.subplots import make_subplots  # pylint: disable=import-error
+    import plotly.graph_objects as go  # pylint: disable=import-error
 except Exception as _:
     SummaryReader = None  # type: ignore
     px = None  # type: ignore
+    make_subplots = None  # type: ignore
+    go = None  # type: ignore
 
 # @TODO: Partly supports unreleased apps
 class ExperimentGenerator(BaseGenerator):
@@ -1134,3 +1136,7 @@ class ExperimentGenerator(BaseGenerator):
         except Exception as e:
             logger.warning(f"Failed to build or save static training plot: {e}")
             return None
+
+
+# Pylint Errors: ************* Module supervisely.api.app_api
+# supervisely/api/app_api.py:1463:20: E0606: Possibly using variable 'progress' before assignment (possibly-used-before-assignment)

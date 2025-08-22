@@ -245,9 +245,10 @@ class TrainApp:
             status = self.gui.training_process.validator_text.get_value()
             if status == "Training is in progress...":
                 try:
-                    total_epochs = self.progress_bar_main.total
-                    current_epoch = self.progress_bar_main.current
-                    status += f" (Epoch {current_epoch}/{total_epochs})"
+                    total_epochs = getattr(self.progress_bar_main, "total", None)
+                    current_epoch = getattr(self.progress_bar_main, "current", None)
+                    if total_epochs is not None and current_epoch is not None:
+                        status += f" (Epoch {current_epoch}/{total_epochs})"
                 except Exception:
                     pass
             return {"status": status}
@@ -1262,7 +1263,7 @@ class TrainApp:
                 if split_name == "train":
                     split = self._train_split
                 else:
-                    split_name = self._val_split
+                    split = self._val_split
                 with self.progress_bar_secondary(
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
@@ -3176,18 +3177,24 @@ class TrainApp:
         train_img_ids = list(self._train_split_item_ids)
         train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
         train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
-        self._api.entities_collection.add_items(train_collection.id, train_img_ids)
-        self._train_collection_id = train_collection.id
+        train_collection_id = getattr(train_collection, "id", None)
+        if train_collection_id is None:
+            raise AttributeError("Train EntitiesCollectionInfo object does not have 'id' attribute")
+        self._api.entities_collection.add_items(train_collection_id, train_img_ids)
+        self._train_collection_id = train_collection_id
 
         # Create Val Collection
         val_img_ids = list(self._val_split_item_ids)
         val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
         val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
-        self._api.entities_collection.add_items(val_collection.id, val_img_ids)
-        self._val_collection_id = val_collection.id
+        val_collection_id = getattr(val_collection, "id", None)
+        if val_collection_id is None:
+            raise AttributeError("Val EntitiesCollectionInfo object does not have 'id' attribute")
+        self._api.entities_collection.add_items(val_collection_id, val_img_ids)
+        self._val_collection_id = val_collection_id
 
         # Update Project Custom Data
-        self._update_project_custom_data(train_collection.id, val_collection.id)
+        self._update_project_custom_data(train_collection_id, val_collection_id)
 
     def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
         train_info = {

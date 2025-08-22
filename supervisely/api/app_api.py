@@ -1442,6 +1442,7 @@ class AppApi(TaskApi):
             payload[ApiField.FILE_KEY] = file_key
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
@@ -1459,7 +1460,7 @@ class AppApi(TaskApi):
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
                 log_size += len(chunk)
-                if log_progress and log_size > mb1:
+                if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
 
@@ -1483,6 +1484,7 @@ class AppApi(TaskApi):
             payload[ApiField.APP_ID] = app_id
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
@@ -1500,7 +1502,7 @@ class AppApi(TaskApi):
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
                 log_size += len(chunk)
-                if log_progress and log_size > mb1:
+                if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
 
