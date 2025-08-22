@@ -4520,7 +4520,8 @@ def update_meta_and_ann(meta: ProjectMeta, ann: Annotation, model_prediction_suf
             # if no suffix found, raise error
             raise ValueError(
                 f"Can't add obj class {original_obj_class_name} to project meta. "
-                "Please check if geometry type is compatible with existing obj classes."
+                "Tried with suffixes: " + ", ".join(obj_classes_suffixes) + ". "
+                "Please check if model geometry type is compatible with existing obj classes."
             )
     if any_label_updated:
         ann = ann.clone(labels=updated_labels)
