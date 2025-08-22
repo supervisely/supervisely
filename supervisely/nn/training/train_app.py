@@ -2041,12 +2041,6 @@ class TrainApp:
         :rtype: tuple
         """
         need_generate_report = self._app_options.get("generate_report", False)
-        # @TODO: temporary code to generate report for dev only
-        is_dev = "dev.internal" in self._api.server_address
-        if not is_dev:
-            need_generate_report = False
-        # ------------------------------------------------------------ #
-
         if need_generate_report:  # link to experiment page
             try:
                 output_file_info = self._generate_experiment_report(experiment_info, model_meta)
