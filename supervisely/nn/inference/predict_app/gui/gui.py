@@ -21,14 +21,14 @@ from supervisely.nn.inference.predict_app.gui.settings_selector import (
     SettingsSelector,
 )
 from supervisely.nn.inference.predict_app.gui.tags_selector import TagsSelector
+from supervisely.nn.inference.predict_app.gui.utils import (
+    copy_project,
+    disable_enable,
+    set_stepper_step,
+    wrap_button_click,
+)
 from supervisely.nn.model.model_api import ModelAPI
 from supervisely.nn.model.prediction import Prediction
-from supervisely.nn.inference.predict_app.gui.utils import (
-    set_stepper_step,
-    disable_enable,
-    wrap_button_click,
-    copy_project,
-)
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.video_annotation.key_id_map import KeyIdMap
 from supervisely.video_annotation.video_annotation import VideoAnnotation
@@ -583,7 +583,9 @@ class PredictAppGui:
         output_parameters = run_parameters["output"]
         project_name = output_parameters["project_name"]
         if not project_name:
-            raise ValueError("Project name cannot be empty when creating a new project.")
+            input_project_info = self.api.project.get_info_by_id(input_project_id)
+            project_name = input_project_info.name + " [Predictions]"
+            logger.warning("Project name is empty, using auto-generated name: " + project_name)
 
         # Copy project
         self.set_validator_text("Copying project...", "info")
