@@ -169,10 +169,10 @@ class SelectDatasetTree(Widget):
         for widget in self._widgets:
             widget.disable()
 
-        if hasattr(self, "_select_team"):
+        if self._select_team is not None:
             if not self._team_is_selectable:
                 self._select_team.disable()
-        if hasattr(self, "_select_workspace"):
+        if self._select_workspace is not None:
             if not self._workspace_is_selectable:
                 self._select_workspace.disable()
 
@@ -181,10 +181,10 @@ class SelectDatasetTree(Widget):
         for widget in self._widgets:
             widget.enable()
 
-        if hasattr(self, "_select_team"):
+        if self._select_team is not None:
             if not self._team_is_selectable:
                 self._select_team.disable()
-        if hasattr(self, "_select_workspace"):
+        if self._select_workspace is not None:
             if not self._workspace_is_selectable:
                 self._select_workspace.disable()
 
