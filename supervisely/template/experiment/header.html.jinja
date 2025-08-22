@@ -60,7 +60,7 @@
                 :selectContext="true"
                 :disabled="false"
                 :autoRun="false"
-                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'run': true, 'stopAfterRun': true}"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'run': false, 'stopAfterRun': false}"
                 :moduleId="{{ resources.apps.predict.module_id }}"
                 :openInNewWindow="true"
                 :command="command"

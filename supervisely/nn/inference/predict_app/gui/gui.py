@@ -677,6 +677,7 @@ class PredictAppGui:
     def load_from_json(self, data):
         # 1. Input selector
         self.input_selector.load_from_json(data.get("input", {}))
+        # self.input_selector_cb()
 
         # 2. Model selector
         self.model_selector.model.load_from_json(data.get("model", {}))
