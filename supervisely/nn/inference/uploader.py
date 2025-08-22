@@ -105,10 +105,6 @@ class Uploader:
             self.stop()
             return
         except Exception as e:
-            try:
-                raise RuntimeError("Error in upload loop") from e
-            except RuntimeError as e_:
-                e = e_
             if self._logger is not None:
                 self._logger.error("Error in upload loop: %s", str(e), exc_info=True)
             if not self._exception_event.is_set():
@@ -160,5 +156,8 @@ class Uploader:
             _logger.warning("Uploader thread didn't finish in time")
         if exc_type is not None:
             exc = exc_val.with_traceback(exc_tb)
+            return self._exception_handler(exc)
+        if self.has_exception():
+            exc = self.exception.with_traceback(None)
             return self._exception_handler(exc)
         return False
