@@ -42,7 +42,7 @@ class VisualizationConfig:
         return self
 
 
-class VideoTrackingVisualizer:
+class TrackingVisualizer:
     def __init__(self, config: VisualizationConfig = None):
         """
         Initialize the visualizer with configuration.
