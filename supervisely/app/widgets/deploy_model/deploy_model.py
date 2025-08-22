@@ -144,10 +144,12 @@ class DeployModel(Widget):
 
     class Pretrained(DeployMode):
         class COLUMN:
+            # TODO: columns are the same as in EcosystemModelSelector, make a common base class
             FRAMEWORK = "Framework"
             MODEL_NAME = "Model"
             TASK_TYPE = "Task Type"
             PARAMETERS = "Parameters (M)"
+            # TODO: support metrics for different tasks
             MAP = "mAP"
 
         COLUMNS = [

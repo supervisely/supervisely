@@ -19,6 +19,7 @@ class EcosystemModelSelector(Widget):
         FRAMEWORK = "framework"
         TASK_TYPE = "task"
         PARAMETERS = "params (M)"
+        # TODO: support metrics for different tasks
         MAP = "mAP"
 
     COLUMNS = [

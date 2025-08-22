@@ -583,7 +583,6 @@ class ExperimentSelector(Widget):
 
         def process_experiment_info(experiment_info: ExperimentInfo):
             try:
-                # TODO remove temp logs
                 logger.debug(f"Processing experiment info: {experiment_info.task_id}")
                 project_info = self._project_infos_map.get(experiment_info.project_id)
                 model_row = ExperimentSelector.ModelRow(

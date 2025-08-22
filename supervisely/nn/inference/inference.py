@@ -906,13 +906,14 @@ class Inference:
                         local_model_files[file] = file_path
                         return local_model_files
                 except _pickle.UnpicklingError as e:
-                    logger.debug(f"Couldn't load '{file_name}'. Checkpoint might be corrupted. Error: {repr(e)}")
-                    logger.debug("Model files will be downloaded from Team Files")
+                    # TODO: raise error - checkpoint is corrupted
+                    logger.warning(f"Couldn't load '{file_name}'. Checkpoint might be corrupted. Error: {repr(e)}")
+                    logger.warning("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
                 except Exception as e:
-                    logger.debug(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
-                    logger.debug("Model files will be downloaded from Team Files")
+                    logger.warning(f"Failed to process checkpoint '{file_name}' to extract auxiliary files: {repr(e)}")
+                    logger.warning("Model files will be downloaded from Team Files")
                     local_model_files[file] = file_path
                     continue
 
@@ -4724,6 +4725,7 @@ def get_value_for_keys(data: dict, keys: List, ignore_none: bool = False):
 def torch_load_safe(checkpoint_path: str, device:str = "cpu"):
     import torch  # pylint: disable=import-error
 
+    # TODO: handle torch.load(weights_only=True) - change in torch 2.6.0
     try:
         logger.debug(f"Loading checkpoint from {checkpoint_path} on {device}")
         checkpoint = torch.load(checkpoint_path, map_location=device)

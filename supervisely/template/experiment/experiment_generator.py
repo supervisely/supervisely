@@ -1045,7 +1045,7 @@ class ExperimentGenerator(BaseGenerator):
     def _generate_training_plots(self) -> Optional[str]:
         # pip install tbparse plotly kaleido
         if SummaryReader is None or px is None:
-            logger.debug("tbparse or plotly is not installed – skipping training plots generation")
+            logger.warning("tbparse or plotly is not installed – skipping training plots generation")
             return None
 
         logs_path = self.info.get("logs", {}).get("link")
