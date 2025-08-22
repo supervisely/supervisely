@@ -1,7 +1,7 @@
 import datetime
 import tempfile
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Literal, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Tuple, Union, cast
 
 import pandas as pd
 import yaml
@@ -241,7 +241,8 @@ class DeployModel(Widget):
             experiment_info = deploy_parameters["experiment_info"]
             if not isinstance(experiment_info, dict):
                 raise ValueError("experiment_info must be a mapping (dict) with experiment fields")
-            experiment_info = ExperimentInfo(**experiment_info)
+            exp_info_dict = cast(Dict[str, Any], experiment_info)
+            experiment_info = ExperimentInfo(**exp_info_dict)
             task_info = self.api.nn._deploy_api.deploy_custom_model_from_experiment_info(
                 agent_id=agent_id,
                 experiment_info=experiment_info,
@@ -255,7 +256,8 @@ class DeployModel(Widget):
                 experiment_info_json = data["experiment_info"]
                 if not isinstance(experiment_info_json, dict):
                     raise ValueError("experiment_info must be a mapping (dict) in JSON data")
-                experiment_info = ExperimentInfo(**experiment_info_json)
+                exp_info_json_dict = cast(Dict[str, Any], experiment_info_json)
+                experiment_info = ExperimentInfo(**exp_info_json_dict)
                 self.experiment_table.set_selected_row_by_experiment_info(experiment_info)
             elif "train_task_id" in data:
                 task_id = data["train_task_id"]
