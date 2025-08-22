@@ -137,6 +137,7 @@ class Uploader:
             self.exception = exception
 
     def __enter__(self):
+        logger.debug("Entering uploader context")
         return self
 
     def _default_exception_handler(
