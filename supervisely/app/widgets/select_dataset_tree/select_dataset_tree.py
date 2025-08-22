@@ -169,20 +169,24 @@ class SelectDatasetTree(Widget):
         for widget in self._widgets:
             widget.disable()
 
-        if not self._team_is_selectable:
-            self._select_team.disable()
-        if not self._workspace_is_selectable:
-            self._select_workspace.disable()
+        if hasattr(self, "_select_team"):
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if hasattr(self, "_select_workspace"):
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
 
     def enable(self) -> None:
         """Enable the widget in the UI."""
         for widget in self._widgets:
             widget.enable()
 
-        if not self._team_is_selectable:
-            self._select_team.disable()
-        if not self._workspace_is_selectable:
-            self._select_workspace.disable()
+        if hasattr(self, "_select_team"):
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if hasattr(self, "_select_workspace"):
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
 
     @property
     def team_id(self) -> int:
