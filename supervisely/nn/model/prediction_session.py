@@ -114,6 +114,7 @@ class PredictionSession:
 
         if "classes" in kwargs:
             self.inference_settings["classes"] = kwargs["classes"]
+        # TODO: remove "settings", it is the same as inference_settings
         if "settings" in kwargs:
             self.inference_settings.update(kwargs["settings"])
         if "inference_settings" in kwargs:
