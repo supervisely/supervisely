@@ -83,7 +83,8 @@ class InputSelector:
         # -------------------------------- #
 
         # Data type Radio Selector
-        self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
+        # self.radio = RadioGroup(items=[self._radio_item_images, self._radio_item_videos])
+        self.radio = RadioGroup(items=[self._radio_item_images])
         self.one_of = OneOf(conditional_widget=self.radio)
         # Add widgets to display ------------ #
         self.display_widgets.extend([self.radio, self.one_of])
