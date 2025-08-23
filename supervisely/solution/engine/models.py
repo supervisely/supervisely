@@ -79,3 +79,9 @@ class EmbeddingsStatusMessage(Message):
     """Embeddings status event message."""
 
     status: bool = Field(..., description="Indicates if embeddings are enabled and up to date")
+
+
+class CLIPServiceStatusMessage(Message):
+    """CLIP service status event message."""
+
+    is_ready: bool = Field(..., description="Indicates if CLIP service is available and ready")

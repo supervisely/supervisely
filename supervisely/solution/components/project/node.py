@@ -1,11 +1,11 @@
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from supervisely.api.api import Api
+from supervisely.app.widgets import Button
+from supervisely.io.env import project_id as env_project_id
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import SolutionElement, SolutionProjectNode
+from supervisely.solution.base_node import BaseProjectNode
 from supervisely.solution.components.project.automation import ProjectAutomation
-from supervisely.solution.components.project.gui import ProjectGUI
-from supervisely.solution.engine.events import on_event
 from supervisely.solution.engine.models import (
     ImportFinishedMessage,
     MoveLabeledDataFinishedMessage,
@@ -13,64 +13,36 @@ from supervisely.solution.engine.models import (
 )
 
 
-class ProjectNode(SolutionElement):
+class ProjectNode(BaseProjectNode):
     """
     Project node for representing a Supervisely project in a solution.
     This node displays project information and provides links to view the project.
     """
 
+    is_training = False
+
     def __init__(
         self,
-        project_id: int,
-        title: str = "Input Project",
-        description: str = "Centralizes all incoming data. Data in this project will not be modified.",
-        is_training: bool = False,
-        x: int = 0,
-        y: int = 0,
-        dataset_id: Optional[int] = None,
+        project_id: int = None,
         refresh_interval: int = 30,
-        tooltip_position: str = "left",
         *args,
         **kwargs,
     ):
         """
         Initialize the Project node.
 
-        :param api: Supervisely API instance
         :param project_id: ID of the project to display
-        :param title: Title for the project node
-        :param description: Description of the project node
-        :param is_training: Whether this is a training project (affects display)
-        :param x: X coordinate of the node
-        :param y: Y coordinate of the node
-        :param dataset_id: Optional dataset ID to filter items in the project
         :param args: Additional positional arguments
         """
         self.api = Api.from_env()
-        self.project_id = project_id
-
+        self.project_id = project_id or env_project_id()
         # --- project info ------------------------------------------------------
-        self.project = self.api.project.get_info_by_id(project_id)
+        self.project = self.api.project.get_info_by_id(self.project_id)
         self.workspace_id = self.project.workspace_id
-        self.dataset_id = dataset_id
-        self.dataset = None
-        if self.dataset_id is not None:
-            self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
-
-        self.title = title
-        self.description = description
-        self.is_training = is_training
 
         # --- core blocks --------------------------------------------------------
-        self.automation = ProjectAutomation(project_id=self.project_id, func=self.update)
-        self.gui = ProjectGUI(
-            title=self.title,
-            project=self.project,
-            is_training=self.is_training,
-            dataset=self.dataset,
-            tooltip_position=tooltip_position,
-        )
-        self.node = SolutionProjectNode(content=self.gui.card, x=x, y=y)
+        self._automation = ProjectAutomation(project_id=self.project_id, func=self.update)
+        super().__init__(*args, **kwargs)
 
         # --- modals -------------------------------------------------------------
         self.modals = []
@@ -80,7 +52,27 @@ class ProjectNode(SolutionElement):
         self.update()
         # self.apply_automation(sec=self.refresh_interval)
 
-        super().__init__(*args, **kwargs)
+
+    def _get_tooltip_buttons(self):
+        stats_url = self.project.url.replace("datasets", "stats/datasets")
+        return [
+            Button(
+                "Open project",
+                icon="zmdi zmdi-open-in-new",
+                button_size="mini",
+                plain=True,
+                link=self.project.url,
+                button_type="text",
+            ),
+            Button(
+                "QA stats",
+                icon="zmdi zmdi-open-in-new",
+                button_size="mini",
+                plain=True,
+                link=stats_url,
+                button_type="text",
+            ),
+        ]
 
     # ------------------------------------------------------------------
     # Base Widget Methods ----------------------------------------------
@@ -93,7 +85,6 @@ class ProjectNode(SolutionElement):
             "project_id": self.project_id,
             "workspace_id": self.workspace_id,
             "is_training": self.is_training,
-            "dataset_id": self.dataset_id,
         }
 
     def get_json_state(self) -> dict:
@@ -107,11 +98,7 @@ class ProjectNode(SolutionElement):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
-        return {
-            "import_finished": self.update,
-            "sample_finished": self.update,
-            "train_val_split_finished": self.update,
-        }
+        return {}
 
     def update(
         self,
@@ -136,25 +123,21 @@ class ProjectNode(SolutionElement):
             preview_url = message.image_preview_url or self.project.image_preview_url
         else:
             preview_url = self.project.image_preview_url
-        if self.dataset_id is not None:
-            self.dataset = self.api.dataset.get_info_by_id(self.dataset_id)
-            items_count = self.dataset.items_count or 0
-            preview_url = self.dataset.image_preview_url
 
         if new_items_count is not None:
-            self.node.update_property(key="Last update", value=f"+{new_items_count}")
-            self.node.update_badge_by_key(key="Last update:", label=f"+{new_items_count}")
-        self.node.update_property(key="Total", value=f"{items_count} images")
+            self.update_property(key="Last update", value=f"+{new_items_count}")
+            self.update_badge_by_key(key="Last update:", label=f"+{new_items_count}")
+        self.update_property(key="Total", value=f"{items_count} images")
 
         # Update preview
         if self.is_training:
             train_items, val_items = self._get_train_val_items()
-            self.gui.update_preview(
+            self.update_preview(
                 [self._get_random_image_url(train_items), self._get_random_image_url(val_items)],
                 [len(train_items), len(val_items)],
             )
         else:
-            self.gui.update_preview([preview_url], [items_count or 0])
+            self.update_preview([preview_url], [items_count or 0])
 
     def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
         """
@@ -182,8 +165,6 @@ class ProjectNode(SolutionElement):
         """
         Returns the items in training and validation collections.
 
-        :param dataset_id: Optional dataset ID to filter items
-        :type dataset_id: Optional[int]
         :return: Tuple containing lists of training and validation items.
         """
         train_collections, val_collections = self._get_train_val_collections()
@@ -196,11 +177,6 @@ class ProjectNode(SolutionElement):
         for collection_id in val_collections:
             images = self.api.entities_collection.get_items(collection_id, self.project_id)
             val_items.extend(images)
-
-        if self.dataset_id is not None:
-            # Filter items by dataset ID if provided
-            train_items = [item for item in train_items if item.dataset_id == self.dataset_id]
-            val_items = [item for item in val_items if item.dataset_id == self.dataset_id]
 
         return train_items, val_items
 

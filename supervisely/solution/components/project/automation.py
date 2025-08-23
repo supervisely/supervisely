@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import Automation
+from supervisely.solution.automation import Automation
 
 
 class ProjectAutomation(Automation):

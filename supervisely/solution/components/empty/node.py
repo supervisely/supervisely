@@ -1,10 +1,11 @@
+import re
 from typing import Literal, Optional, Union
 
 from supervisely.app.widgets import Icons, SolutionCard
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.base_node import BaseCardNode
 
 
-class EmptyNode(SolutionElement):
+class EmptyNode(BaseCardNode):
     """
     Base class for nodes that can be used only as placeholders in the graph builder.
     It does not have any functionality and is used to structure the graph visually.
@@ -12,41 +13,35 @@ class EmptyNode(SolutionElement):
 
     def __init__(
         self,
-        title: str,
-        description: str,
-        x: int = 0,
-        y: int = 0,
+        title: str = "Empty Node",
+        description: str = None,
         width: int = 250,
-        icon: Optional[Union[Icons, str]] = None,
+        icon: str = "mdi mdi-google-downasaur",
+        icon_color: str = "#1976D2",
+        icon_bg_color: str = "#E3F2FD",
         tooltip_position: Literal["left", "right"] = "right",
         badge: SolutionCard.Badge = None,
         *args,
         **kwargs,
     ):
-        self.title = title
-        self.description = description
-        self.width = width
-        if isinstance(icon, str):
-            icon = Icons(class_name=icon, color="#4CAF50", bg_color="#E8F5E9")
-        self.icon = icon
-        self.tooltip_position = tooltip_position
-        self.card = self._create_card()
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
-        super().__init__(*args, **kwargs)
+        if isinstance(icon, Icons):
+            icon = re.sub(r'<i class="(.*?)"', r"\1", icon) if icon else None
+        title = kwargs.pop("title", title)
+        description = kwargs.pop("description", description)
+        icon = kwargs.pop("icon", icon)
+        icon_color = kwargs.pop("icon_color", icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", icon_bg_color)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
+        )
 
         if badge is not None:
             if not isinstance(badge, SolutionCard.Badge):
                 raise TypeError("Badge must be an instance of SolutionCard.Badge")
             self.card.add_badge(badge)
-
-    def _create_card(self) -> SolutionCard:
-        return SolutionCard(
-            title=self.title,
-            tooltip=self._create_tooltip(),
-            width=self.width,
-            tooltip_position=self.tooltip_position,
-            icon=self.icon,
-        )
-
-    def _create_tooltip(self) -> SolutionCard.Tooltip:
-        return SolutionCard.Tooltip(description=self.description)

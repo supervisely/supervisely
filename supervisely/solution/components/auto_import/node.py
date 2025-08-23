@@ -4,66 +4,79 @@ from typing import Callable, Dict, Tuple
 
 from supervisely._utils import abs_url
 from supervisely.api.api import Api
+from supervisely.io.env import project_id as env_project_id
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import ImportFinishedMessage
 
 from .history import AutoImportTasksHistory
 
 
-class AutoImportNode(SolutionElement):
+class AutoImportNode(BaseCardNode):
     progress_badge_key = "Import"
     APP_SLUG = "supervisely-ecosystem/main-import"
+    title = "Manual D&I Import"
+    description = "Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
+    icon = "mdi mdi-database-import"
+    icon_color = "#1976D2"
+    icon_bg_color = "#E3F2FD"
 
-    def __init__(
-        self,
-        project_id: int,
-        x: int = 0,
-        y: int = 0,
-        tooltip_position: str = "left",
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, project_id: int = None, *args, **kwargs):
         """
         Initialize the Manual Import GUI widget.
 
         :param project_id: ID of the project to import data into.
-        :param widget_id: Optional widget ID for the node.
         """
         self.api = Api.from_env()
-        self.project_id = project_id
+        self.project_id = project_id or env_project_id()
         self._refresh_interval = 60
         self._stop_autorefresh = False
         self._refresh_thread = None
         self._last_task_id = None
-        super().__init__(*args, **kwargs)
+
+        # ! TODO: remove hardcoded agent_id
+        agent_id = 41
+        autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
+        # ! TODO: remove hardcoded agent_id
+        autoimport_link += f"?moduleId=435&nodeId={agent_id}&appVersion=test-env&appIsBranch=true"
+
+        # --- node init ----------------------------------------------------------
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            link=autoimport_link,
+            *args,
+            **kwargs,
+        )
 
         # --- core blocks --------------------------------------------------------
-        # ! TODO: remove hardcoded node_id
-        node_id = 41
-        self.tasks_history = AutoImportTasksHistory(self.api, self.project_id)
-        # self.tasks_history.start_autorefresh()
-        autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
-
-        # ! TODO: remove hardcoded node_id
-        autoimport_link += f"?moduleId=435&nodeId={node_id}&appVersion=test-env&appIsBranch=true"
-
-        self.card = self._build_card(
-            title="Drag & Drop Import",
-            tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
-            buttons=[self.tasks_history.open_modal_button],
-            link=autoimport_link,
-            icon="zmdi zmdi-upload",
-            icon_color="#1976D2",
-            icon_bg_color="#E3F2FD",
-            tooltip_position=tooltip_position,
-        )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
+        self.history = AutoImportTasksHistory(self.api, self.project_id)
         self.start_autorefresh()
 
         # --- modals -------------------------------------------------------------
-        self.modals = [self.tasks_history.modal, self.tasks_history.logs_modal]
-        self._tasks = self.tasks_history._tasks
+        self.modals = [self.history.modal, self.history.logs_modal]
+        self._tasks = self.history._tasks
+
+    # ------------------------------------------------------------------
+    # Handles ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "import_finished",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            }
+        ]
 
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
@@ -129,7 +142,7 @@ class AutoImportNode(SolutionElement):
         return 0, preview_url
 
     # ------------------------------------------------------------------
-    # Table Helpers ----------------------------------------------------
+    # History Table Helpers ----------------------------------------------------
     # ------------------------------------------------------------------
     def _autorefresh(self):
         t = time.monotonic()

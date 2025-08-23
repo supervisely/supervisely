@@ -2,7 +2,7 @@ from typing import Literal, Optional, Union
 
 from supervisely._utils import abs_url, is_development
 from supervisely.app.widgets import Icons
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.automation import SolutionCardNode, SolutionElement
 
 
 class LinkNode(SolutionElement):
@@ -25,6 +25,7 @@ class LinkNode(SolutionElement):
         *args,
         **kwargs,
     ):
+        self._parent_id = kwargs.pop("parent_id", None)
         super().__init__(*args, **kwargs)
 
         if isinstance(icon, Icons):
@@ -43,4 +44,4 @@ class LinkNode(SolutionElement):
             width=width,
             tooltip_position=tooltip_position,
         )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
+        self.node = SolutionCardNode(content=self.card, x=x, y=y, parent_id=self._parent_id)

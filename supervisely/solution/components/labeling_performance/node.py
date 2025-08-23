@@ -3,7 +3,7 @@ from typing import Literal, Optional, Union
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
 from supervisely.app.widgets import Icons
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.automation import SolutionCardNode, SolutionElement
 from supervisely.solution.components.link_node.node import LinkNode
 
 

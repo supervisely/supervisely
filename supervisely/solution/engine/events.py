@@ -1,29 +1,28 @@
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, List, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from supervisely.app.singleton import Singleton
 from supervisely.sly_logger import logger
 
+# # to subscribe to an event, use:
+# def on_event(topic: Union[str, List[str]]):
+#     if isinstance(topic, str):
+#         topic = [topic]
 
-# to subscribe to an event, use:
-def on_event(topic: Union[str, List[str]]):
-    if isinstance(topic, str):
-        topic = [topic]
+#     def decorator(method):
+#         if hasattr(method, "_event_topic"):
+#             raise ValueError(
+#                 f"Method {method.__name__} already has an event topic defined: {method._event_topic}. "
+#             )
+#         method._event_topic = topic.copy()
+#         return method
 
-    def decorator(method):
-        if hasattr(method, "_event_topic"):
-            raise ValueError(
-                f"Method {method.__name__} already has an event topic defined: {method._event_topic}. "
-            )
-        method._event_topic = topic.copy()
-        return method
-
-    return decorator
+#     return decorator
 
 
 # to publish an event, use:
-def publish_event(topic: Union[str, List[str]]):
+def publish_event(topic: Union[str, List[str]], source: Optional[str] = None):
     if isinstance(topic, str):
         topic = [topic]
 
@@ -32,7 +31,7 @@ def publish_event(topic: Union[str, List[str]]):
             message = method(*args, **kwargs)
             broker = PubSubAsync()
             for t in topic:
-                broker.publish(t, message)
+                broker.publish(t, message, source)
             return message
 
         return wrapper
@@ -42,42 +41,56 @@ def publish_event(topic: Union[str, List[str]]):
 
 class PubSub(metaclass=Singleton):
     def __init__(self):
-        self.subscribers = {}  # Dictionary to store subscribers for each topic
+        # Dictionary to store subscribers for each topic and source
+        # Key: (topic, source), Value: List of callback functions
+        self.subscribers: Dict[Tuple[str, Optional[str]], List[Callable]] = {}
 
-    def _safe_callback_wrapper(self, callback: Callable, message: str, topic: str):
+    def _safe_callback_wrapper(self, callback: Callable, message: Union[str, None], topic: str):
         """Wrapper for safe callback execution"""
         try:
-            callback(message)
+            if message is not None:
+                callback(message)
+            else:
+                callback()
         except Exception as e:
             logger.error(f"Error calling subscriber for topic '{topic}': {e}", exc_info=True)
 
-    def _callback_wrapper(self, callback: Callable, message: str, topic: str):
+    def _callback_wrapper(self, callback: Callable, message: Union[str, None], topic: str):
         """Wrapper for safe callback execution"""
         return self._safe_callback_wrapper(callback, message, topic)
 
-    def subscribe(self, topic, callback: Callable):
+    def subscribe(self, topic, callback: Callable, source: Optional[str] = None):
         """Subscribes a callback function to a given topic."""
-        if topic not in self.subscribers:
-            self.subscribers[topic] = []
-        self.subscribers[topic].append(callback)
-        logger.info(f"[EVENT]: {callback.__qualname__}() subscribed to topic: '{topic}'")
+        key = (topic, source)
+        if key not in self.subscribers:
+            self.subscribers[key] = []
+        self.subscribers[key].append(callback)
+        src_log = f" from source '{source}'" if source is not None else ""
+        logger.info(f"[EVENT]: {callback.__qualname__}() subscribed to topic: '{topic}'{src_log}")
 
-    def unsubscribe(self, topic, callback: Callable):
+    def unsubscribe(self, topic, callback: Callable, source: Optional[str] = None):
         """Unsubscribes a callback function from a given topic."""
-        if topic in self.subscribers and callback in self.subscribers[topic]:
-            self.subscribers[topic].remove(callback)
-            logger.info(f"[EVENT]: {callback.__qualname__}() unsubscribed from topic: '{topic}'")
+        key = (topic, source)
+        if key in self.subscribers and callback in self.subscribers[key]:
+            self.subscribers[key].remove(callback)
+            src_log = f" from source '{source}'" if source is not None else ""
+            logger.info(
+                f"[EVENT]: {callback.__qualname__}() unsubscribed from topic: '{topic}'{src_log}"
+            )
 
-    def publish(self, topic, message):
+    def publish(self, topic, message = None, source: Optional[str] = None):
         """Publishes a message to a given topic, notifying all subscribers."""
-        if topic in self.subscribers:
-            for callback in self.subscribers[topic]:
-                logger.info(
-                    f"[EVENT]: {callback.__qualname__}() called for topic: '{topic}'"
-                )
+        key = (topic, source)
+        for callback in self.subscribers.get(key, []):
+            seen = set()
+            if callback not in seen:
+                seen.add(callback)
+                logger.info(f"[EVENT]: {callback.__qualname__}() called for topic: '{topic}'")
                 self._callback_wrapper(callback, message, topic)
-        else:
-            logger.info(f"No subscribers for topic: '{topic}'")
+            else:
+                logger.warning(
+                    f"[EVENT]: Duplicate callback {callback.__qualname__}() for topic: '{topic}' skipped"
+                )
 
 
 class PubSubAsync(PubSub):

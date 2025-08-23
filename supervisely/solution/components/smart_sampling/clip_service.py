@@ -2,10 +2,9 @@ import threading
 import time
 
 from supervisely.api.api import Api
-from supervisely.app.widgets import Icons
-from supervisely.io.env import team_id
 from supervisely.sly_logger import logger
 from supervisely.solution.components.empty.node import EmptyNode
+from supervisely.solution.engine.models import CLIPServiceStatusMessage
 
 
 class OpenAIClipServiceNode(EmptyNode):
@@ -14,28 +13,61 @@ class OpenAIClipServiceNode(EmptyNode):
     This node is used to interact with the OpenAI CLIP service for image and text embeddings.
     """
 
+    title = "OpenAI CLIP"
+    description = "OpenAI CLIP is a powerful model that can be used to generate embeddings for images in your project. These embeddings can be used for various tasks, such as image similarity search, prompt-based image retrieval. In this application, it is used to create an index and search images based on text prompts or clusters."
+    icon = "mdi mdi-apps"
+    icon_color = "#4CAF50"
+    icon_bg_color = "#E8F5E9"
+
     APP_SLUG = "supervisely-ecosystem/deploy-clip-as-service"
 
-    def __init__(self, x: int = 0, y: int = 0, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
         super().__init__(
-            title="OpenAI CLIP",
-            description="OpenAI CLIP is a powerful model that can be used to generate embeddings for images in your project. These embeddings can be used for various tasks, such as image similarity search, prompt-based image retrieval. In this application, it is used to create an index and search images based on text prompts or clusters.",
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
             width=150,
-            icon=Icons(class_name="zmdi zmdi-apps", color="#4CAF50", bg_color="#E8F5E9"),
             tooltip_position="left",
-            x=x,
-            y=y,
             *args,
             **kwargs,
         )
         self.api = Api.from_env()
-        self._refresh_interval = 60
+        self._refresh_interval = 300
         self._stop_autorefresh = False
         self._refresh_thread = None
         self._check_service_status()
-        self.start_autorefresh(60)
+        self.start_autorefresh(self._refresh_interval)
 
-    def start_autorefresh(self, interval: int = 60):
+    # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "clip_status",
+                "type": "target",
+                "position": "right",
+                "connectable": True,
+            },
+        ]
+
+    # ------------------------------------------------------------------
+    # Events -----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _available_subscribe_methods(self) -> dict:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "clip_status": self._check_service_status,
+        }
+
+    def start_autorefresh(self, interval: int = 300):
         """
         Starts the auto-refresh mechanism for the node.
         :param interval: Refresh interval in seconds.
@@ -67,7 +99,7 @@ class OpenAIClipServiceNode(EmptyNode):
                     logger.debug(f"Error during auto-refresh: {e}")
             time.sleep(1)
 
-    def _check_service_status(self):
+    def _check_service_status(self) -> CLIPServiceStatusMessage:
         """
         Checks the status of the OpenAI CLIP service.
         This method can be extended to include actual service checks.
@@ -80,12 +112,14 @@ class OpenAIClipServiceNode(EmptyNode):
         )
         if not sessions:
             logger.debug("No active sessions found for OpenAI CLIP service.")
-            self.node.remove_badge_by_key(key="On")
+            self.remove_badge_by_key(key="On")
         else:
             logger.debug(f"Active sessions found: {len(sessions)}")
             if len(sessions) > 0:
                 logger.debug("OpenAI CLIP service is ready.")
-                self.node.update_badge_by_key(key="On", label="⚡", plain=True)
+                self.update_badge_by_key(key="On", label="⚡", plain=True)
             else:
-                self.node.remove_badge_by_key(key="On")
+                self.remove_badge_by_key(key="On")
                 logger.debug("OpenAI CLIP service is not ready yet.")
+
+        return CLIPServiceStatusMessage(is_ready=len(sessions) > 0)

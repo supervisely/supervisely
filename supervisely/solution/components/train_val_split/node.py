@@ -4,7 +4,7 @@ from typing import Callable, Dict, List, Literal, Optional, Union
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.automation import SolutionCardNode, SolutionElement
 from supervisely.solution.components.train_val_split.gui import SplitSettings, TrainValSplitGUI
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
@@ -26,6 +26,10 @@ class TrainValSplitNode(SolutionElement):
         :param x: X coordinate of the node.
         :param y: Y coordinate of the node.
         """
+        self._parent_id = kwargs.pop("parent_id", None)
+        icon = kwargs.pop("icon", "zmdi zmdi-arrow-split")
+        icon_color = kwargs.pop("icon_color", "#1976D2")
+        icon_bg_color = kwargs.pop("icon_bg_color", "#E3F2FD")
         # First, initialize the base class (to wrap publish/subscribe methods)
         super().__init__(*args, **kwargs)
 
@@ -38,11 +42,11 @@ class TrainValSplitNode(SolutionElement):
         self.card = self._build_card(
             title="Train/Val Split",
             tooltip_description="Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
-            icon="zmdi zmdi-arrow-split",
-            icon_color="#1976D2",
-            icon_bg_color="#E3F2FD",
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
         )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
+        self.node = SolutionCardNode(content=self.card, x=x, y=y, parent_id=self._parent_id)
 
         # --- modals -------------------------------------------------------------
         self.modals = [self.gui.modal]

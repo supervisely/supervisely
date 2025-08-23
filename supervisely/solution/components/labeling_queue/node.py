@@ -3,13 +3,19 @@ from venv import logger
 
 from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
-from supervisely.solution.components.labeling_queue.automation import LabelingQueueRefresh
+from supervisely.solution.components.labeling_queue.automation import (
+    LabelingQueueRefresh,
+)
 from supervisely.solution.components.labeling_queue.gui import LabelingQueueGUI
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     LabelingQueueRefreshInfoMessage,
     SampleFinishedMessage,
+)
+from supervisely.solution.legacy_base_node import (
+    SolutionCardNode,
+    SolutionElement,
+    SolutionQueueNode,
 )
 
 
@@ -42,12 +48,25 @@ class LabelingQueueNode(SolutionElement):
         self.collection_id = collection_id
         self.REFRESH_INTERVAL_SEC = 30
 
+        icon = kwargs.pop("icon", "zmdi zmdi-labels")
+        icon_color = kwargs.pop("icon_color", "#1976D2")
+        icon_bg_color = kwargs.pop("icon_bg_color", "#E3F2FD")
+        self._parent_id = kwargs.pop("parent_id", None)
+
         # Initialize the base class before core blocks (to wrap publish/subscribe methods)
         super().__init__(*args, **kwargs)
 
         # --- core blocks --------------------------------------------------------
         self.gui = LabelingQueueGUI(queue_id=self.queue_id)
-        self.node = SolutionCardNode(content=self.gui.card, x=x, y=y)
+        self.card = self._build_card(
+            title="Labeling Queue",
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            tooltip_description="Labeling Queue management. Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator.",
+            buttons=[self.gui.open_labeling_queue_btn],
+        )
+        self.node = SolutionQueueNode(content=self.card, x=x, y=y, parent_id=self._parent_id)
         self.modals = [self.gui.add_user_modal]
 
         self._setup_handlers()
@@ -131,10 +150,10 @@ class LabelingQueueNode(SolutionElement):
         pending, annotating, reviewing, finished, rejected = 0, 0, 0, 0, 0
         try:
             pending, annotating, reviewing, finished, rejected = self.get_labeling_stats()
-            self.gui.update_pending(pending)
-            self.gui.update_annotation(annotating)
-            self.gui.update_review(reviewing)
-            self.gui.update_finished(finished)
+            self.node.update_pending(pending)
+            self.node.update_annotation(annotating)
+            self.node.update_review(reviewing)
+            self.node.update_finished(finished)
             if finished > 0:
                 self.get_new_accepted_images()
         except Exception as e:
@@ -184,6 +203,12 @@ class LabelingQueueNode(SolutionElement):
         """
         if not message.dst:
             logger.warning("No images to add to labeling queue.")
+            return
+
+        images = []
+        for imgs in message.dst.values():
+            images.extend(imgs)
+        self.api.entities_collection.add_items(self.collection_id, images)
             return
 
         images = []

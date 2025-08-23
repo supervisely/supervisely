@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Callable, Dict
 
 from supervisely.api.api import Api
-from supervisely.app.widgets import Icons
+from supervisely.io.env import project_id as env_project_id
 from supervisely.sly_logger import logger
 from supervisely.solution.components.empty.node import EmptyNode
-from supervisely.solution.engine.models import EmbeddingsStatusMessage
+from supervisely.solution.engine.models import CLIPServiceStatusMessage, EmbeddingsStatusMessage
 
 
 class AiIndexNode(EmptyNode):
@@ -15,20 +15,32 @@ class AiIndexNode(EmptyNode):
     Node for OpenAI CLIP service.
     This node is used to interact with the OpenAI CLIP service for image and text embeddings.
     """
+    title = "AI Index"
+    description = "AI Search Index is a powerful tool that allows you to search for images in your dataset using AI models. It provides a quick and efficient way to find similar images based on visual features. You can use it in Smart Sampling node to select images for labeling based on specified prompt."
+    icon = "mdi mdi-image-search"
+    icon_color = "#4CAF50"
+    icon_bg_color = "#E8F5E9"
+    APP_SLUG = "supervisely-ecosystem/deploy-clip-as-service"
 
-    def __init__(self, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
+    def __init__(self, project_id: int = None, *args, **kwargs):
+
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
         super().__init__(
-            title="AI Index",
-            description="AI Search Index is a powerful tool that allows you to search for images in your dataset using AI models. It provides a quick and efficient way to find similar images based on visual features. You can use it in Smart Sampling node to select images for labeling based on specified prompt.",
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
             width=150,
-            icon=Icons(class_name="zmdi zmdi-apps", color="#4CAF50", bg_color="#E8F5E9"),
             tooltip_position="left",
-            x=x,
-            y=y,
             *args,
             **kwargs,
         )
-        self.project_id = project_id
+        self.project_id = project_id or env_project_id()
         self._refresh_interval = 20
         self._stop_autorefresh = False
         self._refresh_thread = None
@@ -36,23 +48,53 @@ class AiIndexNode(EmptyNode):
         self.check_embeddings_status()
 
     # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "clip_status",
+                "type": "source",
+                "position": "left",
+                "connectable": True,
+            },
+            {
+                "id": "embedding_status_request",
+                "type": "target",
+                "position": "top",
+                "connectable": True,
+            },
+            {
+                "id": "embedding_status_response",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            },
+        ]
+
+    # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "embedding_status": self.send_embeddings_status_message,
+            "embedding_status_response": self.send_embeddings_status_message,
+            "clip_status": self.send_message_to_clip_service,
         }
 
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "import_finished": self.check_embeddings_status,
-            "need_embedding_status": self.check_embeddings_status,
+            "embedding_status_request": self.check_embeddings_status,
         }
 
-    def check_embeddings_status(self, message=None) -> EmbeddingsStatusMessage:
+    def send_message_to_clip_service(self) -> None:
+        pass
+
+
+    def check_embeddings_status(self) -> EmbeddingsStatusMessage:
         """Check that project embeddings are enabled, not in progress, and up to date."""
+        self.send_message_to_clip_service()
         is_ready = False
         try:
             is_ready = (
@@ -71,11 +113,11 @@ class AiIndexNode(EmptyNode):
 
     def send_embeddings_status_message(self, is_ready: bool) -> EmbeddingsStatusMessage:
         if is_ready:
-            self.node.update_badge_by_key(key="Up to date", label="⚡", plain=True)
-            self.node.update_property("Embeddings", "Up to date", highlight=True)
+            self.update_badge_by_key(key="Up to date", label="⚡", plain=True)
+            self.update_property("Embeddings", "Up to date", highlight=True)
         else:
-            self.node.remove_badge_by_key(key="Up to date")
-            self.node.remove_property_by_key("Embeddings")
+            self.remove_badge_by_key(key="Up to date")
+            self.remove_property_by_key("Embeddings")
         return EmbeddingsStatusMessage(status=is_ready)
 
     # ------------------------------------------------------------------

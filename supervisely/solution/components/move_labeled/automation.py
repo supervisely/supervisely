@@ -14,7 +14,7 @@ from supervisely.app.widgets import (
     Text,
 )
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import Automation, AutomationWidget
+from supervisely.solution.automation import Automation, AutomationWidget
 from supervisely.solution.utils import get_interval_period, get_seconds_from_period_and_interval
 
 

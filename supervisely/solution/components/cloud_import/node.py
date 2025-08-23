@@ -1,3 +1,4 @@
+import threading
 from typing import Callable, Dict, Optional, Tuple, Union
 
 import supervisely.io.env as sly_env
@@ -6,41 +7,39 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import Button
 from supervisely.app.widgets import CloudImport as CloudImportWidget
 from supervisely.app.widgets import Dialog, SolutionCard
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.components.cloud_import.automation import (
     CloudImportAutomation,
 )
-from supervisely.solution.engine.events import on_event, publish_event
+from supervisely.solution.engine.events import publish_event
 from supervisely.solution.engine.models import (
     ImportFinishedMessage,
     ImportStartedMessage,
 )
 
 
-class CloudImportNode(SolutionElement):
+class CloudImportNode(BaseCardNode):
     progress_badge_key = "Import"
+    title = "Import from Cloud"
+    description = "Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
+    icon = "mdi mdi-cloud-download"
+    icon_color = "#1976D2"
+    icon_bg_color = "#E3F2FD"
 
-    def __init__(self, project_id: int, x: int = 0, y: int = 0, *args, **kwargs):
+    def __init__(self, project_id: int = None, *args, **kwargs):
         """Node for importing data from the Cloud Storage to the Input Project."""
         self.api = Api.from_env()
         self.project_id = project_id or sly_env.project_id()
 
         # --- core blocks --------------------------------------------------------
         self.gui = CloudImportWidget(project_id=project_id)  # includes tasks history
+        self.history = self.gui.tasks_history
         self.automation = CloudImportAutomation(self.gui.run)
-        self.card = self._build_card(
-            title="Import from Cloud",
-            tooltip_description="Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats.",
-            buttons=[self.gui.tasks_history.open_modal_button, self.automation.open_modal_button],
-            icon="zmdi zmdi-cloud-download",
-            icon_color="#1976D2",
-            icon_bg_color="#E3F2FD",
-        )
-        self.node = SolutionCardNode(x=x, y=y, content=self.card)
 
-        @self.card.click
-        def show_modal():
-            self.modal.show()
+        # ! TODO: implement card click
+        # @self.card.click
+        # def show_modal():
+        #     self.modal.show()
 
         @self.gui.run_btn.click
         def _on_run_btn_click():
@@ -59,10 +58,40 @@ class CloudImportNode(SolutionElement):
             self.gui.tasks_history.logs_modal,
         ]
 
-        super().__init__(*args, **kwargs)
+        # --- init card ----------------------------------------------------------
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
+        )
+
+    def _get_tooltip_buttons(self):
+        return [self.gui.tasks_history.open_modal_button, self.automation.open_modal_button]
 
     # ------------------------------------------------------------------
-    # GUI --------------------------------------------------------------
+    # Handles ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "import_finished",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            }
+        ]
+
+    # ------------------------------------------------------------------
+    # Modal --------------------------------------------------------------
     # ------------------------------------------------------------------
     @property
     def modal(self):
@@ -128,17 +157,10 @@ class CloudImportNode(SolutionElement):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "import_started": self.run,
             "import_finished": self.wait_import_completion,
         }
 
-    def _available_subscribe_methods(self) -> Dict[str, Callable]:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
-        return {
-            "import_started": self.handle_import_started,
-        }
-
-    def run(self, path: Optional[str] = None) -> ImportStartedMessage:
+    def run(self, path: Optional[str] = None) -> int:
         """
         Runs the import task.
 
@@ -150,13 +172,16 @@ class CloudImportNode(SolutionElement):
         self.modal.hide()
         task_id = self.gui.run(path)
         self.gui.path_input.set_value("")
-        return ImportStartedMessage(task_id=task_id)
 
-    def handle_import_started(self, message: ImportStartedMessage) -> None:
+        # Start a separate thread to wait for the import task to complete
+        threading.Thread(target=self.handle_import_started, args=(task_id,), daemon=True).start()
+        return task_id
+
+    def handle_import_started(self, task_id: int) -> None:
         """Automatically handles import_started events"""
         self.node.show_in_progress_badge()
-        success = self.wait_import_completion(message.task_id)
-        logger.info(f"Import task {message.task_id} completed with status: {success}")
+        success = self.wait_import_completion(task_id)
+        logger.info(f"Import task {task_id} completed with status: {success}")
         self.node.hide_in_progress_badge()
 
     def wait_import_completion(self, task_id: int) -> ImportFinishedMessage:

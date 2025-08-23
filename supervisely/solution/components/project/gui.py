@@ -1,7 +1,6 @@
 from typing import List, Optional
 
 from supervisely._utils import abs_url
-from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.widgets import Button, SolutionProject
 
@@ -12,13 +11,11 @@ class ProjectGUI:
         title: str,
         project: ProjectInfo,
         is_training: bool = False,
-        dataset: Optional[DatasetInfo] = None,
         tooltip_position: str = "left",
     ):
         self.title = title
         self.project = project
         self.is_training = is_training
-        self.dataset = dataset
         self.tooltip_position = tooltip_position
         self.card = self._create_card()
 
@@ -30,14 +27,8 @@ class ProjectGUI:
         if self.is_training:
             items_count, preview_url = [0, 0], [None, None]
         else:
-            items_count = (
-                self.project.items_count if self.dataset is None else self.dataset.items_count
-            )
-            preview_url = (
-                self.project.image_preview_url
-                if self.dataset is None
-                else self.dataset.image_preview_url
-            )
+            items_count = self.project.items_count or 0
+            preview_url = self.project.image_preview_url
             items_count, preview_url = [items_count or 0], [preview_url]
             if preview_url[0] == abs_url("/"):
                 preview_url[0] = None

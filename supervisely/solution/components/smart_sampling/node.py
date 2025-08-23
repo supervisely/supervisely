@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from typing import Callable, Dict, Optional, Union
 
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.io.env import project_id as env_project_id
+from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
     EmbeddingsStatusMessage,
     ImportFinishedMessage,
@@ -17,50 +19,63 @@ from .gui import SamplingMode, SmartSamplingGUI
 from .history import SmartSamplingTasksHistory
 
 
-class SmartSamplingNode(SolutionElement):
+class SmartSamplingNode(BaseCardNode):
     progress_badge_key = "Sampling"
+    title = "Smart Sampling"
+    description = (
+        "Selects a data sample from the input project and copies it to the labeling project. "
+        "Supports various sampling strategies: random, k-means clustering, diversity-based, or using "
+        "embeddings precomputed by the “AI Index” node for smarter selection."
+    )
+    icon = "zmdi zmdi-playlist-plus"
+    icon_color = "#1976D2"
+    icon_bg_color = "#E3F2FD"
 
-    def __init__(self, project_id: int, dst_project: int, x: int, y: int, *args, **kwargs):
+    def __init__(self, project_id: int = None, dst_project: int = None, *args, **kwargs):
         """Node for sampling data from the input project and copying it to the labeling project."""
         self.api = Api.from_env()
-        self.project_id = project_id
+        self.project_id = project_id or env_project_id()
+        self.dst_project = dst_project or os.getenv("LABELING_PROJECT_ID")
         self.project = self.api.project.get_info_by_id(project_id)
 
         # --- core blocks --------------------------------------------------------
-        super().__init__(*args, **kwargs)
         self.gui = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
         self.automation = SmartSamplingAutomation(self.run)
-        self.tasks_history = SmartSamplingTasksHistory(self.api)  # , widget_id) job_id?
-        self.card = self._build_card(
-            title="Smart Sampling",
-            tooltip_description="Selects a data sample from the input project and copies it to the labeling project. Supports various sampling strategies: random, k-means clustering, diversity-based, or using embeddings precomputed by the “AI Index” node for smarter selection.",
-            buttons=[self.tasks_history.open_modal_button, self.automation.open_modal_button],
-            icon="zmdi zmdi-playlist-plus",
-            icon_color="#1976D2",
-            icon_bg_color="#E3F2FD",
+        self.history = SmartSamplingTasksHistory(self.api)
+
+        # --- init node ------------------------------------------------------
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
         )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
 
         # --- modals -------------------------------------------------------------
         self.modals = [
             self.gui.modal,
             self.automation.modal,
-            self.tasks_history.modal,
-            self.tasks_history.logs_modal,
+            self.history.modal,
+            self.history.logs_modal,
         ]
-
-        # --- callbacks ----------------------------------------------------------
-        self.on_start_callbacks = []
-        self.on_finish_callbacks = []
 
         # --- events -------------------------------------------------------------
         self._update_widgets()
 
-        @self.card.click
-        def on_sampling_setup_btn_click():
-            """Show the sampling settings modal."""
-            self.gui.modal.show()
-            self._check_embeddings_status()
+        # ! TODO:
+        # @self.card.click
+        # def on_sampling_setup_btn_click():
+        #     """Show the sampling settings modal."""
+        #     self.gui.modal.show()
+        #     self._check_embeddings_status()
 
         @self.gui.save_settings_button.click
         def on_save_settings_click():
@@ -87,6 +102,40 @@ class SmartSamplingNode(SolutionElement):
             self.gui.preview_gallery.clean_up()
             self._check_embeddings_status()
 
+    def _get_tooltip_buttons(self):
+        return [self.history.open_modal_button, self.automation.open_modal_button]
+
+    # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "project_updated",
+                "type": "target",
+                "position": "top",
+                "connectable": True,
+            },
+            {
+                "id": "embedding_status_response",
+                "type": "target",
+                "position": "left",
+                "connectable": True,
+            },
+            {
+                "id": "sample_finished",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            },
+            # {
+            #     "id": "source-2",
+            #     "type": "source",
+            #     "position": "right",
+            #     "connectable": True,
+            # },
+        ]
+
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
@@ -98,11 +147,11 @@ class SmartSamplingNode(SolutionElement):
     def show_automation_info(self, enabled, sec):
         period, interval = get_interval_period(sec)
         if enabled is True:
-            self.node.show_automation_badge()
-            self.card.update_property("Run every", f"{interval} {period}", highlight=True)
+            self.show_automation_badge()
+            self.update_property("Run every", f"{interval} {period}", highlight=True)
         else:
-            self.node.hide_automation_badge()
-            self.card.remove_property_by_key("Run every")
+            self.hide_automation_badge()
+            self.remove_property_by_key("Run every")
 
     def update_automation_widgets(self):
         enabled, _, _, sec = self.automation.get_details()
@@ -116,15 +165,13 @@ class SmartSamplingNode(SolutionElement):
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
             "sample_finished": self.run,
-            "need_embedding_status": self._check_embeddings_status,
         }
 
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "import_finished": self._update_widgets,
-            "sample_finished": self._update_widgets,
-            "embedding_status": self._process_embeddings_status_message,
+            "project_updated": self._update_widgets,
+            "embedding_status_response": self._process_embeddings_status_message,
         }
 
     # callback method (accepts Message object)
@@ -141,23 +188,23 @@ class SmartSamplingNode(SolutionElement):
         self.gui.update_widgets(diff, sampling_settings)
 
         if diff == 0:
-            self.card.remove_badge_by_key("New Data:")
+            self.remove_badge_by_key("New Data:")
         else:
-            self.card.update_badge_by_key("New Data:", str(diff), "info")
-        self.card.update_property("New Data:", str(diff))
+            self.update_badge_by_key("New Data:", str(diff), "info")
+        self.update_property("New Data:", str(diff))
 
         mode = sampling_settings.get("mode", SamplingMode.RANDOM.value)
-        self.card.update_property("mode", mode)
+        self.update_property("mode", mode)
         if mode in [SamplingMode.RANDOM.value, SamplingMode.DIVERSE.value]:
             sample_size = sampling_settings.get("sample_size", 0)
-            self.card.update_property("Sample size", str(sample_size))
+            self.update_property("Sample size", str(sample_size))
         elif mode == SamplingMode.AI_SEARCH.value:
             prompt = sampling_settings.get("prompt", "")
             limit = sampling_settings.get("limit", 0)
             threshold = sampling_settings.get("threshold", 0.05)
-            self.card.update_property("Prompt", prompt)
-            self.card.update_property("Limit", str(limit))
-            self.card.update_property("Threshold", f"{threshold:.2f}")
+            self.update_property("Prompt", prompt)
+            self.update_property("Limit", str(limit))
+            self.update_property("Threshold", f"{threshold:.2f}")
 
     # ------------------------------------------------------------------
     # Methods --------------------------------------------------------
@@ -187,17 +234,9 @@ class SmartSamplingNode(SolutionElement):
 
     # publish_event (may send Message object)
     def run(self) -> SampleFinishedMessage:
-        self.node.show_in_progress_badge("Sampling")
-        for callback in self.on_start_callbacks:
-            callback()
+        self.show_in_progress_badge("Sampling")
         res = self.gui.run()
         src, dst, images_count = res
-        for callback in self.on_finish_callbacks:
-            if callable(callback):
-                if callback.__code__.co_argcount == 0:
-                    callback()
-                else:
-                    callback(res)
-        self.node.hide_in_progress_badge("Sampling")
+        self.hide_in_progress_badge("Sampling")
         self._update_widgets()
         return SampleFinishedMessage(success=True, src=src, dst=dst, items_count=images_count)

@@ -7,7 +7,7 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import Dialog
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
-from supervisely.solution.base_node import SolutionCardNode, SolutionElement
+from supervisely.solution.automation import SolutionCardNode, SolutionElement
 from supervisely.solution.components.move_labeled.automation import MoveLabeledAuto
 from supervisely.solution.components.move_labeled.gui import MoveLabeledGUI
 from supervisely.solution.components.move_labeled.history import MoveLabeledTasksHistory
@@ -33,6 +33,10 @@ class MoveLabeledNode(SolutionElement):
         *args,
         **kwargs,
     ):
+        self._parent_id = kwargs.pop("parent_id", None)
+        icon = kwargs.pop("icon", "zmdi zmdi-dns")
+        icon_color = kwargs.pop("icon_color", "#1976D2")
+        icon_bg_color = kwargs.pop("icon_bg_color", "#E3F2FD")
         # First, initialize the base class (to wrap publish/subscribe methods)
         super().__init__(*args, **kwargs)
 
@@ -49,11 +53,11 @@ class MoveLabeledNode(SolutionElement):
         self.card = self._build_card(
             title="Move Labeled Data",
             tooltip_description="Move labeled and accepted images to the Training Project.",
-            icon="zmdi zmdi-dns",
-            icon_color="#1976D2",
-            icon_bg_color="#E3F2FD",
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
         )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y)
+        self.node = SolutionCardNode(content=self.card, x=x, y=y, parent_id=self._parent_id)
 
         # --- modals -------------------------------------------------------------
         self.modals = [
@@ -209,7 +213,8 @@ class MoveLabeledNode(SolutionElement):
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
-                "items": [{"id": image_id, "type": "image"} for image_id in images],
+                # "items": [{"id": image_id, "type": "image"} for image_id in images],
+                # "items": [ds ids] #  (parent dataset ids),
                 "source": {
                     "team": {"id": sly_env.team_id()},
                     "project": {"id": src},
@@ -217,7 +222,7 @@ class MoveLabeledNode(SolutionElement):
                 },
                 "destination": {
                     "team": {"id": sly_env.team_id()},
-                    "dataset": {"id": dst_dataset.id},
+                    # "dataset": {"id": dst_dataset.id},
                     "project": {"id": dst},
                     "workspace": {"id": sly_env.workspace_id()},
                 },
@@ -225,6 +230,7 @@ class MoveLabeledNode(SolutionElement):
                     "preserveSrcDate": False,
                     "cloneAnnotations": True,
                     "conflictResolutionMode": "rename",
+                    # "filter": [{"id": image_id, "type": "image"} for image_id in images], # by item ids
                 },
                 "action": "move",
             }
