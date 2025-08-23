@@ -4,7 +4,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
+from pydantic import BaseModel, Field
+
 from supervisely.app.content import DataJson, StateJson
+from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.subapp import Application
 from supervisely.app.fastapi.utils import run_sync
 from supervisely.app.fastapi.websocket import WebsocketManager
@@ -13,75 +16,52 @@ from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.io.fs import clean_dir, copy_dir_recursively
 
 
-@dataclass
-class NodeBadge:
+class NodeBadge(BaseModel):
     label: str = ""
     value: str = None
+    style: Literal["plain", "info", "warning", "error", "success"] = "plain"
 
-    def to_json(self):
-        return asdict(self)
+    def __init__(self, **data):
+        super().__init__(**data)
 
-    # def __init__(self, label: str, value: str = None):
-    #     self._label = label
-    #     self._value = value
+    @property
+    def computed_style(self) -> Dict[str, str]:
+        """Returns the computed style based on the badge style type."""
+        style_map = {
+            "info": {"background": "#1976D2", "color": "#FFFFFF"},
+            "warning": {"background": "#FFA000", "color": "#FFFFFF"},
+            "error": {"background": "#D32F2F", "color": "#FFFFFF"},
+            "success": {"background": "#388E3C", "color": "#FFFFFF"},
+        }
+        return style_map.get(self.style, {})
 
-    # def to_json(self):
-    #     return {"label": self._label, "value": self._value}
 
-
-@dataclass
-class TooltipButton:
-    text: str
-    link: Optional[str] = None
+class TooltipButton(BaseModel):
+    label: str
+    link: Optional[Dict[str, str]] = None
     icon: Optional[str] = None
 
-    def to_json(self):
-        return {"text": self.text, "link": self.link, "icon": self.icon}
+    def __init__(self, **data):
+        super().__init__(**data)
+        """Post-initialization to convert Button instances to dicts."""
+        self.icon = re.sub(r'<i class="(.*?)".*?</i>', r"\1", self.icon) if self.icon else None
 
 
-@dataclass
-class TooltipProperty:
+class TooltipProperty(BaseModel):
     label: str
     value: str
     link: Optional[Dict[str, str]] = None
     highlight: bool = False
 
-    def to_json(self):
-        return asdict(self)
 
+class NodeTooltip(BaseModel):
 
-@dataclass
-class NodeTooltip:
     description: Optional[str] = ""
-    properties: List[TooltipProperty] = field(default_factory=list)
-    buttons: List[Union[Button, TooltipButton]] = field(default_factory=list)
-
-    def __post_init__(self):
-        """Post-initialization to convert Button instances to dicts."""
-        for idx, btn in enumerate(self.buttons):
-            if isinstance(btn, Button):
-                btn: Button
-                btn_icon = re.sub(r'<i class="(.*?)"', r"\1", btn.icon) if btn.icon else None
-                if btn.link is not None:
-                    btn = TooltipButton(
-                        text=btn.text,
-                        link={"url": btn.link},
-                        icon=btn_icon,
-                    )
-                else:
-                    btn = TooltipButton(
-                        text=btn.text,
-                        link={"action": btn.get_route_path(Button.Routes.CLICK)},
-                        icon=btn_icon,
-                    )
-                self.buttons[idx] = btn
-
-    def to_json(self):
-        return asdict(self)
+    properties: List[TooltipProperty] = Field(default_factory=list)
+    buttons: List[TooltipButton] = Field(default_factory=list)
 
 
-@dataclass
-class NodeQueueInfo:
+class NodeQueueInfo(BaseModel):
     """Information about the queue."""
 
     pending: int = 0
@@ -89,11 +69,8 @@ class NodeQueueInfo:
     reviewing: int = 0
     finished: int = 0
 
-    def to_json(self):
-        return asdict(self)
-    
-@dataclass
-class Handle:
+
+class Handle(BaseModel):
     """Represents a handle in the VueFlow node."""
 
     id: str
@@ -102,26 +79,25 @@ class Handle:
     label: Optional[str] = None
     connectable: bool = True
 
-    def to_json(self):
-        return asdict(self)
+
+class NodeIcon(BaseModel):
+    """Represents an icon in the VueFlow node."""
+
+    name: str
+    color: Optional[str] = None
+    bg_color: Optional[str] = Field(default=None, alias="backgroundColor")
 
 
-@dataclass
-class NodeSettings:
+class NodeSettings(BaseModel):
     """Settings for the VueFlow node."""
 
     type: Literal["project", "action", "queue"] = "action"
-    icon: Optional[Dict[str, str]] = None
-    previews: List[Dict[str, str]] = field(default_factory=list)
-    badges: List[NodeBadge] = field(default_factory=list)
-    tooltip: NodeTooltip = NodeTooltip()
-    queue_info: Optional[NodeQueueInfo] = field(
-        default_factory=NodeQueueInfo, metadata={"alias": "queueInfo"}
-    )
-    handles: List[Handle] = field(default_factory=list)
-
-    def to_json(self):
-        return asdict(self)
+    icon: Optional[NodeIcon] = None
+    previews: List[Dict[str, str]] = Field(default_factory=list)
+    badges: List[NodeBadge] = Field(default_factory=list)
+    tooltip: Optional[NodeTooltip] = None
+    queue_info: Optional[NodeQueueInfo] = Field(default_factory=NodeQueueInfo, alias="queueInfo")
+    handles: List[Handle] = Field(default_factory=list)
 
 
 class VueFlow(Widget):
@@ -130,23 +106,96 @@ class VueFlow(Widget):
     This widget is used to create interactive flow diagrams in Supervisely for visualizing workflows.
     """
 
+    class Routes:
+        NODE_UPDATED = "node_updated_cb"
+
+    class Edge(BaseModel):
+        """Represents an edge in the VueFlow diagram."""
+
+        id: str
+        source: str
+        target: str
+        marker_end: str = Field(default="arrowclosed", alias="markerEnd")
+        marker_start: Optional[str] = Field(default=None, alias="markerStart")
+        target_handle: Optional[str] = Field(default=None, alias="targetHandle")
+        source_handle: Optional[str] = Field(default=None, alias="sourceHandle")
+        type: str = "smoothstep"
+        label: Optional[str] = None
+        animated: bool = False
+        curvature: float = 0.5
+        style: Optional[Dict[str, Any]] = Field(
+            default=None,
+            # default_factory=lambda: {
+            #     # "stroke": "#B1B1B6",
+            #     # "strokeWidth": 1,
+            #     "strokeDasharray": "8,8",
+            # }
+        )
+
+        def to_json(self):
+            return self.model_dump(by_alias=True, exclude_none=True)
+
     class Node:
         """Represents a node in the VueFlow diagram."""
+
+        class Routes:
+            NODE_CLICKED = "node_clicked_cb"
 
         def __init__(
             self,
             id: str,  # * widget ID
             label: str,
-            x: int,
-            y: int,
+            x: Optional[int] = None,
+            y: Optional[int] = None,
+            position: Optional[Dict[str, int]] = None,
             parent_id: Optional[str] = None,
-            settings: Optional[NodeSettings] = None,
+            data: Optional[NodeSettings] = None,
         ):
             self.id = id
             self.label = label
-            self.position = {"x": x, "y": y}
-            self.settings = settings if settings is not None else NodeSettings()
+            if position is not None:
+                if "x" not in position or "y" not in position:
+                    raise ValueError("Position must contain both 'x' and 'y' keys.")
+                self.position = position
+            elif x is not None or y is not None:
+                self.position = {"x": x, "y": y}
+            else:
+                raise ValueError("Either position or both x and y must be provided.")
+            if data is not None:
+                if isinstance(data, dict):
+                    self.settings = NodeSettings(**data)
+                elif isinstance(data, NodeSettings):
+                    self.settings = data
+                else:
+                    self.settings = NodeSettings()
             self.parent_id = parent_id
+            self._server = _MainServer()
+            self._click_handled = False
+
+            # ----------------------------------------------------------------
+            # --- Connected Nodes --------------------------------------------
+            # --- Every node have info about source (parent) nodes -----------
+            self._sources = []
+            # ----------------------------------------------------------------
+
+        def click(self, func: Callable[[], None]) -> Callable[[], None]:
+            """
+            Decorator to handle node click events.
+
+            :param func: Function to be called on node click.
+            :return: Wrapped function.
+            """
+            self._click_handled = True
+            route_path = f"/{self.parent_id}/{VueFlow.Node.Routes.NODE_CLICKED}"
+
+            @self._server.post(route_path)
+            def _click():
+                try:
+                    func()
+                except Exception as e:
+                    raise e
+
+            return _click
 
         def to_json(self):
             """
@@ -157,55 +206,20 @@ class VueFlow(Widget):
                 "type": "sly-flow",
                 "label": self.label,
                 "position": self.position,
-                "data": self.settings.to_json(),
+                "data": self.settings.model_dump(by_alias=True),
             }
-
-        def _wrap_actions(self, func: Callable) -> Callable:
-            """Decorator to call the update_node method when a node is changed."""
-
-            def decorator(*args, **kwargs):
-                res = func(*args, **kwargs)
-                for idx, node_json in enumerate(StateJson()[self.parent_id]["nodes"]):
-                    if node_json["id"] == self.id:
-                        StateJson()[self.parent_id]["nodes"][idx] = self.to_json()
-                        StateJson().send_changes()
-                        VueFlow.update_node(self.parent_id, self)
-                        break
-                return res
-
-            return decorator
-
-    class ActionNode(Node):
-
-        def __init__(
-            self,
-            id: str,
-            label: str,
-            x: int,
-            y: int,
-            parent_id: Optional[str] = None,
-            settings: Optional[NodeSettings] = None,
-        ):
-            super().__init__(id, label, x, y, parent_id, settings)
-            # wrap all methods that change the node state
-            self.update_property = self._wrap_actions(self._update_property)
-            self.remove_property_by_key = self._wrap_actions(self._remove_property_by_key)
-            self.add_badge = self._wrap_actions(self._add_badge)
-            self.remove_badge = self._wrap_actions(self._remove_badge)
-            self.update_badge = self._wrap_actions(self._update_badge)
-            self.update_badge_by_key = self._wrap_actions(self._update_badge_by_key)
-            self.remove_badge_by_key = self._wrap_actions(self._remove_badge_by_key)
 
         # ------------------------------------------------------------------
         # Tooltip Methods --------------------------------------------------
         # ------------------------------------------------------------------
-        def _update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
+        def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
             """Updates the property of the card."""
             for prop in self.settings.tooltip.properties:
                 if prop.get("label") == key:
                     prop["value"] = value
                     prop["link"] = {"url": link} if link else None
                     prop["highlight"] = highlight if highlight is not None else False
+                    VueFlow.update_node(self)
                     return
             # If property not found, add it
             new_prop = {
@@ -215,12 +229,14 @@ class VueFlow(Widget):
                 "highlight": highlight if highlight is not None else False,
             }
             self.settings.tooltip.properties.append(new_prop)
+            VueFlow.update_node(self)
 
-        def _remove_property_by_key(self, key: str, silent: bool = True):
+        def remove_property_by_key(self, key: str, silent: bool = True):
             """Removes the property by key of the card."""
             for idx, prop in enumerate(self.settings.tooltip.properties):
                 if prop.get("label") == key:
                     self.settings.tooltip.properties.pop(idx, None)
+                    VueFlow.update_node(self)
                     return
             if not silent:
                 raise KeyError(f"Property with key '{key}' not found in tooltip properties.")
@@ -228,42 +244,47 @@ class VueFlow(Widget):
         # ------------------------------------------------------------------
         # Badge Methods ----------------------------------------------------
         # ------------------------------------------------------------------
-        def _add_badge(self, badge: Union[dict, NodeBadge]):
+        def add_badge(self, badge: Union[dict, NodeBadge]):
             """Adds a badge to the card."""
-            # if self.settings.badges is None:
-            #     self.settings.badges = []
-            # if isinstance(badge, NodeBadge):
-            #     badge = badge.to_json()
             if not isinstance(badge, (dict, NodeBadge)):
                 raise TypeError("Badge must be an instance of NodeBadge or a dict")
             self.settings.badges.append(badge)
+            VueFlow.update_node(self)
 
-        def _remove_badge(self, idx: int, silent: bool = True):
+        def remove_badge(self, idx: int, silent: bool = True):
             """Removes the badge by index of the card."""
             if not self.settings.badges or idx >= len(self.settings.badges):
                 if not silent:
                     raise IndexError("Badge index out of range")
             self.settings.badges.pop(idx, None)
+            VueFlow.update_node(self)
 
-        def _update_badge(
+        def update_badge(
             self,
             idx: int,
             label: str,
             on_hover: str = None,
-            badge_type: Literal["info", "success", "warning", "error"] = "info",  # TODO: remove
+            badge_type: Literal["info", "success", "warning", "error"] = None,
+            plain: Optional[bool] = None,
         ):
             """Updates the badge by index of the card."""
             if not self.settings.badges or idx >= len(self.settings.badges):
                 raise IndexError("Badge index out of range")
             badge = self.settings.badges[idx]
             badge._label = label
-            badge._value = on_hover if on_hover else ""
+            if on_hover is not None:
+                badge._on_hover = on_hover
+            if plain is not None and plain:
+                badge.style = "plain"
+            elif badge_type is not None:
+                badge.style = badge_type
+            VueFlow.update_node(self)
 
-        def _update_badge_by_key(
+        def update_badge_by_key(
             self,
             key: str,
             label: str,
-            badge_type: Literal["info", "success", "warning", "error"] = None,  # TODO: remove
+            badge_type: Literal["info", "success", "warning", "error"] = None,
             new_key: str = None,
             plain: Optional[bool] = None,  # TODO: remove
         ):
@@ -273,67 +294,33 @@ class VueFlow(Widget):
                     badge.value = label
                     if new_key is not None:
                         badge.label = new_key
+                    if plain is not None and plain:
+                        badge.style = "plain"
+                    elif badge_type is not None:
+                        badge.style = badge_type
+                    VueFlow.update_node(self)
                     return
             # If badge not found, add it
-            new_badge = NodeBadge(label=key, value=label)
+            new_badge = NodeBadge(label=key, value=label, style="info")
             self.add_badge(new_badge)
 
-        def _remove_badge_by_key(self, key: str):
+        def remove_badge_by_key(self, key: str):
             """Removes the badge by key from the card."""
             for idx, badge in enumerate(self.settings.badges):
                 if badge.label == key:
                     self.settings.badges.pop(idx, None)
+                    VueFlow.update_node(self)
                     return
             raise KeyError(f"Badge with key '{key}' not found in card badges.")
 
-        # ------------------------------------------------------------------
-        # Automation Badge Methods -----------------------------------------
-        # ------------------------------------------------------------------
-        def _show_automation_badge(self) -> None:
-            """Updates the card to show that automation is enabled."""
-            self.update_badge_by_key(key="Automation", label="⚡")
-
-        def _hide_automation_badge(self) -> None:
-            """Updates the card to show that automation is disabled."""
-            self.remove_badge_by_key(key="Automation")
-
-        # ------------------------------------------------------------------
-        # In Progress Badge Methods ----------------------------------------
-        # ------------------------------------------------------------------
-        def _show_in_progress_badge(self, key: Optional[str] = None):
-            """Updates the card to show that the main task is in progress."""
-            key = key or "In progress"
-            self.update_badge_by_key(key=key, label="⏳")
-
-        def _hide_in_progress_badge(self, key: Optional[str] = None):
-            """Hides the in-progress badge from the card."""
-            key = key or "In progress"
-            self.remove_badge_by_key(key=key)
-
-        # ------------------------------------------------------------------
-        # Finished Badge Methods -------------------------------------------
-        # ------------------------------------------------------------------
-        def _show_finished_badge(self):
-            """Updates the card to show that main task is finished."""
-            self.update_badge_by_key(key="Finished", label="✅")
-
-        def _hide_finished_badge(self):
-            """Hides the finished badge from the card."""
-            self.remove_badge_by_key(key="Finished")
-
-        # ------------------------------------------------------------------
-        # Failed Badge Methods ---------------------------------------------
-        # ------------------------------------------------------------------
-        def _show_failed_badge(self):
-            """Updates the card to show that the main task has failed."""
-            self.update_badge_by_key(key="Failed", label="❌")
-
-        def _hide_failed_badge(self):
-            """Hides the failed badge from the card."""
-            self.remove_badge_by_key(key="Failed")
-
-    def __init__(self, nodes: Optional[List[Node]] = None, widget_id: str = None):
+    def __init__(
+        self,
+        nodes: Optional[List[Node]] = None,
+        edges: Optional[List[Edge]] = None,
+        widget_id: str = None,
+    ):
         self.nodes = nodes if nodes is not None else []
+        self.edges = edges if edges is not None else []
         self._url = None
         super().__init__(widget_id=widget_id, file_path=__file__)
         script_path = "./sly/css/app/widgets/vue_flow/script.js"
@@ -342,13 +329,44 @@ class VueFlow(Widget):
         # ! TODO: move vue_flow_ui folder to static folder
         self._prepare_ui_static()
 
+        server = self._sly_app.get_server()
+        node_updated_route_path = self.get_route_path(VueFlow.Routes.NODE_UPDATED)
+
+        @server.post(node_updated_route_path)
+        def _click(data: Dict):  # {"x": 100, "y": 200}
+            try:
+                payload = data.get("payload", {})
+                node_id = payload.pop("nodeId", None)
+                for idx, node in enumerate(StateJson()[self.widget_id]["nodes"]):
+                    if node["id"] == node_id:
+                        node.update(**payload)  # ? to update data field too
+                        new_node = VueFlow.Node(**node, parent_id=self.widget_id)
+                        StateJson()[self.widget_id]["nodes"][idx] = new_node.to_json()
+                        StateJson().send_changes()
+                        self.nodes[idx] = new_node
+                        VueFlow.update_node(new_node)
+                        break
+
+            except Exception as e:
+                raise e
+
     def get_json_data(self):
-        return {}
+        return {
+            "nodes": [
+                {
+                    "type": "action",
+                    "className": "sly.solution.CloudImport",
+                    "label": "Cloud Import",
+                }
+            ],
+        }
 
     def get_json_state(self):
         return {
             "nodes": [node.to_json() for node in self.nodes],
+            # "nodes": self.nodes,
             "edges": [],  # Edges can be added later if needed
+            # "url": f"{self._url}/?showSidebar=true" if self._url is not None else "",
             "url": self._url if self._url is not None else "",
         }
 
@@ -358,10 +376,17 @@ class VueFlow(Widget):
 
         :param nodes: List of Node objects to be added.
         """
-        self.nodes.extend(nodes)
+        serialized_nodes = []
+        for node in nodes:
+            if isinstance(node, VueFlow.Node):
+                node = node.to_json()
+            elif not isinstance(node, dict):
+                raise TypeError("Each node must be an instance of VueFlow.Node or a dict")
+            serialized_nodes.append(node)
+        self.nodes.extend(serialized_nodes)
         if "nodes" not in StateJson()[self.widget_id]:
             StateJson()[self.widget_id]["nodes"] = []
-        StateJson()[self.widget_id]["nodes"].extend([node.to_json() for node in nodes])
+        StateJson()[self.widget_id]["nodes"].extend(serialized_nodes)
         StateJson().send_changes()
 
     def add_node(self, node: Node) -> None:
@@ -381,8 +406,82 @@ class VueFlow(Widget):
         node_id = node.id if isinstance(node, self.Node) else node
         if not isinstance(node_id, str):
             raise ValueError("Node ID must be a string.")
-        self.nodes = [node for node in self.nodes if node.id != node_id]
-        StateJson()[self.widget_id]["nodes"] = [node.to_json() for node in self.nodes]
+        for idx, node in enumerate(self.nodes):
+            if isinstance(node, VueFlow.Node):
+                if node.id == node_id:
+                    self.nodes.pop(idx)
+                    break
+            elif isinstance(node, dict):
+                if node.get("id") == node_id:
+                    self.nodes.pop(idx)
+                    break
+        else:
+            raise ValueError(f"Node with ID '{node_id}' not found.")
+        serialized_nodes = []
+        for node in self.nodes:
+            if isinstance(node, VueFlow.Node):
+                node = node.to_json()
+            elif not isinstance(node, dict):
+                raise TypeError("Each node must be an instance of VueFlow.Node or a dict")
+            serialized_nodes.append(node)
+        StateJson()[self.widget_id]["nodes"] = serialized_nodes
+        StateJson().send_changes()
+
+    def add_edges(self, edges: List[Edge]) -> None:
+        """
+        Adds edges to the VueFlow widget.
+
+        :param edges: List of Edge objects to be added.
+        """
+        if "edges" not in StateJson()[self.widget_id]:
+            StateJson()[self.widget_id]["edges"] = []
+        serialized_edges = []
+        for edge in edges:
+            if isinstance(edge, VueFlow.Edge):
+                edge = edge.to_json()
+            elif not isinstance(edge, dict):
+                raise TypeError("Each edge must be an instance of VueFlow.Edge or a dict")
+            serialized_edges.append(edge)
+        self.edges.extend(serialized_edges)
+        StateJson()[self.widget_id]["edges"].extend(serialized_edges)
+        StateJson().send_changes()
+
+    def add_edge(self, edge: Edge) -> None:
+        """
+        Adds a single edge to the VueFlow widget.
+
+        :param edge: Edge object to be added.
+        """
+        self.add_edges([edge])
+
+    def remove_edge(self, edge: Union[Edge, str]) -> None:
+        """
+        Removes an edge from the VueFlow widget.
+
+        :param edge: Edge object or ID to be removed.
+        """
+        edge_id = edge.id if isinstance(edge, self.Edge) else edge
+        if not isinstance(edge_id, str):
+            raise ValueError("Edge ID must be a string.")
+        for idx, edge in enumerate(self.edges):
+            if isinstance(edge, VueFlow.Edge):
+                if edge.id == edge_id:
+                    self.edges.pop(idx)
+                    break
+            elif isinstance(edge, dict):
+                if edge.get("id") == edge_id:
+                    self.edges.pop(idx)
+                    break
+        else:
+            raise ValueError(f"Edge with ID '{edge_id}' not found.")
+        serialized_edges = []
+        for edge in self.edges:
+            if isinstance(edge, VueFlow.Edge):
+                edge = edge.to_json()
+            elif not isinstance(edge, dict):
+                raise TypeError("Each edge must be an instance of VueFlow.Edge or a dict")
+            serialized_edges.append(edge)
+        StateJson()[self.widget_id]["edges"] = serialized_edges
         StateJson().send_changes()
 
     def _prepare_ui_static(self) -> None:
@@ -399,6 +498,7 @@ class VueFlow(Widget):
         clean_dir(str(new_vue_flow_ui_dir))
         copy_dir_recursively(str(vue_flow_ui_dir), str(new_vue_flow_ui_dir))
         self._url = f"http://0.0.0.0:8000/{str(new_vue_flow_ui_dir)}/index.html"  # ! TODO: ???
+        # self._url = f"{self._url}?showSidebar=true"
         StateJson()[self.widget_id]["url"] = self._url
         StateJson().send_changes()
 
@@ -411,29 +511,33 @@ class VueFlow(Widget):
                 {
                     "runAction": {
                         "action": f"sly-flow-{self.widget_id}",
-                        "payload": {"action": "refresh-nodes"},
+                        "payload": {"action": "flow-refresh", "data": {}},
                     }
                 }
             )
         )
 
     @staticmethod
-    def update_node(parent_id: str, node: Union[str, Node]) -> None:
+    def update_node(node: Node) -> None:
         """
         Updates a node in the VueFlow widget.
 
         :param node: Node object or ID to be updated.
         """
-        pass
-        node_id = node.id if isinstance(node, VueFlow.Node) else node
-        if not isinstance(node_id, str):
-            raise ValueError("Node ID must be a string.")
+        if not isinstance(node, VueFlow.Node):
+            raise ValueError("Node must be an instance of VueFlow.Node.")
+
+        for idx, node_json in enumerate(StateJson()[node.parent_id]["nodes"]):
+            if node_json["id"] == node.id:
+                StateJson()[node.parent_id]["nodes"][idx] = node.to_json()
+                StateJson().send_changes()
+                break
         run_sync(
             WebsocketManager().broadcast(
                 {
                     "runAction": {
-                        "action": f"sly-flow-{parent_id}",
-                        "payload": {"action": "update-node", "data": {"nodeId": node_id}},
+                        "action": f"sly-flow-{node.parent_id}",
+                        "payload": {"action": "node-update", "data": {"nodeId": node.id}},
                     }
                 }
             )

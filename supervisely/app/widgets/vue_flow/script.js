@@ -6,10 +6,11 @@ Vue.component("sly-flow", {
     };
   },
   methods: {
-    sendMessageToFrame({ payload }) {
+    sendMessageToFrame(params) {
+      console.log("+++ sendMessageToFrame", params);
       this.$refs.frame.contentWindow.postMessage({
-        action: payload.action,
-        payload: payload.data,
+        action: params.action,
+        payload: params.data,
       });
     },
 
@@ -43,10 +44,15 @@ Vue.component("sly-flow", {
         };
         // this.refreshNodes();
         this.sendMessageToFrame({
-          action: `sly-flow-${this.id}`,
-          payload: { action: "refresh-nodes", data: {} },
+          action: "flow-refresh",
+          data: {},
         });
-        // }
+      } else if (data.action === "node-updated") {
+        this.post(`/${this.id}/node_updated_cb`, data.payload);
+      } else if (data.action === "edge-added") {
+        this.post(`/${this.id}/edge_added_cb`, data.payload);
+      } else if (data.action === "node-added") {
+        this.post(`/${this.id}/node_added_cb`, data.payload);
       }
     },
   },
