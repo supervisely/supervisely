@@ -331,11 +331,12 @@ class TrainValSplitsSelector:
         if split_method == "Random":
             is_valid = validate_random_split()
 
-        elif split_method == "Based on tags":
+        elif split_method == "Based on item tags":
             is_valid = validate_based_on_tags()
 
         elif split_method == "Based on datasets":
             is_valid = validate_based_on_datasets()
+
         elif split_method == "Based on collections":
             is_valid = validate_based_on_collections()
 
