@@ -10,10 +10,10 @@ from supervisely.imaging.color import rgb2hex
 class InputTagList(Widget):
     """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them.
 
-    :param max_width: Maximum width of the widget in pixels, defaults to 300
-    :type max_width: int, optional
     :param tag_metas: List of TagMeta objects or a TagMetaCollection, defaults to an empty list
     :type tag_metas: Union[List[TagMeta], TagMetaCollection], optional
+    :param max_width: Maximum width of the widget in pixels, defaults to 300
+    :type max_width: int, optional
     :param max_height: Maximum height of the widget in pixels, defaults to 50
     :type max_height: int, optional
     :param multiple: Whether to allow multiple tags to be selected, defaults to False
@@ -110,7 +110,7 @@ class InputTagList(Widget):
         """Get JSON data for the widget.
 
         :return: JSON data for the widget
-        :rtype: dict
+        :rtype: Dict
         """
         return {
             "maxWidth": self._max_width,
@@ -131,18 +131,18 @@ class InputTagList(Widget):
         """Get JSON state for the widget.
 
         :return: JSON state for the widget
-        :rtype: dict
+        :rtype: Dict
         """
         return {
             "selected": [False for _ in self._tag_metas],
             "values": [self.get_default_value(tm) for tm in self._tag_metas],
         }
 
-    def get_selected_tag_metas(self) -> list[TagMeta]:
+    def get_selected_tag_metas(self) -> List[TagMeta]:
         """Get selected tag metas for the widget.
 
         :return: List of selected tag metas
-        :rtype: list[TagMeta]
+        :rtype: List[TagMeta]
         """
         return [
             tm
@@ -150,11 +150,11 @@ class InputTagList(Widget):
             if selected
         ]
 
-    def get_selected_tags(self) -> list[Tag]:
+    def get_selected_tags(self) -> List[Tag]:
         """Get selected tags for the widget.
 
         :return: List of selected tags
-        :rtype: list[Tag]
+        :rtype: List[Tag]
         """
         return [
             Tag(meta=tm, value=value)
@@ -166,11 +166,11 @@ class InputTagList(Widget):
             if selected
         ]
 
-    def get_all_tags(self) -> list[Tag]:
+    def get_all_tags(self) -> List[Tag]:
         """Get all tags for the widget.
 
         :return: List of all tags
-        :rtype: list[Tag]
+        :rtype: List[Tag]
         """
         return [
             Tag(meta=tm, value=value)
@@ -193,11 +193,11 @@ class InputTagList(Widget):
         StateJson()[self.widget_id] = self.get_json_state()
         StateJson().send_changes()
 
-    def set_values(self, values_dict: dict) -> None:
+    def set_values(self, values_dict: Dict) -> None:
         """Set values for the widget.
 
         :param values_dict: Dictionary of values to set
-        :type values_dict: dict
+        :type values_dict: Dict
         :return: None
         """
         current_values = StateJson()[self.widget_id]["values"]
@@ -248,11 +248,11 @@ class InputTagList(Widget):
         StateJson()[self.widget_id]["selected"] = selected
         StateJson().send_changes()
 
-    def get_all_tag_metas(self) -> list[TagMeta]:
+    def get_all_tag_metas(self) -> List[TagMeta]:
         """Get all tag metas for the widget.
 
         :return: List of all tag metas
-        :rtype: list[TagMeta]
+        :rtype: List[TagMeta]
         """
         return self._tag_metas
 
