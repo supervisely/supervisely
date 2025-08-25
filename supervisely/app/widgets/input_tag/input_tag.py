@@ -41,6 +41,7 @@ class InputTag(Widget):
     :param widget_id: Unique identifier for the widget, defaults to None
     :type widget_id: int
     """
+
     def __init__(
         self,
         tag_meta: TagMeta,
@@ -85,7 +86,7 @@ class InputTag(Widget):
         self._input_widgets[str(TagValueType.ANY_STRING)] = Input(type="textarea")
         self._input_widgets[str(TagValueType.ONEOF_STRING)] = RadioGroup(items=[])
 
-    def _get_max_width(self, value)-> str:
+    def _get_max_width(self, value) -> str:
         """Get the maximum width for the widget.
         Ensures the width is at least 150 pixels.
 
@@ -106,11 +107,11 @@ class InputTag(Widget):
         """
         return self._tag_meta
 
-    def activate(self)-> None:
+    def activate(self) -> None:
         """Activate the widget."""
         self._activation_widget.on()
 
-    def deactivate(self)-> None:
+    def deactivate(self) -> None:
         """Deactivate the widget."""
         self._activation_widget.off()
 
@@ -151,7 +152,7 @@ class InputTag(Widget):
         """
         return self._tag_meta.is_valid_value(value)
 
-    def set(self, tag: Union[Tag, None])-> None:
+    def set(self, tag: Union[Tag, None]) -> None:
         """Set the tag value.
 
         :param tag: Tag to set
@@ -248,7 +249,7 @@ class InputTag(Widget):
     def selection_changed(self, func):
         return self._activation_widget.value_changed(func)
 
-    def set_tag_meta(self, tag_meta: TagMeta)-> None:
+    def set_tag_meta(self, tag_meta: TagMeta) -> None:
         """Set the tag metadata.
 
         :param tag_meta: Tag metadata to set

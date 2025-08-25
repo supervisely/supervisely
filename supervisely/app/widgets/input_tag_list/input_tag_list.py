@@ -6,6 +6,7 @@ from supervisely.annotation.tag_meta import TagValueType
 from supervisely.app.content import DataJson, StateJson
 from supervisely.imaging.color import rgb2hex
 
+
 class InputTagList(Widget):
     """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them.
 
@@ -23,11 +24,11 @@ class InputTagList(Widget):
 
     class VALUE_TYPES:
         """Value types for input tags. Classifies the different types of values that tags can have."""
+
         none = str(TagValueType.NONE)
         any_string = str(TagValueType.ANY_STRING)
         one_of = str(TagValueType.ONEOF_STRING)
         number = str(TagValueType.ANY_NUMBER)
-        
 
     VALUE_TYPE_NAME = {
         str(TagValueType.NONE): "NONE",
@@ -58,9 +59,10 @@ class InputTagList(Widget):
             return tag_meta.possible_values[0]
         else:
             return DEFAULT_VALUES[tag_meta.value_type]
-    
+
     class Routes:
         """Routes for the widget events. Classifies the different types of events that can occur within the widget."""
+
         CHECKBOX_CHANGED = "checkbox_cb"
 
     def __init__(
@@ -104,7 +106,7 @@ class InputTagList(Widget):
             value = 100
         return f"{value}px"
 
-    def get_json_data(self)-> Dict:
+    def get_json_data(self) -> Dict:
         """Get JSON data for the widget.
 
         :return: JSON data for the widget
