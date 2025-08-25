@@ -98,7 +98,10 @@ def _upload_annotations(api: Api, image_ids, frame_indices, video_annotation: Vi
         frame = video_annotation.frames.get(frame_index, None)
         if frame is not None:
             anns.append(_frame_to_annotation(frame, video_annotation))
+        else:
+            anns.append(Annotation(video_annotation.img_size))
     api.annotation.upload_anns(image_ids, anns=anns)
+
 
 
 def _upload_frames(
