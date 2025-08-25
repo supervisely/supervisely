@@ -740,15 +740,19 @@ def download_pointcloud_episode_project(
     if progress_cb is not None:
         log_progress = False
 
-    datasets_infos = []
+    filter_fn = lambda x: True
     if dataset_ids is not None:
-        for ds_id in dataset_ids:
-            datasets_infos.append(api.dataset.get_info_by_id(ds_id))
-    else:
-        datasets_infos = api.dataset.get_list(project_id)
+        filter_fn = lambda ds: ds.id in dataset_ids
 
-    for dataset in datasets_infos:
-        dataset_fs: PointcloudEpisodeDataset = project_fs.create_dataset(dataset.name)
+    for parents, dataset in api.dataset.tree(project_id):
+        if not filter_fn(dataset):
+            continue
+        dataset_path = None
+        if parents:
+            dataset_path = "/".join([s for p in parents for s in (p, "datasets")] + [dataset.name])
+        dataset_fs: PointcloudEpisodeDataset = project_fs.create_dataset(
+            dataset.name, ds_path=dataset_path
+        )
         pointclouds = api.pointcloud_episode.get_list(dataset.id)
 
         # Download annotation to project_path/dataset_path/annotation.json
