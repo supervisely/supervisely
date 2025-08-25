@@ -1001,11 +1001,12 @@ def download_pointcloud_project(
     for parents, dataset in api.dataset.tree(project_id):
         if not filter_fn(dataset):
             continue
-        fs_path = None
+        dataset_path = None
         if parents:
-            fs_path = "/".join([s for p in parents for s in (p, "datasets")] + [dataset.name])
+            parents.append(dataset)
+            dataset_path = "/datasets/".join(parents)
         dataset_fs: PointcloudDataset = project_fs.create_dataset(
-            ds_name=dataset.name, ds_path=fs_path
+            ds_name=dataset.name, ds_path=dataset_path
         )
         pointclouds = api.pointcloud.get_list(dataset.id)
 
