@@ -106,11 +106,11 @@ class InputTag(Widget):
         """
         return self._tag_meta
 
-    def activate(self):
+    def activate(self)-> None:
         """Activate the widget."""
         self._activation_widget.on()
 
-    def deactivate(self):
+    def deactivate(self)-> None:
         """Deactivate the widget."""
         self._activation_widget.off()
 
@@ -132,11 +132,12 @@ class InputTag(Widget):
         return self._get_value()
 
     @value.setter
-    def value(self, value: Union[str, int, None]):
+    def value(self, value: Union[str, int, None]) -> None:
         """Set the current value of the tag.
 
         :param value: Current value of the tag
         :type value: Union[str, int, None]
+        :return: None
         """
         self._set_value(value)
 
@@ -150,11 +151,12 @@ class InputTag(Widget):
         """
         return self._tag_meta.is_valid_value(value)
 
-    def set(self, tag: Union[Tag, None]):
+    def set(self, tag: Union[Tag, None])-> None:
         """Set the tag value.
 
         :param tag: Tag to set
         :type tag: Union[Tag, None]
+        :return: None
         """
         if tag is None:
             self._set_default_value()
@@ -246,11 +248,12 @@ class InputTag(Widget):
     def selection_changed(self, func):
         return self._activation_widget.value_changed(func)
 
-    def set_tag_meta(self, tag_meta: TagMeta):
+    def set_tag_meta(self, tag_meta: TagMeta)-> None:
         """Set the tag metadata.
-        
+
         :param tag_meta: Tag metadata to set
         :type tag_meta: TagMeta
+        :return: None
         """
         self._tag_meta = tag_meta
         self._value_type_name = VALUE_TYPE_NAME[self._tag_meta.value_type]

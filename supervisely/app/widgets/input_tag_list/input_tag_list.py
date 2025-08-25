@@ -256,7 +256,7 @@ class InputTagList(Widget):
 
     def selection_changed(self, func: Callable) -> Callable:
         """Decorator to register a callback function for selection changes.
-        
+
         :param func: Callback function
         :type func: Callable
         """
