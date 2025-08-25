@@ -106,7 +106,7 @@ class TrackingVisualizer:
             
             width = int(video_stream['width'])
             height = int(video_stream['height'])
-            e
+            
             # Extract FPS
             fps_str = video_stream.get('r_frame_rate', '30/1')
             if '/' in fps_str:
@@ -537,7 +537,7 @@ from typing import Union
 from pathlib import Path
 
 def visualize(
-    annotation: Union[VideoAnnotation, Prediction], 
+    annotation: Union[VideoAnnotation, List[Prediction]], 
     source: Union[str, Path], 
     output_path: Union[str, Path],
     show_labels: bool = True,
@@ -546,7 +546,7 @@ def visualize(
     **kwargs
 ) -> None:
     """
-    Visualize tracking results from either VideoAnnotation or Prediction.
+    Visualize tracking results from either VideoAnnotation or list of Prediction.
 
     Args:
         annotation: VideoAnnotation or Prediction object.
@@ -563,7 +563,7 @@ def visualize(
         **kwargs
     )
 
-    if isinstance(annotation, Prediction):
+    if isinstance(annotation, list):
         annotation = predictions_to_video_annotation(annotation)
 
     visualizer.visualize_video_annotation(annotation, source, output_path)

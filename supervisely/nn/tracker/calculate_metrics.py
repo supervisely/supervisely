@@ -1,12 +1,13 @@
 import numpy as np
-from typing import Dict, List, Tuple, Optional, Union
-import supervisely as sly
-from supervisely import logger
-from collections import defaultdict
 import tempfile
 import os
 import subprocess
 from pathlib import Path
+from typing import Dict, List, Tuple, Optional, Union
+import supervisely as sly
+from supervisely import logger
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+from supervisely.nn.tracker.utils import video_annotation_to_mot
 
 try:
     import motmetrics as mm
@@ -26,278 +27,235 @@ except ImportError:
 
 class TrackingEvaluator:
     """
-    Video tracking metrics evaluator with MOTA and HOTA support.
-    Extracts tracks from Supervisely VideoAnnotation and computes comprehensive metrics.
+    Evaluator for video tracking metrics including MOTA, MOTP, IDF1, and HOTA.
+    
+    Converts Supervisely VideoAnnotations to MOT format and uses standard
+    evaluation libraries for accurate metric computation.
     """
     
     def __init__(self, iou_threshold: float = 0.5):
         """
-        Initialize evaluator.
+        Initialize tracking evaluator.
         
         Args:
-            iou_threshold: IoU threshold for matching predictions to ground truth
+            iou_threshold: IoU threshold for matching detections (0.0 to 1.0)
         """
+        if not 0.0 <= iou_threshold <= 1.0:
+            raise ValueError(f"IoU threshold must be between 0.0 and 1.0, got {iou_threshold}")
+        
         self.iou_threshold = iou_threshold
-        self.reset()
-    
-    def reset(self):
-        """Reset internal state for new evaluation."""
-        self._all_matches = []
-        self._frame_data = {}
-        self._class_names = set()
     
     def evaluate(
         self, 
-        gt_annotation: sly.VideoAnnotation, 
-        pred_annotation: sly.VideoAnnotation
+        gt_annotation: VideoAnnotation, 
+        pred_annotation: VideoAnnotation
     ) -> Dict[str, Union[float, int]]:
         """
-        Evaluate all tracking metrics and return results.
+        Evaluate tracking performance between ground truth and predictions.
         
         Args:
             gt_annotation: Ground truth video annotation
             pred_annotation: Predicted video annotation
             
         Returns:
-            Dictionary with all computed metrics
+            Dictionary containing all computed metrics
         """
         # Validate inputs
-        if not isinstance(gt_annotation, sly.VideoAnnotation):
-            raise TypeError(f"GT annotation must be VideoAnnotation, got {type(gt_annotation)}")
+        self._validate_inputs(gt_annotation, pred_annotation)
         
-        if not isinstance(pred_annotation, sly.VideoAnnotation):
-            raise TypeError(f"Prediction annotation must be VideoAnnotation, got {type(pred_annotation)}")
-        
-        self.reset()
         logger.info(f"Starting evaluation with IoU threshold: {self.iou_threshold}")
         
-        # Extract tracking data
-        gt_tracks = self._extract_tracks(gt_annotation, is_gt=True)
-        pred_tracks = self._extract_tracks(pred_annotation, is_gt=False)
+        # Convert annotations to MOT format
+        gt_mot_lines = video_annotation_to_mot(gt_annotation)
+        pred_mot_lines = video_annotation_to_mot(pred_annotation)
         
-        if not gt_tracks:
-            raise RuntimeError("No ground truth tracks found")
-        if not pred_tracks:
-            raise RuntimeError("No prediction tracks found")
+        if not gt_mot_lines:
+            raise RuntimeError("No ground truth detections found")
+        if not pred_mot_lines:
+            raise RuntimeError("No prediction detections found")
         
-        # Calculate frame-by-frame matches
-        self._calculate_matches(gt_tracks, pred_tracks)
+        logger.info(f"Converted to MOT format: {len(gt_mot_lines)} GT, {len(pred_mot_lines)} pred detections")
         
-        # Compute all metrics
-        basic_metrics = self._compute_basic_metrics()
-        tracking_metrics = self._compute_mot_metrics(gt_tracks, pred_tracks)
-        hota_metrics = self._compute_hota_metrics(gt_tracks, pred_tracks)
+        # Compute metrics using MOT format
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Save MOT files
+            gt_file = self._save_mot_file(gt_mot_lines, temp_dir, "gt.txt")
+            pred_file = self._save_mot_file(pred_mot_lines, temp_dir, "pred.txt")
+            
+            # Compute all metrics
+            basic_metrics = self._compute_basic_metrics(gt_mot_lines, pred_mot_lines)
+            mot_metrics = self._compute_mot_metrics(gt_file, pred_file)
+            hota_metrics = self._compute_hota_metrics(gt_file, pred_file, temp_dir)
         
         # Combine results
-        result = {
+        results = {
             # Basic detection metrics
-            "precision": basic_metrics["precision"],
-            "recall": basic_metrics["recall"],
-            "f1": basic_metrics["f1"],
-            "iou": basic_metrics["avg_iou"],
+            'precision': basic_metrics['precision'],
+            'recall': basic_metrics['recall'],
+            'f1': basic_metrics['f1'],
+            'avg_iou': basic_metrics['avg_iou'],
             
             # MOT metrics
-            "mota": tracking_metrics["mota"],
-            "motp": tracking_metrics["motp"],
-            "idf1": tracking_metrics["idf1"],
-            "num_switches": tracking_metrics["num_switches"],
-            "num_misses": tracking_metrics["num_misses"],
-            "num_false_positives": tracking_metrics["num_false_positives"],
+            'mota': mot_metrics['mota'],
+            'motp': mot_metrics['motp'],
+            'idf1': mot_metrics['idf1'],
+            'id_switches': mot_metrics['id_switches'],
+            'fragmentations': mot_metrics['fragmentations'],
+            'num_misses': mot_metrics['num_misses'],
+            'num_false_positives': mot_metrics['num_false_positives'],
             
-            # HOTA metrics
-            "hota": hota_metrics["hota"],
-            "deta": hota_metrics["deta"],
-            "assa": hota_metrics["assa"],
+            # HOTA metrics  
+            'hota': hota_metrics['hota'],
+            'deta': hota_metrics['deta'],
+            'assa': hota_metrics['assa'],
             
-            # Counts
-            "true_positives": basic_metrics["tp"],
-            "false_positives": basic_metrics["fp"], 
-            "false_negatives": basic_metrics["fn"],
-            "total_gt_objects": basic_metrics["total_gt"],
-            "total_pred_objects": basic_metrics["total_pred"],
+            # Count metrics
+            'true_positives': basic_metrics['tp'],
+            'false_positives': basic_metrics['fp'],
+            'false_negatives': basic_metrics['fn'],
+            'total_gt_objects': basic_metrics['total_gt'],
+            'total_pred_objects': basic_metrics['total_pred'],
             
             # Config
-            "iou_threshold": self.iou_threshold,
-            "frames_evaluated": len(self._frame_data),
+            'iou_threshold': self.iou_threshold
         }
         
-        logger.info(f"Evaluation complete. MOTA: {result['mota']:.3f}, "
-                   f"HOTA: {result['hota']:.3f}, Precision: {result['precision']:.3f}")
+        logger.info(
+            f"Evaluation complete - MOTA: {results['mota']:.3f}, "
+            f"HOTA: {results['hota']:.3f}, Precision: {results['precision']:.3f}"
+        )
         
-        return result
+        return results
     
-    def _extract_tracks(self, annotation: sly.VideoAnnotation, is_gt: bool) -> Dict[int, List]:
-        """Extract track data with proper track IDs from tags."""
-        tracks_by_frame = defaultdict(list)
+    def _validate_inputs(self, gt_annotation: VideoAnnotation, pred_annotation: VideoAnnotation):
+        """Validate input annotations."""
+        if not isinstance(gt_annotation, VideoAnnotation):
+            raise TypeError(f"Ground truth must be VideoAnnotation, got {type(gt_annotation)}")
         
-        # Extract track_id from object tags
-        object_track_ids = {}
-        for obj in annotation.objects:
-            track_id = None
-            
-            # Look for track_id in object tags
-            if obj.tags:
-                for tag in obj.tags:
-                    if hasattr(tag, 'meta') and hasattr(tag.meta, 'name'):
-                        if tag.meta.name == 'track_id':
-                            track_id = int(tag.value)
-                            break
-            
-            # Fallback if track_id not found in tags
-            if track_id is None:
-                obj_key = obj.key() if callable(obj.key) else obj.key
-                track_id = hash(obj_key) % 10000  # Use hash as fallback
-                logger.warning(f"No track_id found in tags for object {obj_key}, using fallback: {track_id}")
-            
-            obj_key = obj.key() if callable(obj.key) else obj.key
-            object_track_ids[obj_key] = (track_id, obj.obj_class.name)
+        if not isinstance(pred_annotation, VideoAnnotation):
+            raise TypeError(f"Predictions must be VideoAnnotation, got {type(pred_annotation)}")
         
-        # Extract tracks from frames
-        for frame in annotation.frames:
-            frame_idx = frame.index
-            for figure in frame.figures:
-                # Only process rectangles
-                if figure.geometry.geometry_name() != 'rectangle':
-                    continue
-                    
-                object_key = figure.parent_object.key() if callable(figure.parent_object.key) else figure.parent_object.key
-                if object_key not in object_track_ids:
-                    continue
-                    
-                track_id, class_name = object_track_ids[object_key]
-                self._class_names.add(class_name)
-                
-                # Extract bbox coordinates
-                rect = figure.geometry
-                bbox = [rect.left, rect.top, rect.right, rect.bottom]
-                
-                # Validate bbox
-                if bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
-                    continue
-                
-                track_obj = {
-                    'track_id': track_id,  # Use proper track_id from tags
-                    'bbox': bbox,
-                    'class': class_name,
-                    'is_gt': is_gt,
-                    'confidence': 1.0
-                }
-                
-                # Extract confidence from object tags
-                if not is_gt:
-                    confidence = self._extract_confidence_from_tags(figure.parent_object.tags)
-                    if confidence is not None:
-                        track_obj['confidence'] = confidence
-                
-                tracks_by_frame[frame_idx].append(track_obj)
+        if gt_annotation.frames_count == 0:
+            raise ValueError("Ground truth annotation is empty")
         
-        logger.info(f"Extracted tracks from {len(tracks_by_frame)} frames ({'GT' if is_gt else 'Pred'})")
-        return dict(tracks_by_frame)
+        if pred_annotation.frames_count == 0:
+            raise ValueError("Prediction annotation is empty")
     
-    def _extract_confidence_from_tags(self, tags) -> Optional[float]:
-        """Extract confidence value from tags collection."""
-        if not tags:
-            return None
-            
+    def _save_mot_file(self, mot_lines: List[str], temp_dir: str, filename: str) -> str:
+        """Save MOT format lines to file."""
+        file_path = os.path.join(temp_dir, filename)
+        with open(file_path, 'w') as f:
+            for line in mot_lines:
+                f.write(line + '\n')
+        return file_path
+    
+    def _parse_mot_file(self, file_path: str) -> Dict[int, List[Dict]]:
+        """Parse MOT file into tracks by frame."""
+        tracks_by_frame = {}
+        
+        with open(file_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                
+                try:
+                    parts = line.split(',')
+                    if len(parts) < 9:
+                        continue
+                    
+                    frame_id = int(parts[0])
+                    track_id = int(parts[1])
+                    left = float(parts[2])
+                    top = float(parts[3])
+                    width = float(parts[4])
+                    height = float(parts[5])
+                    confidence = float(parts[6])
+                    class_id = int(parts[7])
+                    visibility = float(parts[8])
+                    
+                    frame_idx = frame_id - 1  # Convert to 0-based
+                    
+                    if frame_idx not in tracks_by_frame:
+                        tracks_by_frame[frame_idx] = []
+                    
+                    tracks_by_frame[frame_idx].append({
+                        'track_id': track_id,
+                        'bbox': [left, top, left + width, top + height],  # [x1, y1, x2, y2]
+                        'confidence': confidence,
+                        'class_id': class_id,
+                        'visibility': visibility
+                    })
+                
+                except (ValueError, IndexError):
+                    continue
+        
+        return tracks_by_frame
+    
+    def _compute_basic_metrics(self, gt_mot_lines: List[str], pred_mot_lines: List[str]) -> Dict[str, float]:
+        """Compute basic detection metrics from MOT format data."""
+        # Parse MOT lines to temporary files then parse
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as gt_tmp:
+            gt_tmp.write('\n'.join(gt_mot_lines))
+            gt_tmp_path = gt_tmp.name
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as pred_tmp:
+            pred_tmp.write('\n'.join(pred_mot_lines))
+            pred_tmp_path = pred_tmp.name
+        
         try:
-            for tag in tags:
-                if hasattr(tag, 'meta') and hasattr(tag.meta, 'name'):
-                    if tag.meta.name in ['confidence', 'conf', 'score']:
-                        return float(tag.value)
-        except (AttributeError, ValueError, TypeError):
-            pass
+            gt_tracks = self._parse_mot_file(gt_tmp_path)
+            pred_tracks = self._parse_mot_file(pred_tmp_path)
+        finally:
+            # Cleanup temp files
+            os.unlink(gt_tmp_path)
+            os.unlink(pred_tmp_path)
         
-        return None
-    
-    def _calculate_matches(self, gt_tracks: Dict, pred_tracks: Dict):
-        """Calculate matches between GT and predictions for each frame."""
+        tp = fp = fn = 0
+        total_iou = 0.0
+        iou_count = 0
+        
+        # Get all frames
         all_frames = set(list(gt_tracks.keys()) + list(pred_tracks.keys()))
         
         for frame_idx in all_frames:
-            gt_frame = gt_tracks.get(frame_idx, [])
-            pred_frame = pred_tracks.get(frame_idx, [])
+            gt_objects = gt_tracks.get(frame_idx, [])
+            pred_objects = pred_tracks.get(frame_idx, [])
             
-            frame_matches = self._match_frame(gt_frame, pred_frame)
-            self._frame_data[frame_idx] = {
-                'gt': gt_frame,
-                'pred': pred_frame,
-                'matches': frame_matches
-            }
-            
-            self._all_matches.extend(frame_matches)
-    
-    def _match_frame(self, gt_objects: List, pred_objects: List) -> List[Dict]:
-        """Match predictions to ground truth for a single frame using Hungarian algorithm."""
-        matches = []
-        matched_gt = set()
-        matched_pred = set()
-        
-        # Greedy matching based on IoU
-        for i, pred_obj in enumerate(pred_objects):
-            best_iou = 0.0
-            best_gt_idx = -1
-            
-            for j, gt_obj in enumerate(gt_objects):
-                if j in matched_gt or pred_obj['class'] != gt_obj['class']:
-                    continue
+            if len(gt_objects) > 0 and len(pred_objects) > 0:
+                # Calculate IoU matrix
+                gt_boxes = np.array([obj['bbox'] for obj in gt_objects])
+                pred_boxes = np.array([obj['bbox'] for obj in pred_objects])
                 
-                iou = self._calculate_iou(pred_obj['bbox'], gt_obj['bbox'])
-                if iou > best_iou and iou >= self.iou_threshold:
-                    best_iou = iou
-                    best_gt_idx = j
-            
-            if best_gt_idx >= 0:
-                matches.append({
-                    'type': 'TP',
-                    'pred_idx': i,
-                    'gt_idx': best_gt_idx,
-                    'iou': best_iou,
-                    'pred_track_id': pred_objects[i]['track_id'],
-                    'gt_track_id': gt_objects[best_gt_idx]['track_id'],
-                    'class': pred_objects[i]['class'],
-                    'confidence': pred_objects[i]['confidence']
-                })
-                matched_gt.add(best_gt_idx)
-                matched_pred.add(i)
+                iou_matrix = self._calculate_iou_matrix(gt_boxes, pred_boxes)
+                
+                # Find matches
+                matches = self._find_matches(iou_matrix, self.iou_threshold)
+                
+                frame_tp = len(matches)
+                frame_fp = len(pred_objects) - frame_tp
+                frame_fn = len(gt_objects) - frame_tp
+                
+                tp += frame_tp
+                fp += frame_fp
+                fn += frame_fn
+                
+                # Calculate average IoU for matched pairs
+                for gt_idx, pred_idx in matches:
+                    total_iou += iou_matrix[gt_idx, pred_idx]
+                    iou_count += 1
             else:
-                matches.append({
-                    'type': 'FP',
-                    'pred_idx': i,
-                    'pred_track_id': pred_objects[i]['track_id'],
-                    'class': pred_objects[i]['class'],
-                    'confidence': pred_objects[i]['confidence']
-                })
+                fp += len(pred_objects)
+                fn += len(gt_objects)
         
-        # False Negatives
-        for j, gt_obj in enumerate(gt_objects):
-            if j not in matched_gt:
-                matches.append({
-                    'type': 'FN',
-                    'gt_idx': j,
-                    'gt_track_id': gt_obj['track_id'],
-                    'class': gt_obj['class']
-                })
-        
-        return matches
-    
-    def _compute_basic_metrics(self) -> Dict[str, float]:
-        """Compute basic detection metrics."""
-        tp_matches = [m for m in self._all_matches if m['type'] == 'TP']
-        fp_matches = [m for m in self._all_matches if m['type'] == 'FP']
-        fn_matches = [m for m in self._all_matches if m['type'] == 'FN']
-        
-        tp = len(tp_matches)
-        fp = len(fp_matches)
-        fn = len(fn_matches)
-        
+        # Calculate final metrics
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
         f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+        avg_iou = total_iou / iou_count if iou_count > 0 else 0.0
         
-        avg_iou = np.mean([m['iou'] for m in tp_matches]) if tp_matches else 0.0
-        
-        total_gt = len([m for m in self._all_matches if m['type'] in ['TP', 'FN']])
-        total_pred = len([m for m in self._all_matches if m['type'] in ['TP', 'FP']])
+        total_gt = sum(len(tracks) for tracks in gt_tracks.values())
+        total_pred = sum(len(tracks) for tracks in pred_tracks.values())
         
         return {
             'precision': precision,
@@ -311,145 +269,214 @@ class TrackingEvaluator:
             'total_pred': total_pred
         }
     
-    def _compute_mot_metrics(self, gt_tracks: Dict, pred_tracks: Dict) -> Dict[str, float]:
+    def _parse_mot_lines_to_tracks(self, mot_lines: List[str]) -> Dict[int, List[Dict]]:
+        """Parse MOT lines into tracks by frame."""
+        tracks_by_frame = {}
+        
+        for line in mot_lines:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            
+            try:
+                parts = line.split(',')
+                if len(parts) < 9:
+                    continue
+                
+                frame_id = int(parts[0])
+                track_id = int(parts[1])
+                left = float(parts[2])
+                top = float(parts[3])
+                width = float(parts[4])
+                height = float(parts[5])
+                confidence = float(parts[6])
+                class_id = int(parts[7])
+                visibility = float(parts[8])
+                
+                frame_idx = frame_id - 1  # Convert to 0-based
+                
+                if frame_idx not in tracks_by_frame:
+                    tracks_by_frame[frame_idx] = []
+                
+                tracks_by_frame[frame_idx].append({
+                    'track_id': track_id,
+                    'bbox': [left, top, left + width, top + height],  # [x1, y1, x2, y2]
+                    'confidence': confidence,
+                    'class_id': class_id,
+                    'visibility': visibility
+                })
+            
+            except (ValueError, IndexError):
+                continue
+        
+        return tracks_by_frame
+    
+    def _compute_mot_metrics(self, gt_file: str, pred_file: str) -> Dict[str, Union[float, int]]:
         """Compute MOT metrics using motmetrics library."""
         if not MOTMETRICS_AVAILABLE:
-            logger.error("motmetrics not available. Install with: pip install motmetrics")
+            logger.warning("motmetrics not available - returning zero MOT metrics")
             return {
                 'mota': 0.0, 'motp': 0.0, 'idf1': 0.0,
-                'num_switches': 0, 'num_misses': 0, 'num_false_positives': 0
+                'id_switches': 0, 'fragmentations': 0,
+                'num_misses': 0, 'num_false_positives': 0
             }
         
         try:
-            # Create accumulator
+            # Parse MOT files
+            gt_tracks = self._parse_mot_file(gt_file)
+            pred_tracks = self._parse_mot_file(pred_file)
+            
+            # Create MOT accumulator
             acc = mm.MOTAccumulator(auto_id=True)
             
             # Process each frame
-            total_updates = 0
-            for frame_idx in sorted(set(list(gt_tracks.keys()) + list(pred_tracks.keys()))):
-                gt_frame = gt_tracks.get(frame_idx, [])
-                pred_frame = pred_tracks.get(frame_idx, [])
+            all_frames = sorted(set(list(gt_tracks.keys()) + list(pred_tracks.keys())))
+            
+            for frame_idx in all_frames:
+                gt_objects = gt_tracks.get(frame_idx, [])
+                pred_objects = pred_tracks.get(frame_idx, [])
                 
-                # Skip completely empty frames
-                if len(gt_frame) == 0 and len(pred_frame) == 0:
-                    continue
+                # Extract track IDs
+                gt_ids = [obj['track_id'] for obj in gt_objects]
+                pred_ids = [obj['track_id'] for obj in pred_objects]
                 
-                # Extract numeric track IDs
-                gt_ids = [obj['track_id'] for obj in gt_frame]
-                pred_ids = [obj['track_id'] for obj in pred_frame]
-                
-                # Calculate distance matrix
-                if len(gt_frame) > 0 and len(pred_frame) > 0:
-                    gt_boxes = np.array([obj['bbox'] for obj in gt_frame])
-                    pred_boxes = np.array([obj['bbox'] for obj in pred_frame])
-                    distances = self._calculate_distance_matrix(gt_boxes, pred_boxes)
+                # Calculate distance matrix (1 - IoU)
+                if len(gt_objects) > 0 and len(pred_objects) > 0:
+                    gt_boxes = np.array([obj['bbox'] for obj in gt_objects])
+                    pred_boxes = np.array([obj['bbox'] for obj in pred_objects])
                     
-                    # Set high distance for poor matches
-                    distances[distances > (1 - self.iou_threshold)] = np.inf
+                    iou_matrix = self._calculate_iou_matrix(gt_boxes, pred_boxes)
+                    distance_matrix = 1.0 - iou_matrix
+                    
+                    # Set infinite distance for matches below threshold
+                    distance_matrix[iou_matrix < self.iou_threshold] = np.inf
                 else:
-                    distances = np.empty((len(gt_frame), len(pred_frame)))
-                    distances.fill(np.inf)
+                    distance_matrix = np.empty((len(gt_objects), len(pred_objects)))
+                    distance_matrix.fill(np.inf)
                 
                 # Update accumulator
-                acc.update(gt_ids, pred_ids, distances)
-                total_updates += 1
-            
-            logger.info(f"Updated motmetrics accumulator {total_updates} times")
+                acc.update(gt_ids, pred_ids, distance_matrix)
             
             # Compute metrics
             mh = mm.metrics.create()
             summary = mh.compute(
-                acc, 
-                metrics=['mota', 'motp', 'idf1', 'num_switches', 'num_misses', 'num_false_positives'],
-                name='tracking_eval'
+                acc,
+                metrics=['mota', 'motp', 'idf1', 'num_switches', 'num_fragmentations', 
+                        'num_misses', 'num_false_positives'],
+                name='tracking'
             )
             
-            if summary.empty or len(summary) == 0:
-                logger.warning("motmetrics returned empty summary")
-                return {
-                    'mota': 0.0, 'motp': 0.0, 'idf1': 0.0,
-                    'num_switches': 0, 'num_misses': 0, 'num_false_positives': 0
-                }
-            
-            # Extract metrics safely
-            result = {}
-            for metric in ['mota', 'motp', 'idf1', 'num_switches', 'num_misses', 'num_false_positives']:
-                if metric not in summary.columns:
-                    logger.warning(f"Metric {metric} not found in motmetrics results")
-                    result[metric] = 0.0 if metric not in ['num_switches', 'num_misses', 'num_false_positives'] else 0
-                    continue
+            # Extract results safely
+            def safe_extract(metric_name, default_value=0.0, as_int=False):
+                if summary.empty or metric_name not in summary.columns:
+                    return int(default_value) if as_int else default_value
                 
-                value = summary[metric].iloc[0]
+                value = summary[metric_name].iloc[0]
                 if pd.isna(value):
-                    result[metric] = 0.0 if metric not in ['num_switches', 'num_misses', 'num_false_positives'] else 0
-                else:
-                    if metric in ['num_switches', 'num_misses', 'num_false_positives']:
-                        result[metric] = int(value)
-                    else:
-                        result[metric] = float(value)
+                    return int(default_value) if as_int else default_value
+                
+                return int(value) if as_int else float(value)
             
-            logger.info(f"Successfully computed MOT metrics: MOTA={result['mota']:.3f}")
-            return result
+            return {
+                'mota': safe_extract('mota', 0.0),
+                'motp': safe_extract('motp', 0.0),
+                'idf1': safe_extract('idf1', 0.0),
+                'id_switches': safe_extract('num_switches', 0, as_int=True),
+                'fragmentations': safe_extract('num_fragmentations', 0, as_int=True),
+                'num_misses': safe_extract('num_misses', 0, as_int=True),
+                'num_false_positives': safe_extract('num_false_positives', 0, as_int=True)
+            }
             
         except Exception as e:
-            logger.error(f"Failed to compute MOT metrics: {str(e)}")
+            logger.error(f"Failed to compute MOT metrics: {e}")
             return {
                 'mota': 0.0, 'motp': 0.0, 'idf1': 0.0,
-                'num_switches': 0, 'num_misses': 0, 'num_false_positives': 0
+                'id_switches': 0, 'fragmentations': 0,
+                'num_misses': 0, 'num_false_positives': 0
             }
     
-    def _compute_hota_metrics(self, gt_tracks: Dict, pred_tracks: Dict) -> Dict[str, float]:
-        """Compute HOTA metrics using simplified approach."""
+    def _compute_hota_metrics(self, gt_file: str, pred_file: str, temp_dir: str) -> Dict[str, float]:
+        """Compute HOTA metrics using TrackEval."""
         if not TRACKEVAL_AVAILABLE:
-            logger.warning("trackeval not available. Install with: pip install git+https://github.com/JonathonLuiten/TrackEval.git")
+            logger.warning("trackeval not available - returning zero HOTA metrics")
             return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
         
         try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                logger.info(f"Creating TrackEval files in: {temp_dir}")
+            # Create TrackEval directory structure
+            self._setup_trackeval_dirs(gt_file, pred_file, temp_dir)
+            
+            # Run TrackEval
+            config = {
+                'USE_PARALLEL': False,
+                'NUM_PARALLEL_CORES': 1,
+                'BREAK_ON_ERROR': True,
+                'RETURN_ON_ERROR': False,
+                'PRINT_RESULTS': False,
+                'PRINT_CONFIG': False,
+                'TIME_PROGRESS': False,
+                'DISPLAY_LESS_PROGRESS': True,
                 
-                # Write files in MOT format
-                self._write_mot_files(gt_tracks, pred_tracks, temp_dir)
+                'GT_FOLDER': os.path.join(temp_dir, 'trackeval', 'gt'),
+                'TRACKERS_FOLDER': os.path.join(temp_dir, 'trackeval', 'trackers'),
+                'OUTPUT_FOLDER': os.path.join(temp_dir, 'trackeval', 'output'),
+                'TRACKERS_TO_EVAL': ['tracker'],
+                'DATASETS_TO_EVAL': ['seq'],
+                'BENCHMARK': 'MOT17',
+                'SPLIT_TO_EVAL': 'train',
+                'METRICS': ['HOTA'],
+                'THRESHOLD': self.iou_threshold
+            }
+            
+            # Run evaluation
+            evaluator = trackeval.Evaluator(config)
+            output_res, _ = evaluator.evaluate()
+            
+            # Extract HOTA results
+            if output_res and 'seq' in output_res:
+                tracker_results = output_res['seq']['tracker']['COMBINED_SEQ']
                 
-                # Try to run TrackEval command line tool
-                hota_result = self._run_trackeval_command(temp_dir)
-                
-                if hota_result:
-                    return hota_result
-                
-                # Fallback to Python API
-                return self._run_trackeval_api(temp_dir)
-                
+                if 'HOTA' in tracker_results:
+                    hota_data = tracker_results['HOTA']
+                    return {
+                        'hota': hota_data.get('HOTA', 0.0),
+                        'deta': hota_data.get('DetA', 0.0),
+                        'assa': hota_data.get('AssA', 0.0)
+                    }
+            
         except Exception as e:
-            logger.error(f"Failed to compute HOTA metrics: {str(e)}")
-            return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
+            logger.debug(f"TrackEval failed: {e}")
+        
+        return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
     
-    def _write_mot_files(self, gt_tracks: Dict, pred_tracks: Dict, temp_dir: str):
-        """Write tracking data in MOT format for TrackEval."""
+    def _setup_trackeval_dirs(self, gt_file: str, pred_file: str, temp_dir: str):
+        """Setup TrackEval directory structure."""
+        # Create directories
+        eval_dir = Path(temp_dir) / 'trackeval'
+        gt_seq_dir = eval_dir / 'gt' / 'seq'
+        gt_data_dir = gt_seq_dir / 'gt'
+        tracker_dir = eval_dir / 'trackers' / 'tracker'
+        seqmap_dir = eval_dir / 'gt' / 'seqmaps'
         
-        # Create directory structure
-        gt_seq_dir = os.path.join(temp_dir, 'gt', 'seq')
-        gt_dir = os.path.join(gt_seq_dir, 'gt')
-        tracker_dir = os.path.join(temp_dir, 'trackers', 'tracker')
-        seqmap_dir = os.path.join(temp_dir, 'gt', 'seqmaps')
+        gt_data_dir.mkdir(parents=True, exist_ok=True)
+        tracker_dir.mkdir(parents=True, exist_ok=True)
+        seqmap_dir.mkdir(parents=True, exist_ok=True)
         
-        os.makedirs(gt_dir, exist_ok=True)
-        os.makedirs(tracker_dir, exist_ok=True)
-        os.makedirs(seqmap_dir, exist_ok=True)
-        
-        # Create seqmap file
-        with open(os.path.join(seqmap_dir, 'MOT17-train.txt'), 'w') as f:
-            f.write("name\n")
-            f.write("seq\n")
+        # Copy MOT files
+        import shutil
+        shutil.copy2(gt_file, gt_data_dir / 'gt.txt')
+        shutil.copy2(pred_file, tracker_dir / 'seq.txt')
         
         # Create seqinfo.ini
+        gt_tracks = self._parse_mot_file(gt_file)
+        pred_tracks = self._parse_mot_file(pred_file)
+        
         max_frame = 0
         if gt_tracks:
             max_frame = max(max_frame, max(gt_tracks.keys()))
         if pred_tracks:
             max_frame = max(max_frame, max(pred_tracks.keys()))
         
-        with open(os.path.join(gt_seq_dir, 'seqinfo.ini'), 'w') as f:
+        with open(gt_seq_dir / 'seqinfo.ini', 'w') as f:
             f.write("[Sequence]\n")
             f.write("name=seq\n")
             f.write(f"seqLength={max_frame + 1}\n")
@@ -459,177 +486,347 @@ class TrackingEvaluator:
             f.write("imDir=img1\n")
             f.write("frameRate=30\n")
         
-        # Write GT file
-        with open(os.path.join(gt_dir, 'gt.txt'), 'w') as f:
-            for frame_idx in sorted(gt_tracks.keys()):
-                for track in gt_tracks[frame_idx]:
-                    track_id = track['track_id']
-                    bbox = track['bbox']
-                    left, top, right, bottom = bbox
-                    width, height = right - left, bottom - top
-                    
-                    if width > 0 and height > 0:
-                        f.write(f"{frame_idx + 1},{track_id},{left:.1f},{top:.1f},{width:.1f},{height:.1f},1,1,1\n")
-        
-        # Write tracker file
-        with open(os.path.join(tracker_dir, 'seq.txt'), 'w') as f:
-            for frame_idx in sorted(pred_tracks.keys()):
-                for track in pred_tracks[frame_idx]:
-                    track_id = track['track_id']
-                    bbox = track['bbox']
-                    left, top, right, bottom = bbox
-                    width, height = right - left, bottom - top
-                    
-                    if width > 0 and height > 0:
-                        conf = track['confidence']
-                        f.write(f"{frame_idx + 1},{track_id},{left:.1f},{top:.1f},{width:.1f},{height:.1f},{conf:.3f},1,1\n")
-        
-        logger.info(f"Wrote MOT format files to {temp_dir}")
+        # Create seqmap file
+        with open(seqmap_dir / 'MOT17-train.txt', 'w') as f:
+            f.write("name\n")
+            f.write("seq\n")
     
-    def _run_trackeval_command(self, temp_dir: str) -> Optional[Dict[str, float]]:
-        """Try to run TrackEval as command line tool."""
-        try:
-            # Check if TrackEval command exists
-            cmd = [
-                'python', '-m', 'trackeval.scripts.run_mot_challenge',
-                '--BENCHMARK', 'MOT17',
-                '--SPLIT_TO_EVAL', 'train',
-                '--TRACKERS_TO_EVAL', 'tracker',
-                '--USE_PARALLEL', 'False',
-                '--GT_FOLDER', os.path.join(temp_dir, 'gt'),
-                '--TRACKERS_FOLDER', os.path.join(temp_dir, 'trackers'),
-                '--OUTPUT_FOLDER', os.path.join(temp_dir, 'output'),
-                '--PRINT_RESULTS', 'False',
-                '--PRINT_CONFIG', 'False'
-            ]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            
-            if result.returncode == 0:
-                # Look for output files with HOTA results
-                output_dir = os.path.join(temp_dir, 'output')
-                for root, dirs, files in os.walk(output_dir):
-                    for file in files:
-                        if 'HOTA' in file and file.endswith('.txt'):
-                            file_path = os.path.join(root, file)
-                            hota_data = self._parse_hota_output(file_path)
-                            if hota_data:
-                                return hota_data
-            
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
-            logger.debug(f"TrackEval command failed: {str(e)}")
+    def _calculate_iou_matrix(self, boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:
+        """Calculate IoU matrix between two sets of bounding boxes."""
+        # boxes format: [x1, y1, x2, y2]
+        areas1 = (boxes1[:, 2] - boxes1[:, 0]) * (boxes1[:, 3] - boxes1[:, 1])
+        areas2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
         
-        return None
+        # Calculate intersection
+        x1 = np.maximum(boxes1[:, None, 0], boxes2[None, :, 0])
+        y1 = np.maximum(boxes1[:, None, 1], boxes2[None, :, 1])
+        x2 = np.minimum(boxes1[:, None, 2], boxes2[None, :, 2])
+        y2 = np.minimum(boxes1[:, None, 3], boxes2[None, :, 3])
+        
+        intersection = np.maximum(0, x2 - x1) * np.maximum(0, y2 - y1)
+        
+        # Calculate union
+        union = areas1[:, None] + areas2[None, :] - intersection
+        
+        # Calculate IoU
+        iou = np.where(union > 0, intersection / union, 0)
+        
+        return iou
     
-    def _run_trackeval_api(self, temp_dir: str) -> Dict[str, float]:
-        """Run TrackEval using Python API as fallback."""
-        try:
-            # Minimal config
-            config = {
-                'USE_PARALLEL': False,
-                'PRINT_RESULTS': False,
-                'PRINT_CONFIG': False,
-                'PLOT_CURVES': False,
+    def _find_matches(self, iou_matrix: np.ndarray, threshold: float) -> List[Tuple[int, int]]:
+        """Find optimal matches using greedy assignment."""
+        matches = []
+        used_gt = set()
+        used_pred = set()
+        
+        # Get all candidates above threshold
+        candidates = []
+        for i in range(iou_matrix.shape[0]):
+            for j in range(iou_matrix.shape[1]):
+                if iou_matrix[i, j] >= threshold:
+                    candidates.append((iou_matrix[i, j], i, j))
+        
+        # Sort by IoU descending for greedy assignment
+        candidates.sort(reverse=True)
+        
+        # Assign greedily
+        for iou_val, gt_idx, pred_idx in candidates:
+            if gt_idx not in used_gt and pred_idx not in used_pred:
+                matches.append((gt_idx, pred_idx))
+                used_gt.add(gt_idx)
+                used_pred.add(pred_idx)
+        
+        return matches
+
+
+def evaluate(
+    gt_annotation: VideoAnnotation,
+    pred_annotation: VideoAnnotation,
+    iou_threshold: float = 0.5
+) -> Dict[str, Union[float, int]]:
+    """
+    Evaluate tracking performance between ground truth and predictions.
+    
+    This function provides a simple interface for tracking evaluation,
+    similar to how visualize() works for visualization.
+    
+    Args:
+        gt_annotation: Ground truth video annotation
+        pred_annotation: Predicted video annotation  
+        iou_threshold: IoU threshold for matching detections
+        
+    Returns:
+        Dictionary containing all computed tracking metrics
+        
+    Usage:
+        import supervisely as sly
+        from supervisely.nn.tracker import evaluate
+        
+        # Load annotations  
+        gt_ann = sly.VideoAnnotation.load_json_file("gt.json", project_meta)
+        pred_ann = sly.VideoAnnotation.load_json_file("pred.json", project_meta)
+        
+        # Evaluate tracking
+        metrics = evaluate(gt_ann, pred_ann, iou_threshold=0.5)
+        
+        print(f"MOTA: {metrics['mota']:.3f}")
+        print(f"HOTA: {metrics['hota']:.3f}")
+        print(f"Precision: {metrics['precision']:.3f}")
+        print(f"Recall: {metrics['recall']:.3f}")
+    """
+    evaluator = TrackingEvaluator(iou_threshold=iou_threshold)
+    return evaluator.evaluate(gt_annotation, pred_annotation)
+
+import numpy as np
+import tempfile
+import os
+from pathlib import Path
+from typing import Dict, List, Union
+from collections import defaultdict
+import supervisely as sly
+from supervisely import logger
+from supervisely.video_annotation.video_annotation import VideoAnnotation
+
+try:
+    import motmetrics as mm
+    import pandas as pd
+    MOTMETRICS_AVAILABLE = True
+except ImportError:
+    MOTMETRICS_AVAILABLE = False
+
+try:
+    import trackeval
+    TRACKEVAL_AVAILABLE = True
+except ImportError:
+    TRACKEVAL_AVAILABLE = False
+
+
+def evaluate_mot_direct(
+    gt_annotation: VideoAnnotation,
+    pred_annotation: VideoAnnotation,
+    iou_threshold: float = 0.5
+) -> Dict[str, Union[float, int]]:
+    """
+    Direct MOT evaluation without coordinate conversion through sly.Rectangle.
+    Extracts tracking data directly and uses motmetrics/trackeval.
+    """
+    
+    # Extract raw tracking data directly from VideoAnnotations
+    gt_tracks = extract_tracks_direct(gt_annotation)
+    pred_tracks = extract_tracks_direct(pred_annotation)
+    
+    logger.info(f"Extracted {len(gt_tracks)} GT frames, {len(pred_tracks)} pred frames")
+    
+    # Compute metrics
+    basic_metrics = compute_basic_metrics_direct(gt_tracks, pred_tracks, iou_threshold)
+    mot_metrics = compute_mot_metrics_direct(gt_tracks, pred_tracks, iou_threshold)
+    
+    # Combine results
+    results = {
+        'precision': basic_metrics['precision'],
+        'recall': basic_metrics['recall'],
+        'f1': basic_metrics['f1'],
+        'avg_iou': basic_metrics['avg_iou'],
+        
+        'mota': mot_metrics['mota'],
+        'motp': mot_metrics['motp'],
+        'idf1': mot_metrics['idf1'],
+        'id_switches': mot_metrics['id_switches'],
+        'fragmentations': mot_metrics['fragmentations'],
+        'num_misses': mot_metrics['num_misses'],
+        'num_false_positives': mot_metrics['num_false_positives'],
+        
+        'hota': 0.0,  # TODO: implement if needed
+        'deta': 0.0,
+        'assa': 0.0,
+        
+        'true_positives': basic_metrics['tp'],
+        'false_positives': basic_metrics['fp'],
+        'false_negatives': basic_metrics['fn'],
+        'total_gt_objects': basic_metrics['total_gt'],
+        'total_pred_objects': basic_metrics['total_pred'],
+        
+        'iou_threshold': iou_threshold
+    }
+    
+    logger.info(f"Direct evaluation - MOTA: {results['mota']:.3f}, Precision: {results['precision']:.3f}")
+    return results
+
+
+def extract_tracks_direct(annotation: VideoAnnotation) -> Dict[int, List[Dict]]:
+    """Extract tracks directly without coordinate conversion."""
+    tracks_by_frame = defaultdict(list)
+    
+    for frame in annotation.frames:
+        frame_idx = frame.index
+        
+        for figure in frame.figures:
+            # Get track ID
+            if hasattr(figure.video_object, '_track_id'):
+                track_id = figure.video_object._track_id
+            else:
+                track_id = figure.video_object.key().int
+            
+            # Get bbox directly from Rectangle geometry
+            bbox = figure.geometry
+            if not isinstance(bbox, sly.Rectangle):
+                bbox = bbox.to_bbox()
+            
+            # Extract coordinates - avoid conversion errors
+            left = float(bbox.left)
+            top = float(bbox.top)
+            right = float(bbox.right)
+            bottom = float(bbox.bottom)
+            
+            track_obj = {
+                'track_id': track_id,
+                'bbox': [left, top, right, bottom],  # [x1, y1, x2, y2]
+                'confidence': 1.0,
+                'class_name': figure.video_object.obj_class.name
             }
             
-            dataset_config = {
-                'GT_FOLDER': os.path.join(temp_dir, 'gt'),
-                'TRACKERS_FOLDER': os.path.join(temp_dir, 'trackers'),
-                'OUTPUT_FOLDER': os.path.join(temp_dir, 'output'),
-                'TRACKERS_TO_EVAL': ['tracker'],
-                'CLASSES_TO_EVAL': ['all'],
-                'BENCHMARK': 'MOT17',
-                'SPLIT_TO_EVAL': 'train',
-            }
-            
-            metric_config = {'THRESHOLD': self.iou_threshold}
-            
-            # Suppress output
-            import sys
-            from io import StringIO
-            old_stdout, old_stderr = sys.stdout, sys.stderr
-            sys.stdout = sys.stderr = StringIO()
-            
-            try:
-                evaluator = trackeval.Evaluator(config)
-                dataset_list = [trackeval.datasets.MotChallenge2DBox(dataset_config)]
-                metrics_list = [trackeval.metrics.HOTA(metric_config)]
-                
-                raw_results, _ = evaluator.evaluate(dataset_list, metrics_list)
-                
-                
-            finally:
-                sys.stdout, sys.stderr = old_stdout, old_stderr
-            
-            # Extract HOTA data
-            if (raw_results and 'MotChallenge2DBox' in raw_results and 
-                raw_results['MotChallenge2DBox'] and 'tracker' in raw_results['MotChallenge2DBox']):
-                
-                tracker_data = raw_results['MotChallenge2DBox']['tracker']
-                if tracker_data:
-                    for seq_data in tracker_data.values():
-                        if isinstance(seq_data, dict) and 'HOTA' in seq_data:
-                            hota_data = seq_data['HOTA']
-                            return {
-                                'hota': hota_data.get('HOTA', 0.0),
-                                'deta': hota_data.get('DetA', 0.0),
-                                'assa': hota_data.get('AssA', 0.0),
-                            }
-            
-        except Exception as e:
-            logger.debug(f"TrackEval API failed: {str(e)}")
-        
-        return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
+            tracks_by_frame[frame_idx].append(track_obj)
     
-    def _parse_hota_output(self, file_path: str) -> Optional[Dict[str, float]]:
-        """Parse HOTA results from TrackEval output file."""
-        try:
-            with open(file_path, 'r') as f:
-                content = f.read()
-                
-            # Simple parsing of HOTA results
-            # This is a placeholder - actual parsing depends on TrackEval output format
-            if 'HOTA' in content:
-                # Extract HOTA value (simplified)
-                lines = content.split('\n')
-                for line in lines:
-                    if 'HOTA' in line and any(char.isdigit() for char in line):
-                        # Try to extract numeric values
-                        import re
-                        numbers = re.findall(r'\d+\.?\d*', line)
-                        if numbers:
-                            hota_val = float(numbers[0]) / 100.0  # Convert percentage to decimal
-                            return {'hota': hota_val, 'deta': 0.0, 'assa': 0.0}
+    return dict(tracks_by_frame)
+
+
+def compute_basic_metrics_direct(gt_tracks, pred_tracks, iou_threshold):
+    """Compute basic metrics directly."""
+    tp = fp = fn = 0
+    total_iou = 0.0
+    iou_count = 0
+    
+    all_frames = set(list(gt_tracks.keys()) + list(pred_tracks.keys()))
+    
+    for frame_idx in all_frames:
+        gt_objects = gt_tracks.get(frame_idx, [])
+        pred_objects = pred_tracks.get(frame_idx, [])
+        
+        if len(gt_objects) > 0 and len(pred_objects) > 0:
+            gt_boxes = np.array([obj['bbox'] for obj in gt_objects])
+            pred_boxes = np.array([obj['bbox'] for obj in pred_objects])
             
-        except Exception as e:
-            logger.debug(f"Failed to parse HOTA output: {str(e)}")
-        
-        return None
+            iou_matrix = calculate_iou_matrix(gt_boxes, pred_boxes)
+            matches = find_matches(iou_matrix, iou_threshold)
+            
+            frame_tp = len(matches)
+            frame_fp = len(pred_objects) - frame_tp
+            frame_fn = len(gt_objects) - frame_tp
+            
+            tp += frame_tp
+            fp += frame_fp
+            fn += frame_fn
+            
+            for gt_idx, pred_idx in matches:
+                total_iou += iou_matrix[gt_idx, pred_idx]
+                iou_count += 1
+        else:
+            fp += len(pred_objects)
+            fn += len(gt_objects)
     
-    def _calculate_iou(self, box1: List[float], box2: List[float]) -> float:
-        """Calculate IoU between two bounding boxes [x1, y1, x2, y2]."""
-        x1_max = max(box1[0], box2[0])
-        y1_max = max(box1[1], box2[1])
-        x2_min = min(box1[2], box2[2])
-        y2_min = min(box1[3], box2[3])
-        
-        if x2_min <= x1_max or y2_min <= y1_max:
-            return 0.0
-        
-        intersection = (x2_min - x1_max) * (y2_min - y1_max)
-        area1 = (box1[2] - box1[0]) * (box1[3] - box1[1])
-        area2 = (box2[2] - box2[0]) * (box2[3] - box2[1])
-        union = area1 + area2 - intersection
-        
-        return intersection / union if union > 0 else 0.0
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    avg_iou = total_iou / iou_count if iou_count > 0 else 0.0
     
-    def _calculate_distance_matrix(self, gt_boxes: np.ndarray, pred_boxes: np.ndarray) -> np.ndarray:
-        """Calculate distance matrix (1 - IoU) for motmetrics."""
-        distances = np.zeros((len(gt_boxes), len(pred_boxes)))
+    total_gt = sum(len(tracks) for tracks in gt_tracks.values())
+    total_pred = sum(len(tracks) for tracks in pred_tracks.values())
+    
+    return {
+        'precision': precision, 'recall': recall, 'f1': f1, 'avg_iou': avg_iou,
+        'tp': tp, 'fp': fp, 'fn': fn, 'total_gt': total_gt, 'total_pred': total_pred
+    }
+
+
+def compute_mot_metrics_direct(gt_tracks, pred_tracks, iou_threshold):
+    """Compute MOT metrics directly using motmetrics."""
+    if not MOTMETRICS_AVAILABLE:
+        return {'mota': 0.0, 'motp': 0.0, 'idf1': 0.0, 'id_switches': 0, 'fragmentations': 0, 'num_misses': 0, 'num_false_positives': 0}
+    
+    try:
+        acc = mm.MOTAccumulator(auto_id=True)
+        all_frames = sorted(set(list(gt_tracks.keys()) + list(pred_tracks.keys())))
         
-        for i, gt_box in enumerate(gt_boxes):
-            for j, pred_box in enumerate(pred_boxes):
-                iou = self._calculate_iou(gt_box.tolist(), pred_box.tolist())
-                distances[i, j] = 1.0 - iou
+        for frame_idx in all_frames:
+            gt_objects = gt_tracks.get(frame_idx, [])
+            pred_objects = pred_tracks.get(frame_idx, [])
+            
+            gt_ids = [obj['track_id'] for obj in gt_objects]
+            pred_ids = [obj['track_id'] for obj in pred_objects]
+            
+            if len(gt_objects) > 0 and len(pred_objects) > 0:
+                gt_boxes = np.array([obj['bbox'] for obj in gt_objects])
+                pred_boxes = np.array([obj['bbox'] for obj in pred_objects])
+                
+                iou_matrix = calculate_iou_matrix(gt_boxes, pred_boxes)
+                distance_matrix = 1.0 - iou_matrix
+                distance_matrix[iou_matrix < iou_threshold] = np.inf
+            else:
+                distance_matrix = np.empty((len(gt_objects), len(pred_objects)))
+                distance_matrix.fill(np.inf)
+            
+            acc.update(gt_ids, pred_ids, distance_matrix)
         
-        return distances
+        mh = mm.metrics.create()
+        summary = mh.compute(acc, metrics=['mota', 'motp', 'idf1', 'num_switches', 'num_fragmentations', 'num_misses', 'num_false_positives'], name='direct')
+        
+        def safe_extract(metric_name, default_value=0.0, as_int=False):
+            if summary.empty or metric_name not in summary.columns:
+                return int(default_value) if as_int else default_value
+            value = summary[metric_name].iloc[0]
+            if pd.isna(value):
+                return int(default_value) if as_int else default_value
+            return int(value) if as_int else float(value)
+        
+        return {
+            'mota': safe_extract('mota', 0.0),
+            'motp': safe_extract('motp', 0.0),
+            'idf1': safe_extract('idf1', 0.0),
+            'id_switches': safe_extract('num_switches', 0, as_int=True),
+            'fragmentations': safe_extract('num_fragmentations', 0, as_int=True),
+            'num_misses': safe_extract('num_misses', 0, as_int=True),
+            'num_false_positives': safe_extract('num_false_positives', 0, as_int=True)
+        }
+        
+    except Exception as e:
+        logger.error(f"MOT metrics failed: {e}")
+        return {'mota': 0.0, 'motp': 0.0, 'idf1': 0.0, 'id_switches': 0, 'fragmentations': 0, 'num_misses': 0, 'num_false_positives': 0}
+
+
+def calculate_iou_matrix(boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:
+    """Calculate IoU matrix between two sets of boxes."""
+    areas1 = (boxes1[:, 2] - boxes1[:, 0]) * (boxes1[:, 3] - boxes1[:, 1])
+    areas2 = (boxes2[:, 2] - boxes2[:, 0]) * (boxes2[:, 3] - boxes2[:, 1])
+    
+    x1 = np.maximum(boxes1[:, None, 0], boxes2[None, :, 0])
+    y1 = np.maximum(boxes1[:, None, 1], boxes2[None, :, 1])
+    x2 = np.minimum(boxes1[:, None, 2], boxes2[None, :, 2])
+    y2 = np.minimum(boxes1[:, None, 3], boxes2[None, :, 3])
+    
+    intersection = np.maximum(0, x2 - x1) * np.maximum(0, y2 - y1)
+    union = areas1[:, None] + areas2[None, :] - intersection
+    
+    return np.where(union > 0, intersection / union, 0)
+
+
+def find_matches(iou_matrix: np.ndarray, threshold: float) -> List:
+    """Find optimal matches using greedy assignment."""
+    matches = []
+    used_gt = set()
+    used_pred = set()
+    
+    candidates = []
+    for i in range(iou_matrix.shape[0]):
+        for j in range(iou_matrix.shape[1]):
+            if iou_matrix[i, j] >= threshold:
+                candidates.append((iou_matrix[i, j], i, j))
+    
+    candidates.sort(reverse=True)
+    
+    for iou_val, gt_idx, pred_idx in candidates:
+        if gt_idx not in used_gt and pred_idx not in used_pred:
+            matches.append((gt_idx, pred_idx))
+            used_gt.add(gt_idx)
+            used_pred.add(pred_idx)
+    
+    return matches
