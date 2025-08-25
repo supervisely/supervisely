@@ -1003,7 +1003,7 @@ def download_pointcloud_project(
             continue
         dataset_path = None
         if parents:
-            parents.append(dataset)
+            parents.append(dataset.name)
             dataset_path = "/datasets/".join(parents)
         dataset_fs: PointcloudDataset = project_fs.create_dataset(
             ds_name=dataset.name, ds_path=dataset_path
