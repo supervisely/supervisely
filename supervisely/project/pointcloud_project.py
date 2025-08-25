@@ -995,14 +995,23 @@ def download_pointcloud_project(
         log_progress = False
 
     filter = lambda d: True if dataset_ids is None else lambda d: d.id in dataset_ids
-    for path, dataset in api.dataset.tree(project_id):
-        if not filter(dataset):
-            continue
-        path = "/".join(path + [dataset.name]) if path else None
-        dataset_fs: PointcloudDataset = project_fs.create_dataset(
-            ds_name=dataset.name, ds_path=path
-        )
-        pointclouds = api.pointcloud.get_list(dataset.id)
+    for path, datasets in api.dataset.tree(project_id):
+        pointclouds = []
+        if not isinstance(datasets, list):
+            datasets = [datasets]
+        for dataset in datasets:
+            if not filter(dataset):
+                continue
+            path_parts = []
+            if path:
+                for part in path:
+                    path_parts.extend([part, "datasets"])
+                path_parts.append(dataset.name)
+            path = "/".join(path_parts) if path else None
+            dataset_fs: PointcloudDataset = project_fs.create_dataset(
+                ds_name=dataset.name, ds_path=path
+            )
+            pointclouds.extend(api.pointcloud.get_list(dataset.id))
 
         ds_progress = progress_cb
         if log_progress:
