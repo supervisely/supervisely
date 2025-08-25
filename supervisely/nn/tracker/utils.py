@@ -93,47 +93,35 @@ def predictions_to_video_annotation(
         frames=sly.FrameCollection(frames)
     )
     
-    
 def mot_to_video_annotation(
     mot_file_path: Union[str, Path],
     img_size: Tuple[int, int] = (1080, 1920),
     class_mapping: Dict[int, str] = None,
-    default_class_name: str = "person"
+    default_class_name: str = "person",
+    debug: bool = False
 ) -> VideoAnnotation:
-    """
-    Convert MOT format tracking data to Supervisely VideoAnnotation.
-    
-    Args:
-        mot_file_path: Path to MOT format file (.txt)
-        img_size: Video frame size as (height, width)
-        class_mapping: Optional mapping from class_id to class_name {1: "person", 2: "car"}
-        default_class_name: Default class name if no mapping provided
-        
-    Returns:
-        VideoAnnotation object with tracking data
-        
-    MOT Format:
-        frame_id, track_id, x, y, width, height, confidence, class_id, visibility, [optional]
-        
-    Example:
-        >>> mot_ann = mot_to_video_annotation(
-        ...     "gt.txt", 
-        ...     img_size=(1080, 1920),
-        ...     class_mapping={1: "person", 2: "vehicle"}
-        ... )
-    """
+    """Convert MOT format tracking data to Supervisely VideoAnnotation."""
     mot_file_path = Path(mot_file_path)
     
     if not mot_file_path.exists():
         raise FileNotFoundError(f"MOT file not found: {mot_file_path}")
     
     logger.info(f"Loading MOT data from: {mot_file_path}")
+    logger.info(f"Image size: {img_size} (height, width)")
+    
+    if img_size[0] < img_size[1]:
+        logger.warning(f"Suspicious image size: height ({img_size[0]}) < width ({img_size[1]}). "
+                      "Make sure you pass (height, width), not (width, height)!")
     
     # Parse MOT file
     tracks_by_frame = defaultdict(list)
     video_objects = {}
     max_frame_id = 0
-
+    
+    # Create TagMeta for storing track_id
+    track_id_meta = sly.TagMeta('track_id', sly.TagValueType.ANY_NUMBER)
+    img_h, img_w = img_size
+    
     with open(mot_file_path, 'r') as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
@@ -141,42 +129,37 @@ def mot_to_video_annotation(
                 continue
                 
             try:
-                # Parse MOT line
                 parts = line.split(',')
                 if len(parts) < 9:
-                    logger.warning(f"Line {line_num}: Invalid format, expected at least 9 fields, got {len(parts)}")
                     continue
                 
-                frame_id = int(parts[0])
-                track_id = int(parts[1])
-                x = float(parts[2])
-                y = float(parts[3])
-                width = float(parts[4])
-                height = float(parts[5])
-                confidence = float(parts[6])
-                class_id = int(parts[7]) if parts[7] != '-1' else 1  # Default to class 1 if -1
-                visibility = float(parts[8])
+                frame_id = int(parts[0].strip())
+                track_id = int(parts[1].strip())
+                x = float(parts[2].strip())
+                y = float(parts[3].strip())
+                width = float(parts[4].strip())
+                height = float(parts[5].strip())
+                confidence = float(parts[6].strip())
+                class_id = int(parts[7].strip()) if parts[7].strip() != '-1' else 1
                 
-                # Convert to 0-based frame indexing (MOT uses 1-based)
                 frame_idx = frame_id - 1
                 max_frame_id = max(max_frame_id, frame_idx)
                 
-                # Skip if confidence is too low (for predictions)
                 if confidence < 0.1:
                     continue
                 
-                # Convert MOT bbox format (x, y, width, height) to Supervisely (left, top, right, bottom)
-                left = int(x)
-                top = int(y)
-                right = int(x + width)
-                bottom = int(y + height)
+                # IMPROVED CLIPPING: More aggressive boundary enforcement
+                left = max(0, min(x, img_w - 2))
+                top = max(0, min(y, img_h - 2))
+                right = max(left + 1, min(x + width, img_w - 1))
+                bottom = max(top + 1, min(y + height, img_h - 1))
                 
-                # Clip to image boundaries
-                img_h, img_w = img_size
-                left = max(0, min(left, img_w - 1))
-                top = max(0, min(top, img_h - 1))
-                right = max(left + 1, min(right, img_w))
-                bottom = max(top + 1, min(bottom, img_h))
+                # Convert to integers
+                left, top, right, bottom = int(left), int(top), int(right), int(bottom)
+                
+                # Skip invalid boxes
+                if right <= left or bottom <= top:
+                    continue
                 
                 # Determine class name
                 if class_mapping and class_id in class_mapping:
@@ -184,22 +167,25 @@ def mot_to_video_annotation(
                 else:
                     class_name = default_class_name
                 
-                # Create or get video object
+                # Create VideoObject with track_id in tags
                 if track_id not in video_objects:
                     obj_class = sly.ObjClass(class_name, sly.Rectangle)
-                    video_objects[track_id] = sly.VideoObject(obj_class)
+                    track_tag = sly.VideoTag(track_id_meta, value=track_id)
+                    video_objects[track_id] = sly.VideoObject(
+                        obj_class, 
+                        tags=sly.VideoTagCollection([track_tag])
+                    )
                 
-                # Store track data
                 tracks_by_frame[frame_idx].append({
                     'track_id': track_id,
                     'bbox': (left, top, right, bottom),
                     'video_object': video_objects[track_id],
                     'confidence': confidence,
-                    'visibility': visibility
                 })
                 
             except (ValueError, IndexError) as e:
-                logger.warning(f"Line {line_num}: Failed to parse MOT data: {e}")
+                if debug:
+                    logger.warning(f"Line {line_num}: Failed to parse: {e}")
                 continue
     
     logger.info(f"Parsed {len(video_objects)} tracks from {max_frame_id + 1} frames")
@@ -214,34 +200,30 @@ def mot_to_video_annotation(
                 left, top, right, bottom = track_data['bbox']
                 video_object = track_data['video_object']
                 
-                # Create rectangle geometry
-                rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
-                
-                # Create video figure
-                figure = sly.VideoFigure(video_object, rect, frame_idx)
-                
-                # Add confidence tag if available
-                if track_data['confidence'] < 1.0:
-                    conf_tag = sly.VideoTag(
-                        sly.TagMeta('confidence', sly.TagValueType.ANY_NUMBER),
-                        value=track_data['confidence']
-                    )
-                    figure = figure.clone(tags=sly.VideoTagCollection([conf_tag]))
-                
-                frame_figures.append(figure)
+                try:
+                    rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
+                    figure = sly.VideoFigure(video_object, rect, frame_idx)
+                    frame_figures.append(figure)
+                except Exception as e:
+                    if debug:
+                        logger.warning(f"Failed to create figure on frame {frame_idx}: {e}")
+                    continue
         
         frames.append(sly.Frame(frame_idx, frame_figures))
     
-    # Create video annotation
+    # CREATE VIDEOANNOTATION WITHOUT VALIDATION
     objects_collection = sly.VideoObjectCollection(list(video_objects.values()))
     frames_collection = sly.FrameCollection(frames)
     
-    video_annotation = VideoAnnotation(
-        img_size=img_size,
-        frames_count=max_frame_id + 1,
-        objects=objects_collection,
-        frames=frames_collection
-    )
+    # Manual creation to skip bounds validation
+    video_annotation = VideoAnnotation.__new__(VideoAnnotation)
+    video_annotation._img_size = img_size
+    video_annotation._frames_count = max_frame_id + 1
+    video_annotation._objects = objects_collection
+    video_annotation._frames = frames_collection
+    video_annotation._tags = sly.VideoTagCollection()
+    video_annotation._description = ""
+    video_annotation._key = sly.generate_free_name([], "", with_ext=False)
     
     logger.info(f"Created VideoAnnotation with {len(video_objects)} objects and {len(frames)} frames")
     

@@ -15,47 +15,58 @@ from supervisely import VideoAnnotation
 from supervisely.nn.tracker.utils import predictions_to_video_annotation
 
 
-@dataclass
-class VisualizationConfig:
-    """Configuration for video tracking visualization."""
-    # Visual appearance
-    show_labels: bool = True
-    show_classes: bool = True
-    show_trajectories: bool = True
-    show_frame_number: bool = True
-    
-    # Style settings
-    box_thickness: int = 2
-    text_scale: float = 0.6
-    text_thickness: int = 2
-    trajectory_length: int = 30
-    
-    # Output settings
-    codec: str = 'mp4'
-    output_fps: float = 30.0
-    
-    def update(self, **kwargs) -> 'VisualizationConfig':
-        """Update config with keyword arguments."""
-        for key, value in kwargs.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-        return self
-
-
 class TrackingVisualizer:
-    def __init__(self, config: VisualizationConfig = None):
+    def __init__(
+        self,
+        show_labels: bool = True,
+        show_classes: bool = True,
+        show_trajectories: bool = True,
+        show_frame_number: bool = False,
+        box_thickness: int = 2,
+        text_scale: float = 0.6,
+        text_thickness: int = 2,
+        trajectory_length: int = 30,
+        codec: str = "mp4",
+        output_fps: float = 30.0,
+
+    ):
         """
         Initialize the visualizer with configuration.
-        
+
         Args:
-            config: Visualization configuration. If None, default config will be used.
+            show_labels: Whether to show track IDs.
+            show_classes: Whether to show class names.
+            show_trajectories: Whether to draw trajectories.
+            show_frame_number: Whether to overlay frame number.
+            box_thickness: Thickness of bounding boxes.
+            text_scale: Scale of label text.
+            text_thickness: Thickness of label text.
+            trajectory_length: How many points to keep in trajectory.
+            codec: Output video codec.
+            output_fps: Output video framerate.
         """
-        self.config = config or VisualizationConfig()
+        # Visualization settings
+        self.show_labels = show_labels
+        self.show_classes = show_classes
+        self.show_trajectories = show_trajectories
+        self.show_frame_number = show_frame_number
+
+        # Style settings
+        self.box_thickness = box_thickness
+        self.text_scale = text_scale
+        self.text_thickness = text_thickness
+        self.trajectory_length = trajectory_length
+
+        # Output settings
+        self.codec = codec
+        self.output_fps = output_fps
+
+        # Internal state
         self.annotation = None
         self.tracks_by_frame = {}
         self.track_centers = defaultdict(list)
         self.color_palette = self._generate_color_palette()
-        self.temp_dir = None
+        self._temp_dir = None
         
     def _generate_color_palette(self, num_colors: int = 100) -> List[Tuple[int, int, int]]:
         """
@@ -95,7 +106,7 @@ class TrackingVisualizer:
             
             width = int(video_stream['width'])
             height = int(video_stream['height'])
-            
+            e
             # Extract FPS
             fps_str = video_stream.get('r_frame_rate', '30/1')
             if '/' in fps_str:
@@ -186,7 +197,7 @@ class TrackingVisualizer:
             raise ValueError(f"No image files found in directory: {frames_dir}")
         
         # Set fps from config for image sequences
-        self.source_fps = self.config.output_fps
+        self.source_fps = self.output_fps
         
         for frame_idx, img_path in enumerate(image_files):
             frame = cv2.imread(str(img_path))
@@ -246,24 +257,24 @@ class TrackingVisualizer:
         color = self._get_track_color(track_id)
 
         # Draw bounding box
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, self.config.box_thickness)
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, self.box_thickness)
 
         # Draw label if enabled
-        if self.config.show_labels:
+        if self.show_labels:
             label = f"ID:{track_id}"
-            if self.config.show_classes:
+            if self.show_classes:
                 label += f" ({class_name})"
 
             label_y = y1 - 10 if y1 > 30 else y2 + 25
             (text_w, text_h), _ = cv2.getTextSize(
-                label, cv2.FONT_HERSHEY_SIMPLEX, self.config.text_scale, self.config.text_thickness
+                label, cv2.FONT_HERSHEY_SIMPLEX, self.text_scale, self.text_thickness
             )
 
             cv2.rectangle(img, (x1, label_y - text_h - 5), 
                         (x1 + text_w, label_y + 5), color, -1)
             cv2.putText(img, label, (x1, label_y), 
-                    cv2.FONT_HERSHEY_SIMPLEX, self.config.text_scale, 
-                    (255, 255, 255), self.config.text_thickness, cv2.LINE_AA)
+                    cv2.FONT_HERSHEY_SIMPLEX, self.text_scale, 
+                    (255, 255, 255), self.text_thickness, cv2.LINE_AA)
 
         # Return center point for trajectory
         return (x1 + x2) // 2, (y1 + y2) // 2
@@ -271,7 +282,7 @@ class TrackingVisualizer:
 
     def _draw_trajectories(self, img: np.ndarray) -> None:
         """Draw trajectory lines for all tracks, filtering out big jumps."""
-        if not self.config.show_trajectories:
+        if not self.show_trajectories:
             return
 
         max_jump = 200  
@@ -281,7 +292,7 @@ class TrackingVisualizer:
                 continue
 
             color = self._get_track_color(track_id)
-            points = centers[-self.config.trajectory_length:]
+            points = centers[-self.trajectory_length:]
 
             for i in range(1, len(points)):
                 p1, p2 = points[i - 1], points[i]
@@ -312,21 +323,21 @@ class TrackingVisualizer:
             for track_id, bbox, class_name in self.tracks_by_frame[frame_idx]:
                 center = self._draw_detection(img, track_id, bbox, class_name)
                 self.track_centers[track_id].append(center)
-                if len(self.track_centers[track_id]) > self.config.trajectory_length:
+                if len(self.track_centers[track_id]) > self.trajectory_length:
                     self.track_centers[track_id].pop(0)
                 active_ids.add(track_id)
         
         for tid in self.track_centers.keys():
             if tid not in active_ids:
                 self.track_centers[tid].append(None)
-                if len(self.track_centers[tid]) > self.config.trajectory_length:
+                if len(self.track_centers[tid]) > self.trajectory_length:
                     self.track_centers[tid].pop(0)
                 
         # Draw trajectories
         self._draw_trajectories(img)
         
         # Add frame number if requested
-        if self.config.show_frame_number:
+        if self.show_frame_number:
             cv2.putText(img, f"Frame: {frame_idx + 1}", (10, 30),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
         
@@ -343,7 +354,7 @@ class TrackingVisualizer:
         Returns:
             Path to saved frame
         """
-        frame_path = self.temp_dir / f"frame_{frame_idx:08d}.jpg"
+        frame_path = self._temp_dir / f"frame_{frame_idx:08d}.jpg"
         cv2.imwrite(str(frame_path), frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
         return str(frame_path)
     
@@ -358,7 +369,7 @@ class TrackingVisualizer:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Create video from frame sequence
-        input_pattern = str(self.temp_dir / "frame_%08d.jpg")
+        input_pattern = str(self._temp_dir / "frame_%08d.jpg")
         
         try:
             (
@@ -376,9 +387,9 @@ class TrackingVisualizer:
     
     def _cleanup_temp_directory(self) -> None:
         """Clean up temporary directory and all its contents."""
-        if self.temp_dir and self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
-            self.temp_dir = None
+        if self._temp_dir and self._temp_dir.exists():
+            shutil.rmtree(self._temp_dir)
+            self._temp_dir = None
     
     def visualize_video_annotation(self, annotation: VideoAnnotation, 
                                   source: Union[str, Path], 
@@ -402,7 +413,7 @@ class TrackingVisualizer:
         self.annotation = annotation
         
         # Create temporary directory for processed frames
-        self.temp_dir = Path(tempfile.mkdtemp(prefix="video_viz_"))
+        self._temp_dir = Path(tempfile.mkdtemp(prefix="video_viz_"))
         
         try:
             # Extract tracking data
@@ -455,3 +466,104 @@ class TrackingVisualizer:
     def __del__(self):
         """Cleanup temporary directory on object destruction."""
         self._cleanup_temp_directory()
+        
+        
+        
+def visualize_video_annotation(self, annotation: VideoAnnotation, 
+                                source: Union[str, Path], 
+                                output_path: Union[str, Path]) -> None:
+    """
+    Visualize tracking annotations on video using streaming approach.
+    
+    Args:
+        annotation: Supervisely VideoAnnotation object with tracking data
+        source: Path to video file or directory containing frame images
+        output_path: Path for output video file
+        
+    Raises:
+        TypeError: If annotation is not VideoAnnotation
+        ValueError: If source is invalid or annotation is empty
+    """
+    if not isinstance(annotation, VideoAnnotation):
+        raise TypeError(f"Annotation must be VideoAnnotation, got {type(annotation)}")
+    
+    # Store annotation
+    self.annotation = annotation
+    
+    # Create temporary directory for processed frames
+    self._temp_dir = Path(tempfile.mkdtemp(prefix="video_viz_"))
+    
+    try:
+        # Extract tracking data
+        self._extract_tracks_from_annotation()
+        
+        if not self.tracks_by_frame:
+            logger.warning("No tracking data found in annotation")
+        
+        # Reset trajectory tracking
+        self.track_centers = defaultdict(list)
+        
+        # Process frames one by one
+        frame_count = 0
+        for frame_idx, frame in self._create_frame_iterator(source):
+            # Process frame
+            processed_frame = self._process_single_frame(frame, frame_idx)
+            
+            # Save processed frame
+            self._save_processed_frame(processed_frame, frame_idx)
+            
+            frame_count += 1
+            
+            # Progress logging
+            if frame_count % 100 == 0:
+                logger.info(f"Processed {frame_count} frames")
+        
+        logger.info(f"Finished processing {frame_count} frames")
+        
+        # Create final video from saved frames
+        self._create_video_from_frames(output_path)
+        
+    finally:
+        # Always cleanup temporary files
+        self._cleanup_temp_directory()
+
+def __del__(self):
+    """Cleanup temporary directory on object destruction."""
+    self._cleanup_temp_directory()
+    
+    
+    
+from typing import Union
+from pathlib import Path
+
+def visualize(
+    annotation: Union[VideoAnnotation, Prediction], 
+    source: Union[str, Path], 
+    output_path: Union[str, Path],
+    show_labels: bool = True,
+    show_classes: bool = True,
+    show_trajectories: bool = True,
+    **kwargs
+) -> None:
+    """
+    Visualize tracking results from either VideoAnnotation or Prediction.
+
+    Args:
+        annotation: VideoAnnotation or Prediction object.
+        source: Path to video file or frames directory.
+        output_path: Path to save visualization.
+        show_labels: Whether to display labels.
+        show_classes: Whether to display classes.
+        show_trajectories: Whether to display trajectories.
+    """
+    visualizer = TrackingVisualizer(
+        show_labels=show_labels, 
+        show_classes=show_classes, 
+        show_trajectories=show_trajectories,
+        **kwargs
+    )
+
+    if isinstance(annotation, Prediction):
+        annotation = predictions_to_video_annotation(annotation)
+
+    visualizer.visualize_video_annotation(annotation, source, output_path)
