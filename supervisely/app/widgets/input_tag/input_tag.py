@@ -31,6 +31,15 @@ VALUE_TYPES = [
 
 class InputTag(Widget):
     """Widget for inputting a single tag value based on its TagMeta information. Accepts various input types depending on the tag's value type. Returns the tag value when requested.
+
+    :param tag_meta: Tag metadata
+    :type tag_meta: TagMeta
+    :param max_width: Maximum width of the widget in pixels, defaults to 300
+    :type max_width: int
+    :param hide_switch: Whether to hide the activation switch, defaults to False
+    :type hide_switch: bool
+    :param widget_id: Unique identifier for the widget, defaults to None
+    :type widget_id: int
     """
     def __init__(
         self,
@@ -71,7 +80,6 @@ class InputTag(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def _init_input_components(self):
-        """Initialize input components for the tag."""
         self._input_widgets[str(TagValueType.NONE)] = Empty()
         self._input_widgets[str(TagValueType.ANY_NUMBER)] = InputNumber(debounce=500)
         self._input_widgets[str(TagValueType.ANY_STRING)] = Input(type="textarea")
@@ -80,6 +88,7 @@ class InputTag(Widget):
     def _get_max_width(self, value)-> str:
         """Get the maximum width for the widget.
         Ensures the width is at least 150 pixels.
+
         :param value: Desired maximum width in pixels.
         :type value: int
         :return: Maximum width for the widget
@@ -91,6 +100,7 @@ class InputTag(Widget):
 
     def get_tag_meta(self) -> TagMeta:
         """Get the tag metadata.
+
         :return: Tag metadata
         :rtype: TagMeta
         """
@@ -106,6 +116,7 @@ class InputTag(Widget):
 
     def is_active(self) -> bool:
         """Check if the widget is active.
+
         :return: True if the widget is active, False otherwise
         :rtype: bool
         """
@@ -114,6 +125,7 @@ class InputTag(Widget):
     @property
     def value(self) -> Union[str, int, None]:
         """Get the current value of the tag.
+
         :return: Current value of the tag
         :rtype: Union[str, int, None]
         """
@@ -122,6 +134,7 @@ class InputTag(Widget):
     @value.setter
     def value(self, value: Union[str, int, None]):
         """Set the current value of the tag.
+
         :param value: Current value of the tag
         :type value: Union[str, int, None]
         """
@@ -129,6 +142,7 @@ class InputTag(Widget):
 
     def is_valid_value(self, value: Union[str, int, None]) -> bool:
         """Check if the value is valid for the tag.
+
         :param value: Value to check
         :type value: Union[str, int, None]
         :return: True if the value is valid, False otherwise
@@ -137,8 +151,8 @@ class InputTag(Widget):
         return self._tag_meta.is_valid_value(value)
 
     def set(self, tag: Union[Tag, None]):
-        """
-        Set the tag value.
+        """Set the tag value.
+
         :param tag: Tag to set
         :type tag: Union[Tag, None]
         """
@@ -151,6 +165,7 @@ class InputTag(Widget):
 
     def get_tag(self) -> Union[Tag, None]:
         """Get the current tag.
+
         :return: Current tag
         :rtype: Union[Tag, None]
         """
@@ -161,6 +176,7 @@ class InputTag(Widget):
 
     def _get_value(self) -> Union[str, int, None]:
         """Get the current value of the tag.
+
         :return: Current value of the tag
         :rtype: Union[str, int, None]
         """
@@ -191,8 +207,8 @@ class InputTag(Widget):
             input_widget.set_value(None)
 
     def get_json_data(self) -> Dict:
-        """
-        Get the JSON representation of the tag.
+        """Get the JSON representation of the tag.
+
         :return: JSON representation of the tag
         :rtype: Dict
         """
@@ -203,8 +219,8 @@ class InputTag(Widget):
         }
 
     def get_json_state(self) -> Dict:
-        """
-        Get the JSON representation of the tag state.
+        """Get the JSON representation of the tag state.
+
         :return: JSON representation of the tag state
         :rtype: Dict
         """
@@ -212,6 +228,7 @@ class InputTag(Widget):
 
     def value_changed(self, func) -> Callable:
         """Decorator to register a callback function for selection changes.
+
         :param func: Callback function
         :type func: Callable
         """
@@ -230,8 +247,8 @@ class InputTag(Widget):
         return self._activation_widget.value_changed(func)
 
     def set_tag_meta(self, tag_meta: TagMeta):
-        """
-        Set the tag metadata.
+        """Set the tag metadata.
+        
         :param tag_meta: Tag metadata to set
         :type tag_meta: TagMeta
         """

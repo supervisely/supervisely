@@ -7,7 +7,19 @@ from supervisely.app.content import DataJson, StateJson
 from supervisely.imaging.color import rgb2hex
 
 class InputTagList(Widget):
-    """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them."""
+    """Store and manage a list of input tags. Class accepts a list of TagMeta objects and provides methods to interact with them.
+
+    :param max_width: Maximum width of the widget in pixels, defaults to 300
+    :type max_width: int, optional
+    :param tag_metas: List of TagMeta objects or a TagMetaCollection, defaults to an empty list
+    :type tag_metas: Union[List[TagMeta], TagMetaCollection], optional
+    :param max_height: Maximum height of the widget in pixels, defaults to 50
+    :type max_height: int, optional
+    :param multiple: Whether to allow multiple tags to be selected, defaults to False
+    :type multiple: bool, optional
+    :param widget_id: Unique identifier for the widget, defaults to None
+    :type widget_id: int, optional
+    """
 
     class VALUE_TYPES:
         """Value types for input tags. Classifies the different types of values that tags can have."""
@@ -25,8 +37,7 @@ class InputTagList(Widget):
     }
 
     def get_default_value(self, tag_meta: TagMeta) -> Union[str, int, None]:
-        """
-        Get default value for the tag based on its meta information.
+        """Get default value for the tag based on its meta information.
         If the tag has a predefined set of possible values (ONEOF_STRING), return the first one.
         For other types, return a standard default value:
         1. NONE: None
@@ -70,6 +81,7 @@ class InputTagList(Widget):
     def _get_max_width(self, value) -> str:
         """Get the maximum width for the widget.
         Ensures the width is at least 150 pixels.
+
         :param value: Desired maximum width in pixels.
         :type value: int
         :return: Maximum width for the widget
@@ -82,6 +94,7 @@ class InputTagList(Widget):
     def _get_max_height(self, value) -> str:
         """Get the maximum height for the widget.
         Ensures the height is at least 100 pixels.
+
         :param value: Desired maximum height in pixels.
         :type value: int
         :return: Maximum height for the widget
@@ -92,8 +105,8 @@ class InputTagList(Widget):
         return f"{value}px"
 
     def get_json_data(self)-> Dict:
-        """
-        Get JSON data for the widget.
+        """Get JSON data for the widget.
+
         :return: JSON data for the widget
         :rtype: dict
         """
@@ -114,6 +127,7 @@ class InputTagList(Widget):
 
     def get_json_state(self) -> Dict:
         """Get JSON state for the widget.
+
         :return: JSON state for the widget
         :rtype: dict
         """
@@ -123,8 +137,8 @@ class InputTagList(Widget):
         }
 
     def get_selected_tag_metas(self) -> list[TagMeta]:
-        """
-        Get selected tag metas for the widget.
+        """Get selected tag metas for the widget.
+
         :return: List of selected tag metas
         :rtype: list[TagMeta]
         """
@@ -136,6 +150,7 @@ class InputTagList(Widget):
 
     def get_selected_tags(self) -> list[Tag]:
         """Get selected tags for the widget.
+
         :return: List of selected tags
         :rtype: list[Tag]
         """
@@ -151,6 +166,7 @@ class InputTagList(Widget):
 
     def get_all_tags(self) -> list[Tag]:
         """Get all tags for the widget.
+
         :return: List of all tags
         :rtype: list[Tag]
         """
@@ -164,6 +180,7 @@ class InputTagList(Widget):
 
     def set(self, tag_metas: Union[List[TagMeta], TagMetaCollection]) -> None:
         """Set tag metas for the widget.
+
         :param tag_metas: Tag metas to set
         :type tag_metas: Union[List[TagMeta], TagMetaCollection]
         :return: None
@@ -176,6 +193,7 @@ class InputTagList(Widget):
 
     def set_values(self, values_dict: dict) -> None:
         """Set values for the widget.
+
         :param values_dict: Dictionary of values to set
         :type values_dict: dict
         :return: None
@@ -189,6 +207,7 @@ class InputTagList(Widget):
 
     def select_all(self) -> None:
         """Select all tags for the widget.
+
         :return: None
         """
         StateJson()[self.widget_id]["selected"] = [True for _ in self._tag_metas]
@@ -196,6 +215,7 @@ class InputTagList(Widget):
 
     def deselect_all(self) -> None:
         """Deselect all tags for the widget.
+
         :return: None
         """
         StateJson()[self.widget_id]["selected"] = [False for _ in self._tag_metas]
@@ -203,6 +223,7 @@ class InputTagList(Widget):
 
     def select(self, names: List[str]) -> None:
         """Select tags for the widget.
+
         :param names: List of tag names to select
         :type names: List[str]
         :return: None
@@ -213,6 +234,7 @@ class InputTagList(Widget):
 
     def deselect(self, names: List[str]) -> None:
         """Deselect tags for the widget.
+
         :param names: List of tag names to deselect
         :type names: List[str]
         :return: None
@@ -226,6 +248,7 @@ class InputTagList(Widget):
 
     def get_all_tag_metas(self) -> list[TagMeta]:
         """Get all tag metas for the widget.
+
         :return: List of all tag metas
         :rtype: list[TagMeta]
         """
@@ -233,6 +256,7 @@ class InputTagList(Widget):
 
     def selection_changed(self, func: Callable) -> Callable:
         """Decorator to register a callback function for selection changes.
+        
         :param func: Callback function
         :type func: Callable
         """
