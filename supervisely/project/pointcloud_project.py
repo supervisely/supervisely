@@ -1007,9 +1007,9 @@ def download_pointcloud_project(
                 for part in path:
                     path_parts.extend([part, "datasets"])
                 path_parts.append(dataset.name)
-            path = "/".join(path_parts) if path else None
+            fs_path = "/".join(path_parts) if path else None
             dataset_fs: PointcloudDataset = project_fs.create_dataset(
-                ds_name=dataset.name, ds_path=path
+                ds_name=dataset.name, ds_path=fs_path
             )
             pointclouds.extend(api.pointcloud.get_list(dataset.id))
 
