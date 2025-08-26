@@ -749,8 +749,7 @@ def download_pointcloud_episode_project(
             continue
         dataset_path = None
         if parents:
-            parents.append(dataset.name)
-            dataset_path = "/datasets/".join(parents)
+            dataset_path = "/datasets/".join(parents + [dataset.name])
         dataset_fs: PointcloudEpisodeDataset = project_fs.create_dataset(
             dataset.name, ds_path=dataset_path
         )
