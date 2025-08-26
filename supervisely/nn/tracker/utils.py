@@ -80,7 +80,7 @@ def predictions_to_video_annotation(
             
             video_object = video_objects[track_id]
             rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
-            frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx))
+            frame_figures.append(sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id)))
         
         frames.append(sly.Frame(frame_idx, frame_figures))
 
@@ -269,7 +269,6 @@ def video_annotation_to_mot(
     
     return mot_lines
 
-
 def video_annotation_to_mot(
     annotation: VideoAnnotation,
     output_path: Union[str, Path] = None,
@@ -279,22 +278,6 @@ def video_annotation_to_mot(
     Convert Supervisely VideoAnnotation to MOT format.
     
     MOT format: frame_id,track_id,left,top,width,height,confidence,class_id,visibility
-    
-    Args:
-        annotation: Supervisely VideoAnnotation object
-        output_path: Path to save MOT file (if None, returns lines as list)
-        class_to_id_mapping: Mapping from class names to class IDs
-        
-    Returns:
-        If output_path provided: path to saved file
-        If output_path is None: list of MOT format strings
-        
-    Usage:
-        # Convert to MOT lines
-        mot_lines = video_annotation_to_mot(annotation)
-        
-        # Save to file
-        mot_file_path = video_annotation_to_mot(annotation, "tracks.txt")
     """
     mot_lines = []
     
@@ -311,22 +294,13 @@ def video_annotation_to_mot(
         frame_id = frame.index + 1  # MOT uses 1-based frame indexing
         
         for figure in frame.figures:
-            # Get track ID - try saved track_id first, fallback to VideoObject key
-            if hasattr(figure.video_object, '_track_id'):
-                track_id = figure.video_object._track_id
+            # Get track ID from VideoFigure.track_id (official API)
+            if figure.track_id is not None:
+                track_id = int(figure.track_id)
             else:
                 track_id = figure.video_object.key().int
             
-            # Use stored original MOT line if available for exact reconstruction
-            if hasattr(figure, '_original_mot_line'):
-                # Parse and adjust frame_id in stored line
-                parts = figure._original_mot_line.split(',')
-                parts[0] = str(frame_id)  # Update frame_id to current
-                mot_line = ','.join(parts)
-                mot_lines.append(mot_line)
-                continue
-            
-            # Fallback: reconstruct from geometry
+            # Get bounding box
             if isinstance(figure.geometry, sly.Rectangle):
                 bbox = figure.geometry
             else:
@@ -376,23 +350,6 @@ def mot_to_video_annotation(
     Convert MOT format tracking data to Supervisely VideoAnnotation.
     
     MOT format: frame_id,track_id,left,top,width,height,confidence,class_id,visibility
-    
-    Args:
-        mot_file_path: Path to MOT format file
-        img_size: Image size as (height, width)
-        class_mapping: Mapping from class IDs to class names
-        default_class_name: Default class name if mapping not provided
-        
-    Returns:
-        Supervisely VideoAnnotation object
-        
-    Usage:
-        # Load MOT file
-        annotation = mot_to_video_annotation("gt.txt", img_size=(1080, 1920))
-        
-        # With class mapping
-        class_map = {1: "person", 2: "car", 3: "bike"}
-        annotation = mot_to_video_annotation("gt.txt", class_mapping=class_map)
     """
     mot_file_path = Path(mot_file_path)
     
@@ -402,17 +359,12 @@ def mot_to_video_annotation(
     logger.info(f"Loading MOT data from: {mot_file_path}")
     logger.info(f"Image size: {img_size} (height, width)")
     
-    # Validate image size
-    if img_size[0] < img_size[1]:
-        logger.warning(f"Suspicious image size: height ({img_size[0]}) < width ({img_size[1]}). "
-                      "Make sure you pass (height, width), not (width, height)!")
-    
     # Default class mapping
     if class_mapping is None:
         class_mapping = {1: default_class_name}
     
-    # Create frames and video objects exactly like in user's tracker
-    video_objects = {}  # track_id -> VideoObject (same as user's tracker)
+    # Parse MOT file
+    video_objects = {}  # track_id -> VideoObject
     frames_data = defaultdict(list)  # frame_idx -> list of figures
     max_frame_idx = 0
     img_h, img_w = img_size
@@ -447,54 +399,43 @@ def mot_to_video_annotation(
                 if confidence < 0.1:
                     continue
                 
-                # Calculate and clip coordinates to be safe
-                right = min(left + width, img_w - 1)
-                bottom = min(top + height, img_h - 1)
+                # Calculate coordinates with safer clipping
+                right = left + width
+                bottom = top + height
+                
+                # Clip to image boundaries
                 left = max(0, int(left))
                 top = max(0, int(top))
-                right = int(right)
-                bottom = int(bottom)
+                right = min(int(right), img_w - 1)
+                bottom = min(int(bottom), img_h - 1)
                 
-                # Skip obviously invalid boxes
+                # Skip invalid boxes
                 if right <= left or bottom <= top:
                     continue
                 
                 # Get class name
                 class_name = class_mapping.get(class_id, default_class_name)
                 
-                # Create VideoObject with preserved track_id and MOT data  
+                # Create VideoObject if not exists
                 if track_id not in video_objects:
                     obj_class = sly.ObjClass(class_name, sly.Rectangle)
-                    video_object = sly.VideoObject(obj_class)
-                    video_object._track_id = track_id
-                    video_object._mot_data = {}  # Store MOT data by frame
-                    video_objects[track_id] = video_object
+                    video_objects[track_id] = sly.VideoObject(obj_class)
                 
                 video_object = video_objects[track_id]
                 
-                # Store original MOT data for this frame
-                video_object._mot_data[frame_idx] = {
-                    'left': left, 'top': top, 'width': width, 'height': height,
-                    'confidence': confidence, 'class_id': class_id, 'visibility': visibility
-                }
+                # Create rectangle and figure with track_id
+                rect = sly.Rectangle(top=top, left=left, bottom=bottom, right=right)
+                figure = sly.VideoFigure(video_object, rect, frame_idx, track_id=str(track_id))
                 
-                video_object = video_objects[track_id]
-                
-                # Create rectangle geometry
-                rect = sly.Rectangle(top=int(top), left=int(left), bottom=int(bottom), right=int(right))
-                
-                # Create figure (VideoFigure doesn't accept tags in constructor)
-                figure = sly.VideoFigure(video_object, rect, frame_idx)
                 frames_data[frame_idx].append(figure)
                 
             except (ValueError, IndexError) as e:
                 logger.warning(f"Skipped invalid MOT line {line_num}: {line} - {e}")
                 continue
     
-    # Create frames (only for frames that have data)
+    # Create frames
     frames = []
     if frames_data:
-        # Use actual max frame from data
         frames_count = max(frames_data.keys()) + 1
         
         for frame_idx in range(frames_count):
