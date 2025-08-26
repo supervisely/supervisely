@@ -93,7 +93,6 @@ def predictions_to_video_annotation(
         frames=sly.FrameCollection(frames)
     )
     
-    
 def video_annotation_to_mot(
     annotation: VideoAnnotation,
     output_path: Union[str, Path] = None,
@@ -101,182 +100,6 @@ def video_annotation_to_mot(
 ) -> Union[str, List[str]]:
     """
     Convert Supervisely VideoAnnotation to MOT format.
-    
-    MOT format: frame_id,track_id,left,top,width,height,confidence,class_id,visibility
-    
-    Args:
-        annotation: Supervisely VideoAnnotation object
-        output_path: Path to save MOT file (if None, returns lines as list)
-        class_to_id_mapping: Mapping from class names to class IDs
-        
-    Returns:
-        If output_path provided: path to saved file
-        If output_path is None: list of MOT format strings
-        
-    Usage:
-        # Convert to MOT lines
-        mot_lines = video_annotation_to_mot(annotation)
-        
-        # Save to file
-        mot_file_path = video_annotation_to_mot(annotation, "tracks.txt")
-    """
-    mot_lines = []
-    
-    # Create default class mapping if not provided
-    if class_to_id_mapping is None:
-        unique_classes = set()
-        for frame in annotation.frames:
-            for figure in frame.figures:
-                unique_classes.add(figure.video_object.obj_class.name)
-        class_to_id_mapping = {cls_name: idx + 1 for idx, cls_name in enumerate(sorted(unique_classes))}
-    
-    # Extract tracks
-    for frame in annotation.frames:
-        frame_id = frame.index + 1  # MOT uses 1-based frame indexing
-        
-        for figure in frame.figures:
-            # Get track ID from VideoObject key
-            track_id = figure.video_object.key().int
-            
-            # Get bounding box
-            if isinstance(figure.geometry, sly.Rectangle):
-                bbox = figure.geometry
-            else:
-                bbox = figure.geometry.to_bbox()
-            
-            left = bbox.left
-            top = bbox.top
-            width = bbox.width
-            height = bbox.height
-            
-            # Get class ID
-            class_name = figure.video_object.obj_class.name
-            class_id = class_to_id_mapping.get(class_name, 1)
-            
-            # Get confidence from tags
-            confidence = 1.0
-            for tag in figure.tags:
-                if tag.meta.name.lower() in ['confidence', 'conf', 'score']:
-                    confidence = float(tag.value)
-                    break
-            
-            # Visibility (assume fully visible)
-            visibility = 1
-            
-            # Create MOT line
-            mot_line = f"{frame_id},{track_id},{left:.2f},{top:.2f},{width:.2f},{height:.2f},{confidence:.3f},{class_id},{visibility}"
-            mot_lines.append(mot_line)
-    
-    # Save to file if path provided
-    if output_path:
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_path, 'w') as f:
-            for line in mot_lines:
-                f.write(line + '\n')
-        
-        logger.info(f"Saved MOT format to: {output_path} ({len(mot_lines)} detections)")
-        return str(output_path)
-    
-    return mot_lines
-
-
-def video_annotation_to_mot(
-    annotation: VideoAnnotation,
-    output_path: Union[str, Path] = None,
-    class_to_id_mapping: Dict[str, int] = None
-) -> Union[str, List[str]]:
-    """
-    Convert Supervisely VideoAnnotation to MOT format.
-    
-    MOT format: frame_id,track_id,left,top,width,height,confidence,class_id,visibility
-    
-    Args:
-        annotation: Supervisely VideoAnnotation object
-        output_path: Path to save MOT file (if None, returns lines as list)
-        class_to_id_mapping: Mapping from class names to class IDs
-        
-    Returns:
-        If output_path provided: path to saved file
-        If output_path is None: list of MOT format strings
-        
-    Usage:
-        # Convert to MOT lines
-        mot_lines = video_annotation_to_mot(annotation)
-        
-        # Save to file
-        mot_file_path = video_annotation_to_mot(annotation, "tracks.txt")
-    """
-    mot_lines = []
-    
-    # Create default class mapping if not provided
-    if class_to_id_mapping is None:
-        unique_classes = set()
-        for frame in annotation.frames:
-            for figure in frame.figures:
-                unique_classes.add(figure.video_object.obj_class.name)
-        class_to_id_mapping = {cls_name: idx + 1 for idx, cls_name in enumerate(sorted(unique_classes))}
-    
-    # Extract tracks
-    for frame in annotation.frames:
-        frame_id = frame.index + 1  # MOT uses 1-based frame indexing
-        
-        for figure in frame.figures:
-            # Get track ID from VideoObject key
-            track_id = figure.video_object.key().int
-            
-            # Get bounding box
-            if isinstance(figure.geometry, sly.Rectangle):
-                bbox = figure.geometry
-            else:
-                bbox = figure.geometry.to_bbox()
-            
-            left = bbox.left
-            top = bbox.top
-            width = bbox.width
-            height = bbox.height
-            
-            # Get class ID
-            class_name = figure.video_object.obj_class.name
-            class_id = class_to_id_mapping.get(class_name, 1)
-            
-            # Get confidence from tags
-            confidence = 1.0
-            for tag in figure.tags:
-                if tag.meta.name.lower() in ['confidence', 'conf', 'score']:
-                    confidence = float(tag.value)
-                    break
-            
-            # Visibility (assume fully visible)
-            visibility = 1
-            
-            # Create MOT line
-            mot_line = f"{frame_id},{track_id},{left:.2f},{top:.2f},{width:.2f},{height:.2f},{confidence:.3f},{class_id},{visibility}"
-            mot_lines.append(mot_line)
-    
-    # Save to file if path provided
-    if output_path:
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_path, 'w') as f:
-            for line in mot_lines:
-                f.write(line + '\n')
-        
-        logger.info(f"Saved MOT format to: {output_path} ({len(mot_lines)} detections)")
-        return str(output_path)
-    
-    return mot_lines
-
-def video_annotation_to_mot(
-    annotation: VideoAnnotation,
-    output_path: Union[str, Path] = None,
-    class_to_id_mapping: Dict[str, int] = None
-) -> Union[str, List[str]]:
-    """
-    Convert Supervisely VideoAnnotation to MOT format.
-    
     MOT format: frame_id,track_id,left,top,width,height,confidence,class_id,visibility
     """
     mot_lines = []
@@ -339,7 +162,6 @@ def video_annotation_to_mot(
     
     return mot_lines
 
-
 def mot_to_video_annotation(
     mot_file_path: Union[str, Path],
     img_size: Tuple[int, int] = (1080, 1920),
@@ -348,7 +170,6 @@ def mot_to_video_annotation(
 ) -> VideoAnnotation:
     """
     Convert MOT format tracking data to Supervisely VideoAnnotation.
-    
     MOT format: frame_id,track_id,left,top,width,height,confidence,class_id,visibility
     """
     mot_file_path = Path(mot_file_path)

@@ -61,6 +61,7 @@ class TrackingEvaluator:
         """
         # Validate inputs
         self._validate_inputs(gt_annotation, pred_annotation)
+        self.img_height, self.img_width = gt_annotation.img_size
         
         logger.info(f"Starting evaluation with IoU threshold: {self.iou_threshold}")
         
@@ -78,7 +79,7 @@ class TrackingEvaluator:
         # Compute all metrics
         basic_metrics = self._compute_basic_metrics(gt_tracks, pred_tracks)
         mot_metrics = self._compute_mot_metrics(gt_tracks, pred_tracks)
-        hota_metrics = self._compute_hota_metrics(gt_tracks, pred_tracks)
+        # hota_metrics = self._compute_hota_metrics(gt_tracks, pred_tracks)
         
         # Combine results
         results = {
@@ -97,10 +98,10 @@ class TrackingEvaluator:
             'num_misses': mot_metrics['num_misses'],
             'num_false_positives': mot_metrics['num_false_positives'],
             
-            # HOTA metrics
-            'hota': hota_metrics['hota'],
-            'deta': hota_metrics['deta'],
-            'assa': hota_metrics['assa'],
+            # # HOTA metrics
+            # 'hota': hota_metrics['hota'],
+            # 'deta': hota_metrics['deta'],
+            # 'assa': hota_metrics['assa'],
             
             # Count metrics
             'true_positives': basic_metrics['tp'],
@@ -112,12 +113,6 @@ class TrackingEvaluator:
             # Config
             'iou_threshold': self.iou_threshold
         }
-        
-        logger.info(
-            f"Evaluation complete - MOTA: {results['mota']:.3f}, "
-            f"HOTA: {results['hota']:.3f}, Precision: {results['precision']:.3f}"
-        )
-        
         return results
     
     def _validate_inputs(self, gt_annotation: VideoAnnotation, pred_annotation: VideoAnnotation):
@@ -300,116 +295,266 @@ class TrackingEvaluator:
                 'num_misses': 0, 'num_false_positives': 0
             }
     
-    def _compute_hota_metrics(self, gt_tracks, pred_tracks) -> Dict[str, float]:
-        """Compute HOTA metrics using TrackEval library."""
-        if not TRACKEVAL_AVAILABLE:
-            logger.warning("trackeval not available - returning zero HOTA metrics")
-            return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
+    # def _compute_hota_metrics(self, gt_tracks, pred_tracks) -> Dict[str, float]:
+    #     """Compute HOTA metrics using TrackEval library."""
+    #     if not TRACKEVAL_AVAILABLE:
+    #         logger.warning("trackeval not available - returning zero HOTA metrics")
+    #         return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
         
-        try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # Write MOT format files
-                self._write_mot_files(gt_tracks, pred_tracks, temp_dir)
+    #     try:
+    #         with tempfile.TemporaryDirectory() as temp_dir:
+    #             # Write MOT format files
+    #             self._write_mot_files(gt_tracks, pred_tracks, temp_dir)
                 
-                # Run TrackEval
-                return self._run_trackeval(temp_dir)
+    #             # Run TrackEval
+    #             return self._run_trackeval(temp_dir)
                 
-        except Exception as e:
-            logger.error(f"Failed to compute HOTA metrics: {e}")
-            return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
+    #     except Exception as e:
+    #         logger.error(f"Failed to compute HOTA metrics: {e}")
+    #         return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
+        
+    # def _write_mot_files(self, gt_tracks, pred_tracks, temp_dir: str):
+    #     """Write tracking data in MOT format for TrackEval with both canonical and benchmark-style layouts.
+
+    #     This function creates:
+    #     - <temp_dir>/gt/seq/gt/gt.txt and <temp_dir>/trackers/tracker/data/seq.txt and seqmap in gt/
+    #     - <temp_dir>/MOT17/train/gt/seq/gt.txt and <temp_dir>/MOT17/train/trackers/tracker/data/seq.txt and seqmap in MOT17/train/gt/
+    #     This guarantees compatibility with different TrackEval versions that expect benchmark/split folders.
+    #     """
+    #     from pathlib import Path
+
+    #     seq_name = 'seq'  # consistent sequence name used everywhere
+    #     # Primary canonical locations (existing behavior)
+    #     canonical_gt_seq = Path(temp_dir) / 'gt' / seq_name
+    #     canonical_gt_data = canonical_gt_seq / 'gt'
+    #     canonical_tracker_data = Path(temp_dir) / 'trackers' / 'tracker' / 'data'
+    #     canonical_seqmaps = Path(temp_dir) / 'gt' / 'seqmaps'
+
+    #     # Benchmark-style locations (what TrackEval's MotChallenge2DBox often expects)
+    #     bench_root = Path(temp_dir) / 'MOT17' / 'train'
+    #     bench_gt_seq = bench_root / 'gt' / seq_name
+    #     bench_gt_data = bench_gt_seq / 'gt'
+    #     bench_tracker_data = bench_root / 'trackers' / 'tracker' / 'data'
+    #     bench_seqmaps = bench_root / 'gt' / 'seqmaps'
+
+    #     # Create directories (both)
+    #     for d in (canonical_gt_data, canonical_tracker_data, canonical_seqmaps,
+    #             bench_gt_data, bench_tracker_data, bench_seqmaps):
+    #         d.mkdir(parents=True, exist_ok=True)
+
+    #     # Helper to write GT file to a target path
+    #     def write_gt_file(target_gt_file: Path):
+    #         with open(target_gt_file, 'w') as f:
+    #             for frame_idx in sorted(gt_tracks.keys()):
+    #                 for track in gt_tracks[frame_idx]:
+    #                     x1, y1, x2, y2 = track['bbox']
+    #                     w, h = x2 - x1, y2 - y1
+    #                     if w > 0 and h > 0:
+    #                         line = f"{frame_idx + 1},{track['track_id']},{x1:.1f},{y1:.1f},{w:.1f},{h:.1f},1,1,1\n"
+    #                         f.write(line)
+
+    #     # Helper to write tracker file
+    #     def write_tracker_file(target_tracker_file: Path):
+    #         with open(target_tracker_file, 'w') as f:
+    #             for frame_idx in sorted(pred_tracks.keys()):
+    #                 for track in pred_tracks[frame_idx]:
+    #                     x1, y1, x2, y2 = track['bbox']
+    #                     w, h = x2 - x1, y2 - y1
+    #                     conf = track.get('confidence', 1.0)
+    #                     if w > 0 and h > 0:
+    #                         line = f"{frame_idx + 1},{track['track_id']},{x1:.1f},{y1:.1f},{w:.1f},{h:.1f},{conf:.3f},1,1\n"
+    #                         f.write(line)
+
+    #     # Write canonical GT and tracker
+    #     canonical_gt_file = canonical_gt_data / 'gt.txt'
+    #     write_gt_file(canonical_gt_file)
+    #     canonical_tracker_file = canonical_tracker_data / f'{seq_name}.txt'
+    #     write_tracker_file(canonical_tracker_file)
+
+    #     # Write benchmark-style GT and tracker (duplicate)
+    #     bench_gt_file = bench_gt_data / 'gt.txt'
+    #     write_gt_file(bench_gt_file)
+    #     bench_tracker_file = bench_tracker_data / f'{seq_name}.txt'
+    #     write_tracker_file(bench_tracker_file)
+
+    #     # Compute seqLength for seqinfo.ini (max frame index present)
+    #     max_frame = 0
+    #     if gt_tracks:
+    #         max_frame = max(max_frame, max(gt_tracks.keys()))
+    #     if pred_tracks:
+    #         max_frame = max(max_frame, max(pred_tracks.keys()))
+
+    #     # Write seqinfo.ini in both places
+    #     seqinfo_text = (
+    #         "[Sequence]\n"
+    #         f"name={seq_name}\n"
+    #         f"seqLength={max_frame + 1}\n"
+    #         f"imWidth={self.img_width}\n"
+    #         f"imHeight={self.img_height}\n"
+    #         "imExt=.jpg\n"
+    #         "imDir=img1\n"
+    #         "frameRate=30\n"
+    #     )
+    #     with open(canonical_gt_seq / 'seqinfo.ini', 'w') as f:
+    #         f.write(seqinfo_text)
+    #     with open(bench_gt_seq / 'seqinfo.ini', 'w') as f:
+    #         f.write(seqinfo_text)
+
+    #     # Write seqmap files (one line per sequence name) in both canonical and benchmark locations
+    #     seqmap_lines = [f"{seq_name}\n"]
+    #     with open(Path(temp_dir) / 'gt' / 'seqmap.txt', 'w') as f:
+    #         f.writelines(seqmap_lines)
+    #     with open(canonical_seqmaps / 'seqmap.txt', 'w') as f:
+    #         f.writelines(seqmap_lines)
+    #     with open(bench_gt_seq / 'seqmap.txt', 'w') as f:
+    #         f.writelines(seqmap_lines)
+    #     with open(bench_seqmaps / 'seqmap.txt', 'w') as f:
+    #         f.writelines(seqmap_lines)
+
+    #     # Debug logging
+    #     logger.info(f"Created canonical GT: {canonical_gt_file}")
+    #     logger.info(f"Created canonical tracker: {canonical_tracker_file}")
+    #     logger.info(f"Created benchmark GT: {bench_gt_file}")
+    #     logger.info(f"Created benchmark tracker: {bench_tracker_file}")
+    #     logger.info(f"Wrote seqmap to: {Path(temp_dir)/'gt'/'seqmap.txt'} and {bench_gt_seq/'seqmap.txt'}")
+
+    # def _run_trackeval(self, temp_dir: str) -> Dict[str, float]:
+    #     """Run TrackEval to compute HOTA metrics. Robust: create MOT structure, chdir, try DO_PREPROC False->True."""
+    #     try:
+    #         # prepare basic eval config
+    #         eval_config = trackeval.Evaluator.get_default_eval_config()
+    #         eval_config['DISPLAY_LESS_PROGRESS'] = True
+    #         eval_config['USE_PARALLEL'] = False
+    #         eval_config['PRINT_RESULTS'] = False
+    #         eval_config['PRINT_CONFIG'] = False
+
+    #         # make sure required folders/files exist in canonical places
+    #         abs_gt = os.path.join(temp_dir, 'gt')
+    #         abs_trackers = os.path.join(temp_dir, 'trackers')
+    #         abs_output = os.path.join(temp_dir, 'output')
+    #         seq_name = 'seq'  # consistent sequence name
+
+    #         # create canonical MOT layout
+    #         gt_seq_dir = Path(abs_gt) / seq_name
+    #         gt_data_dir = gt_seq_dir / 'gt'
+    #         tracker_data_dir = Path(abs_trackers) / 'tracker' / 'data'
+    #         seqmaps_dir = Path(abs_gt) / 'seqmaps'
+
+    #         gt_data_dir.mkdir(parents=True, exist_ok=True)
+    #         tracker_data_dir.mkdir(parents=True, exist_ok=True)
+    #         seqmaps_dir.mkdir(parents=True, exist_ok=True)
+    #         Path(abs_output).mkdir(parents=True, exist_ok=True)
+
+    #         # write gt file (if not already)
+    #         gt_file = gt_data_dir / 'gt.txt'
+    #         if not gt_file.exists():
+    #             with open(gt_file, 'w') as f:
+    #                 # expect gt_tracks created earlier by caller; if not, leave empty
+    #                 if hasattr(self, '_last_gt_tracks') and self._last_gt_tracks:
+    #                     for frame_idx in sorted(self._last_gt_tracks.keys()):
+    #                         for track in self._last_gt_tracks[frame_idx]:
+    #                             x1, y1, x2, y2 = track['bbox']
+    #                             w, h = x2 - x1, y2 - y1
+    #                             if w > 0 and h > 0:
+    #                                 f.write(f"{frame_idx + 1},{track['track_id']},{x1:.1f},{y1:.1f},{w:.1f},{h:.1f},1,1,1\n")
+    #                 else:
     
-    def _write_mot_files(self, gt_tracks, pred_tracks, temp_dir: str):
-        """Write tracking data in MOT format for TrackEval."""
-        # Create directory structure
-        gt_dir = Path(temp_dir) / 'gt' / 'MOT17-train' / 'seq' / 'gt'
-        tracker_dir = Path(temp_dir) / 'trackers' / 'tracker' / 'MOT17-train'
-        seqinfo_dir = Path(temp_dir) / 'gt' / 'MOT17-train' / 'seq'
-        
-        gt_dir.mkdir(parents=True, exist_ok=True)
-        tracker_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Write ground truth file
-        with open(gt_dir / 'gt.txt', 'w') as f:
-            for frame_idx in sorted(gt_tracks.keys()):
-                for track in gt_tracks[frame_idx]:
-                    x1, y1, x2, y2 = track['bbox']
-                    width, height = x2 - x1, y2 - y1
-                    
-                    if width > 0 and height > 0:
-                        line = f"{frame_idx + 1},{track['track_id']},{x1:.1f},{y1:.1f},{width:.1f},{height:.1f},1,1,1\n"
-                        f.write(line)
-        
-        # Write tracker file
-        with open(tracker_dir / 'seq.txt', 'w') as f:
-            for frame_idx in sorted(pred_tracks.keys()):
-                for track in pred_tracks[frame_idx]:
-                    x1, y1, x2, y2 = track['bbox']
-                    width, height = x2 - x1, y2 - y1
-                    confidence = track.get('confidence', 1.0)
-                    
-                    if width > 0 and height > 0:
-                        line = f"{frame_idx + 1},{track['track_id']},{x1:.1f},{y1:.1f},{width:.1f},{height:.1f},{confidence:.3f},1,1\n"
-                        f.write(line)
-        
-        # Create seqinfo.ini
-        max_frame = 0
-        if gt_tracks:
-            max_frame = max(max_frame, max(gt_tracks.keys()))
-        if pred_tracks:
-            max_frame = max(max_frame, max(pred_tracks.keys()))
-        
-        with open(seqinfo_dir / 'seqinfo.ini', 'w') as f:
-            f.write("[Sequence]\n")
-            f.write("name=seq\n")
-            f.write(f"seqLength={max_frame + 1}\n")
-            f.write("imWidth=1920\n")
-            f.write("imHeight=1080\n")
-            f.write("imExt=.jpg\n")
-            f.write("imDir=img1\n")
-            f.write("frameRate=30\n")
-    
-    def _run_trackeval(self, temp_dir: str) -> Dict[str, float]:
-        """Run TrackEval to compute HOTA metrics."""
-        try:
-            eval_config = trackeval.Evaluator.get_default_eval_config()
-            eval_config['DISPLAY_LESS_PROGRESS'] = True
-            eval_config['USE_PARALLEL'] = False
-            eval_config['PRINT_RESULTS'] = False
-            
-            dataset_config = trackeval.datasets.MotChallenge2DBox.get_default_dataset_config()
-            dataset_config['GT_FOLDER'] = os.path.join(temp_dir, 'gt')
-            dataset_config['TRACKERS_FOLDER'] = os.path.join(temp_dir, 'trackers')
-            dataset_config['OUTPUT_FOLDER'] = os.path.join(temp_dir, 'output')
-            dataset_config['TRACKERS_TO_EVAL'] = ['tracker']
-            dataset_config['CLASSES_TO_EVAL'] = ['pedestrian']
-            
-            metrics_config = {'METRICS': ['HOTA']}
-            
-            evaluator = trackeval.Evaluator(eval_config)
-            dataset_list = [trackeval.datasets.MotChallenge2DBox(dataset_config)]
-            metrics_list = [trackeval.metrics.HOTA(metrics_config)]
-            
-            output_res, _ = evaluator.evaluate(dataset_list, metrics_list)
-            
-            # Extract results
-            if output_res:
-                for dataset_name, dataset_res in output_res.items():
-                    for tracker_name, tracker_res in dataset_res.items():
-                        if 'COMBINED_SEQ' in tracker_res:
-                            combined = tracker_res['COMBINED_SEQ']
-                            if 'HOTA' in combined:
-                                hota_data = combined['HOTA']
-                                return {
-                                    'hota': hota_data.get('HOTA', 0.0),
-                                    'deta': hota_data.get('DetA', 0.0),
-                                    'assa': hota_data.get('AssA', 0.0)
-                                }
-            
-        except Exception as e:
-            logger.warning(f"TrackEval failed: {e}")
-        
-        return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
-    
+    #                     pass
+
+    #         # write tracker file
+    #         tracker_file = tracker_data_dir / f"{seq_name}.txt"
+    #         if not tracker_file.exists():
+    #             with open(tracker_file, 'w') as f:
+    #                 if hasattr(self, '_last_pred_tracks') and self._last_pred_tracks:
+    #                     for frame_idx in sorted(self._last_pred_tracks.keys()):
+    #                         for track in self._last_pred_tracks[frame_idx]:
+    #                             x1, y1, x2, y2 = track['bbox']
+    #                             w, h = x2 - x1, y2 - y1
+    #                             conf = track.get('confidence', 1.0)
+    #                             if w > 0 and h > 0:
+    #                                 f.write(f"{frame_idx + 1},{track['track_id']},{x1:.1f},{y1:.1f},{w:.1f},{h:.1f},{conf:.3f},1,1\n")
+
+    #         # write seqinfo.ini (overwrite to be safe)
+    #         max_frame = 0
+    #         if hasattr(self, '_last_gt_tracks') and self._last_gt_tracks:
+    #             max_frame = max(max_frame, max(self._last_gt_tracks.keys()))
+    #         if hasattr(self, '_last_pred_tracks') and self._last_pred_tracks:
+    #             max_frame = max(max_frame, max(self._last_pred_tracks.keys()))
+    #         with open(gt_seq_dir / 'seqinfo.ini', 'w') as f:
+    #             f.write("[Sequence]\n")
+    #             f.write(f"name={seq_name}\n")
+    #             f.write(f"seqLength={max_frame + 1}\n")
+    #             f.write(f"imWidth={self.img_width}\n")
+    #             f.write(f"imHeight={self.img_height}\n")
+    #             f.write("imExt=.jpg\n")
+    #             f.write("imDir=img1\n")
+    #             f.write("frameRate=30\n")
+
+    #         # write seqmap in both common places
+    #         seqmap_lines = [f"{seq_name}\n"]
+    #         with open(Path(abs_gt) / 'seqmap.txt', 'w') as f:
+    #             f.writelines(seqmap_lines)
+    #         with open(seqmaps_dir / 'seqmap.txt', 'w') as f:
+    #             f.writelines(seqmap_lines)
+
+    #         logger.info(f"Created GT and tracker files and seqmap under {temp_dir}")
+
+    #         # Now prepare dataset_config (relative paths, TrackEval expects relative to cwd)
+    #         base_dataset_cfg = trackeval.datasets.MotChallenge2DBox.get_default_dataset_config()
+    #         base_dataset_cfg['GT_FOLDER'] = 'gt'
+    #         base_dataset_cfg['TRACKERS_FOLDER'] = 'trackers'
+    #         base_dataset_cfg['OUTPUT_FOLDER'] = 'output'
+    #         base_dataset_cfg['TRACKERS_TO_EVAL'] = ['tracker']
+    #         base_dataset_cfg['CLASSES_TO_EVAL'] = ['pedestrian']
+    #         base_dataset_cfg['TRACKER_SUB_FOLDER'] = 'data'
+    #         base_dataset_cfg['GT_LOC_FORMAT'] = '{gt_folder}/{seq}/gt/gt.txt'
+
+    #         # Try two modes: first DO_PREPROC=False (skip preproc seqmap checks), then True
+    #         for do_preproc in (False, True):
+    #             cfg = dict(base_dataset_cfg)
+    #             cfg['DO_PREPROC'] = bool(do_preproc)
+    #             # force seqmap parameters to standard names
+    #             cfg['SEQMAP_FOLDER'] = 'gt'
+    #             cfg['SEQMAP_FILE'] = 'seqmap.txt'
+
+    #             # chdir into temp_dir so relative resolution works
+    #             original_cwd = os.getcwd()
+    #             os.chdir(temp_dir)
+    #             try:
+    #                 logger.info(f"Attempting TrackEval run with DO_PREPROC={do_preproc}, cwd={os.getcwd()}")
+    #                 evaluator = trackeval.Evaluator(eval_config)
+    #                 dataset_list = [trackeval.datasets.MotChallenge2DBox(cfg)]
+    #                 metrics_list = [trackeval.metrics.HOTA({'THRESHOLD': float(self.iou_threshold)})]
+    #                 output_res, _ = evaluator.evaluate(dataset_list, metrics_list)
+
+    #                 # parse result
+    #                 if output_res:
+    #                     for dataset_name, dataset_res in output_res.items():
+    #                         for tracker_name, tracker_res in dataset_res.items():
+    #                             for seq_n, seq_res in tracker_res.items():
+    #                                 if 'HOTA' in seq_res:
+    #                                     hota_data = seq_res['HOTA']
+    #                                     hota_value = float(hota_data.get('HOTA', 0.0))
+    #                                     deta_value = float(hota_data.get('DetA', 0.0))
+    #                                     assa_value = float(hota_data.get('AssA', 0.0))
+    #                                     logger.info(f"HOTA computed: {hota_value:.3f} (DO_PREPROC={do_preproc})")
+    #                                     return {'hota': hota_value, 'deta': deta_value, 'assa': assa_value}
+    #                 logger.warning(f"TrackEval run produced no HOTA with DO_PREPROC={do_preproc}")
+    #             except Exception as e:
+    #                 logger.warning(f"TrackEval attempt failed with DO_PREPROC={do_preproc}: {e}")
+    #                 import traceback
+    #                 logger.debug(traceback.format_exc())
+    #             finally:
+    #                 os.chdir(original_cwd)
+
+    #         logger.error("All TrackEval attempts (DO_PREPROC False/True) failed to produce HOTA.")
+    #     except Exception as e:
+    #         logger.warning(f"TrackEval outer failure: {e}")
+    #         import traceback
+    #         logger.debug(traceback.format_exc())
+
+    #     return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
+
     def _calculate_iou_matrix(self, boxes1: np.ndarray, boxes2: np.ndarray) -> np.ndarray:
         """Calculate IoU matrix between two sets of bounding boxes."""
         # boxes format: [x1, y1, x2, y2]
@@ -484,14 +629,7 @@ def evaluate(
         # Load annotations  
         gt_ann = sly.VideoAnnotation.load_json_file("gt.json", project_meta)
         pred_ann = sly.VideoAnnotation.load_json_file("pred.json", project_meta)
-        
-        # Evaluate tracking
-        metrics = evaluate(gt_ann, pred_ann, iou_threshold=0.5)
-        
-        print(f"MOTA: {metrics['mota']:.3f}")
-        print(f"HOTA: {metrics['hota']:.3f}")
-        print(f"Precision: {metrics['precision']:.3f}")
-        print(f"Recall: {metrics['recall']:.3f}")
+    
     """
     evaluator = TrackingEvaluator(iou_threshold=iou_threshold)
     return evaluator.evaluate(gt_annotation, pred_annotation)
