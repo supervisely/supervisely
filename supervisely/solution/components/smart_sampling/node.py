@@ -189,10 +189,10 @@ class SmartSamplingNode(BaseCardNode):
         self.gui.update_widgets(diff, sampling_settings)
 
         if diff == 0:
-            self.remove_badge_by_key("New Data:")
+            self.remove_badge_by_key("New Data")
         else:
-            self.update_badge_by_key("New Data:", str(diff), "info")
-        self.update_property("New Data:", str(diff))
+            self.update_badge_by_key("New Data", str(diff), "info")
+        self.update_property("New Data", str(diff))
 
         mode = sampling_settings.get("mode", SamplingMode.RANDOM.value)
         self.update_property("mode", mode)

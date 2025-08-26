@@ -197,6 +197,6 @@ class CloudImportNode(BaseCardNode):
             if import_task.get("task_id") == task_id:
                 items_count = import_task.get("items_count", 0)
                 self.card.update_property(key="Last import", value=f"+{items_count}")
-                self.card.update_badge_by_key("Last import:", f"+{items_count}", "success")
+                self.card.update_badge_by_key("Last import", f"+{items_count}", "success")
                 return items_count, self.project.image_preview_url
         return None, None

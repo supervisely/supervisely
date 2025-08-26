@@ -312,7 +312,7 @@ class BaseProjectNode(BaseNode):
             self.update_property(key="Total", value=f"{project.items_count} images")
         if new_items_count is not None:
             self.update_property(key="Last update", value=f"+{new_items_count}")
-            self.update_badge_by_key(key="Last update:", label=f"+{new_items_count}")
+            self.update_badge_by_key(key="Last update", label=f"+{new_items_count}")
         if urls is not None and counts is not None and self.is_training:
             self.update_preview(imgs=urls, counts=counts)
         else:

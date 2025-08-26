@@ -129,7 +129,7 @@ class AutoImportNode(BaseCardNode):
             if last_task is not None:
                 items_count = last_task.get("items_count", 0)
                 self.update_property(key="Last import", value=f"+{items_count}")
-                self.update_badge_by_key("Last import:", f"+{items_count}", "success")
+                self.update_badge_by_key("Last import", f"+{items_count}", "success")
                 if is_last_task:
                     if self._last_task_id != last_task_id:
                         self._last_task_id = last_task_id
