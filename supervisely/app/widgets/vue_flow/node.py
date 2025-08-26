@@ -159,7 +159,12 @@ class Node:
                 self.update_node(self)
                 return
         # If badge not found, add it
-        new_badge = NodeBadge(label=key, value=label, style=NodeBadgeStyleMap["info"].value)
+        if plain:
+            style = NodeBadgeStyle()
+        else:
+            badge_type = badge_type if badge_type in NodeBadgeStyleMap.__members__ else "info"
+            style = NodeBadgeStyleMap[badge_type].value
+        new_badge = NodeBadge(label=key, value=label, style=style)
         self.add_badge(new_badge)
 
     def remove_badge_by_key(self, key: str):
@@ -169,4 +174,3 @@ class Node:
                 self.settings.badges.pop(idx, None)
                 self.update_node(self)
                 return
-        raise KeyError(f"Badge with key '{key}' not found in card badges.")
