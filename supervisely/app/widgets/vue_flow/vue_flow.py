@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Union
 
+from supervisely._utils import is_development
 from supervisely.app.content import DataJson, StateJson
 from supervisely.app.fastapi import _MainServer
 from supervisely.app.fastapi.subapp import Application
@@ -9,8 +10,8 @@ from supervisely.app.fastapi.websocket import WebsocketManager
 from supervisely.app.widgets import Widget
 from supervisely.app.widgets.vue_flow.edge import Edge as BaseEdge
 from supervisely.app.widgets.vue_flow.modal import VueFlowModal
+from supervisely.app.widgets.vue_flow.models import NodeLink, NodeSettings
 from supervisely.app.widgets.vue_flow.node import Node as BaseNode
-from supervisely.app.widgets.vue_flow.models import NodeSettings, NodeLink
 from supervisely.app.widgets_context import JinjaWidgets
 from supervisely.io.fs import clean_dir, copy_dir_recursively
 
@@ -24,6 +25,7 @@ class VueFlow(Widget):
     class Routes:
         NODE_UPDATED = "node_updated_cb"
         EDGE_ADDED = "edge_added_cb"
+        NODE_ADDED = "node_added_cb"
 
     class Edge(BaseEdge):
         """Represents an edge in the VueFlow diagram."""
@@ -58,6 +60,7 @@ class VueFlow(Widget):
                             self._modal.loading = False
                         except Exception as e:
                             raise e
+
             elif link is not None:
                 if isinstance(kwargs.get("data"), dict):
                     kwargs["data"]["link"] = {"url": link}
@@ -105,10 +108,12 @@ class VueFlow(Widget):
         nodes: Optional[List[Node]] = None,
         edges: Optional[List[Edge]] = None,
         widget_id: str = None,
+        show_sidebar: bool = True,
     ):
         self.nodes = nodes if nodes is not None else []
         self.edges = edges if edges is not None else []
         self._url = None
+        self._show_sidebar = show_sidebar
 
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._modal = VueFlowModal(widget_id_prefix=self.widget_id + "_modal")
@@ -116,7 +121,7 @@ class VueFlow(Widget):
         JinjaWidgets().context["__widget_scripts__"][self.__class__.__name__] = script_path
 
         # ! TODO: move vue_flow_ui folder to static folder
-        self._prepare_ui_static()
+        # self._prepare_ui_static()
 
         server = self._sly_app.get_server()
         node_updated_route = self.get_route_path(VueFlow.Routes.NODE_UPDATED)
@@ -170,14 +175,14 @@ class VueFlow(Widget):
             "url": f"{self._url}?showSidebar=true" if self._url is not None else "",
             "sidebarNodes": [
                 {
-                    'type': 'action',
-                    'className': 'sly.solution.AutoImport',
-                    'label': 'Auto Import',
+                    "type": "action",
+                    "className": "sly.solution.AutoImport",
+                    "label": "Auto Import",
                 },
                 {
-                    'type': 'project',
-                    'className': 'sly.solution.Project',
-                    'label': 'Project',
+                    "type": "project",
+                    "className": "sly.solution.Project",
+                    "label": "Project",
                 },
             ],
         }
@@ -275,21 +280,23 @@ class VueFlow(Widget):
         StateJson()[self.widget_id]["edges"] = serialized_edges
         StateJson().send_changes()
 
-    def _prepare_ui_static(self) -> None:
+    def _prepare_ui_static(self, static_dir: str = "static") -> None:
         """
         Prepares the static files for the VueFlow widget.
         This method is called to ensure that the necessary static files are available for the widget.
         """
-        # app = Application()
+        self._sly_app
         vue_flow_ui_dir = Path(__file__).parent / "vue_flow_ui"
-        # static_dir = Path(app.get_static_dir()) # will not work when initializing app (None)
-        static_dir = Path("static")
-        new_vue_flow_ui_dir = static_dir / "vue_flow_ui"
-        new_vue_flow_ui_dir.mkdir(parents=True, exist_ok=True)
-        clean_dir(str(new_vue_flow_ui_dir))
-        copy_dir_recursively(str(vue_flow_ui_dir), str(new_vue_flow_ui_dir))
-        self._url = f"http://0.0.0.0:8000/{str(new_vue_flow_ui_dir)}/index.html"  # ! TODO: ???
-        self._url = f"{self._url}?showSidebar=true"
+        static_dir = Path(static_dir)
+
+        dst_ui_dir = static_dir / "vue_flow_ui"
+        dst_ui_dir.mkdir(parents=True, exist_ok=True)
+        clean_dir(str(dst_ui_dir))
+        copy_dir_recursively(str(vue_flow_ui_dir), str(dst_ui_dir))
+
+        self._url = f"/{str(dst_ui_dir)}/index.html?showSidebar={str(self._show_sidebar).lower()}"
+        if is_development():
+            self._url = f"http://0.0.0.0:8000{self._url}"
         StateJson()[self.widget_id]["url"] = self._url
         StateJson().send_changes()
 

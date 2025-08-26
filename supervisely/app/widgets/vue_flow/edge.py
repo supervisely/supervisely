@@ -18,6 +18,7 @@ class Edge(BaseModel):
     animated: bool = False
     curvature: float = 1.0
     style: Optional[Dict[str, Any]] = Field(default=None)
+    updatable: bool = True
 
     def to_json(self):
         return self.model_dump(by_alias=True, exclude_none=True)
