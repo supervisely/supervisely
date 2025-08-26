@@ -22,10 +22,36 @@ class GraphBuilder(VueFlow):
         widget_id: Optional[str] = None,
     ):
         self.nodes: Dict[str, VueFlow.Node] = nodes or []
-        self.edges: List[Dict[str, Any]] = edges or defaultdict(list)
+        self.edges: List[Dict[str, Any]] = edges or []
         self._modals: List[Dialog] = modals or []
 
-        super().__init__(nodes=self.nodes, widget_id=widget_id)
+        sidebar_nodes = []
+        from supervisely.solution.nodes import __all__ as all_nodes
+
+        for class_name in all_nodes:
+            try:
+                module_path = "supervisely.solution.nodes"
+                module = importlib.import_module(module_path)
+                node_class: BaseNode = getattr(module, class_name)
+                node_info = {
+                    "type": node_class.node_type,
+                    "className": f"{module_path}.{class_name}",
+                    "label": node_class.title,
+                }
+                if hasattr(node_class, "icon") and node_class.icon:
+                    node_info["icon"] = {
+                        "name": node_class.icon,
+                        "color": node_class.icon_color,
+                        "backgroundColor": node_class.icon_bg_color,
+                    }
+
+                sidebar_nodes.append(node_info)
+            except Exception as e:
+                raise ValueError(f"Error processing node '{class_name}': {repr(e)}")
+
+        super().__init__(
+            nodes=self.nodes, edges=self.edges, sidebar_nodes=sidebar_nodes, widget_id=widget_id
+        )
 
     def load_json(self, json_data: Union[str, Path]) -> None:
         if isinstance(json_data, (str, Path)):

@@ -25,7 +25,7 @@ class MoveLabeledNode(BaseCardNode):
     """
     title = "Move Labeled Data"
     description = "Move labeled and accepted images to the Training Project."
-    icon = "zmdi zmdi-dns"
+    icon = "mdi mdi-folder-move"
     icon_color = "#1976D2"
     icon_bg_color = "#E3F2FD"
 

@@ -24,7 +24,7 @@ class TrainValSplitNode(BaseCardNode):
 
     title = "Train/Val Split"
     description = "Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.)."
-    icon = "zmdi zmdi-arrow-split"
+    icon = "mdi mdi-set-split"
     icon_color = "#1976D2"
     icon_bg_color = "#E3F2FD"
 

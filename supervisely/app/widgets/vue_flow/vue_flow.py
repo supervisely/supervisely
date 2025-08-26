@@ -107,11 +107,13 @@ class VueFlow(Widget):
         self,
         nodes: Optional[List[Node]] = None,
         edges: Optional[List[Edge]] = None,
+        sidebar_nodes: Optional[List[Dict[str, Any]]] = None,
         widget_id: str = None,
         show_sidebar: bool = True,
     ):
         self.nodes = nodes if nodes is not None else []
         self.edges = edges if edges is not None else []
+        self._sidebar_nodes = sidebar_nodes if sidebar_nodes is not None else []
         self._url = None
         self._show_sidebar = show_sidebar
 
@@ -173,18 +175,7 @@ class VueFlow(Widget):
             "nodes": [node.to_json() for node in self.nodes],
             "edges": [],
             "url": f"{self._url}?showSidebar=true" if self._url is not None else "",
-            "sidebarNodes": [
-                {
-                    "type": "action",
-                    "className": "sly.solution.AutoImport",
-                    "label": "Auto Import",
-                },
-                {
-                    "type": "project",
-                    "className": "sly.solution.Project",
-                    "label": "Project",
-                },
-            ],
+            "sidebarNodes": self._sidebar_nodes,
         }
 
     def add_nodes(self, nodes: List[Node]) -> None:

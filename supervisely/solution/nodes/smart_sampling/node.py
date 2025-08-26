@@ -27,7 +27,7 @@ class SmartSamplingNode(BaseCardNode):
         "Supports various sampling strategies: random, k-means clustering, diversity-based, or using "
         "embeddings precomputed by the “AI Index” node for smarter selection."
     )
-    icon = "zmdi zmdi-playlist-plus"
+    icon = "mdi mdi-image-multiple"
     icon_color = "#1976D2"
     icon_bg_color = "#E3F2FD"
 

@@ -7,6 +7,9 @@ class LabelingProjectNode(ProjectNode):
     is_training = False
     title = "Labeling Project"
     description = "Project specifically for labeling data. All data in this project is in the labeling process. After labeling, data will be moved to the Training Project."
+    icon = "mdi mdi-folder-edit"
+    icon_color = "#FFC40C"
+    icon_bg_color = "#FFFFF0"
 
     def __init__(
         self,

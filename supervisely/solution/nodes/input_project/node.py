@@ -7,6 +7,9 @@ class InputProjectNode(ProjectNode):
     is_training = False
     title = "Input Project"
     description = "The Input Project is the central hub for all incoming data. Data in this project will not be modified."
+    icon = "mdi mdi-folder-home"
+    icon_color = "#FFC40C"
+    icon_bg_color = "#FFFFF0"
 
     def __init__(
         self,

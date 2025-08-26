@@ -23,7 +23,7 @@ class LabelingQueueNode(BaseQueueNode):
 
     title = "Labeling Queue"
     description = "Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator."
-    icon = "zmdi zmdi-labels"
+    icon = "mdi mdi-label-multiple"
     icon_color = "#1976D2"
     icon_bg_color = "#E3F2FD"
 

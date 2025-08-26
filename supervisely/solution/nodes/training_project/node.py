@@ -7,6 +7,9 @@ class TrainingProjectNode(ProjectNode):
     is_training = True
     title = "Training Project"
     description = "Project specifically for training data. All data in this project is in the training process. After training, data will be moved to the Training Project."
+    icon = "mdi mdi-folder-multiple-image"
+    icon_color = "#FFC40C"
+    icon_bg_color = "#FFFFF0"
 
     def __init__(
         self,
