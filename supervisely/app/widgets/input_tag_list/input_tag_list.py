@@ -166,11 +166,11 @@ class InputTagList(Widget):
             if selected
         ]
 
-    def get_all_tags(self) -> List[Tag]:
+    def get_all_tags(self) -> Union[List[TagMeta], TagMetaCollection]:
         """Get all tags for the widget.
 
-        :return: List of all tags
-        :rtype: List[Tag]
+        :return: List of all tag metas
+        :rtype: Union[List[TagMeta], TagMetaCollection]
         """
         return [
             Tag(meta=tm, value=value)
