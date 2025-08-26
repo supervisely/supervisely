@@ -4,10 +4,10 @@ from venv import logger
 from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
 from supervisely.solution.base_node import BaseQueueNode
-from supervisely.solution.components.labeling_queue.automation import (
+from supervisely.solution.nodes.labeling_queue.automation import (
     LabelingQueueRefresh,
 )
-from supervisely.solution.components.labeling_queue.gui import LabelingQueueGUI
+from supervisely.solution.nodes.labeling_queue.gui import LabelingQueueGUI
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     LabelingQueuePerformanceMessage,

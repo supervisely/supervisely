@@ -8,9 +8,9 @@ from supervisely.app.widgets import Dialog
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.components.move_labeled.automation import MoveLabeledAuto
-from supervisely.solution.components.move_labeled.gui import MoveLabeledGUI
-from supervisely.solution.components.move_labeled.history import MoveLabeledTasksHistory
+from supervisely.solution.nodes.move_labeled.automation import MoveLabeledAuto
+from supervisely.solution.nodes.move_labeled.gui import MoveLabeledGUI
+from supervisely.solution.nodes.move_labeled.history import MoveLabeledTasksHistory
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,

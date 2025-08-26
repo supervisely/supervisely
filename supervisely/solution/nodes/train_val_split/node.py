@@ -5,7 +5,7 @@ from supervisely.api.api import Api
 from supervisely.app.content import DataJson
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.components.train_val_split.gui import (
+from supervisely.solution.nodes.train_val_split.gui import (
     SplitSettings,
     TrainValSplitGUI,
 )

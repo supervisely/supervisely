@@ -8,7 +8,7 @@ from supervisely.app.widgets import Button
 from supervisely.app.widgets import CloudImport as CloudImportWidget
 from supervisely.app.widgets import Dialog, SolutionCard
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.components.cloud_import.automation import (
+from supervisely.solution.nodes.cloud_import.automation import (
     CloudImportAutomation,
 )
 from supervisely.solution.engine.events import publish_event
