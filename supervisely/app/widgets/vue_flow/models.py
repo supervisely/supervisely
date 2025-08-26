@@ -100,3 +100,5 @@ class NodeSettings(BaseModel):
     queue_info: Optional[NodeQueueInfo] = Field(default_factory=NodeQueueInfo, alias="queueInfo")
     handles: List[Handle] = Field(default_factory=list)
     link: Optional[NodeLink] = Field(default=None)
+    removable: bool = True
+    toolbarVisible: bool = False
