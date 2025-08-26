@@ -865,7 +865,7 @@ class AnnotationApi(ModuleApi):
             return
         if len(img_ids) != len(anns):
             raise RuntimeError(
-                'Can not match "img_ids" and "anns" lists, len(img_ids) != len(anns)'
+                f'Lists "img_ids" and "anns" have different lengths: {len(img_ids)} != {len(anns)}.'
             )
 
         # use context to avoid redundant API calls
