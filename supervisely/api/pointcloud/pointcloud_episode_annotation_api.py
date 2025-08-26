@@ -107,6 +107,9 @@ class PointcloudEpisodeAnnotationAPI(EntityAnnotationAPI):
         """
 
         response = self._api.post(self._method_download, {ApiField.DATASET_ID: dataset_id})
+        result = response.json()
+        if len(result) == 0:
+            return PointcloudEpisodeAnnotation().to_json()
         return response.json()[0]
 
     def download_bulk(self, dataset_id, entity_ids):
