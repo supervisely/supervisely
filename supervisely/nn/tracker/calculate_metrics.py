@@ -621,14 +621,6 @@ def evaluate(
         
     Returns:
         Dictionary containing all computed tracking metrics
-        
-    Usage:
-        import supervisely as sly
-        from supervisely.nn.tracker import evaluate
-        
-        # Load annotations  
-        gt_ann = sly.VideoAnnotation.load_json_file("gt.json", project_meta)
-        pred_ann = sly.VideoAnnotation.load_json_file("pred.json", project_meta)
     
     """
     evaluator = TrackingEvaluator(iou_threshold=iou_threshold)

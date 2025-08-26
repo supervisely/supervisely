@@ -21,10 +21,7 @@ def predictions_to_video_annotation(
         
     Returns:
         VideoAnnotation object with tracked objects
-        
-    Note:
-        Each Prediction should have track_ids in annotation.custom_data
-        or the track_ids property should be set
+
     """
     
     if not predictions:
@@ -48,10 +45,6 @@ def predictions_to_video_annotation(
         if len(boxes) == 0:
             frames.append(sly.Frame(frame_idx, []))
             continue
-            
-        # Handle case when track_ids is None - generate sequential IDs
-        if track_ids is None:
-            track_ids = list(range(len(boxes)))
         
         for bbox, class_name, track_id in zip(boxes, classes, track_ids):
             # Clip bbox to image boundaries

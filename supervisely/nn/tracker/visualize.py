@@ -530,11 +530,6 @@ def visualize_video_annotation(self, annotation: VideoAnnotation,
 def __del__(self):
     """Cleanup temporary directory on object destruction."""
     self._cleanup_temp_directory()
-    
-    
-    
-from typing import Union
-from pathlib import Path
 
 def visualize(
     annotation: Union[VideoAnnotation, List[Prediction]], 
