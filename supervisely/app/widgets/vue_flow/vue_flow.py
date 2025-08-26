@@ -23,9 +23,12 @@ class VueFlow(Widget):
     """
 
     class Routes:
+        NODE_ADDED = "node_added_cb"
+        NODE_REMOVED = "node_removed_cb"
         NODE_UPDATED = "node_updated_cb"
         EDGE_ADDED = "edge_added_cb"
-        NODE_ADDED = "node_added_cb"
+        EDGE_REMOVED = "edge_removed_cb"
+        EDGE_UPDATED = "edge_updated_cb"
 
     class Edge(BaseEdge):
         """Represents an edge in the VueFlow diagram."""
@@ -124,39 +127,145 @@ class VueFlow(Widget):
         # self._prepare_ui_static()
 
         server = self._sly_app.get_server()
+
+        def _get_payload(data: Dict) -> Dict:
+            if isinstance(data, dict):
+                return data.get("payload", data)
+            return {}
+
+        node_added_route = self.get_route_path(VueFlow.Routes.NODE_ADDED)
+        node_removed_route = self.get_route_path(VueFlow.Routes.NODE_REMOVED)
         node_updated_route = self.get_route_path(VueFlow.Routes.NODE_UPDATED)
         edge_added_route = self.get_route_path(VueFlow.Routes.EDGE_ADDED)
+        edge_removed_route = self.get_route_path(VueFlow.Routes.EDGE_REMOVED)
+        edge_updated_route = self.get_route_path(VueFlow.Routes.EDGE_UPDATED)
+
+        # -----------------------------------
+        # Callbacks -------------------------
+        # -----------------------------------
+        # Nodes -----------------------------
+        # -----------------------------------
+        @server.post(node_added_route)
+        def _node_added(node_data: Dict):
+            try:
+                payload = _get_payload(node_data)
+                node_json = payload.get("node", {})
+                if not node_json:
+                    raise ValueError("Node data is missing in the payload.")
+                # Normalize incoming data to expected Node fields
+                node_kwargs: Dict[str, Any] = {
+                    "id": node_json.get("id"),
+                    "label": node_json.get("label", node_json.get("data", {}).get("label", "Node")),
+                    "position": node_json.get("position"),
+                    "data": node_json.get("data", {}),
+                    "parent_id": self.widget_id,
+                }
+                # Remove unsupported fields inside data to avoid validation errors
+                if isinstance(node_kwargs["data"], dict):
+                    node_kwargs["data"].pop("initializing", None)
+                    node_kwargs["data"].pop("className", None)
+                    node_kwargs["data"].pop("label", None)
+                    node_kwargs["data"].pop("type", None)
+
+                node_obj = self.Node(**node_kwargs)
+                node_obj.modal = self.modal
+                self.add_node(node_obj)
+            except Exception as e:
+                raise e
+
+        @server.post(node_removed_route)
+        def _node_removed(node_data: Dict):
+            try:
+                payload = _get_payload(node_data)
+                node_id = payload.get("nodeId") or payload.get("id")
+                if not node_id:
+                    raise ValueError("Node ID is missing in the payload.")
+                self.remove_node(node_id)
+            except Exception as e:
+                raise e
 
         @server.post(node_updated_route)
         def _click(data: Dict):
             try:
-                payload = data.get("payload", {})
+                payload = _get_payload(data)
                 node_id = payload.pop("nodeId", None)
-                for idx, node in enumerate(StateJson()[self.widget_id]["nodes"]):
-                    if node["id"] == node_id:
-                        node.update(**payload)  # ? to update data field too
-                        node.pop("type", None)  # ? remove redundant type field
-                        new_node = self.Node(**node, parent_id=self.widget_id)
-                        new_node.modal = self.modal
-                        StateJson()[self.widget_id]["nodes"][idx] = new_node.to_json()
-                        StateJson().send_changes()
-                        self.nodes[idx] = new_node
-                        VueFlow.update_node(new_node)
+                for node in self.nodes:
+                    if node.id == node_id:
+                        node.position = payload.pop("position", node.position)
+                        VueFlow.update_node(node)
                         break
-
             except Exception as e:
                 raise e
 
+        # -----------------------------------
+        # Edges -----------------------------
+        # -----------------------------------
         @server.post(edge_added_route)
         def _edge_added(edge_data: Dict):  # Edge.to_json()
             try:
-                payload = edge_data.get("payload", {})
+                payload = _get_payload(edge_data)
                 edge_json = payload.get("edge", {})
                 if not edge_json:
                     raise ValueError("Edge data is missing in the payload.")
-                edge_json["id"] = f"edge-{edge_json['source']}-to-{edge_json['target']}"
+                # TODO REMOVE: Auto-generate id only if missing
+                if "id" not in edge_json or not edge_json["id"]:
+                    edge_json["id"] = f"edge-{edge_json['source']}-to-{edge_json['target']}"
                 edge = VueFlow.Edge(**edge_json)
                 self.add_edge(edge)
+            except Exception as e:
+                raise e
+
+        @server.post(edge_removed_route)
+        def _edge_removed(edge_data: Dict):
+            try:
+                payload = _get_payload(edge_data)
+                edge_id = payload.get("edgeId") or payload.get("id")
+                if not edge_id:
+                    raise ValueError("Edge ID is missing in the payload.")
+                self.remove_edge(edge_id)
+            except Exception as e:
+                raise e
+
+        @server.post(edge_updated_route)
+        def _edge_updated(edge_data: Dict):
+            try:
+                payload = _get_payload(edge_data)
+                edge_json = payload.get("edge", {})
+                edge_id = payload.get("edgeId")
+                if not edge_json and not edge_id:
+                    raise ValueError("Edge data or edgeId is required in the payload.")
+
+                # Build a dict of updates
+                updates: Dict[str, Any] = {}
+                if edge_json:
+                    updates = edge_json
+                    edge_id = edge_json.get("id", edge_id)
+                # Update in memory edges
+                for idx, e in enumerate(StateJson()[self.widget_id].get("edges", [])):
+                    if e.get("id") == edge_id:
+                        e.update({k: v for k, v in updates.items() if k != "id"})
+                        StateJson()[self.widget_id]["edges"][idx] = e
+                        break
+                # Mirror to self.edges structure
+                for idx, e in enumerate(self.edges):
+                    if isinstance(e, dict) and e.get("id") == edge_id:
+                        self.edges[idx].update({k: v for k, v in updates.items() if k != "id"})
+                        break
+                StateJson().send_changes()
+                # Notify UI
+                run_sync(
+                    WebsocketManager().broadcast(
+                        {
+                            "runAction": {
+                                "action": f"sly-flow-{self.widget_id}",
+                                "payload": {
+                                    "action": "edge-update",
+                                    "data": {"edge": updates or {"id": edge_id}},
+                                },
+                            }
+                        }
+                    )
+                )
             except Exception as e:
                 raise e
 
@@ -169,10 +278,17 @@ class VueFlow(Widget):
         return {}
 
     def get_json_state(self):
+        url = (
+            f"{self._url}?showSidebar={str(self._show_sidebar).lower()}"
+            if self._url is not None
+            else ""
+        )
         return {
             "nodes": [node.to_json() for node in self.nodes],
-            "edges": [],
-            "url": f"{self._url}?showSidebar=true" if self._url is not None else "",
+            "edges": [
+                edge.to_json() if isinstance(edge, self.Edge) else edge for edge in self.edges
+            ],
+            "url": url,
             "sidebarNodes": [
                 {
                     "type": "action",
@@ -191,16 +307,29 @@ class VueFlow(Widget):
         """Adds nodes to the VueFlow widget."""
         serialized_nodes = []
         for node in nodes:
+            self.nodes.append(node)
             if isinstance(node, VueFlow.Node):
                 node = node.to_json()
             else:
                 raise TypeError("Node must be an instance of VueFlow.Node")
             serialized_nodes.append(node)
-        self.nodes.extend(serialized_nodes)
         if "nodes" not in StateJson()[self.widget_id]:
             StateJson()[self.widget_id]["nodes"] = []
         StateJson()[self.widget_id]["nodes"].extend(serialized_nodes)
         StateJson().send_changes()
+        # @TODO: CHECK AND REMOVE
+        # Notify UI about added nodes individually
+        for node in serialized_nodes:
+            run_sync(
+                WebsocketManager().broadcast(
+                    {
+                        "runAction": {
+                            "action": f"sly-flow-{self.widget_id}",
+                            "payload": {"action": "node-add", "data": {"node": node}},
+                        }
+                    }
+                )
+            )
 
     def add_node(self, node: Node) -> None:
         """Adds a single node to the VueFlow widget."""
@@ -212,25 +341,30 @@ class VueFlow(Widget):
         if not isinstance(node_id, str):
             raise ValueError("Node ID must be a string.")
         for idx, node in enumerate(self.nodes):
-            if isinstance(node, self.Node):
-                if node.id == node_id:
-                    self.nodes.pop(idx)
-                    break
-            elif isinstance(node, dict):
-                if node.get("id") == node_id:
-                    self.nodes.pop(idx)
-                    break
+            if node.id == node_id:
+                self.nodes.pop(idx)
+                break
         else:
             raise ValueError(f"Node with ID '{node_id}' not found.")
-        serialized_nodes = []
-        for node in self.nodes:
-            if isinstance(node, self.Node):
-                node = node.to_json()
-            elif not isinstance(node, dict):
-                raise TypeError("Each node must be an instance of VueFlow.Node or a dict")
-            serialized_nodes.append(node)
-        StateJson()[self.widget_id]["nodes"] = serialized_nodes
+        StateJson()[self.widget_id]["nodes"].pop(node_id)
         StateJson().send_changes()
+
+        # @TODO:
+        # Delete edges
+        # Delete subscriptions
+        # Delete subscriptions from other nodes to this node
+
+        # Notify UI
+        run_sync(
+            WebsocketManager().broadcast(
+                {
+                    "runAction": {
+                        "action": f"sly-flow-{self.widget_id}",
+                        "payload": {"action": "node-remove", "data": {"nodeId": node_id}},
+                    }
+                }
+            )
+        )
 
     def add_edges(self, edges: List[Edge]) -> None:
         """Adds edges to the VueFlow widget."""
@@ -249,6 +383,18 @@ class VueFlow(Widget):
         self.edges.extend(edges)
         StateJson()[self.widget_id]["edges"].extend(serialized_edges)
         StateJson().send_changes()
+        # @TODO: CHECK AND REMOVE
+        for edge in serialized_edges:
+            run_sync(
+                WebsocketManager().broadcast(
+                    {
+                        "runAction": {
+                            "action": f"sly-flow-{self.widget_id}",
+                            "payload": {"action": "edge-add", "data": {"edge": edge}},
+                        }
+                    }
+                )
+            )
 
     def add_edge(self, edge: Edge) -> None:
         """Adds a single edge to the VueFlow widget."""
@@ -279,13 +425,40 @@ class VueFlow(Widget):
             serialized_edges.append(edge)
         StateJson()[self.widget_id]["edges"] = serialized_edges
         StateJson().send_changes()
+        # @TODO: CHECK AND REMOVE
+        run_sync(
+            WebsocketManager().broadcast(
+                {
+                    "runAction": {
+                        "action": f"sly-flow-{self.widget_id}",
+                        "payload": {"action": "edge-remove", "data": {"edgeId": edge_id}},
+                    }
+                }
+            )
+        )
+
+    # @TODO: CHECK AND REMOVE
+    def refresh_edges(self) -> None:
+        """Broadcast the current list of edges to the UI."""
+        edges = []
+        for edge in StateJson()[self.widget_id].get("edges", []):
+            edges.append(edge)
+        run_sync(
+            WebsocketManager().broadcast(
+                {
+                    "runAction": {
+                        "action": f"sly-flow-{self.widget_id}",
+                        "payload": {"action": "edges-refresh", "data": {"edges": edges}},
+                    }
+                }
+            )
+        )
 
     def _prepare_ui_static(self, static_dir: str = "static") -> None:
         """
         Prepares the static files for the VueFlow widget.
         This method is called to ensure that the necessary static files are available for the widget.
         """
-        self._sly_app
         vue_flow_ui_dir = Path(__file__).parent / "vue_flow_ui"
         static_dir = Path(static_dir)
 
@@ -296,7 +469,7 @@ class VueFlow(Widget):
 
         self._url = f"/{str(dst_ui_dir)}/index.html?showSidebar={str(self._show_sidebar).lower()}"
         if is_development():
-            self._url = f"http://0.0.0.0:8000{self._url}"
+            self._url = f"http://localhost:8000{self._url}"
         StateJson()[self.widget_id]["url"] = self._url
         StateJson().send_changes()
 

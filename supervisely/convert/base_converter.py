@@ -297,7 +297,7 @@ class BaseConverter:
                     "and ensure that your data contains valid information"
                 )
             if not only_modality_items:
-                logger.warn(
+                logger.warning(
                     "Annotations not found. "  # pylint: disable=no-member
                     f"Uploading {self.modality} without annotations. "
                     "If you need assistance to upload data with annotations, please contact our support team."
@@ -349,6 +349,7 @@ class BaseConverter:
             i = 1
             new_name = new_cls.name
             matched = False
+
             def _is_matched(old_cls: ObjClass, new_cls: ObjClass) -> bool:
                 if old_cls.geometry_type == new_cls.geometry_type:
                     if old_cls.geometry_type == GraphNodes:
@@ -365,7 +366,7 @@ class BaseConverter:
                 new_name = f"{new_cls.name}_{i}"
                 i += 1
             if new_name != new_cls.name:
-                logger.warn(f"Class {new_cls.name} renamed to {new_name}")
+                logger.warning(f"Class {new_cls.name} renamed to {new_name}")
                 renamed_classes[new_cls.name] = new_name
             if not matched:
                 new_cls = new_cls.clone(name=new_name)
@@ -386,7 +387,7 @@ class BaseConverter:
                 new_name = f"{new_tag.name}_{i}"
                 i += 1
             if new_name != new_tag.name:
-                logger.warn(f"Tag {new_tag.name} renamed to {new_name}")
+                logger.warning(f"Tag {new_tag.name} renamed to {new_name}")
                 renamed_tags[new_tag.name] = new_name
             if not matched:
                 new_tag = new_tag.clone(name=new_name)

@@ -44,21 +44,25 @@ Vue.component("sly-flow", {
           sidebarNodes: this.state[this.id].sidebarNodes,
         };
         // this.refreshNodes();
-        this.sendMessageToFrame({
-          action: "flow-refresh",
-          data: {},
-        });
-        this.sendMessageToFrame({
-          action: "sidebar-nodes-refresh",
-          data: {},
-        });
+        this.sendMessageToFrame({ action: "flow-refresh", data: {} });
+        this.sendMessageToFrame({ action: "sidebar-nodes-refresh", data: {} });
+        this.sendMessageToFrame({ action: "nodes-refresh", data: { nodes: this.state[this.id].nodes } });
+        this.sendMessageToFrame({ action: "edges-refresh", data: { edges: this.state[this.id].edges } });
+      // Nodes
+      } else if (data.action === "node-added" || data.action === "node-add") {
+        this.post(`/${this.id}/node_added_cb`, data.payload);
+      } else if (data.action === "node-removed") {
+        this.post(`/${this.id}/node_removed_cb`, data.payload);
       } else if (data.action === "node-updated") {
         this.post(`/${this.id}/node_updated_cb`, data.payload);
-      } else if (data.action === "edge-created") {
+      // Edges
+      } else if (data.action === "edge-added") {
         console.log("+++ edge-created", data.payload);
         this.post(`/${this.id}/edge_added_cb`, data.payload);
-      } else if (data.action === "node-added") {
-        this.post(`/${this.id}/node_added_cb`, data.payload);
+      } else if (data.action === "edge-removed") {
+        this.post(`/${this.id}/edge_removed_cb`, data.payload);
+      } else if (data.action === "edge-updated") {
+        this.post(`/${this.id}/edge_updated_cb`, data.payload);
       }
     },
   },

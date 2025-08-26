@@ -169,4 +169,4 @@ class Node:
                 self.settings.badges.pop(idx, None)
                 self.update_node(self)
                 return
-        raise KeyError(f"Badge with key '{key}' not found in card badges.")
+        # raise KeyError(f"Badge with key '{key}' not found in card badges.")

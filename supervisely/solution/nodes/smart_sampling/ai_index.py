@@ -15,6 +15,7 @@ class AiIndexNode(EmptyNode):
     Node for OpenAI CLIP service.
     This node is used to interact with the OpenAI CLIP service for image and text embeddings.
     """
+
     title = "AI Index"
     description = "AI Search Index is a powerful tool that allows you to search for images in your dataset using AI models. It provides a quick and efficient way to find similar images based on visual features. You can use it in Smart Sampling node to select images for labeling based on specified prompt."
     icon = "mdi mdi-image-search"
@@ -90,7 +91,6 @@ class AiIndexNode(EmptyNode):
 
     def send_message_to_clip_service(self) -> None:
         pass
-
 
     def check_embeddings_status(self) -> EmbeddingsStatusMessage:
         """Check that project embeddings are enabled, not in progress, and up to date."""
