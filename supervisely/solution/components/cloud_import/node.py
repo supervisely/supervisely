@@ -33,8 +33,25 @@ class CloudImportNode(BaseCardNode):
 
         # --- core blocks --------------------------------------------------------
         self.gui = CloudImportWidget(project_id=project_id)  # includes tasks history
+        self.modal_content = self.gui  # for BaseCardNode
         self.history = self.gui.tasks_history
         self.automation = CloudImportAutomation(self.gui.run)
+
+        # --- init card ----------------------------------------------------------
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
+        )
 
         # ! TODO: implement card click
         # @self.card.click
@@ -58,21 +75,6 @@ class CloudImportNode(BaseCardNode):
             self.gui.tasks_history.logs_modal,
         ]
 
-        # --- init card ----------------------------------------------------------
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
-        super().__init__(
-            title=title,
-            description=description,
-            icon=icon,
-            icon_color=icon_color,
-            icon_bg_color=icon_bg_color,
-            *args,
-            **kwargs,
-        )
 
     def _get_tooltip_buttons(self):
         return [self.gui.tasks_history.open_modal_button, self.automation.open_modal_button]
@@ -93,11 +95,11 @@ class CloudImportNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Modal --------------------------------------------------------------
     # ------------------------------------------------------------------
-    @property
-    def modal(self):
-        if not hasattr(self, "_modal"):
-            self._modal = Dialog(title="Import from Cloud Storage", content=self.gui, size="tiny")
-        return self._modal
+    # @property
+    # def modal(self):
+    #     if not hasattr(self, "_modal"):
+    #         self._modal = Dialog(title="Import from Cloud Storage", content=self.gui, size="tiny")
+    #     return self._modal
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
@@ -110,46 +112,19 @@ class CloudImportNode(BaseCardNode):
     def update_automation_details(self) -> Tuple[int, str, int, str]:
         sec, path, interval, period = self.automation.get_details()
         if path is not None:
-            if self.card is not None:
-                self.card.update_property(
-                    "Sync", "Every {} {}".format(interval, period), highlight=True
-                )
-                link = abs_url(f"files/?path={path}")
-                self.card.update_property("Path", path, link=link)
-                logger.info(f"Added job to synchronize from Cloud Storage every {sec} sec")
-                self._show_automation_badge()
+            self.update_property(
+                "Sync", "Every {} {}".format(interval, period), highlight=True
+            )
+            link = abs_url(f"files/?path={path}")
+            self.update_property("Path", path, link=link)
+            logger.info(f"Added job to synchronize from Cloud Storage every {sec} sec")
+            self.show_automation_badge()
         else:
-            if self.card is not None:
-                self.card.remove_property_by_key("Sync")
-                self.card.remove_property_by_key("Path")
-                self._hide_automation_badge()
+            self.remove_property_by_key("Sync")
+            self.remove_property_by_key("Path")
+            self.hide_automation_badge()
 
         return sec, path, interval, period
-
-    def _show_automation_badge(self) -> None:
-        self._update_automation_badge(True)
-
-    def _hide_automation_badge(self) -> None:
-        self._update_automation_badge(False)
-
-    def _update_automation_badge(self, enable: bool) -> None:
-        for idx, prop in enumerate(self.card.badges):
-            if prop["on_hover"] == "Automation":
-                if enable:
-                    pass  # already enabled
-                else:
-                    self.card.remove_badge(idx)
-                return
-
-        if enable:  # if not found
-            self.card.add_badge(
-                self.card.Badge(
-                    label="⚡",
-                    on_hover="Automation",
-                    badge_type="warning",
-                    plain=True,
-                )
-            )
 
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
@@ -179,10 +154,10 @@ class CloudImportNode(BaseCardNode):
 
     def handle_import_started(self, task_id: int) -> None:
         """Automatically handles import_started events"""
-        self.node.show_in_progress_badge()
+        self.show_in_progress_badge()
         success = self.wait_import_completion(task_id)
         logger.info(f"Import task {task_id} completed with status: {success}")
-        self.node.hide_in_progress_badge()
+        self.hide_in_progress_badge()
 
     def wait_import_completion(self, task_id: int) -> ImportFinishedMessage:
         """

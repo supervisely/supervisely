@@ -16,7 +16,8 @@ from supervisely.app.widgets import (
     VueFlow,
     Widget,
 )
-from supervisely.app.widgets.vue_flow.vue_flow import (
+from supervisely.app.widgets.vue_flow.modal import VueFlowModal
+from supervisely.app.widgets.vue_flow.models import (
     Handle,
     NodeBadge,
     NodeQueueInfo,
@@ -87,6 +88,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
         self.parent_id = kwargs.pop("parent_id", None)
         self.id = kwargs.pop("id", generate_id(cls_name=self.__class__.__name__))
         self.title = kwargs.pop("title", "Node")
+        self._modal = kwargs.pop("modal", None)
 
         Widget.__init__(self, widget_id=self.id)  # Widget does not call super()
         EventMixin.__init__(self, *args, **kwargs)
@@ -98,6 +100,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
             label=self.title,
             data=self._create_settings(*args, **kwargs),
             parent_id=self.parent_id,
+            link=kwargs.pop("link", None),
         )
 
     # ------------------------------------------------------------------
@@ -114,7 +117,12 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
     # These methods create the node from JSON data
     # ------------------------------------------------------------------
     @classmethod
-    def from_json(cls, json_data, parent_id: Optional[str] = None) -> "BaseNode":
+    def from_json(
+        cls,
+        json_data,
+        parent_id: Optional[str] = None,
+        modal: Optional[VueFlowModal] = None,
+    ) -> "BaseNode":
         node_id = json_data.get("id")
         kwargs = json_data.get("parameters", {})
         x = kwargs.pop("x", 0)
@@ -126,6 +134,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
             x=x,
             y=y,
             parent_id=parent_id,
+            modal=modal,
             **kwargs,
         )
 
@@ -324,40 +333,25 @@ class BaseProjectNode(BaseNode):
 class BaseQueueNode(BaseNode):
     node_type = "queue"
 
-    def __init__(
-        self,
-        content: Union[SolutionCard, SolutionProject],
-        x: int = 0,
-        y: int = 0,
-        parent_id: Optional[int] = None,
-    ):
-        super().__init__(content=content, x=x, y=y, parent_id=parent_id)
-        self.update_pending = self._wrap_actions(self._update_pending)
-        self.update_annotation = self._wrap_actions(self._update_annotation)
-        self.update_review = self._wrap_actions(self._update_review)
-        self.update_finished = self._wrap_actions(self._update_finished)
-
-    def _create_queue_info(
-        self, content: Union[SolutionCard, SolutionProject]
-    ) -> Optional[NodeQueueInfo]:
+    def _create_queue_info(self, *args, **kwargs) -> Optional[NodeQueueInfo]:
         return NodeQueueInfo()
 
-    def _update_pending(self, pending: int):
+    def update_pending(self, pending: int):
         """Updates the pending count of the queue."""
         self.settings.queue_info.pending = pending
         VueFlow.update_node(self)
 
-    def _update_annotation(self, annotating: int):
+    def update_annotation(self, annotating: int):
         """Updates the annotating count of the queue."""
         self.settings.queue_info.annotating = annotating
         VueFlow.update_node(self)
 
-    def _update_review(self, reviewing: int):
+    def update_review(self, reviewing: int):
         """Updates the reviewing count of the queue."""
         self.settings.queue_info.reviewing = reviewing
         VueFlow.update_node(self)
 
-    def _update_finished(self, finished: int):
+    def update_finished(self, finished: int):
         """Updates the finished count of the queue."""
         self.settings.queue_info.finished = finished
         VueFlow.update_node(self)

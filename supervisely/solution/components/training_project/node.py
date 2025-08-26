@@ -6,9 +6,7 @@ from supervisely.solution.components.project.node import ProjectNode
 class TrainingProjectNode(ProjectNode):
     is_training = True
     title = "Training Project"
-    description = (
-        "Project specifically for training data. All data in this project is in the training process. After training, data will be moved to the Training Project."
-    )
+    description = "Project specifically for training data. All data in this project is in the training process. After training, data will be moved to the Training Project."
 
     def __init__(
         self,
@@ -30,43 +28,29 @@ class TrainingProjectNode(ProjectNode):
             "train_val_split_finished": self.update,
         }
 
-    def _available_handles(self):
+    def _available_publish_methods(self):
+        return {
+            "qa_stats": self.send_message_to_qa_stats,
+        }
+
+    def send_message_to_qa_stats(self) -> None:
+        pass
+
+    def _get_handles(self):
         return [
             {
-                "id": "target-1",
+                "id": "train_val_split_finished",
                 "type": "target",
                 "position": "top",
                 "label": "Input",
                 "connectable": True,
             },
             {
-                "id": "target-2",
-                "type": "target",
-                "position": "left",
-                "label": "Input",
-                "connectable": True,
-            },
-            {
-                "id": "source-1",
-                "type": "source",
-                "position": "bottom",
-                "label": "Output",
-                "connectable": True,
-            },
-            {
-                "id": "target-2",
+                "id": "qa_stats_project_id",
                 "type": "source",
                 "position": "right",
-                "label": "Output",
+                "label": "QA & Stats",
                 "connectable": True,
-                "style": {"top": "20px"},
-            },
-            {
-                "id": "source-3",
-                "type": "source",
-                "position": "right",
-                "label": "Output",
-                "connectable": True,
-                "style": {"top": "70px"},
+                "style": {"top": "18.555px"},
             },
         ]

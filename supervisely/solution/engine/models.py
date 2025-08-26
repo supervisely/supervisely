@@ -85,3 +85,9 @@ class CLIPServiceStatusMessage(Message):
     """CLIP service status event message."""
 
     is_ready: bool = Field(..., description="Indicates if CLIP service is available and ready")
+
+
+class LabelingQueuePerformanceMessage(Message):
+    """Labeling queue performance event message."""
+
+    project_id: int = Field(..., description="ID of the project")

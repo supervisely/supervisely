@@ -40,6 +40,7 @@ class SmartSamplingNode(BaseCardNode):
 
         # --- core blocks --------------------------------------------------------
         self.gui = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
+        self.modal_content = self.gui.content
         self.automation = SmartSamplingAutomation(self.run)
         self.history = SmartSamplingTasksHistory(self.api)
 

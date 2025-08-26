@@ -44,7 +44,7 @@ class GraphBuilder(VueFlow):
                 module_path, class_name = node_type.rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 node_class: BaseNode = getattr(module, class_name)
-                node = node_class.from_json(node_data, parent_id=self.widget_id)
+                node = node_class.from_json(node_data, parent_id=self.widget_id, modal=self.modal)
                 if hasattr(node, "modals") and node.modals:
                     modals.extend(node.modals)
                 nodes.append(node)

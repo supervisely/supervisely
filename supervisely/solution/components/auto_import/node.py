@@ -122,14 +122,14 @@ class AutoImportNode(BaseCardNode):
                 task_id = task.get("task_id")
                 tasks.append(task_id)
 
-        self.card.update_property(key="Tasks", value=str(len(tasks)))
+        self.update_property(key="Tasks", value=str(len(tasks)))
         if len(tasks) > 0:
             last_task_id = tasks[0]
             last_task = import_history_dict.get(last_task_id)
             if last_task is not None:
                 items_count = last_task.get("items_count", 0)
-                self.card.update_property(key="Last import", value=f"+{items_count}")
-                self.card.update_badge_by_key("Last import:", f"+{items_count}", "success")
+                self.update_property(key="Last import", value=f"+{items_count}")
+                self.update_badge_by_key("Last import:", f"+{items_count}", "success")
                 if is_last_task:
                     if self._last_task_id != last_task_id:
                         self._last_task_id = last_task_id

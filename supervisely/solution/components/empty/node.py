@@ -20,7 +20,7 @@ class EmptyNode(BaseCardNode):
         icon_color: str = "#1976D2",
         icon_bg_color: str = "#E3F2FD",
         tooltip_position: Literal["left", "right"] = "right",
-        badge: SolutionCard.Badge = None,
+        badge = None,
         *args,
         **kwargs,
     ):
@@ -42,6 +42,4 @@ class EmptyNode(BaseCardNode):
         )
 
         if badge is not None:
-            if not isinstance(badge, SolutionCard.Badge):
-                raise TypeError("Badge must be an instance of SolutionCard.Badge")
-            self.card.add_badge(badge)
+            self.add_badge(badge)

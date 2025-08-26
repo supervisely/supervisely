@@ -3,33 +3,34 @@ from venv import logger
 
 from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
+from supervisely.solution.base_node import BaseQueueNode
 from supervisely.solution.components.labeling_queue.automation import (
     LabelingQueueRefresh,
 )
 from supervisely.solution.components.labeling_queue.gui import LabelingQueueGUI
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
+    LabelingQueuePerformanceMessage,
     LabelingQueueRefreshInfoMessage,
     SampleFinishedMessage,
 )
-from supervisely.solution.legacy_base_node import (
-    SolutionCardNode,
-    SolutionElement,
-    SolutionQueueNode,
-)
 
 
-class LabelingQueueNode(SolutionElement):
+class LabelingQueueNode(BaseQueueNode):
     """
     LabelingQueue node for monitoring labeling tasks in a queue.
     """
+
+    title = "Labeling Queue"
+    description = "Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator."
+    icon = "zmdi zmdi-labels"
+    icon_color = "#1976D2"
+    icon_bg_color = "#E3F2FD"
 
     def __init__(
         self,
         queue_id: int,
         collection_id: int,
-        x: int = 0,
-        y: int = 0,
         *args,
         **kwargs,
     ):
@@ -48,26 +49,27 @@ class LabelingQueueNode(SolutionElement):
         self.collection_id = collection_id
         self.REFRESH_INTERVAL_SEC = 30
 
-        icon = kwargs.pop("icon", "zmdi zmdi-labels")
-        icon_color = kwargs.pop("icon_color", "#1976D2")
-        icon_bg_color = kwargs.pop("icon_bg_color", "#E3F2FD")
-        self._parent_id = kwargs.pop("parent_id", None)
-
-        # Initialize the base class before core blocks (to wrap publish/subscribe methods)
-        super().__init__(*args, **kwargs)
-
         # --- core blocks --------------------------------------------------------
         self.gui = LabelingQueueGUI(queue_id=self.queue_id)
-        self.card = self._build_card(
-            title="Labeling Queue",
+        self.modals = [self.gui.add_user_modal]
+
+        # --- init node ------------------------------------------------------
+        # * before automation (to wrap publish/subscribe methods)
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+
+        super().__init__(
+            title=title,
+            description=description,
             icon=icon,
             icon_color=icon_color,
             icon_bg_color=icon_bg_color,
-            tooltip_description="Labeling Queue management. Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator.",
-            buttons=[self.gui.open_labeling_queue_btn],
+            *args,
+            **kwargs,
         )
-        self.node = SolutionQueueNode(content=self.card, x=x, y=y, parent_id=self._parent_id)
-        self.modals = [self.gui.add_user_modal]
 
         self._setup_handlers()
         self.refresh_info()
@@ -75,6 +77,42 @@ class LabelingQueueNode(SolutionElement):
         # automation after init (we need to wrap the publish methods in init first)
         self.automation = LabelingQueueRefresh(queue_id=self.queue_id, func=self.refresh_info)
         self.automation.apply(sec=self.REFRESH_INTERVAL_SEC)
+
+    def _get_tooltip_buttons(self):
+        return [self.gui.open_labeling_queue_btn]
+
+    # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "sample_finished",
+                "type": "target",
+                "position": "top",
+                "connectable": True,
+            },
+            {
+                "id": "queue_info_updated",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            },
+            {
+                "id": "train_val_split_items_count",
+                "type": "source",
+                "position": "left",
+                "connectable": True,
+                "style": {"top": "220"},
+            },
+            {
+                "id": "labeling_performance",
+                "type": "source",
+                "position": "right",
+                "connectable": True,
+                "style": {"top": "18.555px"},
+            },
+        ]
 
     def _setup_handlers(self):
         """Setup handlers for buttons and other interactive elements"""
@@ -141,6 +179,29 @@ class LabelingQueueNode(SolutionElement):
     # ------------------------------------------------------------------
     # Events ----------------------------------------------------------
     # ------------------------------------------------------------------
+    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "sample_finished": [self.add_items, self.refresh_info],
+        }
+
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {
+            "queue_info_updated": self.send_new_accepted_images_message,
+            "train_val_split_items_count": self.send_new_accepted_images_message,
+            "labeling_performance": self.send_performance_message,
+        }
+
+    def send_new_accepted_images_message(self):
+        """Send message with all labeled images from labeling queue with status accepted"""
+        images = self.get_new_accepted_images()
+        return LabelingQueueAcceptedImagesMessage(accepted_images=images)
+
+    def send_performance_message(self):
+        """Send message to open labeling performance page"""
+        return LabelingQueuePerformanceMessage(project_id=self.project_id)
+
     def refresh_info(
         self, message: Optional[SampleFinishedMessage] = None
     ) -> LabelingQueueRefreshInfoMessage:
@@ -150,12 +211,12 @@ class LabelingQueueNode(SolutionElement):
         pending, annotating, reviewing, finished, rejected = 0, 0, 0, 0, 0
         try:
             pending, annotating, reviewing, finished, rejected = self.get_labeling_stats()
-            self.node.update_pending(pending)
-            self.node.update_annotation(annotating)
-            self.node.update_review(reviewing)
-            self.node.update_finished(finished)
+            self.update_pending(pending)
+            self.update_annotation(annotating)
+            self.update_review(reviewing)
+            self.update_finished(finished)
             if finished > 0:
-                self.get_new_accepted_images()
+                self.send_new_accepted_images_message()
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
         return LabelingQueueRefreshInfoMessage(
@@ -181,20 +242,7 @@ class LabelingQueueNode(SolutionElement):
 
         img_ids = [entity["id"] for entity in resp["images"]]
         logger.info(f"Found {len(img_ids)} new accepted images in the labeling queue.")
-        return LabelingQueueAcceptedImagesMessage(accepted_images=img_ids.copy())
-
-    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
-        return {
-            "sample_finished": [self.add_items, self.refresh_info],
-        }
-
-    def _available_publish_methods(self) -> Dict[str, Callable]:
-        """Returns a dictionary of methods that can be used for publishing events."""
-        return {
-            "labeling_queue_info_refresh": self.refresh_info,
-            "images_to_move": self.get_new_accepted_images,
-        }
+        return img_ids
 
     def add_items(self, message: SampleFinishedMessage) -> None:
         """
@@ -203,12 +251,6 @@ class LabelingQueueNode(SolutionElement):
         """
         if not message.dst:
             logger.warning("No images to add to labeling queue.")
-            return
-
-        images = []
-        for imgs in message.dst.values():
-            images.extend(imgs)
-        self.api.entities_collection.add_items(self.collection_id, images)
             return
 
         images = []

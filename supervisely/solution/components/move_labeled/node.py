@@ -7,7 +7,7 @@ from supervisely.api.api import Api
 from supervisely.app.widgets import Dialog
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
-from supervisely.solution.automation import SolutionCardNode, SolutionElement
+from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.components.move_labeled.automation import MoveLabeledAuto
 from supervisely.solution.components.move_labeled.gui import MoveLabeledGUI
 from supervisely.solution.components.move_labeled.history import MoveLabeledTasksHistory
@@ -17,28 +17,25 @@ from supervisely.solution.engine.models import (
 )
 
 
-class MoveLabeledNode(SolutionElement):
+class MoveLabeledNode(BaseCardNode):
     APP_SLUG = "supervisely-ecosystem/data-commander"
     """
     This class is a placeholder for the MoveLabeled node.
     It is used to move labeled data from one location to another.
     """
+    title = "Move Labeled Data"
+    description = "Move labeled and accepted images to the Training Project."
+    icon = "zmdi zmdi-dns"
+    icon_color = "#1976D2"
+    icon_bg_color = "#E3F2FD"
 
     def __init__(
         self,
         src_project_id: int,
         dst_project_id: int,
-        x: int = 0,
-        y: int = 0,
         *args,
         **kwargs,
     ):
-        self._parent_id = kwargs.pop("parent_id", None)
-        icon = kwargs.pop("icon", "zmdi zmdi-dns")
-        icon_color = kwargs.pop("icon_color", "#1976D2")
-        icon_bg_color = kwargs.pop("icon_bg_color", "#E3F2FD")
-        # First, initialize the base class (to wrap publish/subscribe methods)
-        super().__init__(*args, **kwargs)
 
         # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
@@ -49,15 +46,8 @@ class MoveLabeledNode(SolutionElement):
         # --- core blocks --------------------------------------------------------
         self.automation = MoveLabeledAuto(self.start_task)
         self.gui = MoveLabeledGUI()
+        self.modal_content = self.gui.widget  # for BaseCardNode
         self.history = MoveLabeledTasksHistory()
-        self.card = self._build_card(
-            title="Move Labeled Data",
-            tooltip_description="Move labeled and accepted images to the Training Project.",
-            icon=icon,
-            icon_color=icon_color,
-            icon_bg_color=icon_bg_color,
-        )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y, parent_id=self._parent_id)
 
         # --- modals -------------------------------------------------------------
         self.modals = [
@@ -67,9 +57,26 @@ class MoveLabeledNode(SolutionElement):
             self.history.logs_modal,
         ]
 
-        @self.card.click
-        def on_automate_click():
-            self.gui.modal.show()
+        # --- node init ----------------------------------------------------------
+        title = kwargs.pop("title", self.title)
+        description = kwargs.pop("description", self.description)
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        # First, initialize the base class (to wrap publish/subscribe methods)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
+        )
+
+        # @self.click
+        # def on_automate_click():
+        #     self.gui.modal.show()
 
         @self.automation.apply_button.click
         def on_automate_click():
@@ -82,19 +89,55 @@ class MoveLabeledNode(SolutionElement):
             self.start_task()
 
     # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "queue_info_updated",
+                "type": "target",
+                "position": "top",
+                "connectable": True,
+            },
+            {
+                "id": "move_labeled_data_finished",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            },
+        ]
+
+    # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
             "move_labeled_data_finished": self.wait_task_complete,
+            # "queue_info_updated": self.send_images_count_message,
         }
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
         return {
-            "images_to_move": self.set_images_to_move,
+            "queue_info_updated": self.set_images_to_move,
         }
+
+    def send_data_moving_finished_message(
+        self,
+        success: bool,
+        items: List[int],
+        items_count: int,
+    ) -> MoveLabeledDataFinishedMessage:
+        return MoveLabeledDataFinishedMessage(
+            success=success,
+            items=items,
+            items_count=items_count,
+        )
+    
+    # def send_images_count_message(self, count: int) -> LabelingQueueAcceptedImagesMessage:
+    #     return LabelingQueueAcceptedImagesMessage(accepted_images=[i for i in range(count)])
+
 
     # publish event (may send Message object)
     def wait_task_complete(
@@ -102,12 +145,12 @@ class MoveLabeledNode(SolutionElement):
         task_id: int,
         dataset_id: int,
         images: List[int],
-    ) -> MoveLabeledDataFinishedMessage:
+    ) -> None:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
             logger.error(f"Task with ID {task_id} not found.")
-            return MoveLabeledDataFinishedMessage(success=False, items=[], items_count=0)
+            self.send_data_moving_finished_message(success=False, items=[], items_count=0)
 
         current_time = time.time()
         while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
@@ -131,7 +174,7 @@ class MoveLabeledNode(SolutionElement):
         except Exception as e:
             logger.error(f"Failed to update task history: {repr(e)}")
 
-        self.node.hide_in_progress_badge()
+        self.hide_in_progress_badge()
 
         success = task_status == self.api.task.Status.FINISHED
         res = self.api.image.get_list(dataset_id=dataset_id)
@@ -144,7 +187,7 @@ class MoveLabeledNode(SolutionElement):
             logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
             self._images_to_move = []
 
-        return MoveLabeledDataFinishedMessage(success=success, items=res, items_count=len(res))
+        self.send_data_moving_finished_message(success=success, items=res, items_count=len(res))
 
     # subscribe event (may receive Message object)
     def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
@@ -158,25 +201,25 @@ class MoveLabeledNode(SolutionElement):
             self._images_to_move = message.accepted_images
         logger.info(f"Set {len(self._images_to_move)} images to move.")
         self.gui.set_items_count(len(self._images_to_move))
-        self.card.update_property("Available items to move", f"{len(self._images_to_move)}")
+        self.update_property("Available items to move", f"{len(self._images_to_move)}")
+        self.send_images_count_message(len(self._images_to_move))
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
     # ------------------------------------------------------------------
     def update_automation_details(self) -> Tuple[int, str, int, str]:
         enabled, period, interval, min_batch, sec = self.automation.get_details()
-        if self.node is not None:
-            if enabled is not None:
-                self.node.show_automation_badge()
-                self.card.update_property("Run every", f"{interval} {period}", highlight=True)
-                if min_batch is not None:
-                    self.card.update_property("Min batch size", f"{min_batch}", highlight=True)
-                else:
-                    self.card.remove_property_by_key("Min batch size")
+        if enabled is not None:
+            self.show_automation_badge()
+            self.update_property("Run every", f"{interval} {period}", highlight=True)
+            if min_batch is not None:
+                self.update_property("Min batch size", f"{min_batch}", highlight=True)
             else:
-                self.node.hide_automation_badge()
-                self.card.remove_property_by_key("Run every")
-                self.card.remove_property_by_key("Min batch size")
+                self.remove_property_by_key("Min batch size")
+        else:
+            self.hide_automation_badge()
+            self.remove_property_by_key("Run every")
+            self.remove_property_by_key("Min batch size")
 
     def apply_automation(self) -> None:
         """
@@ -202,7 +245,7 @@ class MoveLabeledNode(SolutionElement):
             logger.warning(f"Not enough images to move. {min_batch_size} < {len(images)}")
             return
 
-        self.node.show_in_progress_badge()
+        self.show_in_progress_badge()
         logger.info(f"Moving {len(images)} images (project ID:{src} → ID:{dst}).")
 
         dst_project = self.api.project.get_info_by_id(dst)

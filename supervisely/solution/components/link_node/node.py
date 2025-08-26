@@ -2,10 +2,10 @@ from typing import Literal, Optional, Union
 
 from supervisely._utils import abs_url, is_development
 from supervisely.app.widgets import Icons
-from supervisely.solution.automation import SolutionCardNode, SolutionElement
+from supervisely.solution.base_node import BaseCardNode
 
 
-class LinkNode(SolutionElement):
+class LinkNode(BaseCardNode):
     """
     Base class for nodes that can be used as links to external resources.
     """
@@ -16,8 +16,6 @@ class LinkNode(SolutionElement):
         description: str,
         link: str = "",
         width: int = 250,
-        x: int = 0,
-        y: int = 0,
         icon: Optional[Union[Icons, str]] = None,
         icon_color: str = "#1976D2",
         icon_bg_color: str = "#E3F2FD",
@@ -25,23 +23,18 @@ class LinkNode(SolutionElement):
         *args,
         **kwargs,
     ):
-        self._parent_id = kwargs.pop("parent_id", None)
-        super().__init__(*args, **kwargs)
-
         if isinstance(icon, Icons):
             icon = icon.get_class_name()
 
         if link and link.startswith("/") and is_development():
             link = abs_url(link)
-
-        self.card = self._build_card(
+        super().__init__(
             title=title,
-            tooltip_description=description,
+            description=description,
             icon=icon,
             icon_color=icon_color,
             icon_bg_color=icon_bg_color,
             link=link,
-            width=width,
-            tooltip_position=tooltip_position,
+            *args,
+            **kwargs,
         )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y, parent_id=self._parent_id)

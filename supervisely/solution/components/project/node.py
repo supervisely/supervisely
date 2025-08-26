@@ -41,8 +41,8 @@ class ProjectNode(BaseProjectNode):
         self.workspace_id = self.project.workspace_id
 
         # --- core blocks --------------------------------------------------------
-        self._automation = ProjectAutomation(project_id=self.project_id, func=self.update)
         super().__init__(*args, **kwargs)
+        self._automation = ProjectAutomation(project_id=self.project_id, func=self.update)
 
         # --- modals -------------------------------------------------------------
         self.modals = []

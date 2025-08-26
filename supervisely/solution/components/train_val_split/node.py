@@ -4,8 +4,11 @@ from typing import Callable, Dict, List, Literal, Optional, Union
 from supervisely.api.api import Api
 from supervisely.app.content import DataJson
 from supervisely.sly_logger import logger
-from supervisely.solution.automation import SolutionCardNode, SolutionElement
-from supervisely.solution.components.train_val_split.gui import SplitSettings, TrainValSplitGUI
+from supervisely.solution.base_node import BaseCardNode
+from supervisely.solution.components.train_val_split.gui import (
+    SplitSettings,
+    TrainValSplitGUI,
+)
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
@@ -13,40 +16,55 @@ from supervisely.solution.engine.models import (
 )
 
 
-class TrainValSplitNode(SolutionElement):
+class TrainValSplitNode(BaseCardNode):
     """
     This class is a placeholder for the TrainValSplit node.
     It is used to move labeled data from one location to another.
     """
 
-    def __init__(self, dst_project_id: int, x: int, y: int, *args, **kwargs):
+    title = "Train/Val Split"
+    description = "Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.)."
+    icon = "zmdi zmdi-arrow-split"
+    icon_color = "#1976D2"
+    icon_bg_color = "#E3F2FD"
+
+    def __init__(self, dst_project_id: int, *args, **kwargs):
         """
         Initialize the TrainValSplit node.
 
         :param x: X coordinate of the node.
         :param y: Y coordinate of the node.
         """
-        self._parent_id = kwargs.pop("parent_id", None)
-        icon = kwargs.pop("icon", "zmdi zmdi-arrow-split")
-        icon_color = kwargs.pop("icon_color", "#1976D2")
-        icon_bg_color = kwargs.pop("icon_bg_color", "#E3F2FD")
+
+        # --- core blocks --------------------------------------------------------
+        self.gui = TrainValSplitGUI()
+        self.modal_content = self.gui.widget
+
+
+        # --- init Node ----------------------------------------------------------
+        title = kwargs.pop("title", "Train/Val Split")
+        description = kwargs.pop(
+            "description",
+            "Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
+        )
+        icon = kwargs.pop("icon", self.icon)
+        icon_color = kwargs.pop("icon_color", self.icon_color)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
         # First, initialize the base class (to wrap publish/subscribe methods)
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            title=title,
+            description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
+            *args,
+            **kwargs,
+        )
 
         # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
         self.dst_project_id = dst_project_id
 
-        # --- core blocks --------------------------------------------------------
-        self.gui = TrainValSplitGUI()
-        self.card = self._build_card(
-            title="Train/Val Split",
-            tooltip_description="Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
-            icon=icon,
-            icon_color=icon_color,
-            icon_bg_color=icon_bg_color,
-        )
-        self.node = SolutionCardNode(content=self.card, x=x, y=y, parent_id=self._parent_id)
 
         # --- modals -------------------------------------------------------------
         self.modals = [self.gui.modal]
@@ -56,9 +74,9 @@ class TrainValSplitNode(SolutionElement):
             self.gui.modal.hide()
             self.save_split_settings()
 
-        @self.card.click
-        def show_split_modal():
-            self.gui.modal.show()
+        # @self.card.click
+        # def show_split_modal():
+        #     self.gui.modal.show()
 
     def _update_properties(self, settings: SplitSettings):
         """Update node properties with current split settings."""
@@ -67,9 +85,9 @@ class TrainValSplitNode(SolutionElement):
         val = settings.val_percent
         train_count = counts.get("train", 0)
         val_count = counts.get("val", 0)
-        self.node.update_property("mode", f"Random ({train}% train, {val}% val)", highlight=True)
-        self.node.update_property("train", f"{train_count} image{'' if train_count == 1 else 's'}")
-        self.node.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
+        self.update_property("mode", f"Random ({train}% train, {val}% val)", highlight=True)
+        self.update_property("train", f"{train_count} image{'' if train_count == 1 else 's'}")
+        self.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
 
     def save_split_settings(self, settings: Optional[SplitSettings] = None):
         """Save split settings to node state."""
@@ -79,10 +97,27 @@ class TrainValSplitNode(SolutionElement):
         self._update_properties(settings)
 
     # ------------------------------------------------------------------
+    # Handels ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "train_val_split_items_count",
+                "type": "target",
+                "position": "left",
+                "connectable": True,
+            },
+            {
+                "id": "train_val_split_finished",
+                "type": "source",
+                "position": "bottom",
+                "connectable": True,
+            },
+        ]
+
+    # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
-
-    # publish and subscribe method
     def split(
         self,
         message: MoveLabeledDataFinishedMessage,
@@ -142,13 +177,16 @@ class TrainValSplitNode(SolutionElement):
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "images_to_move": [self.set_items_count],
             "move_labeled_data_finished": self.split,
+            "train_val_split_items_count": self.set_items_count,
         }
 
     def _available_publish_methods(self):
         """Returns a dictionary of methods that can be used for publishing events."""
-        return {"train_val_split_finished": self.split}
+        return {"train_val_split_finished": self.send_train_val_split_finished_message}
+
+    def send_train_val_split_finished_message(self) -> None:
+        pass
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
@@ -190,6 +228,9 @@ class TrainValSplitNode(SolutionElement):
         )
         logger.info(f"Created new collection '{batch_collection_name}'")
 
+        self.api.entities_collection.add_items(batch_collection.id, image_ids)
+
+        logger.info(f"Added {len(image_ids)} images to {split_name} collections")
         self.api.entities_collection.add_items(batch_collection.id, image_ids)
 
         logger.info(f"Added {len(image_ids)} images to {split_name} collections")
