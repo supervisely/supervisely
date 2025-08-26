@@ -32,7 +32,7 @@ Vue.component("sly-flow", {
         } else if (link?.action) {
           this.post(link.action);
         } else {
-          this.post(`/${nodeId}/clicked_cb`);
+          this.post(`/${nodeId}/node_clicked_cb`);
         }
       } else if (data.action === "loaded") {
         console.log("+++", this.state[this.id].nodes);
@@ -41,15 +41,21 @@ Vue.component("sly-flow", {
         this.$refs.frame.contentWindow.slyApp.flow = {
           nodes: this.state[this.id].nodes,
           edges: this.state[this.id].edges,
+          sidebarNodes: this.state[this.id].sidebarNodes,
         };
         // this.refreshNodes();
         this.sendMessageToFrame({
           action: "flow-refresh",
           data: {},
         });
+        this.sendMessageToFrame({
+          action: "sidebar-nodes-refresh",
+          data: {},
+        });
       } else if (data.action === "node-updated") {
         this.post(`/${this.id}/node_updated_cb`, data.payload);
-      } else if (data.action === "edge-added") {
+      } else if (data.action === "edge-created") {
+        console.log("+++ edge-created", data.payload);
         this.post(`/${this.id}/edge_added_cb`, data.payload);
       } else if (data.action === "node-added") {
         this.post(`/${this.id}/node_added_cb`, data.payload);
