@@ -412,6 +412,8 @@ class TrackingVisualizer:
         # Store annotation
         self.annotation = annotation
         
+        # TODO: get colors from VideoObjects
+        
         # Create temporary directory for processed frames
         self._temp_dir = Path(tempfile.mkdtemp(prefix="video_viz_"))
         
@@ -448,20 +450,6 @@ class TrackingVisualizer:
         finally:
             # Always cleanup temporary files
             self._cleanup_temp_directory()
-    
-    def visualize(self, predictions: Union[VideoAnnotation, Prediction], 
-                  source: Union[str, Path], 
-                  output_path: Union[str, Path]) -> None:
-        """
-        Generic visualization function for different input types.
-        
-        Args:
-            predictions: VideoAnnotation or Prediction object
-            source: Path to video file or directory containing frame images
-            output_path: Path for output video file
-        """
-        annotation = predictions_to_video_annotation(predictions)
-        self.visualize_video_annotation(annotation, source, output_path)
     
     def __del__(self):
         """Cleanup temporary directory on object destruction."""
@@ -532,7 +520,7 @@ def __del__(self):
     self._cleanup_temp_directory()
 
 def visualize(
-    annotation: Union[VideoAnnotation, List[Prediction]], 
+    predictions: Union[VideoAnnotation, List[Prediction]], 
     source: Union[str, Path], 
     output_path: Union[str, Path],
     show_labels: bool = True,
@@ -544,7 +532,7 @@ def visualize(
     Visualize tracking results from either VideoAnnotation or list of Prediction.
 
     Args:
-        annotation: VideoAnnotation or Prediction object.
+        predictions: VideoAnnotation or Prediction object.
         source: Path to video file or frames directory.
         output_path: Path to save visualization.
         show_labels: Whether to display labels.
@@ -558,7 +546,10 @@ def visualize(
         **kwargs
     )
 
-    if isinstance(annotation, list):
-        annotation = predictions_to_video_annotation(annotation)
-
-    visualizer.visualize_video_annotation(annotation, source, output_path)
+    if isinstance(predictions, VideoAnnotation):
+        visualizer.visualize_video_annotation(predictions, source, output_path)
+    elif isinstance(predictions, list):
+        predictions = predictions_to_video_annotation(predictions)
+        visualizer.visualize_video_annotation(predictions, source, output_path)
+    else:
+        raise TypeError(f"Predictions must be VideoAnnotation or list of Prediction, got {type(predictions)}")
