@@ -65,6 +65,7 @@ class TrackingVisualizer:
         self.annotation = None
         self.tracks_by_frame = {}
         self.track_centers = defaultdict(list)
+        self.track_colors = {}
         self.color_palette = self._generate_color_palette()
         self._temp_dir = None
         
@@ -73,12 +74,12 @@ class TrackingVisualizer:
         Generate bright, distinct color palette for track visualization.
         Uses HSV space with random hue and fixed high saturation/value.
         """
-        np.random.seed(42)  # фикс для воспроизводимости
+        np.random.seed(42)
         colors = []
         for i in range(num_colors):
-            hue = np.random.randint(0, 180)   # Hue в OpenCV: [0,179]
-            saturation = 200 + np.random.randint(55)  # насыщенность высокая [200,255]
-            value = 200 + np.random.randint(55)       # яркость высокая [200,255]
+            hue = np.random.randint(0, 180)
+            saturation = 200 + np.random.randint(55)
+            value = 200 + np.random.randint(55)
 
             hsv_color = np.uint8([[[hue, saturation, value]]])
             bgr_color = cv2.cvtColor(hsv_color, cv2.COLOR_HSV2BGR)[0][0]
@@ -216,6 +217,7 @@ class TrackingVisualizer:
         Populates self.tracks_by_frame with frame-indexed tracking data.
         """
         self.tracks_by_frame = defaultdict(list)
+        self.track_colors = {}
         
         # Map object keys to track info
         objects = {}
@@ -239,6 +241,12 @@ class TrackingVisualizer:
                 rect = figure.geometry
                 bbox = (rect.left, rect.top, rect.right, rect.bottom)
                 
+                if track_id not in self.track_colors:
+                    color = figure.video_object.obj_class.color
+                    if not color:
+                        color = self._get_track_color(track_id)
+                    self.track_colors[track_id] = color
+                
                 self.tracks_by_frame[frame_idx].append((track_id, bbox, class_name))
         
         logger.info(f"Extracted tracks from {len(self.tracks_by_frame)} frames")
@@ -253,9 +261,8 @@ class TrackingVisualizer:
 
         if x2 <= x1 or y2 <= y1:
             return None
-
-        color = self._get_track_color(track_id)
-
+        
+        color = self.track_colors[track_id]
         # Draw bounding box
         cv2.rectangle(img, (x1, y1), (x2, y2), color, self.box_thickness)
 
@@ -291,7 +298,7 @@ class TrackingVisualizer:
             if len(centers) < 2:
                 continue
 
-            color = self._get_track_color(track_id)
+            color = self.track_colors[track_id]
             points = centers[-self.trajectory_length:]
 
             for i in range(1, len(points)):
@@ -412,8 +419,6 @@ class TrackingVisualizer:
         # Store annotation
         self.annotation = annotation
         
-        # TODO: get colors from VideoObjects
-        
         # Create temporary directory for processed frames
         self._temp_dir = Path(tempfile.mkdtemp(prefix="video_viz_"))
         
@@ -455,69 +460,6 @@ class TrackingVisualizer:
         """Cleanup temporary directory on object destruction."""
         self._cleanup_temp_directory()
         
-        
-        
-def visualize_video_annotation(self, annotation: VideoAnnotation, 
-                                source: Union[str, Path], 
-                                output_path: Union[str, Path]) -> None:
-    """
-    Visualize tracking annotations on video using streaming approach.
-    
-    Args:
-        annotation: Supervisely VideoAnnotation object with tracking data
-        source: Path to video file or directory containing frame images
-        output_path: Path for output video file
-        
-    Raises:
-        TypeError: If annotation is not VideoAnnotation
-        ValueError: If source is invalid or annotation is empty
-    """
-    if not isinstance(annotation, VideoAnnotation):
-        raise TypeError(f"Annotation must be VideoAnnotation, got {type(annotation)}")
-    
-    # Store annotation
-    self.annotation = annotation
-    
-    # Create temporary directory for processed frames
-    self._temp_dir = Path(tempfile.mkdtemp(prefix="video_viz_"))
-    
-    try:
-        # Extract tracking data
-        self._extract_tracks_from_annotation()
-        
-        if not self.tracks_by_frame:
-            logger.warning("No tracking data found in annotation")
-        
-        # Reset trajectory tracking
-        self.track_centers = defaultdict(list)
-        
-        # Process frames one by one
-        frame_count = 0
-        for frame_idx, frame in self._create_frame_iterator(source):
-            # Process frame
-            processed_frame = self._process_single_frame(frame, frame_idx)
-            
-            # Save processed frame
-            self._save_processed_frame(processed_frame, frame_idx)
-            
-            frame_count += 1
-            
-            # Progress logging
-            if frame_count % 100 == 0:
-                logger.info(f"Processed {frame_count} frames")
-        
-        logger.info(f"Finished processing {frame_count} frames")
-        
-        # Create final video from saved frames
-        self._create_video_from_frames(output_path)
-        
-    finally:
-        # Always cleanup temporary files
-        self._cleanup_temp_directory()
-
-def __del__(self):
-    """Cleanup temporary directory on object destruction."""
-    self._cleanup_temp_directory()
 
 def visualize(
     predictions: Union[VideoAnnotation, List[Prediction]], 
@@ -553,3 +495,4 @@ def visualize(
         visualizer.visualize_video_annotation(predictions, source, output_path)
     else:
         raise TypeError(f"Predictions must be VideoAnnotation or list of Prediction, got {type(predictions)}")
+
