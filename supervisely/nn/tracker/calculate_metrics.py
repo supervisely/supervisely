@@ -213,13 +213,6 @@ class TrackingEvaluator:
     def _compute_mot_metrics(self, gt_tracks, pred_tracks) -> Dict[str, Union[float, int]]:
         """Compute MOT metrics using motmetrics library."""
         try:
-            import motmetrics as mm
-        except ImportError:
-            logger.error(
-                "motmetrics not available. Install with: pip install motmetrics"
-            )
-            raise
-        try:
             # Create MOT accumulator
             acc = mm.MOTAccumulator(auto_id=True)
             
