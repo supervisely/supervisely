@@ -65,11 +65,6 @@ class TrainingArtifacts:
 
         # Outputs
         need_generate_report = self.app_options.get("generate_report", False)
-
-        # @TODO: temporary code to generate report for dev only
-        is_dev = "dev.internal" in api.server_address
-        if not is_dev:
-            need_generate_report = False
         # ------------------------------------------------------------ #
 
         if need_generate_report:

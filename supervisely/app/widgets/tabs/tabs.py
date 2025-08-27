@@ -1,9 +1,10 @@
-from typing import List, Optional, Dict
-from supervisely.app import StateJson
-from supervisely.app.widgets import Widget
 import traceback
-from supervisely import logger
+from typing import Dict, List, Optional
 
+from supervisely import logger
+from supervisely.app import StateJson
+from supervisely.app.content import DataJson
+from supervisely.app.widgets import Widget
 
 try:
     from typing import Literal
@@ -34,7 +35,7 @@ class Tabs(Widget):
             raise ValueError("You can specify up to 10 tabs.")
         if len(set(labels)) != len(labels):
             raise ValueError("All of tab labels should be unique.")
-        self._items = []
+        self._items: List[Tabs.TabPane] = []
         for label, widget in zip(labels, contents):
             self._items.append(Tabs.TabPane(label=label, content=widget))
         self._value = labels[0]
@@ -43,7 +44,10 @@ class Tabs(Widget):
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:
-        return {"type": self._type}
+        return {
+            "type": self._type,
+            "tabsOptions": {item.name: {"disabled": False} for item in self._items},
+        }
 
     def get_json_state(self) -> Dict:
         return {"value": self._value}
@@ -55,6 +59,18 @@ class Tabs(Widget):
 
     def get_active_tab(self) -> str:
         return StateJson()[self.widget_id]["value"]
+
+    def disable_tab(self, tab_name: str):
+        if tab_name not in [item.name for item in self._items]:
+            raise ValueError(f"Tab with name '{tab_name}' does not exist.")
+        DataJson()[self.widget_id]["tabsOptions"][tab_name]["disabled"] = True
+        DataJson().send_changes()
+
+    def enable_tab(self, tab_name: str):
+        if tab_name not in [item.name for item in self._items]:
+            raise ValueError(f"Tab with name '{tab_name}' does not exist.")
+        DataJson()[self.widget_id]["tabsOptions"][tab_name]["disabled"] = False
+        DataJson().send_changes()
 
     def click(self, func):
         route_path = self.get_route_path(Tabs.Routes.CLICK)

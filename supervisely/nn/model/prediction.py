@@ -240,6 +240,8 @@ class Prediction:
             if self.image_id is not None:
                 try:
                     if api is None:
+                        # TODO: raise more clarifying error in case of failing of api init
+                        # what a user should do to fix it?
                         api = Api()
                     return api.image.download_np(self.image_id)
                 except Exception as e:

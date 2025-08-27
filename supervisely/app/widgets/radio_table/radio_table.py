@@ -1,6 +1,7 @@
-from typing import List, Dict, Union
-from supervisely.app.jinja2 import create_env
+from typing import Dict, List, Union
+
 from supervisely.app.content import DataJson, StateJson
+from supervisely.app.jinja2 import create_env
 from supervisely.app.widgets import Widget
 
 
@@ -154,3 +155,10 @@ class RadioTable(Widget):
             raise ValueError(f'Row with index "{row_index}" does not exist')
         StateJson()[self.widget_id]["selectedRow"] = row_index
         StateJson().send_changes()
+
+    def select_row_by_value(self, column, value):
+        for idx, row in enumerate(self._rows):
+            if row[self._columns.index(column)] == value:
+                self.select_row(idx)
+                return
+        raise ValueError(f'Value "{value}" not found in column "{column}"')

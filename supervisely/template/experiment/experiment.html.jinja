@@ -14,7 +14,7 @@ Here are prediction samples made with **{{ experiment.training.checkpoints.pytor
 
 ## Evaluation
 
-The **{{ experiment.training.checkpoints.pytorch.name }}** checkpoint was evaluated on the validation set containing **{{ experiment.project.splits.val }}
+The **{{ experiment.training.checkpoints.pytorch.name }}** checkpoint was evaluated on the validation set containing **{{ experiment.project.splits.val.size }}
 images**.
 
 See the full [📊 Evaluation Report]({{ experiment.training.evaluation.url }}) for details and visualizations.
@@ -25,6 +25,35 @@ See the full [📊 Evaluation Report]({{ experiment.training.evaluation.url }}) 
 ## Evaluation
 No evaluation metrics available for this experiment. The model training was completed successfully, but no evaluation
 was performed.
+
+{% endif %}
+
+{% if widgets.training_plots %}
+
+## Training Plots
+
+Visualization of the training scalars logged during the experiment.
+
+{% if experiment.training.logs.path %}
+<div>
+    <sly-iw-launch-button
+        class="training-plots-button"
+        style=""
+        :disabled="false"
+        :autoRun="true"
+        :state="{ 'slyFolder': '{{ experiment.training.logs.path }}' }"
+        :moduleId="{{ resources.apps.log_viewer.module_id }}"
+        :proxyKeepUrl="true"
+        :openInNewWindow="true"
+        :command="command">
+        <span>Open Logs</span> <i class="zmdi zmdi-arrow-right-top" />
+    </sly-iw-launch-button>
+</div>
+{% endif %}
+
+<div class="training-plots">
+    {{ widgets.training_plots | safe }}
+</div>
 
 {% endif %}
 
@@ -89,10 +118,8 @@ The quick actions on this page, such as **Deploy**, **Predict**, or **Fine-tune*
 }}){:target="_blank"} - deploy your model in the Supervisely Platform.
 - [Train {{ experiment.model.framework }}]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.train.slug
 }}){:target="_blank"} - train a model in the Supervisely Platform.
-- [Apply NN to Images]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_images.slug }}){:target="_blank"} -
-connect to your model and make predictions on image project or dataset.
-- [Apply NN to Videos]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.apply_nn_to_videos.slug }}){:target="_blank"} -
-for predictions on video project or dataset.
+- [Predict App]({{ env.server_address }}/ecosystem/apps/{{ resources.apps.predict.slug }}){:target="_blank"} -
+deploy your model and make predictions.
 
 ## API Integration & Deployment
 
@@ -100,10 +127,20 @@ In this section, you'll find the quickstart guides for integrating your model in
 
 ### Table of contents:
 
-- [Supervisely API](#supervisely-api)
-- [Deploy in Docker](#deploy-in-docker)
-- [Deploy locally with Supervisely SDK](#deploy-locally-with-supervisely-sdk)
-- [Using Original Model Codebase](#using-original-model-codebase)
+<ul>
+<li>
+<a :href="`${location.pathname}#supervisely-api`">Supervisely API</a>
+</li>
+<li>
+<a :href="`${location.pathname}#deploy-in-docker`">Deploy in Docker</a>
+</li>
+<li>
+<a :href="`${location.pathname}#deploy-locally-with-supervisely-sdk`">Deploy locally with Supervisely SDK</a>
+</li>
+<li>
+<a :href="`${location.pathname}#using-original-model-codebase`">Using Original Model Codebase API</a>
+</li>
+</ul>
 
 ## Supervisely API
 
@@ -163,6 +200,7 @@ api = sly.Api()
 model = api.nn.deploy(
     model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
     device="cuda:0", # or "cpu"
+    workspace_id={{ experiment.project.workspace_id }}
 )
 ```
 
@@ -180,6 +218,7 @@ api = sly.Api()
 model = api.nn.deploy(
     model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.onnx.name }}",
     device="cuda:0", # or "cpu"
+    workspace_id={{ experiment.project.workspace_id }}
 )
 ```
 
@@ -198,6 +237,7 @@ api = sly.Api()
 model = api.nn.deploy(
     model="{{ experiment.paths.artifacts_dir.path }}/export/{{ experiment.training.checkpoints.tensorrt.name }}",
     device="cuda:0", # or "cpu"
+    workspace_id={{ experiment.project.workspace_id }}
 )
 ```
 
@@ -232,7 +272,9 @@ predictions = model.predict(
 
 ```python
 # Predict images in Supervisely
-predictions = model.predict(image_ids=[123, 124] # Image IDs in Supervisely)
+predictions = model.predict(
+    image_ids=[123, 124] # Image IDs in Supervisely
+)
 ```
 
 {% endtab %}
@@ -241,7 +283,9 @@ predictions = model.predict(image_ids=[123, 124] # Image IDs in Supervisely)
 
 ```python
 # Predict dataset
-predictions = model.predict(dataset_id=12 # Dataset ID in Supervisely)
+predictions = model.predict(
+    dataset_id=12 # Dataset ID in Supervisely
+)
 ```
 
 {% endtab %}
@@ -250,7 +294,9 @@ predictions = model.predict(dataset_id=12 # Dataset ID in Supervisely)
 
 ```python
 # Predict project
-predictions = model.predict(project_id=21 # Project ID in Supervisely)
+predictions = model.predict(
+    project_id=21 # Project ID in Supervisely
+)
 ```
 
 {% endtab %}
@@ -259,7 +305,9 @@ predictions = model.predict(project_id=21 # Project ID in Supervisely)
 
 ```python
 # Predict video
-predictions = model.predict(video_id=123 # Video ID in Supervisely)
+predictions = model.predict(
+    video_id=123 # Video ID in Supervisely
+)
 ```
 
 {% endtab %}
@@ -324,9 +372,9 @@ Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tr
 You can deploy the model in a 🐋 Docker Container with a single `docker run` command. Download a checkpoint, pull the
 docker image for the corresponding model's framework, and run the `docker run` command with addtional arguments.
 
-1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
+1. Download training artifacts from Supervisely ([Open in Team Files]({{ experiment.paths.artifacts_dir.url }}){:target="_blank"})
 
-2. Pull the Docker image
+2. Pull the Docker image for deployment
 
     ```bash
     docker pull {{ code.docker.deploy }}
@@ -484,10 +532,19 @@ using the original code from the authors.
 
 1. Download checkpoint from Supervisely ([Open in Team Files]({{ experiment.paths.checkpoints_dir.url }}){:target="_blank"})
 
-2. Prepare environment following the instructions of the original repository [{{ code.local_prediction.repo.name }}]({{
-code.local_prediction.repo.url }}){:target="_blank"}
+{% if resources.original_repository.name and resources.original_repository.url %}
+
+2. Prepare environment following the instructions of the original repository [{{ resources.original_repository.name }}]({{
+resources.original_repository.url }}){:target="_blank"}
 
 3. Use the demo script for inference:
+
+{% else %}
+2. Prepare environment following the instructions of the original repository
+
+3. Use the demo script for inference:
+
+{% endif %}
 
 <details>
 <summary><strong>🐍 View Code</strong></summary>
