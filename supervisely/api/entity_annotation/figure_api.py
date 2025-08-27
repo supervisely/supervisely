@@ -70,6 +70,7 @@ class FigureInfo(NamedTuple):
     area: str
     priority: Optional[int] = None
     custom_data: Optional[dict] = None
+    track_id: str
 
     @property
     def bbox(self) -> Optional[Rectangle]:
@@ -137,6 +138,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.TRACK_ID,
         ]
 
     @staticmethod
@@ -206,21 +208,23 @@ class FigureApi(RemoveableBulkModuleApi):
             # ]
         """
         fields = [
-            "id",
-            "createdAt",
-            "updatedAt",
-            "imageId",
-            "objectId",
-            "classId",
-            "projectId",
-            "datasetId",
-            "geometry",
-            "geometryType",
-            "geometryMeta",
-            "tags",
-            "meta",
-            "area",
-            "priority",
+            ApiField.ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.IMAGE_ID,
+            ApiField.OBJECT_ID,
+            ApiField.CLASS_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.GEOMETRY,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY_META,
+            ApiField.TAGS,
+            ApiField.META,
+            ApiField.AREA,
+            ApiField.PRIORITY,
+            ApiField.CUSTOM_DATA,
+            ApiField.TRACK_ID,
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -376,6 +380,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.TRACK_ID,
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -496,6 +501,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.TRACK_ID,
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
@@ -534,6 +540,39 @@ class FigureApi(RemoveableBulkModuleApi):
     def _convert_json_info(self, info: dict, skip_missing=False):
         res = super()._convert_json_info(info, skip_missing=True)
         return FigureInfo(**res._asdict())
+
+    def get_list(self, dataset_id: int, filters: List = None):
+        fields = [
+            ApiField.ID,
+            ApiField.CREATED_AT,
+            ApiField.UPDATED_AT,
+            ApiField.IMAGE_ID,
+            ApiField.OBJECT_ID,
+            ApiField.CLASS_ID,
+            ApiField.PROJECT_ID,
+            ApiField.DATASET_ID,
+            ApiField.GEOMETRY,
+            ApiField.GEOMETRY_TYPE,
+            ApiField.GEOMETRY_META,
+            ApiField.TAGS,
+            ApiField.META,
+            ApiField.AREA,
+            ApiField.PRIORITY,
+            ApiField.CUSTOM_DATA,
+            ApiField.TRACK_ID,
+        ]
+        if filters is None:
+            filters = []
+        figures_infos = self.get_list_all_pages(
+            "figures.list",
+            {
+                ApiField.DATASET_ID: dataset_id,
+                ApiField.FILTER: filters,
+                ApiField.FIELDS: fields,
+            },
+        )
+
+        return figures_infos
 
     def _download_geometries_generator(
         self, ids: List[int]
@@ -854,6 +893,7 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.TRACK_ID,
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
