@@ -40,8 +40,8 @@ class Node:
                 self.settings = data
             else:
                 self.settings = NodeSettings()
-        self.parent_id = parent_id
-        self._server = _MainServer()
+        self.parent_id = parent_id  # ID of the VueFlow widget
+        self._server = _MainServer().get_server()
 
         # ----------------------------------------------------------------
         # --- Connected Nodes --------------------------------------------
@@ -93,7 +93,7 @@ class Node:
         """Removes the property by key of the card."""
         for idx, prop in enumerate(self.settings.tooltip.properties):
             if prop.get("label") == key:
-                self.settings.tooltip.properties.pop(idx, None)
+                self.settings.tooltip.properties.pop(idx)
                 self.update_node(self)
                 return
         if not silent:
@@ -114,7 +114,7 @@ class Node:
         if not self.settings.badges or idx >= len(self.settings.badges):
             if not silent:
                 raise IndexError("Badge index out of range")
-        self.settings.badges.pop(idx, None)
+        self.settings.badges.pop(idx)
         self.update_node(self)
 
     def update_badge(
@@ -171,6 +171,6 @@ class Node:
         """Removes the badge by key from the card."""
         for idx, badge in enumerate(self.settings.badges):
             if badge.label == key:
-                self.settings.badges.pop(idx, None)
+                self.settings.badges.pop(idx)
                 self.update_node(self)
                 return

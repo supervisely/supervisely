@@ -4,16 +4,14 @@ from venv import logger
 from supervisely.api.api import Api
 from supervisely.labeling_jobs.utils import Status
 from supervisely.solution.base_node import BaseQueueNode
-from supervisely.solution.nodes.labeling_queue.automation import (
-    LabelingQueueRefresh,
-)
-from supervisely.solution.nodes.labeling_queue.gui import LabelingQueueGUI
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     LabelingQueuePerformanceMessage,
     LabelingQueueRefreshInfoMessage,
     SampleFinishedMessage,
 )
+from supervisely.solution.nodes.labeling_queue.automation import LabelingQueueRefresh
+from supervisely.solution.nodes.labeling_queue.gui import LabelingQueueGUI
 
 
 class LabelingQueueNode(BaseQueueNode):
@@ -75,11 +73,13 @@ class LabelingQueueNode(BaseQueueNode):
         self.refresh_info()
 
         # automation after init (we need to wrap the publish methods in init first)
-        self.automation = LabelingQueueRefresh(queue_id=self.queue_id, func=self.refresh_info)
-        self.automation.apply(sec=self.REFRESH_INTERVAL_SEC)
+        self._automation = LabelingQueueRefresh(queue_id=self.queue_id)
 
     def _get_tooltip_buttons(self):
         return [self.gui.open_labeling_queue_btn]
+
+    def configure_automation(self, *args, **kwargs):
+        self._automation.apply(sec=self.REFRESH_INTERVAL_SEC, func=self.refresh_info)
 
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------
@@ -182,26 +182,48 @@ class LabelingQueueNode(BaseQueueNode):
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "sample_finished": [self.add_items, self.refresh_info],
+            "project_updated": self.process_incoming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "queue_info_updated": self.send_new_accepted_images_message,
-            "train_val_split_items_count": self.send_new_accepted_images_message,
+            "queue_info_updated": self.send_queue_info_updated_message,
+            "train_val_split_items_count": self.send_new_items_message_to_train_val_split,
             "labeling_performance": self.send_performance_message,
         }
 
-    def send_new_accepted_images_message(self):
+    def send_new_items_message_to_train_val_split(
+        self, message: LabelingQueueAcceptedImagesMessage
+    ):
+        """Send message with all labeled images from labeling queue with status accepted"""
+        return message
+
+    def send_queue_info_updated_message(self, message: LabelingQueueRefreshInfoMessage):
+        """Send message with all labeled images from labeling queue with status accepted"""
+        return message
+
+    def send_new_items_message(self):
         """Send message with all labeled images from labeling queue with status accepted"""
         images = self.get_new_accepted_images()
-        return LabelingQueueAcceptedImagesMessage(accepted_images=images)
+        msg = LabelingQueueAcceptedImagesMessage(accepted_images=images)
+        self.send_new_items_message_to_train_val_split(msg)
+        self.send_queue_info_updated_message(msg)
 
     def send_performance_message(self):
         """Send message to open labeling performance page"""
         return LabelingQueuePerformanceMessage(project_id=self.project_id)
 
+    def process_incoming_message(self, message: SampleFinishedMessage):
+        """Process incoming message from connected node."""
+        if not isinstance(message, SampleFinishedMessage):
+            raise TypeError("Expected SampleFinishedMessage, got {type(message)}")
+        self.add_items(message)
+        self.refresh_info(message)
+
+    # ------------------------------------------------------------------
+    # Methods ----------------------------------------------------------
+    # ------------------------------------------------------------------
     def refresh_info(
         self, message: Optional[SampleFinishedMessage] = None
     ) -> LabelingQueueRefreshInfoMessage:
@@ -216,7 +238,7 @@ class LabelingQueueNode(BaseQueueNode):
             self.update_review(reviewing)
             self.update_finished(finished)
             if finished > 0:
-                self.send_new_accepted_images_message()
+                self.send_new_items_message()
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
         return LabelingQueueRefreshInfoMessage(

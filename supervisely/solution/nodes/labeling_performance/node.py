@@ -35,6 +35,7 @@ class LabelingQueuePerformanceNode(LinkNode):
         icon = kwargs.pop("icon", self.icon)
         icon_color = kwargs.pop("icon_color", self.icon_color)
         icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        self._click_handled = True
         super().__init__(
             title=title,
             description=description,

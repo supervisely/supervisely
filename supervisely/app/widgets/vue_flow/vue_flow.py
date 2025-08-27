@@ -293,16 +293,7 @@ class VueFlow(Widget):
 
     def reload(self) -> None:
         """Reloads the VueFlow widget to reflect any changes made to the nodes."""
-        run_sync(
-            WebsocketManager().broadcast(
-                {
-                    "runAction": {
-                        "action": f"sly-flow-{self.widget_id}",
-                        "payload": {"action": "flow-refresh", "data": {}},
-                    }
-                }
-            )
-        )
+        VueFlow.notify_ui(widget_id=self.widget_id, action="flow-refresh")
 
     @staticmethod
     def update_node(node: Node) -> None:
@@ -315,12 +306,17 @@ class VueFlow(Widget):
                 StateJson()[node.parent_id]["nodes"][idx] = node.to_json()
                 StateJson().send_changes()
                 break
+        VueFlow.notify_ui(widget_id=node.parent_id, action="node-update", data={"nodeId": node.id})
+
+    @staticmethod
+    def notify_ui(widget_id: str, action: str, data: Dict = None) -> None:
+        """Sends a notification to the VueFlow widget UI."""
         run_sync(
             WebsocketManager().broadcast(
                 {
                     "runAction": {
-                        "action": f"sly-flow-{node.parent_id}",
-                        "payload": {"action": "node-update", "data": {"nodeId": node.id}},
+                        "action": f"sly-flow-{widget_id}",
+                        "payload": {"action": action, "data": data or {}},
                     }
                 }
             )

@@ -23,6 +23,7 @@ class QAStatsNode(LinkNode):
 
         self.project_id = project_id
         self.link = link
+        self._click_handled = True
         super().__init__(
             title=title,
             description=description,

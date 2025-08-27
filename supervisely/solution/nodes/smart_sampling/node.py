@@ -37,12 +37,22 @@ class SmartSamplingNode(BaseCardNode):
         self.project_id = project_id or env_project_id()
         self.dst_project = dst_project or os.getenv("LABELING_PROJECT_ID")
         self.project = self.api.project.get_info_by_id(project_id)
+        self._click_handled = True
+        self._embeddings_ready = False
 
         # --- core blocks --------------------------------------------------------
         self.gui = SmartSamplingGUI(project=self.project, dst_project_id=dst_project)
         self.modal_content = self.gui.content
-        self.automation = SmartSamplingAutomation(self.run)
+        self.automation = SmartSamplingAutomation()
         self.history = SmartSamplingTasksHistory(self.api)
+
+        # --- modals -------------------------------------------------------------
+        self.modals = [
+            self.gui.modal,
+            self.automation.modal,
+            self.history.modal,
+            self.history.logs_modal,
+        ]
 
         # --- init node ------------------------------------------------------
         title = kwargs.pop("title", self.title)
@@ -60,23 +70,14 @@ class SmartSamplingNode(BaseCardNode):
             **kwargs,
         )
 
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.gui.modal,
-            self.automation.modal,
-            self.history.modal,
-            self.history.logs_modal,
-        ]
-
         # --- events -------------------------------------------------------------
         self._update_widgets()
 
-        # ! TODO:
-        # @self.card.click
-        # def on_sampling_setup_btn_click():
-        #     """Show the sampling settings modal."""
-        #     self.gui.modal.show()
-        #     self._check_embeddings_status()
+        @self.click
+        def on_sampling_setup_btn_click():
+            """Show the sampling settings modal."""
+            self.gui.modal.show()
+            self._configure_button_status_by_sampling_mode()
 
         @self.gui.save_settings_button.click
         def on_save_settings_click():
@@ -101,10 +102,13 @@ class SmartSamplingNode(BaseCardNode):
             """Update the sampling settings based on the selected mode."""
             self.gui.collapse_preview()
             self.gui.preview_gallery.clean_up()
-            self._check_embeddings_status()
+            self._configure_button_status_by_sampling_mode()
 
     def _get_tooltip_buttons(self):
         return [self.history.open_modal_button, self.automation.open_modal_button]
+
+    def configure_automation(self, *args, **kwargs):
+        self.automation.func = self.run
 
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------
@@ -143,7 +147,7 @@ class SmartSamplingNode(BaseCardNode):
     def apply_automation(self):
         enabled, _, _, sec = self.automation.get_details()
         self.show_automation_info(enabled, sec)
-        self.automation.apply()
+        self.automation.apply(func=self.run)
 
     def show_automation_info(self, enabled, sec):
         period, interval = get_interval_period(sec)
@@ -176,9 +180,7 @@ class SmartSamplingNode(BaseCardNode):
         }
 
     # callback method (accepts Message object)
-    def _update_widgets(
-        self, message: Union[ImportFinishedMessage, SampleFinishedMessage] = None
-    ) -> None:
+    def _update_widgets(self) -> None:
         """Update the sampling inputs based on the difference."""
         self.project = self.api.project.get_info_by_id(self.project_id)
         self.items_count = self.project.items_count
@@ -210,9 +212,12 @@ class SmartSamplingNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Methods --------------------------------------------------------
     # ------------------------------------------------------------------
-    def _check_embeddings_status(self):
+    def _configure_button_status_by_sampling_mode(self):
         """Send message to check embeddings status."""
-        if self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value:
+        if (
+            self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value
+            or self._embeddings_ready
+        ):
             self.gui.preview_button.enable()
             self.gui.run_button.enable()
         else:
@@ -222,12 +227,15 @@ class SmartSamplingNode(BaseCardNode):
     def _process_embeddings_status_message(self, message: EmbeddingsStatusMessage) -> None:
         """Process the embeddings status message."""
         is_ready = message.status
+        self._embeddings_ready = is_ready
         if is_ready or self.gui.sampling_mode.get_value() == SamplingMode.RANDOM.value:
             self.gui.preview_button.enable()
             self.gui.run_button.enable()
+            self.gui.hide_status_text()
         else:
             self.gui.preview_button.disable()
             self.gui.run_button.disable()
+            self.gui.set_status_text("Embeddings are being prepared. Please wait...", "warning")
 
     # ------------------------------------------------------------------
     # Run --------------------------------------------------------------

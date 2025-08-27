@@ -18,7 +18,7 @@ class Automation:
 
 class AutomationWidget(Automation):
 
-    def __init__(self, func: Callable):
+    def __init__(self, func: Optional[Callable] = None):
         """
         Initializes the automation widget.
 
@@ -45,8 +45,9 @@ class AutomationWidget(Automation):
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
-    def apply(self) -> None:
+    def apply(self, func: Optional[Callable] = None) -> None:
         """Applies the automation settings."""
+        self.func = func or self.func
         sec, _, _ = self.get_details()
         if sec is None:
             if self.scheduler.is_job_scheduled(self.job_id):

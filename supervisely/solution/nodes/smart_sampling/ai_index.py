@@ -7,7 +7,10 @@ from supervisely.api.api import Api
 from supervisely.io.env import project_id as env_project_id
 from supervisely.sly_logger import logger
 from supervisely.solution.components.empty.node import EmptyNode
-from supervisely.solution.engine.models import CLIPServiceStatusMessage, EmbeddingsStatusMessage
+from supervisely.solution.engine.models import (
+    CLIPServiceStatusMessage,
+    EmbeddingsStatusMessage,
+)
 
 
 class AiIndexNode(EmptyNode):
@@ -15,6 +18,7 @@ class AiIndexNode(EmptyNode):
     Node for OpenAI CLIP service.
     This node is used to interact with the OpenAI CLIP service for image and text embeddings.
     """
+
     title = "AI Index"
     description = "AI Search Index is a powerful tool that allows you to search for images in your dataset using AI models. It provides a quick and efficient way to find similar images based on visual features. You can use it in Smart Sampling node to select images for labeling based on specified prompt."
     icon = "mdi mdi-image-search"
@@ -54,7 +58,7 @@ class AiIndexNode(EmptyNode):
         return [
             {
                 "id": "clip_status",
-                "type": "source",
+                "type": "target",
                 "position": "left",
                 "connectable": True,
             },
@@ -79,22 +83,21 @@ class AiIndexNode(EmptyNode):
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
             "embedding_status_response": self.send_embeddings_status_message,
-            "clip_status": self.send_message_to_clip_service,
         }
 
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
             "embedding_status_request": self.check_embeddings_status,
+            "clip_status": self.process_message_from_clip_service,
         }
 
-    def send_message_to_clip_service(self) -> None:
-        pass
-
+    def process_message_from_clip_service(self, message: CLIPServiceStatusMessage) -> None:
+        if message.is_ready:
+            self.check_embeddings_status()
 
     def check_embeddings_status(self) -> EmbeddingsStatusMessage:
         """Check that project embeddings are enabled, not in progress, and up to date."""
-        self.send_message_to_clip_service()
         is_ready = False
         try:
             is_ready = (
@@ -210,6 +213,9 @@ class AiIndexNode(EmptyNode):
             if self._refresh_thread is not None:
                 try:
                     self._refresh_thread.join()
+                    logger.info("AI Index auto-refresh stopped.")
+                except Exception as e:
+                    logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")
                     logger.info("AI Index auto-refresh stopped.")
                 except Exception as e:
                     logger.error(f"Error stopping AI Index auto-refresh: {repr(e)}")

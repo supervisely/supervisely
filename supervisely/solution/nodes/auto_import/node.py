@@ -34,6 +34,10 @@ class AutoImportNode(BaseCardNode):
         self._refresh_thread = None
         self._last_task_id = None
 
+        # --- core blocks --------------------------------------------------------
+        self.history = AutoImportTasksHistory(self.api, self.project_id)
+        self.start_autorefresh()
+
         # ! TODO: remove hardcoded agent_id
         agent_id = 41
         autoimport_link = abs_url(f"/import-wizard/project/{self.project_id}/dataset")
@@ -46,6 +50,7 @@ class AutoImportNode(BaseCardNode):
         icon = kwargs.pop("icon", self.icon)
         icon_color = kwargs.pop("icon_color", self.icon_color)
         icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        self._click_handled = True
         super().__init__(
             title=title,
             description=description,
@@ -56,10 +61,6 @@ class AutoImportNode(BaseCardNode):
             *args,
             **kwargs,
         )
-
-        # --- core blocks --------------------------------------------------------
-        self.history = AutoImportTasksHistory(self.api, self.project_id)
-        self.start_autorefresh()
 
         # --- modals -------------------------------------------------------------
         self.modals = [self.history.modal, self.history.logs_modal]

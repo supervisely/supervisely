@@ -19,13 +19,14 @@ from supervisely.solution.utils import get_interval_period, get_seconds_from_per
 
 
 class MoveLabeledAuto(AutomationWidget):
-    def __init__(self, func: Callable):
+    def __init__(self, func: Optional[Callable] = None):
         super().__init__(func)
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
-    def apply(self):
+    def apply(self, func: Optional[Callable] = None) -> None:
+        self.func = func or self.func
         enabled, _, _, _, sec = self.get_details()
         if not enabled:
             if self.scheduler.is_job_scheduled(self.job_id):

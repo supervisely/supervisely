@@ -1,6 +1,9 @@
 from typing import Callable, Dict
 
+from git import Optional
+
 from supervisely.solution.components.project.node import ProjectNode
+from supervisely.solution.engine.models import SampleFinishedMessage
 
 
 class LabelingProjectNode(ProjectNode):
@@ -55,6 +58,10 @@ class LabelingProjectNode(ProjectNode):
             },
         ]
 
-    def send_project_updated_message(self) -> None:
+    def send_project_updated_message(self, message: Optional[SampleFinishedMessage] = None) -> None:
         """Sends a message indicating that the project has been updated."""
-        pass
+        return message
+
+    def update(self, message: Optional[SampleFinishedMessage] = None) -> None:
+        super().update(message)
+        self.send_project_updated_message(message)

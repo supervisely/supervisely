@@ -15,7 +15,8 @@ class LabelingQueueRefresh(Automation):
         self.queue_id = queue_id
         self.func = func
 
-    def apply(self, sec: int) -> None:
+    def apply(self, sec: int, func: Optional[Callable[[], None]] = None) -> None:
+        self.func = func or self.func
         self.scheduler.add_job(self.func, interval=sec, job_id=self.job_id, replace_existing=True)
 
     def schedule_refresh(self, func: Callable[[], None], interval_sec: int = 5) -> None:

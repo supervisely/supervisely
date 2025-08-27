@@ -8,14 +8,12 @@ from supervisely.app.widgets import Button
 from supervisely.app.widgets import CloudImport as CloudImportWidget
 from supervisely.app.widgets import Dialog, SolutionCard
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.nodes.cloud_import.automation import (
-    CloudImportAutomation,
-)
 from supervisely.solution.engine.events import publish_event
 from supervisely.solution.engine.models import (
     ImportFinishedMessage,
     ImportStartedMessage,
 )
+from supervisely.solution.nodes.cloud_import.automation import CloudImportAutomation
 
 
 class CloudImportNode(BaseCardNode):
@@ -35,7 +33,7 @@ class CloudImportNode(BaseCardNode):
         self.gui = CloudImportWidget(project_id=project_id)  # includes tasks history
         self.modal_content = self.gui  # for BaseCardNode
         self.history = self.gui.tasks_history
-        self.automation = CloudImportAutomation(self.gui.run)
+        self.automation = CloudImportAutomation()
 
         # --- init card ----------------------------------------------------------
         title = kwargs.pop("title", self.title)
@@ -43,6 +41,7 @@ class CloudImportNode(BaseCardNode):
         icon = kwargs.pop("icon", self.icon)
         icon_color = kwargs.pop("icon_color", self.icon_color)
         icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        self._click_handled = True
         super().__init__(
             title=title,
             description=description,
@@ -53,10 +52,9 @@ class CloudImportNode(BaseCardNode):
             **kwargs,
         )
 
-        # ! TODO: implement card click
-        # @self.card.click
-        # def show_modal():
-        #     self.modal.show()
+        @self.click
+        def show_modal():
+            self.modal.show()
 
         @self.gui.run_btn.click
         def _on_run_btn_click():
@@ -74,7 +72,6 @@ class CloudImportNode(BaseCardNode):
             self.gui.tasks_history.modal,
             self.gui.tasks_history.logs_modal,
         ]
-
 
     def _get_tooltip_buttons(self):
         return [self.gui.tasks_history.open_modal_button, self.automation.open_modal_button]
@@ -95,11 +92,13 @@ class CloudImportNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Modal --------------------------------------------------------------
     # ------------------------------------------------------------------
-    # @property
-    # def modal(self):
-    #     if not hasattr(self, "_modal"):
-    #         self._modal = Dialog(title="Import from Cloud Storage", content=self.gui, size="tiny")
-    #     return self._modal
+    @property
+    def modal(self):
+        if not hasattr(self, "_modal"):
+            self._modal = Dialog(
+                title="Import from Cloud Storage", content=self.modal_content, size="tiny"
+            )
+        return self._modal
 
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
@@ -112,9 +111,7 @@ class CloudImportNode(BaseCardNode):
     def update_automation_details(self) -> Tuple[int, str, int, str]:
         sec, path, interval, period = self.automation.get_details()
         if path is not None:
-            self.update_property(
-                "Sync", "Every {} {}".format(interval, period), highlight=True
-            )
+            self.update_property("Sync", "Every {} {}".format(interval, period), highlight=True)
             link = abs_url(f"files/?path={path}")
             self.update_property("Path", path, link=link)
             logger.info(f"Added job to synchronize from Cloud Storage every {sec} sec")
@@ -186,7 +183,7 @@ class CloudImportNode(BaseCardNode):
         :return: Tuple containing the number of items imported and the project image preview URL.
         """
         tasks = self.gui.tasks
-        self.card.update_property(key="Tasks", value=str(len(tasks)))
+        self.update_property(key="Tasks", value=str(len(tasks)))
         if not tasks:
             return None, None
 
@@ -196,7 +193,7 @@ class CloudImportNode(BaseCardNode):
         for import_task in import_history[::-1]:
             if import_task.get("task_id") == task_id:
                 items_count = import_task.get("items_count", 0)
-                self.card.update_property(key="Last import", value=f"+{items_count}")
-                self.card.update_badge_by_key("Last import", f"+{items_count}", "success")
+                self.update_property(key="Last import", value=f"+{items_count}")
+                self.update_badge_by_key("Last import", f"+{items_count}", "success")
                 return items_count, self.project.image_preview_url
         return None, None

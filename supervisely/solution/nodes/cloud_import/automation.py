@@ -17,7 +17,7 @@ from supervisely.solution.utils import get_seconds_from_period_and_interval
 class CloudImportAutomation(AutomationWidget):
     """Automation settings specific to Cloud-Import synchronisation."""
 
-    def __init__(self, func: Callable):
+    def __init__(self, func: Optional[Callable] = None):
         super().__init__(func)
 
     # ------------------------------------------------------------------

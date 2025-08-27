@@ -8,13 +8,13 @@ from supervisely.app.widgets import Dialog
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.nodes.move_labeled.automation import MoveLabeledAuto
-from supervisely.solution.nodes.move_labeled.gui import MoveLabeledGUI
-from supervisely.solution.nodes.move_labeled.history import MoveLabeledTasksHistory
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
 )
+from supervisely.solution.nodes.move_labeled.automation import MoveLabeledAuto
+from supervisely.solution.nodes.move_labeled.gui import MoveLabeledGUI
+from supervisely.solution.nodes.move_labeled.history import MoveLabeledTasksHistory
 
 
 class MoveLabeledNode(BaseCardNode):
@@ -42,20 +42,13 @@ class MoveLabeledNode(BaseCardNode):
         self.src_project_id = src_project_id
         self.dst_project_id = dst_project_id
         self._images_to_move = []
+        self._click_handled = True
 
         # --- core blocks --------------------------------------------------------
-        self.automation = MoveLabeledAuto(self.start_task)
+        self.automation = MoveLabeledAuto()
         self.gui = MoveLabeledGUI()
         self.modal_content = self.gui.widget  # for BaseCardNode
         self.history = MoveLabeledTasksHistory()
-
-        # --- modals -------------------------------------------------------------
-        self.modals = [
-            self.gui.modal,
-            self.automation.modal,
-            self.history.modal,
-            self.history.logs_modal,
-        ]
 
         # --- node init ----------------------------------------------------------
         title = kwargs.pop("title", self.title)
@@ -74,19 +67,30 @@ class MoveLabeledNode(BaseCardNode):
             **kwargs,
         )
 
-        # @self.click
-        # def on_automate_click():
-        #     self.gui.modal.show()
+        @self.click
+        def on_automate_click():
+            self.gui.modal.show()
+
+        @self.gui.run_btn.click
+        def on_run_click():
+            self.gui.modal.hide()
+            self.start_task()
+
+        # --- modals -------------------------------------------------------------
+        self.modals = [
+            self.gui.modal,
+            self.automation.modal,
+            self.history.modal,
+            self.history.logs_modal,
+        ]
 
         @self.automation.apply_button.click
         def on_automate_click():
             self.automation.modal.hide()
             self.apply_automation()
 
-        @self.gui.run_btn.click
-        def on_run_click():
-            self.gui.modal.hide()
-            self.start_task()
+    def configure_automation(self, *args, **kwargs):
+        self.automation.func = self.start_task
 
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------
@@ -134,10 +138,9 @@ class MoveLabeledNode(BaseCardNode):
             items=items,
             items_count=items_count,
         )
-    
+
     # def send_images_count_message(self, count: int) -> LabelingQueueAcceptedImagesMessage:
     #     return LabelingQueueAcceptedImagesMessage(accepted_images=[i for i in range(count)])
-
 
     # publish event (may send Message object)
     def wait_task_complete(
@@ -202,7 +205,7 @@ class MoveLabeledNode(BaseCardNode):
         logger.info(f"Set {len(self._images_to_move)} images to move.")
         self.gui.set_items_count(len(self._images_to_move))
         self.update_property("Available items to move", f"{len(self._images_to_move)}")
-        self.send_images_count_message(len(self._images_to_move))
+        # self.send_images_count_message(len(self._images_to_move))
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
@@ -225,7 +228,7 @@ class MoveLabeledNode(BaseCardNode):
         """
         Apply the automation function to the MoveLabeled node.
         """
-        self.automation.apply()
+        self.automation.apply(func=self.start_task)
         self.update_automation_details()
 
     # ------------------------------------------------------------------
@@ -256,7 +259,7 @@ class MoveLabeledNode(BaseCardNode):
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
-                # "items": [{"id": image_id, "type": "image"} for image_id in images],
+                "items": [{"id": image_id, "type": "image"} for image_id in images],
                 # "items": [ds ids] #  (parent dataset ids),
                 "source": {
                     "team": {"id": sly_env.team_id()},

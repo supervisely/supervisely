@@ -39,7 +39,7 @@ class OpenAIClipServiceNode(EmptyNode):
             **kwargs,
         )
         self.api = Api.from_env()
-        self._refresh_interval = 300
+        self._refresh_interval = 60
         self._stop_autorefresh = False
         self._refresh_thread = None
         self._check_service_status()
@@ -52,7 +52,7 @@ class OpenAIClipServiceNode(EmptyNode):
         return [
             {
                 "id": "clip_status",
-                "type": "target",
+                "type": "source",
                 "position": "right",
                 "connectable": True,
             },
@@ -61,13 +61,18 @@ class OpenAIClipServiceNode(EmptyNode):
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
-    def _available_subscribe_methods(self) -> dict:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
+    # def _available_subscribe_methods(self) -> dict:
+    #     """Returns a dictionary of methods that can be used for subscribing to events."""
+    #     return {
+    #         "clip_status": self._check_service_status,
+    #     }
+    
+    def _available_publish_methods(self):
         return {
             "clip_status": self._check_service_status,
         }
 
-    def start_autorefresh(self, interval: int = 300):
+    def start_autorefresh(self, interval: int = 60):
         """
         Starts the auto-refresh mechanism for the node.
         :param interval: Refresh interval in seconds.

@@ -37,7 +37,7 @@ class EventMixin:
     def __init__(self, *args, **kwargs):
         self._subscribe = kwargs.pop("subscribe", [])  # List of topics to subscribe to
         self._publish = kwargs.pop("publish", [])  # List of topics to publish to
-        self.enable_publishing()  # order matters (publish methods must be wrapped before subscribing)
+        # self.enable_publishing()  # order matters (publish methods must be wrapped before subscribing)
         # self.enable_subscriptions()
         super().__init__()
 
@@ -52,24 +52,36 @@ class EventMixin:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {}
 
-    def enable_subscriptions(self, source: Optional[str] = None):
+    def enable_subscriptions(self, source: Optional[str] = None, topic: Optional[str] = None):
         """Subscribe to events defined in the class."""
-        for topic, method in self._available_subscribe_methods().items():
-            if topic in self._subscribe:
-                if not isinstance(method, list):
-                    method = [method]
-                for m in method:
-                    if not callable(m):
-                        raise TypeError(f"Method {m} for topic {topic} is not callable")
-                    PubSubAsync().subscribe(topic=topic, callback=m, source=source)
+        if topic is not None:
+            if topic not in self._available_subscribe_methods():
+                return
+            method = self._available_subscribe_methods()[topic]
+            PubSubAsync().subscribe(topic=topic, callback=method, source=source)
+        else:
+            for topic, method in self._available_subscribe_methods().items():
+                if topic in self._subscribe:
+                    if not isinstance(method, list):
+                        method = [method]
+                    for m in method:
+                        PubSubAsync().subscribe(topic=topic, callback=m, source=source)
 
-    def enable_publishing(self, source: Optional[str] = None):
+    def enable_publishing(self, source: Optional[str] = None, topic: Optional[str] = None):
         """Publish events defined in the class."""
-        for topic, method in self._available_publish_methods().items():
-            if topic in self._publish:
-                # not publish, but wrap the method to publish the event when called
-                cb = publish_event(topic, source=source)(method)  # pylint: disable=E1101
-                setattr(self, method.__name__, cb)  # replace the method with the wrapped one
+        if topic is not None and source is not None:
+            if topic not in self._available_publish_methods():
+                return
+            method = self._available_publish_methods()[topic]
+        else:
+            for topic, method in self._available_publish_methods().items():
+                if topic in self._publish:
+                    # not publish, but wrap the method to publish the event when called
+                    break
+            else:
+                return
+        cb = publish_event(topic, source=source)(method)  # pylint: disable=E1101
+        setattr(self, method.__name__, cb)  # replace the method with the wrapped one
 
 
 # ------------------------------------------------------------------
@@ -88,7 +100,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
         self.parent_id = kwargs.pop("parent_id", None)
         self.id = kwargs.pop("id", generate_id(cls_name=self.__class__.__name__))
         self.title = kwargs.pop("title", "Node")
-        self._modal = kwargs.pop("modal", None)
+        # self._modal = kwargs.pop("modal", None)
 
         Widget.__init__(self, widget_id=self.id)  # Widget does not call super()
         EventMixin.__init__(self, *args, **kwargs)
@@ -121,7 +133,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
         cls,
         json_data,
         parent_id: Optional[str] = None,
-        modal: Optional[VueFlowModal] = None,
+        # modal: Optional[VueFlowModal] = None,
     ) -> "BaseNode":
         node_id = json_data.get("id")
         kwargs = json_data.get("parameters", {})
@@ -134,9 +146,13 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
             x=x,
             y=y,
             parent_id=parent_id,
-            modal=modal,
+            # modal=modal,
             **kwargs,
         )
+    
+    def configure_automation(self, *args, **kwargs):
+        """Method to call after all nodes are created and subscribed to events."""
+        pass
 
     # ------------------------------------------------------------------
     # VueFlow Node Methods ----------------------------------------------

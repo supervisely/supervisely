@@ -17,7 +17,8 @@ class ProjectAutomation(Automation):
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
-    def apply(self, sec: int, *args) -> None:
+    def apply(self, sec: int, func: Optional[Callable[[], None]] = None, *args) -> None:
+        self.func = func or self.func
         self.scheduler.add_job(
             self.func, interval=sec, job_id=self.job_id, replace_existing=True, *args
         )

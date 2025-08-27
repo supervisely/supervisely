@@ -5,14 +5,14 @@ from supervisely.api.api import Api
 from supervisely.app.content import DataJson
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
-from supervisely.solution.nodes.train_val_split.gui import (
-    SplitSettings,
-    TrainValSplitGUI,
-)
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
     SampleFinishedMessage,
+)
+from supervisely.solution.nodes.train_val_split.gui import (
+    SplitSettings,
+    TrainValSplitGUI,
 )
 
 
@@ -40,6 +40,13 @@ class TrainValSplitNode(BaseCardNode):
         self.gui = TrainValSplitGUI()
         self.modal_content = self.gui.widget
 
+        # --- parameters --------------------------------------------------------
+        self.api = Api.from_env()
+        self.dst_project_id = dst_project_id
+        self._click_handled = True
+
+        # --- modals -------------------------------------------------------------
+        self.modals = [self.gui.modal]
 
         # --- init Node ----------------------------------------------------------
         title = kwargs.pop("title", "Train/Val Split")
@@ -61,22 +68,14 @@ class TrainValSplitNode(BaseCardNode):
             **kwargs,
         )
 
-        # --- parameters --------------------------------------------------------
-        self.api = Api.from_env()
-        self.dst_project_id = dst_project_id
-
-
-        # --- modals -------------------------------------------------------------
-        self.modals = [self.gui.modal]
-
         @self.gui.ok_btn.click
         def on_save_split_settings_click():
             self.gui.modal.hide()
             self.save_split_settings()
 
-        # @self.card.click
-        # def show_split_modal():
-        #     self.gui.modal.show()
+        @self.click
+        def show_split_modal():
+            self.gui.modal.show()
 
     def _update_properties(self, settings: SplitSettings):
         """Update node properties with current split settings."""

@@ -1,6 +1,7 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 from supervisely.solution.components.project.node import ProjectNode
+from supervisely.solution.engine.models import ImportFinishedMessage
 
 
 class InputProjectNode(ProjectNode):
@@ -73,8 +74,7 @@ class InputProjectNode(ProjectNode):
     def send_check_embeddings_message(self):
         pass
 
-    def update(self):
-        super().update()
+    def update(self, message: Optional[ImportFinishedMessage] = None) -> None:
+        super().update(message)
         self.send_project_updated_message()
-        self.send_check_embeddings_message()
         self.send_check_embeddings_message()

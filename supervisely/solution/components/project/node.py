@@ -42,7 +42,7 @@ class ProjectNode(BaseProjectNode):
 
         # --- core blocks --------------------------------------------------------
         super().__init__(*args, **kwargs)
-        self._automation = ProjectAutomation(project_id=self.project_id, func=self.update)
+        self._automation = ProjectAutomation(project_id=self.project_id)
 
         # --- modals -------------------------------------------------------------
         self.modals = []
@@ -52,6 +52,8 @@ class ProjectNode(BaseProjectNode):
         self.update()
         # self.apply_automation(sec=self.refresh_interval)
 
+    def configure_automation(self, *args, **kwargs):
+        return self.apply_automation(self.refresh_interval, self._update)
 
     def _get_tooltip_buttons(self):
         stats_url = self.project.url.replace("datasets", "stats/datasets")
@@ -100,7 +102,7 @@ class ProjectNode(BaseProjectNode):
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {}
 
-    def update(
+    def _update(
         self,
         message: Union[
             ImportFinishedMessage,
@@ -138,6 +140,16 @@ class ProjectNode(BaseProjectNode):
             )
         else:
             self.update_preview([preview_url], [items_count or 0])
+
+    def update(
+        self,
+        message: Union[
+            ImportFinishedMessage,
+            SampleFinishedMessage,
+            MoveLabeledDataFinishedMessage,
+        ] = None,
+    ) -> None:
+        return self._update(message)
 
     def _get_train_val_collections(self) -> Tuple[List[int], List[int]]:
         """
@@ -199,10 +211,10 @@ class ProjectNode(BaseProjectNode):
     # ------------------------------------------------------------------
     # Automation --------------------------------------------------------
     # ------------------------------------------------------------------
-    def apply_automation(self, sec: int, *args) -> None:
+    def apply_automation(self, sec: int, func: Optional[Callable[[], None]] = None, *args) -> None:
         """
         Apply the automation to refresh the project node periodically.
 
         :param sec: Interval in seconds for refreshing the project node
         """
-        self.automation.apply(sec, *args)
+        self._automation.apply(sec, func, *args)

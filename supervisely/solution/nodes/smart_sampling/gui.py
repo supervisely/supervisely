@@ -178,7 +178,7 @@ class SmartSamplingGUI(Widget):
 
             for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
                 title = None
-                if ai_meta is not None:
+                if isinstance(ai_meta, dict) and ai_meta.get('score') is not None:
                     title = f"Score: {ai_meta.get('score'):.3f}"
                 column = idx % 3
                 self.preview_gallery.append(column_index=column, image_url=url, title=title)
@@ -202,11 +202,11 @@ class SmartSamplingGUI(Widget):
     def _create_images_info_field(self) -> Field:
         get_total_text = lambda x: f"Total images in project: <strong>{x}</strong>"
         total_text = Text(get_total_text(self.items_count))
-        self.set_total_num_text = lambda x: total_text.set(text=get_total_text(x), status="text")
+        self.set_total_num_text = lambda text: total_text.set(text=get_total_text(text), status="text")
 
         get_diff_text = lambda x: f"Available images for sampling: <strong>{x}</strong>"
         diff_text = Text(get_diff_text(self.diff_num))
-        self.set_diff_num_text = lambda x: diff_text.set(text=get_diff_text(x), status="text")
+        self.set_diff_num_text = lambda text: diff_text.set(text=get_diff_text(text), status="text")
 
         description = "Information about the total number of images in the input project and the number of available images for sampling."
         return Field(
@@ -269,7 +269,7 @@ class SmartSamplingGUI(Widget):
 
         # --- Methods -------------------------------------------------
         self.get_random_input_value = lambda: num_input.get_value()
-        self.set_random_text = lambda x: text.set(text=get_text(x), status="text")
+        self.set_random_text = lambda msg: text.set(text=get_text(msg), status="text")
         self.set_random_input_value = lambda x: num_input.set_value(x)
         self.set_random_input_max = lambda x: num_input.set_max(x)
         self.set_random_input_min = lambda x: num_input.set_min(x)
@@ -298,7 +298,7 @@ class SmartSamplingGUI(Widget):
         )
 
         # --- Methods -------------------------------------------------
-        self.set_diverse_text = lambda x: text.set(text=get_text(x), status="text")
+        self.set_diverse_text = lambda msg: text.set(text=get_text(msg), status="text")
         self.get_diverse_input_value = lambda: num_input.get_value()
         self.set_diverse_input_value = lambda x: num_input.set_value(x)
         self.set_diverse_input_max = lambda x: num_input.set_max(x)
@@ -391,7 +391,7 @@ class SmartSamplingGUI(Widget):
         text.hide()
         self.show_status_text = lambda: text.show()
         self.hide_status_text = lambda: text.hide()
-        self.set_status_text = lambda x, y: text.set(text=x, status=y)
+        self.set_status_text = lambda msg, status: text.set(text=msg, status=status)
         return text
 
     def _create_main_buttons(self) -> Container:
@@ -426,11 +426,13 @@ class SmartSamplingGUI(Widget):
         self.set_total_num_text(project.items_count if project.items_count else 0)
 
         # random
+        self.set_random_text(diff)
         self.set_random_input_min(min_value)
         self.set_random_input_max(max_value)
         self.set_random_input_value(value)
 
         # diverse
+        self.set_diverse_text(diff)
         self.set_diverse_input_min(min_value)
         self.set_diverse_input_max(max_value)
         self.set_diverse_input_value(value)
