@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from supervisely.app.widgets import Dialog, VueFlow
-from supervisely.solution.base_node import BaseNode
+from supervisely.solution.base_node import BaseNode, BaseCardNode
 from supervisely.solution.engine.config_parser import YAMLParser
 
 
@@ -53,13 +53,27 @@ class GraphBuilder(VueFlow):
             nodes=self.nodes, edges=self.edges, sidebar_nodes=sidebar_nodes, widget_id=widget_id
         )
 
+        @self.node_added
+        def _node_added(node: BaseNode):
+            print(f"Node added: {node.id}")
+            # for topic, _ in node._available_subscribe_methods().items():
+            #     for source in node._sources:
+            #         key = (topic, source)
+            #         if key in node._subscriptions:
+        @self.node_removed
+        def _node_removed(node: BaseNode):
+            print(f"Node removed: {node.id}")
+            # for topic, _ in node._available_subscribe_methods().items():
+            #     for source in node._sources:
+            #         key = (topic, source)
+            #         if key in node._subscriptions:
+
     def load_json(self, json_data: Union[str, Path]) -> None:
         if isinstance(json_data, (str, Path)):
             with open(json_data, "r") as f:
                 json_data = json.load(f)
 
         # edges = defaultdict(list)
-        modals = []
         nodes = []
         node_id_to_obj = {}
         edges = []
@@ -70,15 +84,16 @@ class GraphBuilder(VueFlow):
                 module_path, class_name = node_type.rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 node_class: BaseNode = getattr(module, class_name)
-                node = node_class.from_json(node_data, parent_id=self.widget_id, modal=self.modal)
+                node = node_class.from_json(node_data, parent_id=self.widget_id)
                 if hasattr(node, "modals") and node.modals:
-                    modals.extend(node.modals)
+                    self._modals.extend(node.modals)
                 nodes.append(node)
                 node_id_to_obj[node.id] = node
             except Exception as e:
                 raise ValueError(f"Error processing node '{node_type}': {repr(e)}")
         self.add_nodes(nodes)
 
+        to_subscribe = defaultdict(list)
         for edge_data in json_data.get("connections", []):
             edge_id = edge_data.get("id")
             source: str = edge_data.get("source")
@@ -90,15 +105,26 @@ class GraphBuilder(VueFlow):
             target_node: BaseNode = node_id_to_obj[target]
             source_node: BaseNode = node_id_to_obj[source]
 
+            target_node._sources.append(source)
+
             edge = self.Edge(**edge_data)
-            target_node.enable_subscriptions(source=source)
             for topic, _ in target_node._available_subscribe_methods().items():
                 if topic in source_node._available_publish_methods():
-                    source_node.enable_publishing(source=source)
+                    source_node.enable_publishing(source=source, topic=topic)
+                    # target_node.enable_subscriptions(source=source, topic=topic)
+                    to_subscribe[source].append((topic, target))
                     edge.source_handle = topic
                     edge.target_handle = topic
                     break
             edges.append(edge)
+
+        for source, items in to_subscribe.items():
+            for topic, target in items:
+                target_node: BaseNode = node_id_to_obj[target]
+                target_node.enable_subscriptions(source=source, topic=topic)
+
+        for node in nodes:
+            node.configure_automation()
 
         self.add_edges(edges)
 

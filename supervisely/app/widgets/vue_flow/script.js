@@ -52,13 +52,20 @@ Vue.component("sly-flow", {
           action: "sidebar-nodes-refresh",
           data: {},
         });
+      } else if (data.action === "node-added") {
+        console.log("+++ node-added", data.payload);
+        this.post(`/${this.id}/node_added_cb`, data.payload);
       } else if (data.action === "node-updated") {
         this.post(`/${this.id}/node_updated_cb`, data.payload);
+      } else if (data.action === "node-removed") {
+        this.post(`/${this.id}/node_removed_cb`, data.payload);
       } else if (data.action === "edge-created") {
         console.log("+++ edge-created", data.payload);
         this.post(`/${this.id}/edge_added_cb`, data.payload);
-      } else if (data.action === "node-added") {
-        this.post(`/${this.id}/node_added_cb`, data.payload);
+      } else if (data.action === "edge-removed") {
+        this.post(`/${this.id}/edge_removed_cb`, data.payload);
+      } else if (data.action === "edge-updated") {
+        this.post(`/${this.id}/edge_updated_cb`, data.payload);
       }
     },
   },
@@ -77,7 +84,7 @@ Vue.component("sly-flow", {
 
   template: `
   <div>
-    <iframe ref="frame" :src="url" style="width: 100%; height: 800px; border: none;"></iframe>
+    <iframe ref="frame" :src="url" style="width: 100%; height: calc(100vh - 40px); border: none;"></iframe>
   </div>
 `,
 });
