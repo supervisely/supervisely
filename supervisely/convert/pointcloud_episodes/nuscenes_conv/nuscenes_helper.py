@@ -1,7 +1,7 @@
 from datetime import datetime
 from os import path as osp
 from pathlib import Path
-from typing import Generator, List
+from typing import Dict, Generator, List, Tuple
 
 import numpy as np
 
@@ -186,7 +186,7 @@ class CamData:
         self.extrinsic = np.hstack((velo_to_cam_rot, velo_to_cam_trans.reshape(3, 1)))
         self.intrinsic = np.asarray(cs_record_cam["camera_intrinsic"])
 
-    def get_info(self, timestamp: str) -> tuple[str, dict]:
+    def get_info(self, timestamp: str) -> Tuple[str, Dict]:
         """
         Generates image info based on the camera data.
 
