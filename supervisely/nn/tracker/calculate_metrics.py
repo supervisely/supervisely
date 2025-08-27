@@ -9,6 +9,12 @@ import supervisely as sly
 from supervisely import logger
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
+try:
+    import motmetrics as mm
+    MM_AVAILABLE = True
+except ImportError:
+    MM_AVAILABLE = False
+
 class TrackingEvaluator:
     """
     Evaluator for video tracking metrics including MOTA, MOTP, IDF1, and HOTA.
@@ -24,6 +30,9 @@ class TrackingEvaluator:
         Args:
             iou_threshold: IoU threshold for matching detections (0.0 to 1.0)
         """
+        if not MM_AVAILABLE:
+            raise ImportError("motmetrics library is required for TrackingEvaluator")
+        
         if not 0.0 <= iou_threshold <= 1.0:
             raise ValueError(f"IoU threshold must be between 0.0 and 1.0, got {iou_threshold}")
         
