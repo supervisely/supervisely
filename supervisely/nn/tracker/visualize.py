@@ -245,6 +245,9 @@ class TrackingVisualizer:
                     color = figure.video_object.obj_class.color
                     if not color:
                         color = self._get_track_color(track_id)
+                    else:
+                        # convert rgb to bgr
+                        color = color[::-1]
                     self.track_colors[track_id] = color
                 
                 self.tracks_by_frame[frame_idx].append((track_id, bbox, class_name))
@@ -263,6 +266,7 @@ class TrackingVisualizer:
             return None
         
         color = self.track_colors[track_id]
+
         # Draw bounding box
         cv2.rectangle(img, (x1, y1), (x2, y2), color, self.box_thickness)
 
