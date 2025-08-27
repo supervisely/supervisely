@@ -14,15 +14,11 @@ try:
     MOTMETRICS_AVAILABLE = True
 except ImportError:
     MOTMETRICS_AVAILABLE = False
-    logger.warning("motmetrics not available. Install with: pip install motmetrics")
-
 try:
     import trackeval
     TRACKEVAL_AVAILABLE = True
 except ImportError:
     TRACKEVAL_AVAILABLE = False
-    logger.warning("trackeval not available. Install with: pip install git+https://github.com/JonathonLuiten/TrackEval.git")
-
 
 class TrackingEvaluator:
     """
