@@ -8,12 +8,8 @@ from collections import defaultdict
 import supervisely as sly
 from supervisely import logger
 from supervisely.video_annotation.video_annotation import VideoAnnotation
+import motmetrics as mm
 
-try:
-    import motmetrics as mm
-    MM_AVAILABLE = True
-except ImportError:
-    MM_AVAILABLE = False
 
 class TrackingEvaluator:
     """
@@ -30,8 +26,13 @@ class TrackingEvaluator:
         Args:
             iou_threshold: IoU threshold for matching detections (0.0 to 1.0)
         """
-        if not MM_AVAILABLE:
-            raise ImportError("motmetrics library is required for TrackingEvaluator")
+        
+        from supervisely.nn.tracker import TRACKING_LIBS_INSTALLED
+        if not TRACKING_LIBS_INSTALLED:
+            raise ImportError(
+                "Tracking dependencies are not installed. "
+                "Please install supervisely with `pip install supervisely[tracking]`."
+            )
         
         if not 0.0 <= iou_threshold <= 1.0:
             raise ValueError(f"IoU threshold must be between 0.0 and 1.0, got {iou_threshold}")

@@ -1,6 +1,5 @@
 import supervisely as sly
 from supervisely.nn.tracker.base_tracker import BaseTracker
-from supervisely.nn.tracker.botsort.tracker.mc_bot_sort import BoTSORT
 from supervisely import Annotation, VideoAnnotation
 
 from dataclasses import dataclass
@@ -11,6 +10,7 @@ import yaml
 import os
 from pathlib import Path
 from supervisely import logger
+from supervisely.nn.tracker.botsort.tracker.mc_bot_sort import BoTSORT
 
 
 @dataclass
@@ -38,6 +38,13 @@ class BotSortTracker(BaseTracker):
     
     def __init__(self, settings: dict = None, device: str = None):
         super().__init__(settings=settings, device=device)
+
+        from supervisely.nn.tracker import TRACKING_LIBS_INSTALLED
+        if not TRACKING_LIBS_INSTALLED:
+            raise ImportError(
+                "Tracking dependencies are not installed. "
+                "Please install supervisely with `pip install supervisely[tracking]`."
+            )
         
         # Load default settings from YAML file
         self.settings = self._load_default_settings()
