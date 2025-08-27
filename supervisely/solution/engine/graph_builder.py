@@ -56,17 +56,13 @@ class GraphBuilder(VueFlow):
         @self.node_added
         def _node_added(node: BaseNode):
             print(f"Node added: {node.id}")
-            # for topic, _ in node._available_subscribe_methods().items():
-            #     for source in node._sources:
-            #         key = (topic, source)
-            #         if key in node._subscriptions:
         @self.node_removed
         def _node_removed(node: BaseNode):
             print(f"Node removed: {node.id}")
-            # for topic, _ in node._available_subscribe_methods().items():
-            #     for source in node._sources:
-            #         key = (topic, source)
-            #         if key in node._subscriptions:
+            node.disable_publishing(node.id)
+            for source in node._sources:
+                node.disable_subscriptions(source)
+            self.remove_edges_by_node_id(node.id)
 
     def load_json(self, json_data: Union[str, Path]) -> None:
         if isinstance(json_data, (str, Path)):

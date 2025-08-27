@@ -83,6 +83,18 @@ class EventMixin:
         cb = publish_event(topic, source=source)(method)  # pylint: disable=E1101
         setattr(self, method.__name__, cb)  # replace the method with the wrapped one
 
+    def disable_subscriptions(self, source: Optional[str] = None):
+        """Unsubscribe from all events."""
+        for topic, method in self._available_subscribe_methods().items():
+            PubSubAsync().unsubscribe(topic=topic, callback=method, source=source)
+
+    def disable_publishing(self, source: Optional[str] = None):
+        """Unpublish all events."""
+        for key, subsctions in PubSubAsync().subscribers.items():
+            topic, src = key
+            if src == source:
+                for callback in subsctions:
+                    PubSubAsync().unsubscribe(topic=topic, callback=callback, source=source)
 
 # ------------------------------------------------------------------
 # Base Node (all nodes) --------------------------------------------

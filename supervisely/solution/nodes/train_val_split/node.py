@@ -77,24 +77,6 @@ class TrainValSplitNode(BaseCardNode):
         def show_split_modal():
             self.gui.modal.show()
 
-    def _update_properties(self, settings: SplitSettings):
-        """Update node properties with current split settings."""
-        counts = self.gui.random_splits.get_splits_counts()
-        train = settings.train_percent
-        val = settings.val_percent
-        train_count = counts.get("train", 0)
-        val_count = counts.get("val", 0)
-        self.update_property("mode", f"Random ({train}% train, {val}% val)", highlight=True)
-        self.update_property("train", f"{train_count} image{'' if train_count == 1 else 's'}")
-        self.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
-
-    def save_split_settings(self, settings: Optional[SplitSettings] = None):
-        """Save split settings to node state."""
-        if settings is None:
-            settings = self.gui.get_split_settings()
-        self.gui.save_split_settings(settings)
-        self._update_properties(settings)
-
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------
     # ------------------------------------------------------------------
@@ -117,6 +99,17 @@ class TrainValSplitNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
+    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
+        """Returns a dictionary of methods that can be used for subscribing to events."""
+        return {
+            "move_labeled_data_finished": self.split,
+            "train_val_split_items_count": self.set_items_count,
+        }
+
+    def _available_publish_methods(self):
+        """Returns a dictionary of methods that can be used for publishing events."""
+        return {"train_val_split_finished": self.send_train_val_split_finished_message}
+
     def split(
         self,
         message: MoveLabeledDataFinishedMessage,
@@ -173,17 +166,6 @@ class TrainValSplitNode(BaseCardNode):
         self.gui.set_items_count(items_count)
         self.save_split_settings()
 
-    def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
-        """Returns a dictionary of methods that can be used for subscribing to events."""
-        return {
-            "move_labeled_data_finished": self.split,
-            "train_val_split_items_count": self.set_items_count,
-        }
-
-    def _available_publish_methods(self):
-        """Returns a dictionary of methods that can be used for publishing events."""
-        return {"train_val_split_finished": self.send_train_val_split_finished_message}
-
     def send_train_val_split_finished_message(self) -> None:
         pass
 
@@ -233,3 +215,21 @@ class TrainValSplitNode(BaseCardNode):
         self.api.entities_collection.add_items(batch_collection.id, image_ids)
 
         logger.info(f"Added {len(image_ids)} images to {split_name} collections")
+
+    def _update_properties(self, settings: SplitSettings):
+        """Update node properties with current split settings."""
+        counts = self.gui.random_splits.get_splits_counts()
+        train = settings.train_percent
+        val = settings.val_percent
+        train_count = counts.get("train", 0)
+        val_count = counts.get("val", 0)
+        self.update_property("mode", f"Random ({train}% train, {val}% val)", highlight=True)
+        self.update_property("train", f"{train_count} image{'' if train_count == 1 else 's'}")
+        self.update_property("val", f"{val_count} image{'' if val_count == 1 else 's'}")
+
+    def save_split_settings(self, settings: Optional[SplitSettings] = None):
+        """Save split settings to node state."""
+        if settings is None:
+            settings = self.gui.get_split_settings()
+        self.gui.save_split_settings(settings)
+        self._update_properties(settings)

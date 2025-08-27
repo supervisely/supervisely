@@ -317,6 +317,11 @@ class VueFlow(Widget):
         VueFlow.notify_ui(widget_id=self.widget_id, action="edge-remove", data=data)
         return removed_edges
 
+    def remove_edges_by_node_id(self, node_id: str) -> None:
+        """Removes all edges connected to a given node ID."""
+        edges_to_remove = [e.id for e in self.edges if e.source == node_id or e.target == node_id]
+        self.pop_edges(edges_to_remove)
+
     def _prepare_ui_static(self, static_dir: str = "static") -> None:
         """
         Prepares the static files for the VueFlow widget.
