@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import tempfile
 import os
 from pathlib import Path
@@ -7,18 +8,6 @@ from collections import defaultdict
 import supervisely as sly
 from supervisely import logger
 from supervisely.video_annotation.video_annotation import VideoAnnotation
-
-try:
-    import motmetrics as mm
-    import pandas as pd
-    MOTMETRICS_AVAILABLE = True
-except ImportError:
-    MOTMETRICS_AVAILABLE = False
-try:
-    import trackeval
-    TRACKEVAL_AVAILABLE = True
-except ImportError:
-    TRACKEVAL_AVAILABLE = False
 
 class TrackingEvaluator:
     """
@@ -213,14 +202,13 @@ class TrackingEvaluator:
     
     def _compute_mot_metrics(self, gt_tracks, pred_tracks) -> Dict[str, Union[float, int]]:
         """Compute MOT metrics using motmetrics library."""
-        if not MOTMETRICS_AVAILABLE:
-            logger.warning("motmetrics not available - returning zero MOT metrics")
-            return {
-                'mota': 0.0, 'motp': 0.0, 'idf1': 0.0,
-                'id_switches': 0, 'fragmentations': 0,
-                'num_misses': 0, 'num_false_positives': 0
-            }
-        
+        try:
+            import motmetrics as mm
+        except ImportError:
+            logger.error(
+                "motmetrics not available. Install with: pip install motmetrics"
+            )
+            raise
         try:
             # Create MOT accumulator
             acc = mm.MOTAccumulator(auto_id=True)
@@ -293,10 +281,14 @@ class TrackingEvaluator:
     
     # def _compute_hota_metrics(self, gt_tracks, pred_tracks) -> Dict[str, float]:
     #     """Compute HOTA metrics using TrackEval library."""
-    #     if not TRACKEVAL_AVAILABLE:
-    #         logger.warning("trackeval not available - returning zero HOTA metrics")
-    #         return {'hota': 0.0, 'deta': 0.0, 'assa': 0.0}
-        
+    #     try:
+    #         import trackeval
+    #     except ImportError:
+    #         logger.error(
+    #             "trackeval not available. Install with: ip install git+https://github.com/JonathonLuiten/TrackEval.git"
+    #         )
+    #         raise
+
     #     try:
     #         with tempfile.TemporaryDirectory() as temp_dir:
     #             # Write MOT format files
