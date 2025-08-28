@@ -44,7 +44,7 @@ class VideoObject(KeyObject):
     :type created_at: str, optional
     :Usage example:
 
-    .. code-block:: python
+     .. code-block:: python
 
         import supervisely as sly
 
@@ -95,7 +95,7 @@ class VideoObject(KeyObject):
         :rtype: :class:`ObjClass<supervisely.annotation.obj_class.ObjClass>`
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -121,7 +121,7 @@ class VideoObject(KeyObject):
         :rtype: uuid.UUID
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -143,7 +143,7 @@ class VideoObject(KeyObject):
         :rtype: :class:`VideoTagCollection<supervisely.video_annotation.video_tag_collection.VideoTagCollection>`
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -181,7 +181,7 @@ class VideoObject(KeyObject):
         :rtype: int
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -202,7 +202,7 @@ class VideoObject(KeyObject):
         :rtype: :class:`VideoObject<VideoObject>`
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -243,7 +243,7 @@ class VideoObject(KeyObject):
         :rtype: :class:`VideoObject<VideoObject>`
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -292,7 +292,7 @@ class VideoObject(KeyObject):
 
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -340,7 +340,7 @@ class VideoObject(KeyObject):
 
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
@@ -414,7 +414,7 @@ class VideoObject(KeyObject):
 
         :Usage example:
 
-        .. code-block:: python
+         .. code-block:: python
 
             import supervisely as sly
 
