@@ -101,7 +101,7 @@ class PredictionSession:
         self._model_meta = None
         self.final_result = None
 
-        if "inference_request_uuid" in kwargs:
+        if kwargs.get("inference_request_uuid"):
             self.continue_inference_request = True
             self.inference_request_uuid = kwargs.pop("inference_request_uuid")
         if "stride" in kwargs:
