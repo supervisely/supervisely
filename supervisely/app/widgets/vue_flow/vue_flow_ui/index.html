@@ -2,10 +2,40 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <script type="module" crossorigin src="./assets/index-xuTccwk6.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C16VBsu2.css">
+    <script type="module" crossorigin src="./assets/index-BTDcdvwn.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BCkBRVln.css">
   </head>
   <body>
+    <!-- <button id="test-button">click</button> -->
     <div id="app"></div>
+
+    <!-- <script>
+      document.querySelector('#test-button').addEventListener('click', () => {
+        let nodeIdx = 0;
+
+        const node = window.slyApp.flow.nodes[nodeIdx];
+        node.label += '1';
+        node.data.badges[2].value = parseInt(node.data.badges[2].value, 10) + 1;
+
+        window.slyApp.flow.nodes[1].data.badges.push(
+          {
+            value: '5',
+            label: 'New',
+            style: { backgroundColor: '#6edf6b', color: '#fff' },
+          },
+        );
+
+        window.slyApp.flow.nodes[1].data.previews[0].value = window.slyApp.flow.nodes[1].data.previews[0].value + 1;
+
+        window.slyApp.flow.nodes[2].data.queueInfo.pending = window.slyApp.flow.nodes[2].data.queueInfo.pending + 1;
+        window.slyApp.flow.nodes[2].data.queueInfo.annotating = window.slyApp.flow.nodes[2].data.queueInfo.annotating + 1;
+        window.slyApp.flow.nodes[2].data.queueInfo.reviewing = window.slyApp.flow.nodes[2].data.queueInfo.reviewing + 1;
+        window.slyApp.flow.nodes[2].data.queueInfo.finished = window.slyApp.flow.nodes[2].data.queueInfo.finished + 1;
+
+        window.parent.postMessage(JSON.stringify({ action: 'node-update', payload: { nodeId: '1'} }), '*');
+        window.parent.postMessage(JSON.stringify({ action: 'node-update', payload: { nodeId: '2'} }), '*');
+        window.parent.postMessage(JSON.stringify({ action: 'node-update', payload: { nodeId: '3'} }), '*');
+      });
+    </script> -->
   </body>
 </html>

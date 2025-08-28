@@ -59,8 +59,8 @@ Vue.component("sly-flow", {
         this.post(`/${this.id}/node_updated_cb`, data.payload);
       } else if (data.action === "node-removed") {
         this.post(`/${this.id}/node_removed_cb`, data.payload);
-      } else if (data.action === "edge-created") {
-        console.log("+++ edge-created", data.payload);
+      } else if (data.action === "edge-added") {
+        console.log("+++ edge-added", data.payload);
         this.post(`/${this.id}/edge_added_cb`, data.payload);
       } else if (data.action === "edge-removed") {
         this.post(`/${this.id}/edge_removed_cb`, data.payload);

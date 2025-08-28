@@ -169,11 +169,9 @@ class VueFlow(Widget):
             try:
                 payload = _get_payload(node_data)
                 node_id = payload.get("nodeId", None)
+                self.remove_edges_by_node_id(node_id)
                 node = self.pop_node(node_id)
                 func(node)
-                VueFlow.notify_ui(
-                    widget_id=self.widget_id, action="node-remove", data={"nodeIds": [node_id]}
-                )
             except Exception as e:
                 logger.error(f"Error in node_removed handler: {repr(e)}", exc_info=True)
 
@@ -266,6 +264,9 @@ class VueFlow(Widget):
                 node = self.nodes.pop(idx)
                 StateJson()[self.widget_id]["nodes"].pop(idx)
                 StateJson().send_changes()
+                VueFlow.notify_ui(
+                    widget_id=self.widget_id, action="node-remove", data={"nodeIds": [node_id]}
+                )
                 return node
         else:
             logger.warning(f"Node with ID '{node_id}' not found.")
@@ -309,12 +310,12 @@ class VueFlow(Widget):
                     StateJson()[self.widget_id]["edges"].pop(idx)
                     StateJson().send_changes()
                     removed_edges.append(edge)
+                    data = {"edgeIds": [edge.id for edge in removed_edges]}
+                    VueFlow.notify_ui(widget_id=self.widget_id, action="edge-remove", data=data)
                     break
             else:
                 logger.warning(f"Edge with ID '{edge_id}' not found.")
 
-        data = {"edgeIds": [edge.id for edge in removed_edges]}
-        VueFlow.notify_ui(widget_id=self.widget_id, action="edge-remove", data=data)
         return removed_edges
 
     def remove_edges_by_node_id(self, node_id: str) -> None:
@@ -356,8 +357,10 @@ class VueFlow(Widget):
             if node_json["id"] == node.id:
                 StateJson()[node.parent_id]["nodes"][idx] = node.to_json()
                 StateJson().send_changes()
+                VueFlow.notify_ui(
+                    widget_id=node.parent_id, action="node-update", data={"nodeId": node.id}
+                )
                 break
-        VueFlow.notify_ui(widget_id=node.parent_id, action="node-update", data={"nodeId": node.id})
 
     @staticmethod
     def notify_ui(widget_id: str, action: str, data: Dict = None) -> None:

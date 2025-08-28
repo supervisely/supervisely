@@ -77,7 +77,7 @@ class Node:
                 prop["value"] = value
                 prop["link"] = {"url": link} if link else None
                 prop["highlight"] = highlight if highlight is not None else False
-
+                self.update_node(self)
                 return
         # If property not found, add it
         new_prop = {
