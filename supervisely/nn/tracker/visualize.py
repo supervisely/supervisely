@@ -498,6 +498,7 @@ def visualize(
         show_classes: Whether to display classes.
         show_trajectories: Whether to display trajectories.
         box_thickness: Thickness of bounding boxes.
+        auto_color: Use default color palette.
     """
     visualizer = TrackingVisualizer(
         show_labels=show_labels, 
