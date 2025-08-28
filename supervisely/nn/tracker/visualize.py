@@ -28,6 +28,7 @@ class TrackingVisualizer:
         trajectory_length: int = 30,
         codec: str = "mp4",
         output_fps: float = 30.0,
+        auto_color: bool = True,
 
     ):
         """
@@ -44,6 +45,7 @@ class TrackingVisualizer:
             trajectory_length: How many points to keep in trajectory.
             codec: Output video codec.
             output_fps: Output video framerate.
+            auto_color: Use default color palette.
         """
         # Visualization settings
         self.show_labels = show_labels
@@ -56,6 +58,7 @@ class TrackingVisualizer:
         self.text_scale = text_scale
         self.text_thickness = text_thickness
         self.trajectory_length = trajectory_length
+        self.auto_color = auto_color
 
         # Output settings
         self.codec = codec
@@ -242,13 +245,21 @@ class TrackingVisualizer:
                 bbox = (rect.left, rect.top, rect.right, rect.bottom)
                 
                 if track_id not in self.track_colors:
-                    color = figure.video_object.obj_class.color
-                    if not color:
+                    if self.auto_color:
+                        # auto-color override everything
                         color = self._get_track_color(track_id)
                     else:
-                        # convert rgb to bgr
-                        color = color[::-1]
+                        # try to use annotation color
+                        color = figure.video_object.obj_class.color
+                        if color:
+                            # convert rgb → bgr
+                            color = color[::-1]
+                        else:
+                            # fallback to auto-color if annotation missing
+                            color = self._get_track_color(track_id)
+
                     self.track_colors[track_id] = color
+
                 
                 self.tracks_by_frame[frame_idx].append((track_id, bbox, class_name))
         
@@ -472,6 +483,8 @@ def visualize(
     show_labels: bool = True,
     show_classes: bool = True,
     show_trajectories: bool = True,
+    box_thickness: int = 2,
+    auto_color: bool = True,
     **kwargs
 ) -> None:
     """
@@ -484,11 +497,14 @@ def visualize(
         show_labels: Whether to display labels.
         show_classes: Whether to display classes.
         show_trajectories: Whether to display trajectories.
+        box_thickness: Thickness of bounding boxes.
     """
     visualizer = TrackingVisualizer(
         show_labels=show_labels, 
         show_classes=show_classes, 
         show_trajectories=show_trajectories,
+        box_thickness=box_thickness,
+        auto_color=auto_color,
         **kwargs
     )
 
