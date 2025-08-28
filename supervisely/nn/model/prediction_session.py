@@ -71,7 +71,7 @@ class PredictionSession:
         tracking_config: dict = None,
         **kwargs: dict,
     ): 
-                  
+
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
             sum(
@@ -90,10 +90,10 @@ class PredictionSession:
             == 1
         ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
 
-        
         self._iterator = None
         self._base_url = url
         self.inference_request_uuid = None
+        self.continue_inference_request = False
         self.input = input
         self.api = api
 
@@ -101,6 +101,9 @@ class PredictionSession:
         self._model_meta = None
         self.final_result = None
 
+        if "inference_request_uuid" in kwargs:
+            self.continue_inference_request = True
+            self.inference_request_uuid = kwargs.pop("inference_request_uuid")
         if "stride" in kwargs:
             kwargs["step"] = kwargs["stride"]
         if "start_frame" in kwargs:
@@ -115,12 +118,12 @@ class PredictionSession:
         self.inference_settings = {
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
         }
-        
+
         if tracking is True:
             model_info = self._get_session_info()
             if not model_info.get("tracking_on_videos_support", False):
                 raise ValueError("Tracking is not supported by this model")
-            
+
             if tracking_config is None:
                 self.tracker = "botsort"
                 self.tracker_settings = {}
@@ -286,7 +289,7 @@ class PredictionSession:
         if self.api is not None:
             return self.api.token
         return env.api_token(raise_not_found=False)
-    
+
     def _get_json_body(self):
         body = {"state": {}, "context": {}}
         if self.inference_request_uuid is not None:
@@ -298,7 +301,7 @@ class PredictionSession:
         if "model_prediction_suffix" in self.kwargs:
             body["state"]["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return body
-    
+
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
         if kwargs.get("headers") is None:
             kwargs["headers"] = {}
@@ -336,7 +339,7 @@ class PredictionSession:
         method = "get_session_info"
         r = self._post(method, json=self._get_json_body())
         return r.json()
-    
+
     def _get_inference_progress(self):
         method = "get_inference_progress"
         r = self._post(method, json=self._get_json_body())
@@ -367,6 +370,8 @@ class PredictionSession:
 
     def _on_infernce_end(self):
         if self.inference_request_uuid is None:
+            return
+        if self.continue_inference_request:
             return
         self._clear_inference_request()
 
@@ -507,7 +512,7 @@ class PredictionSession:
         return pending_results
 
     def _start_inference(self, method, **kwargs):
-        if self.inference_request_uuid:
+        if self.inference_request_uuid and not self.continue_inference_request:
             raise RuntimeError(
                 "Inference is already running. Please stop it before starting a new one."
             )

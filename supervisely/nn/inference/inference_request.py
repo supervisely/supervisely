@@ -6,12 +6,15 @@ import traceback
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from functools import partial, wraps
-from typing import Any, Dict, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union
 
 from supervisely._utils import rand_str
 from supervisely.nn.utils import get_gpu_usage, get_ram_usage
 from supervisely.sly_logger import logger
 from supervisely.task.progress import Progress
+
+if TYPE_CHECKING:
+    from supervisely.nn.tracker.base_tracker import BaseTracker
 
 
 def generate_uuid(self) -> str:
@@ -57,6 +60,8 @@ class InferenceRequest:
         self._created_at = time.monotonic()
         self._updated_at = self._created_at
         self._finished = False
+        self.tracker: BaseTracker = None
+        self.tracking_state = {}
 
         self.global_progress = None
         self.global_progress_total = 1
@@ -166,6 +171,28 @@ class InferenceRequest:
 
     def is_finished(self):
         return self._finished
+
+    def continue_if_finished(self):
+        if not self.is_finished():
+            return
+        with self._lock:
+            self._is_finished = True
+            self._stopped.clear()
+            self._exception = None
+            self._final_result = None
+            self._pending_results = []
+            self._stage = InferenceRequest.Stage.PREPARING
+            self.progress = Progress(
+                message=self._stage,
+                total_cnt=1,
+                need_info_log=True,
+                update_task_progress=False,
+                log_extra={"inference_request_uuid": self._uuid},
+            )
+            self.global_progress = None
+            self.global_progress_total = 1
+            self.global_progress_current = 0
+            self._updated()
 
     def is_expired(self):
         if self._ttl is None:
@@ -330,6 +357,11 @@ class InferenceRequestsManager:
                 inference_request.stop()
                 inference_request._ttl = wait_time
                 inference_request._updated()
+
+    def has(self, inference_request_uuid: str) -> bool:
+        if inference_request_uuid is None:
+            return False
+        return inference_request_uuid in self._inference_requests
 
     def get(self, inference_request_uuid: str):
         if inference_request_uuid is None:

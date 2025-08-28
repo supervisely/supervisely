@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import partial, wraps
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.request import urlopen
 
 import _pickle
@@ -100,6 +100,9 @@ try:
 except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
+
+if TYPE_CHECKING:
+    from supervisely.nn.tracker.base_tracker import BaseTracker
 
 
 @dataclass
@@ -193,7 +196,6 @@ class Inference:
         self._task_id = None
         self._sliding_window_mode = sliding_window_mode
         self._autostart_delay_time = 5 * 60  # 5 min
-        self._tracker = None
         self._hardware: str = None
         if custom_inference_settings is None:
             if self.INFERENCE_SETTINGS is not None:
@@ -1269,16 +1271,16 @@ class Inference:
 
     def get_classes(self) -> List[str]:
         return self.classes
-    
+
     def _tracker_init(self, tracker: str, tracker_settings: dict):
         # Check if tracking is supported for this model
         info = self.get_info()
         tracking_support = info.get("tracking_on_videos_support", False)
-        
+
         if not tracking_support:
-            logger.debug("Tracking is not supported for this model")
+            logger.warning("Tracking is not supported for this model")
             return None
-        
+
         if tracker == "botsort":
             from supervisely.nn.tracker import BotSortTracker
             device = tracker_settings.get("device", self.device)
@@ -1288,7 +1290,6 @@ class Inference:
             if tracker is not None:
                 logger.warning(f"Unknown tracking type: {tracker}. Tracking is disabled.")
             return None
-
 
     def get_info(self) -> Dict[str, Any]:
         num_classes = None
@@ -1855,12 +1856,10 @@ class Inference:
         end_frame_index = state.get("endFrameIndex", None)
         duration = state.get("duration", None)
         frames_count = state.get("framesCount", None)
-        tracking = state.get("tracker", None)
         direction = state.get("direction", "forward")
         direction = 1 if direction == "forward" else -1
 
         frames_reader = VideoFrameReader(path)
-        video_height, video_witdth = frames_reader.frame_size()
         if frames_count is not None:
             n_frames = frames_count
         elif end_frame_index is not None:
@@ -1871,8 +1870,26 @@ class Inference:
         else:
             n_frames = frames_reader.frames_count()
 
-        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
-        
+        tracker = None
+        if state.get("tracker", None) is not None:
+            tracker = inference_request.tracker
+            if (
+                inference_request.tracking_state.get("last_frame_index")
+                != start_frame_index - direction * step
+            ):
+                tracker = None
+            if inference_request.tracking_state.get("direction") != direction:
+                tracker = None
+            if inference_request.tracking_state.get("step") != step:
+                tracker = None
+            if tracker is None:
+                tracker = self._tracker_init(
+                    state.get("tracker", None), state.get("tracker_settings", {})
+                )
+                inference_request.tracker = tracker
+                inference_request.tracking_state["direction"] = direction
+                inference_request.tracking_state["step"] = step
+
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
 
@@ -1896,32 +1913,32 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            
-            if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(frames, anns)
-                
+
+            if tracker is not None:
+                anns = self._apply_tracker_to_anns(tracker, frames, anns)
+                inference_request.tracking_state["last_frame_index"] = batch[-1]
+
             predictions = [
                 Prediction(ann, model_meta=self.model_meta, frame_index=frame_index)
                 for ann, frame_index in zip(anns, batch)
             ]
-            
+
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-            
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if self._tracker is not None:
+        if tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            
-            video_ann_json = self._tracker.video_annotation.to_json()
+
+            video_ann_json = tracker.video_annotation.to_json()
             inference_request.done()
         result = {"ann": results, "video_ann": video_ann_json}
         inference_request.final_result = result.copy()
         return video_ann_json
-        
 
     def _inference_image_ids(
         self,
@@ -2087,7 +2104,6 @@ class Inference:
         frames_count = get_value_for_keys(
             state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
         )
-        tracking = state.get("tracker", None)
         direction = state.get("direction", "forward")
         direction = 1 if direction == "forward" else -1
 
@@ -2101,8 +2117,26 @@ class Inference:
         else:
             n_frames = video_info.frames_count
 
-        self._tracker = self._tracker_init(state.get("tracker", None), state.get("tracker_settings", {}))
-        
+        tracker = None
+        if state.get("tracker", None) is not None:
+            tracker = inference_request.tracker
+            if (
+                inference_request.tracking_state.get("last_frame_index")
+                != start_frame_index - direction * step
+            ):
+                tracker = None
+            if inference_request.tracking_state.get("direction") != direction:
+                tracker = None
+            if inference_request.tracking_state.get("step") != step:
+                tracker = None
+            if tracker is None:
+                tracker = self._tracker_init(
+                    state.get("tracker", None), state.get("tracker_settings", {})
+                )
+                inference_request.tracker = tracker
+                inference_request.tracking_state["direction"] = direction
+                inference_request.tracking_state["step"] = step
+
         logger.debug(
             f"Video info:",
             extra=dict(
@@ -2137,10 +2171,11 @@ class Inference:
                 source=frames,
                 settings=inference_settings,
             )
-            
-            if self._tracker is not None:
-                anns = self._apply_tracker_to_anns(frames, anns)
-                
+
+            if tracker is not None:
+                anns = self._apply_tracker_to_anns(tracker, frames, anns)
+                inference_request.tracking_state["last_frame_index"] = batch[-1]
+
             predictions = [
                 Prediction(
                     ann,
@@ -2155,14 +2190,14 @@ class Inference:
             for pred, this_slides_data in zip(predictions, slides_data):
                 pred.extra_data["slides_data"] = this_slides_data
             batch_results = self._format_output(predictions)
-                    
+
             inference_request.add_results(batch_results)
             inference_request.done(len(batch_results))
             logger.debug(f"Frames {batch[0]}-{batch[-1]} done.")
         video_ann_json = None
-        if self._tracker is not None:
+        if tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = self._tracker.video_annotation.to_json()
+            video_ann_json = tracker.video_annotation.to_json()
             inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
@@ -3141,8 +3176,24 @@ class Inference:
             logger.debug(f"Received a request to 'inference_video_id'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
+            inference_request = None
+            inference_request_uuid = state.get("inference_request_uuid", None)
+            if inference_request_uuid is not None:
+                if not self.inference_requests_manager.has(inference_request_uuid):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Inference request with id {inference_request_uuid} not found",
+                    )
+                inference_request = self.inference_requests_manager.get(inference_request_uuid)
+                if not inference_request.is_finished():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Inference request with id {inference_request_uuid} is not finished yet",
+                    )
+                inference_request.continue_if_finished()
+
             inference_request, future = self.inference_requests_manager.schedule_task(
-                self._inference_video_id, api, state
+                self._inference_video_id, api, state, inference_request=inference_request
             )
             future.result()
             results = {"ann": inference_request.pop_pending_results()}
@@ -3169,7 +3220,23 @@ class Inference:
             video_source = files[0].file
             file_size = file.size
 
-            inference_request = self.inference_requests_manager.create()
+            inference_request = None
+            inference_request_uuid = state.get("inference_request_uuid", None)
+            if inference_request_uuid is not None:
+                if not self.inference_requests_manager.has(inference_request_uuid):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Inference request with id {inference_request_uuid} not found",
+                    )
+                inference_request = self.inference_requests_manager.get(inference_request_uuid)
+                if not inference_request.is_finished():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Inference request with id {inference_request_uuid} is not finished yet",
+                    )
+                inference_request.continue_if_finished()
+            if inference_request is None:
+                inference_request = self.inference_requests_manager.create()
             inference_request.set_stage(InferenceRequest.Stage.PREPARING, 0, file_size)
 
             video_source.read = progress_wrapper(
@@ -3204,8 +3271,23 @@ class Inference:
             logger.debug("Received a request to 'inference_video_id_async'", extra={"state": state})
             self.validate_inference_state(state)
             api = self.api_from_request(request)
+            inference_request = None
+            inference_request_uuid = state.get("inference_request_uuid", None)
+            if inference_request_uuid is not None:
+                if not self.inference_requests_manager.has(inference_request_uuid):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Inference request with id {inference_request_uuid} not found",
+                    )
+                inference_request = self.inference_requests_manager.get(inference_request_uuid)
+                if not inference_request.is_finished():
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Inference request with id {inference_request_uuid} is not finished yet",
+                    )
+                inference_request.continue_if_finished()
             inference_request, _ = self.inference_requests_manager.schedule_task(
-                self._inference_video_id, api, state
+                self._inference_video_id, api, state, inference_request=inference_request
             )
             return {
                 "message": "Inference has started.",
@@ -4135,20 +4217,22 @@ class Inference:
                 self._args.draw,
             )
 
-    def _apply_tracker_to_anns(self, frames: List[np.ndarray], anns: List[Annotation]):
+    def _apply_tracker_to_anns(
+        self, tracker: BaseTracker, frames: List[np.ndarray], anns: List[Annotation]
+    ):
         updated_anns = []
         for frame, ann in zip(frames, anns):
-            matches = self._tracker.update(frame, ann)
+            matches = tracker.update(frame, ann)
             track_ids = [match["track_id"] for match in matches]
             tracked_labels = [match["label"] for match in matches]
-            
+
             filtered_annotation = ann.clone(
                 labels=tracked_labels,
                 custom_data=track_ids
             )
             updated_anns.append(filtered_annotation)
         return updated_anns
-                
+
     def _add_workflow_input(self, model_source: str, model_files: dict, model_info: dict):
         if model_source == ModelSource.PRETRAINED:
             checkpoint_url = model_info["meta"]["model_files"]["checkpoint"]
