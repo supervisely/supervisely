@@ -1,4 +1,5 @@
 from typing import Callable, Dict, List, Optional, Union
+from requests.exceptions import HTTPError
 
 import supervisely.io.env as env
 from supervisely.api.api import Api
@@ -523,7 +524,14 @@ class SelectCollection(Widget):
         if not project_id:
             return
 
-        for collection in self._api.entities_collection.get_list(project_id):
+        try:
+            collections = self._api.entities_collection.get_list(project_id)
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                return
+            raise e
+
+        for collection in collections:
             self._collections_names_map[collection.name] = collection
             self._collections_ids_map[collection.id] = collection
 
