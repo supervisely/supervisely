@@ -28,7 +28,7 @@ class TrainingProjectNode(ProjectNode):
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "train_val_split_finished": self.update,
+            "train_val_split_finished": self.refresh,
         }
 
     def _available_publish_methods(self):

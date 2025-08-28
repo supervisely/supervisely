@@ -96,6 +96,7 @@ class EventMixin:
                 for callback in subsctions:
                     PubSubAsync().unsubscribe(topic=topic, callback=callback, source=source)
 
+
 # ------------------------------------------------------------------
 # Base Node (all nodes) --------------------------------------------
 # ------------------------------------------------------------------
@@ -161,7 +162,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
             # modal=modal,
             **kwargs,
         )
-    
+
     def configure_automation(self, *args, **kwargs):
         """Method to call after all nodes are created and subscribed to events."""
         pass
@@ -250,7 +251,7 @@ class BaseCardNode(BaseNode):
     def show_in_progress_badge(self, key: Optional[str] = None):
         """Updates the card to show that the main task is in progress."""
         key = key or "In progress"
-        self.update_badge_by_key(key=key, label="⏳", plain=True)
+        self.update_badge_by_key(key=key, label="in progress", badge_type="info")
 
     def hide_in_progress_badge(self, key: Optional[str] = None):
         """Hides the in-progress badge from the card."""
@@ -260,7 +261,7 @@ class BaseCardNode(BaseNode):
     # Finished Badge Methods -------------------------------------------
     def show_finished_badge(self):
         """Updates the card to show that main task is finished."""
-        self.update_badge_by_key(key="Finished", label="✅", plain=True)
+        self.update_badge_by_key(key="Finished", label="done", badge_type="success")
 
     def hide_finished_badge(self):
         """Hides the finished badge from the card."""
@@ -269,7 +270,7 @@ class BaseCardNode(BaseNode):
     # Failed Badge Methods ---------------------------------------------
     def show_failed_badge(self):
         """Updates the card to show that the main task has failed."""
-        self.update_badge_by_key(key="Failed", label="❌", plain=True)
+        self.update_badge_by_key(key="Failed", label="error", badge_type="error")
 
     def hide_failed_badge(self):
         """Hides the failed badge from the card."""

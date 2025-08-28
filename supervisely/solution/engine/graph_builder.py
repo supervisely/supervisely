@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from supervisely.app.widgets import Dialog, VueFlow
-from supervisely.solution.base_node import BaseNode, BaseCardNode
+from supervisely.solution.base_node import BaseCardNode, BaseNode
 from supervisely.solution.engine.config_parser import YAMLParser
 
 
@@ -56,13 +56,23 @@ class GraphBuilder(VueFlow):
         @self.node_added
         def _node_added(node: BaseNode):
             print(f"Node added: {node.id}")
+
         @self.node_removed
         def _node_removed(node: BaseNode):
-            print(f"Node removed: {node.id}")
             node.disable_publishing(node.id)
             for source in node._sources:
                 node.disable_subscriptions(source)
-            self.remove_edges_by_node_id(node.id)
+            print(f"Node removed: {node.id}")
+
+        @self.edge_removed
+        def _edge_removed(edge):
+            # TODO: implement
+            print(f"Edge removed: {edge.id}")
+
+        @self.edge_added
+        def _edge_added(edge):
+            # TODO: implement
+            print(f"Edge added: {edge.id}")
 
     def load_json(self, json_data: Union[str, Path]) -> None:
         if isinstance(json_data, (str, Path)):

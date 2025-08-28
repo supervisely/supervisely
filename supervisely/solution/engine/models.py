@@ -91,3 +91,21 @@ class LabelingQueuePerformanceMessage(Message):
     """Labeling queue performance event message."""
 
     project_id: int = Field(..., description="ID of the project")
+
+
+class RegisterExperimentMessage(Message):
+    """Register experiment event message."""
+
+    model_path: str = Field(..., description="Path to the model to register")
+
+
+class ReevaluateModelMessage(Message):
+    """Re-evaluate model event message."""
+
+    model_path: str = Field(..., description="Path to the model to re-evaluate")
+
+
+class EvaluationFinishedMessage(Message):
+    """Evaluation finished event message."""
+
+    eval_dir: str = Field(..., description="Directory where evaluation results are stored")

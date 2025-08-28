@@ -49,7 +49,7 @@ class ProjectNode(BaseProjectNode):
 
         # --- refresh ------------------------------------------------------------
         self.refresh_interval = refresh_interval
-        self.update()
+        self.refresh()
         # self.apply_automation(sec=self.refresh_interval)
 
     def configure_automation(self, *args, **kwargs):
@@ -141,7 +141,7 @@ class ProjectNode(BaseProjectNode):
         else:
             self.update_preview([preview_url], [items_count or 0])
 
-    def update(
+    def refresh(
         self,
         message: Union[
             ImportFinishedMessage,

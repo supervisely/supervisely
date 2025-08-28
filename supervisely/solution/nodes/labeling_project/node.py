@@ -31,7 +31,7 @@ class LabelingProjectNode(ProjectNode):
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "sample_finished": self.update,
+            "sample_finished": self.refresh,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
@@ -62,6 +62,6 @@ class LabelingProjectNode(ProjectNode):
         """Sends a message indicating that the project has been updated."""
         return message
 
-    def update(self, message: Optional[SampleFinishedMessage] = None) -> None:
-        super().update(message)
+    def refresh(self, message: Optional[SampleFinishedMessage] = None) -> None:
+        super().refresh(message)
         self.send_project_updated_message(message)

@@ -58,7 +58,7 @@ class InputProjectNode(ProjectNode):
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "import_finished": self.update,
+            "import_finished": self.refresh,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
@@ -74,7 +74,7 @@ class InputProjectNode(ProjectNode):
     def send_check_embeddings_message(self):
         pass
 
-    def update(self, message: Optional[ImportFinishedMessage] = None) -> None:
-        super().update(message)
+    def refresh(self, message: Optional[ImportFinishedMessage] = None) -> None:
+        super().refresh(message)
         self.send_project_updated_message()
         self.send_check_embeddings_message()
