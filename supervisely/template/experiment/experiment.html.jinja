@@ -174,6 +174,7 @@ can pass them in the terminal before running the script:
     model = api.nn.deploy(
         model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
         device="cuda:0", # or "cpu"
+        workspace_id={{ experiment.project.workspace_id }}
     )
 
     # 3. Predict
@@ -321,49 +322,41 @@ API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:ta
 
 ## Tracking Objects in Video
 
-You can track objects in video using `boxmot` library.
-[BoxMot](https://github.com/mikel-brostrom/boxmot){:target="_blank"} is a
-third-party library that implements lightweight neural networks for tracking-by-detection task (when the tracking is
-performed on the objects predicted by a separate detector). For `boxmot` models you can use even CPU device.
+Supervisely now supports **tracking-by-detection** out of the box. We leverage a lightweight tracking algorithm (such as [BoT-SORT](https://github.com/NirAharon/BoT-SORT){:target="_blank"}) which identifies the unique objects across video frames and assigns IDs to them. This allows us to connect separate detections from different frames into a single track for each object.
 
-First, install [BoxMot](https://github.com/mikel-brostrom/boxmot){:target="_blank"}:
-
-```bash
-pip install boxmot
-```
-
-Supervisely SDK has the `track()` method from `supervisely.nn.tracking` which allows you to apply `boxmot` models
-together with a detector in a single line of code. This method takes two arguments: a `boxmot` tracker, and a
-`PredictionSession` of a detector. It returns a `sly.VideoAnnotation` with the tracked objects.
+To apply tracking via API, first, deploy your detection model or connect to it, and then use the `predict()` method with `tracking=True` parameter. You can also specify tracking configuration parameters by passing `tracking_config={...}` with your custom settings.
 
 ```python
 import supervisely as sly
-from supervisely.nn.tracking import track
-import boxmot
-from pathlib import Path
 
-# Deploy a detector
-detector = api.nn.deploy(
-    model="{{ experiment.model.framework }}/{{ experiment.model.name }}",
-    device="cuda:0", # Use GPU for detection
+api = sly.Api()
+
+# Deploy your model
+model = api.nn.deploy(
+    model="{{ experiment.paths.artifacts_dir.path }}/checkpoints/{{ experiment.training.checkpoints.pytorch.name }}",
+    device="cuda",
+    workspace_id={{ experiment.project.workspace_id }},
 )
 
-# Load BoxMot tracker
-tracker = boxmot.BotSort(
-    reid_weights=Path('osnet_x0_25_msmt17.pt'),
-    device="cpu", # Use CPU for tracking
+# Apply tracking
+predictions = model.predict(
+    video_id=YOUR_VIDEO_ID,  # Video ID in Supervisely
+    tracking=True,
+    tracking_config={
+        "tracker": "botsort",  # botsort is a powerful tracking algorithm used by default
+        # You can pass other tracking parameters here, see the docs for details
+    }
 )
 
-# Track objects in a single line
-video_ann: sly.VideoAnnotation = track(
-    video_id=42,
-    detector=detector,
-    tracker=tracker,
-)
+# Processing results
+for pred in predictions:
+    frame_index = pred.frame_index
+    annotation = pred.annotation
+    track_ids = pred.track_ids
+    print(f"Frame {frame_index}: {len(track_ids)} tracks")
 ```
 
-> For more information, see the section [Tracking Objects in
-Video](https://docs.supervisely.com/neural-networks/overview-1/prediction-api#tracking-objects-in-video){:target="_blank"}.
+> You can also apply trackers in your own code or applications. Read more about this in the docs [Video Object Tracking](https://docs.supervisely.com/neural-networks/overview-1/video-object-tracking){:target="_blank"}.
 
 {% endif %}
 
