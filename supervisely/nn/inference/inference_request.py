@@ -199,6 +199,11 @@ class InferenceRequest:
             return False
         return time.monotonic() - self._updated_at > self._ttl
 
+    def set_ttl(self, ttl: Union[int, None]):
+        with self._lock:
+            self._ttl = ttl
+            self._updated()
+
     def progress_json(self):
         return {
             "message": self.progress.message,

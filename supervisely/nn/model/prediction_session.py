@@ -294,6 +294,8 @@ class PredictionSession:
         body = {"state": {}, "context": {}}
         if self.inference_request_uuid is not None:
             body["state"]["inference_request_uuid"] = self.inference_request_uuid
+        if "inference_request_ttl" in self.kwargs:
+            body["state"]["inference_request_ttl"] = self.kwargs["inference_request_ttl"]
         if self.inference_settings:
             body["state"]["settings"] = self.inference_settings
         if self.api_token is not None:
