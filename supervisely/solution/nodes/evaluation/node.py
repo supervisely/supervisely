@@ -11,7 +11,6 @@ from supervisely.app.widgets import Button, Dialog
 from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
     EvaluationFinishedMessage,
-    ReevaluateModelMessage,
     TrainingFinishedMessage,
 )
 from supervisely.solution.nodes.evaluation.gui import EvaluationReportGUI
@@ -38,6 +37,7 @@ class EvaluationNode(BaseCardNode):
         project_id = project_id or env.project_id()
         self.project = self._api.project.get_info_by_id(project_id)
         self._model_path = None
+        self._last_task_id = None
         self._collection_id = None
         self._model = None
         self._session_info = {}
@@ -123,12 +123,13 @@ class EvaluationNode(BaseCardNode):
         }
 
     def _process_incomming_message(self, message: TrainingFinishedMessage):
+        self._last_task_id = message.task_id
         self._model_path = self._extract_experiment_info(message.task_id)
         if self._model_path:
             self.run()
 
     def _send_evaluation_finished_message(self, res_dir: str) -> EvaluationFinishedMessage:
-        return EvaluationFinishedMessage(eval_dir=res_dir)
+        return EvaluationFinishedMessage(eval_dir=res_dir, task_id=self._last_task_id)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------

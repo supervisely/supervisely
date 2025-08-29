@@ -31,6 +31,7 @@ class AllExperimentsNode(LinkNode):
         self._best_model = None
         self._best_model_task_id = None
         self._project_id = project_id or env_project_id()
+        self._last_task_id = None
         # self._update_link()
 
         title = kwargs.pop("title", self.title)
@@ -88,7 +89,9 @@ class AllExperimentsNode(LinkNode):
         project_id = self._extract_project_id(message.task_id)
         if project_id is not None:
             self._update_link(project_id)
-        self._send_model_to_evaluation(message.task_id)
+        if self._last_task_id is not None:
+            self._send_model_to_evaluation(message.task_id)
+        self._last_task_id = message.task_id
 
     def _send_model_to_evaluation(self, task_id: int) -> TrainingFinishedMessage:
         return TrainingFinishedMessage(task_id=task_id)
