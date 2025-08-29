@@ -101,7 +101,12 @@ class EventMixin:
 # Base Node (all nodes) --------------------------------------------
 # ------------------------------------------------------------------
 class BaseNode(Widget, VueFlow.Node, EventMixin):
-    node_type = "base"
+    NODE_TYPE = "base"
+    TITLE = None
+    DESCRIPTION = None
+    ICON = None
+    ICON_COLOR = None
+    ICON_BG_COLOR = None
 
     def __init__(
         self,
@@ -173,7 +178,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
     # ------------------------------------------------------------------
     def _create_settings(self, *args, **kwargs) -> NodeSettings:
         return NodeSettings(
-            type=self.node_type,
+            type=self.NODE_TYPE,
             tooltip=self._create_tooltip(*args, **kwargs),
             icon=self._create_icon(*args, **kwargs),
             queue_info=self._create_queue_info(*args, **kwargs),
@@ -236,7 +241,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
 # ------------------------------------------------------------------
 # SolutionCardNode
 class BaseCardNode(BaseNode):
-    node_type = "action"
+    NODE_TYPE = "action"
 
     # Automation Badge Methods -----------------------------------------
     def show_automation_badge(self) -> None:
@@ -282,7 +287,7 @@ class BaseCardNode(BaseNode):
 # ------------------------------------------------------------------
 # SolutionProjectNode
 class BaseProjectNode(BaseNode):
-    node_type = "project"
+    NODE_TYPE = "project"
 
     # Preview Methods --------------------------------------------------
     def update_preview(self, imgs: List[str], counts: List[int]):
@@ -360,7 +365,7 @@ class BaseProjectNode(BaseNode):
 # ------------------------------------------------------------------
 # SolutionQueueNode
 class BaseQueueNode(BaseNode):
-    node_type = "queue"
+    NODE_TYPE = "queue"
 
     def _create_queue_info(self, *args, **kwargs) -> Optional[NodeQueueInfo]:
         return NodeQueueInfo()

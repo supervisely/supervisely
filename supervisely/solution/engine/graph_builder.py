@@ -33,16 +33,18 @@ class GraphBuilder(VueFlow):
                 module_path = "supervisely.solution.nodes"
                 module = importlib.import_module(module_path)
                 node_class: BaseNode = getattr(module, class_name)
+                if node_class.TITLE is None:
+                    continue
                 node_info = {
-                    "type": node_class.node_type,
+                    "type": node_class.NODE_TYPE,
                     "className": f"{module_path}.{class_name}",
-                    "label": node_class.title,
+                    "label": node_class.TITLE,
                 }
-                if hasattr(node_class, "icon") and node_class.icon:
+                if node_class.ICON:
                     node_info["icon"] = {
-                        "name": node_class.icon,
-                        "color": node_class.icon_color,
-                        "backgroundColor": node_class.icon_bg_color,
+                        "name": node_class.ICON,
+                        "color": node_class.ICON_COLOR,
+                        "backgroundColor": node_class.ICON_BG_COLOR,
                     }
 
                 sidebar_nodes.append(node_info)

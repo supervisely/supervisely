@@ -91,7 +91,7 @@ class CompareModelsNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _get_tooltip_buttons(self):
         if not hasattr(self, "tooltip_buttons"):
-            self.tooltip_buttons = [self.gui.run_btn, self.history_btn]
+            self.tooltip_buttons = [self.gui.run_btn, self.history.history_btn]
         return self.tooltip_buttons
 
     def _update_automation_properties(self, enable: bool):
