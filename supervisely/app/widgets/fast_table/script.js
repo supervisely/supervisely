@@ -17,7 +17,7 @@ Vue.component('fast-table', {
               style="flex-grow: 1"
             >
               <slot name="header-left-side-start" />
-              <div class="relative w-full md:max-w-[14rem]">
+              <div v-if="settings.searchPosition !== 'right'" class="relative w-full md:max-w-[14rem]">
                 <i class="zmdi zmdi-search h-4 absolute top-2 left-2.5 opacity-50" />
                 <i
                   v-if="search"
@@ -34,6 +34,22 @@ Vue.component('fast-table', {
                 >
               </div>
               <slot name="header-left-side-end" />
+            </div>
+            <div v-if="settings.searchPosition === 'right'" class="relative w-full md:max-w-[14rem]">
+              <i class="zmdi zmdi-search h-4 absolute top-2 left-2.5 opacity-50" />
+              <i
+                v-if="search"
+                class="zmdi zmdi-close h-4 absolute top-2.5 right-3 opacity-50 cursor-pointer"
+                @click="searchChanged('')"
+              />
+              <input
+                :value="search"
+                type="text"
+                :placeholder="\`\${name ? \`Search for \${name}...\` : 'Search'}\`"
+                class="text-sm rounded-md px-3 py-1.5 text-gray-900 shadow-sm placeholder:text-gray-400 border border-slate-200 w-full pl-8 bg-slate-50"
+                @input="searchChanged($event.target.value)"
+                @keydown.esc="searchChanged('')"
+              >
             </div>
             <div
               v-if="data && data.length"
@@ -354,6 +370,7 @@ Vue.component('fast-table', {
     settings() {
       const defaultSettings = {
         showHeaderControls: true,
+        searchPosition: 'left',
       };
       return {
         ...defaultSettings,

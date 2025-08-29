@@ -142,6 +142,7 @@ class FastTable(Widget):
         header_left_content: Optional[Widget] = None,
         header_right_content: Optional[Widget] = None,
         max_selected_rows: Optional[int] = None,
+        search_position: Optional[Literal["left", "right"]] = None,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -181,6 +182,8 @@ class FastTable(Widget):
         self._header_left_content = header_left_content
         self._header_right_content = header_right_content
         self._max_selected_rows = max_selected_rows
+        acceptable_search_positions = ["left", "right"]
+        self._search_position = search_position if search_position in acceptable_search_positions else "left"
 
         # table_options
         self._page_size = page_size
@@ -279,7 +282,8 @@ class FastTable(Widget):
                 "fixColumns": self._fix_columns,
                 "isRadio": self._is_radio,
                 "isRowSelectable": self._is_selectable,
-                "maxSelectedRows": self._max_selected_rows
+                "maxSelectedRows": self._max_selected_rows,
+                "searchPosition": self._search_position
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
