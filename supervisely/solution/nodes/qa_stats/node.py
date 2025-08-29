@@ -22,7 +22,6 @@ class QAStatsNode(LinkNode):
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
-        self.link = link
         self._click_handled = True
         super().__init__(
             title=title,
