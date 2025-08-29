@@ -28,7 +28,7 @@ class TrackingVisualizer:
         trajectory_length: int = 30,
         codec: str = "mp4",
         output_fps: float = 30.0,
-        color_mode: bool = True,
+        colorize_tracks: bool = True,
 
     ):
         """
@@ -45,7 +45,7 @@ class TrackingVisualizer:
             trajectory_length: How many points to keep in trajectory.
             codec: Output video codec.
             output_fps: Output video framerate.
-            color_mode: Use default color palette.
+            colorize_tracks (bool, default=True): if True, ignore colors from project meta and generate new colors for each tracked object; if False, try to use colors from project meta when possible.
         """
         # Visualization settings
         self.show_labels = show_labels
@@ -58,7 +58,7 @@ class TrackingVisualizer:
         self.text_scale = text_scale
         self.text_thickness = text_thickness
         self.trajectory_length = trajectory_length
-        self.color_mode = color_mode
+        self.colorize_tracks = colorize_tracks
 
         # Output settings
         self.codec = codec
@@ -245,7 +245,7 @@ class TrackingVisualizer:
                 bbox = (rect.left, rect.top, rect.right, rect.bottom)
                 
                 if track_id not in self.track_colors:
-                    if self.color_mode:
+                    if self.colorize_tracks:
                         # auto-color override everything
                         color = self._get_track_color(track_id)
                     else:
@@ -470,7 +470,7 @@ class TrackingVisualizer:
         finally:
             # Always cleanup temporary files
             self._cleanup_temp_directory()
-    
+
     def __del__(self):
         """Cleanup temporary directory on object destruction."""
         self._cleanup_temp_directory()
@@ -484,7 +484,7 @@ def visualize(
     show_classes: bool = True,
     show_trajectories: bool = True,
     box_thickness: int = 2,
-    color_mode: bool = True,
+    colorize_tracks: bool = True,
     **kwargs
 ) -> None:
     """
@@ -498,14 +498,14 @@ def visualize(
         show_classes (bool, default=True): Draw class names for each object.
         show_trajectories (bool, default=True): Render object trajectories across frames.
         box_thickness (int, default=2): Bounding-box line thickness in pixels.
-        color_mode (bool, default=True): True → ignore annotation colors and use the default color palette.; False → try to use colors from annotations when possible.
-    """
+        colorize_tracks (bool, default=True): if True, ignore colors from project meta and generate new colors for each tracked object; if False, try to use colors from project meta when possible.    
+        """
     visualizer = TrackingVisualizer(
         show_labels=show_labels, 
         show_classes=show_classes, 
         show_trajectories=show_trajectories,
         box_thickness=box_thickness,
-        color_mode=color_mode,
+        colorize_tracks=colorize_tracks,
         **kwargs
     )
 
