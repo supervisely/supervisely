@@ -28,7 +28,7 @@ class TrackingVisualizer:
         trajectory_length: int = 30,
         codec: str = "mp4",
         output_fps: float = 30.0,
-        auto_color: bool = True,
+        color_mode: bool = True,
 
     ):
         """
@@ -45,7 +45,7 @@ class TrackingVisualizer:
             trajectory_length: How many points to keep in trajectory.
             codec: Output video codec.
             output_fps: Output video framerate.
-            auto_color: Use default color palette.
+            color_mode: Use default color palette.
         """
         # Visualization settings
         self.show_labels = show_labels
@@ -58,7 +58,7 @@ class TrackingVisualizer:
         self.text_scale = text_scale
         self.text_thickness = text_thickness
         self.trajectory_length = trajectory_length
-        self.auto_color = auto_color
+        self.color_mode = color_mode
 
         # Output settings
         self.codec = codec
@@ -245,7 +245,7 @@ class TrackingVisualizer:
                 bbox = (rect.left, rect.top, rect.right, rect.bottom)
                 
                 if track_id not in self.track_colors:
-                    if self.auto_color:
+                    if self.color_mode:
                         # auto-color override everything
                         color = self._get_track_color(track_id)
                     else:
@@ -484,28 +484,28 @@ def visualize(
     show_classes: bool = True,
     show_trajectories: bool = True,
     box_thickness: int = 2,
-    auto_color: bool = True,
+    color_mode: bool = True,
     **kwargs
 ) -> None:
     """
     Visualize tracking results from either VideoAnnotation or list of Prediction.
 
     Args:
-        predictions: VideoAnnotation or Prediction object.
-        source: Path to video file or frames directory.
-        output_path: Path to save visualization.
-        show_labels: Whether to display labels.
-        show_classes: Whether to display classes.
-        show_trajectories: Whether to display trajectories.
-        box_thickness: Thickness of bounding boxes.
-        auto_color: Use default color palette.
+        predictions (supervisely.VideoAnnotation | List[Prediction]): Tracking data to render; either a Supervisely VideoAnnotation or a list of Prediction objects.
+        source (str | Path): Path to an input video file or a directory of sequential frames (e.g., frame_000001.jpg).
+        output_path (str | Path): Path to the output video file to be created.
+        show_labels (bool, default=True): Draw per-object labels (track IDs).
+        show_classes (bool, default=True): Draw class names for each object.
+        show_trajectories (bool, default=True): Render object trajectories across frames.
+        box_thickness (int, default=2): Bounding-box line thickness in pixels.
+        color_mode (bool, default=True): True → ignore annotation colors and use the default color palette.; False → try to use colors from annotations when possible.
     """
     visualizer = TrackingVisualizer(
         show_labels=show_labels, 
         show_classes=show_classes, 
         show_trajectories=show_trajectories,
         box_thickness=box_thickness,
-        auto_color=auto_color,
+        color_mode=color_mode,
         **kwargs
     )
 

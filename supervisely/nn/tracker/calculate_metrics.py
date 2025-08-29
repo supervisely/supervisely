@@ -2,12 +2,12 @@ import numpy as np
 from collections import defaultdict
 from typing import Dict, List, Union
 
-from scipy.optimize import linear_sum_assignment
+from scipy.optimize import linear_sum_assignment  # pylint: disable=import-error
 
 import supervisely as sly
 from supervisely.video_annotation.video_annotation import VideoAnnotation
 
-import motmetrics as mm
+import motmetrics as mm  # pylint: disable=import-error
 
 class TrackingEvaluator:
     """
@@ -250,8 +250,15 @@ def evaluate(
     iou_threshold: float = 0.5,
 ) -> Dict[str, Union[float, int]]:
     """
-    Convenience function that creates a TrackingEvaluator and runs evaluation.
-    Returns a dictionary of results.
+    Evaluate tracking predictions against ground truth.
+
+    Args:
+        gt_annotation: Ground-truth annotation, an object of class supervisely VideoAnnotation containing reference object tracks.
+        pred_annotation: Predicted annotation, an object of class supervisely VideoAnnotation to be compared against the ground truth.
+        iou_threshold: Minimum Intersection-over-Union required for a detection to be considered a valid match.
+
+    Returns:
+        dict: json with evaluation metrics.
     """
     evaluator = TrackingEvaluator(iou_threshold=iou_threshold)
     return evaluator.evaluate(gt_annotation, pred_annotation)
