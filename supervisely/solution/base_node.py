@@ -138,7 +138,7 @@ class BaseNode(Widget, VueFlow.Node, EventMixin):
         return {}
 
     # ------------------------------------------------------------------
-    # VueFlow Node deserialization --------------------------------------
+    # VueFlow Node deserialization -------------------------------------
     # These methods create the node from JSON data
     # ------------------------------------------------------------------
     @classmethod

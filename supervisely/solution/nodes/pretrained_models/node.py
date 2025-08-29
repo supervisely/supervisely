@@ -1,10 +1,11 @@
 import threading
 import time
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
-from supervisely.app.widgets import Dialog
+from supervisely.app.widgets import Dialog, NewExperiment
+from supervisely.api.project_api import ProjectInfo
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
@@ -12,43 +13,39 @@ from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
 )
-from supervisely.solution.nodes.move_labeled.automation import MoveLabeledAuto
-from supervisely.solution.nodes.move_labeled.gui import MoveLabeledGUI
-from supervisely.solution.nodes.move_labeled.history import MoveLabeledTasksHistory
+from supervisely.solution.nodes.pretrained_models.automation import PretrainedModelsAuto
+from supervisely.solution.nodes.pretrained_models.gui import PretrainedModelsGUI
+from supervisely.solution.nodes.pretrained_models.history import PretrainedModelsTasksHistory
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 
 
-class MoveLabeledNode(BaseCardNode):
-    APP_SLUG = "supervisely-ecosystem/data-commander"
-    """
-    This class is a placeholder for the MoveLabeled node.
-    It is used to move labeled data from one location to another.
-    """
-    title = "Move Labeled Data"
-    description = "Move labeled and accepted images to the Training Project."
-    icon = "mdi mdi-folder-move"
+class PretrainedModelsNode(BaseCardNode):
+    title = "Pretrained Models"
+    description = "Deploy pretrained models."
+    icon = "mdi mdi-robot"
     icon_color = "#1976D2"
     icon_bg_color = "#E3F2FD"
 
     def __init__(
         self,
-        src_project_id: int,
-        dst_project_id: int,
+        project_id: int,
         *args,
         **kwargs,
     ):
 
         # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
-        self.src_project_id = src_project_id
-        self.dst_project_id = dst_project_id
-        self._images_to_move = []
-        self._click_handled = True
+        self.project_id = project_id
+        self.project = self.api.project.get_info_by_id(self.project_id)
 
         # --- core blocks --------------------------------------------------------
-        self.automation = MoveLabeledAuto()
-        self.gui = MoveLabeledGUI()
+        self.automation = PretrainedModelsAuto()
+        self.gui = PretrainedModelsGUI(self.api, self.project)
         self.modal_content = self.gui.widget  # for BaseCardNode
-        self.history = MoveLabeledTasksHistory()
+        self.history = PretrainedModelsTasksHistory(self.api)
+
+        # --- training settings --------------------------------------------------
+        self._train_settings = None
 
         # --- node init ----------------------------------------------------------
         title = kwargs.pop("title", self.title)
@@ -67,22 +64,71 @@ class MoveLabeledNode(BaseCardNode):
             **kwargs,
         )
 
-        @self.click
-        def on_click():
-            self.gui.modal.show()
-
-        @self.gui.run_btn.click
-        def on_run_click():
-            self.gui.modal.hide()
-            self.start_task()
-
         # --- modals -------------------------------------------------------------
         self.modals = [
-            self.gui.modal,
+            self.gui.widget,
             self.automation.modal,
             self.history.modal,
             self.history.logs_modal,
         ]
+
+        @self.click
+        def on_click():
+            self.gui.widget.visible = True
+            # self.gui.modal.show()
+
+        @self.gui.widget.app_started
+        def _on_app_started(app_id: int, model_id: int, task_id: int):
+            self.gui.widget.visible = False
+            self._previous_task_id = task_id
+            self._save_train_settings()
+
+            # add task to tasks history
+            task_info = self.api.task.get_info_by_id(task_id)
+
+            train_collection = self.gui.widget.train_collections
+            train_collection = train_collection[0] if train_collection else None
+            val_collection = self.gui.widget.val_collections
+            val_collection = val_collection[0] if val_collection else None
+
+            images_count = "N/A"
+            if train_collection and val_collection:
+                train_imgs = self.api.entities_collection.get_items(
+                    train_collection, CollectionTypeFilter.DEFAULT
+                )
+                val_imgs = self.api.entities_collection.get_items(
+                    val_collection, CollectionTypeFilter.DEFAULT
+                )
+                images_count = f"train: {len(train_imgs)}, val: {len(val_imgs)}"
+            task = {
+                "task_info": task_info,
+                "model_id": self.gui.widget.model_id,
+                "status": "started",
+                "agent_id": self.gui.widget.agent_id,
+                "classes_count": len(self.gui.widget.classes),
+                "images_count": images_count,
+            }
+            self.history.add_task(task=task)
+
+            self.automation.apply(
+                self._check_train_progress,
+                10,
+                self.automation.CHECK_STATUS_JOB_ID,
+                task_id,
+            )
+            for cb in self._train_started_cb:
+                if not callable(cb):
+                    logger.error(f"Train started callback {cb} is not callable.")
+                    continue
+                try:
+                    if cb.__code__.co_argcount == 3:
+                        cb(app_id, model_id, task_id)
+                    elif cb.__code__.co_argcount == 1:
+                        cb(task_id)
+                    else:
+                        cb()
+                except Exception as e:
+                    logger.error(f"Error in train started callback: {e}")
 
         @self.automation.apply_button.click
         def on_automate_click():
@@ -98,15 +144,17 @@ class MoveLabeledNode(BaseCardNode):
     def _get_handles(self):
         return [
             {
-                "id": "queue_info_updated",
-                "type": "target",
+                "id": "data_versioning_project_id",
+                "type": "source",
                 "position": "top",
+                "label": "Data Versioning",
                 "connectable": True,
             },
             {
-                "id": "move_labeled_data_finished",
+                "id": "pretrained_models_output",
                 "type": "source",
                 "position": "bottom",
+                "label": "Output",
                 "connectable": True,
             },
         ]
@@ -117,15 +165,12 @@ class MoveLabeledNode(BaseCardNode):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "move_labeled_data_finished": self.wait_task_complete,
-            # "queue_info_updated": self.send_images_count_message,
+            "data_versioning_project_id": self.get_data_versioning_project_id,
         }
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
-        return {
-            "queue_info_updated": self.set_images_to_move,
-        }
+        return {}
 
     def send_data_moving_finished_message(
         self,
@@ -192,6 +237,9 @@ class MoveLabeledNode(BaseCardNode):
 
         self.send_data_moving_finished_message(success=success, items=res, items_count=len(res))
 
+    def get_data_versioning_project_id(self) -> Optional[int]:
+        return getattr(self, "project_id", None)
+
     # subscribe event (may receive Message object)
     def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
         """
@@ -236,6 +284,7 @@ class MoveLabeledNode(BaseCardNode):
     # ------------------------------------------------------------------
     def start_task(self) -> None:
         """Start the task to move labeled data from one project to another."""
+
         src = self.src_project_id
         dst = self.dst_project_id
         images = self._images_to_move
@@ -308,3 +357,56 @@ class MoveLabeledNode(BaseCardNode):
             daemon=True,
         )
         thread.start()
+
+    # ------------------------------------------------------------------
+    # Utils ------------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _check_train_progress(self, task_id: int):
+        # @ TODO: get train status from the task (fix send request on web progress status message)
+        # train_status = self.api.task.send_request(task_id, "train_status", {})
+        # print(f"Train status: {train_status}")
+
+        task_info = self.api.task.get_info_by_id(task_id)
+        if task_info is not None:
+            if task_info["status"] == TaskApi.Status.ERROR.value:
+                self.card.update_badge_by_key(key="Status", label="Failed", badge_type="error")
+                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
+            elif task_info["status"] == TaskApi.Status.CONSUMED.value:
+                self.card.update_badge_by_key(key="Status", label="Consumed", badge_type="warning")
+            elif task_info["status"] == TaskApi.Status.QUEUED.value:
+                self.card.update_badge_by_key(key="Status", label="Queued", badge_type="warning")
+            elif task_info["status"] in [
+                TaskApi.Status.STOPPED.value,
+                TaskApi.Status.TERMINATING.value,
+            ]:
+                self.card.update_badge_by_key(key="Status", label="Stopped", badge_type="warning")
+                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
+            elif task_info["status"] == TaskApi.Status.FINISHED.value:
+                self.card.update_badge_by_key(key="Status", label="Finished", badge_type="success")
+                for cb in self._train_finished_cb:
+                    if not callable(cb):
+                        logger.error(f"Train finished callback {cb} is not callable.")
+                        continue
+                    try:
+                        if cb.__code__.co_argcount == 1:
+                            cb(task_id)
+                        else:
+                            cb()
+                    except Exception as e:
+                        logger.error(f"Error in train finished callback: {e}")
+                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
+            else:
+                self.card.update_badge_by_key(key="Status", label="Training...", badge_type="info")
+        else:
+            logger.error(f"Task info is not found for task_id: {task_id}")
+
+    def _save_train_settings(self):
+        """
+        Extract training configuration from the embedded NewExperiment widget and store it
+        inside the node so that it can be reused later
+        """
+        try:
+            self._train_settings = self.gui.widget.get_train_settings()
+            logger.info("Training settings saved.")
+        except Exception as e:
+            logger.warning(f"Failed to save training settings: {e}")

@@ -34,9 +34,13 @@ class TrainingProjectNode(ProjectNode):
     def _available_publish_methods(self):
         return {
             "qa_stats": self.send_message_to_qa_stats,
+            "data_versioning_project_id": self.send_message_to_data_versioning,
         }
 
     def send_message_to_qa_stats(self) -> None:
+        pass
+
+    def send_message_to_data_versioning(self) -> None:
         pass
 
     def _get_handles(self):
@@ -55,5 +59,12 @@ class TrainingProjectNode(ProjectNode):
                 "label": "QA & Stats",
                 "connectable": True,
                 "style": {"top": "18.555px"},
+            },
+            {
+                "id": "data_versioning_project_id",
+                "type": "source",
+                "position": "bottom",
+                "label": "Data Versioning",
+                "connectable": True,
             },
         ]
