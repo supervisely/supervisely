@@ -6,6 +6,7 @@ from supervisely.app.widgets.vue_flow.models import (
     NodeBadge,
     NodeBadgeStyle,
     NodeBadgeStyleMap,
+    NodeLink,
     NodeSettings,
 )
 

@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class NodeBadgeStyle(BaseModel):
-    backgroundColor: Optional[str] = None
-    color: Optional[str] = None
+    backgroundColor: Optional[str] = Field(default=None, alias="backgroundColor")
+    color: Optional[str] = Field(default=None)
 
     def model_dump(self, *args, **kwargs):
         return super().model_dump(*args, **kwargs, exclude_none=True)
@@ -21,15 +21,15 @@ class NodeBadgeStyleMap(Enum):
 
 
 class NodeBadge(BaseModel):
-    label: str = ""
-    value: str = None
-    style: Optional[NodeBadgeStyle] = None
+    label: str = Field(..., description="Badge label")
+    value: str = Field(..., description="Badge value")
+    style: Optional[NodeBadgeStyle] = Field(default=None, description="Badge style")
 
 
 class TooltipButton(BaseModel):
-    label: str
-    link: Optional[Dict[str, str]] = None
-    icon: Optional[str] = None
+    label: str = Field(..., description="Button label")
+    link: Optional[Dict[str, str]] = Field(default=None, description="Optional link for the button")
+    icon: Optional[str] = Field(default=None, description="Optional icon for the button")
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -38,10 +38,10 @@ class TooltipButton(BaseModel):
 
 
 class TooltipProperty(BaseModel):
-    label: str
-    value: str
-    link: Optional[Dict[str, str]] = None
-    highlight: bool = False
+    label: str = Field(..., description="Property label")
+    value: str = Field(..., description="Property value")
+    link: Optional[Dict[str, str]] = Field(default=None, description="Optional link for the property value")
+    highlight: bool = Field(default=False, description="Whether to highlight the property")
 
 
 class NodeTooltip(BaseModel):

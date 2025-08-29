@@ -1,5 +1,8 @@
+from supervisely.solution.nodes.all_experiments.node import AllExperimentsNode
 from supervisely.solution.nodes.auto_import.node import AutoImportNode
 from supervisely.solution.nodes.cloud_import.node import CloudImportNode
+from supervisely.solution.nodes.evaluation.node import EvaluationNode
+from supervisely.solution.nodes.evaluation_report.node import EvaluationReportNode
 from supervisely.solution.nodes.input_project.node import InputProjectNode
 from supervisely.solution.nodes.labeling_performance.node import (
     LabelingQueuePerformanceNode,
@@ -31,4 +34,7 @@ __all__ = [
     "AiIndexNode",
     "OpenAIClipServiceNode",
     # "VideoSampling",
+    "AllExperimentsNode",
+    "EvaluationNode",
+    "EvaluationReportNode",
 ]

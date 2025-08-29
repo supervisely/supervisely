@@ -93,16 +93,22 @@ class LabelingQueuePerformanceMessage(Message):
     project_id: int = Field(..., description="ID of the project")
 
 
+class TrainingFinishedMessage(Message):
+    """Training finished event message."""
+
+    task_id: int = Field(..., description="ID of the training task")
+
+
 class RegisterExperimentMessage(Message):
     """Register experiment event message."""
 
-    model_path: str = Field(..., description="Path to the model to register")
+    task_id: str = Field(..., description="ID of the training task to register the experiment")
 
 
 class ReevaluateModelMessage(Message):
     """Re-evaluate model event message."""
 
-    model_path: str = Field(..., description="Path to the model to re-evaluate")
+    task_id: Optional[int] = Field(None, description="ID of the training task to re-evaluate")
 
 
 class EvaluationFinishedMessage(Message):
