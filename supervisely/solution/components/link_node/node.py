@@ -38,3 +38,14 @@ class LinkNode(BaseCardNode):
             *args,
             **kwargs,
         )
+
+    @property
+    def link(self):
+        return self.settings.link.url
+
+    @link.setter
+    def link(self, value: str):
+        return super().set_link(value)
+
+    def remove_link(self):
+        return super().remove_link()

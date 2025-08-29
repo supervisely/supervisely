@@ -62,4 +62,4 @@ class QAStatsNode(LinkNode):
     def set_project_id(self, project_id: Optional[int] = None):
         """Set project ID and update the link accordingly."""
         link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
-        # TODO: update link in the node
+        self.set_link(link)

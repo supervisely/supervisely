@@ -1,10 +1,11 @@
+from pathlib import Path
 from typing import Callable, Dict, Literal, Optional, Union
 
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
 from supervisely.io.env import project_id as env_project_id
 from supervisely.solution.components.link_node.node import LinkNode
-from supervisely.solution.engine.models import ReevaluateModelMessage, RegisterExperimentMessage
+from supervisely.solution.engine.models import TrainingFinishedMessage
 
 
 class AllExperimentsNode(LinkNode):
@@ -26,12 +27,12 @@ class AllExperimentsNode(LinkNode):
         *args,
         **kwargs,
     ):
-        self._last_model = None
-        link = "/nn/experiments"
-
-        project_id = project_id or env_project_id()
-        if project_id:
-            link += f"?projects={project_id}"
+        self._api = Api.from_env()
+        self._best_model = None
+        self._best_model_task_id = None
+        self._project_id = project_id or env_project_id()
+        self._last_task_id = None
+        # self._update_link()
 
         title = kwargs.pop("title", self.title)
         description = kwargs.pop("description", self.description)
@@ -42,7 +43,6 @@ class AllExperimentsNode(LinkNode):
         super().__init__(
             title=title,
             description=description,
-            link=link,
             width=width,
             icon=icon,
             icon_color=icon_color,
@@ -51,7 +51,7 @@ class AllExperimentsNode(LinkNode):
             *args,
             **kwargs,
         )
-        self._update_properties()
+        # self._update_properties()
 
     # ------------------------------------------------------------------
     # Handles ----------------------------------------------------------
@@ -59,15 +59,15 @@ class AllExperimentsNode(LinkNode):
     def _get_handles(self):
         return [
             {
-                "id": "register_experiment",
+                "id": "training_finished",
                 "type": "target",
                 "position": "left",
                 "connectable": True,
             },
             {
-                "id": "re_evaluate",
+                "id": "training_finished",
                 "type": "source",
-                "position": "bottom",
+                "position": "right",
                 "connectable": True,
             },
         ]
@@ -77,53 +77,41 @@ class AllExperimentsNode(LinkNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "register_experiment": self._process_incomming_message,
+            "training_finished": self._process_incomming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
-            "re_evaluate": self._send_model_to_evaluation,
+            "training_finished": self._send_model_to_evaluation,
         }
 
-    def _process_incomming_message(self, message: RegisterExperimentMessage):
-        self._set_last_model(message.model_path)
+    def _process_incomming_message(self, message: TrainingFinishedMessage):
+        project_id = self._extract_project_id(message.task_id)
+        if project_id is not None:
+            self._update_link(project_id)
+        if self._last_task_id is not None:
+            self._send_model_to_evaluation(message.task_id)
+        self._last_task_id = message.task_id
 
-    def _send_model_to_evaluation(self) -> ReevaluateModelMessage:
-        return ReevaluateModelMessage(model_path=self.last_model)
+    def _send_model_to_evaluation(self, task_id: int) -> TrainingFinishedMessage:
+        return TrainingFinishedMessage(task_id=task_id)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    @property
-    def last_model(self):
-        return self._last_model
+    def _update_link(self, project_id: Optional[int] = None):
+        """Set project ID and update the link accordingly."""
+        link = "/nn/experiments"
+        project_id = project_id or self._project_id
+        if project_id is not None:
+            link += f"?projects={project_id}"
+        if is_development():
+            link = abs_url(link)
+        self.set_link(link)
 
-    @last_model.setter
-    def last_model(self, value):
-        """Set the last trained model."""
-        self._last_model = value
-        self._update_properties()
-
-    def _set_last_model(self, model_path: str):
-        """Set the last model for comparison."""
-        if not isinstance(model_path, str):
-            raise ValueError("Last model must be a string representing the model path.")
-        if not model_path.startswith("/"):
-            raise ValueError(
-                "Last model should be from Team Files. Path must start with '/'. E.g. '/experiments/2730_my_project/48650_YOLO/checkpoints/best.pt'."
-            )
-        self._last_model = model_path
-        self._update_properties()
-
-    def _update_properties(self):
-        """Update the node tooltip with the last model information."""
-        if self.last_model is not None:
-            model_name = self._last_model.split("/")[-1]
-            link = (
-                abs_url(f"/files/?path={self.last_model}")
-                if is_development()
-                else f"/files/?path={self.last_model}"
-            )
-            self.update_property(key="Last Model", value=model_name, link=link)
-        else:
-            self.remove_property_by_key(key="Last Model")
+    def _extract_project_id(self, task_id: int) -> Optional[int]:
+        """Extract project ID from the task ID."""
+        task_info = self._api.task.get_info_by_id(task_id)
+        experiment = task_info.get("meta", {}).get("output", {}).get("experiment", {}).get("data")
+        if isinstance(experiment, dict):
+            return experiment.get("project_id")

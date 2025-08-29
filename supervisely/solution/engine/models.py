@@ -93,19 +93,29 @@ class LabelingQueuePerformanceMessage(Message):
     project_id: int = Field(..., description="ID of the project")
 
 
-class RegisterExperimentMessage(Message):
-    """Register experiment event message."""
+class TrainingFinishedMessage(Message):
+    """Training finished event message."""
 
-    model_path: str = Field(..., description="Path to the model to register")
-
-
-class ReevaluateModelMessage(Message):
-    """Re-evaluate model event message."""
-
-    model_path: str = Field(..., description="Path to the model to re-evaluate")
+    task_id: int = Field(..., description="ID of the training task")
 
 
 class EvaluationFinishedMessage(Message):
     """Evaluation finished event message."""
 
     eval_dir: str = Field(..., description="Directory where evaluation results are stored")
+    task_id: int = Field(..., description="ID of the evaluation task")
+
+
+class ComparisonFinishedMessage(Message):
+    """Comparison finished event message."""
+
+    report_link: Optional[str] = Field(None, description="Link to the comparison report")
+    eval_dir: Optional[str] = Field(
+        None, description="Directory where comparison results are stored"
+    )
+    is_new_best: Optional[bool] = Field(
+        None, description="Indicates if the new model is better than the previous best"
+    )
+    best_checkpoint: Optional[str] = Field(
+        None, description="Path to the best model checkpoint after comparison"
+    )

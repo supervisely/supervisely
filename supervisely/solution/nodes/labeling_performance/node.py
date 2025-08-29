@@ -81,4 +81,4 @@ class LabelingQueuePerformanceNode(LinkNode):
             queue = api.labeling_queue.get_info_by_id(queue_id)
             if queue is not None:
                 link += f"?jobs={queue.jobs}"
-        # TODO: update link in the node
+        self.set_link(link)

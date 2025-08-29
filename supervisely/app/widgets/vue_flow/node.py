@@ -6,6 +6,7 @@ from supervisely.app.widgets.vue_flow.models import (
     NodeBadge,
     NodeBadgeStyle,
     NodeBadgeStyleMap,
+    NodeLink,
     NodeSettings,
 )
 
@@ -66,6 +67,19 @@ class Node:
             "position": self.position,
             "data": self.settings.model_dump(by_alias=True),
         }
+
+    # ------------------------------------------------------------------
+    # Card Methods -----------------------------------------------------
+    # ------------------------------------------------------------------
+    def set_link(self, link: str):
+        """Sets the link of the card."""
+        self.settings.link = NodeLink(url=link)
+        self.update_node(self)
+
+    def remove_link(self):
+        """Removes the link of the card."""
+        self.settings.link = NodeLink()
+        self.update_node(self)
 
     # ------------------------------------------------------------------
     # Tooltip Methods --------------------------------------------------
