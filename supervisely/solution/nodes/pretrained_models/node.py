@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
+from supervisely.api.task_api import TaskApi
 from supervisely.app.widgets import Dialog, NewExperiment
 from supervisely.api.project_api import ProjectInfo
 from supervisely.project.image_transfer_utils import move_structured_images
@@ -81,54 +82,7 @@ class PretrainedModelsNode(BaseCardNode):
         def _on_app_started(app_id: int, model_id: int, task_id: int):
             self.gui.widget.visible = False
             self._previous_task_id = task_id
-            self._save_train_settings()
-
-            # add task to tasks history
-            task_info = self.api.task.get_info_by_id(task_id)
-
-            train_collection = self.gui.widget.train_collections
-            train_collection = train_collection[0] if train_collection else None
-            val_collection = self.gui.widget.val_collections
-            val_collection = val_collection[0] if val_collection else None
-
-            images_count = "N/A"
-            if train_collection and val_collection:
-                train_imgs = self.api.entities_collection.get_items(
-                    train_collection, CollectionTypeFilter.DEFAULT
-                )
-                val_imgs = self.api.entities_collection.get_items(
-                    val_collection, CollectionTypeFilter.DEFAULT
-                )
-                images_count = f"train: {len(train_imgs)}, val: {len(val_imgs)}"
-            task = {
-                "task_info": task_info,
-                "model_id": self.gui.widget.model_id,
-                "status": "started",
-                "agent_id": self.gui.widget.agent_id,
-                "classes_count": len(self.gui.widget.classes),
-                "images_count": images_count,
-            }
-            self.history.add_task(task=task)
-
-            self.automation.apply(
-                self._check_train_progress,
-                10,
-                self.automation.CHECK_STATUS_JOB_ID,
-                task_id,
-            )
-            for cb in self._train_started_cb:
-                if not callable(cb):
-                    logger.error(f"Train started callback {cb} is not callable.")
-                    continue
-                try:
-                    if cb.__code__.co_argcount == 3:
-                        cb(app_id, model_id, task_id)
-                    elif cb.__code__.co_argcount == 1:
-                        cb(task_id)
-                    else:
-                        cb()
-                except Exception as e:
-                    logger.error(f"Error in train started callback: {e}")
+            self.start_task(app_id, model_id, task_id)
 
         @self.automation.apply_button.click
         def on_automate_click():
@@ -282,81 +236,38 @@ class PretrainedModelsNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def start_task(self) -> None:
-        """Start the task to move labeled data from one project to another."""
+    def start_task(self, app_id: int, model_id: int, task_id: int) -> None:
+        """Start the task to train data from the training project."""
+        self._save_train_settings()
 
-        src = self.src_project_id
-        dst = self.dst_project_id
-        images = self._images_to_move
-        if not images:
-            return
+        # add task to tasks history
+        task_info = self.api.task.get_info_by_id(task_id)
 
-        min_batch_size = self.automation.automate_min_batch_input.get_value()
-        use_min_batch = self.automation.automate_min_batch.is_checked()
-        if use_min_batch and len(images) < min_batch_size:
-            logger.warning(f"Not enough images to move. {min_batch_size} < {len(images)}")
-            return
+        train_collection = self.gui.widget.train_collections
+        train_collection = train_collection[0] if train_collection else None
+        val_collection = self.gui.widget.val_collections
+        val_collection = val_collection[0] if val_collection else None
 
-        self.show_in_progress_badge()
-        logger.info(f"Moving {len(images)} images (project ID:{src} → ID:{dst}).")
+        images_count = "N/A"
+        if train_collection and val_collection:
+            train_imgs = self.api.entities_collection.get_items(
+                train_collection, CollectionTypeFilter.DEFAULT
+            )
+            val_imgs = self.api.entities_collection.get_items(
+                val_collection, CollectionTypeFilter.DEFAULT
+            )
+            images_count = f"train: {len(train_imgs)}, val: {len(val_imgs)}"
 
-        dst_project = self.api.project.get_info_by_id(dst)
-        ds_count = dst_project.datasets_count or 0
-        ds_name = f"batch_{ds_count + 1}"
-        dst_dataset = self.api.dataset.create(dst, ds_name, change_name_if_conflict=True)
-
-        module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
-        params = {
-            "state": {
-                "items": [{"id": image_id, "type": "image"} for image_id in images],
-                # "items": [ds ids] #  (parent dataset ids),
-                "source": {
-                    "team": {"id": sly_env.team_id()},
-                    "project": {"id": src},
-                    "workspace": {"id": sly_env.workspace_id()},
-                },
-                "destination": {
-                    "team": {"id": sly_env.team_id()},
-                    # "dataset": {"id": dst_dataset.id},
-                    "project": {"id": dst},
-                    "workspace": {"id": sly_env.workspace_id()},
-                },
-                "options": {
-                    "preserveSrcDate": False,
-                    "cloneAnnotations": True,
-                    "conflictResolutionMode": "rename",
-                    # "filter": [{"id": image_id, "type": "image"} for image_id in images], # by item ids
-                },
-                "action": "move",
-            }
+        task = {
+            "task_info": task_info,
+            "model_id": self.gui.widget.model_id,
+            "status": "started",
+            "agent_id": self.gui.widget.agent_id,
+            "classes_count": len(self.gui.widget.classes),
+            "images_count": images_count,
         }
-        task_info_json = self.api.task.start(
-            agent_id=self.gui.agent_selector.get_value(),
-            workspace_id=sly_env.workspace_id(),
-            description=f"Solutions: {sly_env.task_id()}",
-            module_id=module_info.id,
-            params=params,
-        )
-        task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
-
-        try:
-            task_info_json = {
-                "id": task_info_json["id"],
-                "startedAt": task_info_json["startedAt"],
-                "images_count": len(images),
-                "status": task_info_json["status"],
-            }
-            self.history.add_task(task_info_json)
-        except Exception as e:
-            logger.error(f"Failed to add task to history: {repr(e)}")
-
-        task_id = task_info_json["id"]
-        thread = threading.Thread(
-            target=self.wait_task_complete,
-            args=(task_id, dst_dataset.id, images),
-            daemon=True,
-        )
-        thread.start()
+        self.history.add_task(task=task)
+        self.automation.apply(self._check_train_progress)
 
     # ------------------------------------------------------------------
     # Utils ------------------------------------------------------------
@@ -369,20 +280,20 @@ class PretrainedModelsNode(BaseCardNode):
         task_info = self.api.task.get_info_by_id(task_id)
         if task_info is not None:
             if task_info["status"] == TaskApi.Status.ERROR.value:
-                self.card.update_badge_by_key(key="Status", label="Failed", badge_type="error")
+                self.update_badge_by_key(key="Status", label="Failed", badge_type="error")
                 self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
             elif task_info["status"] == TaskApi.Status.CONSUMED.value:
-                self.card.update_badge_by_key(key="Status", label="Consumed", badge_type="warning")
+                self.update_badge_by_key(key="Status", label="Consumed", badge_type="warning")
             elif task_info["status"] == TaskApi.Status.QUEUED.value:
-                self.card.update_badge_by_key(key="Status", label="Queued", badge_type="warning")
+                self.update_badge_by_key(key="Status", label="Queued", badge_type="warning")
             elif task_info["status"] in [
                 TaskApi.Status.STOPPED.value,
                 TaskApi.Status.TERMINATING.value,
             ]:
-                self.card.update_badge_by_key(key="Status", label="Stopped", badge_type="warning")
+                self.update_badge_by_key(key="Status", label="Stopped", badge_type="warning")
                 self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
             elif task_info["status"] == TaskApi.Status.FINISHED.value:
-                self.card.update_badge_by_key(key="Status", label="Finished", badge_type="success")
+                self.update_badge_by_key(key="Status", label="Finished", badge_type="success")
                 for cb in self._train_finished_cb:
                     if not callable(cb):
                         logger.error(f"Train finished callback {cb} is not callable.")
@@ -396,7 +307,7 @@ class PretrainedModelsNode(BaseCardNode):
                         logger.error(f"Error in train finished callback: {e}")
                 self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
             else:
-                self.card.update_badge_by_key(key="Status", label="Training...", badge_type="info")
+                self.update_badge_by_key(key="Status", label="Training...", badge_type="info")
         else:
             logger.error(f"Task info is not found for task_id: {task_id}")
 

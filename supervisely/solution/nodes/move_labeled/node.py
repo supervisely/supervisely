@@ -148,12 +148,12 @@ class MoveLabeledNode(BaseCardNode):
         task_id: int,
         dataset_id: int,
         images: List[int],
-    ) -> None:
+    ) -> MoveLabeledDataFinishedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
             logger.error(f"Task with ID {task_id} not found.")
-            self.send_data_moving_finished_message(success=False, items=[], items_count=0)
+            return self.send_data_moving_finished_message(success=False, items=[], items_count=0)
 
         current_time = time.time()
         while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
@@ -190,7 +190,9 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
             self._images_to_move = []
 
-        self.send_data_moving_finished_message(success=success, items=res, items_count=len(res))
+        return self.send_data_moving_finished_message(
+            success=success, items=res, items_count=len(res)
+        )
 
     # subscribe event (may receive Message object)
     def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:

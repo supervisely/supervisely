@@ -5,6 +5,7 @@ from supervisely.api.project_api import ProjectInfo
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
 from supervisely.app.widgets import NewExperiment, Dialog
+from supervisely.nn.task_type import TaskType
 
 
 class PretrainedModelsGUI:
@@ -16,15 +17,13 @@ class PretrainedModelsGUI:
         self,
         api: Api,
         project: ProjectInfo,
-        team_id: Optional[int] = None,
-        workspace_id: Optional[int] = None,
         frameworks: Optional[List[str]] = None,
         widget_id: Optional[str] = None,
     ):
         self.api = api
         self.project = project
-        self.workspace_id = workspace_id or self.project.workspace_id
-        self.team_id = team_id or self.project.team_id
+        self.workspace_id = self.project.workspace_id
+        self.team_id = self.project.team_id
         self.frameworks = frameworks
         self.widget = self._create_widget()
 
@@ -41,7 +40,7 @@ class PretrainedModelsGUI:
             workspace_id=self.workspace_id,
             project_id=self.project.id,
             classes=classes,
-            step=5,  # 5 - start with model selection
+            step=1,  # 5 - start with model selection
             filter_projects_by_workspace=True,
             project_types=[ProjectType.IMAGES],
             cv_task=None,  # TaskType.OBJECT_DETECTION,

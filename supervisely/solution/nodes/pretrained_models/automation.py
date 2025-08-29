@@ -3,28 +3,21 @@ from typing import Callable, Optional, Tuple
 from supervisely.app.widgets import (
     Button,
     Checkbox,
-    Flexbox,
     Container,
     Dialog,
     Empty,
-    Field,
     InputNumber,
     Select,
-    Switch,
     Text,
 )
 from supervisely.sly_logger import logger
-from supervisely.solution.automation import Automation, AutomationWidget
+from supervisely.solution.automation import AutomationWidget
 from supervisely.solution.utils import get_interval_period, get_seconds_from_period_and_interval
 
 
 class PretrainedModelsAuto(AutomationWidget):
     def __init__(self):
-        self.apply_btn = Button("Apply", plain=True)
         self.apply_text = Text("", status="text", color="gray")
-        self.widget = self._create_widget()
-        self.job_id = self.widget.widget_id
-        self.func = None
         super().__init__()
 
     # ------------------------------------------------------------------
@@ -32,7 +25,7 @@ class PretrainedModelsAuto(AutomationWidget):
     # ------------------------------------------------------------------
     def apply(self, func: Optional[Callable] = None) -> None:
         self.func = func or self.func
-        enabled, _, _, _, sec = self.get_details()
+        enabled, _, _, sec = self.get_details()
         if not enabled:
             if self.scheduler.is_job_scheduled(self.job_id):
                 self.scheduler.remove_job(self.job_id)
@@ -44,14 +37,14 @@ class PretrainedModelsAuto(AutomationWidget):
     # ------------------------------------------------------------------
     # Automation Settings ----------------------------------------------
     # ------------------------------------------------------------------
-    def get_details(self) -> Tuple[bool, str, int, Optional[int], int]:
+    def get_details(self) -> Tuple[bool, str, int, int]:
         """
         Get the automation details from the widget.
         :return: Tuple with (enabled, period, interval, seconds)
         """
-        enabled = self.enabled_checkbox.is_checked()
-        period = self.period_select.get_value()
-        interval = self.num_input.get_value()
+        enabled = self.enable_checkbox.is_checked()
+        period = self.automate_period_select.get_value()
+        interval = self.automate_input.get_value()
 
         if not enabled:
             return False, None, None, None
@@ -66,6 +59,27 @@ class PretrainedModelsAuto(AutomationWidget):
             return False, None, None, None
         return enabled, period, interval, sec
 
+    def save_details(self, enabled: bool, sec: int):
+        """
+        Saves the automation settings.
+
+        :param enabled: Whether the automation is enabled.
+        :type enabled: bool
+        :param interval: Interval for synchronization.
+        :type interval: int
+        :param period: Period unit for synchronization (e.g., "minutes", "hours", "days").
+        :type period: str
+        """
+        if enabled:
+            self.enable_checkbox.check()
+        else:
+            self.enable_checkbox.uncheck()
+
+        period, interval = get_interval_period(sec)
+        if period is not None and interval is not None:
+            self.automate_period_select.set_value(period)
+            self.automate_input.value = interval
+
     # ------------------------------------------------------------------
     # GUI --------------------------------------------------------------
     # ------------------------------------------------------------------
@@ -76,11 +90,18 @@ class PretrainedModelsAuto(AutomationWidget):
             self._modal = Dialog(title="Automation Settings", content=self.widget, size="tiny")
         return self._modal
 
+    @property
+    def enable_checkbox(self) -> Checkbox:
+        if not hasattr(self, "_enable_checkbox"):
+            self._enable_checkbox = Checkbox(content="Run every:", checked=False)
+        return self._enable_checkbox
+
     def _create_widget(self):
-        self.enabled_checkbox = Checkbox(content="Run every", checked=False)
-        self.num_input = InputNumber(min=1, value=60, debounce=1000, controls=False, size="mini")
-        self.num_input.disable()
-        self.period_select = Select(
+        self.automate_input = InputNumber(
+            min=1, value=60, debounce=1000, controls=False, size="mini"
+        )
+        self.automate_input.disable()
+        self.automate_period_select = Select(
             [
                 Select.Item("min", "minutes"),
                 Select.Item("h", "hours"),
@@ -88,12 +109,12 @@ class PretrainedModelsAuto(AutomationWidget):
             ],
             size="mini",
         )
-        self.period_select.disable()
-        automate_cont = Container(
+        self.automate_period_select.disable()
+        automate_container = Container(
             [
-                self.enabled_checkbox,
-                self.num_input,
-                self.period_select,
+                self.enable_checkbox,
+                self.automate_input,
+                self.automate_period_select,
                 Empty(),
             ],
             direction="horizontal",
@@ -101,19 +122,17 @@ class PretrainedModelsAuto(AutomationWidget):
             fractions=[1, 1, 1, 1],
             style="align-items: center",
         )
-        apply_btn = Container([self.apply_btn], style="align-items: flex-end")
+        button_container = Container([self.apply_button], style="align-items: flex-end")
         self.apply_text.set("Run training first to save settings.", "warning")
 
-        @self.enabled_checkbox.value_changed
+        @self.enable_checkbox.value_changed
         def on_automate_checkbox_change(is_checked: bool) -> None:
             if is_checked:
-                self.num_input.enable()
-                self.period_select.enable()
+                self.enable_widgets()
             else:
-                self.num_input.disable()
-                self.period_select.disable()
+                self.disable_widgets()
 
-        return Container([self.apply_text, automate_cont, apply_btn])
+        return Container([self.apply_text, automate_container, button_container])
 
     @property
     def enable_checkbox(self) -> Checkbox:
@@ -126,25 +145,18 @@ class PretrainedModelsAuto(AutomationWidget):
         """Check if the automation is enabled."""
         return self.enable_checkbox.is_checked()
 
-    def enable_automation_widgets(self) -> None:
+    def enable_widgets(self) -> None:
         """
         Enables the automation widgets for the MoveLabeled node.
         This method is called when the automation checkbox is toggled on.
         """
         self.automate_input.enable()
         self.automate_period_select.enable()
-        self.automate_min_batch.enable()
 
-    def disable_automation_widgets(self) -> None:
+    def disable_widgets(self) -> None:
         """
         Disables the automation widgets for the MoveLabeled node.
         This method is called when the automation checkbox is toggled off.
         """
         self.automate_input.disable()
         self.automate_period_select.disable()
-        self.automate_min_batch.uncheck()
-        self.automate_min_batch.disable()
-        self.automate_min_batch_input.disable()
-        self.automate_min_batch.uncheck()
-        self.automate_min_batch.disable()
-        self.automate_min_batch_input.disable()

@@ -1,7 +1,6 @@
 from typing import Callable, Optional, Tuple
 
 from supervisely.app.widgets import (
-    Button,
     Checkbox,
     Flexbox,
     Container,
@@ -10,11 +9,9 @@ from supervisely.app.widgets import (
     Field,
     InputNumber,
     Select,
-    Switch,
-    Text,
 )
 from supervisely.sly_logger import logger
-from supervisely.solution.automation import Automation, AutomationWidget
+from supervisely.solution.automation import AutomationWidget
 from supervisely.solution.utils import get_interval_period, get_seconds_from_period_and_interval
 
 
@@ -96,6 +93,12 @@ class MoveLabeledAuto(AutomationWidget):
             self._modal = Dialog(title="Automation Settings", content=self.widget, size="tiny")
         return self._modal
 
+    @property
+    def enable_checkbox(self) -> Checkbox:
+        if not hasattr(self, "_enable_checkbox"):
+            self._enable_checkbox = Checkbox(content="Run every:", checked=False)
+        return self._enable_checkbox
+
     def _create_widget(self):
         """Create the automation GUI"""
 
@@ -154,9 +157,9 @@ class MoveLabeledAuto(AutomationWidget):
         @self.enable_checkbox.value_changed
         def on_automate_checkbox_change(is_checked):
             if is_checked:
-                self.enable_automation_widgets()
+                self.enable_widgets()
             else:
-                self.disable_automation_widgets()
+                self.disable_widgets()
 
         @self.automate_min_batch.value_changed
         def on_automate_min_batch_change(is_checked):
@@ -173,17 +176,11 @@ class MoveLabeledAuto(AutomationWidget):
         return Container([automation_field_1, automation_field_2, btn_cont])
 
     @property
-    def enable_checkbox(self) -> Checkbox:
-        if not hasattr(self, "_enable_checkbox"):
-            self._enable_checkbox = Checkbox(content="Run every:", checked=False)
-        return self._enable_checkbox
-
-    @property
     def is_enabled(self) -> bool:
         """Check if the automation is enabled."""
         return self.enable_checkbox.is_checked()
 
-    def enable_automation_widgets(self) -> None:
+    def enable_widgets(self) -> None:
         """
         Enables the automation widgets for the MoveLabeled node.
         This method is called when the automation checkbox is toggled on.
@@ -192,7 +189,7 @@ class MoveLabeledAuto(AutomationWidget):
         self.automate_period_select.enable()
         self.automate_min_batch.enable()
 
-    def disable_automation_widgets(self) -> None:
+    def disable_widgets(self) -> None:
         """
         Disables the automation widgets for the MoveLabeled node.
         This method is called when the automation checkbox is toggled off.
