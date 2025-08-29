@@ -68,6 +68,19 @@ class Node:
         }
 
     # ------------------------------------------------------------------
+    # Card Methods -----------------------------------------------------
+    # ------------------------------------------------------------------
+    def set_link(self, link: str):
+        """Sets the link of the card."""
+        self.settings.link = NodeLink(url=link)
+        self.update_node(self)
+
+    def remove_link(self):
+        """Removes the link of the card."""
+        self.settings.link = NodeLink()
+        self.update_node(self)
+
+    # ------------------------------------------------------------------
     # Tooltip Methods --------------------------------------------------
     # ------------------------------------------------------------------
     def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
