@@ -259,6 +259,7 @@ class PretrainedModelsNode(BaseCardNode):
             images_count = f"train: {len(train_imgs)}, val: {len(val_imgs)}"
 
         task = {
+            "id": task_id,
             "task_info": task_info,
             "model_id": self.gui.widget.model_id,
             "status": "started",
