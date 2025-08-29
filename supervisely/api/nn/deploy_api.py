@@ -157,16 +157,15 @@ class DeployApi:
             "device": device,
             "model_source": ModelSource.CUSTOM,
             "model_files": {
-                "checkpoint": Path(
-                    experiment_info.artifacts_dir, "checkpoints", checkpoint_name
-                ).as_posix(),
-                "config": Path(
-                    experiment_info.artifacts_dir, experiment_info.model_files["config"]
-                ).as_posix(),
+                key: Path(experiment_info.artifacts_dir, value).as_posix()
+                for key, value in experiment_info.model_files.items()
             },
             "model_info": experiment_info.to_json(),
             "runtime": runtime,
         }
+        deploy_params["model_files"]["checkpoint"] = Path(
+            experiment_info.artifacts_dir, "checkpoints", checkpoint_name
+        ).as_posix()
         self._load_model_from_api(session_id, deploy_params)
 
     def _find_agent(self, team_id: int = None, public=True, gpu=True):
@@ -239,6 +238,7 @@ class DeployApi:
             RTDETR,
             Detectron2,
             MMClassification,
+            MMPretrain,
             MMDetection,
             MMDetection3,
             MMSegmentation,
@@ -262,6 +262,7 @@ class DeployApi:
             RTDETR(team_id).framework_name: RTDETR(team_id).serve_slug,
             Detectron2(team_id).framework_name: Detectron2(team_id).serve_slug,
             MMClassification(team_id).framework_name: MMClassification(team_id).serve_slug,
+            MMPretrain(team_id).framework_name: MMPretrain(team_id).serve_slug,
             MMDetection(team_id).framework_name: MMDetection(team_id).serve_slug,
             MMDetection3(team_id).framework_name: MMDetection3(team_id).serve_slug,
             MMSegmentation(team_id).framework_name: MMSegmentation(team_id).serve_slug,
@@ -547,7 +548,6 @@ class DeployApi:
         _attempt_delay_sec = 1
         _attempts = timeout // _attempt_delay_sec
 
-        # @TODO: Run app in team?
         if workspace_id is None:
             workspace_id = env.workspace_id()
         kwargs = get_valid_kwargs(
@@ -768,10 +768,14 @@ class DeployApi:
         for file_key, file_path in experiment_info.model_files.items():
             full_file_path = os.path.join(experiment_info.artifacts_dir, file_path)
             if not self._api.file.exists(team_id, full_file_path):
-                logger.debug(f"Model file not found: '{full_file_path}'. Trying to find it by checkpoint path.")
+                logger.debug(
+                    f"Model file not found: '{full_file_path}'. Trying to find it by checkpoint path."
+                )
                 full_file_path = os.path.join(artifacts_dir, file_path)
                 if not self._api.file.exists(team_id, full_file_path):
-                    raise ValueError(f"Model file not found: '{full_file_path}'. Make sure that the file exists in the artifacts directory.")
+                    raise ValueError(
+                        f"Model file not found: '{full_file_path}'. Make sure that the file exists in the artifacts directory."
+                    )
             deploy_params["model_files"][file_key] = full_file_path
             logger.debug(f"Model file added: {full_file_path}")
         return module_id, serve_app_name, deploy_params
@@ -845,6 +849,7 @@ class DeployApi:
             RTDETR,
             Detectron2,
             MMClassification,
+            MMPretrain,
             MMDetection,
             MMDetection3,
             MMSegmentation,
@@ -863,6 +868,7 @@ class DeployApi:
         frameworks = {
             "/detectron2": Detectron2,
             "/mmclassification": MMClassification,
+            "/mmclassification-v2": MMPretrain,
             "/mmdetection": MMDetection,
             "/mmdetection-3": MMDetection3,
             "/mmsegmentation": MMSegmentation,

@@ -723,6 +723,7 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         use_public_api: Optional[bool] = True,
+        data: Optional[Dict] = None,
     ) -> requests.Response:
         """
         Performs GET request to server with given parameters.
@@ -730,13 +731,15 @@ class Api:
         :param method:
         :type method: str
         :param params: Dictionary to send in the body of the :class:`Request`.
-        :type method: dict
+        :type params: dict
         :param retries: The number of attempts to connect to the server.
-        :type method: int, optional
+        :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
-        :type method: bool, optional
+        :type stream: bool, optional
         :param use_public_api:
-        :type method: bool, optional
+        :type use_public_api: bool, optional
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
@@ -756,7 +759,9 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                response = requests.get(
+                    url, params=json_body, data=data, headers=self.headers, stream=stream
+                )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
