@@ -23,16 +23,15 @@ class PretrainedModelsAuto(AutomationWidget):
     # ------------------------------------------------------------------
     # Automation -------------------------------------------------------
     # ------------------------------------------------------------------
-    def apply(self, func: Optional[Callable] = None) -> None:
+    def apply(self, func: Optional[Callable] = None, job_id: Optional[str] = None) -> None:
+        job_id = job_id or self.job_id
         self.func = func or self.func
         enabled, _, _, sec = self.get_details()
         if not enabled:
-            if self.scheduler.is_job_scheduled(self.job_id):
-                self.scheduler.remove_job(self.job_id)
+            if self.scheduler.is_job_scheduled(job_id):
+                self.scheduler.remove_job(job_id)
         else:
-            self.scheduler.add_job(
-                self.func, interval=sec, job_id=self.job_id, replace_existing=True
-            )
+            self.scheduler.add_job(self.func, interval=sec, job_id=job_id, replace_existing=True)
 
     # ------------------------------------------------------------------
     # Automation Settings ----------------------------------------------

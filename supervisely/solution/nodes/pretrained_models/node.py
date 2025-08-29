@@ -268,6 +268,8 @@ class PretrainedModelsNode(BaseCardNode):
             "images_count": images_count,
         }
         self.history.add_task(task=task)
+
+        # @TODO: dont use automation for progress check
         self.automation.apply(self._check_train_progress)
 
     # ------------------------------------------------------------------
