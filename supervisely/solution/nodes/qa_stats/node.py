@@ -6,18 +6,18 @@ from supervisely.solution.components.link_node.node import LinkNode
 class QAStatsNode(LinkNode):
     """Node for linking to the QA Stats dashboard."""
 
-    title = "QA Stats"
-    description = "View detailed quality assurance statistics and insights for your project."
-    icon = "mdi mdi-chart-bar"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "QA Stats"
+    DESCRIPTION = "View detailed quality assurance statistics and insights for your project."
+    ICON = "mdi mdi-chart-bar"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(self, project_id: Optional[int] = None, *args, **kwargs):
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
         link = kwargs.pop("link", link)
 

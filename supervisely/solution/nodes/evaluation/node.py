@@ -20,11 +20,11 @@ from supervisely.solution.nodes.evaluation.history import EvaluationTaskHistory
 class EvaluationNode(BaseCardNode):
     APP_SLUG = "supervisely-ecosystem/model-benchmark"
     EVALUATION_ENDPOINT = "run_evaluation"
-    title = "Re-evaluate on new validation dataset"
-    description = "Re-evaluate the best model on a new validation dataset."
-    icon = "mdi mdi-chart-box"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "Re-evaluate on new validation dataset"
+    DESCRIPTION = "Re-evaluate the best model on a new validation dataset."
+    ICON = "mdi mdi-chart-box"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(
         self,
@@ -52,11 +52,11 @@ class EvaluationNode(BaseCardNode):
         ]
 
         # --- init node ------------------------------------------------------
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         self.modal_content = self.gui.content
         super().__init__(
             title=title,

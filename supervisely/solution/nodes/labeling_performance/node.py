@@ -9,11 +9,11 @@ class LabelingQueuePerformanceNode(LinkNode):
     Node for displaying a link to the Labeling Performance page of the Labeling Queue.
     """
 
-    title = "Labeling Performance"
-    description = "View the performance of the labeling queue."
-    icon = "mdi mdi-chart-bar"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "Labeling Performance"
+    DESCRIPTION = "View the performance of the labeling queue."
+    ICON = "mdi mdi-chart-bar"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(
         self,
@@ -30,11 +30,11 @@ class LabelingQueuePerformanceNode(LinkNode):
             if queue is not None:
                 link += f"?jobs={queue.jobs}"
 
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         self._click_handled = True
         super().__init__(
             title=title,

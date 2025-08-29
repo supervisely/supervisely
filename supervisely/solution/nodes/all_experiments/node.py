@@ -13,11 +13,11 @@ class AllExperimentsNode(LinkNode):
     Node for displaying a link to the All Experiments page.
     """
 
-    title = "All Experiments"
-    description = "View all experiments with Training Project and explore their details."
-    icon = "mdi mdi-flask-outline"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "All Experiments"
+    DESCRIPTION = "View all experiments with Training Project and explore their details."
+    ICON = "mdi mdi-flask-outline"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(
         self,
@@ -34,11 +34,11 @@ class AllExperimentsNode(LinkNode):
         self._last_task_id = None
         # self._update_link()
 
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         self._click_handled = True
         super().__init__(
             title=title,

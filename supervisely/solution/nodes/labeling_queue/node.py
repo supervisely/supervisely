@@ -19,11 +19,11 @@ class LabelingQueueNode(BaseQueueNode):
     LabelingQueue node for monitoring labeling tasks in a queue.
     """
 
-    title = "Labeling Queue"
-    description = "Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator."
-    icon = "mdi mdi-label-multiple"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "Labeling Queue"
+    DESCRIPTION = "Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator."
+    ICON = "mdi mdi-label-multiple"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(
         self,
@@ -53,11 +53,11 @@ class LabelingQueueNode(BaseQueueNode):
 
         # --- init node ------------------------------------------------------
         # * before automation (to wrap publish/subscribe methods)
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
 
         super().__init__(
             title=title,

@@ -17,12 +17,12 @@ from supervisely.solution.nodes.cloud_import.automation import CloudImportAutoma
 
 
 class CloudImportNode(BaseCardNode):
-    progress_badge_key = "Import"
-    title = "Import from Cloud"
-    description = "Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
-    icon = "mdi mdi-cloud-download"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    PROGRESS_BADGE_KEY = "Import"
+    TITLE = "Import from Cloud"
+    DESCRIPTION = "Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
+    ICON = "mdi mdi-cloud-download"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(self, project_id: int = None, *args, **kwargs):
         """Node for importing data from the Cloud Storage to the Input Project."""
@@ -36,11 +36,11 @@ class CloudImportNode(BaseCardNode):
         self.automation = CloudImportAutomation()
 
         # --- init card ----------------------------------------------------------
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         self._click_handled = True
         super().__init__(
             title=title,

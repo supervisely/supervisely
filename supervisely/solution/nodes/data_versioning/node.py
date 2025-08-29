@@ -6,18 +6,18 @@ from supervisely.solution.components.link_node.node import LinkNode
 class DataVersioningNode(LinkNode):
     """Node for linking to the Project Versions dashboard."""
 
-    title = "Data Versioning"
-    description = "Open the project versions page to explore the training project history changes."
-    icon = "mdi mdi-history"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "Data Versioning"
+    DESCRIPTION = "Open the project versions page to explore the training project history changes."
+    ICON = "mdi mdi-history"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(self, project_id: Optional[int] = None, *args, **kwargs):
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         link = f"/projects/{project_id}/versions" if project_id is not None else ""
         link = kwargs.pop("link", link)
 
