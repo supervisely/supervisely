@@ -13,13 +13,13 @@ from .history import AutoImportTasksHistory
 
 
 class AutoImportNode(BaseCardNode):
-    progress_badge_key = "Import"
+    PROGRESS_BADGE_KEY = "Import"
     APP_SLUG = "supervisely-ecosystem/main-import"
-    title = "Manual D&I Import"
-    description = "Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
-    icon = "mdi mdi-database-import"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "Manual D&I Import"
+    DESCRIPTION = "Each import creates a dataset folder in the Input Project, centralising all incoming data and easily managing it over time. Automatically detects 10+ annotation formats."
+    ICON = "mdi mdi-database-import"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(self, project_id: int = None, *args, **kwargs):
         """
@@ -45,11 +45,11 @@ class AutoImportNode(BaseCardNode):
         autoimport_link += f"?moduleId=435&nodeId={agent_id}&appVersion=test-env&appIsBranch=true"
 
         # --- node init ----------------------------------------------------------
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         self._click_handled = True
         super().__init__(
             title=title,

@@ -19,7 +19,7 @@ class ProjectNode(BaseProjectNode):
     This node displays project information and provides links to view the project.
     """
 
-    is_training = False
+    IS_TRAINING = False
 
     def __init__(
         self,
@@ -86,7 +86,7 @@ class ProjectNode(BaseProjectNode):
         return {
             "project_id": self.project_id,
             "workspace_id": self.workspace_id,
-            "is_training": self.is_training,
+            "is_training": self.IS_TRAINING,
         }
 
     def get_json_state(self) -> dict:
@@ -132,7 +132,7 @@ class ProjectNode(BaseProjectNode):
         self.update_property(key="Total", value=f"{items_count} images")
 
         # Update preview
-        if self.is_training:
+        if self.IS_TRAINING:
             train_items, val_items = self._get_train_val_items()
             self.update_preview(
                 [self._get_random_image_url(train_items), self._get_random_image_url(val_items)],
@@ -161,7 +161,7 @@ class ProjectNode(BaseProjectNode):
         train_collections = []
         val_collections = []
 
-        if self.is_training:
+        if self.IS_TRAINING:
             for collection_info in self.api.entities_collection.get_list(self.project_id):
                 if collection_info.name.startswith("train_"):
                     train_collections.append(collection_info.id)

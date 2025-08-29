@@ -7,24 +7,30 @@ from supervisely.solution.engine.models import SampleFinishedMessage
 
 
 class LabelingProjectNode(ProjectNode):
-    is_training = False
-    title = "Labeling Project"
-    description = "Project specifically for labeling data. All data in this project is in the labeling process. After labeling, data will be moved to the Training Project."
-    icon = "mdi mdi-folder-edit"
-    icon_color = "#FFC40C"
-    icon_bg_color = "#FFFFF0"
+    IS_TRAINING = False
+    TITLE = "Labeling Project"
+    DESCRIPTION = "Project specifically for labeling data. All data in this project is in the labeling process. After labeling, data will be moved to the Training Project."
+    ICON = "mdi mdi-folder-edit"
+    ICON_COLOR = "#FFC40C"
+    ICON_BG_COLOR = "#FFFFF0"
 
     def __init__(
         self,
         *args,
         **kwargs,
     ):
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         super().__init__(
             *args,
             title=title,
             description=description,
+            icon=icon,
+            icon_color=icon_color,
+            icon_bg_color=icon_bg_color,
             **kwargs,
         )
 

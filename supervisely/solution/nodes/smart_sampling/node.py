@@ -20,16 +20,16 @@ from .history import SmartSamplingTasksHistory
 
 
 class SmartSamplingNode(BaseCardNode):
-    progress_badge_key = "Sampling"
-    title = "Smart Sampling"
-    description = (
+    PROGRESS_BADGE_KEY = "Sampling"
+    TITLE = "Smart Sampling"
+    DESCRIPTION = (
         "Selects a data sample from the input project and copies it to the labeling project. "
         "Supports various sampling strategies: random, k-means clustering, diversity-based, or using "
         "embeddings precomputed by the “AI Index” node for smarter selection."
     )
-    icon = "mdi mdi-image-multiple"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    ICON = "mdi mdi-image-multiple"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(self, project_id: int = None, dst_project: int = None, *args, **kwargs):
         """Node for sampling data from the input project and copying it to the labeling project."""
@@ -55,11 +55,11 @@ class SmartSamplingNode(BaseCardNode):
         ]
 
         # --- init node ------------------------------------------------------
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         super().__init__(
             title=title,
             description=description,

@@ -13,11 +13,11 @@ class EvaluationReportNode(LinkNode):
     Node for displaying a link to the Evaluation Report page.
     """
 
-    title = "Evaluation Report"
-    description = "Quick access to the evaluation report of the model from the Experiments. The report contains the model performance metrics and visualizations. Will be used as a reference for comparing with models from the next experiments."
-    icon = "mdi mdi-file-chart-check"
-    icon_color = "#E338A7FF"
-    icon_bg_color = "#FCE4F6"
+    TITLE = "Evaluation Report"
+    DESCRIPTION = "Quick access to the evaluation report of the model from the Experiments. The report contains the model performance metrics and visualizations. Will be used as a reference for comparing with models from the next experiments."
+    ICON = "mdi mdi-file-chart-check"
+    ICON_COLOR = "#E338A7FF"
+    ICON_BG_COLOR = "#FCE4F6"
 
     def __init__(
         self,
@@ -27,11 +27,11 @@ class EvaluationReportNode(LinkNode):
         **kwargs,
     ):
         self._api = Api.from_env()
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         self._click_handled = True
         super().__init__(
             title=title,

@@ -17,6 +17,8 @@ from supervisely.solution.nodes.smart_sampling.clip_service import OpenAIClipSer
 from supervisely.solution.nodes.smart_sampling.node import SmartSamplingNode
 from supervisely.solution.nodes.train_val_split.node import TrainValSplitNode
 from supervisely.solution.nodes.training_project.node import TrainingProjectNode
+from supervisely.solution.nodes.data_versioning.node import DataVersioningNode
+from supervisely.solution.nodes.pretrained_models.node import PretrainedModelsNode
 
 # from supervisely.solution.components.video_samling import VideoSampling
 
@@ -35,6 +37,8 @@ __all__ = [
     "CompareModelsNode",
     "AiIndexNode",
     "OpenAIClipServiceNode",
+    "DataVersioningNode",
+    "PretrainedModelsNode",
     # "VideoSampling",
     "AllExperimentsNode",
     "EvaluationNode",

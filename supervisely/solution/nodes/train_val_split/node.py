@@ -22,11 +22,11 @@ class TrainValSplitNode(BaseCardNode):
     It is used to move labeled data from one location to another.
     """
 
-    title = "Train/Val Split"
-    description = "Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.)."
-    icon = "mdi mdi-set-split"
-    icon_color = "#1976D2"
-    icon_bg_color = "#E3F2FD"
+    TITLE = "Train/Val Split"
+    DESCRIPTION = "Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.)."
+    ICON = "mdi mdi-set-split"
+    ICON_COLOR = "#1976D2"
+    ICON_BG_COLOR = "#E3F2FD"
 
     def __init__(self, dst_project_id: int, *args, **kwargs):
         """
@@ -49,14 +49,11 @@ class TrainValSplitNode(BaseCardNode):
         self.modals = [self.gui.modal]
 
         # --- init Node ----------------------------------------------------------
-        title = kwargs.pop("title", "Train/Val Split")
-        description = kwargs.pop(
-            "description",
-            "Split dataset into Train and Validation sets for model training. Datasets structure mirrors the Input Project with splits organized in corresponding Collections (e.g., 'train_1', 'val_1', etc.).",
-        )
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         # First, initialize the base class (to wrap publish/subscribe methods)
         super().__init__(
             title=title,
