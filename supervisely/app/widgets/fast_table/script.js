@@ -115,6 +115,12 @@ Vue.component('fast-table', {
                     />
                   </th>
                   <th
+                    v-if="settings.isRowSelectable && settings.maxSelectedRows === 1"
+                    class="px-2 md:px-3 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
+                    :class="{ 'first:sticky first:left-0 first:z-20 first:shadow-[inset_-2px_-2px_0_#dfe6ec]': fixColumns }"
+                  >
+                  </th>
+                  <th
                     v-for="(c,idx) in columns.slice(0, columnNumberLimit)"
                     class="px-2 md:px-3 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:first:pl-6 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
                     :class="{ 'first:sticky first:left-0 first:z-20 first:shadow-[inset_-2px_-2px_0_#dfe6ec]': fixColumns }"
@@ -475,20 +481,35 @@ Vue.component('fast-table', {
     selectAllRows(checked) {
       if (!this.data || this.data.length === 0) return;
 
-      // accumulate selection across pages without overwriting
       const current = Array.isArray(this.selectedRows) ? [...this.selectedRows] : [];
+      const max = this.settings && this.settings.maxSelectedRows ? this.settings.maxSelectedRows : 0;
 
       if (checked) {
         const selectedIdx = new Set(current.map(r => this.rowKeyValue(r)));
         const result = [...current];
-        for (const r of this.data) {
-          const key = this.rowKeyValue(r);
-          if (!selectedIdx.has(key)) {
-            result.push(_.cloneDeep(r));
-            selectedIdx.add(key);
+
+        if (max && max > 0) {
+          let quota = Math.max(0, max - result.length);
+          for (const r of this.data) {
+            const key = this.rowKeyValue(r);
+            if (!selectedIdx.has(key)) {
+              if (quota <= 0) break;
+              result.push(_.cloneDeep(r));
+              selectedIdx.add(key);
+              quota -= 1;
+            }
           }
+          this.$emit('update:selected-rows', result);
+        } else {
+          for (const r of this.data) {
+            const key = this.rowKeyValue(r);
+            if (!selectedIdx.has(key)) {
+              result.push(_.cloneDeep(r));
+              selectedIdx.add(key);
+            }
+          }
+          this.$emit('update:selected-rows', result);
         }
-        this.$emit('update:selected-rows', result);
       } else {
         const pageIdx = new Set(this.data.map(r => this.rowKeyValue(r)));
         const result = current.filter(r => !pageIdx.has(this.rowKeyValue(r)));
@@ -515,9 +536,22 @@ Vue.component('fast-table', {
       const current = Array.isArray(this.selectedRows) ? [...this.selectedRows] : [];
       const key = this.rowKeyValue(row);
       const exists = current.some(r => this.rowKeyValue(r) === key);
+      const max = this.settings && this.settings.maxSelectedRows ? this.settings.maxSelectedRows : 0;
 
       let result = current;
       if (checked) {
+        if (max && max > 0) {
+          if (max === 1) {
+            result = [_.cloneDeep(row)];
+            this.$emit('update:selected-rows', result);
+            return;
+          }
+          if (!exists && current.length >= max) {
+            // revert checkbox state if over the limit
+            this.$nextTick(() => { this.$set(this.rowCheckboxModel, key, false); });
+            return;
+          }
+        }
         if (!exists) result = [...current, _.cloneDeep(row)];
       } else {
         if (exists) result = current.filter(r => this.rowKeyValue(r) !== key);
