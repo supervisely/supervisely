@@ -141,6 +141,7 @@ class FastTable(Widget):
         is_selectable: bool = False,
         header_left_content: Optional[Widget] = None,
         header_right_content: Optional[Widget] = None,
+        max_selected_rows: Optional[int] = None,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -170,7 +171,7 @@ class FastTable(Widget):
         self._searched_data = None
         self._active_page = 1
         self._width = width
-        self._selected_rows = None
+        self._selected_rows = []
         self._selected_cell = None
         self._is_row_clickable = False
         self._is_cell_clickable = False
@@ -179,6 +180,7 @@ class FastTable(Widget):
         self._project_meta = self._unpack_project_meta(project_meta)
         self._header_left_content = header_left_content
         self._header_right_content = header_right_content
+        self._max_selected_rows = max_selected_rows
 
         # table_options
         self._page_size = page_size
@@ -276,6 +278,8 @@ class FastTable(Widget):
                 "isCellClickable": self._is_cell_clickable,
                 "fixColumns": self._fix_columns,
                 "isRadio": self._is_radio,
+                "isRowSelectable": self._is_selectable,
+                "maxSelectedRows": self._max_selected_rows
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
@@ -558,15 +562,15 @@ class FastTable(Widget):
             if self._rows_total != 0:
                 self.select_row(0)
             else:
-                self._selected_rows = None
-                StateJson()[self.widget_id]["selectedRows"] = None
+                self._selected_rows = []
+                StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
                 StateJson().send_changes()
             return
         if not self._selected_rows:
             return
         if self._rows_total == 0:
-            self._selected_rows = None
-            StateJson()[self.widget_id]["selectedRows"] = None
+            self._selected_rows = []
+            StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
             StateJson().send_changes()
             return
         if self._is_selectable:
