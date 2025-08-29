@@ -14,7 +14,7 @@ class LinkNode(BaseCardNode):
         self,
         title: str,
         description: str,
-        link: str = "",
+        link: str = None,
         width: int = 250,
         icon: Optional[Union[Icons, str]] = None,
         icon_color: str = "#1976D2",
