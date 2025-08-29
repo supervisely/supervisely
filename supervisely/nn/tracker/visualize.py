@@ -1,4 +1,4 @@
-from typing import Union, Dict, List, Tuple, Iterator
+from typing import Union, Dict, List, Tuple, Iterator, Optional
 import numpy as np
 import cv2
 import ffmpeg
@@ -266,7 +266,7 @@ class TrackingVisualizer:
         logger.info(f"Extracted tracks from {len(self.tracks_by_frame)} frames")
         
     def _draw_detection(self, img: np.ndarray, track_id: int, bbox: Tuple[int, int, int, int], 
-                    class_name: str) -> Tuple[int, int] | None:
+                    class_name: str) -> Optional[Tuple[int, int]]:
         """
         Draw single detection with track ID and class label.
         Returns the center point of the bbox for trajectory drawing.
