@@ -337,10 +337,10 @@ class VueFlow(Widget):
         clean_dir(str(dst_ui_dir))
         copy_dir_recursively(str(vue_flow_ui_dir), str(dst_ui_dir))
 
-        self._url = f"/{str(dst_ui_dir)}/index.html?showSidebar={str(self._show_sidebar).lower()}"
+        self._url = f"{str(dst_ui_dir)}/index.html?showSidebar={str(self._show_sidebar).lower()}"
         if is_development():
             # self._url = f"http://0.0.0.0:8000{self._url}"
-            self._url = f"http://localhost:8000{self._url}"
+            self._url = f"http://localhost:8000/{self._url}"
         StateJson()[self.widget_id]["url"] = self._url
         StateJson().send_changes()
 
