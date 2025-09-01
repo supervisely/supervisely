@@ -123,3 +123,10 @@ class ComparisonFinishedMessage(Message):
     best_checkpoint: Optional[str] = Field(
         None, description="Path to the best model checkpoint after comparison"
     )
+
+
+class ModelDeployMessage(Message):
+    """Model deployed event message."""
+
+    model_path: Optional[str] = Field(None, description="Checkpoint path to be deployed")
+    session_id: Optional[int] = Field(None, description="ID of the deployment session")
