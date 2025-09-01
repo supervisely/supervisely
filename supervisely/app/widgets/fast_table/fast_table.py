@@ -1206,8 +1206,12 @@ class FastTable(Widget):
 
         @server.post(selection_changed_route_path)
         def _selection_changed():
-            selected_row = self.get_selected_row()
-            func(selected_row)
+            if self._is_radio:
+                selected_row = self.get_selected_row()
+                func(selected_row)
+            elif self._is_selectable:
+                selected_rows = self.get_selected_rows()
+                func(selected_rows)
 
         self._selection_changed_handled = True
         DataJson()[self.widget_id]["selectionChangedHandled"] = True
