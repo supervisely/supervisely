@@ -89,7 +89,7 @@ class VueFlow(Widget):
         edges: Optional[List[Edge]] = None,
         sidebar_nodes: Optional[List[Dict[str, Any]]] = None,
         widget_id: str = None,
-        show_sidebar: bool = True,
+        show_sidebar: bool = False,
     ):
         self.nodes = nodes if nodes is not None else []
         self.edges = edges if edges is not None else []
