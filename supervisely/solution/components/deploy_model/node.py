@@ -1,6 +1,3 @@
-import time
-from faulthandler import enable
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
 
 import supervisely.io.env as sly_env
@@ -36,7 +33,7 @@ class DeployModelNode(BaseCardNode):
         self.team_id = sly_env.team_id()
         self.workspace_id = sly_env.workspace_id()
 
-        self.history = self.HISTORY_CLASS()
+        self.history = self.HISTORY_CLASS(api=self._api)
         self.gui = self.GUI_CLASS(team_id=self.team_id)
         self._automation = DeployTasksAutomation()
 
@@ -57,28 +54,9 @@ class DeployModelNode(BaseCardNode):
             **kwargs,
         )
 
-        @self.gui.agent_selector.value_changed
+        @self.gui.content.select_agent.value_changed
         def _on_agent_selector_change(value: int):
             self.save(agent_id=value)
-
-        @self.gui.deploy_button.click
-        def _on_deploy_button_click():
-            self.gui.modal.hide()
-            self.deploy(model=self.gui._get_model_input_value())
-
-        @self.gui.stop_button.click
-        def _on_stop_button_click():
-            if self.gui.model is None:
-                return
-            try:
-                self.gui.model.shutdown()
-                self.gui.enable_gui()
-                self.gui.model = None
-                self._update_properties()
-            except Exception as e:
-                logger.error(
-                    f"An error occurred while stopping the model: {repr(e)}", exc_info=True
-                )
 
         @self.click
         def _on_node_click():
@@ -94,67 +72,6 @@ class DeployModelNode(BaseCardNode):
         if not hasattr(self, "tooltip_buttons"):
             self.tooltip_buttons = [self.history.history_btn]
         return self.tooltip_buttons
-
-    def _update_properties(self, deploy_info: Dict[str, Any] = None):
-        """Update node properties with current settings."""
-
-        if self.gui.model is not None:
-            self._refresh_memory_usage_info()
-            deploy_info = deploy_info or self.gui._get_deployed_model_info()[1]
-            self.update_property("Source", deploy_info.get("model_source"))
-            self.update_property("Hardware", deploy_info.get("hardware"))
-            self.update_property("Model", deploy_info.get("model_name"), highlight=True)
-            self.update_property("Status", "Model deployed", highlight=True)
-            self.show_automation_badge("Model Deployed")
-        else:
-            self.hide_automation_badge("Model Deployed")
-            self.remove_property_by_key("Status")
-            self.remove_property_by_key("Source")
-            self.remove_property_by_key("Hardware")
-            self.remove_property_by_key("Model")
-
-    # --------------------------------------------------------------------
-    # Main methods -------------------------------------------------------
-    # --------------------------------------------------------------------
-    def deploy(
-        self,
-        model: Optional[str] = None,
-        agent_id: Optional[int] = None,
-    ):
-        """
-        Sends a request to the backend to start the model deployment process.
-        """
-        try:
-            self.gui.disable_gui()
-            self.show_in_progress_badge("Deploying Model...")
-
-            self.gui.deploy(model=model, agent_id=agent_id)
-            time.sleep(10)  # Wait for the model to be fully deployed
-
-            task_info, deploy_info = self.gui._get_deployed_model_info()
-            self._update_properties(deploy_info=deploy_info)
-
-            task_data = {
-                "id": task_info.get("id"),
-                "app_name": task_info.get("meta", {}).get("app", {}).get("name"),
-                "model_name": deploy_info.get("model_name"),
-                "started_at": task_info.get("startedAt"),
-                "runtime": deploy_info.get("runtime"),
-                "hardware": deploy_info.get("hardware"),
-                "device": deploy_info.get("device"),
-            }
-            self.history.add_task(task_data)
-
-            task_id = task_info.get("id")
-            self._send_model_deployed_message(session_id=task_id)
-
-            logger.info(f"Model deployed. Task ID: {task_id}")
-
-        except Exception as e:
-            logger.error(f"Model deployment failed. {repr(e)}", exc_info=True)
-        finally:
-            self.hide_in_progress_badge("Model Deployment...")
-            self.gui.enable_gui()
 
     # --------------------------------------------------------------------
     # Private methods ----------------------------------------------------
@@ -184,5 +101,43 @@ class DeployModelNode(BaseCardNode):
         else:
             self.remove_property_by_key("Agent")
             self.remove_property_by_key("GPU Memory")
-            self.remove_property_by_key("Agent")
-            self.remove_property_by_key("GPU Memory")
+
+    def _refresh_model_info(self) -> None:
+        """
+        Refreshes the deployed model information.
+        """
+        if self.gui.model is not None:
+            task_info, deploy_info = self.gui._get_deployed_model_info()
+
+            tasks = self.history.get_tasks()
+            task_ids = {task["id"] for task in tasks}
+            if task_info.get("id") not in task_ids:
+                task_data = {
+                    "id": task_info.get("id"),
+                    "app_name": task_info.get("meta", {}).get("app", {}).get("name"),
+                    "model_name": deploy_info.get("model_name"),
+                    "started_at": task_info.get("startedAt"),
+                    "runtime": deploy_info.get("runtime"),
+                    "hardware": deploy_info.get("hardware"),
+                    "device": deploy_info.get("device"),
+                }
+                self.history.add_task(task_data)
+                self.update_property("Source", deploy_info.get("model_source"))
+                self.update_property("Hardware", deploy_info.get("hardware"))
+                self.update_property("Model", deploy_info.get("model_name"), highlight=True)
+                self.update_property("Status", "Model deployed", highlight=True)
+                self.show_automation_badge("Model Deployed")
+                self._send_model_deployed_message(session_id=task_info.get("id"))
+                logger.info(
+                    f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
+                )
+        else:
+            self.remove_property_by_key("Status")
+            self.remove_property_by_key("Source")
+            self.remove_property_by_key("Hardware")
+            self.remove_property_by_key("Model")
+            self.hide_automation_badge("Model Deployed")
+
+    def _refresh_node(self):
+        self._refresh_memory_usage_info()
+        self._refresh_model_info()

@@ -9,7 +9,7 @@ from supervisely.solution.nodes.deploy_pretrained_model.gui import (
 
 class DeployPretrainedModelNode(DeployModelNode):
     TITLE = "Pretrained Model"
-    DESCRIPTION = "Deploy a pretrained model for inference."
+    DESCRIPTION = "Deploy a pretrained model available in Supervisely."
 
     GUI_CLASS = DeployPretrainedModelGUI
 
