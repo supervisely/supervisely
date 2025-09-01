@@ -64,8 +64,16 @@ class EvaluationReportNode(LinkNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
         return {
-            "evaluation_finished": self.set_report,
+            "evaluation_finished": self._process_incoming_message,
+            "comparison_finished": self._process_incoming_message,
         }
+
+    def _process_incoming_message(self, msg):
+        if not hasattr(msg, "eval_dir"):
+            logger.warning("Received message does not have 'eval_dir' attribute.")
+            return
+        eval_dir = msg.eval_dir
+        self.set_report(eval_dir)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
