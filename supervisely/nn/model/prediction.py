@@ -82,6 +82,7 @@ class Prediction:
         self._masks = None
         self._classes = None
         self._scores = None
+        self._track_ids = None
 
         if self.path is None and isinstance(self.source, (str, PathLike)):
             self.path = str(self.source)
@@ -125,6 +126,10 @@ class Prediction:
             )
         self._boxes = np.array(self._boxes)
         self._masks = np.array(self._masks)
+        
+        custom_data = self.annotation.custom_data
+        if custom_data and isinstance(custom_data, list) and len(custom_data) == len(self.annotation.labels):
+            self._track_ids = np.array(custom_data)
 
     @property
     def boxes(self):
@@ -178,6 +183,12 @@ class Prediction:
             obj_class.name: i for i, obj_class in enumerate(self.model_meta.obj_classes)
         }
         return np.array([cls_name_to_idx[class_name] for class_name in self.classes])
+    @property
+    def track_ids(self):
+        """Get track IDs for each detection. Returns None for detections without tracking."""
+        if self._track_ids is None:
+            self._init_geometries()
+        return self._track_ids
 
     @classmethod
     def from_json(cls, json_data: Dict, **kwargs) -> "Prediction":
@@ -229,6 +240,8 @@ class Prediction:
             if self.image_id is not None:
                 try:
                     if api is None:
+                        # TODO: raise more clarifying error in case of failing of api init
+                        # what a user should do to fix it?
                         api = Api()
                     return api.image.download_np(self.image_id)
                 except Exception as e:

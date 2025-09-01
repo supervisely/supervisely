@@ -1,6 +1,6 @@
 from supervisely.nn.artifacts.detectron2 import Detectron2
 from supervisely.nn.artifacts.hrda import HRDA
-from supervisely.nn.artifacts.mmclassification import MMClassification
+from supervisely.nn.artifacts.mmclassification import MMClassification, MMPretrain
 from supervisely.nn.artifacts.mmdetection import MMDetection, MMDetection3
 from supervisely.nn.artifacts.mmsegmentation import MMSegmentation
 from supervisely.nn.artifacts.ritm import RITM

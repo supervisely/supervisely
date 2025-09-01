@@ -1394,9 +1394,75 @@ class AppApi(TaskApi):
         """get_url"""
         return f"/apps/sessions/{task_id}"
 
-    def download_git_file(self, app_id, version, file_path, save_path):
-        """download_git_file"""
-        raise NotImplementedError()
+    def download_git_file(
+        self,
+        module_id,
+        save_path,
+        app_id=None,
+        version=None,
+        file_path=None,
+        file_key=None,
+        log_progress=True,
+        ext_logger=None,
+    ):
+        """
+        Download a file from app repository. File should be added in the app config under `files` key.
+
+        :param module_id: ID of the module
+        :type module_id: int
+        :param save_path: Path to save the file
+        :type save_path: str
+        :param app_id: ID of the app
+        :type app_id: int
+        :param version: Version of the app
+        :type version: str
+        :param file_path: Path to the file in the app github repository
+        :type file_path: str
+        :param file_key: Key of the file in the app github repository
+        :type file_key: str
+        :param log_progress: If True, will log the progress of the download
+        :type log_progress: bool
+        :param ext_logger: Logger to use for logging
+        :type ext_logger: Logger
+        :return: None
+        :rtype: None
+        """
+        if file_path is None and file_key is None:
+            raise ValueError("Either file_path or file_key must be provided")
+        payload = {
+            ApiField.MODULE_ID: module_id,
+        }
+        if version is not None:
+            payload[ApiField.VERSION] = version
+        if app_id is not None:
+            payload[ApiField.APP_ID] = app_id
+        if file_path is not None:
+            payload[ApiField.FILE_PATH] = file_path
+        if file_key is not None:
+            payload[ApiField.FILE_KEY] = file_key
+
+        response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
+        if log_progress:
+            if ext_logger is None:
+                ext_logger = logger
+
+            length = None
+            # Content-Length
+            if "Content-Length" in response.headers:
+                length = int(response.headers["Content-Length"])
+            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+
+        mb1 = 1024 * 1024
+        ensure_base_path(save_path)
+        with open(save_path, "wb") as fd:
+            log_size = 0
+            for chunk in response.iter_content(chunk_size=mb1):
+                fd.write(chunk)
+                log_size += len(chunk)
+                if log_progress and log_size > mb1 and progress is not None:
+                    progress.iters_done_report(log_size)
+                    log_size = 0
 
     def download_git_archive(
         self,
@@ -1418,6 +1484,7 @@ class AppApi(TaskApi):
             payload[ApiField.APP_ID] = app_id
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
@@ -1435,7 +1502,7 @@ class AppApi(TaskApi):
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
                 log_size += len(chunk)
-                if log_progress and log_size > mb1:
+                if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
 

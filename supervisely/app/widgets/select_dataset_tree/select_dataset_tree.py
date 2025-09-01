@@ -141,6 +141,10 @@ class SelectDatasetTree(Widget):
         self._select_dataset = None
         self._width = width
 
+        # Flags
+        self._team_is_selectable = team_is_selectable
+        self._workspace_is_selectable = workspace_is_selectable
+
         # List of widgets will be used to create a Container.
         self._widgets = []
 
@@ -165,10 +169,24 @@ class SelectDatasetTree(Widget):
         for widget in self._widgets:
             widget.disable()
 
+        if self._select_team is not None:
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if self._select_workspace is not None:
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
+
     def enable(self) -> None:
         """Enable the widget in the UI."""
         for widget in self._widgets:
             widget.enable()
+
+        if self._select_team is not None:
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if self._select_workspace is not None:
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
 
     @property
     def team_id(self) -> int:
