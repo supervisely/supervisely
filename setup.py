@@ -204,7 +204,7 @@ setup(
             "nn/tracker/bot_sort/configs/MOT17/*.yml",
             "nn/tracker/bot_sort/configs/MOT20/*.yml",
             "nn/benchmark/*/*.yaml",
-            "app/widgets/vue_flow/vue_flow_ui/*",
+            "app/widgets/vue_flow/vue_flow_ui/**/*",
         ],
     },
     entry_points={
