@@ -1,14 +1,15 @@
 from typing import Optional
 
 from supervisely.solution.components.link_node.node import LinkNode
+from supervisely.solution.engine.models import TrainFinishedMessage
 
 
-class DataVersioningNode(LinkNode):
-    """Node for linking to the Project Versions dashboard."""
+class TrainingMetricsNode(LinkNode):
+    """Node for linking to the training session metrics page."""
 
-    TITLE = "Data Versioning"
-    DESCRIPTION = "Open the project versions page to explore the training project history changes."
-    ICON = "mdi mdi-history"
+    TITLE = "Training Metrics"
+    DESCRIPTION = "Open the training session metrics page."
+    ICON = "mdi mdi-chart-line-variant"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
 
@@ -18,7 +19,7 @@ class DataVersioningNode(LinkNode):
         icon = kwargs.pop("icon", self.ICON)
         icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
         icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
-        link = f"/projects/{project_id}/versions" if project_id is not None else ""
+        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
@@ -40,17 +41,9 @@ class DataVersioningNode(LinkNode):
     def _get_handles(self):
         return [
             {
-                "id": "data_versioning_project_id",
+                "id": "train_finished",
                 "type": "target",
-                "position": "top",
-                "label": "Input",
-                "connectable": True,
-            },
-            {
-                "id": "data_versioning_output",
-                "type": "source",
-                "position": "bottom",
-                "label": "Output",
+                "position": "left",
                 "connectable": True,
             },
         ]
@@ -59,14 +52,18 @@ class DataVersioningNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {
-            "data_versioning_project_id": self.set_project_id,
-        }
+        return {"train_finished": self.set_metrics_link}
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_project_id(self, project_id: Optional[int] = None):
-        """Set project ID and update the link accordingly."""
-        link = f"/projects/{project_id}/versions" if project_id is not None else ""
-        self.set_link(link)
+    def set_metrics_link(self, message: TrainFinishedMessage):
+        """Receive experiment_info and set link to logs.dir."""
+        try:
+            experiment_info = message.experiment_info or {}
+            logs = experiment_info.get("logs") or {}
+            logs_dir = logs.get("dir")
+            if logs_dir:
+                self.set_link(logs_dir)
+        except Exception:
+            pass

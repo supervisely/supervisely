@@ -13,6 +13,7 @@ from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
+    TrainFinishedMessage,
 )
 from supervisely.solution.nodes.pretrained_models.automation import PretrainedModelsAuto
 from supervisely.solution.nodes.pretrained_models.gui import PretrainedModelsGUI
@@ -118,13 +119,11 @@ class PretrainedModelsNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
-        return {
-            "data_versioning_project_id": self.get_data_versioning_project_id,
-        }
+        return {"train_finished": self._send_train_finished_message}
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
-        return {}
+        return {"data_versioning_project_id": self.get_data_versioning_project_id}
 
     def send_data_moving_finished_message(
         self,
@@ -193,6 +192,11 @@ class PretrainedModelsNode(BaseCardNode):
 
     def get_data_versioning_project_id(self) -> Optional[int]:
         return getattr(self, "project_id", None)
+
+    def _send_train_finished_message(
+        self, success: bool, task_id: int, experiment_info: dict
+    ) -> TrainFinishedMessage:
+        return TrainFinishedMessage(success, task_id, experiment_info)
 
     # subscribe event (may receive Message object)
     def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
@@ -297,18 +301,10 @@ class PretrainedModelsNode(BaseCardNode):
                 self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
             elif task_info["status"] == TaskApi.Status.FINISHED.value:
                 self.update_badge_by_key(key="Status", label="Finished", badge_type="success")
-                for cb in self._train_finished_cb:
-                    if not callable(cb):
-                        logger.error(f"Train finished callback {cb} is not callable.")
-                        continue
-                    try:
-                        if cb.__code__.co_argcount == 1:
-                            cb(task_id)
-                        else:
-                            cb()
-                    except Exception as e:
-                        logger.error(f"Error in train finished callback: {e}")
-                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
+                experiment_info = self.api.nn.get_experiment_info(task_id)
+                self._send_train_finished_message(
+                    success=True, task_id=task_id, experiment_info=experiment_info
+                )
             else:
                 self.update_badge_by_key(key="Status", label="Training...", badge_type="info")
         else:
