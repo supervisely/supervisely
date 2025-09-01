@@ -8,6 +8,7 @@ from supervisely.app.widgets.vue_flow.models import (
     NodeBadgeStyleMap,
     NodeLink,
     NodeSettings,
+    TooltipProperty,
 )
 
 
@@ -87,26 +88,27 @@ class Node:
     def update_property(self, key: str, value: str, link: str = None, highlight: bool = None):
         """Updates the property of the card."""
         for prop in self.settings.tooltip.properties:
-            if prop.get("label") == key:
-                prop["value"] = value
-                prop["link"] = {"url": link} if link else None
-                prop["highlight"] = highlight if highlight is not None else False
+            if prop.label == key:
+                prop.value = value
+                if link is not None:
+                    prop.link = {"url": link}
+                if highlight is not None:
+                    prop.highlight = highlight
                 self.update_node(self)
                 return
-        # If property not found, add it
-        new_prop = {
-            "label": key,
-            "value": value,
-            "link": {"url": link} if link else None,
-            "highlight": highlight if highlight is not None else False,
-        }
+        new_prop = TooltipProperty(
+            label=key,
+            value=value,
+            link={"url": link} if link else None,
+            highlight=highlight if highlight is not None else False,
+        )   
         self.settings.tooltip.properties.append(new_prop)
         self.update_node(self)
 
     def remove_property_by_key(self, key: str, silent: bool = True):
         """Removes the property by key of the card."""
         for idx, prop in enumerate(self.settings.tooltip.properties):
-            if prop.get("label") == key:
+            if prop.label == key:
                 self.settings.tooltip.properties.pop(idx)
                 self.update_node(self)
                 return
