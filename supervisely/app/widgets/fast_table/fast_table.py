@@ -46,6 +46,21 @@ class FastTable(Widget):
     :type width: str, optional
     :param widget_id: Unique widget identifier.
     :type widget_id: str, optional
+    :param show_header: Whether to show table header
+    :type show_header: bool, optional
+    :param is_radio: Enable radio button selection mode (single row selection)
+    :type is_radio: bool, optional
+    :param is_selectable: Enable multiple row selection
+    :type is_selectable: bool, optional
+    :param header_left_content: Widget to display in the left side of the header
+    :type header_left_content: Widget, optional
+    :param header_right_content: Widget to display in the right side of the header
+    :type header_right_content: Widget, optional
+    :param max_selected_rows: Maximum number of rows that can be selected
+    :type max_selected_rows: int, optional
+    :param search_position: Position of the search input ("left" or "right")
+    :type search_position: Literal["left", "right"], optional
+
 
     :Usage example:
     .. code-block:: python
@@ -230,6 +245,16 @@ class FastTable(Widget):
             self._refresh()
 
     def set_columns(self, columns: List[str], columns_options: Optional[List[dict]] = None, data: Optional[Union[pd.DataFrame, List]] = None) -> None:
+        """
+        Replace table columns with options and data in the widget
+
+        :param columns: List of column names
+        :type columns: List
+        :param columns_options: List of dicts with options for each column
+        :type columns_options: List[dict], optional
+        :param data: Table data
+        :type data: Union[pd.DataFrame, List], optional
+        """
         self.clear()
         self.clear_selection()
         self._columns = columns
@@ -260,6 +285,12 @@ class FastTable(Widget):
 
 
     def set_data(self, data: Union[pd.DataFrame, List]) -> None:
+        """Replace table data (rows and columns) in the widget.
+
+        :param data: Table data
+        :type data: Union[pd.DataFrame, List]
+        """
+
         self._active_page = 1
         StateJson()[self.widget_id]["page"] = self._active_page
         if self._sort_column_idx > len(data[0]) - 1:
