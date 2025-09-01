@@ -229,6 +229,58 @@ class FastTable(Widget):
         def _filter_changed_handler():
             self._refresh()
 
+    def set_columns(self, columns: List[str], columns_options: Optional[List[dict]] = None, data: Optional[Union[pd.DataFrame, List]] = None) -> None:
+        self.clear()
+        self.clear_selection()
+        self._columns = columns
+        self._columns_options = columns_options if columns_options is not None else [{}] * len(columns)
+        self._columns_data = []
+        if columns is None:
+            self._columns_first_idx = None
+        else:
+            self._columns_first_idx = []
+            for col in columns:
+                if isinstance(col, str):
+                    self._columns_first_idx.append(col)
+                    self._columns_data.append(self.ColumnData(name=col))
+                elif isinstance(col, tuple):
+                    self._columns_first_idx.append(col[0])
+                    self._columns_data.append(
+                        self.ColumnData(name=col[0], is_widget=True, widget=col[1])
+                    )
+                else:
+                    raise TypeError(f"Column name must be a string or a tuple, got {type(col)}")
+        if data is not None:
+            self.set_data(data) 
+
+        self._validate_sort_attrs()
+        DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
+        DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
+        DataJson().send_changes()
+
+
+    def set_data(self, data: Union[pd.DataFrame, List]) -> None:
+        self._active_page = 1
+        StateJson()[self.widget_id]["page"] = self._active_page
+        if self._sort_column_idx > len(data[0]) - 1:
+            self._sort_column_idx = None
+            StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        StateJson().send_changes()
+
+        self._validate_input_data(data)
+        self._source_data = self._prepare_input_data(data)
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
+        self._rows_total = len(self._parsed_source_data["data"])
+        if self._is_radio and self._rows_total > 0:
+            self._selected_rows = [self._parsed_source_data["data"][0]]
+        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
+        DataJson()[self.widget_id]["total"] = self._rows_total
+        DataJson().send_changes()
+
     def _refresh(self):
         # TODO sort widgets
         self._active_page = StateJson()[self.widget_id]["page"]
@@ -485,7 +537,7 @@ class FastTable(Widget):
 
     def clear_selection(self) -> None:
         """Clears the selection of the table."""
-        StateJson()[self.widget_id]["selectedRows"] = None
+        StateJson()[self.widget_id]["selectedRows"] = []
         StateJson()[self.widget_id]["selectedCell"] = None
         StateJson().send_changes()
         self._maybe_update_selected_row()
