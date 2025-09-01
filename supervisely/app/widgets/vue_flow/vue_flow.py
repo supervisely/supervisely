@@ -330,12 +330,21 @@ class VueFlow(Widget):
         """
         self._sly_app
         vue_flow_ui_dir = Path(__file__).parent / "vue_flow_ui"
+        logger.info(
+            f"VueFlow UI source directory: {vue_flow_ui_dir}.",
+            extra={"files": [list(vue_flow_ui_dir.iterdir())]},
+        )
         static_dir = Path(static_dir)
+        logger.info(f"Preparing VueFlow UI static files in: {static_dir}")
 
         dst_ui_dir = static_dir / "vue_flow_ui"
         dst_ui_dir.mkdir(parents=True, exist_ok=True)
         clean_dir(str(dst_ui_dir))
         copy_dir_recursively(str(vue_flow_ui_dir), str(dst_ui_dir))
+        logger.info(
+            f"VueFlow UI static files prepared in: {dst_ui_dir}.",
+            extra={"files": [list(dst_ui_dir.iterdir())]},
+        )
 
         self._url = f"{str(dst_ui_dir)}/index.html?showSidebar={str(self._show_sidebar).lower()}"
         if is_development():
