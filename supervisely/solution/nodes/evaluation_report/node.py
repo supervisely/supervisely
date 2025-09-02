@@ -83,7 +83,7 @@ class EvaluationReportNode(LinkNode):
         lnk_path = f"{eval_dir.rstrip('/')}/visualizations/Model Evaluation Report.lnk"
         link = self._get_url_from_lnk_path(lnk_path)
         if link:
-            self.update_badge_by_key(key="status", value="New report", badge_type="success")
+            self.update_badge_by_key(key="status", label="New report", badge_type="success")
             self.update_property("Report Link", "Open Report", link=link, highlight=True)
             self.set_link(link)
         else:

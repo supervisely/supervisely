@@ -1,5 +1,6 @@
 from typing import Optional
 
+from supervisely._utils import abs_url, is_development
 from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 from supervisely.solution.engine.models import TrainFinishedMessage
@@ -59,24 +60,26 @@ class TrainingExperimentNode(LinkNode):
         if not hasattr(message, "experiment_info"):
             logger.warning("Received message does not have 'experiment_info' attribute.")
             return
+
+        # @TODO: get experiment_id from api task_info
         experiment_id = message.experiment_info.get("experiment_id")
         self.set_experiment(experiment_id)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_experiment(self, experiment_id: int = None):
+    def set_experiment(self, experiment_id: Optional[int] = None):
         """Receive experiment_info and set link to experiment by experiment_id."""
-        if experiment_id is not None:
-            link = f"/nn/experiments/{experiment_id}"
-        else:
-            link = None
-
-        if link is not None:
-            self.update_badge_by_key(key="status", value="Experiment", badge_type="success")
-            self.update_property("Experiment Link", "Open Experiment", link=link, highlight=True)
-            self.set_link(link)
-        else:
+        if experiment_id is None:
             self.remove_badge_by_key("status")
             self.remove_property_by_key("Experiment Link")
             self.remove_link()
+            return
+
+        link = f"/nn/experiments/{experiment_id}"
+        if is_development():
+            link = abs_url(link)
+
+        self.update_badge_by_key(key="status", label="Experiment Report", badge_type="success")
+        self.update_property("Experiment Link", "Open Experiment", link=link, highlight=True)
+        self.set_link(link)

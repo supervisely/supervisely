@@ -1,5 +1,6 @@
 from typing import Optional
 
+from supervisely._utils import abs_url, is_development
 from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 from supervisely.solution.engine.models import TrainFinishedMessage
@@ -60,20 +61,24 @@ class TrainingEvaluationReportNode(LinkNode):
         if not hasattr(message, "experiment_info"):
             logger.warning("Received message does not have 'experiment_info' attribute.")
             return
-        evaluation_report_link = message.experiment_info.get("evaluation_report_link")
-        self.set_report(evaluation_report_link)
+        evaluation_report_id = message.experiment_info.get("evaluation_report_id")
+        self.set_report(evaluation_report_id)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_report(self, evaluation_report_link: str = None):
+    def set_report(self, evaluation_report_id: Optional[int] = None):
         """Receive experiment_info and set link to evaluation report by ID."""
-        if evaluation_report_link is not None:
-            link = evaluation_report_link
-            self.update_badge_by_key(key="status", value="New report", badge_type="success")
-            self.update_property("Report Link", "Open Report", link=link, highlight=True)
-            self.set_link(link)
-        else:
+        if evaluation_report_id is None:
             self.remove_badge_by_key("status")
             self.remove_property_by_key("Report Link")
             self.remove_link()
+            return
+
+        link = f"/model-benchmark?id={evaluation_report_id}"
+        if is_development():
+            link = abs_url(link)
+        
+        self.update_badge_by_key(key="status", label="Evaluation Report", badge_type="success")
+        self.update_property("Report Link", "Open Report", link=link, highlight=True)
+        self.set_link(link)
