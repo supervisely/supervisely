@@ -248,7 +248,7 @@ model = api.nn.deploy(
 {% endtabs %}
 
 > For more information, see [Model
-API](https://docs.supervisely.com/neural-networks/overview-1/model-api){:target="_blank"}
+API](https://docs.supervisely.com/neural-networks/model-api){:target="_blank"}
 documentation.
 
 ### Predict via API
@@ -316,7 +316,7 @@ predictions = model.predict(
 {% endtabs %}
 
 > For more information, see [Prediction
-API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"}.
+API](https://docs.supervisely.com/neural-networks/prediction-api){:target="_blank"}.
 
 {% if experiment.model.task_type == "object detection" %}
 
@@ -356,7 +356,7 @@ for pred in predictions:
     print(f"Frame {frame_index}: {len(track_ids)} tracks")
 ```
 
-> You can also apply trackers in your own code or applications. Read more about this in the docs [Video Object Tracking](https://docs.supervisely.com/neural-networks/overview-1/video-object-tracking){:target="_blank"}.
+> You can also apply trackers in your own code or applications. Read more about this in the docs [Video Object Tracking](https://docs.supervisely.com/neural-networks/video-object-tracking){:target="_blank"}.
 
 {% endif %}
 
@@ -402,7 +402,7 @@ docker image for the corresponding model's framework, and run the `docker run` c
     )
     ```
 
-See the [Model API](https://docs.supervisely.com/neural-networks/overview-1/model-api){:target="_blank"} documentation for more details on how to use the `ModelAPI` class.
+See the [Model API](https://docs.supervisely.com/neural-networks/model-api){:target="_blank"} documentation for more details on how to use the `ModelAPI` class.
 
 Alternatively, you can use `docker run` with the `predict` action to make predictions in a single command. This is a
 quick way to start inference on your local images, videos, or directories without deploying the model. The container will be automatically stopped after the predictions are made.
@@ -420,7 +420,7 @@ docker run \
 ```
 
 > For more information, see [Deploy in Docker
-Container](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container){:target="_blank"}
+Container](https://docs.supervisely.com/neural-networks/deploy_and_predict_with_supervisely_sdk#deploy-in-docker-container){:target="_blank"}
 documentation.
 
 ## Deploy locally with Supervisely SDK
@@ -465,7 +465,7 @@ This approach helps you to quickly set up the environment and run inference with
     )
     ```
 
-> For more information, see [Local Deployment](https://docs.supervisely.com/neural-networks/overview-1/deploy_and_predict_with_supervisely_sdk){:target="_blank"} and [Prediction API](https://docs.supervisely.com/neural-networks/overview-1/prediction-api){:target="_blank"} documentations.
+> For more information, see [Local Deployment](https://docs.supervisely.com/neural-networks/deploy_and_predict_with_supervisely_sdk){:target="_blank"} and [Prediction API](https://docs.supervisely.com/neural-networks/prediction-api){:target="_blank"} documentations.
 
 {% if experiment.training.checkpoints.onnx.name or experiment.training.checkpoints.tensorrt.name %}
 ### Deploy ONNX/TensorRT
