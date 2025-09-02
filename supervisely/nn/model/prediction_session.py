@@ -67,8 +67,11 @@ class PredictionSession:
         dataset_id: Union[List[int], int] = None,
         project_id: Union[List[int], int] = None,
         api: "Api" = None,
+        tracking: bool = None,
+        tracking_config: dict = None,
         **kwargs: dict,
-    ):
+    ): 
+                  
         extra_input_args = ["image_ids", "video_ids", "dataset_ids", "project_ids"]
         assert (
             sum(
@@ -87,6 +90,7 @@ class PredictionSession:
             == 1
         ), "Exactly one of input, image_ids, video_id, dataset_id, project_id or image_id must be provided."
 
+        
         self._iterator = None
         self._base_url = url
         self.inference_request_uuid = None
@@ -111,6 +115,30 @@ class PredictionSession:
         self.inference_settings = {
             k: v for k, v in kwargs.items() if isinstance(v, (str, int, float))
         }
+        
+        if tracking is True:
+            model_info = self._get_session_info()
+            if not model_info.get("tracking_on_videos_support", False):
+                raise ValueError("Tracking is not supported by this model")
+            
+            if tracking_config is None:
+                self.tracker = "botsort"
+                self.tracker_settings = {}
+            else:
+                cfg = dict(tracking_config)
+                self.tracker = cfg.pop("tracker", "botsort")
+                self.tracker_settings = cfg
+        else:
+            self.tracker = None
+            self.tracker_settings = None
+
+        if "classes" in kwargs:
+            self.inference_settings["classes"] = kwargs["classes"]
+        # TODO: remove "settings", it is the same as inference_settings
+        if "settings" in kwargs:
+            self.inference_settings.update(kwargs["settings"])
+        if "inference_settings" in kwargs:
+            self.inference_settings.update(kwargs["inference_settings"])
 
         # extra input args
         image_ids = self._set_var_from_kwargs("image_ids", kwargs, image_id)
@@ -139,7 +167,6 @@ class PredictionSession:
             input = [input]
         if isinstance(input[0], np.ndarray):
             # input is numpy array
-            kwargs = get_valid_kwargs(kwargs, self._predict_images, exclude=["images"])
             self._predict_images(input, **kwargs)
         elif isinstance(input[0], (str, PathLike)):
             if len(input) > 1:
@@ -180,7 +207,7 @@ class PredictionSession:
                         self._iterator = self._predict_images(input, **kwargs)
                     elif ext.lower() in ALLOWED_VIDEO_EXTENSIONS:
                         kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
-                        self._iterator = self._predict_videos(input, **kwargs)
+                        self._iterator = self._predict_videos(input, tracker=self.tracker, tracker_settings=self.tracker_settings, **kwargs)
                     else:
                         raise ValueError(
                             f"Unsupported file extension: {ext}. Supported extensions are: {SUPPORTED_IMG_EXTS + ALLOWED_VIDEO_EXTENSIONS}"
@@ -193,7 +220,7 @@ class PredictionSession:
             if len(video_ids) > 1:
                 raise ValueError("Only one video id can be provided.")
             kwargs = get_valid_kwargs(kwargs, self._predict_videos, exclude=["videos"])
-            self._iterator = self._predict_videos(video_ids, **kwargs)
+            self._iterator = self._predict_videos(video_ids, tracker=self.tracker, tracker_settings=self.tracker_settings, **kwargs)
         elif dataset_ids is not None:
             kwargs = get_valid_kwargs(
                 kwargs,
@@ -259,7 +286,7 @@ class PredictionSession:
         if self.api is not None:
             return self.api.token
         return env.api_token(raise_not_found=False)
-
+    
     def _get_json_body(self):
         body = {"state": {}, "context": {}}
         if self.inference_request_uuid is not None:
@@ -268,8 +295,10 @@ class PredictionSession:
             body["state"]["settings"] = self.inference_settings
         if self.api_token is not None:
             body["api_token"] = self.api_token
+        if "model_prediction_suffix" in self.kwargs:
+            body["state"]["model_prediction_suffix"] = self.kwargs["model_prediction_suffix"]
         return body
-
+    
     def _post(self, method, *args, retries=5, **kwargs) -> requests.Response:
         if kwargs.get("headers") is None:
             kwargs["headers"] = {}
@@ -303,6 +332,11 @@ class PredictionSession:
                 if retry_idx + 1 == retries:
                     raise exc
 
+    def _get_session_info(self) -> Dict[str, Any]:
+        method = "get_session_info"
+        r = self._post(method, json=self._get_json_body())
+        return r.json()
+    
     def _get_inference_progress(self):
         method = "get_inference_progress"
         r = self._post(method, json=self._get_json_body())
@@ -537,7 +571,11 @@ class PredictionSession:
         return self._predict_images_bytes(images, batch_size=batch_size)
 
     def _predict_images_ids(
-        self, images: List[int], batch_size: int = None, upload_mode: str = None
+        self,
+        images: List[int],
+        batch_size: int = None,
+        upload_mode: str = None,
+        output_project_id: int = None,
     ):
         method = "inference_batch_ids_async"
         json_body = self._get_json_body()
@@ -547,6 +585,8 @@ class PredictionSession:
             state["batch_size"] = batch_size
         if upload_mode is not None:
             state["upload_mode"] = upload_mode
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_videos(
@@ -558,7 +598,8 @@ class PredictionSession:
         end_frame=None,
         duration=None,
         direction: Literal["forward", "backward"] = None,
-        tracker: Literal["bot", "deepsort"] = None,
+        tracker: Literal["botsort"] = None,
+        tracker_settings: dict = None,
         batch_size: int = None,
     ):
         if len(videos) != 1:
@@ -573,6 +614,7 @@ class PredictionSession:
             ("duration", duration),
             ("direction", direction),
             ("tracker", tracker),
+            ("tracker_settings", tracker_settings), 
             ("batch_size", batch_size),
         ):
             if value is not None:
@@ -620,6 +662,7 @@ class PredictionSession:
         upload_mode: str = None,
         iou_merge_threshold: float = None,
         cache_project_on_model: bool = None,
+        output_project_id: int = None,
     ):
         if len(project_ids) != 1:
             raise ValueError("Only one project can be processed at a time.")
@@ -637,7 +680,8 @@ class PredictionSession:
             state["iou_merge_threshold"] = iou_merge_threshold
         if cache_project_on_model is not None:
             state["cache_project_on_model"] = cache_project_on_model
-
+        if output_project_id is not None:
+            state["output_project_id"] = output_project_id
         return self._start_inference(method, json=json_body)
 
     def _predict_datasets(

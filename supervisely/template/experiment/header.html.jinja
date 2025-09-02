@@ -60,9 +60,11 @@
                 :selectContext="true"
                 :disabled="false"
                 :autoRun="false"
-                :moduleId="{{ resources.apps.apply_nn_to_images.module_id }}"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'run': false, 'stopAfterRun': false}"
+                :moduleId="{{ resources.apps.predict.module_id }}"
                 :openInNewWindow="true"
-                :command="command">
+                :command="command"
+            >
                 <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA50lEQVR4nO3YOw6CQBSF4bHQwIJ9VEYL3JisQtgFBQ3JbyaimcoMxuEOer6aCedyCAnXORH5PUAJnIEWGLAzjBlOPtOU8DX5qYEiZgD/5HN1jBnAV/a0BdbOCLAGdkGeW8yh8J3fzJL0DZ8hyDPEHHhxmWBKJg2QAGrAGGrAGGrAGGrAGGrAGGrAGGrAGGrAGP/WwLD0n/o2OLC3HIJH+MPUtYpf4y16sVVmulq8Rq0WxyEKPy3QZLDcbcYsceE/Ed7xm9fORgNYUwNzAi5An+CL0wNV6vAroCOdLukA4xDVYhsQEZedOy9lmdD5aZkaAAAAAElFTkSuQmCC" alt="monitor--v1">
                 <span>Apply Model</span>
             </sly-iw-launch-button>
@@ -75,6 +77,7 @@
                 <h2>Training Info</h2>
                 <a href="{{ experiment.training.session.url }}" target="_blank">Session <i class="zmdi zmdi-arrow-right-top" /></a>
                 <!-- Launch Logs Button -->
+                {% if experiment.training.logs.path %}
                 <sly-iw-launch-button
                     style=""
                     :disabled="false"
@@ -86,6 +89,7 @@
                     :command="command">
                     <span>Logs</span> <i class="zmdi zmdi-arrow-right-top" />
                 </sly-iw-launch-button>
+                {% endif %}
             </div>
             <ul>
             <li><strong>Date:</strong> {{ experiment.date }}</li>
@@ -93,7 +97,7 @@
             <li><strong>Model:</strong> {{ experiment.model.name }}</li>
             {% if experiment.model.base_checkpoint.url and not experiment.model.base_checkpoint.path %}
             <!-- Pretrained Checkpoint -> download link-->
-            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }}</a></li>
+            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }} <i class="zmdi zmdi-download"></i></a></li>
             {% elif experiment.model.base_checkpoint.path %}
             <!-- Custom Checkpoint -> TeamFiles Link -->
             <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.path }}" target="_blank">{{ experiment.model.base_checkpoint.name }}</a></li>
@@ -114,8 +118,19 @@
             <ul>
             <li><strong>Project:</strong> {{ experiment.project.name }}</li>
             <li><strong>Classes:</strong> ({{ experiment.project.classes.count }})  {% for class_name in experiment.project.classes.names.short_list %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>
-            <li><strong>Training:</strong> {{ experiment.project.splits.train }} {{ experiment.project.type }}</li>
-            <li><strong>Validation:</strong> {{ experiment.project.splits.val }} {{ experiment.project.type }}</li>
+            
+            {% if experiment.project.splits.train.url %}
+            <li><strong>Training:</strong> <a href='{{ experiment.project.splits.train.url }}' target="_blank">{{ experiment.project.splits.train.size }} {{ experiment.project.type }}</a></li>
+            {% else %}
+            <li><strong>Training:</strong>{{ experiment.project.splits.train.size }} {{ experiment.project.type }}</li>
+            {% endif %}
+            
+            {% if experiment.project.splits.val.url %}
+            <li><strong>Validation:</strong> <a href='{{ experiment.project.splits.val.url }}' target="_blank">{{ experiment.project.splits.val.size }} {{ experiment.project.type }}</a></li>
+            {% else %}
+            <li><strong>Validation:</strong>{{ experiment.project.splits.val.size }} {{ experiment.project.type }}</li>
+            {% endif %}
+            
             </ul>
         </div>
         {% if experiment.training.evaluation.id %}
@@ -140,15 +155,18 @@
     </div>
     <div class="experiment-info-subheader-footer-menu">
         {% if experiment.training.evaluation.id %}
-        <a :href="`${window.location.pathname}#predictions`" class="active">Predictions</a>
-        <a :href="`${window.location.pathname}#evaluation-2`">Evaluation</a>
+        <a :href="`${location.pathname}#predictions`" class="active">Predictions</a>
+        <a :href="`${location.pathname}#evaluation-2`">Evaluation</a>
         {% endif %}
         {% if not experiment.training.evaluation.id %}
-        <a :href="`${window.location.pathname}#evaluation-2`" class="active">Evaluation</a>
+        <a :href="`${location.pathname}#evaluation-2`" class="active">Evaluation</a>
         {% endif %}
-        <a :href="`${window.location.pathname}#artifacts`">Artifacts</a>
-        <a :href="`${window.location.pathname}#classes`">Classes</a>
-        <a :href="`${window.location.pathname}#hyperparameters`">Hyperparameters</a>
-        <a :href="`${window.location.pathname}#api-integration-amp-deployment`">API Integration & Deployment</a>
+        {% if widgets.training_plots %}
+        <a :href="`${location.pathname}#training-plots`">Training Plots</a>
+        {% endif %}
+        <a :href="`${location.pathname}#artifacts`">Artifacts</a>
+        <a :href="`${location.pathname}#classes`">Classes</a>
+        <a :href="`${location.pathname}#hyperparameters`">Hyperparameters</a>
+        <a :href="`${location.pathname}#api-integration-amp-deployment`">API Integration & Deployment</a>
     </div>
 </div>
