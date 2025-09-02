@@ -439,7 +439,7 @@ class FastTable(Widget):
         sort = init_options.pop("sort", {"column": None, "order": None})
         self._active_page = 1
         self._sort_column_idx = sort.get("column", None)
-        if self._sort_column_idx > len(self._columns_first_idx) - 1:
+        if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
             self._sort_column_idx = None
         self._sort_order = sort.get("order", None)
         self._page_size = init_options.pop("pageSize", 10) 
