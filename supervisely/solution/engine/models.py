@@ -124,10 +124,15 @@ class ComparisonFinishedMessage(Message):
         None, description="Path to the best model checkpoint after comparison"
     )
 
-
 class TrainFinishedMessage(Message):
     """Training finished event message."""
 
     success: bool = Field(..., description="Indicates if the training was successful")
     task_id: int = Field(..., description="ID of the training task")
     experiment_info: dict = Field(..., description="Dictionary with experiment info")
+
+class ModelDeployMessage(Message):
+    """Model deployed event message."""
+
+    model_path: Optional[str] = Field(None, description="Checkpoint path to be deployed")
+    session_id: Optional[int] = Field(None, description="ID of the deployment session")

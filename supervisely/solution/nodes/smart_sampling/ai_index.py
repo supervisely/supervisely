@@ -19,20 +19,20 @@ class AiIndexNode(EmptyNode):
     This node is used to interact with the OpenAI CLIP service for image and text embeddings.
     """
 
-    title = "AI Index"
-    description = "AI Search Index is a powerful tool that allows you to search for images in your dataset using AI models. It provides a quick and efficient way to find similar images based on visual features. You can use it in Smart Sampling node to select images for labeling based on specified prompt."
-    icon = "mdi mdi-image-search"
-    icon_color = "#4CAF50"
-    icon_bg_color = "#E8F5E9"
+    TITLE = "AI Index"
+    DESCRIPTION = "AI Search Index is a powerful tool that allows you to search for images in your dataset using AI models. It provides a quick and efficient way to find similar images based on visual features. You can use it in Smart Sampling node to select images for labeling based on specified prompt."
+    ICON = "mdi mdi-image-search"
+    ICON_COLOR = "#4CAF50"
+    ICON_BG_COLOR = "#E8F5E9"
     APP_SLUG = "supervisely-ecosystem/deploy-clip-as-service"
 
     def __init__(self, project_id: int = None, *args, **kwargs):
 
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         super().__init__(
             title=title,
             description=description,

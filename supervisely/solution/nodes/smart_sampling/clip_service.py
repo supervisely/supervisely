@@ -13,20 +13,20 @@ class OpenAIClipServiceNode(EmptyNode):
     This node is used to interact with the OpenAI CLIP service for image and text embeddings.
     """
 
-    title = "OpenAI CLIP"
-    description = "OpenAI CLIP is a powerful model that can be used to generate embeddings for images in your project. These embeddings can be used for various tasks, such as image similarity search, prompt-based image retrieval. In this application, it is used to create an index and search images based on text prompts or clusters."
-    icon = "mdi mdi-apps"
-    icon_color = "#4CAF50"
-    icon_bg_color = "#E8F5E9"
+    TITLE = "OpenAI CLIP"
+    DESCRIPTION = "OpenAI CLIP is a powerful model that can be used to generate embeddings for images in your project. These embeddings can be used for various tasks, such as image similarity search, prompt-based image retrieval. In this application, it is used to create an index and search images based on text prompts or clusters."
+    ICON = "mdi mdi-apps"
+    ICON_COLOR = "#4CAF50"
+    ICON_BG_COLOR = "#E8F5E9"
 
     APP_SLUG = "supervisely-ecosystem/deploy-clip-as-service"
 
     def __init__(self, *args, **kwargs):
-        title = kwargs.pop("title", self.title)
-        description = kwargs.pop("description", self.description)
-        icon = kwargs.pop("icon", self.icon)
-        icon_color = kwargs.pop("icon_color", self.icon_color)
-        icon_bg_color = kwargs.pop("icon_bg_color", self.icon_bg_color)
+        title = kwargs.pop("title", self.TITLE)
+        description = kwargs.pop("description", self.DESCRIPTION)
+        icon = kwargs.pop("icon", self.ICON)
+        icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
+        icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
         super().__init__(
             title=title,
             description=description,
