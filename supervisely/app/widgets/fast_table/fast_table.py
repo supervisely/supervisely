@@ -189,6 +189,7 @@ class FastTable(Widget):
         self._width = width
         self._selected_rows = []
         self._selected_cell = None
+        self._clicked_row = None
         self._is_row_clickable = False
         self._is_cell_clickable = False
         self._search_str = ""
@@ -377,8 +378,9 @@ class FastTable(Widget):
         """Returns dictionary with widget state.
         Dictionary contains the following fields:
             - search: search string
-            - selectedRow: selected row
+            - selectedRows: selected rows
             - selectedCell: selected cell
+            - clickedRow: clicked row
             - page: active page
             - sort: sorting options with the following fields:
                 - column: index of the column to sort by
@@ -391,6 +393,7 @@ class FastTable(Widget):
             "search": self._search_str,
             "selectedRows": self._selected_rows,
             "selectedCell": self._selected_cell,
+            "clickedRow": self._clicked_row,
             "page": self._active_page,
             "sort": {
                 "column": self._sort_column_idx,
