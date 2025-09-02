@@ -1,5 +1,6 @@
 from typing import Optional
 
+from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 from supervisely.solution.engine.models import TrainFinishedMessage
 
@@ -52,18 +53,32 @@ class TrainingMetricsNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {"train_finished": self.set_metrics_link}
+        return {"train_finished": self._process_incoming_message}
+
+    def _process_incoming_message(self, message: TrainFinishedMessage):
+        if not hasattr(message, "experiment_info"):
+            logger.warning("Received message does not have 'experiment_info' attribute.")
+            return
+
+        logs_info = message.experiment_info.get("logs")
+        logs_link = logs_info.get("link")
+        self.set_metrics(logs_link)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_metrics_link(self, message: TrainFinishedMessage):
+    def set_metrics(self, logs_link: str = None):
         """Receive experiment_info and set link to logs.dir."""
-        try:
-            experiment_info = message.experiment_info or {}
-            logs = experiment_info.get("logs") or {}
-            logs_dir = logs.get("dir")
-            if logs_dir:
-                self.set_link(logs_dir)
-        except Exception:
-            pass
+        if logs_link is not None:
+            link = logs_link
+        else:
+            link = None
+
+        if link is not None:
+            self.update_badge_by_key(key="status", value="Metrics", badge_type="success")
+            self.update_property("Metrics Link", "Open Metrics", link=link, highlight=True)
+            self.set_link(link)
+        else:
+            self.remove_badge_by_key("status")
+            self.remove_property_by_key("Metrics Link")
+            self.remove_link()

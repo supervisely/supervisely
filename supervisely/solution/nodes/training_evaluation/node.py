@@ -1,5 +1,6 @@
 from typing import Optional
 
+from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 from supervisely.solution.engine.models import TrainFinishedMessage
 
@@ -52,18 +53,27 @@ class TrainingEvaluationReportNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {"train_finished": self.set_evaluation_report_link}
+        return {"train_finished": self._process_incoming_message}
+
+
+    def _process_incoming_message(self, message: TrainFinishedMessage):
+        if not hasattr(message, "experiment_info"):
+            logger.warning("Received message does not have 'experiment_info' attribute.")
+            return
+        evaluation_report_link = message.experiment_info.get("evaluation_report_link")
+        self.set_report(evaluation_report_link)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_evaluation_report_link(self, message: TrainFinishedMessage):
+    def set_report(self, evaluation_report_link: str = None):
         """Receive experiment_info and set link to evaluation report by ID."""
-        try:
-            experiment_info = message.experiment_info or {}
-            evaluation_report_id = experiment_info.get("evaluation_report_id")
-            if evaluation_report_id is not None:
-                link = f"/reports/{evaluation_report_id}"
-                self.set_link(link)
-        except Exception:
-            pass
+        if evaluation_report_link is not None:
+            link = evaluation_report_link
+            self.update_badge_by_key(key="status", value="New report", badge_type="success")
+            self.update_property("Report Link", "Open Report", link=link, highlight=True)
+            self.set_link(link)
+        else:
+            self.remove_badge_by_key("status")
+            self.remove_property_by_key("Report Link")
+            self.remove_link()

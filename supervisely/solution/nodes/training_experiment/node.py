@@ -1,5 +1,6 @@
 from typing import Optional
 
+from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 from supervisely.solution.engine.models import TrainFinishedMessage
 
@@ -52,19 +53,30 @@ class TrainingExperimentNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {"train_finished": self.set_experiment_link}
+        return {"train_finished": self._process_incoming_message}
+
+    def _process_incoming_message(self, message: TrainFinishedMessage):
+        if not hasattr(message, "experiment_info"):
+            logger.warning("Received message does not have 'experiment_info' attribute.")
+            return
+        experiment_id = message.experiment_info.get("experiment_id")
+        self.set_experiment(experiment_id)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_experiment_link(self, message: TrainFinishedMessage):
+    def set_experiment(self, experiment_id: int = None):
         """Receive experiment_info and set link to experiment by experiment_id."""
-        try:
-            experiment_info = message.experiment_info or {}
-            experiment_id = experiment_info.get("experiment_id")
-            if experiment_id is not None:
-                link = f"/nn/experiments/{experiment_id}"
-                self.set_link(link)
-        except Exception:
-            # Silently ignore malformed message
-            pass
+        if experiment_id is not None:
+            link = f"/nn/experiments/{experiment_id}"
+        else:
+            link = None
+
+        if link is not None:
+            self.update_badge_by_key(key="status", value="Experiment", badge_type="success")
+            self.update_property("Experiment Link", "Open Experiment", link=link, highlight=True)
+            self.set_link(link)
+        else:
+            self.remove_badge_by_key("status")
+            self.remove_property_by_key("Experiment Link")
+            self.remove_link()

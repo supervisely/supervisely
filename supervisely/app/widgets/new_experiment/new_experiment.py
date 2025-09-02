@@ -207,6 +207,9 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
                 "allowEmptyExperimentName": True,
+                # @TODO: remove this before the branch is merged
+                "version": "solutions-train-test",
+                "isBranch": True,
             },
         }
 

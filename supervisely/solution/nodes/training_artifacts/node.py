@@ -1,5 +1,6 @@
 from typing import Optional
 
+from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 from supervisely.solution.engine.models import TrainFinishedMessage
 
@@ -52,17 +53,30 @@ class TrainingArtifactsNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {"train_finished": self.set_artifacts_link}
+        return {"train_finished": self._process_incoming_message}
+
+    def _process_incoming_message(self, message: TrainFinishedMessage):
+        if not hasattr(message, "experiment_info"):
+            logger.warning("Received message does not have 'experiment_info' attribute.")
+            return
+        artifacts_dir = message.experiment_info.get("artifacts_dir")
+        self.set_artifacts(artifacts_dir)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_artifacts_link(self, message: TrainFinishedMessage):
+    def set_artifacts(self, artifacts_dir: str = None):
         """Receive experiment_info and set link to artifacts_dir."""
-        try:
-            experiment_info = message.experiment_info or {}
-            artifacts_dir = experiment_info.get("artifacts_dir")
-            if artifacts_dir:
-                self.set_link(artifacts_dir)
-        except Exception:
-            pass
+        if artifacts_dir is not None:
+            link = artifacts_dir
+        else:
+            link = None
+
+        if link is not None:
+            self.update_badge_by_key(key="status", value="Artifacts", badge_type="success")
+            self.update_property("Artifacts Link", "Open Artifacts", link=link, highlight=True)
+            self.set_link(link)
+        else:
+            self.remove_badge_by_key("status")
+            self.remove_property_by_key("Artifacts Link")
+            self.remove_link()
