@@ -426,8 +426,8 @@ class BoTSORT(object):
             if track.score < self.new_track_thresh:
                 continue
             # Fill track_id for new detection
-            detection_track_map[orig_idx]["track_id"] = int(track.track_id)
             track.activate(self.kalman_filter, self.frame_id)
+            detection_track_map[orig_idx]["track_id"] = int(track.track_id)
             activated_starcks.append(track)
 
         """ Step 5: Update state"""
