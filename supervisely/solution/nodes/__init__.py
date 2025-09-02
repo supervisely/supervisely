@@ -26,7 +26,6 @@ from supervisely.solution.nodes.train_val_split.node import TrainValSplitNode
 from supervisely.solution.nodes.training_project.node import TrainingProjectNode
 from supervisely.solution.nodes.training_experiment.node import TrainingExperimentNode
 from supervisely.solution.nodes.training_artifacts.node import TrainingArtifactsNode
-from supervisely.solution.nodes.training_metrics.node import TrainingMetricsNode
 from supervisely.solution.nodes.training_evaluation.node import TrainingEvaluationReportNode
 
 # from supervisely.solution.components.video_samling import VideoSampling
@@ -56,7 +55,6 @@ __all__ = [
     "PretrainedModelsNode",
     "TrainingExperimentNode",
     "TrainingArtifactsNode",
-    "TrainingMetricsNode",
     "TrainingEvaluationReportNode",
     # Prediction
     "DeployPretrainedModelNode",
