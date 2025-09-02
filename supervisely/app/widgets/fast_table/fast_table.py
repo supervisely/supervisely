@@ -283,7 +283,13 @@ class FastTable(Widget):
                 - isRowClickable: whether rows are clickable
                 - isCellClickable: whether cells are clickable
                 - fixColumns: number of fixed columns
+                - isRadio: whether radio button selection mode is enabled
+                - isRowSelectable: whether multiple row selection is enabled
+                - maxSelectedRows: maximum number of rows that can be selected
+                - searchPosition: position of the search input ("left" or "right")
             - pageSize: number of rows per page
+            - showHeader: whether to show table header
+            - selectionChangedHandled: whether selection changed event listener is set
 
         :return: Dictionary with widget data
         :rtype: Dict[str, Any]
@@ -411,13 +417,32 @@ class FastTable(Widget):
             filter_function = self._default_filter_function
         self._filter_function = filter_function
 
-    def read_json(self, data: Dict, meta: Dict = None, custom_columns=None) -> None:
+    def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
         """Replace table data with options and project meta in the widget
 
-        :param data: Table data with options
+        :param data: Table data with options:
+            - data: table data
+            - columns: list of column names
+            - projectMeta: project meta information - if provided
+            - columnsOptions: list of dicts with options for each column
+            - total: total number of rows
+            - options: table options with the following fields:
+                - isRowClickable: whether rows are clickable
+                - isCellClickable: whether cells are clickable
+                - fixColumns: number of fixed columns
+                - isRadio: whether radio button selection mode is enabled
+                - isRowSelectable: whether multiple row selection is enabled
+                - maxSelectedRows: maximum number of rows that can be selected
+                - searchPosition: position of the search input ("left" or "right")
+            - pageSize: number of rows per page
+            - showHeader: whether to show table header
+            - selectionChangedHandled: whether selection changed event listener is set
+
         :type data: dict
         :param meta: Project meta information
         :type meta: dict
+        :param custom_columns: List of column names. Can include widgets as tuples (column_name, widget)
+        :type custom_columns: List[Union[str, tuple]], optional
         """
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
         self._read_custom_columns(custom_columns)
@@ -483,6 +508,24 @@ class FastTable(Widget):
 
     def to_json(self, active_page: Optional[bool] = False) -> Dict[str, Any]:
         """Export table data with current options as dict.
+
+        Dictionary contains the following fields:
+            - data: table data
+            - columns: list of column names
+            - projectMeta: project meta information - if provided
+            - columnsOptions: list of dicts with options for each column
+            - total: total number of rows
+            - options: table options with the following fields:
+                - isRowClickable: whether rows are clickable
+                - isCellClickable: whether cells are clickable
+                - fixColumns: number of fixed columns
+                - isRadio: whether radio button selection mode is enabled
+                - isRowSelectable: whether multiple row selection is enabled
+                - maxSelectedRows: maximum number of rows that can be selected
+                - searchPosition: position of the search input ("left" or "right")
+            - pageSize: number of rows per page
+            - showHeader: whether to show table header
+            - selectionChangedHandled: whether selection changed event listener is set
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: Optional[bool]
@@ -1250,7 +1293,7 @@ class FastTable(Widget):
         idxs = self._source_data[self._source_data[column].isin(values)].index.tolist()
         self.select_rows(idxs)
 
-    def _read_custom_columns(self, columns: List[str]) -> None:
+    def _read_custom_columns(self, columns: List[Union[str, tuple]]) -> None:
         if not columns:
             return
         self._columns = columns
