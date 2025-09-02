@@ -245,74 +245,6 @@ class FastTable(Widget):
         def _filter_changed_handler():
             self._refresh()
 
-    def set_columns(self, columns: List[str], columns_options: Optional[List[dict]] = None, data: Optional[Union[pd.DataFrame, List]] = None) -> None:
-        """
-        Replace table columns with options and data in the widget
-
-        :param columns: List of column names
-        :type columns: List
-        :param columns_options: List of dicts with options for each column
-        :type columns_options: List[dict], optional
-        :param data: Table data
-        :type data: Union[pd.DataFrame, List], optional
-        """
-        self.clear()
-        self.clear_selection()
-        self._columns = columns
-        self._columns_options = columns_options if columns_options is not None else [{}] * len(columns)
-        self._columns_data = []
-        if columns is None:
-            self._columns_first_idx = None
-        else:
-            self._columns_first_idx = []
-            for col in columns:
-                if isinstance(col, str):
-                    self._columns_first_idx.append(col)
-                    self._columns_data.append(self.ColumnData(name=col))
-                elif isinstance(col, tuple):
-                    self._columns_first_idx.append(col[0])
-                    self._columns_data.append(
-                        self.ColumnData(name=col[0], is_widget=True, widget=col[1])
-                    )
-                else:
-                    raise TypeError(f"Column name must be a string or a tuple, got {type(col)}")
-        if data is not None:
-            self.set_data(data) 
-
-        self._validate_sort_attrs()
-        DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
-        DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
-        DataJson().send_changes()
-
-
-    def set_data(self, data: Union[pd.DataFrame, List]) -> None:
-        """Replace table data (rows and columns) in the widget.
-
-        :param data: Table data
-        :type data: Union[pd.DataFrame, List]
-        """
-
-        self._active_page = 1
-        StateJson()[self.widget_id]["page"] = self._active_page
-        if self._sort_column_idx > len(data[0]) - 1:
-            self._sort_column_idx = None
-            StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
-        StateJson().send_changes()
-
-        self._validate_input_data(data)
-        self._source_data = self._prepare_input_data(data)
-        (
-            self._parsed_source_data,
-            self._sliced_data,
-            self._parsed_active_data,
-        ) = self._prepare_working_data()
-        self._rows_total = len(self._parsed_source_data["data"])
-        if self._is_radio and self._rows_total > 0:
-            self._selected_rows = [self._parsed_source_data["data"][0]]
-        DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
-        DataJson()[self.widget_id]["total"] = self._rows_total
-        DataJson().send_changes()
-
     def _refresh(self):
         # TODO sort widgets
         self._active_page = StateJson()[self.widget_id]["page"]
@@ -323,7 +255,7 @@ class FastTable(Widget):
         self._searched_data = self._search(search_value)
         self._rows_total = len(self._searched_data)
 
-        if self._rows_total > 0 and self._active_page == 0:  # if previous filtered data was empty
+        if self._rows_total > 0 and (self._active_page == 0 or self._active_page > (self._rows_total - 1) // self._page_size + 1):
             self._active_page = 1
             StateJson()[self.widget_id]["page"] = self._active_page
 
@@ -477,7 +409,7 @@ class FastTable(Widget):
             filter_function = self._default_filter_function
         self._filter_function = filter_function
 
-    def read_json(self, data: Dict, meta: Dict = None) -> None:
+    def read_json(self, data: Dict, meta: Dict = None, custom_columns=None) -> None:
         """Replace table data with options and project meta in the widget
 
         :param data: Table data with options
@@ -485,30 +417,46 @@ class FastTable(Widget):
         :param meta: Project meta information
         :type meta: dict
         """
-        self._columns_first_idx = self._prepare_json_data(data, "columns")
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
+        self._read_custom_columns(custom_columns)
+        if not self._columns_first_idx:
+            self._columns_first_idx = self._prepare_json_data(data, "columns")
         self._table_options = self._prepare_json_data(data, "options")
         self._project_meta = self._unpack_project_meta(meta)
-        self._parsed_source_data = data.get("data", None)
-        self._source_data = self._prepare_input_data(self._parsed_source_data)
-        self._sliced_data = self._slice_table_data(self._source_data)
-        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        table_data = data.get("data", None)
+        self._validate_input_data(table_data)
+        self._source_data = self._prepare_input_data(table_data)
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
         self._rows_total = len(self._parsed_source_data["data"])
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
-        page_size = init_options.pop("pageSize", 10)
+        self._active_page = 1
+        self._sort_column_idx = sort.get("column", None)
+        if self._sort_column_idx > len(self._columns_first_idx) - 1:
+            self._sort_column_idx = None
+        self._sort_order = sort.get("order", None)
+        self._page_size = init_options.pop("pageSize", 10) 
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
         DataJson()[self.widget_id]["total"] = len(self._source_data)
-        DataJson()[self.widget_id]["pageSize"] = page_size
+        DataJson()[self.widget_id]["pageSize"] = self._page_size
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
-        StateJson()[self.widget_id]["sort"] = sort
+        StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+        StateJson()[self.widget_id]["page"] = self._active_page
+        StateJson()[self.widget_id]["selectedRows"] = []
+        StateJson()[self.widget_id]["selectedCell"] = None
+        self._maybe_update_selected_row()
+        self._validate_sort_attrs()
         DataJson().send_changes()
         StateJson().send_changes()
-        self.clear_selection()
 
     def read_pandas(self, data: pd.DataFrame) -> None:
         """Replace table data (rows and columns) in the widget.
@@ -1299,3 +1247,25 @@ class FastTable(Widget):
 
         idxs = self._source_data[self._source_data[column].isin(values)].index.tolist()
         self.select_rows(idxs)
+
+    def _read_custom_columns(self, columns: List[str]) -> None:
+        if not columns:
+            return
+        self._columns = columns
+        self._columns_options = self._columns_options or [{} for _ in columns]
+        self._columns_data = []
+        self._columns_first_idx = []
+        for i, col in enumerate(columns):
+            if isinstance(col, str):
+                self._columns_first_idx.append(col)
+                self._columns_data.append(self.ColumnData(name=col))
+            elif isinstance(col, tuple):
+                self._columns_first_idx.append(col[0])
+                self._columns_data.append(
+                    self.ColumnData(name=col[0], is_widget=True, widget=col[1])
+                )
+                self._columns_options[i]["customCell"] = True
+            else:
+                raise TypeError(f"Column name must be a string or a tuple, got {type(col)}")
+
+        self._validate_sort_attrs()
