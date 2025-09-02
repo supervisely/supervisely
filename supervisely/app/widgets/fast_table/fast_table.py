@@ -255,7 +255,9 @@ class FastTable(Widget):
         self._searched_data = self._search(search_value)
         self._rows_total = len(self._searched_data)
 
-        if self._rows_total > 0 and (self._active_page == 0 or self._active_page > (self._rows_total - 1) // self._page_size + 1):
+        # if active page is greater than the number of pages (e.g. after filtering)
+        max_page = (self._rows_total - 1) // self._page_size + 1
+        if (self._rows_total > 0 and self._active_page == 0) or self._active_page > max_page:
             self._active_page = 1
             StateJson()[self.widget_id]["page"] = self._active_page
 
