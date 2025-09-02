@@ -229,7 +229,6 @@ class ProjectDatasetTable(Widget):
 
     @property
     def table(self) -> FastTable:
-        # @TODO: add selection_changed wrapper
         if not hasattr(self, "_table"):
             columns = self._get_columns()
             header_left_content = None
@@ -300,8 +299,9 @@ class ProjectDatasetTable(Widget):
         ] = self.table._search_position
         data = self._get_table_data()
         columns = self._get_columns()
-        columns_options = self._get_column_options(len(columns))
-        self.table.set_columns(columns, columns_options, data=data)
+        data_json = self.table.to_json()
+        data_json["data"] = data
+        self.table.read_json(data_json, custom_columns=columns)
 
     def get_selected_project_id(self) -> Optional[int]:
         selected_row = self.table.get_selected_row()
@@ -368,7 +368,7 @@ class ProjectDatasetTable(Widget):
             current_sort_keys = []
             for row in data.values:
                 p_id = row[1]
-                sort_key = self._id_to_sort_key.get(p_id, "")
+                sort_key = self._id_to_sort_key.get(p_id, "")[column_idx]
                 current_sort_keys.append(sort_key)
 
             sort_series = pd.Series(current_sort_keys, index=data.index)
@@ -436,14 +436,15 @@ class ProjectDatasetTable(Widget):
             project_thumbnail = ProjectThumbnail(project, remove_margins=True)
             ds_thumb = DatasetThumbnail(show_project_name=False, remove_margins=True)
             ds_thumb.hide()
+            dt = datetime.strptime(
+                project.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f"
+            )
             row_data = [
                 self._widget_to_cell_value(
                     Container([project_thumbnail, ds_thumb], gap=0)
                 ),
                 project.id,
-                datetime.strptime(
-                    project.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f"
-                ).strftime("%d %b %Y %H:%M"),
+                dt.strftime("%d %b %Y %H:%M"),
                 project.type.replace("_", " ").title(),
                 project.items_count or 0,
             ]
@@ -451,15 +452,15 @@ class ProjectDatasetTable(Widget):
             search_values.append(
                 [
                     project.name.lower(),
-                    str(project.id),
-                    project.created_at,
+                    project.id,
+                    dt.timestamp(),
                     project.type.lower(),
-                    str(project.items_count),
+                    project.items_count,
                 ]
             )
 
         self._id_to_search_str = {
-            pid: "".join(vals)
+            pid: "".join(str(vals))
             for pid, vals in zip(self._project_id_to_info.keys(), search_values)
         }
         self._id_to_sort_key = {
@@ -496,26 +497,27 @@ class ProjectDatasetTable(Widget):
                 remove_margins=True,
                 custom_name=full_name,
             )
+            dt = datetime.strptime(
+                dataset.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f"
+            )
             row_data = [
                 self._widget_to_cell_value(Container([proj_thumb, ds_preview], gap=0)),
                 dataset.id,
-                datetime.strptime(
-                    dataset.created_at.replace("Z", ""), "%Y-%m-%dT%H:%M:%S.%f"
-                ).strftime("%d %b %Y %H:%M"),
+                dt.strftime("%d %b %Y %H:%M"),
                 dataset.items_count or 0,
             ]
             table_data.append(row_data)
             search_values.append(
                 [
                     full_name.lower(),
-                    str(dataset.id),
-                    dataset.created_at,
-                    str(dataset.items_count),
+                    dataset.id,
+                    dt.strftime("%d %b %Y %H:%M"),
+                    dataset.items_count,
                 ]
             )
 
         self._id_to_search_str = {
-            did: "".join(vals)
+            did: "".join(str(vals))
             for did, vals in zip(self._dataset_id_to_info.keys(), search_values)
         }
         self._id_to_sort_key = {
