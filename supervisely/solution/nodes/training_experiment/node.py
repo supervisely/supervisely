@@ -1,14 +1,16 @@
 from typing import Optional
 
+from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
+from supervisely.solution.engine.models import TrainFinishedMessage
 
 
-class DataVersioningNode(LinkNode):
-    """Node for linking to the Project Versions dashboard."""
+class TrainingExperimentNode(LinkNode):
+    """Node for linking to the training experiment."""
 
-    TITLE = "Data Versioning"
-    DESCRIPTION = "Open the project versions page to explore the training project history changes."
-    ICON = "mdi mdi-history"
+    TITLE = "Training Experiment"
+    DESCRIPTION = "Link to the training experiment."
+    ICON = "mdi mdi-file-star"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
 
@@ -18,7 +20,7 @@ class DataVersioningNode(LinkNode):
         icon = kwargs.pop("icon", self.ICON)
         icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
         icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
-        link = f"/projects/{project_id}/versions" if project_id is not None else ""
+        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
@@ -40,17 +42,9 @@ class DataVersioningNode(LinkNode):
     def _get_handles(self):
         return [
             {
-                "id": "data_versioning_project_id",
+                "id": "train_finished",
                 "type": "target",
-                "position": "top",
-                "label": "Input",
-                "connectable": True,
-            },
-            {
-                "id": "data_versioning_output",
-                "type": "source",
-                "position": "bottom",
-                "label": "Output",
+                "position": "left",
                 "connectable": True,
             },
         ]
@@ -59,14 +53,30 @@ class DataVersioningNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {
-            "data_versioning_project_id": self.set_project_id,
-        }
+        return {"train_finished": self._process_incoming_message}
+
+    def _process_incoming_message(self, message: TrainFinishedMessage):
+        if not hasattr(message, "experiment_info"):
+            logger.warning("Received message does not have 'experiment_info' attribute.")
+            return
+        experiment_id = message.experiment_info.get("experiment_id")
+        self.set_experiment(experiment_id)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def set_project_id(self, project_id: Optional[int] = None):
-        """Set project ID and update the link accordingly."""
-        link = f"/projects/{project_id}/versions" if project_id is not None else ""
-        self.set_link(link)
+    def set_experiment(self, experiment_id: int = None):
+        """Receive experiment_info and set link to experiment by experiment_id."""
+        if experiment_id is not None:
+            link = f"/nn/experiments/{experiment_id}"
+        else:
+            link = None
+
+        if link is not None:
+            self.update_badge_by_key(key="status", value="Experiment", badge_type="success")
+            self.update_property("Experiment Link", "Open Experiment", link=link, highlight=True)
+            self.set_link(link)
+        else:
+            self.remove_badge_by_key("status")
+            self.remove_property_by_key("Experiment Link")
+            self.remove_link()

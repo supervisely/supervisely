@@ -161,6 +161,7 @@ from supervisely.app.widgets.dropdown_checkbox_selector.dropdown_checkbox_select
 from supervisely.app.widgets.ecosystem_model_selector.ecosystem_model_selector import (
     EcosystemModelSelector,
 )
+
 from supervisely.app.widgets.solution_graph.solution_graph import SolutionGraph
 from supervisely.app.widgets.solution_card.solution_card import SolutionCard
 from supervisely.app.widgets.solution_project.solution_project import SolutionProject

@@ -305,6 +305,12 @@ class TrainApp:
 
     # Properties
     # General
+    @property
+    def auto_start(self) -> bool:
+        """
+        If True, the training will start automatically after the GUI is loaded and train server is started.
+        """
+        return self.gui._start_training
     # ----------------------------------------- #
 
     # Input Data
@@ -2789,6 +2795,12 @@ class TrainApp:
         train_logger.add_on_step_finished_callback(step_callback)
 
     # ----------------------------------------- #
+    def start_in_thread(self):
+        def auto_train():
+            import threading
+            threading.Thread(target=self._wrapped_start_training, daemon=True).start()
+        self._server.add_event_handler("startup", auto_train)
+
     def _wrapped_start_training(self):
         """
         Wrapper function to wrap the training process.

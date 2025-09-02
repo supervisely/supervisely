@@ -13,6 +13,7 @@ from supervisely.solution.base_node import BaseCardNode
 from supervisely.solution.engine.models import (
     LabelingQueueAcceptedImagesMessage,
     MoveLabeledDataFinishedMessage,
+    TrainFinishedMessage,
 )
 from supervisely.solution.nodes.pretrained_models.automation import PretrainedModelsAuto
 from supervisely.solution.nodes.pretrained_models.gui import PretrainedModelsGUI
@@ -118,13 +119,11 @@ class PretrainedModelsNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
-        return {
-            "data_versioning_project_id": self.get_data_versioning_project_id,
-        }
+        return {"train_finished": self._send_train_finished_message}
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
-        return {}
+        return {"data_versioning_project_id": self.get_data_versioning_project_id}
 
     def send_data_moving_finished_message(
         self,
@@ -193,6 +192,13 @@ class PretrainedModelsNode(BaseCardNode):
 
     def get_data_versioning_project_id(self) -> Optional[int]:
         return getattr(self, "project_id", None)
+
+    def _send_train_finished_message(
+        self, success: bool, task_id: int, experiment_info: dict
+    ) -> TrainFinishedMessage:
+        return TrainFinishedMessage(
+            success=success, task_id=task_id, experiment_info=experiment_info
+        )
 
     # subscribe event (may receive Message object)
     def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
@@ -269,50 +275,58 @@ class PretrainedModelsNode(BaseCardNode):
         }
         self.history.add_task(task=task)
 
-        # @TODO: dont use automation for progress check
-        self.automation.apply(self._check_train_progress)
+        # Avoid using automation.apply()
+        threading.Thread(target=self._poll_train_progress, args=(task_id,), daemon=True).start()
 
     # ------------------------------------------------------------------
     # Utils ------------------------------------------------------------
     # ------------------------------------------------------------------
-    def _check_train_progress(self, task_id: int):
+    def _poll_train_progress(self, task_id: int, interval_sec: int = 10) -> None:
+        """Poll task status every interval seconds until completion or failure."""
         # @ TODO: get train status from the task (fix send request on web progress status message)
         # train_status = self.api.task.send_request(task_id, "train_status", {})
         # print(f"Train status: {train_status}")
 
-        task_info = self.api.task.get_info_by_id(task_id)
-        if task_info is not None:
-            if task_info["status"] == TaskApi.Status.ERROR.value:
+        while True:
+            try:
+                task_info = self.api.task.get_info_by_id(task_id)
+            except Exception as e:
+                logger.error(f"Failed to get task info for task_id={task_id}: {repr(e)}")
+                break
+
+            if task_info is None:
+                logger.error(f"Task info is not found for task_id: {task_id}")
+                break
+
+            status = task_info.get("status")
+            if status == TaskApi.Status.ERROR.value:
                 self.update_badge_by_key(key="Status", label="Failed", badge_type="error")
-                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
-            elif task_info["status"] == TaskApi.Status.CONSUMED.value:
-                self.update_badge_by_key(key="Status", label="Consumed", badge_type="warning")
-            elif task_info["status"] == TaskApi.Status.QUEUED.value:
-                self.update_badge_by_key(key="Status", label="Queued", badge_type="warning")
-            elif task_info["status"] in [
-                TaskApi.Status.STOPPED.value,
-                TaskApi.Status.TERMINATING.value,
-            ]:
+                break
+            if status in [TaskApi.Status.STOPPED.value, TaskApi.Status.TERMINATING.value]:
                 self.update_badge_by_key(key="Status", label="Stopped", badge_type="warning")
-                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
-            elif task_info["status"] == TaskApi.Status.FINISHED.value:
+                break
+            if status == TaskApi.Status.CONSUMED.value:
+                self.update_badge_by_key(key="Status", label="Consumed", badge_type="warning")
+            elif status == TaskApi.Status.QUEUED.value:
+                self.update_badge_by_key(key="Status", label="Queued", badge_type="warning")
+            elif status == TaskApi.Status.FINISHED.value:
                 self.update_badge_by_key(key="Status", label="Finished", badge_type="success")
-                for cb in self._train_finished_cb:
-                    if not callable(cb):
-                        logger.error(f"Train finished callback {cb} is not callable.")
-                        continue
-                    try:
-                        if cb.__code__.co_argcount == 1:
-                            cb(task_id)
-                        else:
-                            cb()
-                    except Exception as e:
-                        logger.error(f"Error in train finished callback: {e}")
-                self.automation.remove(self.automation.CHECK_STATUS_JOB_ID)
+                try:
+                    experiment_info = self.api.nn.get_experiment_info(task_id)
+                    experiment_info_json = experiment_info.to_json()
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to get experiment info for task_id={task_id}: {repr(e)}"
+                    )
+                    experiment_info = None
+                self._send_train_finished_message(
+                    success=True, task_id=task_id, experiment_info=experiment_info_json
+                )
+                break
             else:
                 self.update_badge_by_key(key="Status", label="Training...", badge_type="info")
-        else:
-            logger.error(f"Task info is not found for task_id: {task_id}")
+
+            time.sleep(interval_sec)
 
     def _save_train_settings(self):
         """
