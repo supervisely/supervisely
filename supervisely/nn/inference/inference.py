@@ -1847,15 +1847,21 @@ class Inference:
         inference_settings = self._get_inference_settings(state)
         logger.debug(f"Inference settings:", extra=inference_settings)
         batch_size = self._get_batch_size_from_state(state)
-        start_frame_index = state.get("startFrameIndex", 0)
-        step = state.get("stride", None)
-        if step is None:
-            step = state.get("step", None)
+        start_frame_index = get_value_for_keys(
+            state, ["startFrameIndex", "start_frame_index", "start_frame"], ignore_none=True
+        )
+        if start_frame_index is None:
+            start_frame_index = 0
+        step = get_value_for_keys(state, ["stride", "step"], ignore_none=True)
         if step is None:
             step = 1
-        end_frame_index = state.get("endFrameIndex", None)
+        end_frame_index = get_value_for_keys(
+            state, ["endFrameIndex", "end_frame_index", "end_frame"], ignore_none=True
+        )
         duration = state.get("duration", None)
-        frames_count = state.get("framesCount", None)
+        frames_count = get_value_for_keys(
+            state, ["framesCount", "frames_count", "num_frames"], ignore_none=True
+        )
         direction = state.get("direction", "forward")
         direction = 1 if direction == "forward" else -1
 
@@ -1873,6 +1879,15 @@ class Inference:
         tracker = None
         if state.get("tracker", None) is not None:
             tracker = inference_request.tracker
+            if tracker is None:
+                logger.debug(
+                    "No existing tracker found in inference_request.tracker, will init new one."
+                )
+            else:
+                logger.debug(
+                    "Existing tracker found in inference_request.tracker, will try to reuse.",
+                    extra={"tracker_state": inference_request.tracking_state},
+                )
             if (
                 inference_request.tracking_state.get("last_frame_index")
                 != start_frame_index - direction * step
@@ -1889,6 +1904,9 @@ class Inference:
                 inference_request.tracker = tracker
                 inference_request.tracking_state["direction"] = direction
                 inference_request.tracking_state["step"] = step
+                logger.debug("Initialized new tracker...", extra={"state": state})
+            else:
+                logger.debug("Reusing existing tracker...", extra={"state": state})
 
         progress_total = (n_frames + step - 1) // step
         inference_request.set_stage(InferenceRequest.Stage.INFERENCE, 0, progress_total)
@@ -2120,6 +2138,15 @@ class Inference:
         tracker = None
         if state.get("tracker", None) is not None:
             tracker = inference_request.tracker
+            if tracker is None:
+                logger.debug(
+                    "No existing tracker found in inference_request.tracker, will init new one."
+                )
+            else:
+                logger.debug(
+                    "Existing tracker found in inference_request.tracker, will try to reuse.",
+                    extra={"tracker_state": inference_request.tracking_state},
+                )
             if (
                 inference_request.tracking_state.get("last_frame_index")
                 != start_frame_index - direction * step
@@ -2136,6 +2163,9 @@ class Inference:
                 inference_request.tracker = tracker
                 inference_request.tracking_state["direction"] = direction
                 inference_request.tracking_state["step"] = step
+                logger.debug("Initialized new tracker...", extra={"state": state})
+            else:
+                logger.debug("Reusing existing tracker...", extra={"state": state})
 
         logger.debug(
             f"Video info:",
@@ -2197,8 +2227,12 @@ class Inference:
         video_ann_json = None
         if tracker is not None:
             inference_request.set_stage("Postprocess...", 0, 1)
-            video_ann_json = tracker.video_annotation.to_json()
-            inference_request.done()
+            try:
+                video_ann_json = tracker.video_annotation.to_json()
+            except Exception as e:
+                logger.error(f"Error in tracker.video_annotation.to_json(): {e}", exc_info=True)
+            finally:
+                inference_request.done()
         inference_request.final_result = {"video_ann": video_ann_json}
         return video_ann_json
 
