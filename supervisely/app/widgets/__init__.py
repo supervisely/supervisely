@@ -159,3 +159,4 @@ from supervisely.app.widgets.cloud_import.cloud_import import CloudImport
 from supervisely.app.widgets.tasks_history.tasks_history import TasksHistory
 from supervisely.app.widgets.new_experiment.new_experiment import NewExperiment
 from supervisely.app.widgets.vue_flow.vue_flow import VueFlow
+from supervisely.app.widgets.project_table.project_table import ProjectDatasetTable
