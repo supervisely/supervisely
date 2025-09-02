@@ -43,14 +43,6 @@ class DeployModelGUI(Widget):
     def get_json_state(self) -> dict:
         return {}
 
-    def deploy(self) -> None:
-        if self.model is not None:
-            try:
-                self.model.shutdown()
-            except Exception as e:
-                logger.warning(f"Failed to shutdown model: {repr(e)}")
-        self.model = self.content.model_api
-
     def save_settings(self, agent_id: Optional[int] = None):
         if agent_id is None:
             agent_id = self.content.select_agent.get_value()
@@ -81,7 +73,11 @@ class DeployModelGUI(Widget):
         If the model is not deployed or the agent does not have GPU info, returns None.
         """
         try:
-            agent_id = self.content.select_agent.get_value()
+            task_id = self.content.model_api.task_id
+            task_info = self._api.task.get_info_by_id(task_id)
+            if not task_info:
+                return None
+            agent_id = task_info.get("agentId")
             if agent_id is None:
                 return None
             agent_info = self._api.agent.get_info_by_id(agent_id)

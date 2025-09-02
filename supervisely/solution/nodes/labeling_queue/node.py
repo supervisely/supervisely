@@ -87,7 +87,7 @@ class LabelingQueueNode(BaseQueueNode):
     def _get_handles(self):
         return [
             {
-                "id": "sample_finished",
+                "id": "sampling_finished",
                 "type": "target",
                 "position": "top",
                 "connectable": True,

@@ -1,5 +1,5 @@
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
-
+from supervisely.solution.engine.models import ModelDeployMessage
 import supervisely.io.env as sly_env
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
@@ -63,7 +63,7 @@ class DeployModelNode(BaseCardNode):
             self.gui.modal.show()
 
         self.modals = [self.history.modal, self.gui.modal]
-        self._automation.apply(self._refresh_memory_usage_info, self._automation.REFRESH_GPU_USAGE)
+        self._automation.apply(self._refresh_node, self._automation.REFRESH_GPU_USAGE)
 
     # ------------------------------------------------------------------
     # Node methods -----------------------------------------------------
@@ -72,6 +72,44 @@ class DeployModelNode(BaseCardNode):
         if not hasattr(self, "tooltip_buttons"):
             self.tooltip_buttons = [self.history.history_btn]
         return self.tooltip_buttons
+
+    # ------------------------------------------------------------------
+    # Handles ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _get_handles(self):
+        return [
+            {
+                "id": "model_deployed",
+                "type": "source",
+                "position": "left",
+                "connectable": True,
+            },
+            {
+                "id": "deploy_model",
+                "type": "target",
+                "position": "right",
+                "connectable": True,
+            },
+        ]
+
+    # ------------------------------------------------------------------
+    # Events -----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def _available_subscribe_methods(self) -> Dict[str, Callable]:
+        return {
+            "deploy_model": self._process_incoming_message,
+        }
+
+    def _available_publish_methods(self) -> Dict[str, Callable]:
+        return {
+            "model_deployed": self._send_model_deployed_message,
+        }
+
+    def _process_incoming_message(self, message: ModelDeployMessage):
+        pass
+
+    def _send_model_deployed_message(self, session_id: int = None) -> ModelDeployMessage:
+        return ModelDeployMessage(session_id=session_id)
 
     # --------------------------------------------------------------------
     # Private methods ----------------------------------------------------
@@ -98,9 +136,6 @@ class DeployModelNode(BaseCardNode):
             value = f"{used / (1024 ** 3):.2f} GB / {total / (1024 ** 3):.2f} GB"
             self.update_property("Agent", agent_info["agent_name"])
             self.update_property("GPU Memory", value, highlight=True)
-        else:
-            self.remove_property_by_key("Agent")
-            self.remove_property_by_key("GPU Memory")
 
     def _refresh_model_info(self) -> None:
         """
@@ -122,22 +157,27 @@ class DeployModelNode(BaseCardNode):
                     "device": deploy_info.get("device"),
                 }
                 self.history.add_task(task_data)
+                self.update_property("Model", deploy_info.get("model_name"), highlight=True)
+                # self.update_property("Status", "Model deployed", highlight=True)
                 self.update_property("Source", deploy_info.get("model_source"))
                 self.update_property("Hardware", deploy_info.get("hardware"))
-                self.update_property("Model", deploy_info.get("model_name"), highlight=True)
-                self.update_property("Status", "Model deployed", highlight=True)
-                self.show_automation_badge("Model Deployed")
+                self.update_badge_by_key(key="Deployed Deployed", label="⚡", plain=True)
                 self._send_model_deployed_message(session_id=task_info.get("id"))
                 logger.info(
                     f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
                 )
-        else:
-            self.remove_property_by_key("Status")
-            self.remove_property_by_key("Source")
-            self.remove_property_by_key("Hardware")
-            self.remove_property_by_key("Model")
-            self.hide_automation_badge("Model Deployed")
 
     def _refresh_node(self):
-        self._refresh_memory_usage_info()
-        self._refresh_model_info()
+        if self.gui.content.model_api is not None:
+            self.gui.model = self.gui.content.model_api
+            self._refresh_model_info()
+            self._refresh_memory_usage_info()
+        else:
+            self.gui.model = None
+            self.remove_property_by_key("Model")
+            self.remove_property_by_key("Agent")
+            self.remove_property_by_key("GPU Memory")
+            # self.remove_property_by_key("Status")
+            self.remove_property_by_key("Source")
+            self.remove_property_by_key("Hardware")
+            self.remove_badge_by_key("Deployed Deployed")

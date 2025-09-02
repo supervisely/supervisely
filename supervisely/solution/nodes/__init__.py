@@ -16,6 +16,7 @@ from supervisely.solution.nodes.labeling_performance.node import (
 from supervisely.solution.nodes.labeling_project.node import LabelingProjectNode
 from supervisely.solution.nodes.labeling_queue.node import LabelingQueueNode
 from supervisely.solution.nodes.move_labeled.node import MoveLabeledNode
+from supervisely.solution.nodes.pre_labeling.node import PreLabelingNode
 from supervisely.solution.nodes.pretrained_models.node import PretrainedModelsNode
 from supervisely.solution.nodes.qa_stats.node import QAStatsNode
 from supervisely.solution.nodes.smart_sampling.ai_index import AiIndexNode
@@ -49,4 +50,5 @@ __all__ = [
     "EvaluationNode",
     "EvaluationReportNode",
     "DeployPretrainedModelNode",
+    "PreLabelingNode",
 ]

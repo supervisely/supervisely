@@ -128,17 +128,17 @@ class SmartSamplingNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "sample_finished",
+                "id": "sampling_finished",
                 "type": "source",
                 "position": "bottom",
                 "connectable": True,
             },
-            # {
-            #     "id": "source-2",
-            #     "type": "source",
-            #     "position": "right",
-            #     "connectable": True,
-            # },
+            {
+                "id": "start_pre_labeling",
+                "type": "source",
+                "position": "right",
+                "connectable": True,
+            },
         ]
 
     # ------------------------------------------------------------------
@@ -169,7 +169,8 @@ class SmartSamplingNode(BaseCardNode):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "sample_finished": self.run,
+            "sampling_finished": self._send_sampling_finished_message,
+            "start_pre_labeling": self._send_start_pre_labeling_message,
         }
 
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
@@ -178,6 +179,20 @@ class SmartSamplingNode(BaseCardNode):
             "project_updated": self._update_widgets,
             "embedding_status_response": self._process_embeddings_status_message,
         }
+
+    def _send_sampling_finished_message(
+        self, src: dict, dst: dict, items_count: int
+    ) -> SampleFinishedMessage:
+        return SampleFinishedMessage(items_count=items_count, success=True, src=src, dst=dst)
+
+    def _send_start_pre_labeling_message(
+        self, src: dict, dst: dict, items_count: int
+    ) -> SampleFinishedMessage:
+        return SampleFinishedMessage(items_count=items_count, success=True, src=src, dst=dst)
+
+    def _send_output_message(self, src: dict, dst: dict, items_count: int) -> None:
+        self._send_sampling_finished_message(src=src, dst=dst, items_count=items_count)
+        self._send_start_pre_labeling_message(src=src, dst=dst, items_count=items_count)
 
     # callback method (accepts Message object)
     def _update_widgets(self) -> None:
@@ -242,10 +257,11 @@ class SmartSamplingNode(BaseCardNode):
     # ------------------------------------------------------------------
 
     # publish_event (may send Message object)
-    def run(self) -> SampleFinishedMessage:
+    def run(self) -> None:
         self.show_in_progress_badge("Sampling")
         res = self.gui.run()
         src, dst, images_count = res
         self.hide_in_progress_badge("Sampling")
         self._update_widgets()
-        return SampleFinishedMessage(success=True, src=src, dst=dst, items_count=images_count)
+        if images_count > 0:
+            self._send_output_message(src=src, dst=dst, items_count=images_count)
