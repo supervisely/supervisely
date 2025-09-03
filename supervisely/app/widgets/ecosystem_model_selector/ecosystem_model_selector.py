@@ -48,13 +48,15 @@ class EcosystemModelSelector(Widget):
 
         @self.framework_filter.value_changed
         def _framework_filter_changed(frameworks: List[DropdownCheckboxSelector.Item]):
-            task_types = self.task_filter.get_selected()
-            self.table.filter(([f.id for f in frameworks], [t.id for t in task_types]))
+            self.frameworks = [f.id for f in frameworks] or None
+            self.task_types = [t.id for t in self.task_filter.get_selected()] or None
+            self.table.filter((self.frameworks, self.task_types))
 
         @self.task_filter.value_changed
         def _task_filter_changed(task_types: List[DropdownCheckboxSelector.Item]):
-            frameworks = self.framework_filter.get_selected()
-            self.table.filter(([f.id for f in frameworks], [t.id for t in task_types]))
+            self.task_types = [t.id for t in task_types] or None
+            self.frameworks = [f.id for f in self.framework_filter.get_selected()] or None
+            self.table.filter((self.frameworks, self.task_types))
 
         super().__init__(widget_id=widget_id, file_path=__file__)
 
@@ -148,7 +150,8 @@ class EcosystemModelSelector(Widget):
 
     def get_selected(self):
         idx = self.table.get_selected_row().row_index
-        return self.models[idx]
+        models = self._filter_models(self.models, self.frameworks, self.task_types)
+        return models[idx]
 
     def select(self, index: int):
         self.table.select_row(index)
