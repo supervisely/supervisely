@@ -2561,7 +2561,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         self._api.post("embeddings.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
 
     def recreate(
-        self, src_project_id: int, dst_project_id: int
+        self,
+        src_project_id: int,
+        dst_project_id: Optional[int] = None,
+        dst_project_name: Optional[str] = None,
     ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
         """This method can be used to recreate a project with hierarchial datasets and
         yields the tuple of source and destination DatasetInfo objects.
@@ -2569,7 +2572,9 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         :param src_project_id: Source project ID
         :type src_project_id: int
         :param dst_project_id: Destination project ID
-        :type dst_project_id: int
+        :type dst_project_id: int, optional
+        :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
+        :type dst_project_name: str, optional
 
         :return: Generator of tuples of source and destination DatasetInfo objects
         :rtype: Generator[Tuple[DatasetInfo, DatasetInfo], None, None]
@@ -2589,16 +2594,33 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 print(f"Recreated dataset {src_ds.id} -> {dst_ds.id}")
                 # Implement your logic here to process the datasets.
         """
-        # dataset_map is a dict, where key is the path to the dataset in the source project
-        # e.g. "ds1/ds2" and value is the id of the dataset in the destination project.
-        # Example: {
-        #     "ds1": 1, <<< This dataset will be created in the root of the destination project.
-        #     "ds1/ds2": 2 <<< This dataset will be created inside "ds1" dataset.
-        # }
-        dataset_map = {}
-        for parents, src_dataset_info in self._api.dataset.tree(src_project_id):
-            parent = f"{os.path.sep}".join(parents)
-            parent_id = dataset_map.get(parent)
+        if dst_project_id is None:
+            src_project_info = self._api.project.get_info_by_id(src_project_id)
+            dst_project_info = self._api.project.create(
+                src_project_info.workspace_id,
+                dst_project_name or f"Recreation of {src_project_info.name}",
+                src_project_info.type,
+                src_project_info.description,
+                change_name_if_conflict=True,
+            )
+            dst_project_id = dst_project_info.id
+
+        datasets = self._api.dataset.get_list(src_project_id, recursive=True, include_custom_data=True)
+        src_id_to_name = {ds.id: ds.name for ds in datasets}
+        parent_to_children_map = {}
+        for ds in datasets:
+            if ds.parent_id is None:
+                parent_to_children_map[ds.name] = []
+            else:
+                parent_to_children_map[src_id_to_name[ds.parent_id]].append(ds.name)
+
+        dst_name_to_id = {}
+
+        parent_id = None
+        for src_dataset_info in datasets:
+            if src_dataset_info.parent_id is not None:
+                parent_name = src_id_to_name[src_dataset_info.parent_id]
+                parent_id = dst_name_to_id[parent_name]
 
             dst_dataset_info = self._api.dataset.create(
                 dst_project_id,
@@ -2607,6 +2629,6 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
                 parent_id=parent_id,
                 custom_data=src_dataset_info.custom_data,
             )
-            dataset_map[os.path.join(parent, dst_dataset_info.name)] = dst_dataset_info.id
+            dst_name_to_id[dst_dataset_info.name] = dst_dataset_info.id
 
             yield src_dataset_info, dst_dataset_info

@@ -185,6 +185,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         filters: Optional[List[Dict[str, str]]] = None,
         recursive: Optional[bool] = False,
         parent_id: Optional[int] = None,
+        include_custom_data: Optional[bool] = False,
     ) -> List[DatasetInfo]:
         """
         Returns list of dataset in the given project, or list of nested datasets
@@ -200,6 +201,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type recursive: bool, optional
         :param parent_id: Parent Dataset ID. If set to None, the search will be performed at the top level of the Project,
             otherwise the search will be performed in the specified Dataset.
+        :type parent_id: Union[int, None], optional
+        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :type include_custom_data: bool, optional
         :return: List of all Datasets with information for the given Project. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[DatasetInfo]`
         :Usage example:
@@ -246,14 +250,16 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             filters.append({"field": ApiField.PARENT_ID, "operator": "=", "value": parent_id})
             recursive = True
 
-        return self.get_list_all_pages(
-            "datasets.list",
-            {
-                ApiField.PROJECT_ID: project_id,
-                ApiField.FILTER: filters,
-                ApiField.RECURSIVE: recursive,
-            },
-        )
+        method = "datasets.list"
+        data = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.FILTER: filters,
+            ApiField.RECURSIVE: recursive,
+        }
+        if include_custom_data:
+            data[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
+
+        return self.get_list_all_pages(method, data)
 
     def get_info_by_id(self, id: int, raise_error: Optional[bool] = False) -> DatasetInfo:
         """
@@ -569,6 +575,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                 new_dataset_name,
                 dataset.description,
                 change_name_if_conflict=change_name_if_conflict,
+                custom_data=dataset.custom_data,
             )
             items_api.copy_batch(
                 new_dataset.id, src_item_ids, change_name_if_conflict, with_annotations
@@ -802,6 +809,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         sort_order: Optional[str] = None,
         per_page: Optional[int] = None,
         page: Union[int, Literal["all"]] = "all",
+        include_custom_data: Optional[bool] = False,
     ) -> dict:
         """
         List all available datasets from all available teams for the user that match the specified filtering criteria.
@@ -812,22 +820,20 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
                         - 'operator': Takes values '=', 'eq', '!=', 'not', 'in', '!in', '>', 'gt', '>=', 'gte', '<', 'lt', '<=', 'lte'
                         - 'value': Takes on values according to the meaning of 'field' or null
         :type filters: List[Dict[str, str]], optional
-
         :param sort: Specifies by which parameter to sort the project list.
                         Takes values 'id', 'name', 'size', 'createdAt', 'updatedAt'
         :type sort: str, optional
-
         :param sort_order: Determines which value to list from.
         :type sort_order: str, optional
-
         :param per_page: Number of first items found to be returned.
                         'None' will return the first page with a default size of 20000 datasets.
         :type per_page: int, optional
-
         :param page: Page number, used to retrieve the following items if the number of them found is more than per_page.
                      The default value is 'all', which retrieves all available datasets.
                      'None' will return the first page with datasets, the amount of which is set in param 'per_page'.
         :type page: Union[int, Literal["all"]], optional
+        :param include_custom_data: If True, the response will include the `custom_data` field for each Dataset.
+        :type include_custom_data: bool, optional
 
         :return: Search response information and 'DatasetInfo' of all datasets that are searched by a given criterion.
         :rtype: dict
@@ -904,6 +910,8 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             request_body[ApiField.PER_PAGE] = per_page
         if page is not None and page != "all":
             request_body[ApiField.PAGE] = page
+        if include_custom_data:
+            request_body[ApiField.EXTRA_FIELDS] = [ApiField.CUSTOM_DATA]
 
         first_response = self._api.post(method, request_body).json()
 
