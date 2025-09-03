@@ -304,6 +304,7 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         description: Optional[str] = "",
         change_name_if_conflict: Optional[bool] = False,
         parent_id: Optional[int] = None,
+        custom_data: Optional[Dict[Any, Any]] = None,
     ) -> DatasetInfo:
         """
         Create Dataset with given name in the given Project.
@@ -318,6 +319,9 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
         :type change_name_if_conflict: bool, optional
         :param parent_id: Parent Dataset ID. If set to None, then the Dataset will be created at
             the top level of the Project, otherwise the Dataset will be created in a specified Dataset.
+        :type parent_id: Union[int, None]
+        :param custom_data: Custom data to store in the Dataset.
+        :type custom_data: Dict[Any, Any], optional
         :return: Information about Dataset. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`DatasetInfo`
         :Usage example:
@@ -345,15 +349,17 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             change_name_if_conflict=change_name_if_conflict,
             parent_id=parent_id,
         )
-        response = self._api.post(
-            "datasets.add",
-            {
-                ApiField.PROJECT_ID: project_id,
-                ApiField.NAME: effective_name,
-                ApiField.DESCRIPTION: description,
-                ApiField.PARENT_ID: parent_id,
-            },
-        )
+        method = "datasets.add"
+        payload = {
+            ApiField.PROJECT_ID: project_id,
+            ApiField.NAME: effective_name,
+            ApiField.DESCRIPTION: description,
+            ApiField.PARENT_ID: parent_id,
+        }
+        custom_data = {"key": "value"}
+        if custom_data is not None:
+            payload[ApiField.CUSTOM_DATA] = custom_data
+        response = self._api.post(method, payload)
         return self._convert_json_info(response.json())
 
     def get_or_create(

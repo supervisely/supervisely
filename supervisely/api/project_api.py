@@ -12,10 +12,12 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Generator,
     List,
     Literal,
     NamedTuple,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -38,6 +40,7 @@ from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
@@ -2556,3 +2559,54 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             api.project.calculate_embeddings(project_id)
         """
         self._api.post("embeddings.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
+
+    def recreate(
+        self, src_project_id: int, dst_project_id: int
+    ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
+        """This method can be used to recreate a project with hierarchial datasets and
+        yields the tuple of source and destination DatasetInfo objects.
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int
+
+        :return: Generator of tuples of source and destination DatasetInfo objects
+        :rtype: Generator[Tuple[DatasetInfo, DatasetInfo], None, None]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            src_project_id = 123
+            dst_project_id = api.project.create("new_project", "images").id
+
+            for src_ds, dst_ds in api.project.recreate(src_project_id, dst_project_id):
+                print(f"Recreated dataset {src_ds.id} -> {dst_ds.id}")
+                # Implement your logic here to process the datasets.
+        """
+        # dataset_map is a dict, where key is the path to the dataset in the source project
+        # e.g. "ds1/ds2" and value is the id of the dataset in the destination project.
+        # Example: {
+        #     "ds1": 1, <<< This dataset will be created in the root of the destination project.
+        #     "ds1/ds2": 2 <<< This dataset will be created inside "ds1" dataset.
+        # }
+        dataset_map = {}
+        for parents, src_dataset_info in self._api.dataset.tree(src_project_id):
+            parent = f"{os.path.sep}".join(parents)
+            parent_id = dataset_map.get(parent)
+
+            dst_dataset_info = self._api.dataset.create(
+                dst_project_id,
+                src_dataset_info.name,
+                description=src_dataset_info.description,
+                parent_id=parent_id,
+                custom_data=src_dataset_info.custom_data,
+            )
+            dataset_map[os.path.join(parent, dst_dataset_info.name)] = dst_dataset_info.id
+
+            yield src_dataset_info, dst_dataset_info
