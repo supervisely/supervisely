@@ -59,7 +59,8 @@ class Prediction:
         self.source = source
         if isinstance(annotation_json, Annotation):
             annotation_json = annotation_json.to_json()
-        self.annotation_json = annotation_json
+
+        self.annotation_json = self._add_nn_flags_to_annotation_json(annotation_json)
         self.model_meta = model_meta
         if isinstance(self.model_meta, dict):
             self.model_meta = ProjectMeta.from_json(self.model_meta)
@@ -157,7 +158,7 @@ class Prediction:
 
     @property
     def annotation(self) -> Annotation:
-        if self._annotation is None:
+        if self._annotation is None and self.annotation_json is not None:
             if self.model_meta is None:
                 raise ValueError("Model meta is not provided. Cannot create annotation.")
             model_meta = get_meta_from_annotation(self.annotation_json, self.model_meta)
@@ -325,3 +326,18 @@ class Prediction:
         write_image(save_path, img)
         logger.info("Visualization for prediction saved to %s", save_path)
         return img
+
+    @staticmethod
+    def _add_nn_flags_to_annotation_json(annotation_json: Dict) -> Dict:
+        """
+        Add NN flags to objects (labels) in the annotation json.
+        """
+        if annotation_json is None:
+            return annotation_json
+
+        objects = annotation_json.get("objects")
+        if isinstance(objects, list):
+            for obj in objects:
+                obj["nnCreated"] = True
+                obj["nnUpdated"] = False
+        return annotation_json

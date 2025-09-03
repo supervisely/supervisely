@@ -262,6 +262,7 @@ class PredictionSession:
         try:
             prediction_json = self._iterator.__next__()
             this_kwargs = next(self.prediction_kwargs_iterator)
+            prediction_json = self._add_nn_flags_to_prediction_json(prediction_json)
             prediction = Prediction.from_json(
                 prediction_json, **self.kwargs, **this_kwargs, model_meta=self.model_meta
             )
@@ -705,3 +706,14 @@ class PredictionSession:
             iou_merge_threshold=iou_merge_threshold,
             cache_project_on_model=cache_datasets_on_model,
         )
+
+    def _add_nn_flags_to_prediction_json(self, prediction_json: Dict):
+        """
+        Add NN flags to objects (labels) in the prediction json.
+        """
+        if isinstance(prediction_json, dict) and "annotation" in prediction_json:
+            ann_json = prediction_json["annotation"]
+            if isinstance(ann_json, dict):
+                ann_json = Prediction._add_nn_flags_to_annotation_json(ann_json)
+                prediction_json["annotation"] = ann_json
+        return prediction_json

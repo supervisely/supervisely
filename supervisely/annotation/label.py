@@ -69,6 +69,10 @@ class LabelBase:
     :type smart_tool_input: dict, optional
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
+    :param nn_created: Label created by NN.
+    :type nn_created: bool, optional
+    :param nn_updated: Label updated by NN.
+    :type nn_updated: bool, optional
 
     :Usage example:
 
@@ -120,8 +124,8 @@ class LabelBase:
         self._smart_tool_input = smart_tool_input
 
         self._sly_id = sly_id
-        self._nn_created = bool(nn_created)
-        self._nn_updated = bool(nn_updated)
+        self._nn_created = nn_created
+        self._nn_updated = nn_updated
 
     def _validate_geometry(self):
         """
@@ -288,6 +292,8 @@ class LabelBase:
             **self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
+            LabelJsonFields.NN_CREATED: self._nn_created,
+            LabelJsonFields.NN_UPDATED: self._nn_updated,
         }
 
         if self.obj_class.sly_id is not None:
@@ -301,10 +307,6 @@ class LabelBase:
 
         if self.sly_id is not None:
             res[LabelJsonFields.ID] = self.sly_id
-
-        # include NN flags
-        res[LabelJsonFields.NN_CREATED] = self._nn_created
-        res[LabelJsonFields.NN_UPDATED] = self._nn_updated
 
         return res
 
@@ -891,11 +893,11 @@ class LabelBase:
         return self.geometry.labeler_login
 
     @property
-    def is_nn_created(self) -> bool:
+    def nn_created(self) -> bool:
         return self._nn_created
 
     @property
-    def is_nn_updated(self) -> bool:
+    def nn_updated(self) -> bool:
         return self._nn_updated
 
     @classmethod

@@ -1441,7 +1441,14 @@ class Inference:
             if isinstance(label, list):
                 labels.extend(label)
                 continue
+            
             labels.append(label)
+
+        # Add NN flags to created labels
+        fixed_labels = []
+        for lb in labels:
+            lb = lb.clone(nn_created=True, nn_updated=False)
+            fixed_labels.append(lb)
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
@@ -1449,7 +1456,7 @@ class Inference:
             img_size = img.shape[:2]
         else:
             img_size = image_path.shape[:2]
-        ann = Annotation(img_size, labels)
+        ann = Annotation(img_size, fixed_labels)
         return ann
 
     @property
