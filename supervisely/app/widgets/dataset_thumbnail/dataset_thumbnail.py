@@ -19,6 +19,10 @@ class DatasetThumbnail(Widget):
     :type dataset_info: Optional[DatasetInfo]
     :param show_project_name: if True, project name will be shown
     :type show_project_name: Optional[bool]
+    :param remove_margins: if True, removes margins around the widget
+    :type remove_margins: bool, optional
+    :param custom_name: custom name for the dataset (if None, actual dataset name will be used)
+    :type custom_name: str, optional
     :param widget_id: An identifier of the widget.
     :type widget_id: str, optional
 
@@ -38,18 +42,21 @@ class DatasetThumbnail(Widget):
         project_info: Optional[ProjectInfo] = None,
         dataset_info: Optional[DatasetInfo] = None,
         show_project_name: Optional[bool] = True,
+        remove_margins: bool = False,
+        custom_name: str = None,
         widget_id: Optional[str] = None,
     ):
         self._project_info: ProjectInfo = None
         self._dataset_info: DatasetInfo = None
         self._id: int = None
-        self._name: str = None
+        self._name: str = custom_name
         self._description: str = None
         self._url: str = None
         self._image_preview_url: str = None
         self._show_project_name: bool = show_project_name
         self._project_name: str = None
         self._project_url: str = None
+        self._remove_margins: bool = remove_margins
         self._set_info(project_info, dataset_info, show_project_name)
 
         super().__init__(widget_id=widget_id, file_path=__file__)
@@ -79,6 +86,7 @@ class DatasetThumbnail(Widget):
             "show_project_name": self._show_project_name,
             "project_name": self._project_name,
             "project_url": self._project_url,
+            "removeMargins": self._remove_margins,
         }
 
     def get_json_state(self) -> None:
@@ -96,7 +104,8 @@ class DatasetThumbnail(Widget):
         self._project_info = project_info
         self._dataset_info = dataset_info
         self._id = dataset_info.id
-        self._name = dataset_info.name
+        if self._name is None:
+            self._name = dataset_info.name
         self._description = f"{self._dataset_info.items_count} {self._project_info.type} in dataset"
         self._url = Dataset.get_url(project_id=project_info.id, dataset_id=dataset_info.id)
         self._image_preview_url = dataset_info.image_preview_url
