@@ -65,7 +65,6 @@ class EvaluationReportNode(LinkNode):
     def _available_subscribe_methods(self):
         return {
             "evaluation_finished": self._process_incoming_message,
-            "comparison_finished": self._process_incoming_message,
         }
 
     def _process_incoming_message(self, msg):

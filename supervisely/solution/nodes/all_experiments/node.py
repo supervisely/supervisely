@@ -59,7 +59,7 @@ class AllExperimentsNode(LinkNode):
     def _get_handles(self):
         return [
             {
-                "id": "training_finished",
+                "id": "register_experiment",
                 "type": "target",
                 "position": "left",
                 "connectable": True,
@@ -77,7 +77,7 @@ class AllExperimentsNode(LinkNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "training_finished": self._process_incomming_message,
+            "register_experiment": self._process_incomming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:

@@ -93,17 +93,10 @@ class LabelingQueueNode(BaseQueueNode):
                 "connectable": True,
             },
             {
-                "id": "queue_info_updated",
+                "id": "accepted_images",
                 "type": "source",
                 "position": "bottom",
                 "connectable": True,
-            },
-            {
-                "id": "train_val_split_items_count",
-                "type": "source",
-                "position": "left",
-                "connectable": True,
-                "style": {"top": "220"},
             },
             {
                 "id": "labeling_performance",
@@ -188,27 +181,14 @@ class LabelingQueueNode(BaseQueueNode):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "queue_info_updated": self.send_queue_info_updated_message,
-            "train_val_split_items_count": self.send_new_items_message_to_train_val_split,
+            "accepted_images": self.send_accepted_images_message,
             "labeling_performance": self.send_performance_message,
         }
 
-    def send_new_items_message_to_train_val_split(
-        self, message: LabelingQueueAcceptedImagesMessage
-    ):
-        """Send message with all labeled images from labeling queue with status accepted"""
-        return message
-
-    def send_queue_info_updated_message(self, message: LabelingQueueRefreshInfoMessage):
-        """Send message with all labeled images from labeling queue with status accepted"""
-        return message
-
-    def send_new_items_message(self):
+    def send_accepted_images_message(self):
         """Send message with all labeled images from labeling queue with status accepted"""
         images = self.get_new_accepted_images()
-        msg = LabelingQueueAcceptedImagesMessage(accepted_images=images)
-        self.send_new_items_message_to_train_val_split(msg)
-        self.send_queue_info_updated_message(msg)
+        return LabelingQueueAcceptedImagesMessage(accepted_images=images)
 
     def send_performance_message(self):
         """Send message to open labeling performance page"""
@@ -238,7 +218,7 @@ class LabelingQueueNode(BaseQueueNode):
             self.update_review(reviewing)
             self.update_finished(finished)
             if finished > 0:
-                self.send_new_items_message()
+                self.send_accepted_images_message()
         except Exception as e:
             logger.error(f"Failed to refresh labeling queue info: {str(e)}")
         return LabelingQueueRefreshInfoMessage(

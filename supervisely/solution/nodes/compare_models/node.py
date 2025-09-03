@@ -138,7 +138,7 @@ class CompareModelsNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "comparison_finished",
+                "id": "evaluation_finished",
                 "type": "source",
                 "position": "bottom",
                 "connectable": True,
@@ -162,7 +162,7 @@ class CompareModelsNode(BaseCardNode):
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
-            "comparison_finished": self._send_comparison_finished_message,
+            "evaluation_finished": self._send_comparison_finished_message,
             "new_model_better": self._send_new_model_better_message,
         }
 
