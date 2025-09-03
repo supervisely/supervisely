@@ -2053,13 +2053,16 @@ class TrainApp:
             try:
                 output_file_info = self._generate_experiment_report(experiment_info, model_meta)
                 experiment_info["has_report"] = True
+                experiment_info["experiment_report_id"] = output_file_info.id
             except Exception as e:
                 logger.error(f"Error generating experiment report: {e}")
                 output_file_info = session_link_file_info
                 experiment_info["has_report"] = False
+                experiment_info["experiment_report_id"] = None
         else:  # link to artifacts directory
             output_file_info = session_link_file_info
             experiment_info["has_report"] = False
+            experiment_info["experiment_report_id"] = None
         return output_file_info, experiment_info
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
