@@ -45,7 +45,7 @@ class PromptableSegmentation(Inference):
             logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
             return None
         geometry = Bitmap(dto.mask, extra_validation=False)
-        label = Label(geometry, obj_class)
+        label = Label(geometry, obj_class, nn_created=True, nn_updated=False)
         return label
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionMask]:

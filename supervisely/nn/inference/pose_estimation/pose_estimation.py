@@ -82,7 +82,7 @@ class PoseEstimation(Inference):
         for label, coordinate in zip(dto.labels, dto.coordinates):
             x, y = coordinate
             nodes.append(Node(label=label, row=y, col=x))
-        label = Label(GraphNodes(nodes), obj_class)
+        label = Label(GraphNodes(nodes), obj_class, nn_created=True, nn_updated=False)
         return label
 
     def predict(self, image_path: str, settings: Dict[str, Any]) -> List[PredictionKeypoints]:

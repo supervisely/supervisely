@@ -41,7 +41,7 @@ class InstanceSegmentation(Inference):
         tags = []
         if dto.score is not None:
             tags.append(Tag(self._get_confidence_tag_meta(), dto.score))
-        label = Label(geometry, obj_class, tags)
+        label = Label(geometry, obj_class, tags, nn_created=True, nn_updated=False)
         return label
 
     def predict(

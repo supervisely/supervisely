@@ -32,7 +32,7 @@ class SalientObjectSegmentation(SemanticSegmentation):
         if not dto.mask.any():  # skip empty masks
             logger.debug(f"Mask is empty and will be slipped")
             return None
-        label = Label(geometry, obj_class)
+        label = Label(geometry, obj_class, nn_created=True, nn_updated=False)
         return [label]
 
     # pylint: disable=no-self-argument

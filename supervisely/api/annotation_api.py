@@ -1285,7 +1285,7 @@ class AnnotationApi(ModuleApi):
         """
         return self._api.get("figures.tags.list", {ApiField.ID: label_id}).json()
 
-    def update_label(self, label_id: int, label: Label) -> None:
+    def update_label(self, label_id: int, label: Label, by_nn: Optional[bool] = False) -> None:
         """Updates label with given ID in Supervisely with new Label object.
         NOTE: This method only updates label's geometry and tags, not class title, etc.
 
@@ -1293,6 +1293,8 @@ class AnnotationApi(ModuleApi):
         :type label_id: int
         :param label: Supervisely Label object
         :type label: Label
+        :param by_nn: If True, mark label as updated by neural network (nnUpdated=true)
+        :type by_nn: Optional[bool]
         :Usage example:
 
          .. code-block:: python
@@ -1312,14 +1314,14 @@ class AnnotationApi(ModuleApi):
 
             api.annotation.update_label(label_id, new_label)
         """
-        self._api.post(
-            "figures.editInfo",
-            {
-                ApiField.ID: label_id,
-                ApiField.TAGS: [tag.to_json() for tag in label.tags],
-                ApiField.GEOMETRY: label.geometry.to_json(),
-            },
-        )
+        payload = {
+            ApiField.ID: label_id,
+            ApiField.TAGS: [tag.to_json() for tag in label.tags],
+            ApiField.GEOMETRY: label.geometry.to_json(),
+        }
+        if by_nn:
+            payload[LabelJsonFields.NN_UPDATED] = True
+        self._api.post("figures.editInfo", payload)
 
     def update_label_priority(self, label_id: int, priority: int) -> None:
         """Updates label's priority with given ID in Supervisely.
