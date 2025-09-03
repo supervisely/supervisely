@@ -2606,29 +2606,16 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             dst_project_id = dst_project_info.id
 
         datasets = self._api.dataset.get_list(src_project_id, recursive=True, include_custom_data=True)
-        src_id_to_name = {ds.id: ds.name for ds in datasets}
-        parent_to_children_map = {}
-        for ds in datasets:
-            if ds.parent_id is None:
-                parent_to_children_map[ds.name] = []
-            else:
-                parent_to_children_map[src_id_to_name[ds.parent_id]].append(ds.name)
+        src_to_dst_ids = {}
 
-        dst_name_to_id = {}
-
-        parent_id = None
         for src_dataset_info in datasets:
-            if src_dataset_info.parent_id is not None:
-                parent_name = src_id_to_name[src_dataset_info.parent_id]
-                parent_id = dst_name_to_id[parent_name]
-
             dst_dataset_info = self._api.dataset.create(
                 dst_project_id,
                 src_dataset_info.name,
                 description=src_dataset_info.description,
-                parent_id=parent_id,
+                parent_id=src_to_dst_ids.get(src_dataset_info.parent_id),
                 custom_data=src_dataset_info.custom_data,
             )
-            dst_name_to_id[dst_dataset_info.name] = dst_dataset_info.id
+            src_to_dst_ids[src_dataset_info.id] = dst_dataset_info.id
 
             yield src_dataset_info, dst_dataset_info
