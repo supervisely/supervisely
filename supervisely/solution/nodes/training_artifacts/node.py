@@ -43,7 +43,7 @@ class TrainingArtifactsNode(LinkNode):
     def _get_handles(self):
         return [
             {
-                "id": "train_finished",
+                "id": "training_finished",
                 "type": "target",
                 "position": "left",
                 "connectable": True,
@@ -54,7 +54,7 @@ class TrainingArtifactsNode(LinkNode):
     # Events -----------------------------------------------------------
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self):
-        return {"train_finished": self._process_incoming_message}
+        return {"training_finished": self._process_incoming_message}
 
     def _process_incoming_message(self, message: TrainFinishedMessage):
         if not hasattr(message, "experiment_info"):

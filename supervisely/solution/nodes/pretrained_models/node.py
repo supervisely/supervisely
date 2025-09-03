@@ -4,9 +4,9 @@ from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import supervisely.io.env as sly_env
 from supervisely.api.api import Api
+from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.task_api import TaskApi
 from supervisely.app.widgets import Dialog, NewExperiment
-from supervisely.api.project_api import ProjectInfo
 from supervisely.project.image_transfer_utils import move_structured_images
 from supervisely.sly_logger import logger
 from supervisely.solution.base_node import BaseCardNode
@@ -17,8 +17,9 @@ from supervisely.solution.engine.models import (
 )
 from supervisely.solution.nodes.pretrained_models.automation import PretrainedModelsAuto
 from supervisely.solution.nodes.pretrained_models.gui import PretrainedModelsGUI
-from supervisely.solution.nodes.pretrained_models.history import PretrainedModelsTasksHistory
-from supervisely.api.entities_collection_api import CollectionTypeFilter
+from supervisely.solution.nodes.pretrained_models.history import (
+    PretrainedModelsTasksHistory,
+)
 
 
 class PretrainedModelsNode(BaseCardNode):
@@ -106,9 +107,16 @@ class PretrainedModelsNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "pretrained_models_output",
+                "id": "training_finished",
                 "type": "source",
                 "position": "bottom",
+                "label": "Output",
+                "connectable": True,
+            },
+            {
+                "id": "register_experiment",
+                "type": "source",
+                "position": "right",
                 "label": "Output",
                 "connectable": True,
             },
@@ -119,7 +127,10 @@ class PretrainedModelsNode(BaseCardNode):
     # ------------------------------------------------------------------
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
-        return {"train_finished": self._send_train_finished_message}
+        return {
+            "register_experiment": self._send_training_finished_message,
+            "training_finished": self._send_training_output_message,
+        }
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
@@ -193,7 +204,16 @@ class PretrainedModelsNode(BaseCardNode):
     def get_data_versioning_project_id(self) -> Optional[int]:
         return getattr(self, "project_id", None)
 
-    def _send_train_finished_message(
+    def _send_training_output_message(
+        self, success: bool, task_id: int, experiment_info: dict
+    ) -> TrainFinishedMessage:
+        return TrainFinishedMessage(
+            success=success,
+            task_id=task_id,
+            experiment_info=experiment_info,
+        )
+
+    def _send_training_finished_message(
         self, success: bool, task_id: int, experiment_info: dict
     ) -> TrainFinishedMessage:
         return TrainFinishedMessage(
@@ -319,7 +339,10 @@ class PretrainedModelsNode(BaseCardNode):
                         f"Failed to get experiment info for task_id={task_id}: {repr(e)}"
                     )
                     experiment_info = None
-                self._send_train_finished_message(
+                self._send_training_finished_message(
+                    success=True, task_id=task_id, experiment_info=experiment_info_json
+                )
+                self._send_training_output_message(
                     success=True, task_id=task_id, experiment_info=experiment_info_json
                 )
                 break
