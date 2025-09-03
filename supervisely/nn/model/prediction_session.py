@@ -262,7 +262,6 @@ class PredictionSession:
         try:
             prediction_json = self._iterator.__next__()
             this_kwargs = next(self.prediction_kwargs_iterator)
-            prediction_json = self._add_nn_flags_to_prediction_json(prediction_json)
             prediction = Prediction.from_json(
                 prediction_json, **self.kwargs, **this_kwargs, model_meta=self.model_meta
             )
