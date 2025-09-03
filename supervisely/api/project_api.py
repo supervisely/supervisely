@@ -2652,13 +2652,14 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             dst_project_id = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
             print(f"Recreated project {src_project_id} -> {dst_project_id}")
         """
-        last_dst_dataset_info = None
-        for _, last_dst_dataset_info in self.recreate_structure_generator(
+        src_ids, dst_ids = [], []
+        for src_id, dst_id in self.recreate_structure_generator(
             src_project_id, dst_project_id, dst_project_name
         ):
-            pass
+            src_ids.append(src_id)
+            dst_ids.append(dst_id)
 
-        if last_dst_dataset_info is None:
+        if not dst_ids:
             raise RuntimeError("Source project has no datasets.")
 
-        return last_dst_dataset_info.project_id
+        return src_ids, dst_ids
