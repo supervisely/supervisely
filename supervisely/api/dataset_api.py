@@ -356,7 +356,6 @@ class DatasetApi(UpdateableModule, RemoveableModuleApi):
             ApiField.DESCRIPTION: description,
             ApiField.PARENT_ID: parent_id,
         }
-        custom_data = {"key": "value"}
         if custom_data is not None:
             payload[ApiField.CUSTOM_DATA] = custom_data
         response = self._api.post(method, payload)
