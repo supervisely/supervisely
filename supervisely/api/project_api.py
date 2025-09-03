@@ -2625,7 +2625,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         src_project_id: int,
         dst_project_id: Optional[int] = None,
         dst_project_name: Optional[str] = None,
-    ) -> int:
+    ) -> Tuple[List[DatasetInfo], List[DatasetInfo]]:
         """This method can be used to recreate a project with hierarchial datasets (without the data itself).
 
         :param src_project_id: Source project ID
