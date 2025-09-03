@@ -61,7 +61,7 @@ class TrainingExperimentNode(LinkNode):
             logger.warning("Received message does not have 'experiment_info' attribute.")
             return
 
-        # @TODO: get experiment_id from api task_info
+        # @TODO: get experiment_id from message
         experiment_id = message.experiment_info.get("experiment_id")
         self.set_experiment(experiment_id)
 

@@ -332,18 +332,16 @@ class PretrainedModelsNode(BaseCardNode):
             elif status == TaskApi.Status.FINISHED.value:
                 self.update_badge_by_key(key="Status", label="Finished", badge_type="success")
                 try:
-                    experiment_info = self.api.nn.get_experiment_info(task_id)
-                    experiment_info_json = experiment_info.to_json()
+                    # experiment_info = self.api.nn.get_experiment_info(task_id)
+                    # experiment_info_json = experiment_info.to_json()
+                    experiment_info = task_info["meta"]["output"]["experiment"]
                 except Exception as e:
                     logger.warning(
                         f"Failed to get experiment info for task_id={task_id}: {repr(e)}"
                     )
                     experiment_info = None
                 self._send_training_finished_message(
-                    success=True, task_id=task_id, experiment_info=experiment_info_json
-                )
-                self._send_training_output_message(
-                    success=True, task_id=task_id, experiment_info=experiment_info_json
+                    success=True, task_id=task_id, experiment_info=experiment_info
                 )
                 break
             else:
