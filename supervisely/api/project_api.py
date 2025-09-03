@@ -2560,13 +2560,13 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         self._api.post("embeddings.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
 
-    def recreate(
+    def recreate_structure_generator(
         self,
         src_project_id: int,
         dst_project_id: Optional[int] = None,
         dst_project_name: Optional[str] = None,
     ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
-        """This method can be used to recreate a project with hierarchial datasets and
+        """This method can be used to recreate a project with hierarchial datasets (without the data itself) and
         yields the tuple of source and destination DatasetInfo objects.
 
         :param src_project_id: Source project ID
@@ -2590,7 +2590,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             src_project_id = 123
             dst_project_id = api.project.create("new_project", "images").id
 
-            for src_ds, dst_ds in api.project.recreate(src_project_id, dst_project_id):
+            for src_ds, dst_ds in api.project.recreate_structure_generator(src_project_id, dst_project_id):
                 print(f"Recreated dataset {src_ds.id} -> {dst_ds.id}")
                 # Implement your logic here to process the datasets.
         """
@@ -2619,3 +2619,46 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             src_to_dst_ids[src_dataset_info.id] = dst_dataset_info.id
 
             yield src_dataset_info, dst_dataset_info
+
+    def recreate_structure(
+        self,
+        src_project_id: int,
+        dst_project_id: Optional[int] = None,
+        dst_project_name: Optional[str] = None,
+    ) -> int:
+        """This method can be used to recreate a project with hierarchial datasets (without the data itself).
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int, optional
+        :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
+        :type dst_project_name: str, optional
+
+        :return: Destination project ID
+        :rtype: int
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            src_project_id = 123
+            dst_project_name = "New Project"
+
+            dst_project_id = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
+            print(f"Recreated project {src_project_id} -> {dst_project_id}")
+        """
+        last_dst_dataset_info = None
+        for _, last_dst_dataset_info in self.recreate_structure_generator(
+            src_project_id, dst_project_id, dst_project_name
+        ):
+            pass
+
+        if last_dst_dataset_info is None:
+            raise RuntimeError("Source project has no datasets.")
+
+        return last_dst_dataset_info.project_id
