@@ -443,6 +443,28 @@ class FastTable(Widget):
         :type meta: dict
         :param custom_columns: List of column names. Can include widgets as tuples (column_name, widget)
         :type custom_columns: List[Union[str, tuple]], optional
+
+        Example of data dict:
+        .. code-block:: python
+
+            data = {
+                "data": [["apple", "21"], ["banana", "15"]],
+                "columns": ["Class", "Items"],
+                "columnsOptions": [
+                    { "type": "class"},
+                    { "maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes" }
+                ],
+                "options": {
+                    "isRowClickable": True,
+                    "isCellClickable": True,
+                    "fixColumns": 1,
+                    "isRadio": False,
+                    "isRowSelectable": True,
+                    "maxSelectedRows": 5,
+                    "searchPosition": "right",
+                    "sort": {"column": 0, "order": "asc"},
+                },
+            }
         """
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
         self._read_custom_columns(custom_columns)
