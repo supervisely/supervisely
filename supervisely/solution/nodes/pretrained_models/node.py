@@ -84,7 +84,7 @@ class PretrainedModelsNode(BaseCardNode):
         def _on_app_started(app_id: int, model_id: int, task_id: int):
             self.gui.widget.visible = False
             self._previous_task_id = task_id
-            self.start_task(app_id, model_id, task_id)
+            self.run(app_id, model_id, task_id)
 
         @self.automation.apply_button.click
         def on_automate_click():
@@ -92,7 +92,7 @@ class PretrainedModelsNode(BaseCardNode):
             self.apply_automation()
 
     def configure_automation(self, *args, **kwargs):
-        self.automation.func = self.start_task
+        self.automation.func = self.run
 
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------
@@ -256,13 +256,13 @@ class PretrainedModelsNode(BaseCardNode):
         """
         Apply the automation function to the MoveLabeled node.
         """
-        self.automation.apply(func=self.start_task)
+        self.automation.apply(func=self.run)
         self.update_automation_details()
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def start_task(self, app_id: int, model_id: int, task_id: int) -> None:
+    def run(self, app_id: int, model_id: int, task_id: int) -> None:
         """Start the task to train data from the training project."""
         self._save_train_settings()
 
@@ -332,15 +332,18 @@ class PretrainedModelsNode(BaseCardNode):
             elif status == TaskApi.Status.FINISHED.value:
                 self.update_badge_by_key(key="Status", label="Finished", badge_type="success")
                 try:
-                    # experiment_info = self.api.nn.get_experiment_info(task_id)
-                    # experiment_info_json = experiment_info.to_json()
-                    experiment_info = task_info["meta"]["output"]["experiment"]
+                    time.sleep(5)  # wait for experiment to be registered
+                    experiment_info = self.api.nn.get_experiment_info(task_id)
+                    experiment_info = experiment_info.to_json()
                 except Exception as e:
                     logger.warning(
                         f"Failed to get experiment info for task_id={task_id}: {repr(e)}"
                     )
                     experiment_info = None
                 self._send_training_finished_message(
+                    success=True, task_id=task_id, experiment_info=experiment_info
+                )
+                self._send_training_output_message(
                     success=True, task_id=task_id, experiment_info=experiment_info
                 )
                 break
@@ -358,4 +361,4 @@ class PretrainedModelsNode(BaseCardNode):
             self._train_settings = self.gui.widget.get_train_settings()
             logger.info("Training settings saved.")
         except Exception as e:
-            logger.warning(f"Failed to save training settings: {e}")
+            logger.warning(f"Failed to save training settings: {repr(e)}")

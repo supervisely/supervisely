@@ -281,6 +281,28 @@ class NewExperiment(Widget):
         StateJson().send_changes()
 
     @property
+    def selected_frameworks(self) -> List[str]:
+        self._selected_frameworks = StateJson()[self.widget_id]["form"]["selectedFrameworks"]
+        return self._selected_frameworks
+
+    @selected_frameworks.setter
+    def selected_frameworks(self, value: List[str]):
+        self._selected_frameworks = value
+        StateJson()[self.widget_id]["form"]["selectedFrameworks"] = value
+        StateJson().send_changes()
+
+    @property
+    def selected_architectures(self) -> List[str]:
+        self._selected_architectures = StateJson()[self.widget_id]["form"]["selectedArchitectures"]
+        return self._selected_architectures
+
+    @selected_architectures.setter
+    def selected_architectures(self, value: List[str]):
+        self._selected_architectures = value
+        StateJson()[self.widget_id]["form"]["selectedArchitectures"] = value
+        StateJson().send_changes()
+
+    @property
     def project_id(self) -> Optional[int]:
         self._project_id = StateJson()[self.widget_id]["form"]["selectedProjectId"]
         return self._project_id
@@ -510,9 +532,9 @@ class NewExperiment(Widget):
     def app_id(self) -> Optional[int]:
         return StateJson()[self.widget_id].get("appId", None)
 
-    @property
-    def model_id(self) -> Optional[int]:
-        return StateJson()[self.widget_id].get("modelId", None)
+    # @property
+    # def model_id(self) -> Optional[int]:
+    #     return StateJson()[self.widget_id].get("modelId", None)
 
     def app_started(self, func):
         route_path = self.get_route_path(NewExperiment.Routes.APP_STARTED)
@@ -528,6 +550,9 @@ class NewExperiment(Widget):
     def get_train_settings(self):
         train_settings = {
             "cvTask": self.cv_task,
+            "step": self.step,
+            "frameworks": self.selected_frameworks,
+            "architectures": self.selected_architectures,
             "projectId": self.project_id,
             "classes": self.classes,
             "trainValSplit": {

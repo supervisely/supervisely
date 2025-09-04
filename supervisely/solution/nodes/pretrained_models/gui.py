@@ -1,11 +1,12 @@
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple, Union
 
 from supervisely.api.api import Api
 from supervisely.api.project_api import ProjectInfo
+from supervisely.app.widgets import Dialog, NewExperiment
+from supervisely.nn.task_type import TaskType
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_type import ProjectType
-from supervisely.app.widgets import NewExperiment, Dialog
-from supervisely.nn.task_type import TaskType
+from supervisely.solution.utils import find_agent
 
 
 class PretrainedModelsGUI:
@@ -20,7 +21,7 @@ class PretrainedModelsGUI:
         frameworks: Optional[List[str]] = None,
         widget_id: Optional[str] = None,
     ):
-        self.api = api
+        self._api = api
         self.project = project
         self.workspace_id = self.project.workspace_id
         self.team_id = self.project.team_id
@@ -29,30 +30,47 @@ class PretrainedModelsGUI:
 
     def _create_widget(self) -> NewExperiment:
         """Creates the GUI widgets for the PretrainedModels node."""
+        train_datasets, val_datasets = self._get_train_val_datasets()
         train_collections, val_collections = self._get_train_val_collections()
-        split_mode = "collections" if train_collections and val_collections else "random"
 
-        project_meta = ProjectMeta.from_json(self.api.project.get_meta(self.project.id))
+        if train_collections and val_collections:
+            split_mode = "collections"
+            train_datasets, val_datasets = None, None
+        elif train_datasets and val_datasets:
+            split_mode = "datasets"
+            train_collections, val_collections = None, None
+        else:
+            split_mode = "random"
+            train_collections, val_collections = None, None
+            train_datasets, val_datasets = None, None
+
+        disable_split = split_mode != "random"
+        project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project.id))
         classes = [obj_cls.name for obj_cls in project_meta.obj_classes]
+        agent_id = self._find_agent()
 
         content = NewExperiment(
             team_id=self.team_id,
             workspace_id=self.workspace_id,
             project_id=self.project.id,
             classes=classes,
-            step=1,  # 5 - start with model selection
+            step=2,  # - start with model selection
             filter_projects_by_workspace=True,
             project_types=[ProjectType.IMAGES],
-            cv_task=None,  # TaskType.OBJECT_DETECTION,
+            cv_task=TaskType.OBJECT_DETECTION,
             selected_frameworks=self.frameworks,
-            train_val_split_mode=split_mode,  # only collections?
+            train_val_split_mode=split_mode,
             train_collections=train_collections,
             val_collections=val_collections,
+            training_datasets=train_datasets,
+            val_datasets=val_datasets,
+            agent_id=agent_id,
+            run_evaluation=True,
             # gui selectors disabled
             cv_task_selection_disabled=True,  # 1 - cv task selection
             project_selection_disabled=True,  # 2 - project selection
             classes_selection_disabled=False,  # 3 - classes selection
-            train_val_split_selection_disabled=True,  # 4 - train/val split selection
+            train_val_split_selection_disabled=disable_split,  # 4 - train/val split selection
             model_selection_disabled=False,  # 5 - model selection
             evaluation_selection_disabled=False,  # 9 - evaluation selection
             speed_test_selection_disabled=False,  # 9 - speed test selection
@@ -83,10 +101,25 @@ class PretrainedModelsGUI:
         if self.project.type != ProjectType.IMAGES.value:
             return [], []
         train_collections, val_collections = [], []
-        all_collections = self.api.entities_collection.get_list(self.project.id)
+        all_collections = self._api.entities_collection.get_list(self.project.id)
         for collection in all_collections:
-            if collection.name == "All_train":
+            if collection.name == "all_train":
                 train_collections.append(collection.id)
-            elif collection.name == "All_val":
+            elif collection.name == "all_val":
                 val_collections.append(collection.id)
         return train_collections, val_collections
+
+    def _get_train_val_datasets(self) -> Tuple[List[int], List[int]]:
+        if self.project.type != ProjectType.IMAGES.value:
+            return [], []
+        train_datasets, val_datasets = [], []
+        all_datasets = self._api.dataset.get_list(self.project.id)
+        for dataset in all_datasets:
+            if "train" in dataset.name:
+                train_datasets.append(dataset.id)
+            elif "val" in dataset.name:
+                val_datasets.append(dataset.id)
+        return train_datasets, val_datasets
+
+    def _find_agent(self):
+        return find_agent(self._api, self.team_id)
