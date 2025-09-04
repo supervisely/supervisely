@@ -8,6 +8,6 @@ from supervisely.solution.nodes.deploy_pretrained_model.gui import (
 
 class DeployPretrainedModelNode(DeployModelNode):
     TITLE = "Pretrained Model"
-    DESCRIPTION = "Deploy a pretrained model available in Supervisely."
+    DESCRIPTION = "Deploy a pretrained model for pre-labeling to speed up the labeling process."
 
     GUI_CLASS = DeployPretrainedModelGUI

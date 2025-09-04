@@ -164,12 +164,7 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Train/Val split settings: {self._train_percent}%/{self._val_percent}%")
 
     # publish event (may send Message object)
-    def wait_task_complete(
-        self,
-        task_id: int,
-        dataset_id: int,
-        images: List[int],
-    ) -> MoveLabeledDataFinishedMessage:
+    def wait_task_complete(self, task_id: int) -> MoveLabeledDataFinishedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
@@ -192,6 +187,7 @@ class MoveLabeledNode(BaseCardNode):
                 break
 
         success = task_status == self.api.task.Status.FINISHED
+        items = self._get_uploaded_ids(self.dst_project_id, task_id)
 
         try:
             task_info_json = {"id": task_id, "status": task_status.value}
@@ -203,7 +199,7 @@ class MoveLabeledNode(BaseCardNode):
         try:
             if self._train_percent is not None and self._val_percent is not None:
                 logger.info("Performing train/val split after moving data.")
-                self.split()
+                self.split(items)
         except Exception as e:
             logger.error(f"Failed to perform train/val split: {repr(e)}")
 
@@ -215,12 +211,12 @@ class MoveLabeledNode(BaseCardNode):
             self._images_to_move = []
 
         if moved > 0:
-            self.send_data_moving_finished_message(success=success, items=[], items_count=moved)
+            self.send_data_moving_finished_message(success=success, items=items, items_count=moved)
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
     # ------------------------------------------------------------------
-    def _update_automation_details(self) -> Tuple[int, str, int, str]:
+    def _update_automation_details(self) -> None:
         enabled, period, interval, min_batch, sec = self.automation.get_details()
         if enabled is not None:
             self.show_automation_badge()
@@ -261,11 +257,6 @@ class MoveLabeledNode(BaseCardNode):
         self.show_in_progress_badge()
         logger.info(f"Moving {len(images)} images (project ID:{src} → ID:{dst}).")
 
-        dst_project = self.api.project.get_info_by_id(dst)
-        ds_count = dst_project.datasets_count or 0
-        ds_name = f"batch_{ds_count + 1}"
-        dst_dataset = self.api.dataset.create(dst, ds_name, change_name_if_conflict=True)
-
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
@@ -277,15 +268,14 @@ class MoveLabeledNode(BaseCardNode):
                 },
                 "destination": {
                     "team": {"id": sly_env.team_id()},
-                    # "dataset": {"id": dst_dataset.id},
                     "project": {"id": dst},
                     "workspace": {"id": sly_env.workspace_id()},
                 },
                 "options": {
                     "preserveSrcDate": False,
                     "cloneAnnotations": True,
-                    "conflictResolutionMode": "rename",
-                    # "filter": [{"id": image_id, "type": "image"} for image_id in images], # by item ids
+                    "conflictResolutionMode": "skip",
+                    "saveIdsToProjectCustomData": True,
                 },
                 "action": "merge",
             }
@@ -315,7 +305,7 @@ class MoveLabeledNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id, dst_dataset.id, images),
+            args=(task_id,),
             daemon=True,
         )
         thread.start()
@@ -323,17 +313,11 @@ class MoveLabeledNode(BaseCardNode):
     # ------------------------------------------------------------------
     # Helpers ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def split(self, random_selection: bool = True):
+    def split(self, items: List[int], random_selection: bool = True):
         """Split the given items into train and validation sets."""
-        if not self._images_to_move:
-            logger.warning("No items to split. Returning empty splits.")
+        if not items:
+            logger.warning("No items to split.")
             return
-        old_items = self._images_to_move.copy()
-        old_infos = self.api.image.get_info_by_id_batch(old_items)
-        names = [info.name for info in old_infos]
-        filters = [{"field": "name", "operator": "in", "value": names}]
-        items = self.api.image.get_list(project_id=self.dst_project_id, filters=filters)
-        items = [item.id for item in items]
 
         train_count = int(len(items) * self._train_percent / 100)
         val_count = len(items) - train_count
@@ -341,39 +325,52 @@ class MoveLabeledNode(BaseCardNode):
             random.shuffle(items)
         train = items[:train_count]
         val = items[train_count : train_count + val_count]
-        self._add_to_collection(train, "train")
-        self._add_to_collection(val, "val")
+        self._add_to_collection(train, "all_train")
+        self._add_to_collection(val, "all_val")
+        self._add_to_collection(val, "batch")
         logger.info(f"Split {len(items)} items into {len(train)} train and {len(val)} val items.")
 
     def _add_to_collection(
         self,
         image_ids: List[int],
-        split_name: Literal["train", "val"],
+        split_name: Literal["all_train", "all_val", "batch"],
     ) -> None:
         """Add the MoveLabeled node to a collection."""
         if not image_ids:
             return
         collections = self.api.entities_collection.get_list(self.dst_project_id)
 
-        main_col, main_col_name = None, f"all_{split_name}"
+        main_col = None
 
-        # last_batch_index = 0
+        last_batch_idx = 0
         for collection in collections:
-            if collection.name == main_col_name:
+            if collection.name == split_name and split_name in ["all_train", "all_val"]:
                 main_col = collection
-            # elif collection.name.startswith(f"{split_name}_"):
-            #     last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
+            elif split_name == "batch":
+                if collection.name.startswith("batch_"):
+                    last_batch_idx = max(last_batch_idx, int(collection.name.split("_")[-1]))
 
         if main_col is None:
-            main_col = self.api.entities_collection.create(self.dst_project_id, main_col_name)
-            logger.info(f"Created new collection '{main_col_name}'")
+            main_col = self.api.entities_collection.create(self.dst_project_id, split_name)
+            logger.info(f"Created new collection '{split_name}'")
 
         self.api.entities_collection.add_items(main_col.id, image_ids)
 
-        # batch_col_name = f"{split_name}_{last_batch_index + 1}"
-        # batch_col = self.api.entities_collection.create(self.dst_project_id, batch_col_name)
-        # logger.info(f"Created new collection '{batch_col_name}'")
-
-        # self.api.entities_collection.add_items(batch_col.id, image_ids)
-
-        # logger.info(f"Added {len(image_ids)} images to {split_name} collections")
+    def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
+        """Get the IDs of images uploaded from the project's custom data."""
+        project = self.api.project.get_info_by_id(project_id)
+        if project is None:
+            logger.warning(f"Project with ID {project_id} not found.")
+            return []
+        custom_data = project.custom_data or {}
+        history = custom_data.get("import_history", {}).get("tasks", [])
+        for record in history:
+            if record.get("task_id") == task_id:
+                break
+        else:
+            logger.warning(f"No import history found for task ID {task_id}.")
+            return []
+        uploaded_ids = []
+        for ds in record.get("datasets", []):
+            uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
+        return uploaded_ids
