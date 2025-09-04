@@ -585,6 +585,20 @@ class PredictAppGui:
         project_name = output_parameters.get("project_name", "")
         upload_to_source_project = output_parameters.get("upload_to_source_project", False)
         if upload_to_source_project:
+            output_project_id = input_project_id
+            if "image_ids" in output_parameters:
+                input_args = {
+                    "image_ids": output_parameters["image_ids"],
+                }
+            elif "dataset_ids" in output_parameters:
+                input_args = {
+                    "dataset_ids": output_parameters["dataset_ids"],
+                }
+            else:
+                input_args = {
+                    "dataset_ids": input_dataset_ids,
+                }
+        else:
             if not project_name:
                 input_project_info = self.api.project.get_info_by_id(input_project_id)
                 project_name = input_project_info.name + " [Predictions]"
@@ -604,11 +618,6 @@ class PredictAppGui:
             output_project_id = created_project.id
             input_args = {
                 "project_id": output_project_id,
-            }
-        else:
-            output_project_id = input_project_id
-            input_args = {
-                "dataset_ids": input_dataset_ids,
             }
 
         # ------------------------ #

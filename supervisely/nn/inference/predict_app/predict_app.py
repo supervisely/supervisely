@@ -164,17 +164,7 @@ class PredictApp:
                 }
             """
             state = request.state.state
-            run_parameters = {
-                "input": state["input"],
-            }
-            if "inference_settings" in state:
-                run_parameters["inference_settings"] = state["inference_settings"]
-            if "output" in state:
-                run_parameters["output"] = state["output"]
-            else:
-                run_parameters["output"] = {"mode": None}
-
-            predictions = self.run(run_parameters)
+            predictions = self.run(state)
             return [prediction.to_json() for prediction in predictions]
 
         @server.post("/run")
