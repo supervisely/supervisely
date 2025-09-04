@@ -86,7 +86,7 @@ class FileApi(ModuleApiBase):
         api = sly.Api.from_env()
 
         # Pass values into the API constructor (optional, not recommended)
-        # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+        # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
         team_id = 8
         file_path = "/999_App_Test/"
@@ -114,7 +114,7 @@ class FileApi(ModuleApiBase):
                      sizeb=261,
                      created_at='2021-01-11T09:04:17.959Z',
                      updated_at='2021-01-11T09:04:17.959Z',
-                     full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+                     full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         return [
             ApiField.TEAM_ID,
@@ -214,7 +214,7 @@ class FileApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 8
             file_path = "/999_App_Test/"
@@ -240,7 +240,7 @@ class FileApi(ModuleApiBase):
             #         "createdAt":"2021-01-11T09:04:17.959Z",
             #         "updatedAt":"2021-01-11T09:04:17.959Z",
             #         "hash":"z7Wv1a7WIC5HIJrfX/69XXrqtDaLxucSprWHoCxyq0M=",
-            #         "fullStorageUrl":"http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
+            #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json",
             #         "teamId":8,
             #         "name":"00135.json"
             #     },
@@ -257,7 +257,7 @@ class FileApi(ModuleApiBase):
             #         "createdAt":"2021-01-11T09:04:18.099Z",
             #         "updatedAt":"2021-01-11T09:04:18.099Z",
             #         "hash":"La9+XtF2+cTlAqUE/I72e/xS12LqyH1+z<3T+SgD4CTU=",
-            #         "fullStorageUrl":"http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
+            #         "fullStorageUrl":"http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/9/k/Hs/...json",
             #         "teamId":8,
             #         "name":"01587.json"
             #     }
@@ -325,7 +325,7 @@ class FileApi(ModuleApiBase):
             api = sly.Api.from_env()
 
             # Pass values into the API constructor (optional, not recommended)
-            # api = sly.Api(server_address="https://app.supervise.ly", token="4r47N...xaTatb")
+            # api = sly.Api(server_address="https://app.supervisely.com", token="4r47N...xaTatb")
 
             team_id = 9
             file_path = "/My_App_Test/"
@@ -813,7 +813,7 @@ class FileApi(ModuleApiBase):
         :type src: List[str]
         :param dst: Destination paths for Files to Team Files.
         :type dst: List[str]
-        :param progress_cb: Function for tracking download progress.
+        :param progress_cb: Function for tracking upload progress.
         :type progress_cb: tqdm or callable, optional
         :return: Information about Files. See :class:`info_sequence<info_sequence>`
         :rtype: :class:`List[FileInfo]`
@@ -1241,7 +1241,7 @@ class FileApi(ModuleApiBase):
            file_id = 7660
            file_url = sly.api.file.get_url(file_id)
            print(file_url)
-           # Output: http://supervise.ly/files/7660
+           # Output: http://supervisely.com/files/7660
         """
         return f"/files/{file_id}"
 
@@ -1280,7 +1280,7 @@ class FileApi(ModuleApiBase):
             #                  sizeb=261,
             #                  created_at='2021-01-11T09:04:17.959Z',
             #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         if self.is_on_agent(remote_path) is True:
             path_infos = self.list_on_agent(team_id, os.path.dirname(remote_path), recursive=False)
@@ -1334,7 +1334,7 @@ class FileApi(ModuleApiBase):
             #                  sizeb=261,
             #                  created_at='2021-01-11T09:04:17.959Z',
             #                  updated_at='2021-01-11T09:04:17.959Z',
-            #                  full_storage_url='http://supervise.ly/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
+            #                  full_storage_url='http://supervisely.com/h5un6l2bnaz1vj8a9qgms4-public/teams_storage/8/y/P/rn/...json')
         """
         resp = self._api.post("file-storage.info", {ApiField.ID: id})
         return self._convert_json_info(resp.json())
@@ -1546,7 +1546,7 @@ class FileApi(ModuleApiBase):
                 sly_fs.remove_dir(temp_path)
             return content
         else:
-            raise FileNotFoundError(f"File not found: {remote_path}")
+            raise FileNotFoundError(f"File not found in Team Files at path: {remote_path}")
 
     async def _download_async(
         self,
@@ -2374,7 +2374,7 @@ class FileApi(ModuleApiBase):
         :param progress_cb_type: Type of progress callback. Can be "number" or "size". Default is "size".
                                 "size" is used to track the number of transferred bytes.
                                 "number" is used to track the number of transferred files.
-        :type progress_cb_type: Literal["number", "size"], optional 
+        :type progress_cb_type: Literal["number", "size"], optional
         :param enable_fallback: If True, the method will fallback to synchronous upload if an error occurs.
         :type enable_fallback: bool, optional
         :return: None

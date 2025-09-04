@@ -96,8 +96,9 @@ class SelectDatasetTree(Widget):
         append_to_body: bool = True,
         widget_id: Union[str, None] = None,
         show_select_all_datasets_checkbox: bool = True,
+        width: int = 193,
     ):
-        self._api = Api()
+        self._api = Api.from_env()
 
         if default_id is not None and project_id is None:
             raise ValueError("Project ID must be provided when default dataset ID is set.")
@@ -119,23 +120,30 @@ class SelectDatasetTree(Widget):
         self._append_to_body = append_to_body
 
         # Extract values from Enum to match the .type property of the ProjectInfo object.
-
         self._project_types = None
         if allowed_project_types is not None:
-            if all(allowed_project_types) is isinstance(allowed_project_types, ProjectType):
-                self._project_types = (
-                    [project_type.value for project_type in allowed_project_types]
-                    if allowed_project_types is not None
-                    else None
-                )
-            elif all(allowed_project_types) is isinstance(allowed_project_types, str):
-                self._project_types = allowed_project_types
+            self._project_types = []
+            for project_type in allowed_project_types:
+                if isinstance(project_type, ProjectType):
+                    project_type = project_type.value
+                elif not isinstance(project_type, str):
+                    continue
+
+                self._project_types.append(project_type)
+
+            if self._project_types == []:
+                self._project_types = None
 
         # Widget components.
         self._select_team = None
         self._select_workspace = None
         self._select_project = None
         self._select_dataset = None
+        self._width = width
+
+        # Flags
+        self._team_is_selectable = team_is_selectable
+        self._workspace_is_selectable = workspace_is_selectable
 
         # List of widgets will be used to create a Container.
         self._widgets = []
@@ -161,10 +169,24 @@ class SelectDatasetTree(Widget):
         for widget in self._widgets:
             widget.disable()
 
+        if self._select_team is not None:
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if self._select_workspace is not None:
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
+
     def enable(self) -> None:
         """Enable the widget in the UI."""
         for widget in self._widgets:
             widget.enable()
+
+        if self._select_team is not None:
+            if not self._team_is_selectable:
+                self._select_team.disable()
+        if self._select_workspace is not None:
+            if not self._workspace_is_selectable:
+                self._select_workspace.disable()
 
     @property
     def team_id(self) -> int:
@@ -361,7 +383,7 @@ class SelectDatasetTree(Widget):
             flat=flat,
             always_open=always_open,
             append_to_body=self._append_to_body,
-            width=193,
+            width=self._width,
             placeholder="Select dataset",
         )
         if self._dataset_id is not None:
@@ -416,7 +438,10 @@ class SelectDatasetTree(Widget):
                 self._select_dataset.hide()
 
         self._select_team = Select(
-            items=self._get_select_items(), placeholder="Select team", filterable=True
+            items=self._get_select_items(),
+            placeholder="Select team",
+            filterable=True,
+            width_px=self._width,
         )
         self._select_team.set_value(self._team_id)
         if not team_is_selectable:
@@ -426,6 +451,7 @@ class SelectDatasetTree(Widget):
             items=self._get_select_items(team_id=self._team_id),
             placeholder="Select workspace",
             filterable=True,
+            width_px=self._width,
         )
         self._select_workspace.set_value(self._workspace_id)
         if not workspace_is_selectable:
@@ -435,6 +461,7 @@ class SelectDatasetTree(Widget):
             items=self._get_select_items(workspace_id=self._workspace_id),
             placeholder="Select project",
             filterable=True,
+            width_px=self._width,
         )
         self._select_project.set_value(self._project_id)
 

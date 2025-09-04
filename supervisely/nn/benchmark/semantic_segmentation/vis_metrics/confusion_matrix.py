@@ -39,7 +39,7 @@ class ConfusionMatrix(SemanticSegmVisMetric):
         # # Confusion Matrix figure
         confusion_matrix, class_names = self.eval_result.mp.confusion_matrix
 
-        x = class_names
+        x = [el for el in class_names if el != "mean"]
         y = x[::-1].copy()
         if len(x) >= 20:
             text_anns = [[str(el) for el in row] for row in confusion_matrix]

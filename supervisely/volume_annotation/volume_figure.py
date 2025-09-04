@@ -1,28 +1,30 @@
 # coding: utf-8
 from __future__ import annotations
+
 import uuid
-from typing import Union, Optional, Literal
-from numpy import ndarray
+from typing import Literal, Optional, Union
 from uuid import UUID
-from supervisely.video_annotation.video_figure import VideoFigure
-from supervisely.video_annotation.key_id_map import KeyIdMap
-from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
-from supervisely.geometry.mask_3d import Mask3D
+
+from numpy import ndarray
+
+import supervisely.volume_annotation.constants as constants
+from supervisely._utils import take_with_default
+from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
 from supervisely.api.module_api import ApiField
 from supervisely.geometry.any_geometry import AnyGeometry
-from supervisely.annotation.json_geometries_map import GET_GEOMETRY_FROM_STR
-from supervisely._utils import take_with_default
-from supervisely.volume_annotation.volume_object import VolumeObject
-from supervisely.geometry.geometry import Geometry
-import supervisely.volume_annotation.constants as constants
-from supervisely.volume_annotation.constants import ID, KEY, OBJECT_ID, OBJECT_KEY, META
+from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
 from supervisely.geometry.constants import (
+    CLASS_ID,
+    CREATED_AT,
     LABELER_LOGIN,
     UPDATED_AT,
-    CREATED_AT,
-    CLASS_ID,
 )
-
+from supervisely.geometry.geometry import Geometry
+from supervisely.geometry.mask_3d import Mask3D
+from supervisely.video_annotation.key_id_map import KeyIdMap
+from supervisely.video_annotation.video_figure import VideoFigure
+from supervisely.volume_annotation.constants import ID, KEY, META, OBJECT_ID, OBJECT_KEY
+from supervisely.volume_annotation.volume_object import VolumeObject
 from supervisely.volume_annotation.volume_object_collection import (
     VolumeObjectCollection,
 )
@@ -50,6 +52,8 @@ class VolumeFigure(VideoFigure):
     :type updated_at: str, optional
     :param created_at: Date and Time when VolumeFigure was created. Date Format is the same as in "updated_at" parameter.
     :type created_at: str, optional
+    :param custom_data: Custom data associated with the VolumeFigure.
+    :type custom_data: dict, optional
     :Usage example:
 
      .. code-block:: python
@@ -96,6 +100,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[dict] = None,
         **kwargs,
     ):
         # only Mask3D can be created without 'plane_name' and 'slice_index'
@@ -126,6 +131,7 @@ class VolumeFigure(VideoFigure):
         Plane.validate_name(plane_name)
         self._plane_name = plane_name
         self._slice_index = slice_index
+        self._custom_data = custom_data or {}
 
     @property
     def volume_object(self) -> VolumeObject:
@@ -280,6 +286,34 @@ class VolumeFigure(VideoFigure):
 
         return Plane.get_normal(self.plane_name)
 
+    @property
+    def custom_data(self) -> Optional[dict]:
+        """
+        Get custom data associated with the VolumeFigure.
+
+        :return: Custom data associated with the VolumeFigure.
+        :rtype: dict
+        :Usage example:
+
+         .. code-block:: python
+
+            import supervisely as sly
+
+            obj_class_heart = sly.ObjClass('heart', sly.Rectangle)
+            volume_obj_heart = sly.VolumeObject(obj_class_heart)
+            volume_figure_heart = sly.VolumeFigure(
+                volume_obj_heart,
+                geometry=sly.Rectangle(0, 0, 100, 100),
+                plane_name="axial",
+                slice_index=7,
+                custom_data={"key": "value"}
+            )
+
+            print(volume_figure_heart.custom_data)
+            # Output: {'key': 'value'}
+        """
+        return self._custom_data
+
     def _validate_geometry_type(self):
         if (
             self.parent_object.obj_class.geometry_type != AnyGeometry
@@ -342,6 +376,7 @@ class VolumeFigure(VideoFigure):
         labeler_login=None,
         updated_at=None,
         created_at=None,
+        custom_data=None,
     ):
         """
         Makes a copy of VolumeFigure with new fields, if fields are given, otherwise it will use fields of the original VolumeFigure.
@@ -364,6 +399,8 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: Date and Time when VolumeFigure was created. Date Format is the same as in "updated_at" parameter.
         :type created_at: str, optional
+        :param custom_data: Custom data associated with the VolumeFigure.
+        :type custom_data: dict, optional
         :return: VolumeFigure object
         :rtype: :class:`VolumeFigure`
 
@@ -420,6 +457,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=take_with_default(labeler_login, self.labeler_login),
             updated_at=take_with_default(updated_at, self.updated_at),
             created_at=take_with_default(created_at, self.created_at),
+            custom_data=take_with_default(custom_data, self.custom_data),
         )
 
     def get_meta(self):
@@ -463,7 +501,7 @@ class VolumeFigure(VideoFigure):
         key_id_map: KeyIdMap = None,
     ):
         """
-        Convert a json dict to VolumeFigure. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to VolumeFigure. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Dict in json format.
         :type data: dict
@@ -529,6 +567,7 @@ class VolumeFigure(VideoFigure):
         else:
             geometry_json = data[ApiField.GEOMETRY]
         geometry = shape.from_json(geometry_json)
+        geometry.sly_id = data.get(ID, None)
 
         key = uuid.UUID(data[KEY]) if KEY in data else uuid.uuid4()
 
@@ -539,6 +578,7 @@ class VolumeFigure(VideoFigure):
         labeler_login = data.get(LABELER_LOGIN, None)
         updated_at = data.get(UPDATED_AT, None)
         created_at = data.get(CREATED_AT, None)
+        custom_data = data.get(ApiField.CUSTOM_DATA, None)
 
         return cls(
             volume_object=volume_object,
@@ -550,11 +590,12 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def to_json(self, key_id_map=None, save_meta=True):
         """
-        Convert the VolumeFigure to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the VolumeFigure to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param key_id_map: KeyIdMap object.
         :type key_id_map: KeyIdMap, optional
@@ -593,11 +634,13 @@ class VolumeFigure(VideoFigure):
             #         "planeName": "axial",
             #         "sliceIndex": 7
             #     },
-            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54"
+            #     "objectKey": "bf63ffe342e949899d3ddcb6b0f73f54",
+            #     "custom_data": {}
             # }
         """
 
         json_data = super().to_json(key_id_map, save_meta)
+        json_data[ApiField.CUSTOM_DATA] = self.custom_data
         if type(self._geometry) == ClosedSurfaceMesh:
             json_data.pop(ApiField.GEOMETRY)
             json_data.pop(ApiField.META)
@@ -613,6 +656,7 @@ class VolumeFigure(VideoFigure):
         labeler_login: Optional[str] = None,
         updated_at: Optional[str] = None,
         created_at: Optional[str] = None,
+        custom_data: Optional[dict] = None,
     ) -> VolumeFigure:
         """
         Create a VolumeFigure from Mask 3D geometry.
@@ -631,15 +675,22 @@ class VolumeFigure(VideoFigure):
         :type updated_at: str, optional
         :param created_at: The date and time when the VolumeFigure was created (ISO 8601 format, e.g., '2021-01-22T19:37:50.158Z').
         :type created_at: str, optional
+        :param custom_data: Custom data associated with the VolumeFigure.
+        :type custom_data: dict, optional
         :return: A VolumeFigure object created from Mask3D geometry.
         :rtype: VolumeFigure
         """
         if isinstance(geometry_data, str):
             mask_3d = Mask3D.create_from_file(geometry_data)
-        if isinstance(geometry_data, ndarray):
+        elif isinstance(geometry_data, ndarray):
             mask_3d = Mask3D(geometry_data)
-        if isinstance(geometry_data, bytes):
+        elif isinstance(geometry_data, bytes):
             mask_3d = Mask3D.from_bytes(geometry_data)
+        else:
+            raise TypeError(
+                f"geometry_data must be str, ndarray, or bytes, but got {type(geometry_data)}"
+            )
+
         return cls(
             volume_object,
             mask_3d,
@@ -648,6 +699,7 @@ class VolumeFigure(VideoFigure):
             labeler_login=labeler_login,
             updated_at=updated_at,
             created_at=created_at,
+            custom_data=custom_data,
         )
 
     def _set_3d_geometry(self, new_geometry: Mask3D) -> None:
@@ -667,6 +719,6 @@ class VolumeFigure(VideoFigure):
             )
 
         self.geometry.data = new_geometry.data
-        self.geometry._space = new_geometry._space
-        self.geometry._space_origin = new_geometry._space_origin
-        self.geometry._space_directions = new_geometry._space_directions
+        self.geometry.space = new_geometry.space
+        self.geometry.space_origin = new_geometry.space_origin
+        self.geometry.space_directions = new_geometry.space_directions

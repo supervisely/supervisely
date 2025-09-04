@@ -16,5 +16,8 @@
   :controls="data.{{{widget.widget_id}}}.controls"
   :debounce="data.{{{widget.widget_id}}}.debounce"
   :precision="data.{{{widget.widget_id}}}.precision"
+  {% if widget._width %}
+  :style="{ width: '{{{widget._width}}}px' }"
+  {% endif %}
 >
 </el-input-number>

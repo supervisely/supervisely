@@ -1,3 +1,4 @@
+from __future__ import annotations
 import random
 import string
 from abc import abstractmethod
@@ -9,15 +10,14 @@ from json import JSONDecodeError
 from os.path import dirname, join
 from time import time
 from typing import Any, Dict, List, Literal, NamedTuple, Union
-
 import requests
 
 from supervisely import logger
 from supervisely._utils import abs_url, is_development
-from supervisely.api.api import Api, ApiField
 from supervisely.api.file_api import FileInfo
 from supervisely.io.fs import get_file_name_with_ext, silent_remove
 from supervisely.io.json import dump_json_file
+from supervisely.api.api import Api, ApiField
 from supervisely.nn.experiments import ExperimentInfo
 
 
@@ -68,6 +68,7 @@ class BaseTrainArtifacts:
         self._pattern: str = None
         self._available_task_types: List[str] = []
         self._require_runtime = False
+        self._has_benchmark_evaluation = False
 
     @property
     def team_id(self) -> int:
@@ -208,6 +209,13 @@ class BaseTrainArtifacts:
         :rtype: bool
         """
         return self._require_runtime
+
+    @property
+    def has_benchmark_evaluation(self):
+        """
+        Whether the framework has integrated benchmark evaluation.
+        """
+        return self._has_benchmark_evaluation
 
     def is_valid_artifacts_path(self, path):
         """
@@ -578,7 +586,7 @@ class BaseTrainArtifacts:
 
     def convert_train_to_experiment_info(
         self, train_info: TrainInfo
-    ) -> Union[ExperimentInfo, None]:
+    ) -> Union['ExperimentInfo', None]:
         try:
             checkpoints = []
             for chk in train_info.checkpoints:
@@ -610,9 +618,9 @@ class BaseTrainArtifacts:
             date_time = parsed_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
             experiment_info_data = {
-                "experiment_name": f"Unknown {self.framework_name} experiment",
+                "experiment_name": f"{self.framework_name} experiment",
                 "framework_name": self.framework_name,
-                "model_name": f"Unknown {self.framework_name} model",
+                "model_name": f"{self.framework_name} model",
                 "task_type": train_info.task_type,
                 "project_id": project_id,
                 "task_id": train_info.task_id,
@@ -637,7 +645,7 @@ class BaseTrainArtifacts:
 
     def get_list_experiment_info(
         self, sort: Literal["desc", "asc"] = "desc"
-    ) -> List[ExperimentInfo]:
+    ) -> List['ExperimentInfo']:
         train_infos = self.get_list(sort)
 
         # Sync version
@@ -671,7 +679,7 @@ class BaseTrainArtifacts:
         self,
         artifacts_dir: str,
         return_type: Literal["train_info", "experiment_info"] = "train_info",
-    ) -> Union[TrainInfo, ExperimentInfo, None]:
+    ) -> Union[TrainInfo, 'ExperimentInfo', None]:
         """
         Get training info by artifacts directory.
 

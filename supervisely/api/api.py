@@ -38,6 +38,7 @@ import supervisely.api.agent_api as agent_api
 import supervisely.api.annotation_api as annotation_api
 import supervisely.api.app_api as app_api
 import supervisely.api.dataset_api as dataset_api
+import supervisely.api.entities_collection_api as entities_collection_api
 import supervisely.api.file_api as file_api
 import supervisely.api.github_api as github_api
 import supervisely.api.image_annotation_tool_api as image_annotation_tool_api
@@ -45,7 +46,8 @@ import supervisely.api.image_api as image_api
 import supervisely.api.import_storage_api as import_stoarge_api
 import supervisely.api.issues_api as issues_api
 import supervisely.api.labeling_job_api as labeling_job_api
-import supervisely.api.neural_network_api as neural_network_api
+import supervisely.api.labeling_queue_api as labeling_queue_api
+import supervisely.api.nn.neural_network_api as neural_network_api
 import supervisely.api.object_class_api as object_class_api
 import supervisely.api.plugin_api as plugin_api
 import supervisely.api.pointcloud.pointcloud_api as pointcloud_api
@@ -82,6 +84,7 @@ SUPERVISELY_API_SERVER_ADDRESS = "SUPERVISELY_API_SERVER_ADDRESS"
 API_TOKEN = "API_TOKEN"
 TASK_ID = "TASK_ID"
 SUPERVISELY_ENV_FILE = os.path.join(Path.home(), "supervisely.env")
+
 
 class ApiContext:
     """
@@ -294,19 +297,20 @@ class Api:
 
     def __init__(
         self,
-        server_address: str = None,
-        token: str = None,
+        server_address: Optional[str] = None,
+        token: Optional[str] = None,
         retry_count: Optional[int] = 10,
         retry_sleep_sec: Optional[int] = None,
         external_logger: Optional[Logger] = None,
-        ignore_task_id: Optional[bool] = False,
-        api_server_address: str = None,
+        ignore_task_id: bool = False,
+        api_server_address: Optional[str] = None,
         check_instance_version: Union[bool, str] = False,
     ):
         self.logger = external_logger or logger
 
-        if server_address is None and token is None:
+        if server_address is None:
             server_address = os.environ.get(SERVER_ADDRESS, None)
+        if token is None:
             token = os.environ.get(API_TOKEN, None)
 
         if server_address is None:
@@ -342,7 +346,7 @@ class Api:
         self.team = team_api.TeamApi(self)
         self.workspace = workspace_api.WorkspaceApi(self)
         self.project = project_api.ProjectApi(self)
-        self.model = neural_network_api.NeuralNetworkApi(self)
+        self.nn = neural_network_api.NeuralNetworkApi(self)
         self.task = task_api.TaskApi(self)
         self.dataset = dataset_api.DatasetApi(self)
         self.image = image_api.ImageApi(self)
@@ -352,6 +356,7 @@ class Api:
         self.role = role_api.RoleApi(self)
         self.user = user_api.UserApi(self)
         self.labeling_job = labeling_job_api.LabelingJobApi(self)
+        self.labeling_queue = labeling_queue_api.LabelingQueueApi(self)
         self.video = video_api.VideoApi(self)
         # self.project_class = project_class_api.ProjectClassApi(self)
         self.object_class = object_class_api.ObjectClassApi(self)
@@ -369,14 +374,23 @@ class Api:
         self.github = github_api.GithubApi(self)
         self.volume = volume_api.VolumeApi(self)
         self.issues = issues_api.IssuesApi(self)
+        self.entities_collection = entities_collection_api.EntitiesCollectionApi(self)
 
         self.retry_count = retry_count
         self.retry_sleep_sec = retry_sleep_sec
 
         skip_from_env = sly_env.supervisely_skip_https_user_helper_check()
-        self._skip_https_redirect_check = skip_from_env or self.server_address in Api._checked_servers
-        self.logger.debug(f"Skip HTTPS redirect check on API init: {self._skip_https_redirect_check}. ENV: {skip_from_env}. Checked servers: {Api._checked_servers}")
-        self._require_https_redirect_check = False if self._skip_https_redirect_check else not self.server_address.startswith("https://")
+        self._skip_https_redirect_check = (
+            skip_from_env or self.server_address in Api._checked_servers
+        )
+        self.logger.trace(
+            f"Skip HTTPS redirect check on API init: {self._skip_https_redirect_check}. ENV: {skip_from_env}. Checked servers: {Api._checked_servers}"
+        )
+        self._require_https_redirect_check = (
+            False
+            if self._skip_https_redirect_check
+            else not self.server_address.startswith("https://")
+        )
 
         if check_instance_version:
             self._check_version(None if check_instance_version is True else check_instance_version)
@@ -709,6 +723,7 @@ class Api:
         retries: Optional[int] = None,
         stream: Optional[bool] = False,
         use_public_api: Optional[bool] = True,
+        data: Optional[Dict] = None,
     ) -> requests.Response:
         """
         Performs GET request to server with given parameters.
@@ -716,13 +731,15 @@ class Api:
         :param method:
         :type method: str
         :param params: Dictionary to send in the body of the :class:`Request`.
-        :type method: dict
+        :type params: dict
         :param retries: The number of attempts to connect to the server.
-        :type method: int, optional
+        :type retries: int, optional
         :param stream: Define, if you'd like to get the raw socket response from the server.
-        :type method: bool, optional
+        :type stream: bool, optional
         :param use_public_api:
-        :type method: bool, optional
+        :type use_public_api: bool, optional
+        :param data: Dictionary to send in the body of the :class:`Request`.
+        :type data: dict, optional
         :return: Response object
         :rtype: :class:`Response<Response>`
         """
@@ -742,7 +759,9 @@ class Api:
                 json_body = params
                 if type(params) is dict:
                     json_body = {**params, **self.additional_fields}
-                response = requests.get(url, params=json_body, headers=self.headers, stream=stream)
+                response = requests.get(
+                    url, params=json_body, data=data, headers=self.headers, stream=stream
+                )
 
                 if response.status_code != requests.codes.ok:  # pylint: disable=no-member
                     Api._raise_for_status(response)
@@ -892,14 +911,14 @@ class Api:
     def _check_https_redirect(self):
         """
         Check if HTTP server should be redirected to HTTPS.
-        If the server has already been checked before (for any instance of this class), 
+        If the server has already been checked before (for any instance of this class),
         skip the check to avoid redundant network requests.
         """
         if self._require_https_redirect_check is True:
             if self.server_address in Api._checked_servers:
                 self._require_https_redirect_check = False
                 return
-            
+
             try:
                 response = requests.get(
                     self.server_address.replace("http://", "https://"),

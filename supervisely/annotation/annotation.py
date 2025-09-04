@@ -294,7 +294,7 @@ class Annotation:
 
     def to_json(self) -> Dict:
         """
-        Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert the Annotation to a json dict. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :return: Json format as a dict
         :rtype: :class:`dict`
@@ -362,7 +362,7 @@ class Annotation:
     @classmethod
     def from_json(cls, data: Dict, project_meta: ProjectMeta) -> Annotation:
         """
-        Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervise.ly/data-organization/00_ann_format_navi>`_.
+        Convert a json dict to Annotation. Read more about `Supervisely format <https://docs.supervisely.com/data-organization/00_ann_format_navi>`_.
 
         :param data: Annotation in json format as a dict.
         :type data: dict
@@ -455,7 +455,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -921,7 +921,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -979,7 +979,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1039,7 +1039,7 @@ class Annotation:
             import supervisely as sly
             from supervisely.geometry.image_rotator import ImageRotator
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1102,7 +1102,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1167,7 +1167,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1228,7 +1228,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1285,7 +1285,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1390,7 +1390,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1467,7 +1467,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1550,7 +1550,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1684,7 +1684,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1742,7 +1742,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1802,7 +1802,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1927,7 +1927,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -1984,7 +1984,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2245,7 +2245,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2390,7 +2390,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -2801,7 +2801,7 @@ class Annotation:
 
             import supervisely as sly
 
-            address = 'https://app.supervise.ly/'
+            address = 'https://app.supervisely.com/'
             token = 'Your Supervisely API Token'
             api = sly.Api(address, token)
 
@@ -3056,7 +3056,7 @@ class Annotation:
                 licenses=[dict(url="None", id=0, name="None")],
                 images=[],
                 annotations=[],
-                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 0, "name": "lemon"}, ...]
+                categories=get_categories_from_meta(meta),  # [{"supercategory": "lemon", "id": 1, "name": "lemon"}, ...]
             )
 
             ann = sly.Annotation.from_json(ann_json, meta)

@@ -57,6 +57,26 @@
       border-bottom: 1px solid #dfe2e8;
       position: relative;
     }
+
+    .el-input-number--mini .el-input-number__decrease,
+    .el-input-number--mini .el-input-number__increase {
+      height: 20px !important;
+      width: 20px !important;
+      line-height: 18px !important;
+      font-size: 12px !important;
+      min-width: 20px !important;
+      padding: 0 !important;
+    }
+
+    .el-input-number--mini .el-input-number__decrease {
+      right: 20px !important;
+    }
+
+    .el-input-number--mini .el-input-number__decrease i,
+    .el-input-number--mini .el-input-number__increase i {
+      font-size: 10px !important;
+      line-height: 18px !important;
+    }
   </style>
   <title>{{{app_name}}}</title>
 </head>
@@ -64,12 +84,13 @@
 <body style="background-color: #f4f7fe">
   <center>
     <div id="app-global-loading-icon">
-      <img src="https://app.supervise.ly/loading.gif" />
+      <img src="https://app.supervisely.com/loading.gif" />
     </div>
   </center>
   {% if __webpy_script__ %}
   <script src="https://cdn.jsdelivr.net/pyodide/{{{pyodide_version}}}/full/pyodide.js"></script>
   {% endif %}
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@2.0.4/dist/socket.io.js"></script>
   <script
     src="https://cdn.jsdelivr.net/gh/supervisely/js-bundle@{{{js_bundle_version}}}/sly-app-widgets-{{{js_bundle_version}}}.bundle.js"></script>
   <script type="module"
@@ -92,7 +113,9 @@
           {% if __app_session_info_solid__ %} {% if __app_session_info_extra_content__ %}
           class="app-session-header-solid extended-app-header" {% else %} class="app-session-header-solid" {% endif %}
           {% else %} {% if __app_session_info_extra_content__ %} class="extended-app-header" {% endif %} {% endif %}>
+          {% if __show_header__ %}
           <sly-app-header v-if="session" :session="session" :data="data" :state="state"></sly-app-header>
+          {% endif %}
           {% if __app_session_info_extra_content__ %}
           {{{__app_session_info_extra_content__}}} {% endif %}
         </div>
@@ -219,7 +242,11 @@ if state.get("app_initializing", False) == True:
       } else {
         result = fn;
       }
+      {% if events_subscribed %}
+
       subToStoreAction();
+
+      {% endif %}
     }
 
     let initPromise = null;

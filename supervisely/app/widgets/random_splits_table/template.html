@@ -6,12 +6,12 @@
             </el-tag>
         </template>
     </el-table-column>
-    <el-table-column label="Number of images" width="180">
+    <el-table-column label="Number of items" width="180">
         <template scope="scope">
             <span style="margin-left: 10px">{{state.{{{widget.widget_id}}}.count[scope.row.name]}}</span>
         </template>
     </el-table-column>
-    <el-table-column label="Percent of images">
+    <el-table-column label="Percent of items">
         <template scope="scope">
             <div v-if="scope.row.name !== 'train'">
                 <span style="margin-left: 10px">{{state.{{{widget.widget_id}}}.percent[scope.row.name]}}%</span>

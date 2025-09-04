@@ -1,0 +1,172 @@
+<div class="experiment-info-header">
+    <div class="experiment-info-subheader">
+        <h1>{{ experiment.name }}</h1>
+
+        <div class="experiment-info-buttons">
+            
+            <!-- Download -->
+            <sly-iw-download-button
+                style="padding: 7px 8px;"
+                :disabled="false"
+                teamFilesPath="{{ experiment.paths.artifacts_dir.path + '/' }}"
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAABn0lEQVR4nO2YT04CMRSHPzdzDEAT4lZIvICDHsiFia7Y4BEQTsF50CiCW42iCzeTjKkpyXNScDodp4P0S17Sgfb1/fr6ZzoQCAQC/5VDYAE8Am22kCsg1XbJFtIXAlR56+gHAZ4JGfBNyIBvQgbKogWMgScgEXu7tE9gYJGBa90mNVii+xoBTdfgz4D3NR1l7SOngD1dN4/PJdBzGfm8wdtmYLAhA6lBRKOIgLFw8gCcAFEFizgCYmAm2t8UiP97Hq4cqOCr3oVi0X5eoP2PBWsz8mUJiDIL2xo5D32dA6lLDDsj4AC4A+6Bbg4BXV1Xzet2HQSci3ovQoRJQFfXWf1+UQcBrUxQqtwxCOgY6u3XQYBpZFV5Ip4nhv/ldPMuQHEEPOc4WV+B4z+KwbnxbyJsgve2ja4TYRu813MgK6JI8N4PMrVIb4FpzgVbOwFlkO60gMTxbdSVyPVtdOF4H3ClJ/pXn+itGQkHM+2wikxEwGnmRjYs4qip76OpZ3sreidGj/rSc/AxjjR0CucbvguVaYnua+gy8oFAIEAlfAG3TJLaWbXlEAAAAABJRU5ErkJggg==" alt="download--v1">
+            </sly-iw-download-button>
+
+            <!-- Finetune -->
+            <sly-iw-launch-button
+                style=""
+                :disabled="false"
+                :autoRun="false"
+                :openInNewWindow="true"
+                :selectContext="true"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'trainMode': 'continue' }"
+                :moduleId="{{ resources.apps.train.module_id }}"
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACeElEQVR4nO2Yy2oVQRCGv+AhUXyBqDFqHiEighIXgpHcFH0EF3GnWfgICaJuzEbNwn127oIuYrbeLyAuIiQcycWdRkFNEEZKaqBoZsY5mdMzc6B/aA4zPaf6q+6q6p6BoKCgoJzqAUaAOeA1sAH8Ab4C74GHwGWgm5qpAVxV4ChH2wTGqYn6gTc5wSPTZEUq1wngiwO2CswAp4ADGi7i5JLz3N2q4fsd+J/AVEJ8dwGzDvy8hl1lajhhs6mrQSfAowlrZ74IfEPD6QMwQUml0labqYLw885Kei+xo07CJg14ZxfwkbZLvh2YM4NNJ/RPFICPdLPzqldmsNMJ/Yum/1FOeFti3/l2wMa/1HlX303/wRzwkitHzPU33w5sm8EkoV1tpTjQSIHvUjvxvZ0yV+DQf0JoAegDDms4JcGjjsb313078NwMNpTQP57jHDRr4FE7cd9L3w7YEnkr5ZnpDPjbDrzopum/59uBa2awtxnPjQFPgR/aFnUPcbUXaBqb5z2y/6vxNomftMHmDWNvzedOLG9av81gyylJ3IqO61kqtnmFkmb+UxvgTzrHcSkOeygJXkrjbtWjYfPL2NwoaLMt8LIijzWxpTqd0XvdWueHtNrYhI3hB+sAv5yj/kdOe9GGUCycsL3AxxbB14BJXzF/ocDMy/+u62b1TMNjW48HMtv3geEyS2UWvDvzAnqRCjUS4CvSWAsx36f9NmxK+ZKQpgE9aHUkvPuCvtJp8KLPBuosHQaPUzL3kQ9e9onaqJmxArWHFz0wgOLMOWC//q7UHV50zPmOk9RqCx9rOMOJrZT32NrpqB60mjrjTb2WL2ZBQUFBFNJfCnaIn00BSHcAAAAASUVORK5CYII=" alt="support">
+                <span>Finetune</span>
+            </sly-iw-launch-button>
+
+            <!-- Train New -->
+            <sly-iw-launch-button
+                style=""
+                :disabled="false"
+                :autoRun="false"
+                :openInNewWindow="true"
+                :selectContext="true"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'trainMode': 'new' }"
+                :moduleId="{{ resources.apps.train.module_id }}"
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAAsTAAALEwEAmpwYAAAFcklEQVR4nO2da4hVVRTHf42Zjjg1RUwmSWX0GqlMe9sDUokKv0RUFvVBoje9vkT6oaDI3mVR9KAPFUUY5IfACS2bqKAHOVMRKFpN1JSNWc1ILytPbPgPXS5z7z1733vOvufe9YMNcuc81l7rnL3/55y1tmAYhmEYhmEYhmEYhmEYzccewBnASuAtYBgYUxvWbyu1jdvWaBDTgOuBzUCSsm3WPm5fI5C9gZuA7z0cX962A3cC+1kU0nOAnPZrHY4vbzuBVcAsC0RlDpOT/mig48vbLuAFoNcC8T/Hyyn/ZOj48rYbeB04tV0D4VTKuUB/gPMGgVt1FXeq9eq3wYDj9cuWtlBOHcAS4KMAR72nfWs56nRd3bs9j/8ZcAWwJy3IFHXOR0omwL9y5skB55yroe1vz3N+LfU1rZWk5LCnE/6S845qgA2zNbn/7mnDSJEl7LiU/MWz02Ny1kEZ2NQjm35uZQkbKiV/lHP2zcHGLt2V3wXelb2tJCW/kjOcksmbvTQvbQqcl5pCwo4rjsSzDTaR4uiQuvowQ2VWOClZtAvq0zwuqHql5CkUh7mBQ2omErarTil5NMVldkwJGyold2YoJWPRk6cvnDp4VFewz8m2AbcD3eRDJ/AUMKr2bIMe3KrRrT5uCxgNHtMwXpOHPQ++FbgGmEq+PF1hvlmTw3wzVX3e6ukrd2HX5KeUB9sIXAxMIg6/1bDvHeD8jBXXJPlgY0qfuafwlghAh15bpLHzc+ByYHITBMB9Xq3JQwUZgh73tPMb4GZgesQh6N60k/AjBZiEp8jOPz3t3AHcJWWT1yTsbLzP9y6cCTzgcauPt1Gd7EDyYSZwv87rY6fT9k9I69fCPeHeE3COUdnmbAzGRX15YNSfAQ4nH/YBbgtIY3FPu68A82oc/zi9cog2GjjdfS3wpWcHnTR8FTiB/IamKwNembi2DlhU463Ax7HnQzfzXwIMBHTwTWAx+SmlC4APAuz8BLiogsI7eIJXE9EU4TnAhgZ3MAvOAtYGfKh3V/SyCY63Sn/fIB9E5yTgNQ03Ph3cAlyV9hG9ARwLvKgELR87XcpLKUeoz03HkQFZCAnwgyZQN5FmjTvHk572uTfBhSGpo43qYWVGBnbN0LF9pWSiO7stApBkkJZyaOA7/fJWGCp14Dp9hPfV6KuB+QF2zNe+vvNSywZg/IlyaWAO53pgYYrzL9S2vscflG0tHYBGJOcOSJXMKUnOnaPfBhqQnNsWAWjm9PSk3QLQbAUabRuAZilRavsAxC7SswBUKFP1yeHcVEeZqgWgAk6lLADulswcKklJGdKrZPe30+r8EG8BiIwFIDIWgMhYACJjAYiMBSAyFoDIWAAiYwGIjAUgMhaAyFgAImMBiIwFIDIWgMgUPgCVvunmVTlDuwfg2wodOJNikBQ9AJUWu3BFGs3O8ioBWEFBuLFKJ1yFTbOyOMW35mrVM01DT43cnpdyWFIghDdSBMBtUwgeTJGZ1q9czLyKM2oxknJptULQpeqXNCkkIwrYgpxKllzt2IkTFNK1VAAcx3gse5CUFFG/DFwWWEhdLe3xUuB5OTGZoCy1r5WGoNKaLN+y1qSsNGidlk9YpmK7eSqu3l9V/ZO12uIhyvl0C3TcoH36qlwE5YLg7BT2uG0KR7fWyvEtjEsybu9OYOuKKts7iVpo3KpRd1R5UEsitEUVCjz6lFe6Xf9OUxhSGDrU8dWBFZWNbEMaytqWWUqiXduAIjqftkv/6c8tGVVkFpJO4DytYPJFA4vrEj0Yvq/l2C7MqR658EzXC7yrtWzOGjlxi5b+Gispad0hteVqxN4GntOEulSLhGSxWpZhGIZhGIZhGIZhGIZh4MN/hN4K9eVoLMsAAAAASUVORK5CYII=" alt="graduation-cap">
+                <span>Train New</span>
+            </sly-iw-launch-button>
+
+            <!-- Deploy -->
+            <sly-iw-launch-button 
+                style=""
+                :disabled="false"
+                :autoRun="false"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, }"
+                :moduleId="{{ resources.apps.serve.module_id }}"
+                :openInNewWindow="true"
+                :command="command">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACjUlEQVR4nO2Yu2sVQRSHv7tRSRqjNleIGDEgqIWFjYgPxEKv4l+goGgRRMFSEOKjt9DCIBIhImirNqLxUdrEXHyUNnpNSFqJKGhUDszAcdjH3bvZYRb2B1Ps7Myc78yemTk7UKtWrVoFdQC4DswAs8A3YA6YAsaATQSq/cAb4G9GWQKuEJguAL+7gNdOBPElImDCgfsO3AQOAk1gANgInAI+qXZjIcDfdeCfA+tT+pxVbWVNBAUvzysy+u1Q7b8SEPyEqc9SU/VZpGLwomHVb4EA4Y+a0OgArZgxWqrvdIgz31Hvv8SMc1u9vxFi2HRSHBgycW/f7wkNXtQyTgj8YVXfBzxVY7wNEb7bcf4Au4tAjQJt4GeOo7+XBZs0CZfpUTLYg5zQ+pDKu2CjhC/Y6NWB0WWEz3IgSjip84bff5pRg40DqwsaTVqwURnwoh9qwDUF4ZMUlQUvmleD7q0avOiek4ccqxK8aMT8n2ojH6sCb7XL/Gjn2W2CgbdaC7yoKrzVe2V0smrww8roZ6B/GeCXfMFj0lhr+DHF4W3xpq1OCiDXHkXhvTnQAPYBv3KugaSY9+pAE3iZMHtpeX7agvXmwCrgXQ9ZZ9Zu482B08qQhM8t4BzwyoGYVGtiwEk/4pz05sAzZeiqqheY1w6ILOwnTr4v5UPMF/LiQJ+5cLWG5BzQOp8RWrpIAmg1qOolVS9N253ZdTXuhJcGbjtpx4LZxSQduePrkupEwsElV97XHGg55LYAO4ENpt26lATQljNlOnDJmalHJoVwIaYyslg3FbflfpEf9W50pIvYbptzIk2bza40Z2J+2sx8qfAYAw9joBfNbdlJYCWBqwEcAi4Cx4FtZneqVasWYekfCJHJg6JpgYcAAAAASUVORK5CYII=" alt="rocket" />
+                <span>Deploy</span>
+            </sly-iw-launch-button>
+
+            <!-- Apply Model -->
+            <sly-iw-launch-button class="primary"
+                style=""
+                :selectContext="true"
+                :disabled="false"
+                :autoRun="false"
+                :state="{ 'trainTaskId': {{ experiment.task_id }}, 'run': false, 'stopAfterRun': false}"
+                :moduleId="{{ resources.apps.predict.module_id }}"
+                :openInNewWindow="true"
+                :command="command"
+            >
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA50lEQVR4nO3YOw6CQBSF4bHQwIJ9VEYL3JisQtgFBQ3JbyaimcoMxuEOer6aCedyCAnXORH5PUAJnIEWGLAzjBlOPtOU8DX5qYEiZgD/5HN1jBnAV/a0BdbOCLAGdkGeW8yh8J3fzJL0DZ8hyDPEHHhxmWBKJg2QAGrAGGrAGGrAGGrAGGrAGGrAGGrAGGrAGP/WwLD0n/o2OLC3HIJH+MPUtYpf4y16sVVmulq8Rq0WxyEKPy3QZLDcbcYsceE/Ed7xm9fORgNYUwNzAi5An+CL0wNV6vAroCOdLukA4xDVYhsQEZedOy9lmdD5aZkaAAAAAElFTkSuQmCC" alt="monitor--v1">
+                <span>Apply Model</span>
+            </sly-iw-launch-button>
+
+        </div>
+    </div>
+    <div class="experiment-info-subheader-body">
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Info</h2>
+                <a href="{{ experiment.training.session.url }}" target="_blank">Session <i class="zmdi zmdi-arrow-right-top" /></a>
+                <!-- Launch Logs Button -->
+                {% if experiment.training.logs.path %}
+                <sly-iw-launch-button
+                    style=""
+                    :disabled="false"
+                    :autoRun="true"
+                    :state="{ 'slyFolder': '{{ experiment.training.logs.path }}' }"
+                    :moduleId="{{ resources.apps.log_viewer.module_id }}"
+                    :proxyKeepUrl="true"
+                    :openInNewWindow="true"
+                    :command="command">
+                    <span>Logs</span> <i class="zmdi zmdi-arrow-right-top" />
+                </sly-iw-launch-button>
+                {% endif %}
+            </div>
+            <ul>
+            <li><strong>Date:</strong> {{ experiment.date }}</li>
+            <li><strong>Framework:</strong> {{ experiment.model.framework }}</li>
+            <li><strong>Model:</strong> {{ experiment.model.name }}</li>
+            {% if experiment.model.base_checkpoint.url and not experiment.model.base_checkpoint.path %}
+            <!-- Pretrained Checkpoint -> download link-->
+            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.url }}" target="_blank" download="{{ experiment.model.base_checkpoint.name }}">{{ experiment.model.base_checkpoint.name }} <i class="zmdi zmdi-download"></i></a></li>
+            {% elif experiment.model.base_checkpoint.path %}
+            <!-- Custom Checkpoint -> TeamFiles Link -->
+            <li><strong>Base checkpoint:</strong> <a href="{{ experiment.model.base_checkpoint.path }}" target="_blank">{{ experiment.model.base_checkpoint.name }}</a></li>
+            {% else %}
+            <li><strong>Base checkpoint:</strong> {{ experiment.model.base_checkpoint.name }}</li>
+            {% endif %}
+            <li><strong>Task:</strong> {{ experiment.model.task_type }}</li>
+            <li><strong>Device:</strong> {{ experiment.training.device }}</li>
+            <li><strong>Training duration:</strong> {{ experiment.training.duration }}</li>
+            </ul>
+        </div>
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Training Data</h2>
+                <a href="{{ experiment.project.url }}" target="_blank">Project <i class="zmdi zmdi-arrow-right-top" /></a>
+                <a href="{{ experiment.paths.artifacts_dir.url }}" target="_blank">Artifacts <i class="zmdi zmdi-arrow-right-top" /></a>
+            </div>
+            <ul>
+            <li><strong>Project:</strong> {{ experiment.project.name }}</li>
+            <li><strong>Classes:</strong> ({{ experiment.project.classes.count }})  {% for class_name in experiment.project.classes.names.short_list %}<span class="class-tag">{{ class_name }}</span>  {% endfor %}</li>
+            
+            {% if experiment.project.splits.train.url %}
+            <li><strong>Training:</strong> <a href='{{ experiment.project.splits.train.url }}' target="_blank">{{ experiment.project.splits.train.size }} {{ experiment.project.type }}</a></li>
+            {% else %}
+            <li><strong>Training:</strong>{{ experiment.project.splits.train.size }} {{ experiment.project.type }}</li>
+            {% endif %}
+            
+            {% if experiment.project.splits.val.url %}
+            <li><strong>Validation:</strong> <a href='{{ experiment.project.splits.val.url }}' target="_blank">{{ experiment.project.splits.val.size }} {{ experiment.project.type }}</a></li>
+            {% else %}
+            <li><strong>Validation:</strong>{{ experiment.project.splits.val.size }} {{ experiment.project.type }}</li>
+            {% endif %}
+            
+            </ul>
+        </div>
+        {% if experiment.training.evaluation.id %}
+        <div class="experiment-info-subheader-block">
+            <div class="experiment-info-subheader-mini-title">
+                <h2>Evaluation</h2>
+                {% if experiment.training.evaluation.id %}
+                <a href="{{ experiment.training.evaluation.url }}" target="_blank">Full Report <i class="zmdi zmdi-arrow-right-top" /></a>
+                {% endif %}
+            </div>
+            {% for metric in experiment.training.evaluation.display_metrics %}
+            <div class="experiment-metric">
+                <span class="experiment-label">{{ metric.name }}</span>
+                <span class="experiment-value">{{ metric.value }}</span>
+                <div class="experiment-progress-bar">
+                    <div class="experiment-progress" style="width: {{ metric.percent_value }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="experiment-info-subheader-footer-menu">
+        {% if experiment.training.evaluation.id %}
+        <a :href="`${location.pathname}#predictions`" class="active">Predictions</a>
+        <a :href="`${location.pathname}#evaluation-2`">Evaluation</a>
+        {% endif %}
+        {% if not experiment.training.evaluation.id %}
+        <a :href="`${location.pathname}#evaluation-2`" class="active">Evaluation</a>
+        {% endif %}
+        {% if widgets.training_plots %}
+        <a :href="`${location.pathname}#training-plots`">Training Plots</a>
+        {% endif %}
+        <a :href="`${location.pathname}#artifacts`">Artifacts</a>
+        <a :href="`${location.pathname}#classes`">Classes</a>
+        <a :href="`${location.pathname}#hyperparameters`">Hyperparameters</a>
+        <a :href="`${location.pathname}#api-integration-amp-deployment`">API Integration & Deployment</a>
+    </div>
+</div>

@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
 
 from tqdm import tqdm
 
+from supervisely import fs
 from supervisely._utils import is_production
 from supervisely.api.api import Api
 from supervisely.app import get_data_dir
@@ -29,6 +30,7 @@ from supervisely.io.fs import (
     touch,
     unpack_archive,
 )
+from supervisely.project.project import Project
 from supervisely.project.project_settings import LabelingInterface
 from supervisely.project.project_type import ProjectType
 from supervisely.sly_logger import logger
@@ -39,7 +41,7 @@ class ImportManager:
 
     def __init__(
         self,
-        input_data: str,
+        input_data: Union[str, List[str]],
         project_type: ProjectType,
         team_id: Optional[int] = None,
         labeling_interface: LabelingInterface = LabelingInterface.DEFAULT,
@@ -59,7 +61,12 @@ class ImportManager:
         self._remote_files_map = {}
         self._modality = project_type
 
-        self._input_data = self._prepare_input_data(input_data)
+        if isinstance(input_data, str):
+            input_data = [input_data]
+
+        self._input_data = get_data_dir()
+        for data in input_data:
+            self._prepare_input_data(data)
         self._unpack_archives(self._input_data)
         remove_junk_from_dir(self._input_data)
 
@@ -89,6 +96,7 @@ class ImportManager:
         }
         if str(self._modality) not in modality_converter_map:
             raise ValueError(f"Unsupported project type selected: {self._modality}")
+
         modality_converter = modality_converter_map[str(self._modality)](
             self._input_data,
             self._labeling_interface,
@@ -105,12 +113,17 @@ class ImportManager:
     #     raise NotImplementedError
 
     def _prepare_input_data(self, input_data):
+        logger.debug(f"Preparing input data: {input_data}")
         if dir_exists(input_data):
             logger.info(f"Input data is a local directory: {input_data}")
-            return input_data
+            # return input_data
+            dst_dir = os.path.join(get_data_dir(), os.path.basename(os.path.normpath(input_data)))
+            fs.copy_dir_recursively(input_data, dst_dir)
         elif file_exists(input_data):
             logger.info(f"Input data is a local file: {input_data}. Will use its directory")
-            return os.path.dirname(input_data)
+            # return os.path.dirname(input_data)
+            dst_file = os.path.join(get_data_dir(), os.path.basename(input_data))
+            fs.copy_file(input_data, dst_file)
         elif self._api.storage.exists(self._team_id, input_data):
             if self._upload_as_links and str(self._modality) in [
                 ProjectType.IMAGES.value,
@@ -144,7 +157,7 @@ class ImportManager:
         if not is_dir:
             dir_name = "Import data"
             local_path = os.path.join(get_data_dir(), dir_name)
-            mkdir(local_path, remove_content_if_exists=True)
+            mkdir(local_path, remove_content_if_exists=False)
             save_path = os.path.join(local_path, os.path.basename(remote_path))
         else:
             dir_name = os.path.basename(os.path.normpath(remote_path))
@@ -232,6 +245,9 @@ class ImportManager:
             archives = []
             path = new_paths_to_scan.pop()
             for root, _, files in os.walk(path):
+                if Path(root).name == Project.blob_dir_name:
+                    logger.info(f"Skip unpacking archive in blob dir: {root}")
+                    continue
                 for file in files:
                     file_path = os.path.join(root, file)
                     if is_archive(file_path=file_path):

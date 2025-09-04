@@ -1,8 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, fields
+from dataclasses import MISSING, dataclass, fields
 from json import JSONDecodeError
 from os.path import dirname, join
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import requests
 
@@ -38,6 +38,10 @@ class ExperimentInfo:
     """Path to .yaml file with hyperparameters used in the experiment"""
     artifacts_dir: str
     """Path to the directory with artifacts"""
+    base_checkpoint: Optional[str] = None
+    """Name of the base checkpoint used for training"""
+    base_checkpoint_link: Optional[str] = None
+    """Link to the base checkpoint used for training. URL in case of pretrained model, or Team Files path in case of custom model."""
     export: Optional[dict] = None
     """Dictionary with exported weights in different formats"""
     app_state: Optional[str] = None
@@ -50,6 +54,8 @@ class ExperimentInfo:
     """Number of images in the validation set"""
     datetime: Optional[str] = None
     """Date and time when the experiment was started"""
+    experiment_report_id: Optional[int] = None
+    """ID of the experiment report"""
     evaluation_report_id: Optional[int] = None
     """ID of the model benchmark evaluation report"""
     evaluation_report_link: Optional[str] = None
@@ -58,6 +64,33 @@ class ExperimentInfo:
     """Evaluation metrics"""
     logs: Optional[dict] = None
     """Dictionary with link and type of logger"""
+    train_collection_id: Optional[int] = None
+    """ID of the collection with train images"""
+    val_collection_id: Optional[int] = None
+    """ID of the collection with validation images"""
+    project_version: Optional[int] = None
+    """Version of the project"""
+
+    def __init__(self, **kwargs):
+        required_fieds = {
+            field.name for field in fields(self.__class__) if field.default is MISSING
+        }
+        missing_fields = required_fieds - set(kwargs.keys())
+        if missing_fields:
+            raise ValueError(
+                f"ExperimentInfo missing required arguments: '{', '.join(missing_fields)}'"
+            )
+        field_names = set(f.name for f in fields(self.__class__))
+        kwargs = {k: v for k, v in kwargs.items() if k in field_names}
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def to_json(self) -> Dict:
+        data = {}
+        for field in fields(self.__class__):
+            value = getattr(self, field.name)
+            data[field.name] = value
+        return data
 
 
 def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:
@@ -128,7 +161,8 @@ def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[Ex
                     f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
                 )
                 return None
-            return ExperimentInfo(**response_json)
+            field_names = {field.name for field in fields(ExperimentInfo)}
+            return ExperimentInfo(**{k: v for k, v in response_json.items() if k in field_names})
         except requests.exceptions.RequestException as e:
             logger.debug(f"Request failed for '{experiment_path}': {e}")
         except JSONDecodeError as e:
@@ -166,9 +200,11 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
         response.raise_for_status()
         response_json = response.json()
         required_fields = {
-            field.name for field in fields(ExperimentInfo) if field.default is not None
+            field.name for field in fields(ExperimentInfo) if field.default is MISSING
         }
-        optional_fields = {field.name for field in fields(ExperimentInfo) if field.default is None}
+        optional_fields = {
+            field.name for field in fields(ExperimentInfo) if field.default is not MISSING
+        }
 
         missing_optional_fields = optional_fields - response_json.keys()
         if missing_optional_fields:
@@ -184,7 +220,8 @@ def _fetch_experiment_data(api, team_id: int, experiment_path: str) -> Union[Exp
                 f"Missing required fields: {missing_required_fields} for '{experiment_path}'. Skipping."
             )
             return None
-        return ExperimentInfo(**{k: v for k, v in response_json.items() if k in required_fields})
+        all_fields = required_fields | optional_fields
+        return ExperimentInfo(**{k: v for k, v in response_json.items() if k in all_fields})
     except requests.exceptions.RequestException as e:
         logger.debug(f"Request failed for '{experiment_path}': {e}")
     except JSONDecodeError as e:

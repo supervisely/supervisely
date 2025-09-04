@@ -7,9 +7,11 @@ from dataclasses import dataclass
 from time import sleep
 from typing import Any, Dict, List, NamedTuple, Optional, Union
 
+from typing_extensions import Literal
+
 from supervisely._utils import is_community, is_development, take_with_default
 from supervisely.api.module_api import ApiField
-from supervisely.api.task_api import TaskApi
+from supervisely.api.task_api import KubernetesSettings, TaskApi
 
 # from supervisely.app.constants import DATA, STATE, CONTEXT, TEMPLATE
 STATE = "state"
@@ -1392,9 +1394,75 @@ class AppApi(TaskApi):
         """get_url"""
         return f"/apps/sessions/{task_id}"
 
-    def download_git_file(self, app_id, version, file_path, save_path):
-        """download_git_file"""
-        raise NotImplementedError()
+    def download_git_file(
+        self,
+        module_id,
+        save_path,
+        app_id=None,
+        version=None,
+        file_path=None,
+        file_key=None,
+        log_progress=True,
+        ext_logger=None,
+    ):
+        """
+        Download a file from app repository. File should be added in the app config under `files` key.
+
+        :param module_id: ID of the module
+        :type module_id: int
+        :param save_path: Path to save the file
+        :type save_path: str
+        :param app_id: ID of the app
+        :type app_id: int
+        :param version: Version of the app
+        :type version: str
+        :param file_path: Path to the file in the app github repository
+        :type file_path: str
+        :param file_key: Key of the file in the app github repository
+        :type file_key: str
+        :param log_progress: If True, will log the progress of the download
+        :type log_progress: bool
+        :param ext_logger: Logger to use for logging
+        :type ext_logger: Logger
+        :return: None
+        :rtype: None
+        """
+        if file_path is None and file_key is None:
+            raise ValueError("Either file_path or file_key must be provided")
+        payload = {
+            ApiField.MODULE_ID: module_id,
+        }
+        if version is not None:
+            payload[ApiField.VERSION] = version
+        if app_id is not None:
+            payload[ApiField.APP_ID] = app_id
+        if file_path is not None:
+            payload[ApiField.FILE_PATH] = file_path
+        if file_key is not None:
+            payload[ApiField.FILE_KEY] = file_key
+
+        response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
+        if log_progress:
+            if ext_logger is None:
+                ext_logger = logger
+
+            length = None
+            # Content-Length
+            if "Content-Length" in response.headers:
+                length = int(response.headers["Content-Length"])
+            progress = Progress("Downloading: ", length, ext_logger=ext_logger, is_size=True)
+
+        mb1 = 1024 * 1024
+        ensure_base_path(save_path)
+        with open(save_path, "wb") as fd:
+            log_size = 0
+            for chunk in response.iter_content(chunk_size=mb1):
+                fd.write(chunk)
+                log_size += len(chunk)
+                if log_progress and log_size > mb1 and progress is not None:
+                    progress.iters_done_report(log_size)
+                    log_size = 0
 
     def download_git_archive(
         self,
@@ -1416,6 +1484,7 @@ class AppApi(TaskApi):
             payload[ApiField.APP_ID] = app_id
 
         response = self._api.post("ecosystem.file.download", payload, stream=True)
+        progress = None
         if log_progress:
             if ext_logger is None:
                 ext_logger = logger
@@ -1433,7 +1502,7 @@ class AppApi(TaskApi):
             for chunk in response.iter_content(chunk_size=mb1):
                 fd.write(chunk)
                 log_size += len(chunk)
-                if log_progress and log_size > mb1:
+                if log_progress and log_size > mb1 and progress is not None:
                     progress.iters_done_report(log_size)
                     log_size = 0
 
@@ -1446,7 +1515,7 @@ class AppApi(TaskApi):
         return response.json()
 
     def get_ecosystem_module_info(
-        self, module_id: int, version: Optional[str] = None
+        self, module_id: int = None, version: Optional[str] = None, slug: Optional[str] = None
     ) -> ModuleInfo:
         """Returns ModuleInfo object by module id and version.
 
@@ -1454,6 +1523,10 @@ class AppApi(TaskApi):
         :type module_id: int
         :param version: version of the module, e.g. "v1.0.0"
         :type version: Optional[str]
+        :param slug: slug of the module, e.g. "supervisely-ecosystem/export-to-supervisely-format"
+        :type slug: Optional[str]
+        :raises ValueError: if both module_id and slug are None
+        :raises ValueError: if both module_id and slug are provided
         :return: ModuleInfo object
         :rtype: ModuleInfo
         :Usage example:
@@ -1473,7 +1546,13 @@ class AppApi(TaskApi):
             module_id = 81
             module_info = api.app.get_ecosystem_module_info(module_id)
         """
-        data = {ApiField.ID: module_id}
+        if module_id is None and slug is None:
+            raise ValueError("Either module_id or slug must be provided")
+        if module_id is not None:
+            data = {ApiField.ID: module_id}
+        else:
+            data = {ApiField.SLUG: slug}
+
         if version is not None:
             data[ApiField.VERSION] = version
         response = self._api.post("ecosystem.info", data)
@@ -1522,10 +1601,21 @@ class AppApi(TaskApi):
             )
         return modules[0]["id"]
 
-    def get_list_ecosystem_modules(self):
+    def get_list_ecosystem_modules(
+        self,
+        search: Optional[str] = None,
+        categories: Optional[List[str]] = None,
+        categories_operation: Literal["or", "and"] = "or",
+    ):
+        data = {}
+        if search is not None:
+            data["search"] = search
+        if categories is not None:
+            data["categories"] = categories
+            data["categoriesOperation"] = categories_operation
         modules = self.get_list_all_pages(
             method="ecosystem.list",
-            data={},
+            data=data,
             convert_json_info_cb=lambda x: x,
         )
         if len(modules) == 0:
@@ -1646,26 +1736,64 @@ class AppApi(TaskApi):
     def start(
         self,
         agent_id,
-        app_id=None,
-        workspace_id=None,
-        description="",
-        params=None,
-        log_level="info",
-        users_id=None,
-        app_version=None,
-        is_branch=False,
-        task_name="run-from-python",
-        restart_policy="never",
-        proxy_keep_url=False,
-        module_id=None,
-        redirect_requests={},
+        app_id: Optional[int] = None,
+        workspace_id: Optional[int] = None,
+        description: str = "",
+        params: Dict[str, Any] = None,
+        log_level: Literal["info", "debug", "warning", "error"] = "info",
+        users_id: Optional[int] = None,
+        app_version: Optional[str] = None,
+        is_branch: bool = False,
+        task_name: str = "run-from-python",
+        restart_policy: Literal["never", "on_error"] = "never",
+        proxy_keep_url: bool = False,
+        module_id: Optional[int] = None,
+        redirect_requests: Dict[str, int] = {},
+        kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]] = None,
     ) -> SessionInfo:
+        """Start a new application session (task).
+
+        :param agent_id: ID of the agent to run the task on. If set None - the task will be run on the any available agent.
+        :type agent_id: int
+        :param app_id: Deprecated. Use `module_id` instead.
+        :type app_id: Optional[int]
+        :param workspace_id: ID of the workspace to run the task in. If not specified, the default workspace will be used.
+        :type workspace_id: Optional[int]
+        :param description: Task description which will be shown in UI.
+        :type description: str
+        :param params: Task parameters which will be passed to the application.
+        :type params: Optional[dict]
+        :param log_level: Log level for the task. Default is "info".
+        :type log_level: Literal["info", "debug", "warning", "error"]
+        :param users_id: User ID for which will be created an instance of the application.
+        :type users_id: Optional[int]
+        :param app_version: Application version e.g. "v1.0.0" or branch name e.g. "dev".
+        :type app_version: Optional[str]
+        :param is_branch: If the application version is a branch name, set this parameter to True.
+        :type is_branch: bool
+        :param task_name: Task name which will be shown in UI. Default is "run-from-python".
+        :type task_name: str
+        :param restart_policy: When the app should be restarted: never or if error occurred.
+        :type restart_policy: str
+        :param proxy_keep_url: For internal usage only.
+        :type proxy_keep_url: bool
+        :param module_id: Module ID. Can be obtained from the apps page in UI.
+        :type module_id: Optional[int]
+        :param redirect_requests: For internal usage only in Develop and Debug mode.
+        :type redirect_requests: dict
+        :param kubernetes_settings: Kubernetes settings for the task. If not specified, default settings will be used.
+        :type kubernetes_settings: Optional[Union[KubernetesSettings, Dict[str, Any]]]
+        :return: SessionInfo object with information about the started task.
+        :rtype: SessionInfo
+        :raises ValueError: If both app_id and module_id are not provided.
+        :raises ValueError: If both app_id and module_id are provided.
+        """
         users_ids = None
         if users_id is not None:
             users_ids = [users_id]
 
         new_params = {}
-        if "state" not in params:
+        if params is not None and "state" not in params:
             new_params["state"] = params
         else:
             new_params = params
@@ -1689,6 +1817,7 @@ class AppApi(TaskApi):
             proxy_keep_url=proxy_keep_url,
             module_id=module_id,
             redirect_requests=redirect_requests,
+            kubernetes_settings=kubernetes_settings,
         )
         if type(result) is not list:
             result = [result]
@@ -1761,7 +1890,36 @@ class AppApi(TaskApi):
             else:
                 is_ready = True
                 break
+        if is_ready:
+            logger.info("App is ready for API calls")
+        else:
+            logger.info("App is not ready for API calls after all attempts")
         return is_ready
+
+    def find_module_id_by_app_name(self, app_name):
+        modules = self._api.app.get_list_ecosystem_modules(search=app_name)
+        if len(modules) == 0:
+            raise ValueError(f"No serving apps found for app name {app_name}")
+        if len(modules) > 1:
+            raise ValueError(f"Multiple serving apps found for app name {app_name}")
+        return modules[0]["id"]
+
+    def get_session_token(self, slug: str) -> str:
+        """
+        Get session token for the app with specified slug.
+
+        :param slug: Slug of the app, e.g. "supervisely-ecosystem/hello-world-app".
+        :type slug: str
+
+        :return: Session token for the app.
+        :rtype: str
+        """
+        data = {ApiField.SLUG: slug}
+        response = self._api.post(
+            "instance.get-render-previews-session-token",
+            data,
+        )
+        return response.text
 
 
 # info about app in team

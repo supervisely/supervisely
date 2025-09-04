@@ -90,15 +90,15 @@ INSTALL_REQUIRES = [
     "Shapely>=1.7.1, <=2.0.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <=1.0.0",
+    "python-dotenv>=0.19.2, <=1.0.1",
     "pynrrd>=0.4.2, <1.0.0",
-    "SimpleITK>=2.1.1.2, <3.0.0.0",
+    "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
     "pydicom>=2.3.0, <3.0.0",
     "stringcase>=1.2.0, <2.0.0",
     "python-magic>=0.4.25, <1.0.0",
     "trimesh>=3.11.2, <=4.5.0",
     "uvicorn[standard]>=0.18.2, <1.0.0",
-    "pydantic>=1.7.4, <=2.8.2",
+    "pydantic>=1.7.4, <=2.11.3",
     "anyio>=3.7.1,<=4.2.0",  # TODO: remove after upgrade fastapi version up to 0.103.1
     "fastapi>=0.79.0, <=0.109.0",
     "websockets>=10.3, <=13.1",
@@ -121,9 +121,9 @@ INSTALL_REQUIRES = [
     "rich",
     "click",
     "imutils==0.5.4",
-    "urllib3>=1.26.15, <=2.2.2",
+    "urllib3>=1.26.15, <=2.2.3",
     "cacheout==0.14.1",
-    "jsonschema>=2.6.0,<=4.20.0",
+    "jsonschema>=2.6.0,<=4.23.0",
     "pyjwt>=2.1.0,<3.0.0",
     "zstd",
     "aiofiles",
@@ -183,7 +183,7 @@ setup(
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     author="Supervisely",
-    author_email="support@supervise.ly",
+    author_email="support@supervisely.com",
     url="https://github.com/supervisely/supervisely",
     packages=find_packages(
         include=["supervisely_lib", "supervisely_lib.*", "supervisely", "supervisely.*"]
@@ -191,18 +191,18 @@ setup(
     package_data={
         "": [
             "*.html",
+            "*.jinja",
             "*.css",
             "*.js",
             "*.md",
-            "versions.json",
         ],
         "supervisely": [
+            "versions.json",
             "video/*.sh",
             "app/development/*.sh",
             "imaging/colors.json.gz",
-            "nn/tracker/bot_sort/configs/MOT17/*.yml",
-            "nn/tracker/bot_sort/configs/MOT20/*.yml",
             "nn/benchmark/*/*.yaml",
+            "nn/tracker/botsort/botsort_config.yaml"
         ],
     },
     entry_points={
@@ -274,6 +274,9 @@ setup(
             "faiss-gpu",
             "tabulate",
             "tensorboard",
+            "decord",
+            "gdown",
+            "torch",
         ],
         "model-benchmark": [
             "pycocotools",
@@ -289,6 +292,10 @@ setup(
             "torch",
             "torchvision",
             "tensorboardX",
+            "markdown",
+            "pymdown-extensions",
+            "tbparse",
+            "kaleido==0.2.1",
         ],
         # legacy dependencies
         "plugins": [
