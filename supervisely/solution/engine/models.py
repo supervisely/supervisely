@@ -103,7 +103,7 @@ class TrainingFinishedMessage(Message):
     """Training finished event message."""
 
     task_id: int = Field(..., description="ID of the training task")
-    artifacts_dir: str = Field(..., description="Directory where artifacts are stored")
+    artifacts_dir: Optional[str] = Field(None, description="Directory where artifacts are stored")
     evaluation_dir: Optional[str] = Field(
         None, description="Directory where evaluation results are stored"
     )

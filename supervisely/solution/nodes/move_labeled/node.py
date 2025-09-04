@@ -191,6 +191,8 @@ class MoveLabeledNode(BaseCardNode):
                 logger.warning("Timeout reached while waiting for the evaluation task to start.")
                 break
 
+        success = task_status == self.api.task.Status.FINISHED
+
         try:
             task_info_json = {"id": task_id, "status": task_status.value}
             self.history.update_task(task_id=task_id, task=task_info_json)
@@ -207,18 +209,13 @@ class MoveLabeledNode(BaseCardNode):
 
         self.hide_in_progress_badge()
 
-        success = task_status == self.api.task.Status.FINISHED
-        res = self.api.image.get_list(dataset_id=dataset_id)
-        res = [img.id for img in res]
-        if len(res) != len(images):
-            logger.error(f"Not all images were moved. Expected {len(images)}, but got {len(res)}.")
-            success = False
-
+        moved = len(self._images_to_move) if success else 0
         if success:
-            logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
+            logger.info(f"{moved} items moved successfully. Clearing the move list.")
             self._images_to_move = []
 
-        self.send_data_moving_finished_message(success, res, len(res))
+        if moved > 0:
+            self.send_data_moving_finished_message(success=success, items=[], items_count=moved)
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
@@ -329,7 +326,13 @@ class MoveLabeledNode(BaseCardNode):
         if not self._images_to_move:
             logger.warning("No items to split. Returning empty splits.")
             return
-        items = self._images_to_move.copy()
+        old_items = self._images_to_move.copy()
+        old_infos = self.api.image.get_info_by_id_batch(old_items)
+        names = [info.name for info in old_infos]
+        filters = [{"field": "name", "operator": "in", "value": names}]
+        items = self.api.image.get_list(project_id=self.dst_project_id, filters=filters)
+        items = [item.id for item in items]
+
         train_count = int(len(items) * self._train_percent / 100)
         val_count = len(items) - train_count
         if random_selection:
@@ -352,12 +355,12 @@ class MoveLabeledNode(BaseCardNode):
 
         main_col, main_col_name = None, f"all_{split_name}"
 
-        last_batch_index = 0
+        # last_batch_index = 0
         for collection in collections:
             if collection.name == main_col_name:
                 main_col = collection
-            elif collection.name.startswith(f"{split_name}_"):
-                last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
+            # elif collection.name.startswith(f"{split_name}_"):
+            #     last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
 
         if main_col is None:
             main_col = self.api.entities_collection.create(self.dst_project_id, main_col_name)
@@ -365,13 +368,10 @@ class MoveLabeledNode(BaseCardNode):
 
         self.api.entities_collection.add_items(main_col.id, image_ids)
 
-        batch_col_name = f"{split_name}_{last_batch_index + 1}"
-        batch_col = self.api.entities_collection.create(self.dst_project_id, batch_col_name)
-        logger.info(f"Created new collection '{batch_col_name}'")
+        # batch_col_name = f"{split_name}_{last_batch_index + 1}"
+        # batch_col = self.api.entities_collection.create(self.dst_project_id, batch_col_name)
+        # logger.info(f"Created new collection '{batch_col_name}'")
 
-        self.api.entities_collection.add_items(batch_col.id, image_ids)
+        # self.api.entities_collection.add_items(batch_col.id, image_ids)
 
-        logger.info(f"Added {len(image_ids)} images to {split_name} collections")
-        self.api.entities_collection.add_items(batch_col.id, image_ids)
-
-        logger.info(f"Added {len(image_ids)} images to {split_name} collections")
+        # logger.info(f"Added {len(image_ids)} images to {split_name} collections")
