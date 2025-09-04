@@ -1449,6 +1449,8 @@ class Inference:
         for lb in labels:
             lb = lb.clone(nn_created=True, nn_updated=False)
             fixed_labels.append(lb)
+            logger.debug("NN flags added to label", extra={"label": lb.to_json()})
+
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
@@ -2726,14 +2728,15 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
-                for pred, ann in zip(preds, anns):
-                    pred.annotation = ann
 
                 # add NN flags to new predictions before upload
                 anns_with_nn_flags = []
-                for ann in anns:
-                    nn_ann = add_nn_flags_to_ann(ann)
-                    anns_with_nn_flags.append(nn_ann)
+                for pred, ann in zip(preds, anns):
+                    ann = add_nn_flags_to_ann(ann)
+                    pred.annotation = ann
+                    anns_with_nn_flags.append(ann)
+                    logger.debug("NN flags added to prediction", extra={"prediction": pred.to_json()})
+
                 anns = anns_with_nn_flags
 
                 context.setdefault("image_info", {})
@@ -2799,12 +2802,12 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
-                for pred, ann in zip(preds, anns):
-                    pred.annotation = ann
 
                 # add NN flags to predicted labels before optional merge
-                for pred in preds:
-                    pred.annotation = add_nn_flags_to_ann(pred.annotation)
+                for pred, ann in zip(preds, anns):
+                    ann = add_nn_flags_to_ann(ann)
+                    pred.annotation = ann
+                    logger.debug("NN flags added to prediction", extra={"prediction": pred.to_json()})
 
                 if upload_mode in ["iou_merge", "append"]:
                     context.setdefault("annotation", {})
