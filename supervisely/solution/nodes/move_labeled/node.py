@@ -328,7 +328,7 @@ class MoveLabeledNode(BaseCardNode):
         val = items[train_count : train_count + val_count]
         self._add_to_collection(train, "all_train")
         self._add_to_collection(val, "all_val")
-        self._add_to_collection(val, "batch")
+        self._add_to_collection(items, "batch")
         logger.info(f"Split {len(items)} items into {len(train)} train and {len(val)} val items.")
 
     def _add_to_collection(
@@ -351,11 +351,16 @@ class MoveLabeledNode(BaseCardNode):
                 if collection.name.startswith("batch_"):
                     last_batch_idx = max(last_batch_idx, int(collection.name.split("_")[-1]))
 
-        if main_col is None:
+        if main_col is None and split_name in ["all_train", "all_val"]:
             main_col = self.api.entities_collection.create(self.dst_project_id, split_name)
             logger.info(f"Created new collection '{split_name}'")
+        elif split_name == "batch":
+            batch_name = f"batch_{last_batch_idx + 1}"
+            main_col = self.api.entities_collection.create(self.dst_project_id, batch_name)
+            logger.info(f"Created new collection '{batch_name}'")
 
         self.api.entities_collection.add_items(main_col.id, image_ids)
+
 
     def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
         """Get the IDs of images uploaded from the project's custom data."""
