@@ -1,5 +1,7 @@
 from typing import Tuple
 
+from supervisely.api.api import Api
+
 
 def get_interval_period(sec: int) -> Tuple[str, int]:
     """
@@ -39,3 +41,20 @@ def get_seconds_from_period_and_interval(period: str, interval: int) -> int:
         return interval * 86400
     else:
         raise ValueError(f"Unknown period: {period}")
+
+def find_agent(api: Api, team_id: int) -> int:
+    agents = api.agent.get_list_available(team_id, show_public=True, has_gpu=True)
+    if len(agents) == 0:
+        raise ValueError("No available agents found.")
+    agent_id_memory_map = {}
+    kubernetes_agents = []
+    for agent in agents:
+        if agent.type == "sly_agent":
+            # No multi-gpu support, always take the first one
+            agent_id_memory_map[agent.id] = agent.gpu_info["device_memory"][0]["available"]
+        elif agent.type == "kubernetes":
+            kubernetes_agents.append(agent.id)
+    if len(agent_id_memory_map) > 0:
+        return max(agent_id_memory_map, key=agent_id_memory_map.get)
+    if len(kubernetes_agents) > 0:
+        return kubernetes_agents[0]

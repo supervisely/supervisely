@@ -9,8 +9,8 @@ from supervisely.solution.engine.models import TrainFinishedMessage
 class TrainingExperimentNode(LinkNode):
     """Node for linking to the training experiment."""
 
-    TITLE = "Training Experiment"
-    DESCRIPTION = "Link to the training experiment."
+    TITLE = "Experiment Report"
+    DESCRIPTION = "Open the experiment report to explore detailed training session information, metrics, visualizations, evaluation results, and inference options for the trained model."
     ICON = "mdi mdi-file-star"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
@@ -21,7 +21,7 @@ class TrainingExperimentNode(LinkNode):
         icon = kwargs.pop("icon", self.ICON)
         icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
         icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
-        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
+        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else None
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
@@ -61,8 +61,7 @@ class TrainingExperimentNode(LinkNode):
             logger.warning("Received message does not have 'experiment_info' attribute.")
             return
 
-        # @TODO: get experiment_id from message
-        experiment_id = message.experiment_info.get("experiment_id")
+        experiment_id = message.experiment_info.get("experiment_report_id")
         self.set_experiment(experiment_id)
 
     # ------------------------------------------------------------------
@@ -71,8 +70,8 @@ class TrainingExperimentNode(LinkNode):
     def set_experiment(self, experiment_id: Optional[int] = None):
         """Receive experiment_info and set link to experiment by experiment_id."""
         if experiment_id is None:
-            self.remove_badge_by_key("status")
-            self.remove_property_by_key("Experiment Link")
+            self.remove_badge_by_key("🚀")
+            self.remove_property_by_key("Experiment Report")
             self.remove_link()
             return
 
@@ -80,6 +79,6 @@ class TrainingExperimentNode(LinkNode):
         if is_development():
             link = abs_url(link)
 
-        self.update_badge_by_key(key="status", label="Experiment Report", badge_type="success")
-        self.update_property("Experiment Link", "Open Experiment", link=link, highlight=True)
+        self.update_badge_by_key(key="Experiment Report", label="new", badge_type="success")
+        self.update_property("Experiment Report", "open 🔗", link=link)
         self.set_link(link)

@@ -9,8 +9,8 @@ from supervisely.solution.engine.models import TrainFinishedMessage
 class TrainingEvaluationReportNode(LinkNode):
     """Node for linking to the training session evaluation page."""
 
-    TITLE = "Training Evaluation"
-    DESCRIPTION = "Open the training session evaluation page."
+    TITLE = "Evaluation Report"
+    DESCRIPTION = "Open the training session evaluation page to explore detailed evaluation metrics and visualizations for the trained model. Evaluation was performed on the validation set after training completion."
     ICON = "mdi mdi-chart-line-variant"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
@@ -21,7 +21,7 @@ class TrainingEvaluationReportNode(LinkNode):
         icon = kwargs.pop("icon", self.ICON)
         icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
         icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
-        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
+        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else None
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
@@ -70,8 +70,8 @@ class TrainingEvaluationReportNode(LinkNode):
     def set_report(self, evaluation_report_id: Optional[int] = None):
         """Receive experiment_info and set link to evaluation report by ID."""
         if evaluation_report_id is None:
-            self.remove_badge_by_key("status")
-            self.remove_property_by_key("Report Link")
+            self.remove_badge_by_key("Evaluation Report")
+            self.remove_property_by_key("Evaluation Report")
             self.remove_link()
             return
 
@@ -79,6 +79,6 @@ class TrainingEvaluationReportNode(LinkNode):
         if is_development():
             link = abs_url(link)
         
-        self.update_badge_by_key(key="status", label="Evaluation Report", badge_type="success")
-        self.update_property("Report Link", "Open Report", link=link, highlight=True)
+        self.update_badge_by_key(key="Evaluation Report", label="new", badge_type="success")
+        self.update_property("Evaluation Report", "open 🔗", link=link)
         self.set_link(link)

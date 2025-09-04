@@ -9,8 +9,8 @@ from supervisely.solution.engine.models import TrainFinishedMessage
 class TrainingArtifactsNode(LinkNode):
     """Node for linking to the training artifacts of the model."""
 
-    TITLE = "Training Artifacts"
-    DESCRIPTION = "Link to the training artifacts of the model."
+    TITLE = "Artifacts"
+    DESCRIPTION = "Open the training artifacts directory to explore all the files generated during the training process, including model checkpoints, logs, configuration files, and other relevant outputs."
     ICON = "mdi mdi-folder-star"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
@@ -21,7 +21,7 @@ class TrainingArtifactsNode(LinkNode):
         icon = kwargs.pop("icon", self.ICON)
         icon_color = kwargs.pop("icon_color", self.ICON_COLOR)
         icon_bg_color = kwargs.pop("icon_bg_color", self.ICON_BG_COLOR)
-        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else ""
+        link = f"/projects/{project_id}/stats/datasets" if project_id is not None else None
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
@@ -69,8 +69,8 @@ class TrainingArtifactsNode(LinkNode):
     def set_artifacts(self, artifacts_dir: Optional[str] = None):
         """Receive experiment_info and set link to artifacts_dir."""
         if artifacts_dir is None:
-            self.remove_badge_by_key("status")
-            self.remove_property_by_key("Artifacts Link")
+            self.remove_badge_by_key("Artifacts")
+            self.remove_property_by_key("Artifacts in Team Files")
             self.remove_link()
             return
 
@@ -78,6 +78,6 @@ class TrainingArtifactsNode(LinkNode):
         if is_development():
             link = abs_url(link)
 
-        self.update_badge_by_key(key="status", label="Artifacts", badge_type="success")
-        self.update_property("Artifacts Link", "Open Artifacts", link=link, highlight=True)
+        self.update_badge_by_key(key="Artifacts", label="new", badge_type="success")
+        self.update_property("Artifacts in Team Files", "open 🔗", link=link)
         self.set_link(link)
