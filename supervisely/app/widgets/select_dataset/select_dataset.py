@@ -138,6 +138,12 @@ class SelectDataset(Widget):
 
     def set_project_id(self, id: int):
         self._project_id = id
+        if self._compact is True:
+            DataJson()[self.widget_id]["projectId"] = self._project_id
+            DataJson().send_changes()
+        else:
+            StateJson()[self.widget_id]["projectId"] = self._project_id
+            StateJson().send_changes()
         self._project_selector.set_project_id(self._project_id)
 
     def set_select_all_datasets(self, is_checked: bool):
