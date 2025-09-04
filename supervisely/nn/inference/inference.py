@@ -2644,6 +2644,20 @@ class Inference:
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
 
+        def add_nn_flags_to_pred_ann(pred: Prediction) -> Prediction:
+            nn_labels = []
+            for label in pred.annotation.labels:
+                nn_label = label.clone(nn_created=True, nn_updated=False)
+                nn_labels.append(nn_label)
+            return pred.annotation.clone(labels=nn_labels)
+
+        def add_nn_flags_to_ann(ann: Annotation) -> Annotation:
+            nn_labels = []
+            for label in ann.labels:
+                nn_label = label.clone(nn_created=True, nn_updated=False)
+                nn_labels.append(nn_label)
+            return ann.clone(labels=nn_labels)
+
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
             stem = name.stem
@@ -2722,6 +2736,13 @@ class Inference:
                 for pred, ann in zip(preds, anns):
                     pred.annotation = ann
 
+                # add NN flags to new predictions before upload
+                anns_with_nn_flags = []
+                for ann in anns:
+                    nn_ann = add_nn_flags_to_ann(ann)
+                    anns_with_nn_flags.append(nn_ann)
+                anns = anns_with_nn_flags
+
                 context.setdefault("image_info", {})
                 missing = [
                     pred.image_id for pred in preds if pred.image_id not in context["image_info"]
@@ -2787,6 +2808,10 @@ class Inference:
                 )
                 for pred, ann in zip(preds, anns):
                     pred.annotation = ann
+
+                # add NN flags to predicted labels before optional merge
+                for pred in preds:
+                    pred.annotation = add_nn_flags_to_pred_ann(pred)
 
                 if upload_mode in ["iou_merge", "append"]:
                     context.setdefault("annotation", {})
