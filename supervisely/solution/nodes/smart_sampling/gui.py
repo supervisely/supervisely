@@ -4,6 +4,7 @@ import itertools
 import random
 from datetime import datetime
 from enum import Enum
+import time
 from typing import Dict, List, Literal, Optional, Tuple
 from uuid import uuid4
 
@@ -762,8 +763,12 @@ class SmartSamplingGUI(Widget):
                 app_version="merge-niko",  # ! TODO: remove after testing
                 is_branch=True,  # ! TODO: remove after testing
             )
-            task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
             task_id = task_info_json["id"]
+            completed = self._wait_until_complete(task_id)
+            if not completed:
+                logger.warning("Error during copying to new project.")
+                return {}, {}, 0
+            task_info_json = self.api.task.get_info_by_id(task_id)
             dst = self._get_uploaded_ids(self.dst_project_id, task_id)
             images_count = sum(len(imgs) for imgs in dst.values())
             return src, dst, images_count
@@ -851,7 +856,6 @@ class SmartSamplingGUI(Widget):
                 _items[ds_id] = [img.id for img in img_list]
             self._add_sampled_images(sampling_id, _items)
 
-
     def _get_uploaded_ids(self, project_id: int, task_id: int) -> Dict[int, List[int]]:
         """Get the IDs of images uploaded from the project's custom data."""
         project = self.api.project.get_info_by_id(project_id)
@@ -870,3 +874,23 @@ class SmartSamplingGUI(Widget):
         for ds in record.get("datasets", []):
             uploaded_ids[int(ds["id"])] = list(map(int, ds.get("uploaded_images", [])))
         return uploaded_ids
+
+    def _wait_until_complete(self, task_id: int):
+        """Wait until the task is complete."""
+        current_time = time.time()
+        while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
+            if task_status in [
+                self.api.task.Status.ERROR,
+                self.api.task.Status.STOPPED,
+                self.api.task.Status.TERMINATING,
+            ]:
+                logger.error(f"Task {task_id} failed with status: {task_status}")
+                break
+            logger.info("Waiting for the sampling task to start... Status: %s", task_status)
+            time.sleep(5)
+            if time.time() - current_time > 30000:  # 500 minutes timeout
+                logger.warning("Timeout reached while waiting for the sampling task to start.")
+                break
+
+        success = task_status == self.api.task.Status.FINISHED
+        return success

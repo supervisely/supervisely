@@ -164,7 +164,7 @@ class MoveLabeledNode(BaseCardNode):
             logger.info(f"Train/Val split settings: {self._train_percent}%/{self._val_percent}%")
 
     # publish event (may send Message object)
-    def wait_task_complete(self, task_id: int) -> MoveLabeledDataFinishedMessage:
+    def wait_task_complete(self, task_id: int, src_images: List[int]) -> MoveLabeledDataFinishedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
@@ -205,13 +205,14 @@ class MoveLabeledNode(BaseCardNode):
 
         self.hide_in_progress_badge()
 
-        moved = len(self._images_to_move) if success else 0
+        moved = len(items) if success else 0
         if success:
             logger.info(f"{moved} items moved successfully. Clearing the move list.")
             self._images_to_move = []
 
         if moved > 0:
             self.send_data_moving_finished_message(success=success, items=items, items_count=moved)
+            self.api.image.remove_batch(src_images, batch_size=200)
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
@@ -305,7 +306,7 @@ class MoveLabeledNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id,),
+            args=(task_id, images),
             daemon=True,
         )
         thread.start()

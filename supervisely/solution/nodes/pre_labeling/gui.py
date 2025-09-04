@@ -238,6 +238,8 @@ class PreLabelingGUI(Widget):
                     module_id=module_id,
                     workspace_id=self.workspace_id,
                     agent_id=agent_id,
+                    app_version="test-sdk-branch",  # ! TODO: remove after testing
+                    is_branch=True,  # ! TODO: remove after testing
                 )
 
                 self.api.app.wait_until_ready_for_api_calls(
@@ -282,7 +284,6 @@ class PreLabelingGUI(Widget):
         confidence_threshold: float = 0.5,
         task_id: Optional[int] = None,
         model_session_id: Optional[int] = None,
-        output_mode: Literal["iou_merge", "create", "replace", "append"] = "iou_merge",
         iou_merge_threshold: Optional[float] = 0.5,
     ):
         """Run pre-labeling on the provided images."""
@@ -314,18 +315,20 @@ class PreLabelingGUI(Widget):
             # Process images with the model
             data = {
                 "model": {"mode": "connect", "session_id": self._session_id},
-                "input": {"project_id": project_id, "dataset_ids": dataset_ids},
-                "inference_settings": {"confidence_threshold": confidence_threshold},
-                "settings": {"predictions_mode": output_mode},
+                "input": {"image_ids": images, "project_id": project_id},
+                "settings": {
+                    "predictions_mode": "Merge with existing labels",
+                    "inference_settings": {
+                        "confidence_threshold": confidence_threshold,
+                        "existing_objects_iou_threshold": 0.65,
+                    },
+                },
                 "classes": self._classes,
                 "output": {
-                    "mode": output_mode,
-                    "project_name": "Demo Inference [Predictions]",
+                    "upload_to_source_project": True,
                 },
-                "item": {"image_ids": images},
             }
             if iou_merge_threshold is not None:
-                data["output"]["iou_merge_threshold"] = iou_merge_threshold
                 data["settings"]["iou_merge_threshold"] = iou_merge_threshold
             logger.info(f"Running pre-labeling on {len(images)} images with settings: {data}")
             res = self.api.task.send_request(
