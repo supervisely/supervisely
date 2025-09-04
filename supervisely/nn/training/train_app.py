@@ -2054,7 +2054,6 @@ class TrainApp:
         else:  # link to artifacts directory
             output_file_info = session_link_file_info
             experiment_info["has_report"] = False
-        # @TODO: add experiment_report_id to experiment_info
         return output_file_info, experiment_info
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
