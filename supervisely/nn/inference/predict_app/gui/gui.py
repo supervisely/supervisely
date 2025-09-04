@@ -582,23 +582,35 @@ class PredictAppGui:
         # Always create new project
         # But the actual inference will happen inplace
         output_parameters = run_parameters["output"]
-        project_name = output_parameters["project_name"]
-        if not project_name:
-            input_project_info = self.api.project.get_info_by_id(input_project_id)
-            project_name = input_project_info.name + " [Predictions]"
-            logger.warning("Project name is empty, using auto-generated name: " + project_name)
+        project_name = output_parameters.get("project_name", "")
+        upload_to_source_project = output_parameters.get("upload_to_source_project", False)
+        if upload_to_source_project:
+            if not project_name:
+                input_project_info = self.api.project.get_info_by_id(input_project_id)
+                project_name = input_project_info.name + " [Predictions]"
+                logger.warning("Project name is empty, using auto-generated name: " + project_name)
 
-        # Copy project
-        self.set_validator_text("Copying project...", "info")
-        created_project = copy_project(
-            self.api,
-            project_name,
-            self.workspace_id,
-            input_project_id,
-            input_dataset_ids,
-            with_annotations,
-            self.output_selector.progress,
-        )
+            # Copy project
+            self.set_validator_text("Copying project...", "info")
+            created_project = copy_project(
+                self.api,
+                project_name,
+                self.workspace_id,
+                input_project_id,
+                input_dataset_ids,
+                with_annotations,
+                self.output_selector.progress,
+            )
+            output_project_id = created_project.id
+            input_args = {
+                "project_id": output_project_id,
+            }
+        else:
+            output_project_id = input_project_id
+            input_args = {
+                "dataset_ids": input_dataset_ids,
+            }
+
         # ------------------------ #
 
         # Run prediction
@@ -607,7 +619,7 @@ class PredictAppGui:
         self._is_running = True
         try:
             with model_api.predict_detached(
-                project_id=created_project.id,
+                **input_args,
                 tqdm=self.output_selector.progress(),
                 **kwargs,
             ) as session:
@@ -635,7 +647,7 @@ class PredictAppGui:
 
         # Set result thumbnail
         self.set_validator_text("Project successfully processed", "success")
-        self.output_selector.set_result_thumbnail(created_project.id)
+        self.output_selector.set_result_thumbnail(output_project_id)
         # ------------------------ #
         return predictions
 
