@@ -1,8 +1,10 @@
 # coding: utf-8
+import io
 import os
+import pickle
 import re
 import sys
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
@@ -10,6 +12,7 @@ from tqdm import tqdm
 
 from supervisely._utils import batched
 from supervisely.api.api import Api
+from supervisely.api.entity_annotation.figure_api import FigureInfo
 from supervisely.api.module_api import ApiField
 from supervisely.collection.key_indexed_collection import KeyIndexedCollection
 from supervisely.geometry.closed_surface_mesh import ClosedSurfaceMesh
@@ -264,6 +267,137 @@ class VolumeProject(VideoProject):
         )
 
     @staticmethod
+    def download_bin(
+        api: Api,
+        project_id: int,
+        dest_dir: str = None,
+        dataset_ids: Optional[List[int]] = None,
+        batch_size: Optional[int] = 100,
+        log_progress: Optional[bool] = True,
+        progress_cb: Optional[Callable] = None,
+        return_bytesio: Optional[bool] = False,
+    ) -> Union[str, io.BytesIO]:
+        """
+        Download project to the local directory in binary format. Faster than downloading project in the usual way.
+        This type of project download is more suitable for creating local backups.
+        It is also suitable for cases where you don't need access to individual project files, such as images or annotations.
+
+        Binary file contains the following data:
+        - ProjectInfo
+        - ProjectMeta
+        - List of DatasetInfo
+        - List of ImageInfo
+        - Dict of Figures
+        - Dict of AlphaGeometries
+
+        :param api: Supervisely API address and token.
+        :type api: :class:`Api<supervisely.api.api.Api>`
+        :param project_id: Project ID to download.
+        :type project_id: :class:`int`
+        :param dest_dir: Destination path to local directory.
+        :type dest_dir: :class:`str`, optional
+        :param dataset_ids: Specified list of Dataset IDs which will be downloaded. If you want to download nested datasets, you should specify all nested IDs.
+        :type dataset_ids: :class:`list` [ :class:`int` ], optional
+        :param batch_size: Size of a downloading batch.
+        :type batch_size: :class:`int`, optional
+        :param log_progress: Show downloading logs in the output.
+        :type log_progress: :class:`bool`, optional
+        :param progress_cb: Function for tracking download progress. Has a higher priority than log_progress.
+        :type progress_cb: :class:`tqdm` or :class:`callable`, optional
+        :param return_bytesio: If True, returns BytesIO object instead of saving it to the disk.
+        :type return_bytesio: :class:`bool`, optional
+        :return: Path to the binary file or BytesIO object.
+        :rtype: :class:`str` or :class:`BytesIO`
+
+        :Usage example:
+
+        .. code-block:: python
+
+                import supervisely as sly
+
+                # Local destination Project folder
+                save_directory = "/home/admin/work/supervisely/source/project"
+
+                # Obtain server address and your api_token from environment variables
+                # Edit those values if you run this notebook on your own PC
+                address = os.environ['SERVER_ADDRESS']
+                token = os.environ['API_TOKEN']
+
+                # Initialize API object
+                api = sly.Api(address, token)
+                project_id = 8888
+
+                # Download Project in binary format
+                project_bin_path = sly.Project.download_bin(api, project_id, save_directory)
+        """
+        if dest_dir is None and not return_bytesio:
+            raise ValueError(
+                "Local save directory dest_dir must be specified if return_bytesio is False"
+            )
+
+        ds_filters = (
+            [{"field": "id", "operator": "in", "value": dataset_ids}]
+            if dataset_ids is not None
+            else None
+        )
+
+        project_info = api.project.get_info_by_id(project_id)
+        meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
+
+        if api.volume is None:
+            raise NotImplementedError(f"Project type {project_info.type} is not supported yet.")
+        logger.debug(f"Found supported entity API for the project type {project_info.type}")
+
+        dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
+
+        image_infos = []
+        figures = {}
+        alpha_geometries = {}
+        for dataset_info in dataset_infos:
+            ds_image_infos = api.volume.get_list(dataset_info.id)
+            image_infos.extend(ds_image_infos)
+
+            ds_progress = progress_cb
+            if log_progress and progress_cb is None:
+                ds_progress = tqdm_sly(
+                    desc="Downloading dataset: {!r}".format(dataset_info.name),
+                    total=len(ds_image_infos),
+                )
+
+            for batch in batched(ds_image_infos, batch_size):
+                image_ids = [image_info.id for image_info in batch]
+                ds_figures = api.volume.figure.download(dataset_info.id, image_ids)
+                object_class_map = VolumeProject.object_class_map(api, dataset_info.id, image_ids)
+                ds_figures = VolumeProject.update_figures(ds_figures, object_class_map)
+
+                #! Mask3D geometries
+
+                figures.update(ds_figures)
+                if ds_progress is not None:
+                    ds_progress(len(batch))
+        if dataset_infos != [] and ds_progress is not None:
+            ds_progress.close()
+
+        logger.debug(f"Downloaded {len(dataset_infos)} datasets for project {project_info.name}.")
+
+        data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
+        file = (
+            io.BytesIO()
+            if return_bytesio
+            else open(os.path.join(dest_dir, f"{project_info.id}_{project_info.name}"), "wb")
+        )
+
+        if isinstance(file, io.BytesIO):
+            pickle.dump(data, file)
+        else:
+            with file as f:
+                pickle.dump(data, f)
+
+        logger.debug(f"Finished downloading and preparing project {project_info.name}.")
+
+        return file if return_bytesio else file.name
+
+    @staticmethod
     def get_train_val_splits_by_count(project_dir: str, train_count: int, val_count: int) -> None:
         """
         Not available for VolumeProject class.
@@ -321,6 +455,52 @@ class VolumeProject(VideoProject):
         raise NotImplementedError(
             f"Static method 'download_async()' is not supported for VolumeProject class now."
         )
+
+    @staticmethod
+    def object_class_map(api: Api, dataset_id: int, volumes_ids: List[int]) -> Dict[int, int]:
+        """Create a mapping from object IDs to class IDs from volume annotations.
+
+        :param api: Supervisely API instance
+        :type api: sly.Api
+        :param dataset_id: ID of the dataset to process
+        :type dataset_id: int
+        :param volumes_ids: List of volume IDs to process
+        :type volumes_ids: List[int]
+        :return: Mapping of object IDs to class IDs
+        :rtype: Dict[int, int]
+        """
+        volumes_anns = api.volume.annotation.download_bulk(dataset_id, volumes_ids)
+
+        volume_object_class_map = {}
+        for volume_ann in volumes_anns:
+            for object in volume_ann.get("objects", []):
+                object_id = object.get("id")
+                class_id = object.get("classId")
+                if object_id not in volume_object_class_map:
+                    volume_object_class_map[object_id] = class_id
+
+        return volume_object_class_map
+
+    @staticmethod
+    def update_figures(
+        dataset_figures: Dict[int, List[FigureInfo]], object_class_map: Dict[int, int]
+    ) -> Dict[int, List[FigureInfo]]:
+        """Update the class IDs of figures in the dataset based on the object class map.
+
+        :param dataset_figures: Dictionary mapping volume IDs to lists of figure information
+        :type dataset_figures: Dict[int, List[FigureInfo]]
+        :param object_class_map: Mapping of object IDs to class IDs
+        :type object_class_map: Dict[int, int]
+        :return: Updated dictionary mapping volume IDs to lists of figure information
+        :rtype: Dict[int, List[FigureInfo]]
+        """
+        updated_ds_figures = defaultdict(list)
+        for volume_id, volume_figures in dataset_figures.items():
+            for figure in volume_figures:
+                new_class_id = object_class_map.get(figure.object_id)
+                new_figure = figure._replace(class_id=new_class_id)
+                updated_ds_figures[volume_id].append(new_figure)
+        return updated_ds_figures
 
 
 def download_volume_project(
@@ -635,4 +815,6 @@ def _create_volume_header(ann: VolumeAnnotation) -> Dict:
         header["space"] = "left-anterior-superior"
     elif ann.volume_meta["ACS"] == "LPS":
         header["space"] = "left-posterior-superior"
+    return header
+    return header
     return header

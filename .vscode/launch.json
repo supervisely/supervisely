@@ -1,30 +1,49 @@
 {
     "version": "0.2.0",
     "configurations": [
-        {
-            "name": "Python: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
-            }
-        },
-        {
-            "name": "Python: Debug Tests",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "purpose": [
-                "debug-test"
-            ],
-            "console": "integratedTerminal",
-            "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
-            }
-        }
-    ]
+		{
+			"name": "Python: Current File",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${file}",
+			"console": "integratedTerminal",
+			"justMyCode": false,
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
+			}
+		},
+		{
+			"name": "Python: Debug Tests",
+			"type": "debugpy",
+			"request": "launch",
+			"program": "${file}",
+			"purpose": ["debug-test"],
+			"console": "integratedTerminal",
+			"justMyCode": false,
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
+			}
+		},
+		{
+			"name": "Python: Uvicorn",
+			"type": "debugpy",
+			"request": "launch",
+			"module": "uvicorn",
+			"args": [
+				"test:app",
+				"--host",
+				"localhost",
+				"--port",
+				"8000",
+				"--log-level",
+				"info",
+				"--reload"
+			],
+			"console": "integratedTerminal",
+			"justMyCode": false,
+			"env": {
+				"PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
+			}
+		}
+	]
 }

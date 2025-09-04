@@ -24,7 +24,7 @@ from typing import (
     Tuple,
     Union,
 )
-from supervisely.api.volume.volume_api import VolumeInfo
+
 import aiofiles
 import numpy as np
 from PIL import Image as PILImage
@@ -50,6 +50,7 @@ from supervisely.api.image_api import (
     ImageInfo,
 )
 from supervisely.api.project_api import ProjectInfo
+from supervisely.api.volume.volume_api import VolumeInfo
 from supervisely.collection.key_indexed_collection import (
     KeyIndexedCollection,
     KeyObject,
@@ -3503,23 +3504,13 @@ class Project:
         project_info = api.project.get_info_by_id(project_id)
         meta = ProjectMeta.from_json(api.project.get_meta(project_id, with_settings=True))
 
-        api_entity_map = {
-            str(sly.ProjectType.IMAGES): api.image,
-            str(sly.ProjectType.VOLUMES): api.volume,
-        }
-
-        api_entity = api_entity_map.get(project_info.type)
-        if api_entity is None:
-            raise NotImplementedError(f"Project type {project_info.type} is not supported yet.")
-        sly.logger.debug(f"Found supported entity API for the project type {project_info.type}")
-
         dataset_infos = api.dataset.get_list(project_id, filters=ds_filters, recursive=True)
 
         image_infos = []
         figures = {}
         alpha_geometries = {}
         for dataset_info in dataset_infos:
-            ds_image_infos = api_entity.get_list(dataset_info.id)
+            ds_image_infos = api.image.get_list(dataset_info.id)
             image_infos.extend(ds_image_infos)
 
             ds_progress = progress_cb
@@ -3529,33 +3520,25 @@ class Project:
                     total=len(ds_image_infos),
                 )
 
-            for batch in batched(ds_image_infos, batch_size):
-                image_ids = [image_info.id for image_info in batch]
-                ds_figures = api_entity.figure.download(dataset_info.id, image_ids)
-                if True:
-                    # ! WARNING! DEBUG CODE!
-                    # Do only for non image project types.
-                    # TODO: Remove it.
-                    object_class_map = Project.object_class_map(api, dataset_info.id, image_ids)
-                    ds_figures = Project.update_figures(ds_figures, object_class_map)
-
-                alpha_ids = [
+            
+            image_ids = [image_info.id for image_info in ds_image_infos]
+            ds_figures = api.image.figure.download_fast(dataset_info.id, image_ids)
+            alpha_ids = [
                     figure.id
                     for figures in ds_figures.values()
                     for figure in figures
                     if figure.geometry_type == sly.AlphaMask.name()
                 ]
+            for batch in batched(ds_image_infos, batch_size):
+                
                 if len(alpha_ids) > 0:
-                    geometries_list = api_entity.figure.download_geometries_batch(alpha_ids)
+                    geometries_list = api.image.figure.download_geometries_batch(alpha_ids)
                     alpha_geometries.update(dict(zip(alpha_ids, geometries_list)))
                 figures.update(ds_figures)
                 if ds_progress is not None:
                     ds_progress(len(batch))
         if dataset_infos != [] and ds_progress is not None:
             ds_progress.close()
-
-        sly.logger.debug(f"Downloaded {len(dataset_infos)} datasets for project {project_info.name}.")
-
         data = (project_info, meta, dataset_infos, image_infos, figures, alpha_geometries)
         file = (
             io.BytesIO()
@@ -3569,55 +3552,7 @@ class Project:
             with file as f:
                 pickle.dump(data, f)
 
-        sly.logger.debug(f"Finished downloading and preparing project {project_info.name}.")
-
         return file if return_bytesio else file.name
-
-    @staticmethod
-    def object_class_map(api: sly.Api, dataset_id: int, volumes_ids: List[int]) -> Dict[int, int]:
-        """Create a mapping from object IDs to class IDs from volume annotations.
-
-        :param api: Supervisely API instance
-        :type api: sly.Api
-        :param dataset_id: ID of the dataset to process
-        :type dataset_id: int
-        :param volumes_ids: List of volume IDs to process
-        :type volumes_ids: List[int]
-        :return: Mapping of object IDs to class IDs
-        :rtype: Dict[int, int]
-        """
-        volumes_anns = api.volume.annotation.download_bulk(dataset_id, volumes_ids)
-
-        volume_object_class_map = {}
-        for volume_ann in volumes_anns:
-            for object in volume_ann.get("objects", []):
-                object_id = object.get("id")
-                class_id = object.get("classId")
-                if object_id not in volume_object_class_map:
-                    volume_object_class_map[object_id] = class_id
-
-        return volume_object_class_map
-
-    @staticmethod
-    def update_figures(
-        dataset_figures: Dict[int, List[sly.FigureInfo]], object_class_map: Dict[int, int]
-    ) -> Dict[int, List[sly.FigureInfo]]:
-        """Update the class IDs of figures in the dataset based on the object class map.
-
-        :param dataset_figures: Dictionary mapping volume IDs to lists of figure information
-        :type dataset_figures: Dict[int, List[sly.FigureInfo]]
-        :param object_class_map: Mapping of object IDs to class IDs
-        :type object_class_map: Dict[int, int]
-        :return: Updated dictionary mapping volume IDs to lists of figure information
-        :rtype: Dict[int, List[sly.FigureInfo]]
-        """
-        updated_ds_figures = defaultdict(list)
-        for volume_id, volume_figures in dataset_figures.items():
-            for figure in volume_figures:
-                new_class_id = object_class_map.get(figure.object_id)
-                new_figure = figure._replace(class_id=new_class_id)
-                updated_ds_figures[volume_id].append(new_figure)
-        return updated_ds_figures
 
     @staticmethod
     def upload_bin(
@@ -6182,4 +6117,5 @@ async def _download_project_items_batch_async(
     logger.debug(f"Batch of project items has been downloaded. Semaphore state: {semaphore._value}")
 
 
+DatasetDict = Project.DatasetDict
 DatasetDict = Project.DatasetDict
