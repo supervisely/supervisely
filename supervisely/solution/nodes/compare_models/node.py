@@ -380,7 +380,7 @@ class CompareModelsNode(BaseCardNode):
         try:
             report_id = int(report_url.split("?id=")[-1])
             file_info = self._api.file.get_info_by_id(report_id)
-            return str(Path(file_info.path).parent.parent)
+            return str(Path(file_info.path).parent)
         except Exception:
             pass
 

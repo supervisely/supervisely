@@ -17,16 +17,18 @@ from supervisely.solution.nodes.labeling_project.node import LabelingProjectNode
 from supervisely.solution.nodes.labeling_queue.node import LabelingQueueNode
 from supervisely.solution.nodes.move_labeled.node import MoveLabeledNode
 from supervisely.solution.nodes.pre_labeling.node import PreLabelingNode
-from supervisely.solution.nodes.pretrained_models.node import PretrainedModelsNode
+from supervisely.solution.nodes.pretrained_models.node import BaseTrainNode
 from supervisely.solution.nodes.qa_stats.node import QAStatsNode
 from supervisely.solution.nodes.smart_sampling.ai_index import AiIndexNode
 from supervisely.solution.nodes.smart_sampling.clip_service import OpenAIClipServiceNode
 from supervisely.solution.nodes.smart_sampling.node import SmartSamplingNode
 from supervisely.solution.nodes.train_val_split.node import TrainValSplitNode
-from supervisely.solution.nodes.training_project.node import TrainingProjectNode
-from supervisely.solution.nodes.training_experiment.node import TrainingExperimentNode
 from supervisely.solution.nodes.training_artifacts.node import TrainingArtifactsNode
-from supervisely.solution.nodes.training_evaluation.node import TrainingEvaluationReportNode
+from supervisely.solution.nodes.training_evaluation.node import (
+    TrainingEvaluationReportNode,
+)
+from supervisely.solution.nodes.training_experiment.node import TrainingExperimentNode
+from supervisely.solution.nodes.training_project.node import TrainingProjectNode
 
 # from supervisely.solution.components.video_samling import VideoSampling
 
@@ -52,7 +54,7 @@ __all__ = [
     "EvaluationNode",
     "EvaluationReportNode",
     # Training
-    "PretrainedModelsNode",
+    "BaseTrainNode",
     "TrainingExperimentNode",
     "TrainingArtifactsNode",
     "TrainingEvaluationReportNode",

@@ -44,7 +44,7 @@ class PretrainedModelsGUI:
             train_collections, val_collections = None, None
             train_datasets, val_datasets = None, None
 
-        disable_split = split_mode != "random"
+        disable_split = False  # ! TODO: split_mode != "random"
         project_meta = ProjectMeta.from_json(self._api.project.get_meta(self.project.id))
         classes = [obj_cls.name for obj_cls in project_meta.obj_classes]
         agent_id = self._find_agent()

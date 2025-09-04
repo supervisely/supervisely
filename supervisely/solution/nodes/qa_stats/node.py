@@ -7,7 +7,7 @@ class QAStatsNode(LinkNode):
     """Node for linking to the QA Stats dashboard."""
 
     TITLE = "QA Stats"
-    DESCRIPTION = "View detailed quality assurance statistics and insights for your project."
+    DESCRIPTION = "Open the QA & Stats page to explore detailed insights into the project."
     ICON = "mdi mdi-chart-bar"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"

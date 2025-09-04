@@ -22,9 +22,9 @@ from supervisely.solution.nodes.pretrained_models.history import (
 )
 
 
-class PretrainedModelsNode(BaseCardNode):
-    TITLE = "Pretrained Models"
-    DESCRIPTION = "Deploy pretrained models."
+class BaseTrainNode(BaseCardNode):
+    TITLE = "Train Model"
+    DESCRIPTION = "Train a custom model using the selected dataset and predefined configurations."
     ICON = "mdi mdi-robot"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"

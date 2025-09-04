@@ -296,6 +296,8 @@ class MoveLabeledNode(BaseCardNode):
             description=f"Solutions: {sly_env.task_id()}",
             module_id=module_info.id,
             params=params,
+            app_version="merge-niko",  # ! TODO: remove after testing
+            is_branch=True,  # ! TODO: remove after testing
         )
         task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
 

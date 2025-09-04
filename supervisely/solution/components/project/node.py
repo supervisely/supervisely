@@ -163,9 +163,9 @@ class ProjectNode(BaseProjectNode):
 
         if self.IS_TRAINING:
             for collection_info in self.api.entities_collection.get_list(self.project_id):
-                if collection_info.name.startswith("train_"):
+                if collection_info.name == "all_train":
                     train_collections.append(collection_info.id)
-                elif collection_info.name.startswith("val_"):
+                elif collection_info.name == "all_val":
                     val_collections.append(collection_info.id)
 
             if not train_collections and not val_collections:

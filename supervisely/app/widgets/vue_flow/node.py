@@ -79,7 +79,7 @@ class Node:
 
     def remove_link(self):
         """Removes the link of the card."""
-        self.settings.link = NodeLink()
+        self.settings.link = NodeLink(url=None)
         self.update_node(self)
 
     # ------------------------------------------------------------------

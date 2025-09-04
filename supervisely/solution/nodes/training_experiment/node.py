@@ -70,7 +70,7 @@ class TrainingExperimentNode(LinkNode):
     def set_experiment(self, experiment_id: Optional[int] = None):
         """Receive experiment_info and set link to experiment by experiment_id."""
         if experiment_id is None:
-            self.remove_badge_by_key("🚀")
+            self.remove_badge_by_key("Experiment Report")
             self.remove_property_by_key("Experiment Report")
             self.remove_link()
             return

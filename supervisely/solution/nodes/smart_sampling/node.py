@@ -22,11 +22,7 @@ from .history import SmartSamplingTasksHistory
 class SmartSamplingNode(BaseCardNode):
     PROGRESS_BADGE_KEY = "Sampling"
     TITLE = "Smart Sampling"
-    DESCRIPTION = (
-        "Selects a data sample from the input project and copies it to the labeling project. "
-        "Supports various sampling strategies: random, k-means clustering, diversity-based, or using "
-        "embeddings precomputed by the “AI Index” node for smarter selection."
-    )
+    DESCRIPTION = "Selects a data sample from the input project and copies it to the labeling project. Supports various sampling strategies: random, k-means clustering, diversity-based, or using embeddings precomputed by the “AI Index” node for smarter selection."
     ICON = "mdi mdi-image-multiple"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"

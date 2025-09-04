@@ -20,7 +20,7 @@ class LabelingQueueNode(BaseQueueNode):
     """
 
     TITLE = "Labeling Queue"
-    DESCRIPTION = "Labeling queue is a full annotation workflow where annotators pick the next available image from a shared queue. Once labeled, images are sent for review and quality check. Rejected images return to the same annotator."
+    DESCRIPTION = "Labeling Queue performance metrics. This node tracks the performance of labeling jobs in the Labeling Queue. It provides real-time statistics on the number of images being labeled, reviewed, and approved."
     ICON = "mdi mdi-label-multiple"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"

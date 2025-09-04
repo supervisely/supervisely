@@ -206,8 +206,6 @@ class EvaluationNode(BaseCardNode):
             workspace_id=self.project.workspace_id,
             task_name="Solution: " + str(self._api.task_id),
             module_id=module_id,
-            is_branch=True,  # ! remove
-            app_version="add-collections",  # ! remove
         )
         task_id = task_info_json["id"]
         current_time = time.time()
