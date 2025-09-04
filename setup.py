@@ -82,7 +82,6 @@ INSTALL_REQUIRES = [
     "opencv-python>=4.6.0.66, <5.0.0.0",
     "PTable>=0.9.2, <1.0.0",
     "pillow>=5.4.1, <=10.2.0",
-    "protobuf>=3.19.5, <=3.20.3",
     "python-json-logger>=0.1.11, <3.0.0",
     "requests>=2.27.1, <3.0.0",
     "requests-toolbelt>=0.9.1",  # , <1.0.0
@@ -201,7 +200,7 @@ setup(
             "app/development/*.sh",
             "imaging/colors.json.gz",
             "nn/benchmark/*/*.yaml",
-            "nn/tracker/botsort/botsort_config.yaml"
+            "nn/tracker/botsort/botsort_config.yaml",
         ],
     },
     entry_points={
@@ -307,6 +306,9 @@ setup(
         "aug": [
             "imgaug>=0.4.0, <1.0.0",
             "imagecorruptions>=1.1.2, <2.0.0",
+        ],
+        "agent": [
+            "protobuf>=3.19.5, <=3.20.3",
         ],
     },
 )

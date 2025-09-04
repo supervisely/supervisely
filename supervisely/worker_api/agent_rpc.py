@@ -3,8 +3,9 @@
 import cv2
 import numpy as np
 
-from .chunking import load_to_memory_chunked_image, load_to_memory_chunked
-from ..worker_proto import worker_api_pb2 as api_proto
+from .chunking import load_to_memory_chunked, load_to_memory_chunked_image
+
+# api_proto import moved to functions where it's used
 
 
 class SimpleCache:
@@ -22,6 +23,13 @@ class SimpleCache:
 
 
 def download_image_from_remote(agent_api, image_hash, src_node_token, logger):
+    try:
+        from ..worker_proto import worker_api_pb2 as api_proto
+    except ImportError as e:
+        from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+        raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
     resp = agent_api.get_stream_with_data(
         'DownloadImages',
         api_proto.ChunkImage,
@@ -34,6 +42,13 @@ def download_image_from_remote(agent_api, image_hash, src_node_token, logger):
 
 
 def download_data_from_remote(agent_api, req_id, logger):
+    try:
+        from ..worker_proto import worker_api_pb2 as api_proto
+    except ImportError as e:
+        from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+        raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
     resp = agent_api.get_stream_with_data('GetGeneralEventData', api_proto.Chunk, api_proto.Empty(),
                                           addit_headers={'x-request-id': req_id})
     b_data = load_to_memory_chunked(resp)
@@ -47,6 +62,13 @@ def batched(seq, batch_size):
 
 
 def send_from_memory_generator(out_bytes, chunk_size):
+    try:
+        from ..worker_proto import worker_api_pb2 as api_proto
+    except ImportError as e:
+        from supervisely.app.v1.constants import PROTOBUF_REQUIRED_ERROR
+
+        raise ImportError(PROTOBUF_REQUIRED_ERROR) from e
+
     for bytes_chunk in batched(out_bytes, chunk_size):
         yield api_proto.Chunk(buffer=bytes_chunk, total_size=len(out_bytes))
 
