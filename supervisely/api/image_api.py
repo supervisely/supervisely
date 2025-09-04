@@ -70,7 +70,7 @@ from supervisely.api.module_api import (
     _get_single_item,
 )
 from supervisely.imaging import image as sly_image
-from supervisely.io.env import app_categories, increment_upload_count
+from supervisely.io.env import app_categories, increment_upload_count, add_uploaded_ids_to_env
 from supervisely.io.fs import (
     OFFSETS_PKL_BATCH_SIZE,
     OFFSETS_PKL_SUFFIX,
@@ -2616,8 +2616,11 @@ class ImageApi(RemoveableBulkModuleApi):
                         results.append(self._convert_json_info(info_json_copy))
 
                     try:
-                        if "import" in app_categories() and len(batch_names) > 0:
-                            increment_upload_count(dataset_id, len(batch_names))
+                        if "import" in app_categories():
+                            ids = [info.id for info in results[-len(batch_names) :]]
+                            if len(ids) > 0:
+                                increment_upload_count(dataset_id, len(ids))
+                                add_uploaded_ids_to_env(dataset_id, ids)
                     except:
                         pass
 

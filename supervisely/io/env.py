@@ -722,6 +722,23 @@ def upload_count(raise_not_found: Optional[bool] = False) -> dict:
     )
 
 
+def uploaded_ids(raise_not_found: Optional[bool] = False) -> dict:
+    """Returns a dictionary with dataset IDs as keys and lists of uploaded IDs as values from environment variable using following
+        - UPLOADED_IDS
+    :param raise_not_found: if True, raises KeyError if uploaded IDs is not found in environment variables
+    :type raise_not_found: Optional[bool]
+    :return: uploaded IDs
+    :rtype: dict
+    """
+    return _parse_from_env(
+        name="uploaded_ids",
+        keys=["UPLOADED_IDS"],
+        postprocess_fn=lambda x: json.loads(x),
+        default={},
+        raise_not_found=raise_not_found,
+    )
+
+
 def increment_upload_count(dataset_id: int, count: int = 1) -> None:
     """Increments the upload count for the given dataset id by the specified count.
 
@@ -733,3 +750,24 @@ def increment_upload_count(dataset_id: int, count: int = 1) -> None:
     upload_info = upload_count()
     upload_info[str(dataset_id)] = upload_info.get(str(dataset_id), 0) + count
     os.environ["UPLOAD_COUNT"] = json.dumps(upload_info)
+
+
+def add_uploaded_ids_to_env(dataset_id: int, ids: List[int]) -> None:
+    """Adds the list of uploaded IDs to the environment variable for the given dataset ID.
+
+    :param dataset_id: The dataset ID to associate the uploaded IDs with.
+    :type dataset_id: int
+    :param ids: The list of uploaded IDs to add.
+    :type ids: List[int]
+    """
+    uploaded = uploaded_ids()
+    if str(dataset_id) not in uploaded:
+        uploaded[str(dataset_id)] = []
+    existing_ids = set(uploaded[str(dataset_id)])
+    if set(ids).intersection(existing_ids):
+        for _id in ids:
+            if _id not in existing_ids:
+                uploaded[str(dataset_id)].append(_id)
+    else:
+        uploaded[str(dataset_id)].extend(ids)
+    os.environ["UPLOADED_IDS"] = json.dumps(uploaded)
