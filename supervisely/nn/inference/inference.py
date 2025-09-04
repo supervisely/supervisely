@@ -2644,13 +2644,6 @@ class Inference:
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
 
-        def add_nn_flags_to_pred_ann(pred: Prediction) -> Prediction:
-            nn_labels = []
-            for label in pred.annotation.labels:
-                nn_label = label.clone(nn_created=True, nn_updated=False)
-                nn_labels.append(nn_label)
-            return pred.annotation.clone(labels=nn_labels)
-
         def add_nn_flags_to_ann(ann: Annotation) -> Annotation:
             nn_labels = []
             for label in ann.labels:
@@ -2811,7 +2804,7 @@ class Inference:
 
                 # add NN flags to predicted labels before optional merge
                 for pred in preds:
-                    pred.annotation = add_nn_flags_to_pred_ann(pred)
+                    pred.annotation = add_nn_flags_to_ann(pred.annotation)
 
                 if upload_mode in ["iou_merge", "append"]:
                     context.setdefault("annotation", {})
