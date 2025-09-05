@@ -305,6 +305,12 @@ class TrainApp:
 
     # Properties
     # General
+    @property
+    def auto_start(self) -> bool:
+        """
+        If True, the training will start automatically after the GUI is loaded and train server is started.
+        """
+        return self.gui._start_training
     # ----------------------------------------- #
 
     # Input Data
@@ -2047,13 +2053,16 @@ class TrainApp:
             try:
                 output_file_info = self._generate_experiment_report(experiment_info, model_meta)
                 experiment_info["has_report"] = True
+                experiment_info["experiment_report_id"] = output_file_info.id
             except Exception as e:
                 logger.error(f"Error generating experiment report: {e}")
                 output_file_info = session_link_file_info
                 experiment_info["has_report"] = False
+                experiment_info["experiment_report_id"] = None
         else:  # link to artifacts directory
             output_file_info = session_link_file_info
             experiment_info["has_report"] = False
+            experiment_info["experiment_report_id"] = None
         return output_file_info, experiment_info
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
@@ -2789,6 +2798,12 @@ class TrainApp:
         train_logger.add_on_step_finished_callback(step_callback)
 
     # ----------------------------------------- #
+    def start_in_thread(self):
+        def auto_train():
+            import threading
+            threading.Thread(target=self._wrapped_start_training, daemon=True).start()
+        self._server.add_event_handler("startup", auto_train)
+
     def _wrapped_start_training(self):
         """
         Wrapper function to wrap the training process.

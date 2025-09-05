@@ -24,7 +24,7 @@
   if
   widget._row_click_handled
   %}
-  @row-click="state.{{{widget.widget_id}}}.selectedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
+  @row-click="state.{{{widget.widget_id}}}.clickedRow = $event; post('/{{{widget.widget_id}}}/row_clicked_cb')"
   {%
   endif
   %}
