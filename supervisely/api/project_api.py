@@ -12,10 +12,12 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Generator,
     List,
     Literal,
     NamedTuple,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -38,12 +40,14 @@ from supervisely.annotation.annotation import TagCollection
 from supervisely.annotation.obj_class import ObjClass
 from supervisely.annotation.obj_class_collection import ObjClassCollection
 from supervisely.annotation.tag_meta import TagMeta, TagValueType
+from supervisely.api.dataset_api import DatasetInfo
 from supervisely.api.module_api import (
     ApiField,
     CloneableModuleApi,
     RemoveableModuleApi,
     UpdateableModule,
 )
+from supervisely.io.env import upload_count, uploaded_ids
 from supervisely.io.json import dump_json_file, load_json_file
 from supervisely.project.project_meta import ProjectMeta
 from supervisely.project.project_meta import ProjectMetaJsonFields as MetaJsonF
@@ -2556,3 +2560,176 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             api.project.calculate_embeddings(project_id)
         """
         self._api.post("embeddings.calculate-project-embeddings", {ApiField.PROJECT_ID: id})
+
+    def recreate_structure_generator(
+        self,
+        src_project_id: int,
+        dst_project_id: Optional[int] = None,
+        dst_project_name: Optional[str] = None,
+    ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
+        """This method can be used to recreate a project with hierarchial datasets (without the data itself) and
+        yields the tuple of source and destination DatasetInfo objects.
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int, optional
+        :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
+        :type dst_project_name: str, optional
+
+        :return: Generator of tuples of source and destination DatasetInfo objects
+        :rtype: Generator[Tuple[DatasetInfo, DatasetInfo], None, None]
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            src_project_id = 123
+            dst_project_id = api.project.create("new_project", "images").id
+
+            for src_ds, dst_ds in api.project.recreate_structure_generator(src_project_id, dst_project_id):
+                print(f"Recreated dataset {src_ds.id} -> {dst_ds.id}")
+                # Implement your logic here to process the datasets.
+        """
+        if dst_project_id is None:
+            src_project_info = self._api.project.get_info_by_id(src_project_id)
+            dst_project_info = self._api.project.create(
+                src_project_info.workspace_id,
+                dst_project_name or f"Recreation of {src_project_info.name}",
+                src_project_info.type,
+                src_project_info.description,
+                change_name_if_conflict=True,
+            )
+            dst_project_id = dst_project_info.id
+
+        datasets = self._api.dataset.get_list(src_project_id, recursive=True, include_custom_data=True)
+        src_to_dst_ids = {}
+
+        for src_dataset_info in datasets:
+            dst_dataset_info = self._api.dataset.create(
+                dst_project_id,
+                src_dataset_info.name,
+                description=src_dataset_info.description,
+                parent_id=src_to_dst_ids.get(src_dataset_info.parent_id),
+                custom_data=src_dataset_info.custom_data,
+            )
+            src_to_dst_ids[src_dataset_info.id] = dst_dataset_info.id
+
+            yield src_dataset_info, dst_dataset_info
+
+    def recreate_structure(
+        self,
+        src_project_id: int,
+        dst_project_id: Optional[int] = None,
+        dst_project_name: Optional[str] = None,
+    ) -> Tuple[List[DatasetInfo], List[DatasetInfo]]:
+        """This method can be used to recreate a project with hierarchial datasets (without the data itself).
+
+        :param src_project_id: Source project ID
+        :type src_project_id: int
+        :param dst_project_id: Destination project ID
+        :type dst_project_id: int, optional
+        :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
+        :type dst_project_name: str, optional
+
+        :return: Destination project ID
+        :rtype: int
+
+        :Usage example:
+
+        .. code-block:: python
+
+            import supervisely as sly
+
+            api = sly.Api.from_env()
+
+            src_project_id = 123
+            dst_project_name = "New Project"
+
+            dst_project_id = api.project.recreate_structure(src_project_id, dst_project_name=dst_project_name)
+            print(f"Recreated project {src_project_id} -> {dst_project_id}")
+        """
+        infos = []
+        for src_info, dst_info in self.recreate_structure_generator(
+            src_project_id, dst_project_id, dst_project_name
+        ):
+            infos.append((src_info, dst_info))
+
+        return infos
+
+    def add_import_history(self, id: int, task_id: int) -> None:
+        """
+        Adds import history to project info. Gets task info and adds it to project custom data.
+
+        :param id: Project ID
+        :type id: int
+        :param task_id: Task ID
+        :type task_id: int
+        :return: None
+        :rtype: :class:`NoneType`
+        :Usage example:
+         .. code-block:: python
+            import os
+            from dotenv import load_dotenv
+
+            import supervisely as sly
+
+            # Load secrets and create API object from .env file (recommended)
+            # Learn more here: https://developer.supervisely.com/getting-started/basics-of-authentication
+            load_dotenv(os.path.expanduser("~/supervisely.env"))
+            api = sly.Api.from_env()
+
+            project_id = 123
+            task_id = 456
+            api.project.add_import_history(project_id, task_id)
+        """
+
+        task_info = self._api.task.get_info_by_id(task_id)
+        module_id = task_info.get("meta", {}).get("app", {}).get("moduleId")
+        slug = None
+        if module_id is not None:
+            module_info = self._api.app.get_ecosystem_module_info(module_id)
+            slug = module_info.slug
+
+        items_count = upload_count()
+        items_count = {int(k): v for k, v in items_count.items()}
+        uploaded_images = uploaded_ids()
+        uploaded_images = {int(k): v for k, v in uploaded_images.items()}
+        total_items = sum(items_count.values()) if len(items_count) > 0 else 0
+        app = task_info.get("meta", {}).get("app")
+        app_name = app.get("name") if app else None
+        app_version = app.get("version") if app else None
+        data = {
+            "task_id": task_id,
+            "app": {"name": app_name, "version": app_version},
+            "slug": slug,
+            "status": task_info.get(ApiField.STATUS),
+            "user_id": task_info.get(ApiField.USER_ID),
+            "team_id": task_info.get(ApiField.TEAM_ID),
+            "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "source_state": task_info.get("settings", {}).get("message", {}).get("state"),
+            "items_count": total_items,
+            "datasets": [
+                {
+                    "id": ds,
+                    "items_count": items_count[ds],
+                    "uploaded_images": uploaded_images.get(ds, []),
+                }
+                for ds in items_count.keys()
+            ],
+        }
+
+        project_info = self.get_info_by_id(id)
+
+        custom_data = project_info.custom_data or {}
+        if "import_history" not in custom_data:
+            custom_data["import_history"] = {"tasks": []}
+        if "tasks" not in custom_data["import_history"]:
+            custom_data["import_history"]["tasks"] = []
+        custom_data["import_history"]["tasks"].append(data)
+
+        self.edit_info(id, custom_data=custom_data)
