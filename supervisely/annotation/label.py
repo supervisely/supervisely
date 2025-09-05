@@ -45,6 +45,10 @@ class LabelJsonFields:
     """"""
     SMART_TOOL_INPUT = "smartToolInput"
     """"""
+    NN_CREATED = "nnCreated"
+    """"""
+    NN_UPDATED = "nnUpdated"
+    """"""
 
 
 class LabelBase:
@@ -65,6 +69,10 @@ class LabelBase:
     :type smart_tool_input: dict, optional
     :param sly_id: Label unique identifier.
     :type sly_id: int, optional
+    :param nn_created: Label created by NN.
+    :type nn_created: bool, optional
+    :param nn_updated: Label updated by NN.
+    :type nn_updated: bool, optional
 
     :Usage example:
 
@@ -99,6 +107,8 @@ class LabelBase:
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
         sly_id: Optional[int] = None,
+        nn_created: Optional[bool] = False,
+        nn_updated: Optional[bool] = False,
     ):
         self._geometry = geometry
         self._obj_class = obj_class
@@ -114,6 +124,8 @@ class LabelBase:
         self._smart_tool_input = smart_tool_input
 
         self._sly_id = sly_id
+        self._nn_created = nn_created
+        self._nn_updated = nn_updated
 
     def _validate_geometry(self):
         """
@@ -268,7 +280,9 @@ class LabelBase:
             #        "interior": []
             #    },
             #    "geometryType": "rectangle",
-            #    "shape": "rectangle"
+            #    "shape": "rectangle",
+            #    "nnCreated": false,
+            #    "nnUpdated": false
             # }
         """
         res = {
@@ -278,6 +292,8 @@ class LabelBase:
             **self.geometry.to_json(),
             GEOMETRY_TYPE: self.geometry.geometry_name(),
             GEOMETRY_SHAPE: self.geometry.geometry_name(),
+            LabelJsonFields.NN_CREATED: self._nn_created,
+            LabelJsonFields.NN_UPDATED: self._nn_updated,
         }
 
         if self.obj_class.sly_id is not None:
@@ -328,7 +344,9 @@ class LabelBase:
                 "points": {
                     "exterior": [[100, 100], [900, 700]],
                     "interior": []
-                }
+                },
+                "nnCreated": false,
+                "nnUpdated": false
             }
 
             label_dog = sly.Label.from_json(data, meta)
@@ -360,6 +378,8 @@ class LabelBase:
             binding_key=binding_key,
             smart_tool_input=smart_tool_input,
             sly_id=data.get(LabelJsonFields.ID),
+            nn_created=data.get(LabelJsonFields.NN_CREATED, False),
+            nn_updated=data.get(LabelJsonFields.NN_UPDATED, False),
         )
 
     @property
@@ -441,6 +461,8 @@ class LabelBase:
         description: Optional[str] = None,
         binding_key: Optional[str] = None,
         smart_tool_input: Optional[Dict] = None,
+        nn_created: Optional[bool] = None,
+        nn_updated: Optional[bool] = None,
     ) -> LabelBase:
         """
         Makes a copy of Label with new fields, if fields are given, otherwise it will use fields of the original Label.
@@ -457,6 +479,10 @@ class LabelBase:
         :type binding_key: str, optional
         :param smart_tool_input: Smart Tool parameters that were used for labeling.
         :type smart_tool_input: dict, optional
+        :param nn_created: Label created by NN.
+        :type nn_created: bool, optional
+        :param nn_updated: Label updated by NN.
+        :type nn_updated: bool, optional
         :return: New instance of Label
         :rtype: :class:`Label<LabelBase>`
         :Usage example:
@@ -501,6 +527,8 @@ class LabelBase:
             description=take_with_default(description, self.description),
             binding_key=take_with_default(binding_key, self.binding_key),
             smart_tool_input=take_with_default(smart_tool_input, self._smart_tool_input),
+            nn_created=take_with_default(nn_created, self._nn_created),
+            nn_updated=take_with_default(nn_updated, self._nn_updated),
         )
 
     def crop(self, rect: Rectangle) -> List[LabelBase]:
@@ -863,6 +891,14 @@ class LabelBase:
     @property
     def labeler_login(self):
         return self.geometry.labeler_login
+
+    @property
+    def nn_created(self) -> bool:
+        return self._nn_created
+
+    @property
+    def nn_updated(self) -> bool:
+        return self._nn_updated
 
     @classmethod
     def _to_pixel_coordinate_system_json(cls, data: Dict, image_size: List[int]) -> Dict:

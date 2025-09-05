@@ -1441,7 +1441,14 @@ class Inference:
             if isinstance(label, list):
                 labels.extend(label)
                 continue
+            
             labels.append(label)
+
+        # Add NN flags to created labels
+        fixed_labels = []
+        for lb in labels:
+            lb = lb.clone(nn_created=True, nn_updated=False)
+            fixed_labels.append(lb)
 
         # create annotation with correct image resolution
         if isinstance(image_path, str):
@@ -1449,7 +1456,7 @@ class Inference:
             img_size = img.shape[:2]
         else:
             img_size = image_path.shape[:2]
-        ann = Annotation(img_size, labels)
+        ann = Annotation(img_size, fixed_labels)
         return ann
 
     @property
@@ -2637,6 +2644,13 @@ class Inference:
         for prediction in predictions:
             ds_predictions[prediction.dataset_id].append(prediction)
 
+        def add_nn_flags_to_ann(ann: Annotation) -> Annotation:
+            nn_labels = []
+            for label in ann.labels:
+                nn_label = label.clone(nn_created=True, nn_updated=False)
+                nn_labels.append(nn_label)
+            return ann.clone(labels=nn_labels)
+
         def _new_name(image_info: ImageInfo):
             name = Path(image_info.name)
             stem = name.stem
@@ -2712,8 +2726,15 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Add NN flags to new predictions before upload
+                anns_with_nn_flags = []
                 for pred, ann in zip(preds, anns):
+                    ann = add_nn_flags_to_ann(ann)
                     pred.annotation = ann
+                    anns_with_nn_flags.append(ann)
+
+                anns = anns_with_nn_flags
 
                 context.setdefault("image_info", {})
                 missing = [
@@ -2778,7 +2799,10 @@ class Inference:
                     iou=iou_merge_threshold,
                     meta=project_meta,
                 )
+
+                # Add NN flags to predicted labels before optional merge
                 for pred, ann in zip(preds, anns):
+                    ann = add_nn_flags_to_ann(ann)
                     pred.annotation = ann
 
                 if upload_mode in ["iou_merge", "append"]:

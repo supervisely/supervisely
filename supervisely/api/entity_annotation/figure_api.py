@@ -221,6 +221,8 @@ class FigureApi(RemoveableBulkModuleApi):
             "meta",
             "area",
             "priority",
+            "nnCreated",
+            "nnUpdated",
         ]
         return self._get_info_by_id(id, "figures.info", {ApiField.FIELDS: fields})
 
@@ -376,6 +378,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         figures_infos = self.get_list_all_pages(
             "figures.list",
@@ -496,6 +500,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
@@ -854,6 +860,8 @@ class FigureApi(RemoveableBulkModuleApi):
             ApiField.AREA,
             ApiField.PRIORITY,
             ApiField.CUSTOM_DATA,
+            ApiField.NN_CREATED,
+            ApiField.NN_UPDATED,
         ]
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
