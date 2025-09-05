@@ -354,7 +354,7 @@ class PreLabelingGUI(Widget):
         finally:
             if self.predict_app_task_id:
                 try:
-                    self.api.task.stop(self.predict_app_task_id)
+                    # self.api.task.stop(self.predict_app_task_id)
                     self.predict_app_task_id = None
                 except Exception as e:
                     logger.error(f"Failed to stop predict app session: {repr(e)}")
