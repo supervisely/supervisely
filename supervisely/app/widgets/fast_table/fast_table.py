@@ -46,6 +46,21 @@ class FastTable(Widget):
     :type width: str, optional
     :param widget_id: Unique widget identifier.
     :type widget_id: str, optional
+    :param show_header: Whether to show table header
+    :type show_header: bool, optional
+    :param is_radio: Enable radio button selection mode (single row selection)
+    :type is_radio: bool, optional
+    :param is_selectable: Enable multiple row selection
+    :type is_selectable: bool, optional
+    :param header_left_content: Widget to display in the left side of the header
+    :type header_left_content: Widget, optional
+    :param header_right_content: Widget to display in the right side of the header
+    :type header_right_content: Widget, optional
+    :param max_selected_rows: Maximum number of rows that can be selected
+    :type max_selected_rows: int, optional
+    :param search_position: Position of the search input ("left" or "right")
+    :type search_position: Literal["left", "right"], optional
+
 
     :Usage example:
     .. code-block:: python
@@ -141,6 +156,8 @@ class FastTable(Widget):
         is_selectable: bool = False,
         header_left_content: Optional[Widget] = None,
         header_right_content: Optional[Widget] = None,
+        max_selected_rows: Optional[int] = None,
+        search_position: Optional[Literal["left", "right"]] = None,
     ):
         self._supported_types = tuple([pd.DataFrame, list, type(None)])
         self._row_click_handled = False
@@ -170,8 +187,9 @@ class FastTable(Widget):
         self._searched_data = None
         self._active_page = 1
         self._width = width
-        self._selected_rows = None
+        self._selected_rows = []
         self._selected_cell = None
+        self._clicked_row = None
         self._is_row_clickable = False
         self._is_cell_clickable = False
         self._search_str = ""
@@ -179,6 +197,9 @@ class FastTable(Widget):
         self._project_meta = self._unpack_project_meta(project_meta)
         self._header_left_content = header_left_content
         self._header_right_content = header_right_content
+        self._max_selected_rows = max_selected_rows
+        acceptable_search_positions = ["left", "right"]
+        self._search_position = search_position if search_position in acceptable_search_positions else "left"
 
         # table_options
         self._page_size = page_size
@@ -234,7 +255,9 @@ class FastTable(Widget):
         self._searched_data = self._search(search_value)
         self._rows_total = len(self._searched_data)
 
-        if self._rows_total > 0 and self._active_page == 0:  # if previous filtered data was empty
+        # if active page is greater than the number of pages (e.g. after filtering)
+        max_page = (self._rows_total - 1) // self._page_size + 1
+        if (self._rows_total > 0 and self._active_page == 0) or self._active_page > max_page:
             self._active_page = 1
             StateJson()[self.widget_id]["page"] = self._active_page
 
@@ -260,7 +283,13 @@ class FastTable(Widget):
                 - isRowClickable: whether rows are clickable
                 - isCellClickable: whether cells are clickable
                 - fixColumns: number of fixed columns
+                - isRadio: whether radio button selection mode is enabled
+                - isRowSelectable: whether multiple row selection is enabled
+                - maxSelectedRows: maximum number of rows that can be selected
+                - searchPosition: position of the search input ("left" or "right")
             - pageSize: number of rows per page
+            - showHeader: whether to show table header
+            - selectionChangedHandled: whether selection changed event listener is set
 
         :return: Dictionary with widget data
         :rtype: Dict[str, Any]
@@ -276,6 +305,9 @@ class FastTable(Widget):
                 "isCellClickable": self._is_cell_clickable,
                 "fixColumns": self._fix_columns,
                 "isRadio": self._is_radio,
+                "isRowSelectable": self._is_selectable,
+                "maxSelectedRows": self._max_selected_rows,
+                "searchPosition": self._search_position
             },
             "pageSize": self._page_size,
             "showHeader": self._show_header,
@@ -286,8 +318,9 @@ class FastTable(Widget):
         """Returns dictionary with widget state.
         Dictionary contains the following fields:
             - search: search string
-            - selectedRow: selected row
+            - selectedRows: selected rows
             - selectedCell: selected cell
+            - clickedRow: clicked row
             - page: active page
             - sort: sorting options with the following fields:
                 - column: index of the column to sort by
@@ -300,6 +333,7 @@ class FastTable(Widget):
             "search": self._search_str,
             "selectedRows": self._selected_rows,
             "selectedCell": self._selected_cell,
+            "clickedRow": self._clicked_row,
             "page": self._active_page,
             "sort": {
                 "column": self._sort_column_idx,
@@ -383,38 +417,95 @@ class FastTable(Widget):
             filter_function = self._default_filter_function
         self._filter_function = filter_function
 
-    def read_json(self, data: Dict, meta: Dict = None) -> None:
+    def read_json(self, data: Dict, meta: Dict = None, custom_columns: Optional[List[Union[str, tuple]]] = None) -> None:
         """Replace table data with options and project meta in the widget
 
-        :param data: Table data with options
+        :param data: Table data with options:
+            - data: table data
+            - columns: list of column names
+            - projectMeta: project meta information - if provided
+            - columnsOptions: list of dicts with options for each column
+            - total: total number of rows
+            - options: table options with the following fields:
+                - isRowClickable: whether rows are clickable
+                - isCellClickable: whether cells are clickable
+                - fixColumns: number of fixed columns
+                - isRadio: whether radio button selection mode is enabled
+                - isRowSelectable: whether multiple row selection is enabled
+                - maxSelectedRows: maximum number of rows that can be selected
+                - searchPosition: position of the search input ("left" or "right")
+            - pageSize: number of rows per page
+            - showHeader: whether to show table header
+            - selectionChangedHandled: whether selection changed event listener is set
+
         :type data: dict
         :param meta: Project meta information
         :type meta: dict
+        :param custom_columns: List of column names. Can include widgets as tuples (column_name, widget)
+        :type custom_columns: List[Union[str, tuple]], optional
+
+        Example of data dict:
+        .. code-block:: python
+
+            data = {
+                "data": [["apple", "21"], ["banana", "15"]],
+                "columns": ["Class", "Items"],
+                "columnsOptions": [
+                    { "type": "class"},
+                    { "maxValue": 21, "postfix": "pcs", "tooltip": "description text", "subtitle": "boxes" }
+                ],
+                "options": {
+                    "isRowClickable": True,
+                    "isCellClickable": True,
+                    "fixColumns": 1,
+                    "isRadio": False,
+                    "isRowSelectable": True,
+                    "maxSelectedRows": 5,
+                    "searchPosition": "right",
+                    "sort": {"column": 0, "order": "asc"},
+                },
+            }
         """
-        self._columns_first_idx = self._prepare_json_data(data, "columns")
         self._columns_options = self._prepare_json_data(data, "columnsOptions")
+        self._read_custom_columns(custom_columns)
+        if not self._columns_first_idx:
+            self._columns_first_idx = self._prepare_json_data(data, "columns")
         self._table_options = self._prepare_json_data(data, "options")
         self._project_meta = self._unpack_project_meta(meta)
-        self._parsed_source_data = data.get("data", None)
-        self._source_data = self._prepare_input_data(self._parsed_source_data)
-        self._sliced_data = self._slice_table_data(self._source_data)
-        self._parsed_active_data = self._unpack_pandas_table_data(self._sliced_data)
+        table_data = data.get("data", None)
+        self._validate_input_data(table_data)
+        self._source_data = self._prepare_input_data(table_data)
+        (
+            self._parsed_source_data,
+            self._sliced_data,
+            self._parsed_active_data,
+        ) = self._prepare_working_data()
         self._rows_total = len(self._parsed_source_data["data"])
         init_options = DataJson()[self.widget_id]["options"]
         init_options.update(self._table_options)
         sort = init_options.pop("sort", {"column": None, "order": None})
-        page_size = init_options.pop("pageSize", 10)
+        self._active_page = 1
+        self._sort_column_idx = sort.get("column", None)
+        if self._sort_column_idx is not None and self._sort_column_idx > len(self._columns_first_idx) - 1:
+            self._sort_column_idx = None
+        self._sort_order = sort.get("order", None)
+        self._page_size = init_options.pop("pageSize", 10) 
         DataJson()[self.widget_id]["data"] = self._parsed_active_data["data"]
         DataJson()[self.widget_id]["columns"] = self._parsed_active_data["columns"]
         DataJson()[self.widget_id]["columnsOptions"] = self._columns_options
         DataJson()[self.widget_id]["options"] = init_options
         DataJson()[self.widget_id]["total"] = len(self._source_data)
-        DataJson()[self.widget_id]["pageSize"] = page_size
+        DataJson()[self.widget_id]["pageSize"] = self._page_size
         DataJson()[self.widget_id]["projectMeta"] = self._project_meta
-        StateJson()[self.widget_id]["sort"] = sort
+        StateJson()[self.widget_id]["sort"]["column"] = self._sort_column_idx
+        StateJson()[self.widget_id]["sort"]["order"] = self._sort_order
+        StateJson()[self.widget_id]["page"] = self._active_page
+        StateJson()[self.widget_id]["selectedRows"] = []
+        StateJson()[self.widget_id]["selectedCell"] = None
+        self._maybe_update_selected_row()
+        self._validate_sort_attrs()
         DataJson().send_changes()
         StateJson().send_changes()
-        self.clear_selection()
 
     def read_pandas(self, data: pd.DataFrame) -> None:
         """Replace table data (rows and columns) in the widget.
@@ -439,6 +530,24 @@ class FastTable(Widget):
 
     def to_json(self, active_page: Optional[bool] = False) -> Dict[str, Any]:
         """Export table data with current options as dict.
+
+        Dictionary contains the following fields:
+            - data: table data
+            - columns: list of column names
+            - projectMeta: project meta information - if provided
+            - columnsOptions: list of dicts with options for each column
+            - total: total number of rows
+            - options: table options with the following fields:
+                - isRowClickable: whether rows are clickable
+                - isCellClickable: whether cells are clickable
+                - fixColumns: number of fixed columns
+                - isRadio: whether radio button selection mode is enabled
+                - isRowSelectable: whether multiple row selection is enabled
+                - maxSelectedRows: maximum number of rows that can be selected
+                - searchPosition: position of the search input ("left" or "right")
+            - pageSize: number of rows per page
+            - showHeader: whether to show table header
+            - selectionChangedHandled: whether selection changed event listener is set
 
         :param active_page: Specifies the size of the data to be exported. If True - returns only the active page of the table
         :type active_page: Optional[bool]
@@ -477,7 +586,7 @@ class FastTable(Widget):
 
     def clear_selection(self) -> None:
         """Clears the selection of the table."""
-        StateJson()[self.widget_id]["selectedRows"] = None
+        StateJson()[self.widget_id]["selectedRows"] = []
         StateJson()[self.widget_id]["selectedCell"] = None
         StateJson().send_changes()
         self._maybe_update_selected_row()
@@ -558,15 +667,15 @@ class FastTable(Widget):
             if self._rows_total != 0:
                 self.select_row(0)
             else:
-                self._selected_rows = None
-                StateJson()[self.widget_id]["selectedRows"] = None
+                self._selected_rows = []
+                StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
                 StateJson().send_changes()
             return
         if not self._selected_rows:
             return
         if self._rows_total == 0:
-            self._selected_rows = None
-            StateJson()[self.widget_id]["selectedRows"] = None
+            self._selected_rows = []
+            StateJson()[self.widget_id]["selectedRows"] = self._selected_rows
             StateJson().send_changes()
             return
         if self._is_selectable:
@@ -1115,8 +1224,12 @@ class FastTable(Widget):
 
         @server.post(selection_changed_route_path)
         def _selection_changed():
-            selected_row = self.get_selected_row()
-            func(selected_row)
+            if self._is_radio:
+                selected_row = self.get_selected_row()
+                func(selected_row)
+            elif self._is_selectable:
+                selected_rows = self.get_selected_rows()
+                func(selected_rows)
 
         self._selection_changed_handled = True
         DataJson()[self.widget_id]["selectionChangedHandled"] = True
@@ -1201,3 +1314,25 @@ class FastTable(Widget):
 
         idxs = self._source_data[self._source_data[column].isin(values)].index.tolist()
         self.select_rows(idxs)
+
+    def _read_custom_columns(self, columns: List[Union[str, tuple]]) -> None:
+        if not columns:
+            return
+        self._columns = columns
+        self._columns_options = self._columns_options or [{} for _ in columns]
+        self._columns_data = []
+        self._columns_first_idx = []
+        for i, col in enumerate(columns):
+            if isinstance(col, str):
+                self._columns_first_idx.append(col)
+                self._columns_data.append(self.ColumnData(name=col))
+            elif isinstance(col, tuple):
+                self._columns_first_idx.append(col[0])
+                self._columns_data.append(
+                    self.ColumnData(name=col[0], is_widget=True, widget=col[1])
+                )
+                self._columns_options[i]["customCell"] = True
+            else:
+                raise TypeError(f"Column name must be a string or a tuple, got {type(col)}")
+
+        self._validate_sort_attrs()
