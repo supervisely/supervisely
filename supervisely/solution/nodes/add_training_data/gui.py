@@ -47,7 +47,7 @@ class AddTrainingDataGUI(Widget):
     @property
     def splits_selector(self) -> TrainValSplitsSelector:
         if not hasattr(self, "_splits_selector"):
-            self._splits_selector = TrainValSplitsSelector()
+            self._splits_selector = TrainValSplitsSelector(self.api, self.get_selected_project_id())
             self.splits_selector.container.hide()
         return self._splits_selector
 
@@ -76,7 +76,7 @@ class AddTrainingDataGUI(Widget):
             )
         back_btn = Button("Back", plain=True, icon="zmdi zmdi-arrow-left", button_size="small")
 
-        @self.project_table.table.selection_changed()
+        @self.project_table.table.selection_changed
         def on_table_selection_change(selected_items):
             if selected_items:
                 next_btn.enable()
@@ -154,20 +154,20 @@ class AddTrainingDataGUI(Widget):
         collections = self.api.entities_collection.get_list(project_id)
         collection_names = [col.name.lower() for col in collections]
         if "train" in collection_names and "val" in collection_names:
-            self.splits_selector.set_active_tab(self.splits_selector.Tabs.COLLECTIONS)
+            self.splits_selector.train_val_splits.set_split_method("collections")
             return
         
         datasets = self.api.dataset.get_list(project_id)
         dataset_names = [ds.name.lower() for ds in datasets]
         if "train" in dataset_names and "val" in dataset_names:
-            self.splits_selector.set_active_tab(self.splits_selector.Tabs.DATASETS)
+            self.splits_selector.train_val_splits.set_split_method("datasets")
             return
         
         meta = ProjectMeta.from_json(self.api.project.get_meta(project_id))
         tag_metas = meta.tag_metas.items()
         item_tag_names = [tag.name.lower() for tag in tag_metas]
         if "train" in item_tag_names and "val" in item_tag_names:
-            self.splits_selector.set_active_tab(self.splits_selector.Tabs.ITEM_TAGS)
+            self.splits_selector.train_val_splits.set_split_method("tags")
             return
 
-        self.splits_selector.set_active_tab(self.splits_selector.Tabs.RANDOM)
+        self.splits_selector.train_val_splits.set_split_method("random")

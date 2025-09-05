@@ -123,6 +123,8 @@ class TrainValSplitsSelector:
             return True
 
         def validate_based_on_tags():
+            if not self.project_id:
+                return
             train_tag = self.train_val_splits.get_train_tag()
             val_tag = self.train_val_splits.get_val_tag()
 
@@ -165,6 +167,8 @@ class TrainValSplitsSelector:
                 return True
 
         def validate_based_on_datasets():
+            if not self.project_id:
+                return False
             train_dataset_id = self.get_train_dataset_ids()
             val_dataset_id = self.get_val_dataset_ids()
             if train_dataset_id is None and val_dataset_id is None:
@@ -240,6 +244,9 @@ class TrainValSplitsSelector:
                 )
                 return True
             from supervisely.api.entities_collection_api import CollectionTypeFilter
+
+            if not self.project_id:
+                return False
 
             train_items = set()
             empty_train_collections = []
@@ -352,6 +359,9 @@ class TrainValSplitsSelector:
                     curr_idx = collection_idx
                     curr_collection = collection
             return curr_collection
+        
+        if not self.project_id:
+            return False
 
         all_collections = self.api.entities_collection.get_list(self.project_id)
         train_collections = []
@@ -386,6 +396,9 @@ class TrainValSplitsSelector:
             nested = self.api.dataset.get_nested(self.project_id, root_ds.id)
             nested_ids = [ds.id for ds in nested]
             return [root_ds.id] + nested_ids
+        
+        if not self.project_id:
+            return False
 
         datasets_found = False
         train_val_dataset_ids = {"train": set(), "val": set()}

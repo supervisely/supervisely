@@ -83,15 +83,10 @@ class AddTrainingDataNode(BaseCardNode):
     def _get_handles(self):
         return [
             {
-                "id": "training_data_input",
+                "id": "add_training_data_id",
                 "type": "target",
-                "position": "left",
-                "connectable": True,
-            },
-            {
-                "id": "training_data_finished",
-                "type": "source",
-                "position": "bottom",
+                "position": "right",
+                "label": "Add Training Data",
                 "connectable": True,
             },
         ]
@@ -102,15 +97,15 @@ class AddTrainingDataNode(BaseCardNode):
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "training_data_added": self.start_task,
+            "add_training_data_id": self.start_task,
         }
 
-    def _available_publish_methods(self):
-        """Returns a dictionary of methods that can be used for publishing events."""
-        return {"train_val_split_finished": self.send_data_copied_message}
+    # def _available_publish_methods(self):
+    #     """Returns a dictionary of methods that can be used for publishing events."""
+    #     return {"training_data_added": self.send_data_copied_message}
     
-    def send_data_copied_message(self):
-        pass
+    # def send_data_copied_message(self):
+    #     pass
 
     def start_task(self) -> None:
         """Start the task to copy training daata from one project to another."""
