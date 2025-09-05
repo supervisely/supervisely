@@ -1,0 +1,43 @@
+# Dockerfile for base-py-sdk with Ubuntu 24.04 + Python 3.12
+# https://hub.docker.com/r/supervisely/base-py-sdk
+
+# Using new base image with Python 3.12
+FROM supervisely/base-py:7.0.0-ubuntu24.04-py3.12
+
+# Updating system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    zlib1g-dev \
+    libmagic-dev \
+    && apt-get -qq -y autoremove \
+    && apt-get autoclean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrading pip
+RUN pip install --upgrade pip
+
+# Installing updated dependencies
+RUN pip install --no-cache-dir \
+    attrs>=23.1.0 \
+    requests>=2.31.0,<3.0.0 \
+    Werkzeug>=2.3.7,<3.0.0 \
+    MarkupSafe>=2.1.3,<3.0.0 \
+    beautifulsoup4>=4.12.2,<5.0.0 \
+    ruamel.yaml>=0.17.32,<1.0.0
+
+# Parameter for SDK version
+ARG tag_ref_name
+
+# Installing Supervisely SDK (all variants)
+RUN pip install --upgrade supervisely==$tag_ref_name
+RUN pip install --upgrade supervisely[apps]==$tag_ref_name  
+RUN pip install --upgrade supervisely[aug]==$tag_ref_name
+
+# Verifying installation
+RUN python -c "import supervisely as sly; print(f'Supervisely SDK: {sly.__version__}')"
+
+# Labels for identification
+LABEL maintainer="Supervisely Team"
+LABEL python.version="3.12"
+LABEL ubuntu.version="24.04" 
+LABEL supervisely.sdk.version="$tag_ref_name"
+LABEL description="Supervisely SDK image with Python 3.12 on Ubuntu 24.04"

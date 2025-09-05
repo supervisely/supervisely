@@ -1,0 +1,55 @@
+# Docker Compose for testing images with Python 3.12
+version: '3.8'
+
+services:
+  # Base image with Python 3.12
+  base-py-test:
+    build:
+      context: ./py
+      dockerfile: Dockerfile.ubuntu24.04-py3.12
+    image: supervisely/base-py:7.0.0-ubuntu24.04-py3.12
+    container_name: sly-base-py-test
+    command: ["python", "--version"]
+    volumes:
+      - ./scripts:/scripts
+      - ../tests:/tests
+    environment:
+      - PYTHONPATH=/workspace
+    working_dir: /workspace
+
+  # SDK image with Python 3.12  
+  py-sdk-test:
+    build:
+      context: ./py_sdk
+      dockerfile: Dockerfile.ubuntu24.04-py3.12
+      args:
+        tag_ref_name: "latest"  # Replace with actual version
+    image: supervisely/base-py-sdk:7.0.0-ubuntu24.04-py3.12
+    container_name: sly-py-sdk-test
+    depends_on:
+      - base-py-test
+    command: ["/scripts/test_python312_compatibility.sh"]
+    volumes:
+      - ./scripts:/scripts
+      - ../tests:/tests
+      - ../supervisely:/workspace/supervisely
+    environment:
+      - PYTHONPATH=/workspace
+    working_dir: /workspace
+
+  # GPU testing (if available)
+  gpu-test:
+    build:
+      context: ./py_sdk
+      dockerfile: Dockerfile.ubuntu24.04-py3.12
+      args:
+        tag_ref_name: "latest"
+    image: supervisely/base-py-sdk:7.0.0-ubuntu24.04-py3.12
+    container_name: sly-gpu-test
+    command: ["python", "-c", "import torch; print(f'CUDA available: {torch.cuda.is_available()}' if 'torch' in locals() else 'PyTorch not installed')"]
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ./scripts:/scripts
