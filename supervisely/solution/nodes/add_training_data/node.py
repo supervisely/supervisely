@@ -30,7 +30,7 @@ class AddTrainingDataNode(BaseCardNode):
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
 
-    def __init__(self, dst_project_id: int, *args, **kwargs):
+    def __init__(self, project_id: int, *args, **kwargs):
         """
         Initialize the AddTrainingData node.
 
@@ -41,7 +41,7 @@ class AddTrainingDataNode(BaseCardNode):
 
         # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
-        self.dst_project_id = dst_project_id
+        self.project_id = project_id
         self._click_handled = True
         self.settings_data = None
         # --- core blocks --------------------------------------------------------
@@ -123,7 +123,7 @@ class AddTrainingDataNode(BaseCardNode):
         settings_data = self.settings_data
 
         src = settings_data['project_id']
-        dst = self.dst_project_id
+        dst = self.project_id
 
         train_set, val_set = settings_data['splits']
         train_ids = self._get_ids_by_iteminfos(src ,train_set)
@@ -220,7 +220,7 @@ class AddTrainingDataNode(BaseCardNode):
             self._images_to_move = []
 
         return TrainingDataAddedMessage(
-            project_id=self.dst_project_id,
+            project_id=self.project_id,
             dataset_ids=[dataset_id],
             splits={
                 "train": train_ids,
