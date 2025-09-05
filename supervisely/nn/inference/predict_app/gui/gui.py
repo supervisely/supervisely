@@ -548,13 +548,21 @@ class PredictAppGui:
 
         # Input
         # Input would be newely created project
+        input_args = {}
         input_parameters = run_parameters["input"]
         input_project_id = input_parameters.get("project_id", None)
         if input_project_id is None:
             raise ValueError("Input project ID is required for prediction.")
         input_dataset_ids = input_parameters.get("dataset_ids", [])
-        if not input_dataset_ids:
+        input_image_ids = input_parameters.get("image_ids", [])
+        if not (input_dataset_ids or input_image_ids):
             raise ValueError("At least one dataset must be selected for prediction.")
+        if input_image_ids:
+            input_args["image_ids"] = input_image_ids
+        elif input_dataset_ids:
+            input_args["dataset_ids"] = input_dataset_ids
+        else:
+            input_args["project_id"] = input_project_id
 
         # Settings
         settings = run_parameters["settings"]
@@ -582,23 +590,32 @@ class PredictAppGui:
         # Always create new project
         # But the actual inference will happen inplace
         output_parameters = run_parameters["output"]
-        project_name = output_parameters["project_name"]
-        if not project_name:
-            input_project_info = self.api.project.get_info_by_id(input_project_id)
-            project_name = input_project_info.name + " [Predictions]"
-            logger.warning("Project name is empty, using auto-generated name: " + project_name)
+        project_name = output_parameters.get("project_name", "")
+        upload_to_source_project = output_parameters.get("upload_to_source_project", False)
+        if upload_to_source_project:
+            output_project_id = input_project_id
+        else:
+            if not project_name:
+                input_project_info = self.api.project.get_info_by_id(input_project_id)
+                project_name = input_project_info.name + " [Predictions]"
+                logger.warning("Project name is empty, using auto-generated name: " + project_name)
 
-        # Copy project
-        self.set_validator_text("Copying project...", "info")
-        created_project = copy_project(
-            self.api,
-            project_name,
-            self.workspace_id,
-            input_project_id,
-            input_dataset_ids,
-            with_annotations,
-            self.output_selector.progress,
-        )
+            # Copy project
+            self.set_validator_text("Copying project...", "info")
+            created_project = copy_project(
+                self.api,
+                project_name,
+                self.workspace_id,
+                input_project_id,
+                input_dataset_ids,
+                with_annotations,
+                self.output_selector.progress,
+            )
+            output_project_id = created_project.id
+            input_args = {
+                "project_id": output_project_id,
+            }
+
         # ------------------------ #
 
         # Run prediction
@@ -607,7 +624,7 @@ class PredictAppGui:
         self._is_running = True
         try:
             with model_api.predict_detached(
-                project_id=created_project.id,
+                **input_args,
                 tqdm=self.output_selector.progress(),
                 **kwargs,
             ) as session:
@@ -635,7 +652,7 @@ class PredictAppGui:
 
         # Set result thumbnail
         self.set_validator_text("Project successfully processed", "success")
-        self.output_selector.set_result_thumbnail(created_project.id)
+        self.output_selector.set_result_thumbnail(output_project_id)
         # ------------------------ #
         return predictions
 
