@@ -38,15 +38,15 @@ class AddTrainingDataNode(BaseCardNode):
         :param y: Y coordinate of the node.
         """
 
-        # --- core blocks --------------------------------------------------------
-        self.gui = AddTrainingDataGUI()
-        self.modal_content = self.gui.widget
 
         # --- parameters --------------------------------------------------------
         self.api = Api.from_env()
         self.dst_project_id = dst_project_id
         self._click_handled = True
         self.settings_data = None
+        # --- core blocks --------------------------------------------------------
+        self.gui = AddTrainingDataGUI(api=self.api)
+        self.modal_content = self.gui.widget
 
         # --- modals -------------------------------------------------------------
         self.modals = [self.gui.modal]
@@ -126,8 +126,8 @@ class AddTrainingDataNode(BaseCardNode):
         dst = self.dst_project_id
 
         train_set, val_set = settings_data['splits']
-        train_ids = self._get_ids_by_iteminfos(train_set)
-        val_ids = self._get_ids_by_iteminfos(val_set)
+        train_ids = self._get_ids_by_iteminfos(src ,train_set)
+        val_ids = self._get_ids_by_iteminfos(src, val_set)
 
         self.show_in_progress_badge()
 

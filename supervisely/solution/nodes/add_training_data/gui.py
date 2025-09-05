@@ -11,6 +11,8 @@ from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplits
 from supervisely.project.project import ProjectType
 from typing import Callable, List, Any
 from supervisely import logger
+from supervisely.api.api import Api
+from supervisely.project import ProjectMeta
 
 class AddTrainingDataGUI(Widget):
     """
@@ -18,10 +20,11 @@ class AddTrainingDataGUI(Widget):
     Allows users to configure random split settings.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, api: Api, *args, **kwargs):
         """
         Initialize the Add Training Data node.
         """
+        self.api = api
         self._on_settings_saved_callbacks: List[Callable] = []
         self.widget = self._create_main_widget()
         super().__init__(*args, **kwargs)
@@ -91,6 +94,7 @@ class AddTrainingDataGUI(Widget):
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
                 back_btn.show()
             elif self.project_table.current_table == self.project_table.CurrentTable.DATASETS:
+                self._set_split_selector_active_tab()
                 self.splits_selector.container.show()
                 self.project_table.hide()
                 next_btn.text = "Select"
@@ -139,3 +143,31 @@ class AddTrainingDataGUI(Widget):
                 callback(settings_data)
             except Exception as e:
                 logger.error(f"Error in settings saved callback: {e}")
+
+    def _set_split_selector_active_tab(self):
+        # First, check if we can set tab to collections: if there are collections with train/val names in the project, set tab to collections
+        # If not, check if there are datasets with train/val names in the project, set tab to datasets
+        # If neither, check if there are item tags with train/val names in the project, set tab to item tags
+        # Otherwise, default to random split tab
+
+        project_id = self.get_selected_project_id()
+        collections = self.api.entities_collection.get_list(project_id)
+        collection_names = [col.name.lower() for col in collections]
+        if "train" in collection_names and "val" in collection_names:
+            self.splits_selector.set_active_tab(self.splits_selector.Tabs.COLLECTIONS)
+            return
+        
+        datasets = self.api.dataset.get_list(project_id)
+        dataset_names = [ds.name.lower() for ds in datasets]
+        if "train" in dataset_names and "val" in dataset_names:
+            self.splits_selector.set_active_tab(self.splits_selector.Tabs.DATASETS)
+            return
+        
+        meta = ProjectMeta.from_json(self.api.project.get_meta(project_id))
+        tag_metas = meta.tag_metas.items()
+        item_tag_names = [tag.name.lower() for tag in tag_metas]
+        if "train" in item_tag_names and "val" in item_tag_names:
+            self.splits_selector.set_active_tab(self.splits_selector.Tabs.ITEM_TAGS)
+            return
+
+        self.splits_selector.set_active_tab(self.splits_selector.Tabs.RANDOM)
