@@ -127,11 +127,11 @@ class AddTrainingDataGUI(Widget):
     
     def _trigger_settings_saved_event(self):
         """Trigger all registered settings saved callbacks"""
+        splits = self.splits_selector.train_val_splits.get_splits()
         settings_data = {
             'project_id': self.get_selected_project_id(),
             'dataset_ids': self.get_selected_dataset_ids(),
-            'splits_config': getattr(self.splits_selector, 'get_splits_config', lambda: {})(),
-            'modal_closed': False
+            'splits': splits,
         }
         
         for callback in self._on_settings_saved_callbacks:
