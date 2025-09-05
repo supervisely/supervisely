@@ -204,7 +204,6 @@ class EvaluationNode(BaseCardNode):
         task_info_json = self._api.task.start(
             agent_id=self.gui.agent_selector.get_value(),
             workspace_id=self.project.workspace_id,
-            task_name="Solution: " + str(self._api.task_id),
             module_id=module_id,
         )
         task_id = task_info_json["id"]

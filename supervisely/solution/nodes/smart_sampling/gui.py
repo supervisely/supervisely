@@ -759,8 +759,6 @@ class SmartSamplingGUI(Widget):
                 workspace_id=self.workspace_id,
                 module_id=module_info.id,
                 params=params,
-                app_version="merge-niko",  # ! TODO: remove after testing
-                is_branch=True,  # ! TODO: remove after testing
             )
             task_id = task_info_json["id"]
             completed = self._wait_until_complete(task_id)

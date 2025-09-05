@@ -298,7 +298,6 @@ class CompareModelsNode(BaseCardNode):
         task_info_json = self._api.task.start(
             agent_id=self.gui.agent_selector.get_value(),
             workspace_id=self.workspace_id,
-            description=f"Solutions: {self._api.task_id}",
             module_id=module_id,
             params=params,
         )
