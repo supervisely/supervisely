@@ -19,7 +19,7 @@ class CloudImport(Widget):
     and manage import tasks.
     """
 
-    APP_SLUG = "e9b5a1d81aa98072cd77b402fdc122d7/cloud-storage-data-synchronizer"
+    APP_SLUG = "supervisely-ecosystem/cloud-storage-data-synchronizer"
     JOB_ID = "cloud_import_job"
 
     def __init__(
@@ -228,7 +228,6 @@ class CloudImport(Widget):
             agent_id=agent_id,
             module_id=module_id,
             workspace_id=self.workspace_id,
-            task_name="Import from Cloud Storage",
             params=params,
         )
 

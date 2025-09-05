@@ -58,8 +58,7 @@ class SamplingMode(Enum):
 
 
 class SmartSamplingGUI(Widget):
-    DATA_COMMANDER_APP_SLUG = "supervisely-ecosystem/data-commander"
-    APP_SLUG = "c1241a06bfa0adbaa863c0ed37fdcf42/embeddings-generator"
+    APP_SLUG = "supervisely-ecosystem/data-commander"
     JOB_ID = "smart_sampling_job"
 
     def __init__(
@@ -732,7 +731,7 @@ class SmartSamplingGUI(Widget):
             if len(flat_images) == 0:
                 logger.warning("No images to copy to the labeling project.")
                 return None
-            module_info = self.api.app.get_ecosystem_module_info(slug=self.DATA_COMMANDER_APP_SLUG)
+            module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
             params = {
                 "state": {
                     "items": [{"id": image_id, "type": "image"} for image_id in flat_images],
