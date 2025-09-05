@@ -288,8 +288,7 @@ class LabelingQueueNode(BaseQueueNode):
                 except Exception as e:
                     break
 
-        def _get_queues_job(api: Api, labeling_queue_id: int):
-            queue_info = api.labeling_queue.get_info_by_id(labeling_queue_id)
+        def _get_queues_job(api: Api, queue_info):
             ann_job, review_job = None, None
             for job in queue_info.jobs:
                 job_info = api.labeling_job.get_info_by_id(job)
@@ -319,7 +318,7 @@ class LabelingQueueNode(BaseQueueNode):
             time.sleep(1)
             model.shutdown()
 
-        ann_job, review_job = _get_queues_job(self.api, self.queue_id)
+        ann_job, review_job = _get_queues_job(self.api, queue_info)
 
         for entity_id in _get_next(self.api, ann_job.id):
             self.api.labeling_job.set_entity_review_status(ann_job.id, entity_id, "accepted")
