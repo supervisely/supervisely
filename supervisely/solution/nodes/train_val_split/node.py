@@ -80,13 +80,13 @@ class TrainValSplitNode(BaseCardNode):
     def _get_handles(self):
         return [
             {
-                "id": "train_val_split_items_count",
+                "id": "accepted_images",
                 "type": "target",
-                "position": "left",
+                "position": "top",
                 "connectable": True,
             },
             {
-                "id": "train_val_split_finished",
+                "id": "accepted_images",
                 "type": "source",
                 "position": "bottom",
                 "connectable": True,
@@ -99,120 +99,37 @@ class TrainValSplitNode(BaseCardNode):
     def _available_subscribe_methods(self) -> Dict[str, Union[Callable, List[Callable]]]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "move_labeled_data_finished": self.split,
-            "train_val_split_items_count": self.set_items_count,
+            # "move_labeled_data_finished": self.split,
+            "accepted_images": self.set_items_count,
         }
 
     def _available_publish_methods(self):
         """Returns a dictionary of methods that can be used for publishing events."""
-        return {"train_val_split_finished": self.send_train_val_split_finished_message}
+        return {"accepted_images": self.send_accepted_images_message}
 
-    def split(
+    def send_accepted_images_message(
         self,
-        message: MoveLabeledDataFinishedMessage,
-        random_selection: bool = True,
-    ) -> MoveLabeledDataFinishedMessage:
-        """
-        Split the given items into train and validation sets.
+        accepted_images: List[int],
+        splits: SplitSettings,
+    ) -> LabelingQueueAcceptedImagesMessage:
 
-        :param message: Message containing the items to split.
-        :type message: MoveLabeledDataFinishedMessage
-        :param random_selection: Whether to randomly select items for the split.
-        :type random_selection: bool
-        :raises ValueError: If no items are provided in the message.
-        :return: Returns the MoveLabeledDataFinishedMessage object
-        :rtype: MoveLabeledDataFinishedMessage
-        """
-        if not message.success:
-            logger.error("Failed to move labeled data. Cannot perform split.")
-            return MoveLabeledDataFinishedMessage(success=False, items=[], items_count=0)
-        settings = self.gui.get_split_settings()
-        if not message.items_count:
-            logger.warning("No items to split. Returning empty splits.")
-            # return TrainValSplitMessage(train=[], val=[]) # TODO:
-        items = message.items
-        train_count = int(len(items) * settings.train_percent / 100)
-        val_count = len(items) - train_count
-        if random_selection:
-            random.shuffle(items)
-        train_items = items[:train_count]
-        val_items = items[train_count : train_count + val_count]
-        self._add_to_collection(train_items, "train")
-        self._add_to_collection(val_items, "val")
-        logger.info(
-            f"Split {len(items)} items into {len(train_items)} train and {len(val_items)} val items."
-        )
-        self.set_items_count()
-
-        return MoveLabeledDataFinishedMessage(
-            success=True,
-            items=train_items + val_items,
-            items_count=len(train_items) + len(val_items),
+        return LabelingQueueAcceptedImagesMessage(
+            accepted_images=accepted_images,
+            train_split=splits.train_percent,
+            val_split=splits.val_percent,
         )
 
-    def set_items_count(
-        self, message: Union[SampleFinishedMessage, LabelingQueueAcceptedImagesMessage] = None
-    ) -> None:
+    def set_items_count(self, message: LabelingQueueAcceptedImagesMessage = None) -> None:
         """Set the number of items in the random splits table."""
-        if isinstance(message, SampleFinishedMessage):
-            items_count = message.items_count
-        elif isinstance(message, LabelingQueueAcceptedImagesMessage):
-            items_count = len(message.accepted_images)
-        else:
-            items_count = 0
-        self.gui.set_items_count(items_count)
+        accepted_images = message.accepted_images
+        self.gui.set_items_count(len(accepted_images))
         self.save_split_settings()
-
-    def send_train_val_split_finished_message(self) -> None:
-        pass
+        splits = self.gui.get_split_settings()
+        self.send_accepted_images_message(accepted_images=accepted_images, splits=splits)
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def _add_to_collection(
-        self,
-        image_ids: List[int],
-        split_name: Literal["train", "val"],
-    ) -> None:
-        """
-        Add the MoveLabeled node to a collection.
-        """
-        if not image_ids:
-            logger.warning("No images to add to collection.")
-            return
-        collections = self.api.entities_collection.get_list(self.dst_project_id)
-
-        main_collection_name = f"all_{split_name}"
-        main_collection = None
-
-        last_batch_index = 0
-        for collection in collections:
-            if collection.name == main_collection_name:
-                main_collection = collection
-            elif collection.name.startswith(f"{split_name}_"):
-                last_batch_index = max(last_batch_index, int(collection.name.split("_")[-1]))
-
-        if main_collection is None:
-            main_collection = self.api.entities_collection.create(
-                self.dst_project_id, main_collection_name
-            )
-            logger.info(f"Created new collection '{main_collection_name}'")
-
-        self.api.entities_collection.add_items(main_collection.id, image_ids)
-
-        batch_collection_name = f"{split_name}_{last_batch_index + 1}"
-        batch_collection = self.api.entities_collection.create(
-            self.dst_project_id, batch_collection_name
-        )
-        logger.info(f"Created new collection '{batch_collection_name}'")
-
-        self.api.entities_collection.add_items(batch_collection.id, image_ids)
-
-        logger.info(f"Added {len(image_ids)} images to {split_name} collections")
-        self.api.entities_collection.add_items(batch_collection.id, image_ids)
-
-        logger.info(f"Added {len(image_ids)} images to {split_name} collections")
-
     def _update_properties(self, settings: SplitSettings):
         """Update node properties with current split settings."""
         counts = self.gui.random_splits.get_splits_counts()

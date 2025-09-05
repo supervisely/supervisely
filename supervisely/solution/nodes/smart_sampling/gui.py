@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import itertools
 import random
 from datetime import datetime
 from enum import Enum
+import time
 from typing import Dict, List, Literal, Optional, Tuple
 from uuid import uuid4
 
@@ -13,6 +15,7 @@ from supervisely.api.entities_collection_api import CollectionTypeFilter
 from supervisely.api.image_api import ImageInfo
 from supervisely.api.project_api import ProjectInfo
 from supervisely.app.content import DataJson, StateJson
+from supervisely.solution.utils import find_agent
 from supervisely.app.widgets import (
     Button,
     Card,
@@ -55,6 +58,7 @@ class SamplingMode(Enum):
 
 
 class SmartSamplingGUI(Widget):
+    DATA_COMMANDER_APP_SLUG = "supervisely-ecosystem/data-commander"
     APP_SLUG = "c1241a06bfa0adbaa863c0ed37fdcf42/embeddings-generator"
     JOB_ID = "smart_sampling_job"
 
@@ -178,7 +182,7 @@ class SmartSamplingGUI(Widget):
 
             for idx, (url, ai_meta) in enumerate(zip(urls, ai_metas)):
                 title = None
-                if isinstance(ai_meta, dict) and ai_meta.get('score') is not None:
+                if isinstance(ai_meta, dict) and ai_meta.get("score") is not None:
                     title = f"Score: {ai_meta.get('score'):.3f}"
                 column = idx % 3
                 self.preview_gallery.append(column_index=column, image_url=url, title=title)
@@ -202,7 +206,9 @@ class SmartSamplingGUI(Widget):
     def _create_images_info_field(self) -> Field:
         get_total_text = lambda x: f"Total images in project: <strong>{x}</strong>"
         total_text = Text(get_total_text(self.items_count))
-        self.set_total_num_text = lambda text: total_text.set(text=get_total_text(text), status="text")
+        self.set_total_num_text = lambda text: total_text.set(
+            text=get_total_text(text), status="text"
+        )
 
         get_diff_text = lambda x: f"Available images for sampling: <strong>{x}</strong>"
         diff_text = Text(get_diff_text(self.diff_num))
@@ -563,7 +569,7 @@ class SmartSamplingGUI(Widget):
 
         :return: int, total number of differences
         """
-        if not diffs:
+        if diffs is None:
             diffs = self.calculate_differences()
         total_diffs = sum(len(imgs) for imgs in diffs.values())
         return total_diffs
@@ -721,12 +727,50 @@ class SmartSamplingGUI(Widget):
         images: Dict[int, List[ImageInfo]],
     ) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
         try:
-            src, dst, images_count = copy_structured_images(
-                api=self.api,
-                src_project_id=self.project_id,
-                dst_project_id=self.dst_project_id,
-                images=images,
+            src = {ds: [i.id for i in imgs] for ds, imgs in images.items() if len(imgs) > 0}
+            flat_images = list(itertools.chain.from_iterable(src.values()))
+            if len(flat_images) == 0:
+                logger.warning("No images to copy to the labeling project.")
+                return None
+            module_info = self.api.app.get_ecosystem_module_info(slug=self.DATA_COMMANDER_APP_SLUG)
+            params = {
+                "state": {
+                    "items": [{"id": image_id, "type": "image"} for image_id in flat_images],
+                    "source": {
+                        "team": {"id": self.team_id},
+                        "project": {"id": self.project_id},
+                        "workspace": {"id": self.workspace_id},
+                    },
+                    "destination": {
+                        "team": {"id": self.team_id},
+                        "project": {"id": self.dst_project_id},
+                        "workspace": {"id": self.workspace_id},
+                    },
+                    "options": {
+                        "preserveSrcDate": False,
+                        "cloneAnnotations": True,
+                        "conflictResolutionMode": "skip",
+                        "saveIdsToProjectCustomData": True,
+                    },
+                    "action": "merge",
+                }
+            }
+            task_info_json = self.api.task.start(
+                agent_id=find_agent(self.api, self.team_id),
+                workspace_id=self.workspace_id,
+                module_id=module_info.id,
+                params=params,
+                app_version="merge-niko",  # ! TODO: remove after testing
+                is_branch=True,  # ! TODO: remove after testing
             )
+            task_id = task_info_json["id"]
+            completed = self._wait_until_complete(task_id)
+            if not completed:
+                logger.warning("Error during copying to new project.")
+                return {}, {}, 0
+            task_info_json = self.api.task.get_info_by_id(task_id)
+            dst = self._get_uploaded_ids(self.dst_project_id, task_id)
+            images_count = sum(len(imgs) for imgs in dst.values())
             return src, dst, images_count
         except Exception as e:
             logger.error(f"Error during copying to new project: {e}")
@@ -811,6 +855,42 @@ class SmartSamplingGUI(Widget):
             for ds_id, img_list in items.items():
                 _items[ds_id] = [img.id for img in img_list]
             self._add_sampled_images(sampling_id, _items)
-            for ds_id, img_list in items.items():
-                _items[ds_id] = [img.id for img in img_list]
-            self._add_sampled_images(sampling_id, _items)
+
+    def _get_uploaded_ids(self, project_id: int, task_id: int) -> Dict[int, List[int]]:
+        """Get the IDs of images uploaded from the project's custom data."""
+        project = self.api.project.get_info_by_id(project_id)
+        if project is None:
+            logger.warning(f"Project with ID {project_id} not found.")
+            return {}
+        custom_data = project.custom_data or {}
+        history = custom_data.get("import_history", {}).get("tasks", [])
+        for record in history:
+            if record.get("task_id") == task_id:
+                break
+        else:
+            logger.warning(f"No import history found for task ID {task_id}.")
+            return {}
+        uploaded_ids = {}
+        for ds in record.get("datasets", []):
+            uploaded_ids[int(ds["id"])] = list(map(int, ds.get("uploaded_images", [])))
+        return uploaded_ids
+
+    def _wait_until_complete(self, task_id: int):
+        """Wait until the task is complete."""
+        current_time = time.time()
+        while (task_status := self.api.task.get_status(task_id)) != self.api.task.Status.FINISHED:
+            if task_status in [
+                self.api.task.Status.ERROR,
+                self.api.task.Status.STOPPED,
+                self.api.task.Status.TERMINATING,
+            ]:
+                logger.error(f"Task {task_id} failed with status: {task_status}")
+                break
+            logger.info("Waiting for the sampling task to start... Status: %s", task_status)
+            time.sleep(5)
+            if time.time() - current_time > 30000:  # 500 minutes timeout
+                logger.warning("Timeout reached while waiting for the sampling task to start.")
+                break
+
+        success = task_status == self.api.task.Status.FINISHED
+        return success

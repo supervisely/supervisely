@@ -27,6 +27,7 @@ class NewExperiment(Widget):
         self,
         team_id: Optional[int] = None,
         workspace_id: Optional[int] = None,
+        user_id: Optional[int] = None,
         project_id: Optional[int] = None,
         redirect_to_session: bool = False,
         filter_projects_by_workspace: bool = False,
@@ -60,6 +61,10 @@ class NewExperiment(Widget):
         widget_id: Optional[str] = None,
     ):
         self._api = Api()
+        self._user_id = user_id
+        if self._user_id is None:
+            self._user_id = self._api.user.get_my_info().id
+
         self._workspace_id = workspace_id
         self._team_id = team_id
         if self._team_id is None and self._workspace_id is not None:
@@ -183,6 +188,7 @@ class NewExperiment(Widget):
 
     def get_json_data(self):
         return {
+            "userId": self._user_id,
             "teamId": self._team_id,
             "workspaceId": self._workspace_id,
             "options": {
@@ -201,9 +207,6 @@ class NewExperiment(Widget):
                 "selectedFrameworks": self._selected_frameworks,
                 "selectedArchitectures": self._selected_architectures,
                 "allowEmptyExperimentName": True,
-                # @TODO: remove this before the branch is merged
-                "version": "solutions-train-test",
-                "isBranch": True,
             },
         }
 
@@ -504,9 +507,9 @@ class NewExperiment(Widget):
     def app_id(self) -> Optional[int]:
         return StateJson()[self.widget_id].get("appId", None)
 
-    @property
-    def model_id(self) -> Optional[int]:
-        return StateJson()[self.widget_id].get("modelId", None)
+    # @property
+    # def model_id(self) -> Optional[int]:
+    #     return StateJson()[self.widget_id].get("modelId", None)
 
     def app_started(self, func):
         route_path = self.get_route_path(NewExperiment.Routes.APP_STARTED)
@@ -521,22 +524,23 @@ class NewExperiment(Widget):
 
     def get_train_settings(self):
         train_settings = {
-                "cvTask": self.cv_task,
-                "projectId": self.project_id,
-                "classes": self.classes,
-                "trainValSplit": {
-                    "mode": self.train_val_split_mode,
-                    "randomTrainPercentage": self.random_train_percentage,
-                    "trainDatasets": self.training_datasets,
-                    "valDatasets": self.val_datasets,
-                    "trainCollections": self.train_collections,
-                    "valCollections": self.val_collections,
-                },
-                "modelId": self.model_id,
-                "agentId": self.agent_id,
-                "export": self.export,
-                "runEvaluation": self.run_evaluation,
-                "runSpeedTest": self.run_speed_test,
-                "experimentName": self.experiment_name,
-            }
+            "cvTask": self.cv_task,
+            "step": self.step,
+            "projectId": self.project_id,
+            "classes": self.classes,
+            "trainValSplit": {
+                "mode": self.train_val_split_mode,
+                "randomTrainPercentage": self.random_train_percentage,
+                "trainDatasets": self.training_datasets,
+                "valDatasets": self.val_datasets,
+                "trainCollections": self.train_collections,
+                "valCollections": self.val_collections,
+            },
+            "modelId": self.model_id,
+            "agentId": self.agent_id,
+            "export": self.export,
+            "runEvaluation": self.run_evaluation,
+            "runSpeedTest": self.run_speed_test,
+            "experimentName": self.experiment_name,
+        }
         return train_settings

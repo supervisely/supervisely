@@ -138,7 +138,7 @@ class CompareModelsNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "comparison_finished",
+                "id": "evaluation_finished",
                 "type": "source",
                 "position": "bottom",
                 "connectable": True,
@@ -162,20 +162,27 @@ class CompareModelsNode(BaseCardNode):
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
-            "comparison_finished": self._send_comparison_finished_message,
+            "evaluation_finished": self._send_comparison_finished_message,
             "new_model_better": self._send_new_model_better_message,
         }
 
     def _process_training_finished_message(self, message: TrainingFinishedMessage):
-        if self.gui.automation_switch.is_switched():
-            # run comparison only if  it is the first training message
-            if self._last_experiment_task_id is None:
-                self._last_experiment_task_id = message.task_id
-                experiment = self._extract_experiment_info(self._last_experiment_task_id)
-                self._last_experiment_eval_dir = self._get_evaluation_dir_from_experiment(
-                    experiment
-                )
-                self.run()
+        is_first_training_message = self._last_experiment_task_id is None
+        experiment = self._extract_experiment_info(message.task_id)
+        self._last_experiment_task_id = message.task_id
+        self._last_experiment_eval_dir = self._get_evaluation_dir_from_experiment(experiment)
+        if is_first_training_message:
+            # if the first training message received, store it as best experiment
+            best_checkpoint = self._get_checkpoint_path(experiment)
+            metric_name = experiment.get("primary_metric")
+            best_metric = self._get_primary_metric_value_from_experiment(experiment)
+            self._send_new_model_better_message(is_better=True, best_checkpoint=best_checkpoint)
+            self._update_best_model_properties(
+                best_checkpoint=best_checkpoint,
+                best_metric=best_metric,
+                metric_name=metric_name,
+                task_id=message.task_id,
+            )
 
     def _process_evaluation_finished_message(self, message: EvaluationFinishedMessage):
         self._best_experiment_eval_dir = message.eval_dir
@@ -353,7 +360,6 @@ class CompareModelsNode(BaseCardNode):
         best_checkpoint = experiment.get("best_checkpoint")
         if artifacts_dir and best_checkpoint:
             return str(Path(artifacts_dir) / "checkpoints" / best_checkpoint)
-        return None
         # checkpoint_path = f"/files/?path={checkpoint_path}"
         # if is_development():
         #     checkpoint_path = abs_url(checkpoint_path)
@@ -368,6 +374,15 @@ class CompareModelsNode(BaseCardNode):
         if is_development():
             report_url = abs_url(report_url)
         return report_url
+
+    def _get_evaluation_dir_from_report_url(self, report_url: str) -> Optional[str]:
+        """Extract the evaluation directory from the report URL."""
+        try:
+            report_id = int(report_url.split("?id=")[-1])
+            file_info = self._api.file.get_info_by_id(report_id)
+            return str(Path(file_info.path).parent)
+        except Exception:
+            pass
 
     def _is_new_model_better(self, old_task_id: int, new_task_id: int) -> bool:
         """

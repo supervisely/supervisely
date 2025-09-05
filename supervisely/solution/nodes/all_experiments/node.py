@@ -14,7 +14,7 @@ class AllExperimentsNode(LinkNode):
     """
 
     TITLE = "All Experiments"
-    DESCRIPTION = "View all experiments with Training Project and explore their details."
+    DESCRIPTION = "Track all experiments in one place. The best model for comparison will be selected from the list of experiments based on the primary metric (e.g. for detection tasks, the primary metric is mAP)."
     ICON = "mdi mdi-flask-outline"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
@@ -59,7 +59,7 @@ class AllExperimentsNode(LinkNode):
     def _get_handles(self):
         return [
             {
-                "id": "training_finished",
+                "id": "register_experiment",
                 "type": "target",
                 "position": "left",
                 "connectable": True,
@@ -77,7 +77,7 @@ class AllExperimentsNode(LinkNode):
     # ------------------------------------------------------------------
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         return {
-            "training_finished": self._process_incomming_message,
+            "register_experiment": self._process_incomming_message,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:

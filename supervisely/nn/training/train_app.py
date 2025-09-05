@@ -56,7 +56,7 @@ from supervisely.nn.benchmark import (
     SemanticSegmentationEvaluator,
 )
 from supervisely.nn.inference import RuntimeType, SessionJSON
-from supervisely.nn.inference.inference import Inference
+from supervisely.nn.inference.inference import Inference, torch_load_safe
 from supervisely.nn.task_type import TaskType
 from supervisely.nn.training.gui.gui import TrainGUI
 from supervisely.nn.training.gui.utils import generate_task_check_function_js
@@ -72,6 +72,7 @@ from supervisely.project.download import (
     is_cached,
 )
 from supervisely.template.experiment.experiment_generator import ExperimentGenerator
+from supervisely.api.entities_collection_api import EntitiesCollectionInfo
 
 
 class TrainApp:
@@ -159,8 +160,14 @@ class TrainApp:
         self.sly_project = None
         # -------------------------- #
 
-        self._train_split = None
-        self._val_split = None
+        # Train Val Splits
+        self._train_split = []
+        self._train_split_item_ids = set()
+        self._train_collection_id = None
+
+        self._val_split = []
+        self._val_split_item_ids = set()
+        self._val_collection_id = None
         # -------------------------- #
 
         # Input
@@ -232,19 +239,33 @@ class TrainApp:
                 self.gui.training_process.start_button.loading = False
                 raise e
 
-        # # Get training status
-        # @self._server.post("/train_status")
-        # def _train_status(response: Response, request: Request):
-        #     """Returns the current training status."""
-        #     status = self.gui.training_process.validator_text.get_value()
-        #     if status == "Training is in progress...":
-        #         try:
-        #             total_epochs = self.progress_bar_main.total
-        #             current_epoch = self.progress_bar_main.current
-        #             status += f" (Epoch {current_epoch}/{total_epochs})"
-        #         except Exception:
-        #             pass
-        #     return {"status": status}
+        @self._server.post("/train_status")
+        def _train_status(response: Response, request: Request):
+            """Returns the current training status."""
+            status = self.gui.training_process.validator_text.get_value()
+            if status == "Training is in progress...":
+                try:
+                    total_epochs = getattr(self.progress_bar_main, "total", None)
+                    current_epoch = getattr(self.progress_bar_main, "current", None)
+                    if total_epochs is not None and current_epoch is not None:
+                        status += f" (Epoch {current_epoch}/{total_epochs})"
+                except Exception:
+                    pass
+            return {"status": status}
+
+        # Read GUI State when launched from experiment modal
+        state = self.gui._extract_state_from_env()
+        logger.debug(f"State: {state}")
+        gui_state_raw = state.get("guiState")
+        if gui_state_raw is not None:
+            logger.info("Loading GUI from state")
+            logger.debug(f"GUI State: {gui_state_raw}")
+            try:
+                self.gui.load_from_app_state(gui_state_raw)
+                logger.info("Successfully loaded GUI from state")
+            except Exception as e:
+                raise e
+        # ----------------------------------------- #
 
     def _register_routes(self):
         """
@@ -284,6 +305,12 @@ class TrainApp:
 
     # Properties
     # General
+    @property
+    def auto_start(self) -> bool:
+        """
+        If True, the training will start automatically after the GUI is loaded and train server is started.
+        """
+        return self.gui._start_training
     # ----------------------------------------- #
 
     # Input Data
@@ -399,14 +426,14 @@ class TrainApp:
         :rtype: str
         """
         return self.gui.training_process.get_device()
-    
+
     @property
     def base_checkpoint(self) -> str:
         """
         Returns the name of the base checkpoint.
         """
         return self.gui.model_selector.get_checkpoint_name()
-    
+
     @property
     def base_checkpoint_link(self) -> str:
         """
@@ -596,13 +623,18 @@ class TrainApp:
             if self.gui.classes_selector is not None:
                 if self.gui.classes_selector.is_convert_class_shapes_enabled():
                     self._convert_project_to_model_task()
+
         # Step 4. Split Project
         self._split_project()
         # Step 5. Remove classes except selected
         if self.sly_project.type == ProjectType.IMAGES.value:
             self.sly_project.remove_classes_except(self.project_dir, self.classes, True)
             self._read_project()
-        # Step 6. Download Model files
+
+        # Step 6. Create collections
+        self._create_collection_splits()
+
+        # Step 7. Download Model files
         self._download_model()
 
     def _finalize(self, experiment_info: dict) -> None:
@@ -847,7 +879,7 @@ class TrainApp:
                         "TensorRT": True
                     },
                 },
-                "experiment_name": "my_experiment",
+                "experiment_name": "My Experiment",
             }
         """
         self.gui.load_from_app_state(app_state)
@@ -1070,6 +1102,7 @@ class TrainApp:
                 project_id=self.project_id,
                 dest_dir=self.project_dir,
                 dataset_ids=[ds_info.id for ds_info in dataset_infos],
+                save_image_info=True,
                 log_progress=True,
                 progress_cb=pbar.update,
             )
@@ -1162,13 +1195,15 @@ class TrainApp:
             self._train_val_split_file = None
             self._train_split = []
             self._val_split = []
+            self._train_split_item_ids = set()
+            self._val_split_item_ids = set()
             return
 
         # Load splits
         self.gui.train_val_splits_selector.set_sly_project(self.sly_project)
-        self._train_split, self._val_split = (
-            self.gui.train_val_splits_selector.train_val_splits.get_splits()
-        )
+        self._train_split, self._val_split = self.gui.train_val_splits_selector.train_val_splits.get_splits()
+        self._train_split_ids, self._val_split_ids = [], []
+        self._train_split_item_ids, self._val_split_item_ids = set(), set()
 
         # Prepare paths
         project_split_path = join(self.work_dir, "splits")
@@ -1177,11 +1212,13 @@ class TrainApp:
                 "split_path": join(project_split_path, "train"),
                 "img_dir": join(project_split_path, "train", "img"),
                 "ann_dir": join(project_split_path, "train", "ann"),
+                "img_info_dir": join(project_split_path, "train", "img_info"),
             },
             "val": {
                 "split_path": join(project_split_path, "val"),
                 "img_dir": join(project_split_path, "val", "img"),
                 "ann_dir": join(project_split_path, "val", "ann"),
+                "img_info_dir": join(project_split_path, "val", "img_info"),
             },
         }
 
@@ -1199,7 +1236,7 @@ class TrainApp:
         }
 
         # Utility function to move files
-        def move_files(split, paths, img_name_format, pbar):
+        def move_files(split, split_name, paths, img_name_format, pbar):
             """
             Move files to the appropriate directories.
             """
@@ -1208,6 +1245,19 @@ class TrainApp:
                 ann_name = f"{item_name}.json"
                 shutil.copy(item.img_path, join(paths["img_dir"], item_name))
                 shutil.copy(item.ann_path, join(paths["ann_dir"], ann_name))
+
+                # Move img_info
+                img_info_name = f"{sly_fs.get_file_name_with_ext(item.img_path)}.json"
+                img_info_path = join(dirname(dirname(item.img_path)), "img_info", img_info_name)
+                # shutil.copy(img_info_path, join(paths["img_info_dir"], ann_name))
+
+                # Write split ids to img_info
+                img_info = sly_json.load_json_file(img_info_path)
+                if split_name == "train":
+                    self._train_split_item_ids.add(img_info["id"])
+                else:
+                    self._val_split_item_ids.add(img_info["id"])
+
                 pbar.update(1)
 
         # Main split processing
@@ -1216,12 +1266,16 @@ class TrainApp:
         ) as main_pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                split = self._train_split if dataset == "train" else self._val_split
+                split_name = dataset
+                if split_name == "train":
+                    split = self._train_split
+                else:
+                    split = self._val_split
                 with self.progress_bar_secondary(
                     message=f"Preparing '{dataset}'", total=len(split)
                 ) as second_pbar:
                     self.progress_bar_secondary.show()
-                    move_files(split, paths[dataset], image_name_formats[dataset], second_pbar)
+                    move_files(split, split_name, paths[dataset], image_name_formats[dataset], second_pbar)
                     main_pbar.update(1)
                 self.progress_bar_secondary.hide()
             self.progress_bar_main.hide()
@@ -1241,10 +1295,7 @@ class TrainApp:
         with self.progress_bar_main(message="Processing splits", total=2) as pbar:
             self.progress_bar_main.show()
             for dataset in ["train", "val"]:
-                shutil.move(
-                    paths[dataset]["split_path"],
-                    train_ds_path if dataset == "train" else val_ds_path,
-                )
+                shutil.move(paths[dataset]["split_path"], train_ds_path if dataset == "train" else val_ds_path)
                 pbar.update(1)
             self.progress_bar_main.hide()
 
@@ -1667,7 +1718,8 @@ class TrainApp:
             try:
                 # pylint: disable=import-error
                 import torch
-                state_dict = torch.load(new_checkpoint_path)
+
+                state_dict = torch_load_safe(new_checkpoint_path)
                 state_dict["model_info"] = {
                     "task_id": self.task_id,
                     "model_name": experiment_info["model_name"],
@@ -1679,9 +1731,7 @@ class TrainApp:
                 state_dict["model_files"] = ckpt_files
                 torch.save(state_dict, new_checkpoint_path)
             except Exception as e:
-                logger.warning(
-                    f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}"
-                )
+                logger.warning(f"Error writing info to checkpoint: '{checkpoint_name}'. Error:{e}")
                 continue
 
             new_checkpoint_paths.append(new_checkpoint_path)
@@ -1817,7 +1867,6 @@ class TrainApp:
         :type export_weights: dict
         """
         logger.debug("Updating experiment info")
-
         experiment_info = {
             "experiment_name": self.gui.training_process.get_experiment_name(),
             "framework_name": self.framework_name,
@@ -1826,6 +1875,7 @@ class TrainApp:
             "base_checkpoint_link": self.base_checkpoint_link,
             "task_type": experiment_info["task_type"],
             "project_id": self.project_info.id,
+            "project_version": self.project_info.version,
             "task_id": self.task_id,
             "model_files": experiment_info["model_files"],
             "checkpoints": experiment_info["checkpoints"],
@@ -1843,6 +1893,8 @@ class TrainApp:
             "logs": {"type": "tensorboard", "link": f"{remote_dir}logs/"},
             "device": self.gui.training_process.get_device_name(),
             "training_duration": self._training_duration,
+            "train_collection_id": self._train_collection_id,
+            "val_collection_id": self._val_collection_id,
         }
 
         if self._has_splits_selector:
@@ -1997,23 +2049,20 @@ class TrainApp:
         :rtype: tuple
         """
         need_generate_report = self._app_options.get("generate_report", False)
-        # @TODO: temporary code to generate report for dev only
-        is_dev = "dev.internal" in self._api.server_address
-        if not is_dev:
-            need_generate_report = False
-        # ------------------------------------------------------------ #
-
-        if need_generate_report: # link to experiment page
+        if need_generate_report:  # link to experiment page
             try:
                 output_file_info = self._generate_experiment_report(experiment_info, model_meta)
                 experiment_info["has_report"] = True
+                experiment_info["experiment_report_id"] = output_file_info.id
             except Exception as e:
                 logger.error(f"Error generating experiment report: {e}")
                 output_file_info = session_link_file_info
                 experiment_info["has_report"] = False
-        else: # link to artifacts directory
+                experiment_info["experiment_report_id"] = None
+        else:  # link to artifacts directory
             output_file_info = session_link_file_info
             experiment_info["has_report"] = False
+            experiment_info["experiment_report_id"] = None
         return output_file_info, experiment_info
 
     def _get_train_val_splits_for_app_state(self) -> Dict:
@@ -2749,6 +2798,12 @@ class TrainApp:
         train_logger.add_on_step_finished_callback(step_callback)
 
     # ----------------------------------------- #
+    def start_in_thread(self):
+        def auto_train():
+            import threading
+            threading.Thread(target=self._wrapped_start_training, daemon=True).start()
+        self._server.add_event_handler("startup", auto_train)
+
     def _wrapped_start_training(self):
         """
         Wrapper function to wrap the training process.
@@ -3089,4 +3144,82 @@ class TrainApp:
         # 4. Match splits with original project
         gt_split_data = self._postprocess_splits(gt_project_info.id)
         return gt_project_info.id, gt_split_data
-        return gt_project_info.id, gt_split_data
+
+    def _create_collection_splits(self):
+        def _check_match(current_selected_collection_ids: List[int], all_split_collections: List[EntitiesCollectionInfo]):
+            if len(current_selected_collection_ids) > 0:
+                if len(current_selected_collection_ids) == 1:
+                    current_selected_collection_id = current_selected_collection_ids[0]
+                    for collection in all_split_collections:
+                        if collection.id == current_selected_collection_id:
+                            return True
+            return False
+
+        # Case 1: Use existing collections for training. No need to create new collections
+        split_method = self.gui.train_val_splits_selector.get_split_method()
+        all_train_collections = self.gui.train_val_splits_selector.all_train_collections
+        all_val_collections = self.gui.train_val_splits_selector.all_val_collections
+        if split_method == "Based on collections":
+            current_selected_train_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_train_collections_ids()
+            train_match = _check_match(current_selected_train_collection_ids, all_train_collections)
+            if train_match:
+                current_selected_val_collection_ids = self.gui.train_val_splits_selector.train_val_splits.get_val_collections_ids()
+                val_match = _check_match(current_selected_val_collection_ids, all_val_collections)
+                if val_match:
+                    self._train_collection_id = current_selected_train_collection_ids[0]
+                    self._val_collection_id = current_selected_val_collection_ids[0]
+                    self._update_project_custom_data(self._train_collection_id, self._val_collection_id)
+                    return
+        # ------------------------------------------------------------ #
+
+        # Case 2: Create new collections for selected train val splits. Need to create new collections
+        item_type = self.project_info.type
+        experiment_name = self.gui.training_process.get_experiment_name()
+
+        train_collection_idx = 1
+        val_collection_idx = 1        
+
+        # Get train collection with max idx
+        if len(all_train_collections) > 0:
+            train_collection_idx = max([int(collection.name.split("_")[1]) for collection in all_train_collections])
+            train_collection_idx += 1
+        # Get val collection with max idx
+        if len(all_val_collections) > 0:
+            val_collection_idx = max([int(collection.name.split("_")[1]) for collection in all_val_collections])
+            val_collection_idx += 1
+        # -------------------------------- #
+
+        # Create Train Collection
+        train_img_ids = list(self._train_split_item_ids)
+        train_collection_description = f"Collection with train {item_type} for experiment: {experiment_name}"
+        train_collection = self._api.entities_collection.create(self.project_id, f"train_{train_collection_idx}", train_collection_description)
+        train_collection_id = getattr(train_collection, "id", None)
+        if train_collection_id is None:
+            raise AttributeError("Train EntitiesCollectionInfo object does not have 'id' attribute")
+        self._api.entities_collection.add_items(train_collection_id, train_img_ids)
+        self._train_collection_id = train_collection_id
+
+        # Create Val Collection
+        val_img_ids = list(self._val_split_item_ids)
+        val_collection_description = f"Collection with val {item_type} for experiment: {experiment_name}"
+        val_collection = self._api.entities_collection.create(self.project_id, f"val_{val_collection_idx}", val_collection_description)
+        val_collection_id = getattr(val_collection, "id", None)
+        if val_collection_id is None:
+            raise AttributeError("Val EntitiesCollectionInfo object does not have 'id' attribute")
+        self._api.entities_collection.add_items(val_collection_id, val_img_ids)
+        self._val_collection_id = val_collection_id
+
+        # Update Project Custom Data
+        self._update_project_custom_data(train_collection_id, val_collection_id)
+
+    def _update_project_custom_data(self, train_collection_id: int, val_collection_id: int):
+        train_info = {
+            "task_id": self.task_id,
+            "framework_name": self.framework_name,
+            "splits": {"train_collection": train_collection_id, "val_collection": val_collection_id}
+        }
+        custom_data = self._api.project.get_info_by_id(self.project_id).custom_data
+        train_info_list = custom_data.get("train_info", [])
+        train_info_list.append(train_info)
+        custom_data.update({"train_info": train_info_list})
+        self._api.project.update_custom_data(self.project_id, custom_data)

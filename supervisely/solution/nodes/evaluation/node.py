@@ -13,6 +13,7 @@ from supervisely.solution.engine.models import (
     EvaluationFinishedMessage,
     TrainingFinishedMessage,
 )
+from supervisely.solution.utils import find_agent
 from supervisely.solution.nodes.evaluation.gui import EvaluationReportGUI
 from supervisely.solution.nodes.evaluation.history import EvaluationTaskHistory
 
@@ -171,7 +172,9 @@ class EvaluationNode(BaseCardNode):
         try:
             agent_id = self.gui.agent_selector.get_value()
             if not agent_id:
-                raise ValueError("Agent ID is not set. Please select an agent.")
+                agent_id = find_agent(self._api, self.project.team_id)
+                if not agent_id:
+                    raise ValueError("Agent ID is not set.")
 
             self._model = self._api.nn.deploy(
                 model=self._model_path,
@@ -203,8 +206,6 @@ class EvaluationNode(BaseCardNode):
             workspace_id=self.project.workspace_id,
             task_name="Solution: " + str(self._api.task_id),
             module_id=module_id,
-            is_branch=True,  # ! remove
-            app_version="add-collections",  # ! remove
         )
         task_id = task_info_json["id"]
         current_time = time.time()

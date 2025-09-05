@@ -26,6 +26,7 @@ class ModelSelector:
 
     def __init__(self, api: Api, framework: str, models: list, app_options: dict = {}):
         # Init widgets
+        self.api = api
         self.pretrained_models_table = None
         self.experiment_selector = None
         self.model_source_tabs = None
@@ -50,7 +51,7 @@ class ModelSelector:
 
         # GUI Components
         self.pretrained_models_table = PretrainedModelsSelector(self.models)
-        experiment_infos = get_experiment_infos(api, self.team_id, framework)
+        experiment_infos = get_experiment_infos(self.api, self.team_id, framework)
         if self.app_options.get("legacy_checkpoints", False):
             try:
                 framework_cls = FrameworkMapper.get_framework_cls(framework, self.team_id)
@@ -59,7 +60,7 @@ class ModelSelector:
             except:
                 logger.warning(f"Legacy checkpoints are not available for '{framework}'")
 
-        self.experiment_selector = ExperimentSelector(self.team_id, experiment_infos)
+        self.experiment_selector = ExperimentSelector(self.api, self.team_id, experiment_infos)
 
         tab_titles = []
         tab_descriptions = []
@@ -85,6 +86,7 @@ class ModelSelector:
         self.validator_text = Text("")
         self.validator_text.hide()
         self.button = Button("Select")
+
         self.display_widgets.extend([self.model_source_tabs, self.validator_text, self.button])
         # -------------------------------- #
 
@@ -118,14 +120,14 @@ class ModelSelector:
             model_name = _get_model_name(selected_row)
         else:
             selected_row = self.experiment_selector.get_selected_experiment_info()
-            model_name = selected_row.get("model_name", None)
+            model_name = selected_row.model_name
         return model_name
 
     def get_model_info(self) -> dict:
         if self.get_model_source() == ModelSource.PRETRAINED:
             return self.pretrained_models_table.get_selected_row()
         else:
-            return self.experiment_selector.get_selected_experiment_info()
+            return self.experiment_selector.get_selected_experiment_info().to_json()
 
     def get_checkpoint_name(self) -> str:
         if self.get_model_source() == ModelSource.PRETRAINED:
@@ -146,7 +148,7 @@ class ModelSelector:
         else:
             checkpoint_name = self.experiment_selector.get_selected_checkpoint_name()
         return checkpoint_name
-    
+
     def get_checkpoint_link(self) -> str:
         if self.get_model_source() == ModelSource.PRETRAINED:
             selected_row = self.pretrained_models_table.get_selected_row()
@@ -182,4 +184,4 @@ class ModelSelector:
         if self.get_model_source() == ModelSource.PRETRAINED:
             return self.pretrained_models_table.get_selected_task_type()
         else:
-            return self.experiment_selector.get_selected_task_type()
+            return self.experiment_selector.get_selected_experiment_info().task_type

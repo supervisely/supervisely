@@ -4,6 +4,7 @@ from typing import Literal, Optional, Union
 from supervisely._utils import abs_url, is_development
 from supervisely.api.api import Api
 from supervisely.io.fs import silent_remove
+from supervisely.io.env import team_id as env_team_id
 from supervisely.sly_logger import logger
 from supervisely.solution.components.link_node.node import LinkNode
 
@@ -27,6 +28,7 @@ class EvaluationReportNode(LinkNode):
         **kwargs,
     ):
         self._api = Api.from_env()
+        self._team_id = env_team_id()
         title = kwargs.pop("title", self.TITLE)
         description = kwargs.pop("description", self.DESCRIPTION)
         icon = kwargs.pop("icon", self.ICON)
@@ -65,7 +67,6 @@ class EvaluationReportNode(LinkNode):
     def _available_subscribe_methods(self):
         return {
             "evaluation_finished": self._process_incoming_message,
-            "comparison_finished": self._process_incoming_message,
         }
 
     def _process_incoming_message(self, msg):
@@ -83,12 +84,12 @@ class EvaluationReportNode(LinkNode):
         lnk_path = f"{eval_dir.rstrip('/')}/visualizations/Model Evaluation Report.lnk"
         link = self._get_url_from_lnk_path(lnk_path)
         if link:
-            self.update_badge_by_key(key="status", value="New report", badge_type="success")
-            self.update_property("Report Link", "Open Report", link=link, highlight=True)
+            self.update_badge_by_key(key="Evaluation Report", label="new", badge_type="success")
+            self.update_property("Evaluation Report", "open 🔗", link=link, highlight=True)
             self.set_link(link)
         else:
-            self.remove_badge_by_key("status")
-            self.remove_property_by_key("Report Link")
+            self.remove_badge_by_key("Evaluation Report")
+            self.remove_property_by_key("Evaluation Report")
             self.remove_link()
 
     def _get_url_from_lnk_path(self, remote_lnk_path) -> str:
@@ -96,13 +97,13 @@ class EvaluationReportNode(LinkNode):
             logger.warning("Remote link path is empty.")
             return
 
-        file_info = self._api.storage.get_info_by_path(self.team_id, remote_lnk_path)
+        file_info = self._api.storage.get_info_by_path(self._team_id, remote_lnk_path)
         if not file_info:
             logger.warning(f"File info not found for path: {remote_lnk_path}")
             return
         temp_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".lnk")
         try:
-            self._api.storage.download(self.team_id, remote_lnk_path, temp_file.name)
+            self._api.storage.download(self._team_id, remote_lnk_path, temp_file.name)
             with open(temp_file.name, "r") as f:
                 line = f.readline()
                 if not line.startswith("/model-benchmark?id="):
@@ -112,7 +113,7 @@ class EvaluationReportNode(LinkNode):
             logger.error(f"Failed to read the link file: {e}")
             logger.info("Trying to find the report path in Team Files...")
             report_path = remote_lnk_path.replace("Model Evaluation Report.lnk", "template.vue")
-            report_info = self._api.storage.get_info_by_path(self.team_id, report_path)
+            report_info = self._api.storage.get_info_by_path(self._team_id, report_path)
             if not report_info:
                 logger.error(f"Report path not found in Team Files: {report_path}")
                 return

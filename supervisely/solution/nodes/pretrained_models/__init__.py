@@ -1,1 +1,1 @@
-from .node import PretrainedModelsNode
+from .node import BaseTrainNode

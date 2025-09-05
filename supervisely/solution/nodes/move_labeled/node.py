@@ -1,3 +1,4 @@
+import random
 import threading
 import time
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
@@ -42,6 +43,8 @@ class MoveLabeledNode(BaseCardNode):
         self.src_project_id = src_project_id
         self.dst_project_id = dst_project_id
         self._images_to_move = []
+        self._train_percent = None
+        self._val_percent = None
         self._click_handled = True
 
         # --- core blocks --------------------------------------------------------
@@ -74,7 +77,7 @@ class MoveLabeledNode(BaseCardNode):
         @self.gui.run_btn.click
         def on_run_click():
             self.gui.modal.hide()
-            self.start_task()
+            self.run()
 
         # --- modals -------------------------------------------------------------
         self.modals = [
@@ -90,7 +93,7 @@ class MoveLabeledNode(BaseCardNode):
             self.apply_automation()
 
     def configure_automation(self, *args, **kwargs):
-        self.automation.func = self.start_task
+        self.automation.func = self.run
 
     # ------------------------------------------------------------------
     # Handels ----------------------------------------------------------
@@ -98,7 +101,7 @@ class MoveLabeledNode(BaseCardNode):
     def _get_handles(self):
         return [
             {
-                "id": "queue_info_updated",
+                "id": "accepted_images",
                 "type": "target",
                 "position": "top",
                 "connectable": True,
@@ -117,14 +120,14 @@ class MoveLabeledNode(BaseCardNode):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for publishing events."""
         return {
-            "move_labeled_data_finished": self.wait_task_complete,
+            "move_labeled_data_finished": self.send_data_moving_finished_message,
             # "queue_info_updated": self.send_images_count_message,
         }
 
     def _available_subscribe_methods(self):
         """Returns a dictionary of methods that can be used as callbacks for subscribed events."""
         return {
-            "queue_info_updated": self.set_images_to_move,
+            "accepted_images": self._update_images_to_move_info,
         }
 
     def send_data_moving_finished_message(
@@ -139,16 +142,29 @@ class MoveLabeledNode(BaseCardNode):
             items_count=items_count,
         )
 
-    # def send_images_count_message(self, count: int) -> LabelingQueueAcceptedImagesMessage:
-    #     return LabelingQueueAcceptedImagesMessage(accepted_images=[i for i in range(count)])
+    # subscribe event (may receive Message object)
+    def _update_images_to_move_info(self, message: LabelingQueueAcceptedImagesMessage) -> None:
+        """
+        Set the images to move based on the message.
+        """
+        if not message.accepted_images:
+            logger.warning("No items to move. Returning empty list.")
+            self._images_to_move = []
+        else:
+            self._images_to_move = message.accepted_images
+        logger.info(f"Set {len(self._images_to_move)} images to move.")
+        self.gui.set_items_count(len(self._images_to_move))
+        self.update_property("Available items to move", f"{len(self._images_to_move)}")
+
+        if message.train_split is not None:
+            self._train_percent = message.train_split
+        if message.val_split is not None:
+            self._val_percent = message.val_split
+        if self._train_percent is not None and self._val_percent is not None:
+            logger.info(f"Train/Val split settings: {self._train_percent}%/{self._val_percent}%")
 
     # publish event (may send Message object)
-    def wait_task_complete(
-        self,
-        task_id: int,
-        dataset_id: int,
-        images: List[int],
-    ) -> MoveLabeledDataFinishedMessage:
+    def wait_task_complete(self, task_id: int, src_images: List[int]) -> MoveLabeledDataFinishedMessage:
         """Wait until the task is complete."""
         task_info_json = self.api.task.get_info_by_id(task_id)
         if task_info_json is None:
@@ -170,6 +186,9 @@ class MoveLabeledNode(BaseCardNode):
                 logger.warning("Timeout reached while waiting for the evaluation task to start.")
                 break
 
+        success = task_status == self.api.task.Status.FINISHED
+        items = self._get_uploaded_ids(self.dst_project_id, task_id)
+
         try:
             task_info_json = {"id": task_id, "status": task_status.value}
             self.history.update_task(task_id=task_id, task=task_info_json)
@@ -177,42 +196,28 @@ class MoveLabeledNode(BaseCardNode):
         except Exception as e:
             logger.error(f"Failed to update task history: {repr(e)}")
 
+        try:
+            if self._train_percent is not None and self._val_percent is not None:
+                logger.info("Performing train/val split after moving data.")
+                self.split(items)
+        except Exception as e:
+            logger.error(f"Failed to perform train/val split: {repr(e)}")
+
         self.hide_in_progress_badge()
 
-        success = task_status == self.api.task.Status.FINISHED
-        res = self.api.image.get_list(dataset_id=dataset_id)
-        res = [img.id for img in res]
-        if len(res) != len(images):
-            logger.error(f"Not all images were moved. Expected {len(images)}, but got {len(res)}.")
-            success = False
-
+        moved = len(items) if success else 0
         if success:
-            logger.info(f"Setting {len(res)} images as moved. Cleaning up the list.")
+            logger.info(f"{moved} items moved successfully. Clearing the move list.")
             self._images_to_move = []
 
-        return self.send_data_moving_finished_message(
-            success=success, items=res, items_count=len(res)
-        )
-
-    # subscribe event (may receive Message object)
-    def set_images_to_move(self, message: LabelingQueueAcceptedImagesMessage) -> None:
-        """
-        Set the images to move based on the message.
-        """
-        if not message.accepted_images:
-            logger.warning("No items to move. Returning empty list.")
-            self._images_to_move = []
-        else:
-            self._images_to_move = message.accepted_images
-        logger.info(f"Set {len(self._images_to_move)} images to move.")
-        self.gui.set_items_count(len(self._images_to_move))
-        self.update_property("Available items to move", f"{len(self._images_to_move)}")
-        # self.send_images_count_message(len(self._images_to_move))
+        if moved > 0:
+            self.send_data_moving_finished_message(success=success, items=items, items_count=moved)
+            self.api.image.remove_batch(src_images, batch_size=200)
 
     # ------------------------------------------------------------------
     # Automation ---------------------------------------------------
     # ------------------------------------------------------------------
-    def update_automation_details(self) -> Tuple[int, str, int, str]:
+    def _update_automation_details(self) -> None:
         enabled, period, interval, min_batch, sec = self.automation.get_details()
         if enabled is not None:
             self.show_automation_badge()
@@ -230,13 +235,13 @@ class MoveLabeledNode(BaseCardNode):
         """
         Apply the automation function to the MoveLabeled node.
         """
-        self.automation.apply(func=self.start_task)
-        self.update_automation_details()
+        self.automation.apply(func=self.run)
+        self._update_automation_details()
 
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
-    def start_task(self) -> None:
+    def run(self) -> None:
         """Start the task to move labeled data from one project to another."""
         src = self.src_project_id
         dst = self.dst_project_id
@@ -253,16 +258,10 @@ class MoveLabeledNode(BaseCardNode):
         self.show_in_progress_badge()
         logger.info(f"Moving {len(images)} images (project ID:{src} → ID:{dst}).")
 
-        dst_project = self.api.project.get_info_by_id(dst)
-        ds_count = dst_project.datasets_count or 0
-        ds_name = f"batch_{ds_count + 1}"
-        dst_dataset = self.api.dataset.create(dst, ds_name, change_name_if_conflict=True)
-
         module_info = self.api.app.get_ecosystem_module_info(slug=self.APP_SLUG)
         params = {
             "state": {
                 "items": [{"id": image_id, "type": "image"} for image_id in images],
-                # "items": [ds ids] #  (parent dataset ids),
                 "source": {
                     "team": {"id": sly_env.team_id()},
                     "project": {"id": src},
@@ -270,17 +269,16 @@ class MoveLabeledNode(BaseCardNode):
                 },
                 "destination": {
                     "team": {"id": sly_env.team_id()},
-                    # "dataset": {"id": dst_dataset.id},
                     "project": {"id": dst},
                     "workspace": {"id": sly_env.workspace_id()},
                 },
                 "options": {
                     "preserveSrcDate": False,
                     "cloneAnnotations": True,
-                    "conflictResolutionMode": "rename",
-                    # "filter": [{"id": image_id, "type": "image"} for image_id in images], # by item ids
+                    "conflictResolutionMode": "skip",
+                    "saveIdsToProjectCustomData": True,
                 },
-                "action": "move",
+                "action": "merge",
             }
         }
         task_info_json = self.api.task.start(
@@ -289,6 +287,8 @@ class MoveLabeledNode(BaseCardNode):
             description=f"Solutions: {sly_env.task_id()}",
             module_id=module_info.id,
             params=params,
+            app_version="merge-niko",  # ! TODO: remove after testing
+            is_branch=True,  # ! TODO: remove after testing
         )
         task_info_json = self.api.task.get_info_by_id(task_info_json["id"])
 
@@ -306,7 +306,77 @@ class MoveLabeledNode(BaseCardNode):
         task_id = task_info_json["id"]
         thread = threading.Thread(
             target=self.wait_task_complete,
-            args=(task_id, dst_dataset.id, images),
+            args=(task_id, images),
             daemon=True,
         )
         thread.start()
+
+    # ------------------------------------------------------------------
+    # Helpers ----------------------------------------------------------
+    # ------------------------------------------------------------------
+    def split(self, items: List[int], random_selection: bool = True):
+        """Split the given items into train and validation sets."""
+        if not items:
+            logger.warning("No items to split.")
+            return
+
+        train_count = int(len(items) * self._train_percent / 100)
+        val_count = len(items) - train_count
+        if random_selection:
+            random.shuffle(items)
+        train = items[:train_count]
+        val = items[train_count : train_count + val_count]
+        self._add_to_collection(train, "all_train")
+        self._add_to_collection(val, "all_val")
+        self._add_to_collection(items, "batch")
+        logger.info(f"Split {len(items)} items into {len(train)} train and {len(val)} val items.")
+
+    def _add_to_collection(
+        self,
+        image_ids: List[int],
+        split_name: Literal["all_train", "all_val", "batch"],
+    ) -> None:
+        """Add the MoveLabeled node to a collection."""
+        if not image_ids:
+            return
+        collections = self.api.entities_collection.get_list(self.dst_project_id)
+
+        main_col = None
+
+        last_batch_idx = 0
+        for collection in collections:
+            if collection.name == split_name and split_name in ["all_train", "all_val"]:
+                main_col = collection
+            elif split_name == "batch":
+                if collection.name.startswith("batch_"):
+                    last_batch_idx = max(last_batch_idx, int(collection.name.split("_")[-1]))
+
+        if main_col is None and split_name in ["all_train", "all_val"]:
+            main_col = self.api.entities_collection.create(self.dst_project_id, split_name)
+            logger.info(f"Created new collection '{split_name}'")
+        elif split_name == "batch":
+            batch_name = f"batch_{last_batch_idx + 1}"
+            main_col = self.api.entities_collection.create(self.dst_project_id, batch_name)
+            logger.info(f"Created new collection '{batch_name}'")
+
+        self.api.entities_collection.add_items(main_col.id, image_ids)
+
+
+    def _get_uploaded_ids(self, project_id: int, task_id: int) -> List[int]:
+        """Get the IDs of images uploaded from the project's custom data."""
+        project = self.api.project.get_info_by_id(project_id)
+        if project is None:
+            logger.warning(f"Project with ID {project_id} not found.")
+            return []
+        custom_data = project.custom_data or {}
+        history = custom_data.get("import_history", {}).get("tasks", [])
+        for record in history:
+            if record.get("task_id") == task_id:
+                break
+        else:
+            logger.warning(f"No import history found for task ID {task_id}.")
+            return []
+        uploaded_ids = []
+        for ds in record.get("datasets", []):
+            uploaded_ids.extend(list(map(int, ds.get("uploaded_images", []))))
+        return uploaded_ids

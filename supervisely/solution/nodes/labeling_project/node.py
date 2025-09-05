@@ -37,7 +37,8 @@ class LabelingProjectNode(ProjectNode):
     def _available_subscribe_methods(self) -> Dict[str, Callable]:
         """Returns a dictionary of methods that can be used for subscribing to events."""
         return {
-            "sample_finished": self.refresh,
+            "sampling_finished": self.refresh,
+            "pre_labeling_finished": self.refresh,
         }
 
     def _available_publish_methods(self) -> Dict[str, Callable]:
@@ -46,10 +47,10 @@ class LabelingProjectNode(ProjectNode):
             "project_updated": self.send_project_updated_message,
         }
 
-    def _available_handles(self):
+    def _get_handles(self):
         return [
             {
-                "id": "sample_finished",
+                "id": "sampling_finished",
                 "type": "target",
                 "position": "top",
                 "label": "Input",
@@ -59,6 +60,13 @@ class LabelingProjectNode(ProjectNode):
                 "id": "project_updated",
                 "type": "source",
                 "position": "bottom",
+                "label": "Output",
+                "connectable": True,
+            },
+            {
+                "id": "pre_labeling_finished",
+                "type": "target",
+                "position": "right",
                 "label": "Output",
                 "connectable": True,
             },

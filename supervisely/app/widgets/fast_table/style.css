@@ -694,3 +694,27 @@
 		 padding-right: 1.5rem;
 	}
 }
+
+.ellipsis {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.row-radio .el-radio__inner {
+	border-width: 1px;
+}
+
+.header-left-side-start-cls {
+	color: black;
+}
+
+.sly-fast-table-disable-overlay {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	right: 0px;
+	bottom: 0px;
+	z-index: 2000;
+	background-color: rgba(227, 230, 236, 0.5);
+	border-radius: 0.5rem;
+}

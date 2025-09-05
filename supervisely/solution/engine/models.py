@@ -80,6 +80,12 @@ class LabelingQueueAcceptedImagesMessage(Message):
     accepted_images: List[int] = Field(
         ..., description="List of image IDs that have been accepted in the labeling queue"
     )
+    train_split: Optional[int] = Field(
+        None, description="Percentage of images allocated to the training set"
+    )
+    val_split: Optional[int] = Field(
+        None, description="Percentage of images allocated to the validation set"
+    )
 
 
 class EmbeddingsStatusMessage(Message):
@@ -104,7 +110,7 @@ class TrainingFinishedMessage(Message):
     """Training finished event message."""
 
     task_id: int = Field(..., description="ID of the training task")
-    artifacts_dir: str = Field(..., description="Directory where artifacts are stored")
+    artifacts_dir: Optional[str] = Field(None, description="Directory where artifacts are stored")
     evaluation_dir: Optional[str] = Field(
         None, description="Directory where evaluation results are stored"
     )
@@ -130,3 +136,18 @@ class ComparisonFinishedMessage(Message):
     best_checkpoint: Optional[str] = Field(
         None, description="Path to the best model checkpoint after comparison"
     )
+
+
+class TrainFinishedMessage(Message):
+    """Training finished event message."""
+
+    success: bool = Field(..., description="Indicates if the training was successful")
+    task_id: int = Field(..., description="ID of the training task")
+    experiment_info: dict = Field(..., description="Dictionary with experiment info")
+
+
+class ModelDeployMessage(Message):
+    """Model deployed event message."""
+
+    model_path: Optional[str] = Field(None, description="Checkpoint path to be deployed")
+    session_id: Optional[int] = Field(None, description="ID of the deployment session")

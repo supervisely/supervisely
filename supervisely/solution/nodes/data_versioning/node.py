@@ -22,7 +22,6 @@ class DataVersioningNode(LinkNode):
         link = kwargs.pop("link", link)
 
         self.project_id = project_id
-        self.link = link
         self._click_handled = True
         super().__init__(
             title=title,
@@ -64,14 +63,10 @@ class DataVersioningNode(LinkNode):
             "data_versioning_project_id": self.set_project_id,
         }
 
-    def _available_publish_methods(self):
-        # No outgoing events yet; output handle is for future connections
-        return {}
-
     # ------------------------------------------------------------------
     # Methods ----------------------------------------------------------
     # ------------------------------------------------------------------
     def set_project_id(self, project_id: Optional[int] = None):
         """Set project ID and update the link accordingly."""
         link = f"/projects/{project_id}/versions" if project_id is not None else ""
-        # TODO: update link in the node
+        self.set_link(link)

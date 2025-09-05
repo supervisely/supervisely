@@ -54,6 +54,8 @@ class ExperimentInfo:
     """Number of images in the validation set"""
     datetime: Optional[str] = None
     """Date and time when the experiment was started"""
+    experiment_report_id: Optional[int] = None
+    """ID of the experiment report"""
     evaluation_report_id: Optional[int] = None
     """ID of the model benchmark evaluation report"""
     evaluation_report_link: Optional[str] = None
@@ -62,6 +64,12 @@ class ExperimentInfo:
     """Evaluation metrics"""
     logs: Optional[dict] = None
     """Dictionary with link and type of logger"""
+    train_collection_id: Optional[int] = None
+    """ID of the collection with train images"""
+    val_collection_id: Optional[int] = None
+    """ID of the collection with validation images"""
+    project_version: Optional[int] = None
+    """Version of the project"""
 
     def __init__(self, **kwargs):
         required_fieds = {
@@ -82,6 +90,7 @@ class ExperimentInfo:
         for field in fields(self.__class__):
             value = getattr(self, field.name)
             data[field.name] = value
+        return data
 
 
 def get_experiment_infos(api: Api, team_id: int, framework_name: str) -> List[ExperimentInfo]:

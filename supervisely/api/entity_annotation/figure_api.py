@@ -800,6 +800,7 @@ class FigureApi(RemoveableBulkModuleApi):
         skip_geometry: bool = False,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
+        batch_size: int = 300,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Asynchronously download figures for the given dataset ID. Can be filtered by image IDs.
@@ -815,6 +816,10 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param log_progress: If True, log the progress of the download.
         :type log_progress: bool, optional
+        :param batch_size: Size of the batch for downloading figures per 1 request. Default is 300.
+                        Used for batching image_ids when filtering by specific images.
+                        Adjust this value for optimal performance, value cannot exceed 500.
+        :type batch_size: int, optional
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
 
@@ -853,71 +858,104 @@ class FigureApi(RemoveableBulkModuleApi):
         if skip_geometry is True:
             fields = [x for x in fields if x != ApiField.GEOMETRY]
 
-        if image_ids is None:
-            filters = []
-        else:
-            filters = [
-                {
-                    ApiField.FIELD: ApiField.ENTITY_ID,
-                    ApiField.OPERATOR: "in",
-                    ApiField.VALUE: image_ids,
-                }
-            ]
-
-        data = {
+        # Base data setup
+        base_data = {
             ApiField.DATASET_ID: dataset_id,
             ApiField.FIELDS: fields,
-            ApiField.FILTER: filters,
         }
 
-        # Get first page to determine total pages
         if semaphore is None:
             semaphore = self._api.get_default_semaphore()
-        images_figures = defaultdict(list)
-        pages_count = None
-        total = 0
-        tasks = []
 
-        async def _get_page(page_data, page_num):
+        async def _get_page_figures(page_data, semaphore, progress_cb: tqdm = None):
+            """Helper function to get figures from a single page"""
             async with semaphore:
                 response = await self._api.post_async("figures.list", page_data)
                 response_json = response.json()
-                nonlocal pages_count, total
-                pages_count = response_json["pagesCount"]
-                if page_num == 1:
-                    total = response_json["total"]
 
                 page_figures = []
                 for info in response_json["entities"]:
                     figure_info = self._convert_json_info(info, True)
                     page_figures.append(figure_info)
+                if progress_cb is not None:
+                    progress_cb.update(len(response_json["entities"]))
                 return page_figures
 
-        # Get first page
-        data[ApiField.PAGE] = 1
-        first_page_figures = await _get_page(data, 1)
+        async def _get_all_pages(ids_filter, progress_cb: tqdm = None):
+            """Internal function to process all pages for given filter"""
+            data = base_data.copy()
+            data[ApiField.FILTER] = ids_filter
+
+            # Get first page to determine pagination
+            data[ApiField.PAGE] = 1
+            async with semaphore:
+                response = await self._api.post_async("figures.list", data)
+                response_json = response.json()
+
+            pages_count = response_json["pagesCount"]
+            all_figures = []
+
+            # Process first page
+            for info in response_json["entities"]:
+                figure_info = self._convert_json_info(info, True)
+                all_figures.append(figure_info)
+            if progress_cb is not None:
+                progress_cb.update(len(response_json["entities"]))
+
+            # Process remaining pages in parallel if needed
+            if pages_count > 1:
+                tasks = []
+                for page in range(2, pages_count + 1):
+                    page_data = data.copy()
+                    page_data[ApiField.PAGE] = page
+                    tasks.append(
+                        asyncio.create_task(
+                            _get_page_figures(page_data, semaphore, progress_cb=progress_cb)
+                        )
+                    )
+
+                if tasks:
+                    page_results = await asyncio.gather(*tasks)
+                    for page_figures in page_results:
+                        all_figures.extend(page_figures)
+
+            return all_figures
 
         if log_progress:
-            progress_cb = tqdm(total=total, desc="Downloading figures")
+            progress_cb = tqdm(desc="Downloading figures", unit="figure", total=0)
+        else:
+            progress_cb = None
 
-        for figure in first_page_figures:
-            images_figures[figure.entity_id].append(figure)
-            if log_progress:
-                progress_cb.update(1)
+        # Strategy: batch processing based on image_ids
+        tasks = []
 
-        # Get rest of the pages in parallel
-        if pages_count > 1:
-            for page in range(2, pages_count + 1):
-                page_data = data.copy()
-                page_data[ApiField.PAGE] = page
-                tasks.append(asyncio.create_task(_get_page(page_data, page)))
+        if image_ids is None:
+            # Single task for all figures in dataset
+            filters = []
+            tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
+        else:
+            # Batch image_ids and create tasks for each batch
+            for batch_ids in batched(image_ids, batch_size):
+                filters = [
+                    {
+                        ApiField.FIELD: ApiField.ENTITY_ID,
+                        ApiField.OPERATOR: "in",
+                        ApiField.VALUE: list(batch_ids),
+                    }
+                ]
+                tasks.append(_get_all_pages(filters, progress_cb=progress_cb))
+                # Small delay between batches to reduce server load
+                await asyncio.sleep(0.02)
 
-            for task in asyncio.as_completed(tasks):
-                page_figures = await task
-                for figure in page_figures:
-                    images_figures[figure.entity_id].append(figure)
-                    if log_progress:
-                        progress_cb.update(1)
+        # Execute all tasks in parallel and collect results
+        all_results = await asyncio.gather(*tasks)
+
+        # Combine results from all batches
+        images_figures = defaultdict(list)
+
+        for batch_figures in all_results:
+            for figure in batch_figures:
+                images_figures[figure.entity_id].append(figure)
 
         return dict(images_figures)
 
@@ -928,6 +966,7 @@ class FigureApi(RemoveableBulkModuleApi):
         skip_geometry: bool = False,
         semaphore: Optional[asyncio.Semaphore] = None,
         log_progress: bool = True,
+        batch_size: int = 300,
     ) -> Dict[int, List[FigureInfo]]:
         """
         Download figures for the given dataset ID. Can be filtered by image IDs.
@@ -945,6 +984,10 @@ class FigureApi(RemoveableBulkModuleApi):
         :type semaphore: Optional[asyncio.Semaphore], optional
         :param log_progress: If True, log the progress of the download.
         :type log_progress: bool, optional
+        :param batch_size: Size of the batch for downloading figures per 1 request. Default is 300.
+                        Used for batching image_ids when filtering by specific images.
+                        Adjust this value for optimal performance, value cannot exceed 500.
+        :type batch_size: int, optional
 
         :return: A dictionary where keys are image IDs and values are lists of figures.
         :rtype: Dict[int, List[FigureInfo]]
@@ -970,6 +1013,7 @@ class FigureApi(RemoveableBulkModuleApi):
                     skip_geometry=skip_geometry,
                     semaphore=semaphore,
                     log_progress=log_progress,
+                    batch_size=batch_size,
                 )
             )
         except Exception:

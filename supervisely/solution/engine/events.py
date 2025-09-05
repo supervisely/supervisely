@@ -66,7 +66,7 @@ class PubSub(metaclass=Singleton):
             self.subscribers[key] = []
         self.subscribers[key].append(callback)
         src_log = f" from source '{source}'" if source is not None else ""
-        logger.info(f"[EVENT]: {callback.__qualname__}() subscribed to topic: '{topic}'{src_log}")
+        logger.debug(f"[EVENT]: {callback.__qualname__}() subscribed to topic: '{topic}'{src_log}")
 
     def unsubscribe(self, topic, callback: Callable, source: Optional[str] = None):
         """Unsubscribes a callback function from a given topic."""
@@ -74,7 +74,7 @@ class PubSub(metaclass=Singleton):
         if key in self.subscribers and callback in self.subscribers[key]:
             self.subscribers[key].remove(callback)
             src_log = f" from source '{source}'" if source is not None else ""
-            logger.info(
+            logger.debug(
                 f"[EVENT]: {callback.__qualname__}() unsubscribed from topic: '{topic}'{src_log}"
             )
 
@@ -85,7 +85,7 @@ class PubSub(metaclass=Singleton):
             seen = set()
             if callback not in seen:
                 seen.add(callback)
-                logger.info(f"[EVENT]: {callback.__qualname__}() called for topic: '{topic}'")
+                logger.debug(f"[EVENT]: {callback.__qualname__}() called for topic: '{topic}'")
                 self._callback_wrapper(callback, message, topic)
             else:
                 logger.warning(

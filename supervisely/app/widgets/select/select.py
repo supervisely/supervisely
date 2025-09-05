@@ -1,7 +1,9 @@
 from __future__ import annotations
-from supervisely.app import StateJson, DataJson
-from supervisely.app.widgets import Widget, ConditionalWidget
-from typing import List, Dict, Optional
+
+from typing import Dict, List, Optional
+
+from supervisely.app import DataJson, StateJson
+from supervisely.app.widgets import ConditionalWidget, Widget
 
 try:
     from typing import Literal
@@ -183,7 +185,7 @@ class Select(ConditionalWidget):
         self._changes_handled = True
 
         @server.post(route_path)
-        async def _click():
+        def _click():
             res = self.get_value()
             func(res)
 
