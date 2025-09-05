@@ -89,7 +89,7 @@ INSTALL_REQUIRES = [
     "Shapely>=1.7.1, <=2.0.2",
     "bidict>=0.21.2, <1.0.0",
     "varname>=0.8.1, <1.0.0",
-    "python-dotenv>=0.19.2, <=1.0.0",
+    "python-dotenv>=0.19.2, <=1.0.1",
     "pynrrd>=0.4.2, <1.0.0",
     "SimpleITK>=2.1.1.2, <=2.4.1.0",  # 2.5.0 does not have packaging for python 3.8
     "pydicom>=2.3.0, <3.0.0",
