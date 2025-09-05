@@ -24,6 +24,7 @@ from supervisely.api.module_api import (
     WaitingTimeExceeded,
 )
 from supervisely.collection.str_enum import StrEnum
+from supervisely.io.env import app_categories
 from supervisely.io.fs import (
     ensure_base_path,
     get_file_hash,
@@ -652,6 +653,8 @@ class TaskApi(ModuleApiBase, ModuleWithStatus):
         project_preview: Optional[str] = None,
     ) -> Dict:
         """set_output_project"""
+        if "import" in app_categories():
+            self._api.project.add_import_history(project_id, task_id)
         if project_name is None:
             project = self._api.project.get_info_by_id(project_id, raise_error=True)
             project_name = project.name

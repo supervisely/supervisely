@@ -17,7 +17,7 @@ Vue.component('fast-table', {
               style="flex-grow: 1"
             >
               <slot name="header-left-side-start" />
-              <div class="relative w-full md:max-w-[14rem]">
+              <div v-if="settings.searchPosition !== 'right'" class="relative w-full md:max-w-[14rem]">
                 <i class="zmdi zmdi-search h-4 absolute top-2 left-2.5 opacity-50" />
                 <i
                   v-if="search"
@@ -34,6 +34,22 @@ Vue.component('fast-table', {
                 >
               </div>
               <slot name="header-left-side-end" />
+            </div>
+            <div v-if="settings.searchPosition === 'right'" class="relative w-full md:max-w-[14rem]">
+              <i class="zmdi zmdi-search h-4 absolute top-2 left-2.5 opacity-50" />
+              <i
+                v-if="search"
+                class="zmdi zmdi-close h-4 absolute top-2.5 right-3 opacity-50 cursor-pointer"
+                @click="searchChanged('')"
+              />
+              <input
+                :value="search"
+                type="text"
+                :placeholder="\`\${name ? \`Search for \${name}...\` : 'Search'}\`"
+                class="text-sm rounded-md px-3 py-1.5 text-gray-900 shadow-sm placeholder:text-gray-400 border border-slate-200 w-full pl-8 bg-slate-50"
+                @input="searchChanged($event.target.value)"
+                @keydown.esc="searchChanged('')"
+              >
             </div>
             <div
               v-if="data && data.length"
@@ -73,6 +89,7 @@ Vue.component('fast-table', {
             <table
               ref="tableBox"
               class="w-full text-[.8rem] md:text-[.9rem] mb-1"
+              :key="'table-' + page"
             >
               <thead>
                 <tr>
@@ -84,16 +101,24 @@ Vue.component('fast-table', {
                   >
                   </th>
                   <th
-                    v-else-if="settings.isRowSelectable"
+                    v-if="settings.isRowSelectable && (!settings.maxSelectedRows || settings.maxSelectedRows > 1)"
                     class="px-2 md:px-3 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
                     :class="{ 'first:sticky first:left-0 first:z-20 first:shadow-[inset_-2px_-2px_0_#dfe6ec]': fixColumns }"
                   >
                     <el-checkbox
-                      v-if="settings.isRowSelectable"
+                      v-if="settings.isRowSelectable && (!settings.maxSelectedRows || settings.maxSelectedRows > 1)"
                       size="small"
-                      :value="isAllRowsSelected"
-                      @input="selectAllRows"
+                      v-model="headerCheckboxModel"
+                      :indeterminate="isSomeOnPageSelected && !isAllOnPageSelected"
+                      :key="'headercb-' + page + '-' + (data && data.map(r => r.idx).join(',')) + '-' + (selectedRows && selectedRows.map(r => r.idx).join(',')) + '-' + (isAllOnPageSelected?1:0) + '-' + (isSomeOnPageSelected?1:0)"
+                      style="transform: scale(1.2);"
                     />
+                  </th>
+                  <th
+                    v-if="settings.isRowSelectable && settings.maxSelectedRows === 1"
+                    class="px-2 md:px-3 py-2.5 whitespace-nowrap first:pl-3 last:pr-3 md:last:pr-6 first:text-left cursor-pointer sticky top-0 bg-slate-50 box-content shadow-[inset_0_-2px_0_#dfe6ec] group"
+                    :class="{ 'first:sticky first:left-0 first:z-20 first:shadow-[inset_-2px_-2px_0_#dfe6ec]': fixColumns }"
+                  >
                   </th>
                   <th
                     v-for="(c,idx) in columns.slice(0, columnNumberLimit)"
@@ -140,12 +165,13 @@ Vue.component('fast-table', {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody :key="'page-' + page">
                 <tr
                   v-for="row in data"
+                  :key="'row-' + rowKeyValue(row)"
                   class="border-b border-gray-200 last:border-0 group"
                   :class="{ 'cursor-pointer': settings.isRowClickable }"
-                  @click="settings.isRowClickable && $emit('row-click', { idx: row.idx, row: row.items, columnsSettings })"
+                  @click="settings.isRowClickable && $emit('row-click', { idx: rowKeyValue(row), row: row.items, columnsSettings })"
                 >
                   <td
                     v-if="settings.isRadio"
@@ -169,8 +195,11 @@ Vue.component('fast-table', {
                   >
                     <el-checkbox
                       size="small"
-                      :value="!!selectedRowsById[row.id]"
-                      @input="updateSelectedRows(row)"
+                      v-model="rowCheckboxModel[rowKeyValue(row)]"
+                      @change="onRowCheckboxChange(row, rowCheckboxModel[rowKeyValue(row)])"
+                      @click.stop
+                      :key="'rowcb-' + page + '-' + rowKeyValue(row)"
+                      style="transform: scale(1.2);"
                     />
                   </td>
 
@@ -314,11 +343,16 @@ Vue.component('fast-table', {
       type: Boolean,
       default: false,
     },
+    rowKey: {
+      type: String,
+      default: 'idx',
+    },
   },
 
   data() {
     return {
       columnNumberLimit: 50,
+      rowCheckboxModel: {},
     };
   },
 
@@ -342,6 +376,7 @@ Vue.component('fast-table', {
     settings() {
       const defaultSettings = {
         showHeaderControls: true,
+        searchPosition: 'left',
       };
       return {
         ...defaultSettings,
@@ -351,10 +386,6 @@ Vue.component('fast-table', {
 
     LIMIT() {
       return this.pageSize || 50;
-    },
-
-    selectedRowsById() {
-      return _.keyBy(this.selectedRows, 'id');
     },
 
     classesMap() {
@@ -373,15 +404,53 @@ Vue.component('fast-table', {
       return this.columnsSettings.find(i => i?.subtitle);
     },
 
-    isAllRowsSelected() {
-      if (!this.selectedRows?.length) return false;
-      return this.data.every(r => this.selectedRowsById[r.id]);
+    isAllOnPageSelected() {
+      const rows = this.data || [];
+      if (rows.length === 0) return false;
+      const selectedIdx = new Set((this.selectedRows || []).map(r => this.rowKeyValue(r)));
+      return rows.every(r => selectedIdx.has(this.rowKeyValue(r)));
     },
+
+    isSomeOnPageSelected() {
+      const rows = this.data || [];
+      if (rows.length === 0) return false;
+      const selectedIdx = new Set((this.selectedRows || []).map(r => this.rowKeyValue(r)));
+      const count = rows.filter(r => selectedIdx.has(this.rowKeyValue(r))).length;
+      return count > 0 && count < rows.length;
+    },
+
+    selectedIdxSet() {
+      return new Set((this.selectedRows || []).map(r => this.rowKeyValue(r)));
+    },
+
+    headerCheckboxModel: {
+      get() {
+        return this.isAllOnPageSelected;
+      },
+      set(val) {
+        this.selectAllRows(val);
+      }
+    },
+  },
+
+  watch: {
+    data: {
+      immediate: true,
+      handler() {
+        this.syncRowCheckboxModel();
+      }
+    },
+    selectedRows: {
+      immediate: true,
+      handler() {
+        this.syncRowCheckboxModel();
+      }
+    }
   },
 
   methods: {
     _updateData() {
-      this.$emit('filters-changed');
+      this.$emit('filters-changed')
     },
 
     searchChanged(val) {
@@ -409,31 +478,85 @@ Vue.component('fast-table', {
       this.updateData();
     },
 
-    selectAllRows() {
-      if (this.isAllRowsSelected) {
-        const curRowsSet = new Set(this.data.map(r => r.id));
-        this.$emit('update:selected-rows', [...this.selectedRows.filter(r => !curRowsSet.has(r.id))]);
+    selectAllRows(checked) {
+      if (!this.data || this.data.length === 0) return;
+
+      const current = Array.isArray(this.selectedRows) ? [...this.selectedRows] : [];
+      const max = this.settings && this.settings.maxSelectedRows ? this.settings.maxSelectedRows : 0;
+
+      if (checked) {
+        const selectedIdx = new Set(current.map(r => this.rowKeyValue(r)));
+        const result = [...current];
+
+        if (max && max > 0) {
+          let quota = Math.max(0, max - result.length);
+          for (const r of this.data) {
+            const key = this.rowKeyValue(r);
+            if (!selectedIdx.has(key)) {
+              if (quota <= 0) break;
+              result.push(_.cloneDeep(r));
+              selectedIdx.add(key);
+              quota -= 1;
+            }
+          }
+          this.$emit('update:selected-rows', result);
+        } else {
+          for (const r of this.data) {
+            const key = this.rowKeyValue(r);
+            if (!selectedIdx.has(key)) {
+              result.push(_.cloneDeep(r));
+              selectedIdx.add(key);
+            }
+          }
+          this.$emit('update:selected-rows', result);
+        }
       } else {
-        const selected = [...this.selectedRows];
-
-        this.data.forEach((row) => {
-          if (this.selectedRowsById[row.id]) return;
-
-          selected.push(row);
-        });
-
-        this.$emit('update:selected-rows', selected);
+        const pageIdx = new Set(this.data.map(r => this.rowKeyValue(r)));
+        const result = current.filter(r => !pageIdx.has(this.rowKeyValue(r)));
+        this.$emit('update:selected-rows', result);
       }
     },
 
-    updateSelectedRows(row) {
-      const isRowSelected = this.selectedRowsById[row.id];
-
-      if (!isRowSelected) {
-        this.$emit('update:selected-rows', [...this.selectedRows, row]);
-      } else {
-        this.$emit('update:selected-rows', [...this.selectedRows.filter(p => p.id !== row.id)]);
+    syncRowCheckboxModel() {
+      const map = {};
+      const selected = new Set((this.selectedRows || []).map(r => this.rowKeyValue(r)));
+      for (const r of (this.data || [])) {
+        const key = this.rowKeyValue(r);
+        map[key] = selected.has(key);
       }
+      this.rowCheckboxModel = map;
+    },
+
+    onRowCheckboxChange(row, checked) {
+      this.updateSelectedRows(row, checked);
+    },
+
+    updateSelectedRows(row, checked) {
+      checked = typeof checked === 'boolean' ? checked : !!checked;
+      const current = Array.isArray(this.selectedRows) ? [...this.selectedRows] : [];
+      const key = this.rowKeyValue(row);
+      const exists = current.some(r => this.rowKeyValue(r) === key);
+      const max = this.settings && this.settings.maxSelectedRows ? this.settings.maxSelectedRows : 0;
+
+      let result = current;
+      if (checked) {
+        if (max && max > 0) {
+          if (max === 1) {
+            result = [_.cloneDeep(row)];
+            this.$emit('update:selected-rows', result);
+            return;
+          }
+          if (!exists && current.length >= max) {
+            // revert checkbox state if over the limit
+            this.$nextTick(() => { this.$set(this.rowCheckboxModel, key, false); });
+            return;
+          }
+        }
+        if (!exists) result = [...current, _.cloneDeep(row)];
+      } else {
+        if (exists) result = current.filter(r => this.rowKeyValue(r) !== key);
+      }
+      this.$emit('update:selected-rows', result);
     },
 
     updateSelectedRadio(row) {
@@ -452,6 +575,12 @@ Vue.component('fast-table', {
     highlight(text) {
       if (!this.search) return text;
       return text.toString().replace(new RegExp(this.search, 'gi'), match => '<span class="bg-yellow-400">'+match+'</span>');
+    },
+
+    rowKeyValue(row) {
+      if (!row) return undefined;
+      const keyName = this.rowKey || 'idx';
+      return row[keyName] != null ? row[keyName] : row.idx;
     },
   },
 
