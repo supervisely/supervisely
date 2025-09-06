@@ -29,6 +29,7 @@ from supervisely.solution.nodes.training_evaluation.node import (
 )
 from supervisely.solution.nodes.training_experiment.node import TrainingExperimentNode
 from supervisely.solution.nodes.training_project.node import TrainingProjectNode
+from supervisely.solution.nodes.deploy_custom_model.node import DeployCustomModelNode
 
 # from supervisely.solution.components.video_samling import VideoSampling
 
@@ -61,4 +62,5 @@ __all__ = [
     # Prediction
     "DeployPretrainedModelNode",
     "PreLabelingNode",
+    "DeployCustomModelNode",
 ]

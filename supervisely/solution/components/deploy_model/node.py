@@ -63,8 +63,13 @@ class DeployModelNode(BaseCardNode):
             self.gui.modal.show()
 
         self.modals = [self.history.modal, self.gui.modal]
-        self._automation.apply(self._refresh_node, self._automation.REFRESH_GPU_USAGE)
+        self.enable_automation()
 
+    # ------------------------------------------------------------------
+    # Automation -------------------------------------------------------
+    # ------------------------------------------------------------------
+    def enable_automation(self):
+        pass
     # ------------------------------------------------------------------
     # Node methods -----------------------------------------------------
     # ------------------------------------------------------------------
@@ -136,6 +141,9 @@ class DeployModelNode(BaseCardNode):
             value = f"{used / (1024 ** 3):.2f} GB / {total / (1024 ** 3):.2f} GB"
             self.update_property("Agent", agent_info["agent_name"])
             self.update_property("GPU Memory", value, highlight=True)
+        else:
+            self.remove_property_by_key("GPU Memory")
+            self.remove_property_by_key("Agent")
 
     def _refresh_model_info(self) -> None:
         """
@@ -166,18 +174,14 @@ class DeployModelNode(BaseCardNode):
                 logger.info(
                     f"Model '{deploy_info.get('model_name')}' deployed successfully. Task ID: {task_info.get('id')}"
                 )
-
-    def _refresh_node(self):
-        if self.gui.content.model_api is not None:
-            self.gui.model = self.gui.content.model_api
-            self._refresh_model_info()
-            self._refresh_memory_usage_info()
         else:
-            self.gui.model = None
             self.remove_property_by_key("Model")
-            self.remove_property_by_key("Agent")
-            self.remove_property_by_key("GPU Memory")
             # self.remove_property_by_key("Status")
             self.remove_property_by_key("Source")
             self.remove_property_by_key("Hardware")
             self.remove_badge_by_key("Deployed Deployed")
+
+    def _refresh_node(self):
+        self.gui.model = self.gui.content.model_api
+        self._refresh_model_info()
+        self._refresh_memory_usage_info()

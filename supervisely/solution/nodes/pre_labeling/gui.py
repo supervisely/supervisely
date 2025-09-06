@@ -111,6 +111,18 @@ class PreLabelingGUI(Widget):
             ),
         )
 
+        # Reconnect to new model switch
+        reconnect_field = Field(
+            content=self.connect_to_new_switch,
+            title="Reconnect to New Model",
+            description="Switch on to automatically reconnect to a new model (e.g. after training and comparison of models).",
+            icon=Field.Icon(
+                zmdi_class="zmdi zmdi-settings",
+                color_rgb=(21, 101, 192),
+                bg_color_rgb=(227, 242, 253),
+            ),
+        )
+
         # Preview gallery section
         preview_field = Field(
             self.preview_gallery,
@@ -123,7 +135,7 @@ class PreLabelingGUI(Widget):
             ),
         )
 
-        return Container([enable_field, session_id_field, preview_field], gap=20)
+        return Container([enable_field, session_id_field, reconnect_field, preview_field], gap=20)
 
     @property
     def enable_switch(self) -> Switch:
@@ -132,12 +144,18 @@ class PreLabelingGUI(Widget):
         return self._enable_switch
 
     @property
+    def connect_to_new_switch(self) -> Switch:
+        if not hasattr(self, "_connect_to_new_switch"):
+            self._connect_to_new_switch = Switch(switched=True)
+        return self._connect_to_new_switch
+
+    @property
     def select_session(self) -> SelectAppSession:
         if not hasattr(self, "_select_session"):
             self._select_session = SelectAppSession(
                 team_id=self.team_id, tags=["deployed_nn"], size="small"
             )
-            self._select_session.disable()
+            # self._select_session.disable()
         return self._select_session
 
     @property
@@ -200,6 +218,8 @@ class PreLabelingGUI(Widget):
         if not isinstance(session_id, int):
             raise ValueError("Session ID must be an integer.")
         elif session_id == self._session_id:
+            return
+        elif self.session_id is not None and not self._connect_to_new_switch.is_switched():
             return
         self._connect_model(session_id)
         self._session_id = session_id

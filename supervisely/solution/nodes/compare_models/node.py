@@ -144,7 +144,7 @@ class CompareModelsNode(BaseCardNode):
                 "connectable": True,
             },
             {
-                "id": "new_model_better",
+                "id": "deploy_model",
                 "type": "source",
                 "position": "right",
                 "connectable": True,
@@ -163,7 +163,7 @@ class CompareModelsNode(BaseCardNode):
     def _available_publish_methods(self) -> Dict[str, Callable]:
         return {
             "evaluation_finished": self._send_comparison_finished_message,
-            "new_model_better": self._send_new_model_better_message,
+            "deploy_model": self._send_new_model_better_message,
         }
 
     def _process_training_finished_message(self, message: TrainingFinishedMessage):
@@ -176,7 +176,9 @@ class CompareModelsNode(BaseCardNode):
             best_checkpoint = self._get_checkpoint_path(experiment)
             metric_name = experiment.get("primary_metric")
             best_metric = self._get_primary_metric_value_from_experiment(experiment)
-            self._send_new_model_better_message(is_better=True, best_checkpoint=best_checkpoint)
+            self._send_new_model_better_message(
+                is_better=True, best_checkpoint=best_checkpoint, train_task_id=message.task_id
+            )
             self._update_best_model_properties(
                 best_checkpoint=best_checkpoint,
                 best_metric=best_metric,
@@ -203,8 +205,11 @@ class CompareModelsNode(BaseCardNode):
         self,
         is_better: bool,
         best_checkpoint: str,
+        train_task_id: int = None,
     ) -> ComparisonFinishedMessage:
-        return ComparisonFinishedMessage(is_new_best=is_better, best_checkpoint=best_checkpoint)
+        return ComparisonFinishedMessage(
+            is_new_best=is_better, best_checkpoint=best_checkpoint, train_task_id=train_task_id
+        )
 
     # --------------------------------------------------------------------
     # Main methods -------------------------------------------------------
@@ -230,7 +235,11 @@ class CompareModelsNode(BaseCardNode):
                 self._best_experiment_task_id = self._last_experiment_task_id
                 self._last_experiment_eval_dir = None
                 self._last_experiment_task_id = None
-                self._send_new_model_better_message(is_better=True, best_checkpoint=best_checkpoint)
+                self._send_new_model_better_message(
+                    is_better=True,
+                    best_checkpoint=best_checkpoint,
+                    train_task_id=self._best_experiment_task_id,
+                )
                 metric_name = experiment.get("primary_metric")
                 best_metric = self._get_primary_metric_value_from_experiment(experiment)
                 self._update_best_model_properties(
@@ -267,7 +276,9 @@ class CompareModelsNode(BaseCardNode):
                     self._best_experiment_eval_dir = self._last_experiment_eval_dir
                     self._best_experiment_task_id = self._last_experiment_task_id
                     self._send_new_model_better_message(
-                        is_better=is_better, best_checkpoint=best_checkpoint
+                        is_better=is_better,
+                        best_checkpoint=best_checkpoint,
+                        train_task_id=self._best_experiment_task_id,
                     )
                     experiment = self._extract_experiment_info(self._best_experiment_task_id)
                     metric_name = experiment.get("primary_metric")
