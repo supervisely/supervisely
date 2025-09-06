@@ -83,8 +83,9 @@ class TrainValSplits(Widget):
             contents.append(self._get_random_content())
         if tags_splits:
             self._split_methods.append("Based on item tags")
+            proj_type = self._project_type.capitalize() if self._project_type is not None else "Project"
             tabs_descriptions.append(
-                f"{self._project_type.capitalize()} should have assigned train or val tag"
+                f"{proj_type} should have assigned train or val tag"
             )
             contents.append(self._get_tags_content())
         if datasets_splits:
@@ -153,10 +154,11 @@ class TrainValSplits(Widget):
             title="Validation tag",
             description=f"all {self._project_type} with this tag are considered as validation set",
         )
+        proj_type = self._project_type.capitalize() if self._project_type is not None else "Project"
         without_tags_field = Field(
             self._untagged_select,
-            title=f"{self._project_type.capitalize()} without selected tags",
-            description=f"Choose what to do with untagged {self._project_type}",
+            title=f"{proj_type} without selected tags",
+            description=f"Choose what to do with untagged {proj_type}",
         )
         return Container(
             widgets=[

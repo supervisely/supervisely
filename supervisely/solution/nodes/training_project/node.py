@@ -41,12 +41,16 @@ class TrainingProjectNode(ProjectNode):
         return {
             "qa_stats": self.send_message_to_qa_stats,
             "data_versioning_project_id": self.send_message_to_data_versioning,
+            "add_training_data_id": self.send_message_to_add_training_data,
         }
 
     def send_message_to_qa_stats(self) -> None:
         pass
 
     def send_message_to_data_versioning(self) -> None:
+        pass
+
+    def send_message_to_add_training_data(self) -> None:
         pass
 
     def _get_handles(self):
@@ -56,6 +60,13 @@ class TrainingProjectNode(ProjectNode):
                 "type": "target",
                 "position": "top",
                 "label": "Input",
+                "connectable": True,
+            },
+            {
+                "id": "add_training_data_id",
+                "type": "source",
+                "position": "left",
+                "label": "Add Training Data",
                 "connectable": True,
             },
             {
@@ -72,5 +83,5 @@ class TrainingProjectNode(ProjectNode):
                 "position": "bottom",
                 "label": "Data Versioning",
                 "connectable": True,
-            },
+            }
         ]
