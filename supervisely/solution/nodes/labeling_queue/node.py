@@ -15,6 +15,7 @@ from supervisely.solution.engine.models import (
 )
 from supervisely.solution.nodes.labeling_queue.automation import LabelingQueueRefresh
 from supervisely.solution.nodes.labeling_queue.gui import LabelingQueueGUI
+from supervisely.solution.utils import find_agent
 
 
 class LabelingQueueNode(BaseQueueNode):
@@ -310,7 +311,7 @@ class LabelingQueueNode(BaseQueueNode):
             checkpoint = (
                 "/yolov8_train/object detection/Train Insulator Dataset/4842/weights/best_93.pt"
             )
-            agent_id = self.api.nn._deploy_api._find_agent(env_team_id())
+            agent_id = find_agent(self.api, env_team_id())
             # model = self.api.nn.connect(51017)
             model = self.api.nn.deploy(checkpoint, agent_id=agent_id)
             for batch in batched(all_items, 16):

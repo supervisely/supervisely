@@ -42,19 +42,30 @@ def get_seconds_from_period_and_interval(period: str, interval: int) -> int:
     else:
         raise ValueError(f"Unknown period: {period}")
 
-def find_agent(api: Api, team_id: int) -> int:
+
+def find_agents(api: Api, team_id: int) -> int:
     agents = api.agent.get_list_available(team_id, show_public=True, has_gpu=True)
     if len(agents) == 0:
         raise ValueError("No available agents found.")
     agent_id_memory_map = {}
     kubernetes_agents = []
     for agent in agents:
+        if "4090" not in agent.name:  # ! TODO: remove after testing
+            continue
         if agent.type == "sly_agent":
             # No multi-gpu support, always take the first one
             agent_id_memory_map[agent.id] = agent.gpu_info["device_memory"][0]["available"]
         elif agent.type == "kubernetes":
             kubernetes_agents.append(agent.id)
     if len(agent_id_memory_map) > 0:
-        return max(agent_id_memory_map, key=agent_id_memory_map.get)
+        return sorted(agent_id_memory_map, key=agent_id_memory_map.get, reverse=True)
     if len(kubernetes_agents) > 0:
-        return kubernetes_agents[0]
+        return kubernetes_agents
+
+
+def find_agent(api: Api, team_id: int) -> int:
+    agents = find_agents(api, team_id)
+    if agents is not None:
+        if len(agents) > 0:
+            return agents[0]
+    raise ValueError("No available agents found.")
