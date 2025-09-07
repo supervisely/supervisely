@@ -207,6 +207,7 @@ class ProjectDatasetTable(Widget):
 
         self._id_to_search_str = {}
         self._id_to_sort_key = {}
+        self._selected_project_id = None
 
         self._sort_by_key = sort_by
         self._sort_order = sort_order
@@ -214,6 +215,7 @@ class ProjectDatasetTable(Widget):
         self._width = width
         super().__init__(widget_id=widget_id, file_path=__file__)
         self._content = self.table
+        
 
     @property
     def current_table(self):
@@ -276,11 +278,13 @@ class ProjectDatasetTable(Widget):
         
         if table == self.CurrentTable.PROJECTS:
             self._current_table = self.CurrentTable.PROJECTS
+            self._selected_dataset_ids = None
             self.team_workspace_selector.show()
         elif table == self.CurrentTable.DATASETS:
-            if not self.get_selected_project_id():
+            if not self._get_selected_project_id():
                 return
             self._current_table = self.CurrentTable.DATASETS
+            self._selected_project_id = self._get_selected_project_id()
             self.team_workspace_selector.hide()
 
         self._refresh_table()
@@ -302,17 +306,26 @@ class ProjectDatasetTable(Widget):
         data_json = self.table.to_json()
         data_json["data"] = data
         self.table.read_json(data_json, custom_columns=columns)
+        self.table._refresh()
 
-    def get_selected_project_id(self) -> Optional[int]:
+    def _get_selected_project_id(self) -> Optional[int]:
         selected_row = self.table.get_selected_row()
         if selected_row is None:
             return None
         return selected_row.row[1]
 
-    def get_selected_project(self) -> Optional[ProjectInfo]:
-        return self._project_id_to_info.get(self.get_selected_project_id(), None)
+    def _get_selected_project(self) -> Optional[ProjectInfo]:
+        return self._project_id_to_info.get(self._get_selected_project_id(), None)
 
-    def get_selected_dataset_ids(self) -> Optional[List[int]]:
+    def get_selected_project_id(self) -> Optional[int]:
+        return self._selected_project_id
+
+    def get_selected_project(self) -> Optional[ProjectInfo]:
+        return self._project_id_to_info.get(self._selected_project_id, None)
+
+    def _get_selected_dataset_ids(self) -> Optional[List[int]]:
+        if not self.current_table == self.CurrentTable.DATASETS:
+            return None
         rows = []
         for row in self.table.get_selected_rows():
             if row is None:
@@ -320,8 +333,11 @@ class ProjectDatasetTable(Widget):
             rows.append(row.row[1])
         return rows
 
+    def get_selected_dataset_ids(self) -> Optional[List[int]]:
+        return self._get_selected_dataset_ids()
+
     def get_selected_datasets(self) -> Optional[List[DatasetInfo]]:
-        dataset_ids = self.get_selected_dataset_ids()
+        dataset_ids = self._get_selected_dataset_ids()
         return [self._dataset_id_to_info.get(did, None) for did in dataset_ids]
 
     def set_team(self, team_id: int):
@@ -338,8 +354,8 @@ class ProjectDatasetTable(Widget):
 
     def get_json_data(self):
         return {
-            "selectedProject": self.get_selected_project_id(),
-            "selectedDatasets": self.get_selected_dataset_ids(),
+            "selectedProject": self._get_selected_project_id(),
+            "selectedDatasets": self._get_selected_dataset_ids(),
         }
 
     def get_json_state(self):

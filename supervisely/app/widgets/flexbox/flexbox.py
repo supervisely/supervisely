@@ -22,11 +22,15 @@ class Flexbox(Widget):
         center_content: bool = False,
         widget_id: str = None,
         vertical_alignment: Literal["start", "end", "center", "stretch", "baseline"] = None,
+        horizontal_alignment: Literal["flex-start", "flex-end", "center", "stretch", "baseline"] = None
     ):
+        if not isinstance(widgets, list):
+            widgets = [widgets]
         self._widgets = widgets
         self._gap = gap
         self._center_content = center_content
         self._vertical_alignment = vertical_alignment
+        self._horizontal_alignment = horizontal_alignment
         super().__init__(widget_id=widget_id, file_path=__file__)
 
     def get_json_data(self) -> Dict:

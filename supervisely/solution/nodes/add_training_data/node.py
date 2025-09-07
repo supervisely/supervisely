@@ -16,7 +16,6 @@ from supervisely import env as sly_env
 import threading
 import time
 from supervisely.app.widgets.train_val_splits.train_val_splits import ItemInfo
-from supervisely import Project, Dataset
 
 class AddTrainingDataNode(BaseCardNode):
     APP_SLUG = "supervisely-ecosystem/data-commander"
@@ -26,7 +25,7 @@ class AddTrainingDataNode(BaseCardNode):
 
     TITLE = "Add Training Data"
     DESCRIPTION = "Add new data to the training project and split it into training and validation sets."
-    ICON = "zmdi zmdi-collection-folder-image"
+    ICON = "mdi mdi-folder-multiple-plus"
     ICON_COLOR = "#1976D2"
     ICON_BG_COLOR = "#E3F2FD"
 

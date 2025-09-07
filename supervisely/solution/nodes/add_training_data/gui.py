@@ -5,7 +5,8 @@ from supervisely.app.widgets import (
     Dialog,
     Text,
     Widget,
-    ProjectDatasetTable
+    ProjectDatasetTable,
+    Flexbox
 )
 from supervisely.nn.training.gui.train_val_splits_selector import TrainValSplitsSelector
 from supervisely.project.project import ProjectType
@@ -75,6 +76,7 @@ class AddTrainingDataGUI(Widget):
                 style="primary",
             )
         back_btn = Button("Back", plain=True, icon="zmdi zmdi-arrow-left", button_size="small")
+        back_btn.hide()
 
         @self.project_table.table.selection_changed
         def on_table_selection_change(selected_items):
@@ -94,6 +96,7 @@ class AddTrainingDataGUI(Widget):
                 self.project_table.switch_table(self.project_table.CurrentTable.DATASETS)
                 back_btn.show()
             elif self.project_table.current_table == self.project_table.CurrentTable.DATASETS:
+                self.splits_selector.set_project_id(self.get_selected_project_id())
                 self._set_split_selector_active_tab()
                 self.splits_selector.container.show()
                 self.project_table.hide()
@@ -105,13 +108,12 @@ class AddTrainingDataGUI(Widget):
                 self.splits_selector.container.hide()
                 self.project_table.show()
                 next_btn.text = "Next"
-            
+
             if self.project_table.current_table == self.project_table.CurrentTable.DATASETS:
                 self.project_table.switch_table(self.project_table.CurrentTable.PROJECTS)
                 back_btn.hide()
 
-        return Container([back_btn, next_btn], direction="horizontal", style="align-items: flex-end")
-
+        return Flexbox([Container([back_btn, next_btn], direction="horizontal")], horizontal_alignment="flex-end")
 
     def get_json_data(self) -> dict:
         return {}

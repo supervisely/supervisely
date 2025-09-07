@@ -63,13 +63,6 @@ class TrainingProjectNode(ProjectNode):
                 "connectable": True,
             },
             {
-                "id": "add_training_data_id",
-                "type": "source",
-                "position": "left",
-                "label": "Add Training Data",
-                "connectable": True,
-            },
-            {
                 "id": "qa_stats_project_id",
                 "type": "source",
                 "position": "right",
@@ -83,5 +76,12 @@ class TrainingProjectNode(ProjectNode):
                 "position": "bottom",
                 "label": "Data Versioning",
                 "connectable": True,
-            }
+            },
+            {
+                "id": "add_training_data_id",
+                "type": "source",
+                "position": "left",
+                "label": "Add Training Data",
+                "connectable": True,
+            },
         ]
