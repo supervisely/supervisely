@@ -2564,6 +2564,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def recreate_structure_generator(
         self,
         src_project_id: int,
+        src_dataset_ids: Optional[List[int]] = None,
         dst_project_id: Optional[int] = None,
         dst_project_name: Optional[str] = None,
     ) -> Generator[Tuple[DatasetInfo, DatasetInfo], None, None]:
@@ -2572,6 +2573,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param src_project_id: Source project ID
         :type src_project_id: int
+        :param src_dataset_ids: List of source dataset IDs to recreate. If None, all datasets will be recreated.
+        :type src_dataset_ids: list of int, optional
         :param dst_project_id: Destination project ID
         :type dst_project_id: int, optional
         :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
@@ -2606,7 +2609,19 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
             )
             dst_project_id = dst_project_info.id
 
-        datasets = self._api.dataset.get_list(src_project_id, recursive=True, include_custom_data=True)
+        filters = None
+        if src_dataset_ids is not None:
+            filters = [
+                {
+                    ApiField.FIELD: ApiField.ID,
+                    ApiField.OPERATOR: "in",
+                    ApiField.VALUE: src_dataset_ids,
+                }
+            ]
+
+        datasets = self._api.dataset.get_list(
+            src_project_id, filters=filters, recursive=True, include_custom_data=True
+        )
         src_to_dst_ids = {}
 
         for src_dataset_info in datasets:
@@ -2624,6 +2639,7 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
     def recreate_structure(
         self,
         src_project_id: int,
+        src_dataset_ids: Optional[List[int]] = None,
         dst_project_id: Optional[int] = None,
         dst_project_name: Optional[str] = None,
     ) -> Tuple[List[DatasetInfo], List[DatasetInfo]]:
@@ -2631,6 +2647,8 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
 
         :param src_project_id: Source project ID
         :type src_project_id: int
+        :param src_dataset_ids: List of source dataset IDs to recreate. If None, all datasets will be recreated.
+        :type src_dataset_ids: list of int, optional
         :param dst_project_id: Destination project ID
         :type dst_project_id: int, optional
         :param dst_project_name: Name of the destination project. If `dst_project_id` is None, a new project will be created with this name. If `dst_project_id` is provided, this parameter will be ignored.
@@ -2655,7 +2673,10 @@ class ProjectApi(CloneableModuleApi, UpdateableModule, RemoveableModuleApi):
         """
         infos = []
         for src_info, dst_info in self.recreate_structure_generator(
-            src_project_id, dst_project_id, dst_project_name
+            src_project_id,
+            src_dataset_ids=src_dataset_ids,
+            dst_project_id=dst_project_id,
+            dst_project_name=dst_project_name,
         ):
             infos.append((src_info, dst_info))
 
